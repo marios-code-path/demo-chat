@@ -1,12 +1,7 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.ChatMessage
-import com.demo.chat.domain.ChatMessageKey
-import com.demo.chat.domain.ChatRoom
-import com.demo.chat.domain.ChatUser
-import com.demo.chat.repository.ChatMessageRepository
-import com.demo.chat.repository.ChatRoomRepository
-import com.demo.chat.repository.ChatUserRepository
+import com.demo.chat.domain.*
+import com.demo.chat.repository.*
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.*
@@ -40,6 +35,13 @@ class ChatServiceTests {
     lateinit var msgRepo: ChatMessageRepository
 
     @MockBean
+    lateinit var msgRoomRepo: ChatMessageRoomRepository
+
+    @MockBean
+    lateinit var msgUserRepo: ChatMessageUserRepository
+
+
+    @MockBean
     lateinit var roomRepo: ChatRoomRepository
 
     @MockBean
@@ -51,9 +53,11 @@ class ChatServiceTests {
 
     @BeforeEach
     fun setUp() {
-        val newUser = ChatUser(uid, "test-handle", "test-name", Date())
-        val newRoom = ChatRoom(rid, "test-room", emptySet(), Date())
+        val newUser = ChatUser(uid, "test-handle", "test-name", Instant.now())
+        val newRoom = ChatRoom(rid, "test-room", emptySet(), Instant.now())
         val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
+        val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
+
 
         Mockito.`when`(userRepo.findById(anyObject<UUID>()))
                 .thenReturn(Mono.just(newUser))
@@ -76,8 +80,8 @@ class ChatServiceTests {
         Mockito.`when`(msgRepo.insert(anyObject<ChatMessage>()))
                 .thenReturn(Mono.just(newMessage))
 
-        Mockito.`when`(msgRepo.findByKeyRoomId(anyObject<UUID>()))
-                .thenReturn(Flux.just(newMessage))
+        Mockito.`when`(msgRoomRepo.findById(anyObject<UUID>()))
+                .thenReturn(Mono.just(byRoomMessage))
     }
 
     @Test
@@ -102,7 +106,7 @@ class ChatServiceTests {
                             {
                                 MatcherAssert
                                         .assertThat(it, Matchers
-                                                .not((Matchers.emptyCollectionOf(ChatMessage::class.java)))
+                                                .not((Matchers.emptyCollectionOf(ChatMessageRoom::class.java)))
                                         )
                             },
                             {

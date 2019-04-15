@@ -8,8 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.sql.Time
-import java.time.LocalTime
+import java.time.Instant
 import java.util.*
 import kotlin.collections.HashSet
 
@@ -17,14 +16,14 @@ import kotlin.collections.HashSet
 class ChatRoomTests {
 
     @Test
-    fun testShouldHoldState() {
+    fun `should hold members in room`() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
         val memberSet = HashSet<UUID>()
         memberSet.add(userId)
 
-        val room = ChatRoom(roomId, "Conversation", memberSet, Time.valueOf(LocalTime.now()))
+        val room = ChatRoom(roomId, "Conversation", memberSet, Instant.now())
 
         StepVerifier
                 .create(Flux.just(room))

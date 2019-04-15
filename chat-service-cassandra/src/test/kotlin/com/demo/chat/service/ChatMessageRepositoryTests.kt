@@ -1,9 +1,14 @@
 package com.demo.chat.service
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
+import com.demo.chat.domain.ChatMessageRoom
+import com.demo.chat.domain.ChatMessageUser
 import com.demo.chat.repository.ChatMessageRepository
+import com.demo.chat.repository.ChatMessageRoomRepository
+import com.demo.chat.repository.ChatMessageUserRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -11,8 +16,6 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
@@ -23,11 +26,9 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import reactor.test.publisher.TestPublisher
 import reactor.test.scheduler.VirtualTimeScheduler
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.util.*
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 
@@ -42,14 +43,21 @@ class ChatMessageRepositoryTests {
     @Autowired
     lateinit var repo: ChatMessageRepository
 
+    @Autowired
+    lateinit var byRoomRepo: ChatMessageRoomRepository
+
+    @Autowired
+    lateinit var byUserRepo: ChatMessageUserRepository
+
     @Test
-    fun testShouldSaveFindByRoomId() {
+    fun `should save find by message id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUID.randomUUID()
 
-        val saveMsg = repo.insert(ChatMessage(ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true))
-        val findMsg = repo.findByKeyRoomId(roomId)
+        val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
+                ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val findMsg = repo.findByKeyId(msgId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -74,8 +82,8 @@ class ChatMessageRepositoryTests {
 
         val current = Instant.now().toEpochMilli()
 
-        StepVerifier.withVirtualTime (testPublisherSupplier)
-                .then { VirtualTimeScheduler.get().advanceTimeTo(Instant.ofEpochMilli(current))}
+        StepVerifier.withVirtualTime(testPublisherSupplier)
+                .then { VirtualTimeScheduler.get().advanceTimeTo(Instant.ofEpochMilli(current)) }
                 .then {
                     testPublisher
                             .next(
@@ -91,7 +99,7 @@ class ChatMessageRepositoryTests {
                 }
                 .assertNext {
                     assertNotNull(it)
-                    assertTrue( it.key.timestamp.toEpochMilli() >= current)
+                    assertTrue(it.key.timestamp.toEpochMilli() >= current)
                 }
                 .thenAwait(Duration.ofSeconds(5))
                 .then {
@@ -110,29 +118,29 @@ class ChatMessageRepositoryTests {
                 }
                 .assertNext {
                     assertNotNull(it)
-                    assertTrue( it.key.timestamp.toEpochMilli() > current)
+                    assertTrue(it.key.timestamp.toEpochMilli() > current)
                 }
                 .verifyComplete()
 
     }
 
     @Test
-    fun testShouldSaveFindMessagesByUserId() {
+    fun `should save find by user id`() {
         val userId = UUID.randomUUID()
 
         val chatMessageFlux = Flux
                 .just(
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), userId, UUID.randomUUID(), Instant.now()), "Welcome", true),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome", true),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), userId, UUID.randomUUID(), Instant.now()), "Welcome", true),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome", false),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), userId, UUID.randomUUID(), Instant.now()), "Welcome", true),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome", true),
-                        ChatMessage(ChatMessageKey(UUID.randomUUID(), userId, UUID.randomUUID(), Instant.now()), "Welcome", false)
-                ).delayElements(Duration.ofSeconds(2))
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
+                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
+                )
 
-        val saveMessages = repo.insert(chatMessageFlux)
-        val findMessages = repo.findByKeyUserId(userId)
+        val saveMessages = repo.saveMessages(chatMessageFlux)
+        val findMessages = byUserRepo.findById(userId)
         val composite = Flux
                 .from(saveMessages)
                 .thenMany(findMessages)
@@ -144,15 +152,36 @@ class ChatMessageRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessage) {
-        assertAll("message contents in tact",
-                { assertNotNull(msg) },
-                { assertNotNull(msg.key.id) },
-                { assertNotNull(msg.key.userId) },
-                { assertNotNull(msg.key.roomId) },
-                { assertNotNull(msg.text) },
-                { assertEquals(msg.text, "Welcome") },
-                { assertTrue(msg.visible) }
-        )
-    }
+    fun chatMessageAssertion(msg: ChatMessage) =
+            assertAll("message contents in tact",
+                    { assertNotNull(msg) },
+                    { assertNotNull(msg.key.id) },
+                    { assertNotNull(msg.key.userId) },
+                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.text) },
+                    { assertEquals(msg.text, "Welcome") },
+                    { assertTrue(msg.visible) }
+            )
+
+    fun chatMessageUserAssertion(msg: ChatMessageUser) =
+            assertAll("message contents in tact",
+                    { assertNotNull(msg) },
+                    { assertNotNull(msg.key.id) },
+                    { assertNotNull(msg.key.userId) },
+                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.text) },
+                    { assertEquals(msg.text, "Welcome") },
+                    { assertTrue(msg.visible) }
+            )
+
+    fun chatMessageRoomAssertion(msg: ChatMessageRoom) =
+            assertAll("message contents in tact",
+                    { assertNotNull(msg) },
+                    { assertNotNull(msg.key.id) },
+                    { assertNotNull(msg.key.userId) },
+                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.text) },
+                    { assertEquals(msg.text, "Welcome") },
+                    { assertTrue(msg.visible) }
+            )
 }

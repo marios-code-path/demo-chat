@@ -19,8 +19,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.sql.Time
-import java.time.LocalTime
+import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
@@ -78,8 +77,8 @@ class ChatUserRepositoryTests {
 
 fun setUp(repo: ChatUserRepository): Mono<Void> {
 
-    val user1 = ChatUser(UUID.randomUUID(), "vedder", "eddie", Time.valueOf(LocalTime.now()))
-    val user2 = ChatUser(UUID.randomUUID(), "darkbit", "mario", Time.valueOf(LocalTime.now()))
+    val user1 = ChatUser(UUID.randomUUID(), "vedder", "eddie", Instant.now())
+    val user2 = ChatUser(UUID.randomUUID(), "darkbit", "mario", Instant.now())
 
     return repo
             .insert(Flux.just(user1))

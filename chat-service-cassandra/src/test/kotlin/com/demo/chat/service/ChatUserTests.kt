@@ -1,5 +1,6 @@
 package com.demo.chat.service
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatUser
 import org.cassandraunit.spring.CassandraDataSet
@@ -20,6 +21,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.sql.Time
+import java.time.Instant
 import java.time.LocalTime
 import java.util.*
 
@@ -36,8 +38,8 @@ class ChatUserTests {
 
     @Test
     fun testShouldUserCreateAndReactivate() {
-        val uuid = UUID.randomUUID()
-        val user = ChatUser(uuid, "Eddie", "EddiesHandle", Time.valueOf(LocalTime.now()))
+        val uuid = UUIDs.timeBased()
+        val user = ChatUser(uuid, "Eddie", "EddiesHandle", Instant.now())
 
         assertAll("user",
                 { assertNotNull(user) },
@@ -64,7 +66,7 @@ class ChatUserTests {
 
     @Test
     fun shouldPerformSaveCrudFind() {
-        val chatUser = ChatUser(UUID.randomUUID(), "vedder", "eddie", Time.valueOf(LocalTime.now()))
+        val chatUser = ChatUser(UUIDs.timeBased(), "vedder", "eddie", Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
@@ -88,7 +90,7 @@ class ChatUserTests {
 
     @Test
     fun shouldPerformTruncateAndSave() {
-        val chatUser = ChatUser(UUID.randomUUID(), "vedder", "eddie", Time.valueOf(LocalTime.now()))
+        val chatUser = ChatUser(UUIDs.timeBased(), "vedder", "eddie", Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)

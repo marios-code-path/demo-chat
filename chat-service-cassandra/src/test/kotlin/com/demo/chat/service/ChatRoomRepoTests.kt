@@ -1,5 +1,6 @@
 package com.demo.chat.service
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.repository.ChatRoomRepository
@@ -24,6 +25,7 @@ import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
 import java.sql.Time
+import java.time.Instant
 import java.time.LocalTime
 import java.util.*
 
@@ -54,10 +56,10 @@ class ChatRoomRepoTests {
     }
 
     @Test
-    fun testShouldSaveFindByName() {
+    fun `should save find by name`() {
         val saveFlux = repo
                 .insert(Flux.just(
-                        ChatRoom(UUID.randomUUID(), "XYZ", Collections.emptySet(), Time.valueOf(LocalTime.now()))
+                        ChatRoom(UUIDs.timeBased(), "XYZ", Collections.emptySet(), Instant.now())
                 ))
 
         val findFlux = repo
@@ -74,13 +76,13 @@ class ChatRoomRepoTests {
     }
 
     @Test
-    fun testShouldUpdateListAndVerify() {
+    fun `should update members and verify`() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
         val saveFlux = repo
                 .insert(Flux.just(
-                        ChatRoom(roomId, "XYZ", Collections.emptySet(), Time.valueOf(LocalTime.now()))
+                        ChatRoom(roomId, "XYZ", Collections.emptySet(), Instant.now())
                 ))
 
         val updateFlux = template

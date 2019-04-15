@@ -1,16 +1,59 @@
 package com.demo.chat.repository
 
-import com.demo.chat.domain.ChatMessage
+import com.demo.chat.domain.*
+import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
-import java.time.Instant
+import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatMessageRepository : ReactiveCassandraRepository<ChatMessage, UUID> {
+interface ChatMessageUserRepository : ReactiveCassandraRepository<ChatMessageUser, UUID> {
+    fun findByKeyUserId(userId: UUID) : Flux<ChatMessageUser>
+}
 
-    fun findByKeyRoomId(roomId: UUID): Flux<ChatMessage>
+interface ChatMessageRoomRepository : ReactiveCassandraRepository<ChatMessageRoom, UUID> {
+    fun findByKeyRoomId(roomId: UUID) : Flux<ChatMessageRoom>
+}
 
-    fun findByKeyUserId(userId: UUID): Flux<ChatMessage>
+interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, ChatMessageKey> {
+    fun findByKeyId(id: UUID) : Mono<ChatMessage>
+}
 
-    fun findByKeyRoomIdAndKeyTimestampAfter(roomId: UUID, since: Instant): Flux<ChatMessage>
+interface ChatMessageRepositoryCustom {
+    fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage>
+}
+
+class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
+    : ChatMessageRepositoryCustom {
+    override fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage> =
+            Flux.from(msgStream)
+                    .flatMap {
+                        cassandra
+                                .batchOps()
+                                .insert(it)
+                                .insert(ChatMessageUser(
+                                        ChatMessageUserKey(
+                                                it.key.id,
+                                                it.key.userId,
+                                                it.key.roomId,
+                                                it.key.timestamp
+                                        ),
+                                        it.text,
+                                        it.visible
+
+                                ))
+                                .insert(ChatMessageRoom(
+                                        ChatMessageRoomKey(
+                                                it.key.id,
+                                                it.key.userId,
+                                                it.key.roomId,
+                                                it.key.timestamp
+                                        ),
+                                        it.text,
+                                        it.visible
+                                ))
+                                .execute()
+                    }
+                    .thenMany(msgStream)
+
 }
