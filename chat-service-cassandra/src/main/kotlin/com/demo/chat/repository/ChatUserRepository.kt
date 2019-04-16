@@ -15,26 +15,30 @@ interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, UUID>,
 }
 
 interface ChatUserRepositoryCustom {
+    fun saveUser(user: ChatUser): Mono<ChatUser>
     fun saveUsers(user: Flux<ChatUser>): Flux<ChatUser>
 }
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
+    override fun saveUser(user: ChatUser): Mono<ChatUser> =
+            cassandra
+                    .batchOps()
+                    .insert(user)
+                    .insert(ChatUserHandle(
+                            ChatUserHandleKey(
+                                    user.key.userId,
+                                    user.key.handle
+                            ),
+                            user.name,
+                            user.timestamp
+                    ))
+                    .execute()
+                    .thenReturn(user)
+
     override fun saveUsers(users: Flux<ChatUser>): Flux<ChatUser> = users
             .flatMap {
-                cassandra
-                        .batchOps()
-                        .insert(it)
-                        .insert(ChatUserHandle(
-                                ChatUserHandleKey(
-                                        it.key.userId,
-                                        it.key.handle
-                                ),
-                                it.name,
-                                it.timestamp
-                        ))
-                        .execute()
-                        .thenReturn(it)
+               saveUser(it)
             }
 
 }

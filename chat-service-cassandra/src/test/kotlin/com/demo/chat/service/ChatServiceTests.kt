@@ -1,5 +1,6 @@
 package com.demo.chat.service
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
 import com.demo.chat.repository.*
 import org.hamcrest.MatcherAssert
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration
@@ -18,18 +20,20 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatService::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandra::class])
 @OverrideAutoConfiguration(enabled = true)
-@ImportAutoConfiguration(classes = [ChatService::class])
+@ImportAutoConfiguration(classes = [ChatServiceCassandra::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class ChatServiceTests {
 
+    val logger = LoggerFactory.getLogger("TESTCASE ")
     @Autowired
-    lateinit var service: ChatService
+    lateinit var service: ChatServiceCassandra
 
     @MockBean
     lateinit var msgRepo: ChatMessageRepository
@@ -77,7 +81,7 @@ class ChatServiceTests {
         Mockito.`when`(roomRepo.leaveRoom(anyObject<UUID>(), anyObject<UUID>()))
                 .thenReturn(Mono.just(true))
 
-        Mockito.`when`(msgRepo.insert(anyObject<ChatMessage>()))
+        Mockito.`when`(msgRepo.saveMessage(anyObject<ChatMessage>()))
                 .thenReturn(Mono.just(newMessage))
 
         Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject<UUID>()))
@@ -96,7 +100,6 @@ class ChatServiceTests {
                             .collectList()
                 }
 
-
         StepVerifier
                 .create(messages)
                 .expectSubscription()
@@ -106,7 +109,7 @@ class ChatServiceTests {
                             {
                                 MatcherAssert
                                         .assertThat(it, Matchers
-                                                .not((Matchers.emptyCollectionOf(ChatMessageRoom::class.java)))
+                                                .not((Matchers.emptyCollectionOf(Message::class.java)))
                                         )
                             },
                             {
@@ -122,7 +125,7 @@ class ChatServiceTests {
     @Test
     fun `should send message to room`() {
         val sendMessageFlux = service
-                .sendMessage(UUID.randomUUID(), UUID.randomUUID(), "Hello there")
+                .sendMessage(UUIDs.timeBased(), UUID.randomUUID(), "Hello there")
 
         StepVerifier
                 .create(sendMessageFlux)

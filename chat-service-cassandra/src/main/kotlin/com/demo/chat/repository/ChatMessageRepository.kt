@@ -1,6 +1,5 @@
 package com.demo.chat.repository
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
 import org.slf4j.LoggerFactory
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -22,41 +21,46 @@ interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandra
 }
 
 interface ChatMessageRepositoryCustom {
+    fun saveMessage(msg: ChatMessage): Mono<ChatMessage>
     fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage>
 }
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
     val logger = LoggerFactory.getLogger("CASSANDRALOGGER")
+    override fun saveMessage(msg: ChatMessage): Mono<ChatMessage> =
+        cassandra
+                .batchOps()
+                .insert(msg)
+                .insert(ChatMessageUser(
+                        ChatMessageUserKey(
+                                msg.key.id,
+                                msg.key.userId,
+                                msg.key.roomId,
+                                msg.key.timestamp
+                        ),
+                        msg.text,
+                        msg.visible
+
+                ))
+                .insert(ChatMessageRoom(
+                        ChatMessageRoomKey(
+                                msg.key.id,
+                                msg.key.userId,
+                                msg.key.roomId,
+                                msg.key.timestamp
+                        ),
+                        msg.text,
+                        msg.visible
+                ))
+                .execute()
+                .thenReturn(msg)
+
     override fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage> =
             Flux.from(msgStream)
-                    .flatMap {
-                        cassandra
-                                .batchOps()
-                                .insert(it)
-                                .insert(ChatMessageUser(
-                                        ChatMessageUserKey(
-                                                it.key.id,
-                                                it.key.userId,
-                                                it.key.roomId,
-                                                it.key.timestamp
-                                        ),
-                                        it.text,
-                                        it.visible
+                    .flatMap(this::saveMessage)
 
-                                ))
-                                .insert(ChatMessageRoom(
-                                        ChatMessageRoomKey(
-                                                it.key.id,
-                                                it.key.userId,
-                                                it.key.roomId,
-                                                it.key.timestamp
-                                        ),
-                                        it.text,
-                                        it.visible
-                                ))
-                                .execute()
-                    }
-                    .thenMany(msgStream)
+
+
 
 }

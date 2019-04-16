@@ -26,7 +26,7 @@ data class ChatRoom(
         override val key: ChatRoomKey,
         override val members: Set<UUID>?,
         override val timestamp: Instant
-) : Room<ChatRoomKey>
+) : Room<RoomKey>
 
 @PrimaryKeyClass
 data class ChatRoomKey(
@@ -41,7 +41,7 @@ data class ChatRoomName(
         override val key: ChatRoomNameKey,
         override val members: Set<UUID>?,
         override val timestamp: Instant
-) : Room<ChatRoomNameKey>
+) : Room<RoomKey>
 
 @PrimaryKeyClass
 data class ChatRoomNameKey(

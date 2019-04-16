@@ -11,7 +11,7 @@
 	<groupId>com.demo</groupId>
 	<artifactId>chat-service-cassandra</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>chat-service</name>
+	<name>chat-service-cassandra</name>
 	<description>Demo-Chat Reactive Cassandra Back-End</description>
 
 	<properties>

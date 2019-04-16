@@ -14,7 +14,7 @@ interface MessageKey {
 }
 
 interface Message<T : MessageKey> {
-        var key: T
+        val key: T
         val text: String
         val visible: Boolean
 }
@@ -22,49 +22,49 @@ interface Message<T : MessageKey> {
 @Table("chat_message")
 data class ChatMessage(
          @PrimaryKey
-         var key: ChatMessageKey,
-         val text: String,
-         val visible: Boolean
-)
+         override val key: ChatMessageKey,
+         override val text: String,
+         override val visible: Boolean
+) : Message<MessageKey>
 
 @PrimaryKeyClass
 data class ChatMessageKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-         val id: UUID,
+        override val id: UUID,
         @Column("user_id")
-         val userId: UUID,
+        override  val userId: UUID,
         @Column("room_id")
-         val roomId: UUID,
+        override  val roomId: UUID,
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-         val timestamp: Instant
-)
+        override  val timestamp: Instant
+) : MessageKey
 
 // ChatMessage By User
 @Table("chat_message_user")
 data class ChatMessageUser(
         @PrimaryKey
-         var key: ChatMessageUserKey,
-         val text: String,
-         val visible: Boolean
-)
+        override val key: ChatMessageUserKey,
+        override val text: String,
+        override val visible: Boolean
+) : Message<ChatMessageUserKey>
 
 @PrimaryKeyClass
 data class ChatMessageUserKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-         val id: UUID,
+        override  val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-         val userId: UUID,
+        override  val userId: UUID,
         @Column("room_id")
-         val roomId: UUID,
+        override  val roomId: UUID,
         @Column("msg_time")
-         val timestamp: Instant
-)
+        override  val timestamp: Instant
+) : MessageKey
 
 // ChatMessage By User
 @Table("chat_message_room")
 data class ChatMessageRoom(
         @PrimaryKey
-        override var key: ChatMessageRoomKey,
+        override val key: ChatMessageRoomKey,
         override val text: String,
         override val visible: Boolean
 ) : Message<ChatMessageRoomKey>

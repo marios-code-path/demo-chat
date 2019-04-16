@@ -5,15 +5,15 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
+interface UserKey {
+    val userId: UUID
+    val handle: String
+}
+
 interface User<T : UserKey> {
     val key: T
     val name: String
     val timestamp: Instant
-}
-
-interface UserKey {
-    var userId: UUID
-    val handle: String
 }
 
 @Table("chat_user")
@@ -24,12 +24,12 @@ data class ChatUser(
         override val name: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<ChatUserKey>
+) : User<UserKey>
 
 @PrimaryKeyClass
 data class ChatUserKey(
         @PrimaryKeyColumn(name="user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override var userId: UUID,
+        override val userId: UUID,
         @Column("handle")
         override val handle: String
 ) : UserKey
@@ -48,7 +48,7 @@ data class ChatUserHandle(
 @PrimaryKeyClass
 data class ChatUserHandleKey(
         @Column("user_id")
-        override var userId: UUID,
+        override val userId: UUID,
         @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val handle: String
 ) : UserKey
