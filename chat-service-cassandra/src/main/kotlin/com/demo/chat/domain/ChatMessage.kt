@@ -49,7 +49,7 @@ data class ChatMessageUser(
 
 @PrimaryKeyClass
 data class ChatMessageUserKey(
-        @Column("msg_id")
+        @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
          val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
          val userId: UUID,
@@ -70,7 +70,7 @@ data class ChatMessageRoom(
 
 @PrimaryKeyClass
 data class ChatMessageRoomKey(
-        @Column("msg_id")
+        @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val userId: UUID,

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
@@ -40,6 +41,7 @@ import java.util.function.Supplier
 @CassandraDataSet("simple-message.cql")
 class ChatMessageRepositoryTests {
 
+    val logger = LoggerFactory.getLogger("TESTCASE")
     @Autowired
     lateinit var repo: ChatMessageRepository
 
@@ -53,7 +55,7 @@ class ChatMessageRepositoryTests {
     fun `should save find by message id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
-        val msgId = UUID.randomUUID()
+        val msgId = UUIDs.timeBased()
 
         val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
                 ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
@@ -125,8 +127,8 @@ class ChatMessageRepositoryTests {
     }
 
     @Test
-    fun `should save find by user id`() {
-        val userId = UUID.randomUUID()
+    fun `should save many find four by user id`() {
+        val userId = UUIDs.timeBased()
 
         val chatMessageFlux = Flux
                 .just(
@@ -139,14 +141,11 @@ class ChatMessageRepositoryTests {
                         ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
                 )
 
-        val saveMessages = repo.saveMessages(chatMessageFlux)
-        val findMessages = byUserRepo.findById(userId)
-        val composite = Flux
-                .from(saveMessages)
-                .thenMany(findMessages)
+        val saveFindOps = repo.saveMessages(chatMessageFlux)
+                .thenMany(byUserRepo.findByKeyUserId(userId))
 
         StepVerifier
-                .create(composite)
+                .create(saveFindOps)
                 .expectSubscription()
                 .expectNextCount(4)
                 .verifyComplete()

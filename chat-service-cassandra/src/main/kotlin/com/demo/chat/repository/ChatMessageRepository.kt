@@ -1,6 +1,8 @@
 package com.demo.chat.repository
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
+import org.slf4j.LoggerFactory
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
@@ -25,6 +27,7 @@ interface ChatMessageRepositoryCustom {
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
+    val logger = LoggerFactory.getLogger("CASSANDRALOGGER")
     override fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage> =
             Flux.from(msgStream)
                     .flatMap {
