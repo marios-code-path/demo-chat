@@ -42,7 +42,8 @@ import kotlin.streams.asSequence
 @CassandraDataSet("simple-message.cql")
 class ChatMessageRepositoryTests {
 
-    val logger = LoggerFactory.getLogger("TESTCASE")
+    val logger = LoggerFactory.getLogger(this::class.simpleName)
+
     @Autowired
     lateinit var repo: ChatMessageRepository
 
@@ -53,7 +54,7 @@ class ChatMessageRepositoryTests {
     lateinit var byUserRepo: ChatMessageUserRepository
 
     @Test
-    fun `should save single find by message id`() {
+    fun `should save single msg find by message id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
@@ -69,6 +70,46 @@ class ChatMessageRepositoryTests {
         StepVerifier
                 .create(composite)
                 .assertNext(this::chatMessageAssertion)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save single msg find in Room by room id`() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+        val msgId = UUIDs.timeBased()
+
+        val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
+                ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val findMsg = byRoomRepo.findByKeyRoomId(roomId)
+
+        val composite = Flux
+                .from(saveMsg)
+                .thenMany(findMsg)
+
+        StepVerifier
+                .create(composite)
+                .assertNext(this::chatMessageRoomAssertion)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save single msg find message by Userid`() {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+        val msgId = UUIDs.timeBased()
+
+        val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
+                ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val findMsg = byUserRepo.findByKeyUserId(userId)
+
+        val composite = Flux
+                .from(saveMsg)
+                .thenMany(findMsg)
+
+        StepVerifier
+                .create(composite)
+                .assertNext(this::chatMessageUserAssertion)
                 .verifyComplete()
     }
 

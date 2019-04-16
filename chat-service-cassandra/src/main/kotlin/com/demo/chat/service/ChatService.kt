@@ -8,9 +8,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
 import reactor.core.publisher.toFlux
-import java.sql.Time
 import java.time.Instant
-import java.time.LocalTime
 import java.util.*
 
 open class ChatException(msg: String) : Exception(msg)
@@ -25,15 +23,15 @@ class ChatService(val userRepo: ChatUserRepository,
                   val messageUserRepo: ChatMessageUserRepository) {
 
 
-    fun newUser(handle: String, name: String): Mono<ChatUser> =
-            userRepo
-                    .insert(ChatUser(UUIDs.timeBased(),
-                            handle,
-                            name,
-                            Instant.now()
-                    ))
+    fun newUser(handle: String, name: String): Mono<ChatUser> = userRepo
+            .insert(ChatUser(UUIDs.timeBased(),
+                    handle,
+                    name,
+                    Instant.now()
+            ))
 
-    fun newRoom(uid: UUID, name: String): Mono<ChatRoom> = userRepo.findById(uid)
+    fun newRoom(uid: UUID, name: String): Mono<ChatRoom> = userRepo
+            .findById(uid)
             .switchIfEmpty { Mono.error(ChatException("user not found")) }
             .flatMap {
                 roomRepo

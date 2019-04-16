@@ -85,7 +85,7 @@ class ChatServiceTests {
     }
 
     @Test
-    fun `should send and receive messages from room`() {
+    fun `should send to room and receive messages from room`() {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 

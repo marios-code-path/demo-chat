@@ -17,3 +17,5 @@ interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, UUID> {
 
     override fun findById(uuid: UUID): Mono<ChatUser>
 }
+
+//interface ChatUserByNameRepository : ReactiveCassandraRepository

@@ -6,7 +6,7 @@ USE chat;
 CREATE TABLE chat_room(
   id UUID,
   name varchar,
-  timestamp timestamp,
   members set<UUID>,
+  timestamp timestamp,
   PRIMARY KEY(id)
 );
