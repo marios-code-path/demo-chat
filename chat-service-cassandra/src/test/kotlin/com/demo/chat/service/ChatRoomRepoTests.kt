@@ -50,7 +50,7 @@ class ChatRoomRepoTests {
     @Test
     fun `should fail to find room`() {
         val queryFlux = repo
-                .findById(UUID.randomUUID())
+                .findByKeyRoomId(UUID.randomUUID())
                 .switchIfEmpty { Mono.error(Exception("No Such Room")) }
 
         StepVerifier
@@ -79,7 +79,7 @@ class ChatRoomRepoTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext { roomAssertions(it as Room<RoomKey>)}
+                .assertNext { roomAssertions(it as Room<RoomKey>) }
                 //.expectNextCount(1)
                 .verifyComplete()
     }
@@ -99,7 +99,7 @@ class ChatRoomRepoTests {
                 ))
 
         val updateFlux = template
-                .update(Query.query(where("roomId").`is`(roomId)),
+                .update(Query.query(where("room_id").`is`(roomId)),
                         Update.of(listOf(Update.AddToOp(
                                 ColumnName.from("members"),
                                 listOf(userId),
@@ -108,7 +108,7 @@ class ChatRoomRepoTests {
                 )
 
         val findFlux = repo
-                .findById(roomId)
+                .findByKeyRoomId(roomId)
 
         val composed = Flux
                 .from(saveFlux)

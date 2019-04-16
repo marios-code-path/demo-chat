@@ -56,7 +56,7 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
             .thenReturn(room)
 
     override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean> = template
-            .update(Query.query(where("roomId").`is`(roomId)),
+            .update(Query.query(where("room_id").`is`(roomId)),
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
                             listOf(uid)))),
@@ -66,7 +66,7 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
 
     override fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean> =
             template
-                    .update(Query.query(where("roomId").`is`(roomId)),
+                    .update(Query.query(where("room_id").`is`(roomId)),
                             Update.of(listOf(Update.AddToOp(
                                     ColumnName.from("members"),
                                     listOf(uid),

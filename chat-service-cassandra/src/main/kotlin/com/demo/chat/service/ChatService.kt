@@ -24,8 +24,8 @@ class ChatService(val userRepo: ChatUserRepository,
 
 
     fun newUser(handle: String, name: String): Mono<ChatUser> = userRepo
-            .insert(ChatUser(UUIDs.timeBased(),
-                    handle,
+            .insert(ChatUser(
+                    ChatUserKey(UUIDs.timeBased(), handle),
                     name,
                     Instant.now()
             ))
@@ -72,11 +72,11 @@ class ChatService(val userRepo: ChatUserRepository,
             .from(findRoomAndUser(uid, roomId))
             .toFlux()
             .flatMap {
-                messageRoomRepo.findById(roomId)
+                messageRoomRepo.findByKeyRoomId(roomId)
             }
 
     private fun findRoomAndUser(uid: UUID, roomId: UUID) = Flux.zip(
-            userRepo.findById(uid).switchIfEmpty { Mono.error(UserNotFoundException) },
+            userRepo.findByKeyUserId(uid).switchIfEmpty { Mono.error(UserNotFoundException) },
             roomRepo.findByKeyRoomId(roomId).switchIfEmpty { Mono.error(RoomNotFoundException) })
 
 }

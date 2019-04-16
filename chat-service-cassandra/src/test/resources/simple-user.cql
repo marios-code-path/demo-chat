@@ -4,8 +4,15 @@ CREATE KEYSPACE chat WITH replication={'class' : 'SimpleStrategy', 'replication_
 USE chat;
 
 CREATE TABLE chat_user(
-id UUID,
+user_id UUID,
 handle varchar,
 name varchar,
 timestamp timestamp,
-PRIMARY KEY(id, handle, name));
+PRIMARY KEY(user_id));
+
+CREATE TABLE chat_user_handle(
+user_id UUID,
+handle varchar,
+name varchar,
+timestamp timestamp,
+PRIMARY KEY(handle, user_id));

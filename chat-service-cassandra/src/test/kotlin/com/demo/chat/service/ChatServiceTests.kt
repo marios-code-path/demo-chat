@@ -53,13 +53,13 @@ class ChatServiceTests {
 
     @BeforeEach
     fun setUp() {
-        val newUser = ChatUser(uid, "test-handle", "test-name", Instant.now())
+        val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", Instant.now())
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), Instant.now())
         val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
         val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 
 
-        Mockito.`when`(userRepo.findById(anyObject<UUID>()))
+        Mockito.`when`(userRepo.findByKeyUserId(anyObject<UUID>()))
                 .thenReturn(Mono.just(newUser))
 
         Mockito.`when`(userRepo.insert(anyObject<ChatUser>()))
@@ -71,7 +71,7 @@ class ChatServiceTests {
         Mockito.`when`(roomRepo.joinRoom(anyObject<UUID>(), anyObject<UUID>()))
                 .thenReturn(Mono.just(true))
 
-        Mockito.`when`(roomRepo.findById(anyObject<UUID>()))
+        Mockito.`when`(roomRepo.findByKeyRoomId(anyObject<UUID>()))
                 .thenReturn(Mono.just(newRoom))
 
         Mockito.`when`(roomRepo.leaveRoom(anyObject<UUID>(), anyObject<UUID>()))
@@ -80,8 +80,8 @@ class ChatServiceTests {
         Mockito.`when`(msgRepo.insert(anyObject<ChatMessage>()))
                 .thenReturn(Mono.just(newMessage))
 
-        Mockito.`when`(msgRoomRepo.findById(anyObject<UUID>()))
-                .thenReturn(Mono.just(byRoomMessage))
+        Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject<UUID>()))
+                .thenReturn(Flux.just(byRoomMessage))
     }
 
     @Test

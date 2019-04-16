@@ -2,6 +2,10 @@ package com.demo.chat.service
 
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatUser
+import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.domain.User
+import com.demo.chat.domain.UserKey
+import com.demo.chat.repository.ChatUserHandleRepository
 import com.demo.chat.repository.ChatUserRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
@@ -32,9 +36,12 @@ class ChatUserRepositoryTests {
     @Autowired
     lateinit var repo: ChatUserRepository
 
+    @Autowired
+    lateinit var handleRepo: ChatUserHandleRepository
+
     @Test
     fun shouldFindDarkbit() {
-        val findFlux = repo.findByHandle("darkbit")
+        val findFlux = handleRepo.findByKeyHandle("darkbit")
 
         val setupAndFind = Flux
                 .from(setUp(repo))
@@ -43,33 +50,17 @@ class ChatUserRepositoryTests {
         StepVerifier
                 .create(setupAndFind)
                 .expectSubscription()
-                .assertNext { userAssertions(it, "darkbit", "mario") }
-                .verifyComplete()
-    }
-
-    @Test
-    fun shouldFindVedder() {
-        val findFlux = repo.findByName("eddie")
-
-        val setupAndFind = Flux
-                .from(setUp(repo))
-                .thenMany(findFlux)
-
-
-        StepVerifier
-                .create(setupAndFind)
-                .expectSubscription()
-                .assertNext { userAssertions(it, "vedder", "eddie") }
+                .assertNext { userAssertions(it as User<UserKey>, "darkbit", "mario") }
                 .verifyComplete()
     }
 
     // helper function to verify user state
-    fun userAssertions(user: ChatUser, handle: String?, name: String?) {
+    fun userAssertions(user: User<UserKey>, handle: String?, name: String?) {
         assertAll("User Assertion",
                 { Assertions.assertNotNull(user) },
-                { Assertions.assertNotNull(user.id) },
-                { Assertions.assertNotNull(user.handle) },
-                { Assertions.assertEquals(handle, user.handle) },
+                { Assertions.assertNotNull(user.key.userId) },
+                { Assertions.assertNotNull(user.key.handle) },
+                { Assertions.assertEquals(handle, user.key.handle) },
                 { Assertions.assertEquals(name, user.name) }
         )
     }
@@ -77,11 +68,10 @@ class ChatUserRepositoryTests {
 
 fun setUp(repo: ChatUserRepository): Mono<Void> {
 
-    val user1 = ChatUser(UUID.randomUUID(), "vedder", "eddie", Instant.now())
-    val user2 = ChatUser(UUID.randomUUID(), "darkbit", "mario", Instant.now())
+    val user1 = ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", Instant.now())
+    val user2 = ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", Instant.now())
 
     return repo
-            .insert(Flux.just(user1))
-            .then(repo.insert(user2))
+            .saveUsers(Flux.just(user1, user2))
             .then()
 }

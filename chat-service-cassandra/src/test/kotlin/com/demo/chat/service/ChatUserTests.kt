@@ -3,6 +3,7 @@ package com.demo.chat.service
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatUser
+import com.demo.chat.domain.ChatUserKey
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -20,10 +21,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.sql.Time
 import java.time.Instant
-import java.time.LocalTime
-import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -39,12 +37,13 @@ class ChatUserTests {
     @Test
     fun testShouldUserCreateAndReactivate() {
         val uuid = UUIDs.timeBased()
-        val user = ChatUser(uuid, "Eddie", "EddiesHandle", Instant.now())
+        val user = ChatUser(ChatUserKey(uuid, "Eddie"),
+                "EddiesHandle", Instant.now())
 
         assertAll("user",
                 { assertNotNull(user) },
-                { assertEquals(uuid, user.id) },
-                { assertEquals("Eddie", user.handle) },
+                { assertEquals(uuid, user.key.userId) },
+                { assertEquals("Eddie", user.key.handle) },
                 { assertEquals("EddiesHandle", user.name) })
 
         StepVerifier
@@ -52,7 +51,7 @@ class ChatUserTests {
                 .assertNext { u ->
                     assertAll("simple user assertion",
                             { assertNotNull(u) },
-                            { assertEquals(uuid, u.id) }
+                            { assertEquals(uuid, u.key.userId) }
                     )
                 }
                 .verifyComplete()
@@ -66,7 +65,7 @@ class ChatUserTests {
 
     @Test
     fun shouldPerformSaveCrudFind() {
-        val chatUser = ChatUser(UUIDs.timeBased(), "vedder", "eddie", Instant.now())
+        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
@@ -90,7 +89,7 @@ class ChatUserTests {
 
     @Test
     fun shouldPerformTruncateAndSave() {
-        val chatUser = ChatUser(UUIDs.timeBased(), "vedder", "eddie", Instant.now())
+        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
@@ -110,9 +109,9 @@ class ChatUserTests {
     fun userAssertions(user: ChatUser) {
         assertAll("User Assertion",
                 { assertNotNull(user) },
-                { assertNotNull(user.id) },
-                { assertNotNull(user.handle) },
-                { assertEquals("vedder", user.handle) },
+                { assertNotNull(user.key.userId) },
+                { assertNotNull(user.key.handle) },
+                { assertEquals("vedder", user.key.handle) },
                 { assertEquals("eddie", user.name) }
         )
     }
