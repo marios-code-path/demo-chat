@@ -1,5 +1,6 @@
 package com.demo.chat.domain
 
+import org.springframework.data.cassandra.core.cql.Ordering
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
@@ -76,6 +77,6 @@ data class ChatMessageRoomKey(
         override val userId: UUID,
         @Column("room_id")
         override val roomId: UUID,
-        @Column("msg_time")
+        @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
         override val timestamp: Instant
 ) : MessageKey

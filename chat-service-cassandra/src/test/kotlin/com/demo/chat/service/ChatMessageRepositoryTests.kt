@@ -32,6 +32,7 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
+import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -52,7 +53,7 @@ class ChatMessageRepositoryTests {
     lateinit var byUserRepo: ChatMessageUserRepository
 
     @Test
-    fun `should save find by message id`() {
+    fun `should save single find by message id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
@@ -68,6 +69,38 @@ class ChatMessageRepositoryTests {
         StepVerifier
                 .create(composite)
                 .assertNext(this::chatMessageAssertion)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save many messages and find by roomId`() {
+        val roomIds = listOf<UUID>(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
+        val getUser = Supplier { UUIDs.timeBased() }
+        val getMsg = Supplier { UUIDs.timeBased() }
+
+        val messages = Flux
+                .generate<ChatMessage> {
+                    it.next(ChatMessage(
+                            ChatMessageKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
+                            "Random Message", true))
+                }
+                .take(10)
+                .cache()
+
+        val roomSelection = roomIds.random()
+
+        val countOfMessagesInSelectedRoom = messages.toStream().asSequence()
+                .count { it.key.roomId == roomSelection }
+
+        val saveMessageFlux = repo
+                .saveMessages(messages)
+                .thenMany(byRoomRepo.findByKeyRoomId(roomSelection))
+
+        // Expecting : ${countOfMessagesInSelectedRoom.toLong()} msgs for room ${roomSelection}
+        StepVerifier
+                .create(saveMessageFlux)
+                .expectSubscription()
+                .expectNextCount(countOfMessagesInSelectedRoom.toLong())
                 .verifyComplete()
     }
 
