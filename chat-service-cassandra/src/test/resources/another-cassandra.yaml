@@ -534,7 +534,7 @@ request_scheduler: org.apache.cassandra.scheduler.NoScheduler
 #  - weights -- Weights are optional and will default to 1 or the
 #               overridden default_weight. The weight translates into how
 #               many requests are handled during each turn of the
-#               RoundRobin, based on the scheduler id.
+#               RoundRobin, based on the scheduler roomId.
 #
 # request_scheduler_options:
 #    throttle_limit: 80

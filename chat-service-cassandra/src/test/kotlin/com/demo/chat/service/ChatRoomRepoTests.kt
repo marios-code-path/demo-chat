@@ -3,6 +3,10 @@ package com.demo.chat.service
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatRoom
+import com.demo.chat.domain.ChatRoomKey
+import com.demo.chat.domain.Room
+import com.demo.chat.domain.RoomKey
+import com.demo.chat.repository.ChatRoomNameRepository
 import com.demo.chat.repository.ChatRoomRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
@@ -24,9 +28,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
-import java.sql.Time
 import java.time.Instant
-import java.time.LocalTime
 import java.util.*
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -38,6 +40,9 @@ class ChatRoomRepoTests {
 
     @Autowired
     lateinit var repo: ChatRoomRepository
+
+    @Autowired
+    lateinit var byNameRepo: ChatRoomNameRepository
 
     @Autowired
     lateinit var template: ReactiveCassandraTemplate
@@ -58,12 +63,15 @@ class ChatRoomRepoTests {
     @Test
     fun `should save find by name`() {
         val saveFlux = repo
-                .insert(Flux.just(
-                        ChatRoom(UUIDs.timeBased(), "XYZ", Collections.emptySet(), Instant.now())
+                .saveRooms(Flux.just(
+                        ChatRoom(
+                                ChatRoomKey(UUIDs.timeBased(), "XYZ"),
+                                Collections.emptySet(),
+                                Instant.now())
                 ))
 
-        val findFlux = repo
-                .findByName("XYZ")
+        val findFlux = byNameRepo
+                .findByKeyName("XYZ")
 
         val composed = Flux
                 .from(saveFlux)
@@ -71,7 +79,8 @@ class ChatRoomRepoTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext(this::roomAssertions)
+                .assertNext { roomAssertions(it as Room<RoomKey>)}
+                //.expectNextCount(1)
                 .verifyComplete()
     }
 
@@ -82,11 +91,15 @@ class ChatRoomRepoTests {
 
         val saveFlux = repo
                 .insert(Flux.just(
-                        ChatRoom(roomId, "XYZ", Collections.emptySet(), Instant.now())
+                        ChatRoom(
+                                ChatRoomKey(
+                                        roomId, "XYZ"),
+                                Collections.emptySet(),
+                                Instant.now())
                 ))
 
         val updateFlux = template
-                .update(Query.query(where("id").`is`(roomId)),
+                .update(Query.query(where("roomId").`is`(roomId)),
                         Update.of(listOf(Update.AddToOp(
                                 ColumnName.from("members"),
                                 listOf(userId),
@@ -105,7 +118,7 @@ class ChatRoomRepoTests {
         StepVerifier
                 .create(composed)
                 .assertNext {
-                    roomAssertions(it)
+                    roomAssertions(it as Room<RoomKey>)
                     assertAll("Room members contained",
                             { Assertions.assertTrue(it.members!!.isNotEmpty()) },
                             {
@@ -117,11 +130,11 @@ class ChatRoomRepoTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: ChatRoom) {
+    fun roomAssertions(room: Room<RoomKey>) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.id) },
-                { Assertions.assertNotNull(room.name) },
+                { Assertions.assertNotNull(room.key.roomId) },
+                { Assertions.assertNotNull(room.key.name) },
                 { Assertions.assertNotNull(room.timestamp) }
         )
     }

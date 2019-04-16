@@ -54,7 +54,7 @@ class ChatServiceTests {
     @BeforeEach
     fun setUp() {
         val newUser = ChatUser(uid, "test-handle", "test-name", Instant.now())
-        val newRoom = ChatRoom(rid, "test-room", emptySet(), Instant.now())
+        val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), Instant.now())
         val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
         val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 

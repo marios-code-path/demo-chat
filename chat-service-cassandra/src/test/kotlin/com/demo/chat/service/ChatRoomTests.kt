@@ -1,6 +1,7 @@
 package com.demo.chat.service
 
 import com.demo.chat.domain.ChatRoom
+import com.demo.chat.domain.ChatRoomKey
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -23,7 +24,10 @@ class ChatRoomTests {
         val memberSet = HashSet<UUID>()
         memberSet.add(userId)
 
-        val room = ChatRoom(roomId, "Conversation", memberSet, Instant.now())
+        val room = ChatRoom(
+                ChatRoomKey(roomId, "Conversation"),
+                memberSet,
+                Instant.now())
 
         StepVerifier
                 .create(Flux.just(room))
@@ -39,8 +43,8 @@ class ChatRoomTests {
     fun roomAssertions(room: ChatRoom) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.id) },
-                { Assertions.assertNotNull(room.name) },
+                { Assertions.assertNotNull(room.key.roomId) },
+                { Assertions.assertNotNull(room.key.name) },
                 { Assertions.assertNotNull(room.timestamp) }
         )
     }

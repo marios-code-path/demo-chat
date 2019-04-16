@@ -4,9 +4,18 @@ CREATE KEYSPACE chat WITH replication={'class' : 'SimpleStrategy', 'replication_
 USE chat;
 
 CREATE TABLE chat_room(
-  id UUID,
+  room_id UUID,
   name varchar,
   members set<UUID>,
   timestamp timestamp,
-  PRIMARY KEY(id)
+  PRIMARY KEY(room_id)
 );
+
+
+CREATE TABLE chat_room_name(
+room_id UUID,
+name varchar,
+members set<UUID>,
+timestamp timestamp,
+PRIMARY KEY(name, room_id))
+WITH CLUSTERING ORDER BY (room_id DESC);
