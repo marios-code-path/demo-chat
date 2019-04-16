@@ -10,7 +10,7 @@ interface ChatService<U : User<UserKey>, R : Room<RoomKey>, M : Message<MessageK
     fun newRoom(uid: UUID, name: String): Mono<R>
     fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean>
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean>
-    fun sendMessage(uid: UUID, roomId: UUID, messageText: String): Mono<M>
+    fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<M>
     fun getMessagesForRoom(uid: UUID, roomId: UUID): Flux<M>
-    fun findRoomAndUser(uid: UUID, roomId: UUID): Mono<Void>
+    fun verifyRoomAndUser(uid: UUID, roomId: UUID): Mono<Void>
 }

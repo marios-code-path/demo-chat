@@ -27,7 +27,7 @@ interface ChatMessageRepositoryCustom {
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
-    val logger = LoggerFactory.getLogger("CASSANDRALOGGER")
+
     override fun saveMessage(msg: ChatMessage): Mono<ChatMessage> =
         cassandra
                 .batchOps()

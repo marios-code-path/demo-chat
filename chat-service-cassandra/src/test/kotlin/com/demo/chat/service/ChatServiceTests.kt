@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
@@ -20,7 +19,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Duration
 import java.time.Instant
 import java.util.*
 
@@ -32,18 +30,17 @@ import java.util.*
 class ChatServiceTests {
 
     val logger = LoggerFactory.getLogger("TESTCASE ")
-    @Autowired
+
     lateinit var service: ChatServiceCassandra
 
     @MockBean
     lateinit var msgRepo: ChatMessageRepository
 
     @MockBean
-    lateinit var msgRoomRepo: ChatMessageRoomRepository
-
-    @MockBean
     lateinit var msgUserRepo: ChatMessageUserRepository
 
+    @MockBean
+    lateinit var msgRoomRepo: ChatMessageRoomRepository
 
     @MockBean
     lateinit var roomRepo: ChatRoomRepository
@@ -63,7 +60,7 @@ class ChatServiceTests {
         val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 
 
-        Mockito.`when`(userRepo.findByKeyUserId(anyObject<UUID>()))
+        Mockito.`when`(userRepo.findByKeyUserId(anyObject()))
                 .thenReturn(Mono.just(newUser))
 
         Mockito.`when`(userRepo.insert(anyObject<ChatUser>()))
@@ -72,20 +69,46 @@ class ChatServiceTests {
         Mockito.`when`(roomRepo.insert(anyObject<ChatRoom>()))
                 .thenReturn(Mono.just(newRoom))
 
-        Mockito.`when`(roomRepo.joinRoom(anyObject<UUID>(), anyObject<UUID>()))
+        Mockito.`when`(roomRepo.joinRoom(anyObject(), anyObject()))
                 .thenReturn(Mono.just(true))
 
-        Mockito.`when`(roomRepo.findByKeyRoomId(anyObject<UUID>()))
+        Mockito.`when`(roomRepo.findByKeyRoomId(anyObject()))
                 .thenReturn(Mono.just(newRoom))
 
-        Mockito.`when`(roomRepo.leaveRoom(anyObject<UUID>(), anyObject<UUID>()))
+        Mockito.`when`(roomRepo.leaveRoom(anyObject(), anyObject()))
                 .thenReturn(Mono.just(true))
 
-        Mockito.`when`(msgRepo.saveMessage(anyObject<ChatMessage>()))
+        Mockito.`when`(msgRepo.saveMessage(anyObject()))
                 .thenReturn(Mono.just(newMessage))
 
-        Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject<UUID>()))
+        Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
+
+        service = ChatServiceCassandra(
+                userRepo,
+                roomRepo,
+                msgRepo,
+                msgRoomRepo,
+                msgUserRepo
+        )
+    }
+
+    @Test
+    fun `dud test`() {
+        val messages = service.getMessagesForRoom(UUID.randomUUID(), UUID.randomUUID())
+                .doOnNext {
+                    logger.info("A message found; ${it}")
+                }
+
+        StepVerifier
+                .create(messages)
+                .assertNext {
+                    org.assertj.core.api.Assertions
+                            .assertThat(it)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                }
+                .verifyComplete()
     }
 
     @Test
@@ -94,7 +117,7 @@ class ChatServiceTests {
         val userId = UUID.randomUUID()
 
         val messages = service
-                .sendMessage(userId, roomId, "")
+                .storeMessage(userId, roomId, "")
                 .flatMap {
                     service.getMessagesForRoom(userId, roomId)
                             .collectList()
@@ -125,7 +148,7 @@ class ChatServiceTests {
     @Test
     fun `should send message to room`() {
         val sendMessageFlux = service
-                .sendMessage(UUIDs.timeBased(), UUID.randomUUID(), "Hello there")
+                .storeMessage(UUIDs.timeBased(), UUID.randomUUID(), "Hello there")
 
         StepVerifier
                 .create(sendMessageFlux)
