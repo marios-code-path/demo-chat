@@ -5,16 +5,6 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
-interface UserKey {
-    val userId: UUID
-    val handle: String
-}
-
-interface User<T : UserKey> {
-    val key: T
-    val name: String
-    val timestamp: Instant
-}
 
 @Table("chat_user")
 data class ChatUser(
