@@ -45,8 +45,8 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
 
     override fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean> =
             verifyRoomAndUser(uid, roomId)
-            .then(roomRepo.joinRoom(uid, roomId))
-            .defaultIfEmpty(false)
+                    .then(roomRepo.joinRoom(uid, roomId))
+                    .defaultIfEmpty(false)
 
 
     override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean> = verifyRoomAndUser(uid, roomId)
@@ -82,6 +82,38 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
                                         )
                                     }
                     )
+
+    override fun getMessagesForUser(uid: UUID): Flux<ChatMessage> =
+            userRepo.findByKeyUserId(uid).switchIfEmpty { Mono.error(UserNotFoundException) }
+                    .thenMany(
+                            messageUserRepo.findByKeyUserId(uid)
+                                    .map {
+                                        ChatMessage(
+                                                ChatMessageKey(
+                                                        it.key.id,
+                                                        it.key.userId,
+                                                        it.key.roomId,
+                                                        it.key.timestamp
+                                                ),
+                                                it.text,
+                                                it.visible
+                                        )
+                                    }
+                    )
+
+    override fun getRoomStatus(roomId: UUID): Mono<RoomStats> =
+            roomRepo.findByKeyRoomId(roomId)
+                    .map {
+                        val roomSize = Optional.ofNullable(it.members)
+                                .orElse(Collections.emptySet())
+                                .size
+
+                        ChatRoomStats(it.key.roomId,
+                                roomSize,
+                                roomSize,
+                                0
+                        )
+                    }
 
     override fun verifyRoomAndUser(uid: UUID, roomId: UUID): Mono<Void> =
             Flux.zip(

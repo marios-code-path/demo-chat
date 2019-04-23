@@ -1,17 +1,58 @@
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.Instant
 import java.util.*
 
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+interface Message<out K, out V> {
+    val key: K
+    val value: V
+    val visible: Boolean
+}
+
 interface MessageKey {
     val id: UUID
-    val userId: UUID
     val roomId: UUID
     val timestamp: Instant
 }
 
-interface Message<T : MessageKey> {
-    val key: T
-    val text: String
-    val visible: Boolean
-}
+// Variances of Keys we want
+class MessageAlertKey(
+        override val id: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageKey
+
+
+class MessageTextKey(
+        override val id: UUID,
+        val userId: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageKey
+
+class ChatRoomTextMessage(
+        override val key: MessageTextKey,
+        override val value: String,
+        override val visible: Boolean
+) : Message<MessageTextKey, String>
+
+data class ChatRoomInfoAlert(
+        override val key: MessageAlertKey,
+        override val value: RoomInfo,
+        override val visible: Boolean)
+    : Message<MessageAlertKey, RoomInfo>
+
+
+data class ChatRoomLeaveAlert(
+        override val key: MessageAlertKey,
+        override val value: UUID,
+        override val visible: Boolean)
+    : Message<MessageAlertKey, UUID>
+
+data class ChatRoomJoinAlert(
+        override val key: MessageAlertKey,
+        override val value: UUID,
+        override val visible: Boolean)
+    : Message<MessageAlertKey, UUID>
