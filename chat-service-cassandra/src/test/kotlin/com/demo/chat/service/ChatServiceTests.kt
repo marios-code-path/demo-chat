@@ -88,14 +88,13 @@ class ChatServiceTests {
                 userRepo,
                 roomRepo,
                 msgRepo,
-                msgRoomRepo,
-                msgUserRepo
+                msgRoomRepo
         )
     }
 
     @Test
     fun `dud test`() {
-        val messages = service.getMessagesForRoom(UUID.randomUUID(), UUID.randomUUID())
+        val messages = service.getRoomMessages(UUID.randomUUID())
                 .doOnNext {
                     logger.info("A message found; ${it}")
                 }
@@ -119,7 +118,7 @@ class ChatServiceTests {
         val messages = service
                 .storeMessage(userId, roomId, "")
                 .flatMap {
-                    service.getMessagesForRoom(userId, roomId)
+                    service.getRoomMessages(roomId)
                             .collectList()
                 }
 
@@ -155,9 +154,9 @@ class ChatServiceTests {
                 .expectSubscription()
                 .assertNext {
                     assertAll("message",
-                            { assertNotNull(it.key.userId) },
-                            { assertNotNull(it.key.roomId) },
-                            { assertEquals(it.value, "SUP TEST") }
+                            { assertNotNull(it.id) },
+                            { assertNotNull(it.roomId) },
+                            { assertNotNull(it.userId) }
                     )
                 }
                 .verifyComplete()

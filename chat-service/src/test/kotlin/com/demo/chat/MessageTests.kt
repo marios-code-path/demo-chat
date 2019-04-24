@@ -13,6 +13,44 @@ import java.time.Instant
 import java.util.*
 import java.util.stream.Stream
 
+// Variances of Keys we want
+data class TestAlertKey(
+        override val id: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageAlertKey
+
+data class TestTextKey(
+        override val id: UUID,
+        override val userId: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageTextKey
+
+data class TestTextMessage(
+        override val key: TestTextKey,
+        override val value: String,
+        override val visible: Boolean
+) : TextMessage
+
+data class TestInfoAlert(
+        override val key: TestAlertKey,
+        override val value: RoomInfo,
+        override val visible: Boolean
+) : InfoAlert
+
+
+data class TestLeaveAlert(
+        override val key: TestAlertKey,
+        override val value: UUID,
+        override val visible: Boolean
+) : LeaveAlert
+
+data class TestJoinAlert(
+        override val key: TestAlertKey,
+        override val value: UUID,
+        override val visible: Boolean
+) : JoinAlert
 
 class MessageTests {
 
@@ -32,17 +70,22 @@ class MessageTests {
         counter++
 
         return if (counter % 2 == 0)
-            ChatRoomJoinAlert(MessageAlertKey(
+            TestJoinAlert(TestAlertKey(
                     messageId, roomId, Instant.now()
             ), userId, true)
         else
-            ChatRoomTextMessage(MessageTextKey(
+            TestTextMessage(TestTextKey(
                     messageId, userId, roomId, Instant.now()
             ), "Hello $counter !", true)
     }
 
     @Test
-    fun `Should serialize deserialize JSON to Any Message`() {
+    fun `should ser or deser JSON objects from subtype`() {
+
+    }
+
+    @Test
+    fun `Should serialize deserialize JSON from to Any Message`() {
         val messageJsons = ArrayList<String>()
         val messages = ArrayList<Message<MessageKey, Any>>()
 
@@ -59,24 +102,29 @@ class MessageTests {
                         val rootName = tree.fieldNames().next()
 
                         when (rootName) {
-                            "ChatRoomTextMessage" -> messages.add(mapper.readValue<ChatRoomTextMessage>(it))
-                            "ChatRoomJoinAlert" -> messages.add(mapper.readValue<ChatRoomJoinAlert>(it))
+                            "TestTextMessage" -> messages.add(mapper.readValue<TestTextMessage>(it))
+                            "TestJoinAlert" -> messages.add(mapper.readValue<TestJoinAlert>(it))
                         }
                     }
 
                 }
 
+        Assertions.assertThat(messages)
+                .`as`("A collection of messages is present")
+                .isNotNull
+                .isNotEmpty
+
         messages
                 .forEach { msg ->
                     when (msg) {
-                        is ChatRoomTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
+                        is TestTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                                 .isNotNull
                                 .hasFieldOrProperty("userId")
-                        is ChatRoomJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
+                        is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                                 .isNotNull
                                 .hasFieldOrProperty("roomId")
                         else -> {
-                            Assertions.assertThat(msg).`as`("Is a message, afte rall")
+                            Assertions.assertThat(msg).`as`("Is a message")
                                     .isNotNull
                                     .hasFieldOrProperty("key")
                                     .hasFieldOrProperty("value")
@@ -91,8 +139,8 @@ class MessageTests {
     @Test
     fun `returns many message and smart casts`() {
         val messages = listOf(randomMessage(), randomMessage(),
-                ChatRoomLeaveAlert(
-                        MessageAlertKey(
+                TestLeaveAlert(
+                        TestAlertKey(
                                 UUID.randomUUID(),
                                 UUID.randomUUID(),
                                 Instant.now()
@@ -102,10 +150,10 @@ class MessageTests {
         messages.forEach { msg ->
 
             when (msg) {
-                is ChatRoomTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
+                is TestTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                         .isNotNull
                         .hasFieldOrProperty("userId")
-                is ChatRoomJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
+                is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                         .isNotNull
                         .hasFieldOrProperty("roomId")
                 else -> Assertions.assertThat(msg).`as`("Is a message, afte rall")
@@ -121,7 +169,7 @@ class MessageTests {
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
 
-        val key = MessageAlertKey(
+        val key = TestAlertKey(
                 messageId,
                 roomId,
                 Instant.now()
@@ -133,10 +181,10 @@ class MessageTests {
                 1000
         )
 
-        val message: Message<MessageKey, *> = ChatRoomInfoAlert(key, value, true)
+        val message: Message<MessageKey, *> = TestInfoAlert(key, value, true)
 
         // Get some message and access specific fields
-        if (message is ChatRoomInfoAlert) {
+        if (message is TestInfoAlert) {
             Assertions.assertThat(message.key)
                     .`as`("key is consistent state")
                     .isNotNull

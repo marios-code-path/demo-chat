@@ -7,4 +7,5 @@ object RoomNotFoundException : ChatException("Room not Found")
 open class RoomOperationException(msg: String) : Exception(msg)
 object RoomJoinLeaveException : RoomOperationException("Unable to leave/join this Room")
 
-
+open class PermissionsException(msg: String) : Exception(msg)
+object InsufficientPermissionException : PermissionsException("Insufficient Permission")

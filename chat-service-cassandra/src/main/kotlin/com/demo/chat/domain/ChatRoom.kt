@@ -12,7 +12,7 @@ import java.util.*
 data class ChatRoom(
         @PrimaryKey
         override val key: ChatRoomKey,
-        override val members: Set<UUID>?,
+        override val members: Set<UUID>,
         override val timestamp: Instant
 ) : Room<RoomKey>
 
@@ -27,7 +27,7 @@ data class ChatRoomKey(
 data class ChatRoomName(
         @PrimaryKey
         override val key: ChatRoomNameKey,
-        override val members: Set<UUID>?,
+        override val members: Set<UUID>,
         override val timestamp: Instant
 ) : Room<RoomKey>
 

@@ -11,6 +11,5 @@ interface ChatFeedService {
     fun getFeedForUser(uid: UUID): Flux<Message<MessageKey, Any>>
     fun subscribeUser(uid: UUID, feedId: UUID): Mono<Void>
     fun unsubscribeUser(uid: UUID, feedId: UUID): Mono<Void>
-    fun unsubscribeUserAll(uid: UUID): Mono<Boolean>
-    fun userSubscriptions(uid: UUID): Flux<UUID>
+    fun unsubscribeUserAll(uid: UUID): Mono<Void>
 }

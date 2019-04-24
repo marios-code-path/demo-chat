@@ -13,7 +13,7 @@ data class ChatMessage(
         @Column("text")
         override val value: String,
         override val visible: Boolean
-) : Message<MessageTxtKey, String>
+) : TextMessage
 
 @PrimaryKeyClass
 class ChatMessageKey(
@@ -25,7 +25,7 @@ class ChatMessageKey(
         override val roomId: UUID,
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val timestamp: Instant
-) : MessageTxtKey
+) : MessageTextKey
 
 // ChatMessage By User
 @Table("chat_message_user")
@@ -35,7 +35,7 @@ data class ChatMessageUser(
         @Column("text")
         override val value: String,
         override val visible: Boolean
-) : Message<MessageTxtKey, String>
+) : TextMessage
 
 @PrimaryKeyClass
 data class ChatMessageUserKey(
@@ -47,7 +47,7 @@ data class ChatMessageUserKey(
         override val roomId: UUID,
         @Column("msg_time")
         override val timestamp: Instant
-) : MessageTxtKey
+) : MessageTextKey
 
 // ChatMessage By User
 @Table("chat_message_room")
@@ -57,7 +57,7 @@ data class ChatMessageRoom(
         @Column("text")
         override val value: String,
         override val visible: Boolean
-) : Message<MessageTxtKey, String>
+) : TextMessage
 
 @PrimaryKeyClass
 data class ChatMessageRoomKey(
@@ -69,4 +69,4 @@ data class ChatMessageRoomKey(
         override val roomId: UUID,
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
         override val timestamp: Instant
-) : MessageTxtKey
+) : MessageTextKey

@@ -7,7 +7,7 @@ import java.util.*
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 interface Room<out T> {
     val key: T
-    val members: Set<UUID>?
+    val members: Set<UUID>
     val timestamp: Instant
 
 }

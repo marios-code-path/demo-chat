@@ -11,61 +11,23 @@ interface Message<out K, out V> {
     val visible: Boolean
 }
 
+interface TextMessage : Message<MessageTextKey, String>
+
+interface InfoAlert : Message<MessageAlertKey, RoomInfo>
+
+interface LeaveAlert : Message<MessageAlertKey, UUID>
+
+interface JoinAlert : Message<MessageAlertKey, UUID>
+
 interface MessageKey {
     val id: UUID
     val roomId: UUID
     val timestamp: Instant
 }
 
-interface MessageTxtKey  : MessageKey {
-    override val id: UUID
-    open val userId: UUID
-    override val roomId: UUID
-    override val timestamp: Instant
+interface MessageTextKey : MessageKey {
+    val userId: UUID
 }
 
-interface MessageAlrtKey : MessageKey {
-    override val id: UUID
-    override val roomId: UUID
-    override val timestamp: Instant
-}
+interface MessageAlertKey : MessageKey
 
-// Variances of Keys we want
-open class MessageAlertKey(
-        override val id: UUID,
-        override val roomId: UUID,
-        override val timestamp: Instant
-) : MessageKey
-
-
-open class MessageTextKey(
-        override val id: UUID,
-        open val userId: UUID,
-        override val roomId: UUID,
-        override val timestamp: Instant
-) : MessageKey
-
-open class ChatRoomTextMessage(
-        override val key: MessageTextKey,
-        override val value: String,
-        override val visible: Boolean
-) : Message<MessageTextKey, String>
-
-data class ChatRoomInfoAlert(
-        override val key: MessageAlertKey,
-        override val value: RoomInfo,
-        override val visible: Boolean)
-    : Message<MessageAlertKey, RoomInfo>
-
-
-data class ChatRoomLeaveAlert(
-        override val key: MessageAlertKey,
-        override val value: UUID,
-        override val visible: Boolean)
-    : Message<MessageAlertKey, UUID>
-
-data class ChatRoomJoinAlert(
-        override val key: MessageAlertKey,
-        override val value: UUID,
-        override val visible: Boolean)
-    : Message<MessageAlertKey, UUID>

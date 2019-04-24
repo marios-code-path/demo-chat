@@ -91,7 +91,7 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                     .defaultIfEmpty(Collections.emptySet())
                     .zipWith(
                             template
-                                    .select(Query.query(where("room_id").`is`(roomId)), ChatRoomTextMessage::class.java)
+                                    .select(Query.query(where("room_id").`is`(roomId)), ChatMessage::class.java)
                                     .count()
                     )
                     .map {

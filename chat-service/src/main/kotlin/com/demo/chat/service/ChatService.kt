@@ -7,15 +7,17 @@ import java.util.*
 
 // Backend for Chat services
 
-interface ChatService<U : User<UserKey>, R : Room<RoomKey>, M : Message<MessageKey, Any>> {
-    fun newUser(handle: String, name: String): Mono<U>
-    fun newRoom(uid: UUID, name: String): Mono<R>
-    fun joinRoom(uid: UUID, roomId: UUID): Mono<ChatRoomInfoAlert>
-    fun leaveRoom(uid: UUID, roomId: UUID): Mono<ChatRoomInfoAlert>
-    fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<M>
-    fun getMessagesForRoom(uid: UUID, roomId: UUID): Flux<M>
-    fun getMessagesForUser(uid: UUID): Flux<M>
-    fun getRoomInfo(roomId: UUID): Mono<ChatRoomInfoAlert>
+interface ChatService<R : Room<RoomKey>, U : User<UserKey>, M : Message<MessageTextKey, Any>> {
+    fun storeRoom(name: String): Mono<RoomKey>
+    fun storeUser(name: String, handle: String): Mono<UserKey>
+    fun storeMessage(uid: UUID, roomId: UUID, text: String): Mono<MessageTextKey>
 
-    fun verifyRoomAndUser(uid: UUID, roomId: UUID): Mono<Void>
+    fun getRoom(roomId: UUID): Mono<R>
+    fun getUser(userId: UUID): Mono<U>
+    fun getRoomMessages(roomId: UUID): Flux<M>
+    fun getMessage(id: UUID): Mono<M>
+
+    fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
+    fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
+
 }
