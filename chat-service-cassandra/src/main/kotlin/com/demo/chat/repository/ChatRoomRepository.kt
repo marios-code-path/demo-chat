@@ -1,8 +1,6 @@
 package com.demo.chat.repository
 
-import com.demo.chat.domain.ChatRoom
-import com.demo.chat.domain.ChatRoomName
-import com.demo.chat.domain.ChatRoomNameKey
+import com.demo.chat.domain.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.ColumnName
 import org.springframework.data.cassandra.core.query.Query
@@ -11,8 +9,8 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.toFlux
 import java.util.*
+
 
 interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatRoomName, String> {
     fun findByKeyName(name: String): Flux<ChatRoomName>
@@ -27,17 +25,18 @@ interface ChatRoomRepository :
 interface ChatRoomRepositoryCustom {
     fun saveRoom(room: ChatRoom): Mono<ChatRoom>
     fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom>
-    fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean>
-    fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean>
+    fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
+    fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
+    fun roomInfo(roomId: UUID): Mono<RoomInfo>
 }
 
 class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
     override fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom> =
-        rooms
-                .flatMap {
-                    saveRoom(it)
-                }
+            rooms
+                    .flatMap {
+                        saveRoom(it)
+                    }
 
 
     override fun saveRoom(room: ChatRoom): Mono<ChatRoom> = template
@@ -55,16 +54,20 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
             .execute()
             .thenReturn(room)
 
-    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean> = template
+    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void> = template
             .update(Query.query(where("room_id").`is`(roomId)),
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
                             listOf(uid)))),
                     ChatRoom::class.java
             )
-            .defaultIfEmpty(false)
+            .map {
+                if (!it)
+                    throw RoomJoinLeaveException
+            }
+            .then()
 
-    override fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean> =
+    override fun joinRoom(uid: UUID, roomId: UUID): Mono<Void> =
             template
                     .update(Query.query(where("room_id").`is`(roomId)),
                             Update.of(listOf(Update.AddToOp(
@@ -73,7 +76,28 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                                     Update.AddToOp.Mode.APPEND))),
                             ChatRoom::class.java
                     )
-                    .defaultIfEmpty(false)
+                    .map {
+                        if (!it)
+                            throw RoomJoinLeaveException
+                    }
+                    .then()
+
+    override fun roomInfo(roomId: UUID): Mono<RoomInfo> =
+            template
+                    .select(Query.query(where("room_id").`is`(roomId)), ChatRoom::class.java)
+                    .map {
+                        it.members
+                    }
+                    .defaultIfEmpty(Collections.emptySet())
+                    .zipWith(
+                            template
+                                    .select(Query.query(where("room_id").`is`(roomId)), ChatRoomTextMessage::class.java)
+                                    .count()
+                    )
+                    .map {
+                        RoomInfo(it.t1.size, -1, it.t2.toInt())
+                    }
+                    .single()
 
 
 }

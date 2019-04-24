@@ -1,7 +1,6 @@
 package com.demo.chat.repository
 
 import com.demo.chat.domain.*
-import org.slf4j.LoggerFactory
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
@@ -39,7 +38,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                                 msg.key.roomId,
                                 msg.key.timestamp
                         ),
-                        msg.text,
+                        msg.value,
                         msg.visible
 
                 ))
@@ -50,7 +49,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                                 msg.key.roomId,
                                 msg.key.timestamp
                         ),
-                        msg.text,
+                        msg.value,
                         msg.visible
                 ))
                 .execute()

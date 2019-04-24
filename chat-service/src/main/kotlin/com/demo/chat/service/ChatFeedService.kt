@@ -9,8 +9,8 @@ import java.util.*
 
 interface ChatFeedService {
     fun getFeedForUser(uid: UUID): Flux<Message<MessageKey, Any>>
-    fun subscribeUser(uid: UUID, feedId: UUID): Mono<Boolean>
-    fun unsubscribeUser(uid: UUID, feedId: UUID): Mono<Boolean>
+    fun subscribeUser(uid: UUID, feedId: UUID): Mono<Void>
+    fun unsubscribeUser(uid: UUID, feedId: UUID): Mono<Void>
     fun unsubscribeUserAll(uid: UUID): Mono<Boolean>
     fun userSubscriptions(uid: UUID): Flux<UUID>
 }

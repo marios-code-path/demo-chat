@@ -38,7 +38,7 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
 
     override fun saveUsers(users: Flux<ChatUser>): Flux<ChatUser> = users
             .flatMap {
-               saveUser(it)
+                saveUser(it)
             }
 
 }

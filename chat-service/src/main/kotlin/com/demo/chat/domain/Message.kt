@@ -17,22 +17,35 @@ interface MessageKey {
     val timestamp: Instant
 }
 
+interface MessageTxtKey  : MessageKey {
+    override val id: UUID
+    open val userId: UUID
+    override val roomId: UUID
+    override val timestamp: Instant
+}
+
+interface MessageAlrtKey : MessageKey {
+    override val id: UUID
+    override val roomId: UUID
+    override val timestamp: Instant
+}
+
 // Variances of Keys we want
-class MessageAlertKey(
+open class MessageAlertKey(
         override val id: UUID,
         override val roomId: UUID,
         override val timestamp: Instant
 ) : MessageKey
 
 
-class MessageTextKey(
+open class MessageTextKey(
         override val id: UUID,
-        val userId: UUID,
+        open val userId: UUID,
         override val roomId: UUID,
         override val timestamp: Instant
 ) : MessageKey
 
-class ChatRoomTextMessage(
+open class ChatRoomTextMessage(
         override val key: MessageTextKey,
         override val value: String,
         override val visible: Boolean

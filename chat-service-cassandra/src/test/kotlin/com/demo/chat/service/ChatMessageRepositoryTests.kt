@@ -231,8 +231,8 @@ class ChatMessageRepositoryTests {
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
                     { assertNotNull(msg.key.roomId) },
-                    { assertNotNull(msg.text) },
-                    { assertEquals(msg.text, "Welcome") },
+                    { assertNotNull(msg.value) },
+                    { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }
             )
 
@@ -242,8 +242,8 @@ class ChatMessageRepositoryTests {
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
                     { assertNotNull(msg.key.roomId) },
-                    { assertNotNull(msg.text) },
-                    { assertEquals(msg.text, "Welcome") },
+                    { assertNotNull(msg.value) },
+                    { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }
             )
 
@@ -253,8 +253,8 @@ class ChatMessageRepositoryTests {
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
                     { assertNotNull(msg.key.roomId) },
-                    { assertNotNull(msg.text) },
-                    { assertEquals(msg.text, "Welcome") },
+                    { assertNotNull(msg.value) },
+                    { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }
             )
 }

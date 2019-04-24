@@ -70,13 +70,13 @@ class ChatServiceTests {
                 .thenReturn(Mono.just(newRoom))
 
         Mockito.`when`(roomRepo.joinRoom(anyObject(), anyObject()))
-                .thenReturn(Mono.just(true))
+                .thenReturn(Mono.empty())
 
         Mockito.`when`(roomRepo.findByKeyRoomId(anyObject()))
                 .thenReturn(Mono.just(newRoom))
 
         Mockito.`when`(roomRepo.leaveRoom(anyObject(), anyObject()))
-                .thenReturn(Mono.just(true))
+                .thenReturn(Mono.empty())
 
         Mockito.`when`(msgRepo.saveMessage(anyObject()))
                 .thenReturn(Mono.just(newMessage))
@@ -137,7 +137,7 @@ class ChatServiceTests {
                             },
                             {
                                 assertAll("message",
-                                        { assertEquals("SUP TEST", it.first().text) })
+                                        { assertEquals("SUP TEST", it.first().value) })
                             }
 
                     )
@@ -157,7 +157,7 @@ class ChatServiceTests {
                     assertAll("message",
                             { assertNotNull(it.key.userId) },
                             { assertNotNull(it.key.roomId) },
-                            { assertEquals(it.text, "SUP TEST") }
+                            { assertEquals(it.value, "SUP TEST") }
                     )
                 }
                 .verifyComplete()
@@ -172,7 +172,7 @@ class ChatServiceTests {
         StepVerifier
                 .create(serviceFlux)
                 .expectSubscription()
-                .assertNext(Assertions::assertTrue)
+                .expectNextCount(0)
                 .verifyComplete()
     }
 }

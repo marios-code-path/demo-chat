@@ -11,10 +11,6 @@ import reactor.core.publisher.switchIfEmpty
 import java.time.Instant
 import java.util.*
 
-open class ChatException(msg: String) : Exception(msg)
-object UserNotFoundException : ChatException("User not Found")
-object RoomNotFoundException : ChatException("Room not Found")
-
 
 @Component
 class ChatServiceCassandra(val userRepo: ChatUserRepository,
@@ -43,15 +39,28 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
                                 Instant.now()))
             }
 
-    override fun joinRoom(uid: UUID, roomId: UUID): Mono<Boolean> =
+    override fun joinRoom(uid: UUID, roomId: UUID): Mono<ChatRoomInfoAlert> =
             verifyRoomAndUser(uid, roomId)
                     .then(roomRepo.joinRoom(uid, roomId))
-                    .defaultIfEmpty(false)
+                    .flatMap {
+                        roomRepo.roomInfo(roomId)
+                    }
+                    .map {
+                        ChatRoomInfoAlert(
+                                MessageAlertKey(UUIDs.timeBased(), roomId, Instant.now()), it, true)
+                    }
 
 
-    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Boolean> = verifyRoomAndUser(uid, roomId)
-            .then(roomRepo.leaveRoom(uid, roomId))
-            .defaultIfEmpty(false)
+    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<ChatRoomInfoAlert> =
+            verifyRoomAndUser(uid, roomId)
+                    .then(roomRepo.leaveRoom(uid, roomId))
+                    .flatMap {
+                        roomRepo.roomInfo(roomId)
+                    }
+                    .map {
+                        ChatRoomInfoAlert(
+                                MessageAlertKey(UUIDs.timeBased(), roomId, Instant.now()), it, true)
+                    }
 
     override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<ChatMessage> =
             verifyRoomAndUser(uid, roomId)
@@ -77,7 +86,7 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
                                                         it.key.roomId,
                                                         it.key.timestamp
                                                 ),
-                                                it.text,
+                                                it.value,
                                                 it.visible
                                         )
                                     }
@@ -95,24 +104,26 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
                                                         it.key.roomId,
                                                         it.key.timestamp
                                                 ),
-                                                it.text,
+                                                it.value,
                                                 it.visible
                                         )
                                     }
                     )
 
-    override fun getRoomStatus(roomId: UUID): Mono<RoomStats> =
+    override fun getRoomInfo(roomId: UUID): Mono<ChatRoomInfoAlert> =
             roomRepo.findByKeyRoomId(roomId)
                     .map {
                         val roomSize = Optional.ofNullable(it.members)
                                 .orElse(Collections.emptySet())
                                 .size
 
-                        ChatRoomStats(it.key.roomId,
+                        ChatRoomInfoAlert(MessageAlertKey(
+                                UUIDs.timeBased(), roomId, Instant.now()
+                        ), RoomInfo(
                                 roomSize,
                                 roomSize,
                                 0
-                        )
+                        ), true)
                     }
 
     override fun verifyRoomAndUser(uid: UUID, roomId: UUID): Mono<Void> =
@@ -120,5 +131,4 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
                     userRepo.findByKeyUserId(uid).switchIfEmpty { Mono.error(UserNotFoundException) },
                     roomRepo.findByKeyRoomId(roomId).switchIfEmpty { Mono.error(RoomNotFoundException) }
             ).then()
-
 }

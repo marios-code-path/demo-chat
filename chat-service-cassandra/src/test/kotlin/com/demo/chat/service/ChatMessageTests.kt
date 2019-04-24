@@ -36,8 +36,8 @@ class ChatMessageTests {
                 { assertNotNull(msg.key.userId) },
                 { assertNotNull(msg.key.roomId) },
                 { assertNotNull(msg.key.timestamp) },
-                { assertNotNull(msg.text) },
-                { assertEquals(msg.text, "Welcome") },
+                { assertNotNull(msg.value) },
+                { assertEquals(msg.value, "Welcome") },
                 { assertTrue(msg.visible) }
         )
     }
