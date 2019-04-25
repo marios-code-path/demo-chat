@@ -27,7 +27,7 @@ interface ChatRoomRepositoryCustom {
     fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom>
     fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
-    fun roomInfo(roomId: UUID): Mono<RoomInfo>
+    fun roomSize(roomId: UUID): Mono<RoomInfo>
 }
 
 class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
@@ -82,7 +82,7 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                     }
                     .then()
 
-    override fun roomInfo(roomId: UUID): Mono<RoomInfo> =
+    override fun roomSize(roomId: UUID): Mono<RoomInfo> =
             template
                     .select(Query.query(where("room_id").`is`(roomId)), ChatRoom::class.java)
                     .map {
@@ -98,6 +98,4 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                         RoomInfo(it.t1.size, -1, it.t2.toInt())
                     }
                     .single()
-
-
 }

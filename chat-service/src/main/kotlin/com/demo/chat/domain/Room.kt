@@ -4,10 +4,11 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import java.time.Instant
 import java.util.*
 
+// Kludge Log: Cassandra requires nullable Set ( when returns with empty set )
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 interface Room<out T> {
     val key: T
-    val members: Set<UUID>
+    val members: Set<UUID>?
     val timestamp: Instant
 
 }

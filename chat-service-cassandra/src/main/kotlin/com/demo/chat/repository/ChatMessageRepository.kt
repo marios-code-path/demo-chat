@@ -58,8 +58,4 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     override fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage> =
             Flux.from(msgStream)
                     .flatMap(this::saveMessage)
-
-
-
-
 }
