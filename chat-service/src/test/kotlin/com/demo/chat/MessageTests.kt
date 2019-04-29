@@ -14,40 +14,40 @@ import java.util.*
 import java.util.stream.Stream
 
 // Variances of Keys we want
-data class TestAlertKey(
+data class TestAlertMessageKey(
         override val id: UUID,
         override val roomId: UUID,
         override val timestamp: Instant
-) : MessageAlertKey
+) : AlertMessageKey
 
-data class TestTextKey(
+data class TestTextMessageKey(
         override val id: UUID,
         override val userId: UUID,
         override val roomId: UUID,
         override val timestamp: Instant
-) : MessageTextKey
+) : TextMessageKey
 
 data class TestTextMessage(
-        override val key: TestTextKey,
+        override val key: TestTextMessageKey,
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
 
 data class TestInfoAlert(
-        override val key: TestAlertKey,
+        override val key: TestAlertMessageKey,
         override val value: RoomInfo,
         override val visible: Boolean
 ) : InfoAlert
 
 
 data class TestLeaveAlert(
-        override val key: TestAlertKey,
+        override val key: TestAlertMessageKey,
         override val value: UUID,
         override val visible: Boolean
 ) : LeaveAlert
 
 data class TestJoinAlert(
-        override val key: TestAlertKey,
+        override val key: TestAlertMessageKey,
         override val value: UUID,
         override val visible: Boolean
 ) : JoinAlert
@@ -70,11 +70,11 @@ class MessageTests {
         counter++
 
         return if (counter % 2 == 0)
-            TestJoinAlert(TestAlertKey(
+            TestJoinAlert(TestAlertMessageKey(
                     messageId, roomId, Instant.now()
             ), userId, true)
         else
-            TestTextMessage(TestTextKey(
+            TestTextMessage(TestTextMessageKey(
                     messageId, userId, roomId, Instant.now()
             ), "Hello $counter !", true)
     }
@@ -140,7 +140,7 @@ class MessageTests {
     fun `returns many message and smart casts`() {
         val messages = listOf(randomMessage(), randomMessage(),
                 TestLeaveAlert(
-                        TestAlertKey(
+                        TestAlertMessageKey(
                                 UUID.randomUUID(),
                                 UUID.randomUUID(),
                                 Instant.now()
@@ -169,7 +169,7 @@ class MessageTests {
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
 
-        val key = TestAlertKey(
+        val key = TestAlertMessageKey(
                 messageId,
                 roomId,
                 Instant.now()

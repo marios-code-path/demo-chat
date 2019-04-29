@@ -11,13 +11,13 @@ interface Message<out K, out V> {
     val visible: Boolean
 }
 
-interface TextMessage : Message<MessageTextKey, String>
+interface TextMessage : Message<TextMessageKey, String>
 
-interface InfoAlert : Message<MessageAlertKey, RoomInfo>
+interface InfoAlert : Message<AlertMessageKey, RoomInfo>
 
-interface LeaveAlert : Message<MessageAlertKey, UUID>
+interface LeaveAlert : Message<AlertMessageKey, UUID>
 
-interface JoinAlert : Message<MessageAlertKey, UUID>
+interface JoinAlert : Message<AlertMessageKey, UUID>
 
 interface MessageKey {
     val id: UUID
@@ -25,9 +25,9 @@ interface MessageKey {
     val timestamp: Instant
 }
 
-interface MessageTextKey : MessageKey {
+interface TextMessageKey : MessageKey {
     val userId: UUID
 }
 
-interface MessageAlertKey : MessageKey
+interface AlertMessageKey : MessageKey
 
