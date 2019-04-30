@@ -1,8 +1,9 @@
-package com.demo.chatevents
+package com.demo.chat.edge
 
 import com.demo.chat.domain.*
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
+import org.mockito.Mockito
 import java.time.Instant
 import java.util.*
 
@@ -46,7 +47,50 @@ data class TestJoinAlert(
         override val visible: Boolean
 ) : JoinAlert
 
-fun textMessageAssertion(msg: TextMessage) = { println(msg)
+object TestUtil
+
+fun <T> anyObject(): T {
+    Mockito.anyObject<T>()
+    return uninitialized()
+}
+
+fun <T> uninitialized(): T = null as T
+
+fun userAssertion(user: User<UserKey>) {
+    MatcherAssert
+            .assertThat("A User has key and properties", user,
+                    Matchers.allOf(
+                            Matchers.notNullValue(),
+                            Matchers.hasProperty("name", Matchers.not(Matchers.isEmptyOrNullString())),
+                            Matchers.hasProperty("key",
+                                    Matchers
+                                            .allOf(
+                                                    Matchers.notNullValue(),
+                                                    Matchers.hasProperty("handle"),
+                                                    Matchers.hasProperty("userId")
+                                            )
+                            )
+                    ))
+}
+
+fun roomAssertion(room: Room<RoomKey>) {
+    MatcherAssert
+            .assertThat("A Room has key and properties", room,
+                    Matchers.allOf(
+                            Matchers.notNullValue(),
+                            Matchers.hasProperty("members", Matchers.notNullValue()),
+                            Matchers.hasProperty("key",
+                                    Matchers
+                                            .allOf(
+                                                    Matchers.notNullValue(),
+                                                    Matchers.hasProperty("name"),
+                                                    Matchers.hasProperty("roomId")
+                                            )
+                            )
+                    ))
+}
+
+fun textMessageAssertion(msg: TextMessage) = {
     MatcherAssert
             .assertThat("A Text Message should have property state", msg,
                     Matchers.allOf(

@@ -20,19 +20,6 @@ class MemoryChatTopicServiceTests {
 
     val topicService: ChatTopicService = MemoryChatTopicService()
 
-    fun testRoomId() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-301000000000")//UUID.randomUUID()
-
-    fun testUserId() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-133730000000")
-
-    fun randomUserId(): UUID {
-        val lastDigit = Integer.toHexString(Random().nextInt(16))
-        return UUID.fromString("ecb2cb88-5dd1-44c3-b818-13373000000$lastDigit")
-    }
-
-    fun randomText() =
-            "Text ${Random().nextLong()}"
-
-
     @Test
     fun `validate user subscription`() {
         val userId = testUserId()

@@ -1,11 +1,11 @@
-package com.demo.chatevents
+package com.demo.chat.edge
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class ChatEventsApplication
+class ChatHttpApplication
 
 fun main(args: Array<String>) {
-    runApplication<ChatEventsApplication>(*args)
+	runApplication<ChatHttpApplication>(*args)
 }

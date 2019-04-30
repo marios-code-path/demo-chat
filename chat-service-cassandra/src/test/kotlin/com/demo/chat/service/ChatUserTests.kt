@@ -83,7 +83,7 @@ class ChatUserTests {
         StepVerifier
                 .create(composed)
                 .expectSubscription()
-                .assertNext(this::userAssertions)
+                .assertNext(::userAssertions)
                 .verifyComplete()
     }
 
@@ -101,19 +101,9 @@ class ChatUserTests {
         StepVerifier
                 .create(truncateAndSave)
                 .expectSubscription()
-                .assertNext(this::userAssertions)
+                .assertNext(::userAssertions)
                 .verifyComplete()
 
-    }
-
-    fun userAssertions(user: ChatUser) {
-        assertAll("User Assertion",
-                { assertNotNull(user) },
-                { assertNotNull(user.key.userId) },
-                { assertNotNull(user.key.handle) },
-                { assertEquals("vedder", user.key.handle) },
-                { assertEquals("eddie", user.name) }
-        )
     }
 
 }

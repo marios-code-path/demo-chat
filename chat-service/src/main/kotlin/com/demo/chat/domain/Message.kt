@@ -19,7 +19,7 @@ interface LeaveAlert : Message<AlertMessageKey, UUID>
 
 interface JoinAlert : Message<AlertMessageKey, UUID>
 
-interface ClosingAlert : Message<ClosingKey, UUID>
+interface ClosingAlert : Message<AlertMessageKey, UUID>
 
 interface MessageKey {
     val id: UUID
@@ -32,5 +32,3 @@ interface TextMessageKey : MessageKey {
 }
 
 interface AlertMessageKey : MessageKey
-
-interface ClosingKey : MessageKey
