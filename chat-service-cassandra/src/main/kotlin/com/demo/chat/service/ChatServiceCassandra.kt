@@ -59,7 +59,7 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
             verifyRoomAndUser(uid, roomId)
                     .then(roomRepo.leaveRoom(uid, roomId))
 
-    override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<MessageTextKey> =
+    override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<TextMessageKey> =
             messageRepo
                     .saveMessage(ChatMessage(ChatMessageKey(UUIDs.timeBased(),
                             uid,

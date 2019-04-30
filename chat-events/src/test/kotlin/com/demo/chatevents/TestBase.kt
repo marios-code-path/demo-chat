@@ -60,3 +60,18 @@ fun textMessageAssertion(msg: TextMessage) = { println(msg)
                             ))
             )
 }
+
+
+class TestClosingKey(override val roomId: UUID) : ClosingKey {
+    override val id: UUID
+        get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa0000000")
+    override val timestamp: Instant
+        get() = Instant.now()
+}
+
+class TestClosingAlert(override val key: ClosingKey) : ClosingAlert {
+    override val value: UUID
+        get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa1111111")
+    override val visible: Boolean
+        get() = false
+}
