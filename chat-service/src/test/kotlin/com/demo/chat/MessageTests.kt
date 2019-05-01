@@ -80,11 +80,6 @@ class MessageTests {
     }
 
     @Test
-    fun `should ser or deser JSON objects from subtype`() {
-
-    }
-
-    @Test
     fun `Should serialize deserialize JSON from to Any Message`() {
         val messageJsons = ArrayList<String>()
         val messages = ArrayList<Message<MessageKey, Any>>()

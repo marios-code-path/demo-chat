@@ -1,43 +1,17 @@
 package com.demo.chat.edge
 
+import com.demo.chat.domain.RoomMember
+import com.demo.chat.domain.RoomMemberships
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
-class ChatEdgeFunctionalityTests {
-
-    private lateinit var userEdge: ChatUserEdge
-
+class RoomEdgeTests {
     private lateinit var roomEdge: ChatRoomEdge
-
-    private lateinit var topicEdge: ChatTopicEdge
-
-    @Test
-    fun `verify should create user`() {
-        val userCreate = userEdge
-                .createUser("Mario Gray", "darkbit1001")
-
-        StepVerifier
-                .create(userCreate)
-                .assertNext { userAssertion(it) }
-                .verifyComplete()
-    }
-
-    @Test
-    fun `verify should get a user`() {
-        val getUser = userEdge
-                .getUser("darkbit1001")
-
-        StepVerifier
-                .create(getUser)
-                .assertNext { userAssertion(it) }
-                .verifyComplete()
-    }
 
     @Test
     fun `verify should create a room`() {
@@ -45,7 +19,7 @@ class ChatEdgeFunctionalityTests {
 
         StepVerifier
                 .create(newRoom)
-                .assertNext{ roomAssertion(it) }
+                .assertNext { roomAssertion(it) }
                 .verifyComplete()
     }
 
@@ -67,7 +41,7 @@ class ChatEdgeFunctionalityTests {
     }
 
     @Test
-    fun `verify delete room works by removing any details`() {
+    fun `verify delete room`() {
         val newRoom = roomEdge.createRoom("Valhalla")
         val delRoom = roomEdge.deleteRoom(testRoomId())
 
@@ -84,28 +58,27 @@ class ChatEdgeFunctionalityTests {
     }
 
     @Test
-    fun `verify should subscribe to topic`() {
+    fun `verify get room memberships`() {
+        val roomMemberships = roomEdge.roomMembers(testRoomId())
 
+        StepVerifier
+                .create(roomMemberships)
+                .assertNext {
+                    roomMembershipAssertions(it)
+                }
+                .verifyComplete()
     }
 
-    @Test
-    fun `verify should unsubscribe from topic`() {
-
+    fun roomMembershipAssertions(m: RoomMemberships) {
+        MatcherAssert
+                .assertThat("membership has at least one member", m,
+                        Matchers.allOf(
+                                Matchers.notNullValue(),
+                                Matchers.hasProperty("members",
+                                        Matchers.allOf(
+                                                Matchers.notNullValue(),
+                                                Matchers.not(Matchers.empty<RoomMember>())
+                                        ))
+                        ))
     }
-
-    @Test
-    fun `verify should get topic member listing`() {
-
-    }
-
-    @Test
-    fun `verify should send join alert on subscribe`() {
-
-    }
-
-    @Test
-    fun `verify should receive topic feed`() {
-
-    }
-
 }

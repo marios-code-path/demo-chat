@@ -23,3 +23,11 @@ data class RoomInfo(
         val totalMembers: Int,
         val totalMessages: Int
 )
+
+data class RoomMember(
+        val uid: UUID,
+        val handle: String
+)
+data class RoomMemberships(
+        val members: Set<RoomMember>
+)

@@ -5,9 +5,12 @@ import com.demo.chat.domain.*
 import com.demo.chat.repository.*
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.slf4j.LoggerFactory
@@ -48,6 +51,9 @@ class ChatServiceTests {
     @MockBean
     lateinit var userRepo: ChatUserRepository
 
+    @MockBean
+    lateinit var userHandleRepo: ChatUserHandleRepository
+
     val rid: UUID = UUID.randomUUID()
 
     val uid: UUID = UUID.randomUUID()
@@ -55,6 +61,7 @@ class ChatServiceTests {
     @BeforeEach
     fun setUp() {
         val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", Instant.now())
+        val newUserHandle = ChatUserHandle(ChatUserHandleKey(uid, "test-handle"), "test-name", Instant.now())
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), Instant.now())
         val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
         val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
@@ -84,8 +91,12 @@ class ChatServiceTests {
         Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
+        Mockito.`when`(userHandleRepo.findByKeyHandle(anyObject()))
+                .thenReturn(Mono.just(newUserHandle))
+
         service = ChatServiceCassandra(
                 userRepo,
+                userHandleRepo,
                 roomRepo,
                 msgRepo,
                 msgRoomRepo

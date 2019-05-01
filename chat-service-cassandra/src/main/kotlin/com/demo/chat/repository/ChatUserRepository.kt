@@ -21,29 +21,28 @@ interface ChatUserRepositoryCustom {
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
-    override fun saveUser(user: ChatUser): Mono<ChatUser> =
+    override fun saveUser(u: ChatUser): Mono<ChatUser> =
             cassandra
                     .batchOps()
-                    .insert(user)
+                    .insert(u)
                     .insert(ChatUserHandle(
                             ChatUserHandleKey(
-                                    user.key.userId,
-                                    user.key.handle
+                                    u.key.userId,
+                                    u.key.handle
                             ),
-                            user.name,
-                            user.timestamp
+                            u.name,
+                            u.timestamp
                     ))
                     .execute()
-                    .thenReturn(user)
+                    .thenReturn(u)
 
     override fun saveUsers(users: Flux<ChatUser>): Flux<ChatUser> = users
             .flatMap {
                 saveUser(it)
             }
-
 }
 
-interface ChatUserHandleRepository : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey> {
+interface ChatUserHandleRepository
+    : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey> {
     fun findByKeyHandle(handle: String): Mono<ChatUserHandle>
 }
-

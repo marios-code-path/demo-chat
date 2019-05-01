@@ -2,10 +2,7 @@ package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.ChatMessageRepository
-import com.demo.chat.repository.ChatMessageRoomRepository
-import com.demo.chat.repository.ChatRoomRepository
-import com.demo.chat.repository.ChatUserRepository
+import com.demo.chat.repository.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
@@ -14,13 +11,14 @@ import reactor.core.publisher.switchIfEmpty
 import java.time.Instant
 import java.util.*
 
-
 @Component
 class ChatServiceCassandra(val userRepo: ChatUserRepository,
+                           val userByHandleRepo: ChatUserHandleRepository,
                            val roomRepo: ChatRoomRepository,
                            val messageRepo: ChatMessageRepository,
                            val messageRoomRepo: ChatMessageRoomRepository)
     : ChatService<ChatRoom, ChatUser, ChatMessage> {
+
     val logger = LoggerFactory.getLogger("CHAT-SERVICE-CASSANDRA")
 
     override fun getMessage(id: UUID): Mono<ChatMessage> =
@@ -31,6 +29,17 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
 
     override fun getUser(userId: UUID): Mono<ChatUser> =
             userRepo.findByKeyUserId(userId)
+
+    override fun getUserByHandle(handle: String): Mono<ChatUser> =
+            userByHandleRepo
+                    .findByKeyHandle(handle)
+                    .map {
+                        ChatUser(
+                                ChatUserKey(it.key.userId, it.key.handle),
+                                it.name,
+                                it.timestamp
+                        )
+                    }
 
     override fun storeUser(handle: String, name: String): Mono<UserKey> = userRepo
             .saveUser(ChatUser(

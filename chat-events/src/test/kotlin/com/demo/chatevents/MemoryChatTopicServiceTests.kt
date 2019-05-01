@@ -146,7 +146,7 @@ class MemoryChatTopicServiceTests {
     }
 
     @Test
-    fun `ensure topic cleanup`() {
+    fun `ensure room topic cleanup`() {
         val testRoom = testRoomId()
 
         val users: List<UUID> = Stream.generate { randomUserId() }
@@ -175,6 +175,12 @@ class MemoryChatTopicServiceTests {
         Assertions.assertThat(topicService.getTopicMembers(testRoom))
                 .isNotNull
                 .isEmpty()
+    }
+
+    @Test
+    fun `ensure topic cleanup upon closure`() {
+
+
     }
 
 }

@@ -14,6 +14,7 @@ interface ChatService<R : Room<RoomKey>, U : User<UserKey>, M : Message<TextMess
 
     fun getRoom(roomId: UUID): Mono<R>
     fun getUser(userId: UUID): Mono<U>
+    fun getUserByHandle(handle: String): Mono<U>
     fun getRoomMessages(roomId: UUID): Flux<M>
     fun getMessage(id: UUID): Mono<M>
 

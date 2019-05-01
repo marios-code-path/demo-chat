@@ -73,6 +73,32 @@ fun userAssertion(user: User<UserKey>) {
                     ))
 }
 
+fun infoAlertAssertion(msg: Message<MessageKey, Any>) {
+    when(msg) {
+        is InfoAlert -> {
+            genericAlertTypeAssertion(msg)
+        }
+        is ClosingAlert -> {
+            genericAlertTypeAssertion(msg)
+        }
+        else -> {
+            AssertionError("The first message was not an alert!")
+        }
+    }
+
+}
+
+fun genericAlertTypeAssertion(msg: Message<MessageKey, Any>) {
+    MatcherAssert
+            .assertThat("Message for Room Info Received", msg,
+                    Matchers.allOf(
+                            Matchers.notNullValue(),
+                            Matchers.hasProperty("value"),
+                            Matchers.hasProperty("key")
+                    )
+            )
+}
+
 fun roomAssertion(room: Room<RoomKey>) {
     MatcherAssert
             .assertThat("A Room has key and properties", room,
@@ -106,14 +132,14 @@ fun textMessageAssertion(msg: TextMessage) = {
 }
 
 
-class TestClosingKey(override val roomId: UUID) : ClosingKey {
+class TestClosingKey(override val roomId: UUID) : AlertMessageKey {
     override val id: UUID
         get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa0000000")
     override val timestamp: Instant
         get() = Instant.now()
 }
 
-class TestClosingAlert(override val key: ClosingKey) : ClosingAlert {
+class TestClosingAlert(override val key: AlertMessageKey) : ClosingAlert {
     override val value: UUID
         get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa1111111")
     override val visible: Boolean
