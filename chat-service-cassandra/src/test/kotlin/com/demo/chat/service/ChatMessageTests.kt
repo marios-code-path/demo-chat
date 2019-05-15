@@ -21,24 +21,14 @@ class ChatMessageTests {
         val msgUUID = UUID.randomUUID()
         val roomUUID = UUID.randomUUID()
 
-        val message = ChatMessage(ChatMessageKey(msgUUID, userUUID, roomUUID, Instant.now()), "Welcome", true)
+        val randomBody = UUID.randomUUID().toString()
+
+        val message = ChatMessage(ChatMessageKey(msgUUID, userUUID, roomUUID, Instant.now()), randomBody, true)
 
         StepVerifier
                 .create(Flux.just(message))
-                .assertNext(this::chatMessageAssertion)
+                .assertNext { chatMessageAssertion(it, randomBody)}
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessage) {
-        assertAll("message contents in tact",
-                { assertNotNull(msg) },
-                { assertNotNull(msg.key.id) },
-                { assertNotNull(msg.key.userId) },
-                { assertNotNull(msg.key.roomId) },
-                { assertNotNull(msg.key.timestamp) },
-                { assertNotNull(msg.value) },
-                { assertEquals(msg.value, "Welcome") },
-                { assertTrue(msg.visible) }
-        )
-    }
 }

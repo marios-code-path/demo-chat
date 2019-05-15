@@ -1,5 +1,6 @@
 package com.demo.chat.service
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
+import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
@@ -40,6 +42,9 @@ class ChatUserRepositoryTests {
     @Autowired
     lateinit var handleRepo: ChatUserHandleRepository
 
+    @Autowired
+    lateinit var template: ReactiveCassandraTemplate
+
     @Test
     fun shouldFindDarkbit() {
         val findFlux = handleRepo.findByKeyHandle("darkbit")
@@ -51,20 +56,82 @@ class ChatUserRepositoryTests {
         StepVerifier
                 .create(setupAndFind)
                 .expectSubscription()
-                .assertNext { userAssertions(it as User<UserKey>, "darkbit", "mario") }
+                .assertNext { userStateAssertions(it as User<UserKey>, "darkbit", "mario") }
                 .verifyComplete()
     }
 
-    // helper function to verify user state
-    fun userAssertions(user: User<UserKey>, handle: String?, name: String?) {
-        assertAll("User Assertion",
+    @Test
+    fun `should user hold consistent states`() {
+        val uuid = UUIDs.timeBased()
+        val user = ChatUser(ChatUserKey(uuid, "Eddie"),
+                "EddiesHandle", Instant.now())
+
+        assertAll("user",
                 { Assertions.assertNotNull(user) },
-                { Assertions.assertNotNull(user.key.userId) },
-                { Assertions.assertNotNull(user.key.handle) },
-                { Assertions.assertEquals(handle, user.key.handle) },
-                { Assertions.assertEquals(name, user.name) }
-        )
+                { Assertions.assertEquals(uuid, user.key.userId) },
+                { Assertions.assertEquals("Eddie", user.key.handle) },
+                { Assertions.assertEquals("EddiesHandle", user.name) })
+
+        StepVerifier
+                .create(Flux.just(user))
+                .assertNext { u ->
+                    assertAll("simple user assertion",
+                            { Assertions.assertNotNull(u) },
+                            { Assertions.assertEquals(uuid, u.key.userId) }
+                    )
+                }
+                .verifyComplete()
     }
+
+    @Test
+    fun shouldContextLoad() {
+        assertAll("Reactive Template Exists",
+                { Assertions.assertNotNull(template) })
+    }
+
+    @Test
+    fun shouldPerformSaveCrudFind() {
+        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", Instant.now())
+
+        val truncateAndSave = template
+                .truncate(ChatUser::class.java)
+                .thenMany(Flux.just(chatUser))
+                .flatMap(template::insert)
+
+        val find = template
+                .query(ChatUser::class.java)
+                .one()
+
+        val composed = Flux
+                .from(truncateAndSave)
+                .then(find)
+
+        StepVerifier
+                .create(composed)
+                .expectSubscription()
+                .assertNext{ userAssertions(it) }
+                .verifyComplete()
+    }
+
+    @Test
+    fun shouldPerformTruncateAndSave() {
+        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", Instant.now())
+
+        val truncateAndSave = template
+                .truncate(ChatUser::class.java)
+                .thenMany(
+                        Flux.just(chatUser)
+                )
+                .flatMap(template::insert)
+
+        StepVerifier
+                .create(truncateAndSave)
+                .expectSubscription()
+                .assertNext { userAssertions(it) }
+                .verifyComplete()
+
+    }
+
 }
 
 fun setUp(repo: ChatUserRepository): Mono<Void> {
