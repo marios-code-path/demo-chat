@@ -22,8 +22,9 @@
 	</properties>
 
 	<dependencies>
-		<dependency>			<groupId>com.demo</groupId>
-			<artifactId>chat-service</artifactId>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-service-cassandra</artifactId>
 			<version>${service.version}</version>
 		</dependency>
 		<dependency>

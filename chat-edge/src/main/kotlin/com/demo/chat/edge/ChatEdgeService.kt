@@ -9,7 +9,7 @@ import java.util.*
 
 interface ChatUserEdge {
     fun createUser(name: String, handle: String): Mono<UserKey>
-    fun getUser(handle: String): Mono<UserKey>
+    fun getUser(handle: String): Mono<User<UserKey>>
 
     // TODO WE DO NOT HAVE proper user authentication mechanism yet.. FYI
     fun createUserAuthentication(uid: UUID, password: String): Mono<Void>
@@ -21,6 +21,13 @@ interface ChatRoomEdge {
     fun roomInfo(roomId: UUID): Mono<RoomInfo>
     fun roomMembers(roomId: UUID): Mono<RoomMemberships>
     fun deleteRoom(roomId: UUID): Mono<Void>
+}
+
+interface ChatMessageEdge {
+    fun getMessage(id: UUID): Mono<Message<MessageKey,Any>>
+    fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<MessageKey>
+    fun getTopicMessages(roomId: UUID): Flux<Message<MessageKey, Any>>
+
 }
 
 interface ChatTopicEdge {

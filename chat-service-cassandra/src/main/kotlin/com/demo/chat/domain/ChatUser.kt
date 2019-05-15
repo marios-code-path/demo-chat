@@ -5,7 +5,6 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
-
 @Table("chat_user")
 data class ChatUser(
         @PrimaryKey
@@ -24,7 +23,6 @@ data class ChatUserKey(
         override val handle: String
 ) : UserKey
 
-
 @Table("chat_user_handle")
 data class ChatUserHandle(
         @PrimaryKey
@@ -33,7 +31,7 @@ data class ChatUserHandle(
         override val name: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<ChatUserHandleKey>
+) : User<UserKey>
 
 @PrimaryKeyClass
 data class ChatUserHandleKey(

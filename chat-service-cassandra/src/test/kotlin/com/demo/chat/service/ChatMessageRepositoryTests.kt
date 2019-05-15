@@ -6,9 +6,10 @@ import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
 import com.demo.chat.domain.ChatMessageRoom
 import com.demo.chat.domain.ChatMessageUser
-import com.demo.chat.repository.ChatMessageRepository
-import com.demo.chat.repository.ChatMessageRoomRepository
-import com.demo.chat.repository.ChatMessageUserRepository
+import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
+import com.demo.chat.repository.cassandra.ChatMessageUserRepository
+import com.demo.chat.service.cassandra.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener

@@ -172,8 +172,7 @@ class MessageTests {
 
         val value = RoomInfo(
                 1,
-                2,
-                1000
+                2
         )
 
         val message: Message<MessageKey, *> = TestInfoAlert(key, value, true)
@@ -188,7 +187,7 @@ class MessageTests {
             Assertions.assertThat(message.value)
                     .`as`("value is consistent state")
                     .isNotNull
-                    .hasFieldOrPropertyWithValue("totalMessages", 1000)
+                    .hasFieldOrPropertyWithValue("totalMessages", 2)
         }
 
 

@@ -4,6 +4,7 @@ import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceApplication
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.service.cassandra.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener

@@ -73,6 +73,16 @@ fun userAssertion(user: User<UserKey>) {
                     ))
 }
 
+fun userKeyAssertions(key: UserKey) {
+    MatcherAssert
+            .assertThat("A User has key and properties", key,
+                    Matchers.allOf(
+                            Matchers.notNullValue(),
+                            Matchers.hasProperty("handle", Matchers.not(Matchers.isEmptyOrNullString())),
+                            Matchers.hasProperty("userId", Matchers.not(Matchers.isEmptyOrNullString())),
+                    ))
+}
+
 fun infoAlertAssertion(msg: Message<MessageKey, Any>) {
     when(msg) {
         is InfoAlert -> {

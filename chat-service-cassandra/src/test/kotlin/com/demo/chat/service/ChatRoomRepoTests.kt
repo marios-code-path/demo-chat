@@ -6,8 +6,9 @@ import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
 import com.demo.chat.domain.RoomKey
-import com.demo.chat.repository.ChatRoomNameRepository
-import com.demo.chat.repository.ChatRoomRepository
+import com.demo.chat.repository.cassandra.ChatRoomNameRepository
+import com.demo.chat.repository.cassandra.ChatRoomRepository
+import com.demo.chat.service.cassandra.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener

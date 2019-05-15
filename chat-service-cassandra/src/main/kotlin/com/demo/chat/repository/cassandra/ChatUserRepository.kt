@@ -1,4 +1,4 @@
-package com.demo.chat.repository
+package com.demo.chat.repository.cassandra
 
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserHandle

@@ -20,7 +20,6 @@ interface RoomKey {
 
 data class RoomInfo(
         val activeMembers: Int,
-        val totalMembers: Int,
         val totalMessages: Int
 )
 

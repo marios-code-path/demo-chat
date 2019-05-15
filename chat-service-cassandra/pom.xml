@@ -21,6 +21,8 @@
 		<cassandraunit.version>3.5.0.1</cassandraunit.version>
 		<cassandraunit-spring.version>3.5.0.1</cassandraunit-spring.version>
 		<datastax.driver.version>3.7.1</datastax.driver.version>
+		<grpc.version>1.10.0</grpc.version>
+		<lognet.version>2.1.4</lognet.version>
 	</properties>
 
 	<dependencies>
@@ -103,6 +105,33 @@
 			<!--<artifactId>guava</artifactId>-->
 			<!--</exclusion>-->
 			<!--</exclusions>-->
+		</dependency>
+
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-stub</artifactId>
+			<version>${grpc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-protobuf</artifactId>
+			<version>${grpc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-netty</artifactId>
+			<version>${grpc.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.grpc</groupId>
+			<artifactId>grpc-testing</artifactId>
+			<version>${grpc.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.google.api.grpc</groupId>
+			<artifactId>proto-google-common-protos</artifactId>
+			<version>1.0.0</version>
 		</dependency>
 	</dependencies>
 

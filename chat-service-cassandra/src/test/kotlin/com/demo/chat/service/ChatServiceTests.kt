@@ -2,7 +2,8 @@ package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.*
+import com.demo.chat.repository.cassandra.*
+import com.demo.chat.service.cassandra.ChatServiceCassandra
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals

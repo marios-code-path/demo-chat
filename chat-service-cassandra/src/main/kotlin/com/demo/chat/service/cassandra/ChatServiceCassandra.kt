@@ -1,8 +1,9 @@
-package com.demo.chat.service
+package com.demo.chat.service.cassandra
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.*
+import com.demo.chat.repository.cassandra.*
+import com.demo.chat.service.ChatService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
@@ -13,12 +14,11 @@ import java.util.*
 
 @Component
 class ChatServiceCassandra(val userRepo: ChatUserRepository,
-                           val userByHandleRepo: ChatUserHandleRepository,
+                           val userHandleRepo: ChatUserHandleRepository,
                            val roomRepo: ChatRoomRepository,
                            val messageRepo: ChatMessageRepository,
                            val messageRoomRepo: ChatMessageRoomRepository)
     : ChatService<ChatRoom, ChatUser, ChatMessage> {
-
     val logger = LoggerFactory.getLogger("CHAT-SERVICE-CASSANDRA")
 
     override fun getMessage(id: UUID): Mono<ChatMessage> =
@@ -31,7 +31,7 @@ class ChatServiceCassandra(val userRepo: ChatUserRepository,
             userRepo.findByKeyUserId(userId)
 
     override fun getUserByHandle(handle: String): Mono<ChatUser> =
-            userByHandleRepo
+            userHandleRepo
                     .findByKeyHandle(handle)
                     .map {
                         ChatUser(

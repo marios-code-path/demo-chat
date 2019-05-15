@@ -17,7 +17,7 @@ class UserEdgeTests {
 
         StepVerifier
                 .create(userCreate)
-                .assertNext { userAssertion(it) }
+                .assertNext { userKeyAssertions(it) }
                 .verifyComplete()
     }
 

@@ -5,8 +5,9 @@ import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
-import com.demo.chat.repository.ChatUserHandleRepository
-import com.demo.chat.repository.ChatUserRepository
+import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.service.cassandra.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
