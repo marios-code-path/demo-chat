@@ -1,4 +1,4 @@
-package com.demo.chat.service.cassandra
+package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
