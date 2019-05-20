@@ -1,5 +1,6 @@
 package com.demo.chat.service
 
+import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.repository.cassandra.ChatRoomRepository
@@ -8,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -18,9 +18,6 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatRoomServiceCassandra::class])
-@OverrideAutoConfiguration(enabled = true)
-@ImportAutoConfiguration(classes = [ChatRoomServiceCassandra::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class ChatRoomServiceTests {

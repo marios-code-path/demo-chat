@@ -1,7 +1,7 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceApplication
+import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
 import com.demo.chat.domain.ChatMessageRoom
@@ -9,7 +9,6 @@ import com.demo.chat.domain.ChatMessageUser
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
 import com.demo.chat.repository.cassandra.ChatMessageUserRepository
-import com.demo.chat.config.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
@@ -36,9 +34,8 @@ import java.util.function.Supplier
 import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Import(CassandraConfiguration::class, ChatServiceApplication::class)
 @CassandraUnit
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
 class ChatMessageRepositoryTests {

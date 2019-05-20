@@ -1,6 +1,7 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
+import com.demo.chat.config.CassandraConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
@@ -15,10 +16,8 @@ import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -26,9 +25,6 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatMessageServiceCassandra::class])
-@OverrideAutoConfiguration(enabled = true)
-@ImportAutoConfiguration(classes = [ChatMessageServiceCassandra::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class ChatMessageServiceTests {

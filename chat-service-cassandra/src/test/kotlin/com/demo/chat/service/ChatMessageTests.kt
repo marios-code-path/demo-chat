@@ -2,6 +2,7 @@ package com.demo.chat.service
 
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -31,4 +32,16 @@ class ChatMessageTests {
                 .verifyComplete()
     }
 
+    fun chatMessageAssertion(msg: ChatMessage, someBody: String) {
+        assertAll("message contents in tact",
+                { assertNotNull(msg) },
+                { assertNotNull(msg.key.id) },
+                { assertNotNull(msg.key.userId) },
+                { assertNotNull(msg.key.roomId) },
+                { assertNotNull(msg.key.timestamp) },
+                { assertNotNull(msg.value) },
+                { Assertions.assertEquals(msg.value, someBody) },
+                { Assertions.assertTrue(msg.visible) }
+        )
+    }
 }

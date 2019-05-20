@@ -1,24 +1,24 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceApplication
+import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.config.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
+import org.hamcrest.MatcherAssert
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -30,8 +30,7 @@ import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Import(CassandraConfiguration::class, ChatServiceApplication::class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-user.cql")
@@ -109,7 +108,7 @@ class ChatUserRepositoryTests {
         StepVerifier
                 .create(composed)
                 .expectSubscription()
-                .assertNext{ userAssertions(it) }
+                .assertNext { userAssertions(it) }
                 .verifyComplete()
     }
 
@@ -131,6 +130,37 @@ class ChatUserRepositoryTests {
                 .verifyComplete()
 
     }
+
+
+    fun userAssertions(user: ChatUser) {
+        MatcherAssert
+                .assertThat("A User has key and properties", user,
+                        Matchers.allOf(
+                                Matchers.notNullValue(),
+                                Matchers.hasProperty("name", Matchers.not(Matchers.isEmptyOrNullString())),
+                                Matchers.hasProperty("key",
+                                        Matchers
+                                                .allOf(
+                                                        Matchers.notNullValue(),
+                                                        Matchers.hasProperty("handle"),
+                                                        Matchers.hasProperty("userId")
+                                                )
+                                )
+                        ))
+    }
+
+
+    // helper function to verify user state
+    fun userStateAssertions(user: User<UserKey>, handle: String?, name: String?) {
+        assertAll("User Assertion",
+                { Assertions.assertNotNull(user) },
+                { Assertions.assertNotNull(user.key.userId) },
+                { Assertions.assertNotNull(user.key.handle) },
+                { Assertions.assertEquals(handle, user.key.handle) },
+                { Assertions.assertEquals(name, user.name) }
+        )
+    }
+
 
 }
 

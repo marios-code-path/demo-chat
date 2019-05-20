@@ -8,7 +8,7 @@ import org.springframework.data.cassandra.config.SchemaAction
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 @Configuration
-@EnableReactiveCassandraRepositories
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 class CassandraConfiguration : AbstractReactiveCassandraConfiguration() {
     @Value("\${cassandra.contactpoints}")
     private lateinit var contactPoints: String

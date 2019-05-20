@@ -1,14 +1,14 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceApplication
+import com.demo.chat.config.CassandraConfiguration
+import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
 import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.config.CassandraConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -32,8 +33,8 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@Import(CassandraConfiguration::class, ChatServiceApplication::class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes= [ChatServiceCassandraApp::class])
+@ImportAutoConfiguration
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-room.cql")
