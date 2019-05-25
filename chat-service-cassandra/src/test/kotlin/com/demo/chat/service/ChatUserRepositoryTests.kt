@@ -26,6 +26,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.Duration
 import java.time.Instant
 import java.util.*
 
@@ -55,8 +56,60 @@ class ChatUserRepositoryTests {
         StepVerifier
                 .create(setupAndFind)
                 .expectSubscription()
-                .assertNext { userStateAssertions(it as User<UserKey>, "darkbit", "mario") }
+                .assertNext { userStateAssertions(it, "darkbit", "mario") }
                 .verifyComplete()
+    }
+
+    @Test
+    fun `should reject same handle`() {
+        val id1 = UUIDs.timeBased()
+        val id2 = UUIDs.timeBased()
+
+        val user1 =
+                ChatUser(ChatUserKey(id1, "vedder"), "eddie1", Instant.now())
+        val user2 =
+                ChatUser(ChatUserKey(id2, "vedder"), "eddie2", Instant.now())
+
+
+        val stream = template
+                .truncate(ChatUser::class.java)
+                .then(repo.saveUser(user1))
+                .then(repo.saveUser(user2))
+                //.thenMany(repo.saveUsers(Flux.just(user1, user2)))
+
+        StepVerifier
+                .create(stream)
+                .expectSubscription()
+                .expectError()
+                .verify()
+    }
+
+    @Test
+    fun `should find many by UUIDs`() {
+        val id1 = UUIDs.timeBased()
+        val id2 = UUIDs.timeBased()
+
+        val chatUsers = Flux.just(
+                ChatUser(ChatUserKey(id1, "vedder"), "eddie", Instant.now()),
+                ChatUser(ChatUserKey(id2, "jackson"), "Michael", Instant.now())
+        )
+
+        val stream = template
+                .truncate(ChatUser::class.java)
+                .thenMany(repo.saveUsers(chatUsers))
+                .thenMany(repo.findByKeyUserIdIn(Flux.just(id1, id2)))
+
+        StepVerifier
+                .create(stream)
+                .assertNext {
+                    userAssertions(it)
+                }
+                .assertNext {
+                    userAssertions(it)
+                }
+                .expectComplete()
+                .verify(Duration.ofMillis(2000))
+
     }
 
     @Test

@@ -28,7 +28,7 @@ class ChatMessageTests {
 
         StepVerifier
                 .create(Flux.just(message))
-                .assertNext { chatMessageAssertion(it, randomBody)}
+                .assertNext { chatMessageAssertion(it, randomBody) }
                 .verifyComplete()
     }
 
@@ -40,8 +40,8 @@ class ChatMessageTests {
                 { assertNotNull(msg.key.roomId) },
                 { assertNotNull(msg.key.timestamp) },
                 { assertNotNull(msg.value) },
-                { Assertions.assertEquals(msg.value, someBody) },
-                { Assertions.assertTrue(msg.visible) }
+                { assertEquals(msg.value, someBody) },
+                { assertTrue(msg.visible) }
         )
     }
 }

@@ -7,6 +7,7 @@ import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
@@ -49,4 +50,5 @@ class ChatUserServiceTests {
         userSvc = ChatUserServiceCassandra(userRepo, userHandleRepo)
 
     }
+
 }

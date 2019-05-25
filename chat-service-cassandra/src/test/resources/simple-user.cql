@@ -15,4 +15,4 @@ user_id UUID,
 handle varchar,
 name varchar,
 timestamp timestamp,
-PRIMARY KEY(handle, user_id));
+PRIMARY KEY(handle));

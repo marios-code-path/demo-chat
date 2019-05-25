@@ -8,6 +8,7 @@ import com.demo.chat.service.ChatService
 import com.demo.chat.service.ChatUserService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.toMono
 import java.time.Instant
 import java.util.*
 
@@ -39,6 +40,10 @@ class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
                         it.timestamp
                 )
             }
+            .toMono()
+
+    fun getUserById(uuid: UUID): Mono<ChatUser> = userRepo
+            .findByKeyUserId(uuid)
 
     override fun getUsersById(uuids: Flux<UUID>): Flux<ChatUser> = userRepo
             .findAllById(uuids)

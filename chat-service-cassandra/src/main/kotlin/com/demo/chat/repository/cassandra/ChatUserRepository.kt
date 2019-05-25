@@ -3,6 +3,9 @@ package com.demo.chat.repository.cassandra
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserHandle
 import com.demo.chat.domain.ChatUserHandleKey
+import com.demo.chat.domain.DuplicateUserException
+import org.slf4j.LoggerFactory
+import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
@@ -12,6 +15,7 @@ import java.util.*
 interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, UUID>,
         ChatUserRepositoryCustom {
     fun findByKeyUserId(uuid: UUID): Mono<ChatUser>
+    fun findByKeyUserIdIn(uuids: Flux<UUID>): Flux<ChatUser>
 }
 
 interface ChatUserRepositoryCustom {
@@ -21,20 +25,30 @@ interface ChatUserRepositoryCustom {
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
+
     override fun saveUser(u: ChatUser): Mono<ChatUser> =
             cassandra
-                    .batchOps()
-                    .insert(u)
                     .insert(ChatUserHandle(
                             ChatUserHandleKey(
                                     u.key.userId,
                                     u.key.handle
                             ),
                             u.name,
-                            u.timestamp
-                    ))
-                    .execute()
-                    .thenReturn(u)
+                            u.timestamp),
+                            InsertOptions.builder().withIfNotExists().build()
+                    )
+                    .handle<ChatUser> { write, sink ->
+
+                        if (!write.wasApplied()) {
+                            sink.error( DuplicateUserException )
+                        } else {
+                            sink.next(u)
+                        }
+                    }
+                    .flatMap {
+                        cassandra
+                                .insert(u)
+                    }
 
     override fun saveUsers(users: Flux<ChatUser>): Flux<ChatUser> = users
             .flatMap {

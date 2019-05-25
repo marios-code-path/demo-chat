@@ -1,6 +1,7 @@
 package com.demo.chat.domain
 
 open class ChatException(msg: String) : Exception(msg)
+object DuplicateUserException : ChatException("User already exists")
 object UserNotFoundException : ChatException("User not Found")
 object RoomNotFoundException : ChatException("Room not Found")
 object SessionClosedException : ChatException("Feed Session has Closed")

@@ -1,7 +1,7 @@
 package com.demo.chat
 
-import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
+import com.demo.chat.domain.ChatUser
+import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.ChatUserServiceCassandra
@@ -21,10 +21,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
-import org.springframework.stereotype.Component
-import reactor.core.publisher.Flux
+import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
+import java.time.Instant
 
 @SpringBootApplication
 class ChatServiceRsocketApplication
@@ -40,10 +40,33 @@ class ChatServiceModule {
     fun userService(userRepo: ChatUserRepository,
                     userHandleRepo: ChatUserHandleRepository): ChatUserServiceCassandra =
             ChatUserServiceCassandra(userRepo, userHandleRepo)
-
 }
 
-@Component
+@Controller
+class UserController(val userService: ChatUserServiceCassandra) {
+    val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
+
+    @MessageMapping("user-handle")
+    fun findByHandle(userReq: UserRequest): Mono<UserResponse> {
+        return userService.getUser(userReq.userHandle)
+                .map {
+                    UserResponse(it)
+                }
+    }
+
+    @MessageMapping("user-create")
+    fun createNewUser(userReq: UserCreateRequest): Mono<UserResponse> {
+        return userService.createUser(userReq.name, userReq.userHandle)
+                .map {
+                    UserResponse(
+                            ChatUser(ChatUserKey(it.userId, it.handle),
+                                    userReq.name, Instant.now()))
+                }
+    }
+}
+
+
+@Deprecated("Use the Controller from now on.")
 class ChatRsocketUserServiceRunnable(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger("UserRSocket")
 
@@ -75,12 +98,9 @@ class ChatRsocketUserServiceRunnable(val userService: ChatUserServiceCassandra) 
     }
 
     @Bean
-    fun startRSocket(): ApplicationRunner = ApplicationRunner{
+    fun startRSocket(): ApplicationRunner = ApplicationRunner {
         logger.info("START")
         closeable.block()
         logger.warn("STOPPED")
     }
-
-
-
 }
