@@ -1,11 +1,11 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.*
+import com.demo.chat.domain.ChatUser
+import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.domain.UserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.service.ChatService
-import com.demo.chat.service.ChatUserService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.toMono
@@ -42,10 +42,10 @@ class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
             }
             .toMono()
 
-    fun getUserById(uuid: UUID): Mono<ChatUser> = userRepo
+    override fun getUserById(uuid: UUID): Mono<ChatUser> = userRepo
             .findByKeyUserId(uuid)
 
     override fun getUsersById(uuids: Flux<UUID>): Flux<ChatUser> = userRepo
-            .findAllById(uuids)
+            .findByKeyUserIdIn(uuids)
 
 }

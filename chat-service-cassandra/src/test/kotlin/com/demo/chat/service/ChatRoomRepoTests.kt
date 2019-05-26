@@ -1,7 +1,6 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.config.CassandraConfiguration
 import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
@@ -18,12 +17,7 @@ import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.data.cassandra.core.query.ColumnName
-import org.springframework.data.cassandra.core.query.Query
-import org.springframework.data.cassandra.core.query.Update
-import org.springframework.data.cassandra.core.query.where
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
@@ -33,7 +27,7 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes= [ChatServiceCassandraApp::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
 @ImportAutoConfiguration
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
@@ -48,6 +42,40 @@ class ChatRoomRepoTests {
 
     @Autowired
     lateinit var template: ReactiveCassandraTemplate
+
+    @Test
+    fun `inactive rooms dont appear`() {
+        val roomId = UUID.randomUUID()
+
+        val saveFlux = repo
+                .saveRoom(
+                        ChatRoom(
+                                ChatRoomKey(
+                                        roomId, "XYZ"),
+                                Collections.emptySet(),
+                                true,
+                                Instant.now())
+                )
+
+        val deactivateMono =
+                repo.deactivateRoom(roomId)
+
+        val findActiveRooms =
+                repo.findAll()
+                        .filter {
+                            it.active
+                        }
+
+        val composed = Flux.from(saveFlux)
+                .then(deactivateMono)
+                .thenMany(findActiveRooms)
+
+        StepVerifier
+                .create(composed)
+                .expectSubscription()
+                .expectNextCount(0)
+                .verifyComplete()
+    }
 
     @Test
     fun `should fail to find room`() {
@@ -69,6 +97,7 @@ class ChatRoomRepoTests {
                         ChatRoom(
                                 ChatRoomKey(UUIDs.timeBased(), "XYZ"),
                                 Collections.emptySet(),
+                                true,
                                 Instant.now())
                 ))
 
@@ -82,7 +111,6 @@ class ChatRoomRepoTests {
         StepVerifier
                 .create(composed)
                 .assertNext { roomAssertions(it as Room<RoomKey>) }
-                //.expectNextCount(1)
                 .verifyComplete()
     }
 
@@ -92,22 +120,16 @@ class ChatRoomRepoTests {
         val userId = UUID.randomUUID()
 
         val saveFlux = repo
-                .insert(Flux.just(
+                .saveRoom(
                         ChatRoom(
                                 ChatRoomKey(
                                         roomId, "XYZ"),
                                 Collections.emptySet(),
+                                true,
                                 Instant.now())
-                ))
-
-        val updateFlux = template
-                .update(Query.query(where("room_id").`is`(roomId)),
-                        Update.of(listOf(Update.AddToOp(
-                                ColumnName.from("members"),
-                                listOf(userId),
-                                Update.AddToOp.Mode.APPEND))),
-                        ChatRoom::class.java
                 )
+
+        val updateFlux = repo.joinRoom(userId, roomId)
 
         val findFlux = repo
                 .findByKeyRoomId(roomId)

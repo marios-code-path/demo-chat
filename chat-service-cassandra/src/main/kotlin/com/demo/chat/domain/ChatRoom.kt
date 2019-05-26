@@ -1,10 +1,7 @@
 package com.demo.chat.domain
 
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
-import org.springframework.data.cassandra.core.mapping.PrimaryKey
-import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass
-import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
-import org.springframework.data.cassandra.core.mapping.Table
+import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
@@ -13,6 +10,7 @@ data class ChatRoom(
         @PrimaryKey
         override val key: ChatRoomKey,
         override val members: Set<UUID>?,
+        val active: Boolean,
         override val timestamp: Instant
 ) : Room<RoomKey>
 
@@ -28,6 +26,7 @@ data class ChatRoomName(
         @PrimaryKey
         override val key: ChatRoomNameKey,
         override val members: Set<UUID>?,
+        val active: Boolean,
         override val timestamp: Instant
 ) : Room<RoomKey>
 

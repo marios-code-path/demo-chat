@@ -1,6 +1,5 @@
 package com.demo.chat.service
 
-import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.repository.cassandra.ChatRoomRepository
@@ -9,8 +8,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
-import org.springframework.boot.test.autoconfigure.OverrideAutoConfiguration
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
@@ -33,7 +30,7 @@ class ChatRoomServiceTests {
 
     @BeforeEach
     fun setUp() {
-        val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), Instant.now())
+        val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
 
         Mockito.`when`(roomRepo.joinRoom(anyObject(), anyObject()))
                 .thenReturn(Mono.empty())

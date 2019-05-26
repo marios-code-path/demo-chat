@@ -5,27 +5,11 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-// Backend for Chat services
-interface ChatService<R : Room<RoomKey>, U : User<UserKey>, M : Message<TextMessageKey, Any>> {
-    fun storeRoom(name: String): Mono<RoomKey>
-    fun storeUser(name: String, handle: String): Mono<UserKey>
-    fun storeMessage(uid: UUID, roomId: UUID, text: String): Mono<TextMessageKey>
-
-    fun getRoom(roomId: UUID): Mono<R>
-    fun getUser(userId: UUID): Mono<U>
-    fun getUserByHandle(handle: String): Mono<U>
-    fun getRoomMessages(roomId: UUID): Flux<M>
-    fun getMessage(id: UUID): Mono<M>
-
-    fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
-    fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
-
-}
-
 interface ChatUserService< U : User<UserKey>, UK: UserKey> {
     fun createUser(name: String, handle: String): Mono<UserKey>
     fun getUser(handle: String): Mono<U>
     fun getUsersById(uuids: Flux<UUID>): Flux<U>
+    fun getUserById(uuid: UUID): Mono<U>
 
     // TODO WE DO NOT HAVE proper user authentication mechanism yet.. FYI
     fun createUserAuthentication(uid: UUID, password: String): Mono<Void>
@@ -33,7 +17,8 @@ interface ChatUserService< U : User<UserKey>, UK: UserKey> {
 }
 
 
-interface ChatRoomService<RK : RoomKey> {
+interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
+    fun getRooms(activeOnly: Boolean): Flux<R>
     fun createRoom(name: String): Mono<RK>
     fun roomSize(roomId: UUID): Mono<Int>
     fun roomMembers(roomId: UUID): Mono<Set<UUID>>

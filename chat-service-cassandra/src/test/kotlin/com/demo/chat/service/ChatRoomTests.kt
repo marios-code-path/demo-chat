@@ -27,6 +27,7 @@ class ChatRoomTests {
         val room = ChatRoom(
                 ChatRoomKey(roomId, "Conversation"),
                 memberSet,
+                true,
                 Instant.now())
 
         StepVerifier

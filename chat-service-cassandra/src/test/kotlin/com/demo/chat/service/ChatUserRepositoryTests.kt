@@ -142,17 +142,18 @@ class ChatUserRepositoryTests {
     }
 
     @Test
-    fun shouldPerformSaveCrudFind() {
-        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", Instant.now())
+    fun `should store and find single by ID`() {
+        val userId = UUIDs.timeBased()
+
+        val chatUser = ChatUser(ChatUserKey(userId, "vedder"), "eddie", Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
                 .thenMany(Flux.just(chatUser))
-                .flatMap(template::insert)
+                .flatMap(repo::saveUser)
 
-        val find = template
-                .query(ChatUser::class.java)
-                .one()
+        val find = repo
+                .findByKeyUserId(userId)
 
         val composed = Flux
                 .from(truncateAndSave)

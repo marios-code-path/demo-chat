@@ -7,6 +7,7 @@ import java.util.*
 
 data class UserRequest(val userHandle: String)
 data class UserCreateRequest(val name: String, val userHandle: String)
+data class UserRequestId(val userId: UUID)
 
 data class UserResponse(val user: ChatUser)
 

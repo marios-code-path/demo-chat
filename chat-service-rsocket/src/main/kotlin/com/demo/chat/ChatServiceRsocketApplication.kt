@@ -1,9 +1,15 @@
 package com.demo.chat
 
+import com.demo.chat.domain.ChatRoom
+import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.repository.cassandra.ChatRoomNameRepository
+import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.service.ChatRoomService
+import com.demo.chat.service.ChatRoomServiceCassandra
 import com.demo.chat.service.ChatUserServiceCassandra
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -23,6 +29,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
@@ -40,19 +47,38 @@ class ChatServiceModule {
     fun userService(userRepo: ChatUserRepository,
                     userHandleRepo: ChatUserHandleRepository): ChatUserServiceCassandra =
             ChatUserServiceCassandra(userRepo, userHandleRepo)
+
+    @Bean
+    fun roomService(roomRepo: ChatRoomRepository,
+                    roomNameRepo: ChatRoomNameRepository): ChatRoomServiceCassandra =
+            ChatRoomServiceCassandra(roomRepo)
+}
+
+@Controller
+class RoomController(val roomService: ChatRoomServiceCassandra) {
+    val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
+
+    @MessageMapping("room-create")
+    fun createRoom(req: RoomCreateRequest): Mono<RoomResponse> {
+        return roomService
+                .createRoom(req.roomName)
+                .map {
+                    RoomResponse(
+                            ChatRoom(ChatRoomKey(it.roomId, it.name), emptySet(), Instant.now())
+                    )
+                }
+    }
+
+    @MessageMapping("room-name")
+    fun findByName(req: RoomRequest): Mono<RoomResponse> {
+        return roomService
+                .
+    }
 }
 
 @Controller
 class UserController(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
-
-    @MessageMapping("user-handle")
-    fun findByHandle(userReq: UserRequest): Mono<UserResponse> {
-        return userService.getUser(userReq.userHandle)
-                .map {
-                    UserResponse(it)
-                }
-    }
 
     @MessageMapping("user-create")
     fun createNewUser(userReq: UserCreateRequest): Mono<UserResponse> {
@@ -63,9 +89,35 @@ class UserController(val userService: ChatUserServiceCassandra) {
                                     userReq.name, Instant.now()))
                 }
     }
+
+    @MessageMapping("user-handle")
+    fun findByHandle(userReq: UserRequest): Mono<UserResponse> {
+        return userService.getUser(userReq.userHandle)
+                .map {
+                    UserResponse(it)
+                }
+    }
+
+    @MessageMapping("user-id")
+    fun findByUserId(userReq: UserRequestId): Mono<UserResponse> {
+        return userService.getUserById(userReq.userId)
+                .map {
+                    UserResponse(it)
+                }
+    }
+
+    @MessageMapping("user-id-list")
+    fun findByUserIdList(userReq: UserRequestIdList): Flux<UserResponse> {
+        return userService.getUsersById(userReq.userId)
+                .map {
+                    UserResponse(it)
+                }
+    }
 }
 
 
+@Controller
+class RoomControler()
 @Deprecated("Use the Controller from now on.")
 class ChatRsocketUserServiceRunnable(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger("UserRSocket")

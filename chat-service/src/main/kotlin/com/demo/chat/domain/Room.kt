@@ -10,7 +10,6 @@ interface Room<out T> {
     val key: T
     val members: Set<UUID>?
     val timestamp: Instant
-
 }
 
 interface RoomKey {

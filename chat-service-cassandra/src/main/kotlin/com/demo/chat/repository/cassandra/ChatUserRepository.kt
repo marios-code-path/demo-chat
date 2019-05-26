@@ -38,11 +38,9 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                             InsertOptions.builder().withIfNotExists().build()
                     )
                     .handle<ChatUser> { write, sink ->
-
-                        if (!write.wasApplied()) {
-                            sink.error( DuplicateUserException )
-                        } else {
-                            sink.next(u)
+                        when(write.wasApplied()) {
+                            false -> sink.error( DuplicateUserException )
+                            else -> sink.next(u)
                         }
                     }
                     .flatMap {

@@ -28,10 +28,25 @@ interface ChatRoomRepositoryCustom {
     fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
     fun messageCount(roomId: UUID): Mono<Int>
+    fun deactivateRoom(roomId: UUID): Mono<Void>
+
 }
 
 class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
+    override fun deactivateRoom(roomId: UUID): Mono<Void> =
+            template
+                    .update(Query.query(where("room_id").`is`(roomId)),
+                            Update.empty().set("active", false),
+                            ChatRoom::class.java
+                    )
+                    .map {
+                        if (!it)
+                            throw ChatException("Cannot De-Active Room")
+                    }
+                    .then()
+
+
     override fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom> =
             rooms
                     .flatMap {
@@ -41,16 +56,17 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
 
     override fun saveRoom(room: ChatRoom): Mono<ChatRoom> = template
             .batchOps()
-            .insert(room)
             .insert(
                     ChatRoomName(
                             ChatRoomNameKey(
                                     room.key.roomId,
                                     room.key.name),
                             room.members,
+                            true,
                             room.timestamp
                     )
             )
+            .insert(room)
             .execute()
             .thenReturn(room)
 
