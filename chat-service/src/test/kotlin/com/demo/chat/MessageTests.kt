@@ -35,7 +35,7 @@ data class TestTextMessage(
 
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
-        override val value: RoomInfo,
+        override val value: RoomMetaData,
         override val visible: Boolean
 ) : InfoAlert
 
@@ -170,7 +170,7 @@ class MessageTests {
                 Instant.now()
         )
 
-        val value = RoomInfo(
+        val value = RoomMetaData(
                 1,
                 2
         )

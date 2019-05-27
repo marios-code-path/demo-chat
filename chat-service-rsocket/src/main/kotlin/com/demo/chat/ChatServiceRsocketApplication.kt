@@ -1,14 +1,12 @@
 package com.demo.chat
 
-import com.demo.chat.domain.ChatRoom
-import com.demo.chat.domain.ChatRoomKey
-import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.domain.RoomMember
+import com.demo.chat.domain.RoomMemberships
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.service.ChatRoomService
 import com.demo.chat.service.ChatRoomServiceCassandra
 import com.demo.chat.service.ChatUserServiceCassandra
 import com.fasterxml.jackson.annotation.JsonInclude
@@ -31,7 +29,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.Instant
 
 @SpringBootApplication
 class ChatServiceRsocketApplication
@@ -55,25 +52,63 @@ class ChatServiceModule {
 }
 
 @Controller
-class RoomController(val roomService: ChatRoomServiceCassandra) {
+class RoomController(val roomService: ChatRoomServiceCassandra,
+                     val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-create")
-    fun createRoom(req: RoomCreateRequest): Mono<RoomResponse> {
-        return roomService
-                .createRoom(req.roomName)
-                .map {
-                    RoomResponse(
-                            ChatRoom(ChatRoomKey(it.roomId, it.name), emptySet(), Instant.now())
-                    )
-                }
-    }
+    fun createRoom(req: RoomCreateRequest): Mono<RoomCreateResponse> =
+            roomService
+                    .createRoom(req.roomName)
+                    .map {
+                        RoomCreateResponse(it)
+                    }
 
-    @MessageMapping("room-name")
-    fun findByName(req: RoomRequest): Mono<RoomResponse> {
-        return roomService
-                .
-    }
+    @MessageMapping("room-delete")
+    fun deleteRoom(req: RoomRequest): Mono<Void> =
+            roomService
+                    .deleteRoom(req.roomId)
+
+    @MessageMapping("room-list")
+    fun listRooms(v: Void): Flux<RoomResponse> =
+            roomService
+                    .getRooms(true)
+                    .map {
+                        RoomResponse(it)
+                    }
+
+    @MessageMapping("room-id")
+    fun getRoom(req: RoomRequest): Mono<RoomResponse> =
+            roomService
+                    .getRoomById(req.roomId)
+                    .map {
+                        RoomResponse(it)
+                    }
+
+    @MessageMapping("room-join")
+    fun joinRoom(req: RoomJoinRequest): Mono<Void> =
+            roomService
+                    .joinRoom(req.uid, req.roomId)
+
+    @MessageMapping("room-leave")
+    fun leaveRoom(req: RoomLeaveRequest): Mono<Void> =
+            roomService
+                    .leaveRoom(req.uid, req.roomId)
+
+    @MessageMapping("room-members")
+    fun roomMembers(req: RoomRequest): Mono<RoomMemberships> = roomService
+            .roomMembers(req.roomId)
+            .flatMap { members ->
+                userService // kludge! This is nullable ! make sure enforce non-nullability across service contract
+                        .getUsersById(Flux.fromStream(members.stream()))
+                        .map { u ->
+                            RoomMember(u.key.userId, u.key.handle)
+                        }
+                        .collectList()
+                        .map { memberList ->
+                            RoomMemberships(memberList.toSet())
+                        }
+            }
 }
 
 @Controller
@@ -81,12 +116,11 @@ class UserController(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-create")
-    fun createNewUser(userReq: UserCreateRequest): Mono<UserResponse> {
+    fun createNewUser(userReq: UserCreateRequest): Mono<UserCreateResponse> {
         return userService.createUser(userReq.name, userReq.userHandle)
                 .map {
-                    UserResponse(
-                            ChatUser(ChatUserKey(it.userId, it.handle),
-                                    userReq.name, Instant.now()))
+                    UserCreateResponse(
+                            ChatUserKey(it.userId, it.handle))
                 }
     }
 
@@ -94,7 +128,8 @@ class UserController(val userService: ChatUserServiceCassandra) {
     fun findByHandle(userReq: UserRequest): Mono<UserResponse> {
         return userService.getUser(userReq.userHandle)
                 .map {
-                    UserResponse(it)
+                    logger.info("The user is: $it")
+                    UserResponse(it!!)
                 }
     }
 
@@ -115,9 +150,6 @@ class UserController(val userService: ChatUserServiceCassandra) {
     }
 }
 
-
-@Controller
-class RoomControler()
 @Deprecated("Use the Controller from now on.")
 class ChatRsocketUserServiceRunnable(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger("UserRSocket")

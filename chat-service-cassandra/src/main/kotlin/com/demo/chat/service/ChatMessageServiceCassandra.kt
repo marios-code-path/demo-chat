@@ -6,14 +6,13 @@ import com.demo.chat.domain.ChatMessageKey
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
-import com.demo.chat.service.ChatMessageService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
 class ChatMessageServiceCassandra(val messageRepo: ChatMessageRepository,
-                                  val messageRoomRepo: ChatMessageRoomRepository) : ChatMessageService<MessageKey, ChatMessage> {
+                                  val messageRoomRepo: ChatMessageRoomRepository) : ChatMessageService<ChatMessage, MessageKey> {
     override fun getMessage(id: UUID): Mono<ChatMessage> =
             messageRepo
                     .findByKeyId(id)

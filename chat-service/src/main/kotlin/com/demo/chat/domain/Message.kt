@@ -13,7 +13,7 @@ interface Message<out K, out V> {
 
 interface TextMessage : Message<TextMessageKey, String>
 
-interface InfoAlert : Message<AlertMessageKey, RoomInfo>
+interface InfoAlert : Message<AlertMessageKey, RoomMetaData>
 
 interface LeaveAlert : Message<AlertMessageKey, UUID>
 

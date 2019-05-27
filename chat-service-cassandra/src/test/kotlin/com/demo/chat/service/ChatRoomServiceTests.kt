@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.BDDMockito
 import org.mockito.Mockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -32,18 +33,25 @@ class ChatRoomServiceTests {
     fun setUp() {
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
 
-        Mockito.`when`(roomRepo.joinRoom(anyObject(), anyObject()))
-                .thenReturn(Mono.empty())
+        BDDMockito.given(roomRepo.joinRoom(anyObject(), anyObject()))
+                .willReturn(Mono.empty())
 
-        Mockito.`when`(roomRepo.findByKeyRoomId(anyObject()))
-                .thenReturn(Mono.just(newRoom))
+        BDDMockito.given(roomRepo.findByKeyRoomId(anyObject()))
+                .willReturn(Mono.just(newRoom))
 
-        Mockito.`when`(roomRepo.leaveRoom(anyObject(), anyObject()))
-                .thenReturn(Mono.empty())
+        BDDMockito.given(roomRepo.leaveRoom(anyObject(), anyObject()))
+                .willReturn(Mono.empty())
+
+        BDDMockito.given(roomRepo.deactivateRoom(anyObject()))
+                .willReturn(Mono.empty())
+
+        BDDMockito.given(roomRepo.messageCount(anyObject()))
+                .willReturn(Mono.just(1))
 
         roomSvc = ChatRoomServiceCassandra(roomRepo)
     }
 
+    // TODO - check for nullable return types in  Room-Service.
     @Test
     fun `should join and leave a ficticious room`() {
         val serviceFlux = roomSvc

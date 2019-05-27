@@ -17,7 +17,7 @@ interface RoomKey {
     val name: String
 }
 
-data class RoomInfo(
+data class RoomMetaData(
         val activeMembers: Int,
         val totalMessages: Int
 )
@@ -26,6 +26,7 @@ data class RoomMember(
         val uid: UUID,
         val handle: String
 )
+// For later , when we disconnect room.memberSet into it's own Column
 data class RoomMemberships(
         val members: Set<RoomMember>
 )

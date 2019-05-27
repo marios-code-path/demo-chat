@@ -6,7 +6,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 interface ChatUserService< U : User<UserKey>, UK: UserKey> {
-    fun createUser(name: String, handle: String): Mono<UserKey>
+    fun createUser(name: String, handle: String): Mono<UK>
     fun getUser(handle: String): Mono<U>
     fun getUsersById(uuids: Flux<UUID>): Flux<U>
     fun getUserById(uuid: UUID): Mono<U>
@@ -19,6 +19,7 @@ interface ChatUserService< U : User<UserKey>, UK: UserKey> {
 
 interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
     fun getRooms(activeOnly: Boolean): Flux<R>
+    fun getRoomById(id: UUID): Mono<R>
     fun createRoom(name: String): Mono<RK>
     fun roomSize(roomId: UUID): Mono<Int>
     fun roomMembers(roomId: UUID): Mono<Set<UUID>>
@@ -28,9 +29,8 @@ interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
 }
 
-interface ChatMessageService<MK : MessageKey, M: Message<MK, Any>> {
+interface ChatMessageService<M: Message<MessageKey, Any>,MK : MessageKey > {
     fun getMessage(id: UUID): Mono<M>
     fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<MK>
-    fun getTopicMessages(roomId: UUID): Flux<M>
-
+    fun getTopicMessages(topicId: UUID): Flux<M>
 }
