@@ -19,7 +19,11 @@ class ChatConsumersApplicationTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var client: ChatUserClient
+    private lateinit var userClient: ChatUserClient
+
+    @Autowired
+    private lateinit var roomClient: ChatRoomClient
+
 
     private var userName: String = "meatman"
     private var userId: UUID = UUID.fromString("115a7700-8093-11e9-beee-416bd38e6cd4")
@@ -27,7 +31,7 @@ class ChatConsumersApplicationTests {
     @Test
     fun `should get a user`() {
         StepVerifier
-                .create(client.callGetUser(userName))
+                .create(userClient.callGetUser(userName))
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -46,8 +50,10 @@ class ChatConsumersApplicationTests {
 
     @Test
     fun `should create user`() {
+        val randomHandle = randomAlphaNumeric(4)
+        val randomName = randomAlphaNumeric(6)
         StepVerifier
-                .create(client.callCreateUser("Test Man", "meatman"))
+                .create(userClient.callCreateUser(randomName, randomHandle))
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -62,7 +68,7 @@ class ChatConsumersApplicationTests {
                     Assertions.assertThat(it.user.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", "meatman")
+                            .hasFieldOrPropertyWithValue("handle", randomHandle)
                 }
                 .verifyComplete()
     }
@@ -70,17 +76,17 @@ class ChatConsumersApplicationTests {
 
     @Test
     fun `should create User room join get room listing`() {
-        val createUser = client
+        val createUser = userClient
                 .callCreateUser("Test Man", "meatman")
 
-        val createRoom = client
+        val createRoom = roomClient
                 .callCreateRoom("Perpperoni")
 
         val joinRoom = Flux.zip(createUser, createRoom)
                 .flatMap { res ->
-                    client.callJoinRoom(res.t1.user.key.userId, res.t2.romKey.roomId)
+                    roomClient.callJoinRoom(res.t1.user.key.userId, res.t2.romKey.roomId)
                 }
-                .thenMany(client.callGetRooms())
+                .thenMany(roomClient.callGetRooms())
                 .doOnNext {
                    logger.info("${it.room.key.roomId} is ${it.room.key.name}")
                     it.room.members?.forEach { uid ->

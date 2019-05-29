@@ -1,6 +1,5 @@
 package com.demo.chat
 
-import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.RoomMember
 import com.demo.chat.domain.RoomMemberships
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
@@ -116,38 +115,37 @@ class UserController(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-create")
-    fun createNewUser(userReq: UserCreateRequest): Mono<UserCreateResponse> {
-        return userService.createUser(userReq.name, userReq.userHandle)
-                .map {
-                    UserCreateResponse(
-                            ChatUserKey(it.userId, it.handle))
-                }
-    }
+    fun createNewUser(userReq: UserCreateRequest): Mono<UserCreateResponse> =
+            userService.createUser(userReq.name, userReq.userHandle)
+                    .map {
+                        UserCreateResponse(it)
+                    }
+
 
     @MessageMapping("user-handle")
-    fun findByHandle(userReq: UserRequest): Mono<UserResponse> {
-        return userService.getUser(userReq.userHandle)
-                .map {
-                    logger.info("The user is: $it")
-                    UserResponse(it!!)
-                }
-    }
+    fun findByHandle(userReq: UserRequest): Mono<UserResponse> =
+            userService.getUser(userReq.userHandle)
+                    .map {
+                        logger.info("The user is: $it")
+                        UserResponse(it!!)
+                    }
+
 
     @MessageMapping("user-id")
-    fun findByUserId(userReq: UserRequestId): Mono<UserResponse> {
-        return userService.getUserById(userReq.userId)
-                .map {
-                    UserResponse(it)
-                }
-    }
+    fun findByUserId(userReq: UserRequestId): Mono<UserResponse> =
+            userService.getUserById(userReq.userId)
+                    .map {
+                        UserResponse(it)
+                    }
+
 
     @MessageMapping("user-id-list")
-    fun findByUserIdList(userReq: UserRequestIdList): Flux<UserResponse> {
-        return userService.getUsersById(userReq.userId)
-                .map {
-                    UserResponse(it)
-                }
-    }
+    fun findByUserIdList(userReq: UserRequestIdList): Flux<UserResponse> =
+            userService.getUsersById(userReq.userId)
+                    .map {
+                        UserResponse(it)
+                    }
+
 }
 
 @Deprecated("Use the Controller from now on.")

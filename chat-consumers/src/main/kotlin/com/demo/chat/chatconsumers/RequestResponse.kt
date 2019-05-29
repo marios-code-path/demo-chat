@@ -4,6 +4,7 @@ import com.demo.chat.domain.Room
 import com.demo.chat.domain.RoomKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import reactor.core.publisher.Flux
 import java.time.Instant
 import java.util.*
@@ -12,8 +13,8 @@ data class UserRequest(val userHandle: String)
 data class UserRequestId(val userId: UUID)
 data class UserRequestIdList(val userId: Flux<UUID>)
 data class UserCreateRequest(val name: String, val userHandle: String)
-data class UserCreateResponse(val userKey: UserKey)
-data class UserResponse(val user: User<UserKey>)
+data class UserCreateResponse(val user: ChatUser)
+data class UserResponse(val user: ChatUser)
 
 
 data class RoomCreateRequest(val roomName: String)
@@ -24,6 +25,7 @@ data class RoomResponse(val room: Room<RoomKey>)
 data class RoomJoinRequest(val uid: UUID, val roomId: UUID)
 data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 data class ChatUser(
         override val key: ChatUserKey,
         override val name: String,

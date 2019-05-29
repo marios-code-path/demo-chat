@@ -6,7 +6,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 interface ChatUserService< U : User<UserKey>, UK: UserKey> {
-    fun createUser(name: String, handle: String): Mono<UK>
+    fun createUser(name: String, handle: String): Mono<U>
     fun getUser(handle: String): Mono<U>
     fun getUsersById(uuids: Flux<UUID>): Flux<U>
     fun getUserById(uuid: UUID): Mono<U>

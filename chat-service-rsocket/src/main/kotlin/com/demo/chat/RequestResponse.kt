@@ -13,8 +13,7 @@ data class UserRequestIdList(val userId: Flux<UUID>)
 data class UserResponse(val user: User<UserKey>)
 
 data class UserCreateRequest(val name: String, val userHandle: String)
-data class UserCreateResponse(val userKey: UserKey)
-
+data class UserCreateResponse(val user: User<UserKey>)
 
 
 data class RoomCreateRequest(val roomName: String)
