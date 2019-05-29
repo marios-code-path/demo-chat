@@ -40,9 +40,6 @@ class ChatRoomRepoTests {
     @Autowired
     lateinit var byNameRepo: ChatRoomNameRepository
 
-    @Autowired
-    lateinit var template: ReactiveCassandraTemplate
-
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
@@ -52,7 +49,7 @@ class ChatRoomRepoTests {
                         ChatRoom(
                                 ChatRoomKey(
                                         roomId, "XYZ"),
-                                Collections.emptySet(),
+                                emptySet(),
                                 true,
                                 Instant.now())
                 )
@@ -91,7 +88,32 @@ class ChatRoomRepoTests {
     }
 
     @Test
-    fun `should save find by name`() {
+    fun `should save many and find as list`() {
+        StepVerifier
+                .create(
+                        repo
+                                .saveRooms(Flux.just(
+                                        ChatRoom(
+                                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
+                                                Collections.emptySet(),
+                                                true,
+                                                Instant.now()),
+                                        ChatRoom(
+                                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
+                                                Collections.emptySet(),
+                                                true,
+                                                Instant.now())
+                                ))
+                                .thenMany(repo.findAll())
+                )
+                .expectSubscription()
+                .assertNext(this::roomAssertions)
+                .assertNext(this::roomAssertions)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save and find by name`() {
         val saveFlux = repo
                 .saveRooms(Flux.just(
                         ChatRoom(

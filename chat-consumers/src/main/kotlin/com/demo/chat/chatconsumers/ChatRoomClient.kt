@@ -13,10 +13,7 @@ class ChatRoomClient(val socket: RSocketRequester){
     fun callCreateRoom(roomName: String) = socket
             .route("room-create")
             .data(RoomCreateRequest(roomName))
-            .retrieveFlux(RoomCreateResponse::class.java)
-            .doOnNext {
-                logger.info("The room ID is = ${it.romKey.roomId} named ${it.romKey.name}")
-            }
+            .retrieveMono(RoomCreateResponse::class.java)
 
     fun callJoinRoom(uid: UUID, roomId: UUID) = socket
             .route("room-join")

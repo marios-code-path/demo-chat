@@ -18,9 +18,9 @@ data class UserResponse(val user: ChatUser)
 
 
 data class RoomCreateRequest(val roomName: String)
-data class RoomCreateResponse(val romKey: RoomKey)
+data class RoomCreateResponse(val roomKey: ChatRoomKey)
 data class RoomRequest(val roomId: UUID)
-data class RoomResponse(val room: Room<RoomKey>)
+data class RoomResponse(val room: ChatRoom)
 
 data class RoomJoinRequest(val uid: UUID, val roomId: UUID)
 data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
@@ -36,3 +36,16 @@ data class ChatUserKey(
         override val userId: UUID,
         override val handle: String
 ) : UserKey
+
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+data class ChatRoom(
+        override val key: ChatRoomKey,
+        override val members: Set<UUID>,
+        val active: Boolean,
+        override val timestamp: Instant
+) : Room<RoomKey>
+
+data class ChatRoomKey(
+        override val roomId: UUID,
+        override val name: String
+) : RoomKey

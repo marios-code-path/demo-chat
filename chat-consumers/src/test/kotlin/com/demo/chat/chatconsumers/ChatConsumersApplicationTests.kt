@@ -52,6 +52,7 @@ class ChatConsumersApplicationTests {
     fun `should create user`() {
         val randomHandle = randomAlphaNumeric(4)
         val randomName = randomAlphaNumeric(6)
+
         StepVerifier
                 .create(userClient.callCreateUser(randomName, randomHandle))
                 .expectSubscription()
@@ -73,29 +74,55 @@ class ChatConsumersApplicationTests {
                 .verifyComplete()
     }
 
+    @Test
+    fun `create rooms return list of rooms`() {
+        val randomRoom = randomAlphaNumeric(6) + "-Room"
+
+        StepVerifier.create(
+                roomClient
+                        .callCreateRoom(randomRoom)
+                        .thenMany(roomClient.callGetRooms())
+        )
+                .expectSubscription()
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+
+                    Assertions
+                            .assertThat(it.room)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                }
+                .verifyComplete()
+    }
 
     @Test
     fun `should create User room join get room listing`() {
+        val randomHandle = randomAlphaNumeric(4)
+        val randomName = randomAlphaNumeric(6)
+        val randomRoom = randomAlphaNumeric(6) + "-Room"
+
         val createUser = userClient
-                .callCreateUser("Test Man", "meatman")
+                .callCreateUser(randomName, randomHandle)
 
         val createRoom = roomClient
-                .callCreateRoom("Perpperoni")
+                .callCreateRoom(randomRoom)
 
         val joinRoom = Flux.zip(createUser, createRoom)
                 .flatMap { res ->
-                    roomClient.callJoinRoom(res.t1.user.key.userId, res.t2.romKey.roomId)
+                    roomClient.callJoinRoom(res.t1.user.key.userId, res.t2.roomKey.roomId)
                 }
                 .thenMany(roomClient.callGetRooms())
                 .doOnNext {
-                   logger.info("${it.room.key.roomId} is ${it.room.key.name}")
+                    logger.info("${it.room.key.roomId} is ${it.room.key.name}")
                     it.room.members?.forEach { uid ->
                         logger.info("member: $uid")
                     }
                 }
 
         joinRoom.blockLast(Duration.ofMillis(5000))
-
     }
 
 }

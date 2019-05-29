@@ -32,10 +32,10 @@ interface ChatRoomRepositoryCustom {
 
 }
 
-class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
+class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
     override fun deactivateRoom(roomId: UUID): Mono<Void> =
-            template
+            cassandra
                     .update(Query.query(where("room_id").`is`(roomId)),
                             Update.empty().set("active", false),
                             ChatRoom::class.java
@@ -53,24 +53,22 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                         saveRoom(it)
                     }
 
-
-    override fun saveRoom(room: ChatRoom): Mono<ChatRoom> = template
-            .batchOps()
+    override fun saveRoom(room: ChatRoom): Mono<ChatRoom> = cassandra
             .insert(
                     ChatRoomName(
                             ChatRoomNameKey(
                                     room.key.roomId,
                                     room.key.name),
-                            room.members,
+                            emptySet(),
                             true,
                             room.timestamp
                     )
             )
-            .insert(room)
-            .execute()
-            .thenReturn(room)
+            .flatMap {
+                cassandra.insert(room)
+            }
 
-    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void> = template
+    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void> = cassandra
             .update(Query.query(where("room_id").`is`(roomId)),
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
@@ -84,7 +82,7 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
             .then()
 
     override fun joinRoom(uid: UUID, roomId: UUID): Mono<Void> =
-            template
+            cassandra
                     .update(Query.query(where("room_id").`is`(roomId)),
                             Update.of(listOf(Update.AddToOp(
                                     ColumnName.from("members"),
@@ -99,14 +97,14 @@ class ChatRoomRepositoryCustomImpl(val template: ReactiveCassandraTemplate) :
                     .then()
 
     override fun messageCount(roomId: UUID): Mono<Int> =
-            template
+            cassandra
                     .select(Query.query(where("room_id").`is`(roomId)), ChatRoom::class.java)
                     .map {
                         it.members
                     }
                     .defaultIfEmpty(Collections.emptySet())
                     .zipWith(
-                            template
+                            cassandra
                                     .select(Query.query(where("room_id").`is`(roomId)), ChatMessage::class.java)
                                     .count()
                     )

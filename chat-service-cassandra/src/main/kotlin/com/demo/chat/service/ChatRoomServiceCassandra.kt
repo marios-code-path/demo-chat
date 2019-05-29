@@ -5,6 +5,7 @@ import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.repository.cassandra.ChatRoomRepository
+import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
@@ -12,6 +13,8 @@ import java.time.Instant
 import java.util.*
 
 class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomService<ChatRoom, ChatRoomKey> {
+    val logger = LoggerFactory.getLogger(this::class.simpleName)
+
     override fun getRoomById(id: UUID): Mono<ChatRoom> =
             roomRepo
                     .findByKeyRoomId(id)
@@ -24,12 +27,14 @@ class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomServi
 
     override fun createRoom(name: String): Mono<ChatRoomKey> =
             roomRepo
-                    .insert(ChatRoom(
+                    .saveRoom(ChatRoom(
                             ChatRoomKey(UUIDs.timeBased(), name),
                             emptySet(),
                             true,
                             Instant.now()))
                     .map {
+                        println("FOUND A ROOM")
+                        logger.info("FOUND A ROOM $it")
                         it.key
                     }
 

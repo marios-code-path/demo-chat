@@ -2,15 +2,15 @@ package com.demo.chat.service
 
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
+import com.demo.chat.domain.Room
+import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomRepository
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.mockito.Mockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
@@ -32,9 +32,16 @@ class ChatRoomServiceTests {
     @BeforeEach
     fun setUp() {
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
+        val roomTwo = ChatRoom(ChatRoomKey(UUID.randomUUID(), randomAlphaNumeric(6)), emptySet(), true, Instant.now())
 
         BDDMockito.given(roomRepo.joinRoom(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
+
+        BDDMockito.given(roomRepo.saveRoom(anyObject()))
+                .willReturn(Mono.just(newRoom))
+
+        BDDMockito.given(roomRepo.findAll())
+                .willReturn(Flux.just(newRoom, roomTwo))
 
         BDDMockito.given(roomRepo.findByKeyRoomId(anyObject()))
                 .willReturn(Mono.just(newRoom))
@@ -63,5 +70,29 @@ class ChatRoomServiceTests {
                 .expectSubscription()
                 .expectNextCount(0)
                 .verifyComplete()
+    }
+
+    @Test
+    fun `should create some rooms then get a list`() {
+        StepVerifier
+                .create(
+                        roomSvc
+                                .createRoom(randomAlphaNumeric(5))
+                                .then(roomSvc.createRoom(randomAlphaNumeric(5)))
+                                .thenMany(roomSvc.getRooms(true))
+                )
+                .expectSubscription()
+                .assertNext(this::roomAssertions)
+                .assertNext(this::roomAssertions)
+                .verifyComplete()
+    }
+
+    fun roomAssertions(room: Room<RoomKey>) {
+        assertAll("room contents in tact",
+                { Assertions.assertNotNull(room) },
+                { Assertions.assertNotNull(room.key.roomId) },
+                { Assertions.assertNotNull(room.key.name) },
+                { Assertions.assertNotNull(room.timestamp) }
+        )
     }
 }
