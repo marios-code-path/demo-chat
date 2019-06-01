@@ -69,7 +69,7 @@ class RoomController(val roomService: ChatRoomServiceCassandra,
                     .deleteRoom(req.roomId)
 
     @MessageMapping("room-list")
-    fun listRooms(v: Void): Flux<RoomResponse> =
+    fun listRooms(req: RoomRequest): Flux<RoomResponse> =
             roomService
                     .getRooms(true)
                     .map {
@@ -130,7 +130,6 @@ class UserController(val userService: ChatUserServiceCassandra) {
                         UserResponse(it!!)
                     }
 
-
     @MessageMapping("user-id")
     fun findByUserId(userReq: UserRequestId): Mono<UserResponse> =
             userService.getUserById(userReq.userId)
@@ -138,14 +137,12 @@ class UserController(val userService: ChatUserServiceCassandra) {
                         UserResponse(it)
                     }
 
-
     @MessageMapping("user-id-list")
     fun findByUserIdList(userReq: UserRequestIdList): Flux<UserResponse> =
             userService.getUsersById(userReq.userId)
                     .map {
                         UserResponse(it)
                     }
-
 }
 
 @Deprecated("Use the Controller from now on.")

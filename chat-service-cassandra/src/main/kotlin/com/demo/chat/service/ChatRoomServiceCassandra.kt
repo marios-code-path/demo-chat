@@ -8,7 +8,6 @@ import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.switchIfEmpty
 import java.time.Instant
 import java.util.*
 
@@ -84,7 +83,8 @@ class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomServi
                     .then(roomRepo.leaveRoom(uid, roomId))
 
     private fun verifyRoom(roomId: UUID): Mono<Void> =
-            Flux.from(
-                    roomRepo.findByKeyRoomId(roomId).switchIfEmpty { Mono.error(RoomNotFoundException) }
-            ).then()
+            roomRepo.findByKeyRoomId(roomId)
+                    .switchIfEmpty(Mono.error(RoomNotFoundException))
+                    .then()
+
 }

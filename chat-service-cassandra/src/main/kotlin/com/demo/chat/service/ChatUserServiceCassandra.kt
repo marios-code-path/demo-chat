@@ -1,10 +1,7 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.ChatUser
-import com.demo.chat.domain.ChatUserKey
-import com.demo.chat.domain.User
-import com.demo.chat.domain.UserKey
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import reactor.core.publisher.Flux
@@ -14,9 +11,15 @@ import java.util.*
 
 class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
                                val userHandleRepo: ChatUserHandleRepository) : ChatUserService<ChatUser, UserKey> {
-    override fun authenticateUser(name: String, password: String): Mono<UserKey> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun authenticateUser(handle: String, password: String): Mono<UserKey> =
+            userHandleRepo
+                    .findByKeyHandle(handle)
+                    .handle<UserKey> { u, s ->
+                        when(u) {
+                            null -> s.error(UserNotFoundException)
+                            else -> s.next(ChatUserKey(u.key.userId, u.key.handle))
+                        }
+                    }
 
     override fun createUser(name: String, handle: String): Mono<ChatUser> = userRepo
             .saveUser(ChatUser(
