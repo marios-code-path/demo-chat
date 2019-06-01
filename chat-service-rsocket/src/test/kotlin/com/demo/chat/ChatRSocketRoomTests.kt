@@ -3,6 +3,7 @@ package com.demo.chat
 import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import io.rsocket.RSocket
+import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -130,7 +131,7 @@ class ChatRSocketRoomTests {
                                 .retrieveMono(Void::class.java)
                 )
                 .expectSubscription()
-                .expectError()//what expectError(MyErrorClass::class.java) doesnt work
+                .expectError(ApplicationErrorException::class.java)
                 .verify()
     }
 }
