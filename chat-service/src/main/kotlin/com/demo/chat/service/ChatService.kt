@@ -14,14 +14,14 @@ interface ChatUserService<U : User<UserKey>, UK : UserKey> {
     // TODO WE DO NOT HAVE proper user authentication mechanism yet.. FYI
     fun createUserAuthentication(uid: UUID, password: String): Mono<Void>
 
-    fun authenticateUser(name: String, password: String): Mono<UK>
+    fun authenticateUser(name: String, password: String): Mono<out UK>
 }
 
 
 interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
     fun getRooms(activeOnly: Boolean): Flux<out R>
     fun getRoomById(id: UUID): Mono<out R>
-    fun createRoom(name: String): Mono<RK>
+    fun createRoom(name: String): Mono<out RK>
     fun roomSize(roomId: UUID): Mono<Int>
     fun roomMembers(roomId: UUID): Mono<Set<UUID>>
     fun deleteRoom(roomId: UUID): Mono<Void>

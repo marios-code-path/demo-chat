@@ -10,11 +10,12 @@ import java.time.Instant
 import java.util.*
 
 open class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
-                               val userHandleRepo: ChatUserHandleRepository) : ChatUserService<ChatUser, UserKey> {
-    override fun authenticateUser(handle: String, password: String): Mono<UserKey> =
+                               val userHandleRepo: ChatUserHandleRepository)
+    : ChatUserService<ChatUser, UserKey> {
+    override fun authenticateUser(handle: String, password: String): Mono<ChatUserKey> =
             userHandleRepo
                     .findByKeyHandle(handle)
-                    .handle<UserKey> { u, s ->
+                    .handle { u, s ->
                         when(u) {
                             null -> s.error(UserNotFoundException)
                             else -> s.next(ChatUserKey(u.key.userId, u.key.handle))

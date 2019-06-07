@@ -1,12 +1,10 @@
-package com.demo.chat
+package com.demo.chat.test
 
 
-import com.demo.chat.domain.ChatUser
-import com.demo.chat.domain.ChatUserKey
-import com.demo.chat.domain.RoomMemberships
-import com.demo.chat.domain.RoomNotFoundException
-import com.demo.chat.service.ChatRoomServiceCassandra
-import com.demo.chat.service.ChatUserServiceCassandra
+import com.demo.chat.*
+import com.demo.chat.domain.*
+import com.demo.chat.service.ChatRoomService
+import com.demo.chat.service.ChatUserService
 import io.rsocket.RSocket
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -20,7 +18,6 @@ import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketRequester
@@ -34,24 +31,21 @@ import java.util.*
 @SpringBootTest(classes = [ChatServiceRsocketApplication::class])
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestSetupConfig::class)
-class ChatRSocketRoomTests {
+@Import(RSocketTestConfig::class)
+class RSocketRoomTests {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     private lateinit var socket: RSocket
     private lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var rsboot: RSocketServerBootstrap
-
-    @Autowired
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    lateinit var roomService: ChatRoomServiceCassandra
+    lateinit var roomService: ChatRoomService<out Room<RoomKey>, RoomKey> //ChatRoomServiceCassandra
 
     @Autowired
-    lateinit var userService: ChatUserServiceCassandra
+    lateinit var userService: ChatUserService<out User<UserKey>, UserKey>
 
     val randomUserHandle = randomAlphaNumeric(4) + "User"
     val randomUserId: UUID = UUID.randomUUID()
@@ -68,40 +62,24 @@ class ChatRSocketRoomTests {
             setOf(randomUserId), true, Instant.now())
 
     @BeforeEach
-    fun setUp() {
-        when (rsboot.isRunning) {
-            false -> {
-                log.warn("RSocket Service is not already running");
-                rsboot.start()
-            }
-            else -> log.warn("RSocket Service is already running")
-        }
+    fun setUp(@Autowired config: RSocketTestConfig) {
+        config.rSocketInit()
+
         requestor = builder.connect(TcpClientTransport.create(7070)).block()!!
         socket = requestor.rsocket()
-
-        BDDMockito
-                .given(roomService.createRoom(anyObject()))
-                .willReturn(Mono.just(room.key))
-
-        BDDMockito
-                .given(roomService.joinRoom(anyObject(), anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(userService.getUsersById(anyObject()))
-                .willReturn(Flux.just(ChatUser(
-                        ChatUserKey(randomUserId, randomUserHandle),
-                        "NAME", Instant.now()
-                )))
     }
 
     @AfterEach
-    fun tearDown() {
-
+    fun tearDown(@Autowired config: RSocketTestConfig) {
+        config.rSocketComplete()
     }
 
     @Test
     fun `should create a room receive response`() {
+        BDDMockito
+                .given(roomService.createRoom(anyObject()))
+                .willReturn(Mono.just(room.key))
+
         StepVerifier.create(
                 requestor.route("room-create")
                         .data(TestRoomCreateRequest(randomRoomName))
@@ -188,6 +166,13 @@ class ChatRSocketRoomTests {
 
         BDDMockito.given(roomService.roomMembers(anyObject()))
                 .willReturn(Mono.just(roomWithMembers.members!!))
+
+        BDDMockito
+                .given(userService.getUsersById(anyObject()))
+                .willReturn(Flux.just(ChatUser(
+                        ChatUserKey(randomUserId, randomUserHandle),
+                        "NAME", Instant.now()
+                )))
 
         StepVerifier
                 .create(

@@ -15,11 +15,11 @@ import java.util.*
 open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepository,
                                        private val messageRoomRepo: ChatMessageRoomRepository)
     : ChatMessageService<TextMessage, MessageKey> {
-    override fun getMessage(id: UUID): Mono<out TextMessage> =
+    override fun getMessage(id: UUID): Mono<ChatMessage> =
             messageRepo
                     .findByKeyId(id)
 
-    override fun getTopicMessages(roomId: UUID): Flux<out TextMessage> = messageRoomRepo.findByKeyRoomId(roomId)
+    override fun getTopicMessages(roomId: UUID): Flux<ChatMessage> = messageRoomRepo.findByKeyRoomId(roomId)
             .map {
                 ChatMessage(
                         ChatMessageKey(

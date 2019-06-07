@@ -3,6 +3,7 @@ package com.demo.chat.service
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
+import com.demo.chat.domain.RoomKey
 import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.slf4j.LoggerFactory
@@ -11,7 +12,8 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-open class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomService<ChatRoom, ChatRoomKey> {
+open class ChatRoomServiceCassandra(private val roomRepo: ChatRoomRepository)
+    : ChatRoomService<ChatRoom, RoomKey> {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun getRoomById(id: UUID): Mono<ChatRoom> =
@@ -24,7 +26,7 @@ open class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoom
                         activeOnly == it.active
                     }
 
-    override fun createRoom(name: String): Mono<ChatRoomKey> =
+    override fun createRoom(name: String): Mono<RoomKey> =
             roomRepo
                     .saveRoom(ChatRoom(
                             ChatRoomKey(UUIDs.timeBased(), name),

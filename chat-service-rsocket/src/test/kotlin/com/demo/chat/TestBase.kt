@@ -14,9 +14,6 @@ import org.springframework.context.annotation.Configuration
 import java.time.Instant
 import java.util.*
 
-object TestBase
-
-
 fun <T> anyObject(): T {
     Mockito.anyObject<T>()
     return uninitialized()
