@@ -1,15 +1,10 @@
 package com.demo.chat.chatconsumers
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import reactor.core.publisher.Flux
-import reactor.test.StepVerifier
-import java.time.Duration
 import java.util.*
 
 @ExtendWith(SpringExtension::class)

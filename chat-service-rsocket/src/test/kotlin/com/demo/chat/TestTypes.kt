@@ -30,11 +30,6 @@ data class TestChatRoomKey(
         override val name: String
 ) : RoomKey
 
-data class TestAlertMessageKey(
-        override val id: UUID,
-        override val roomId: UUID,
-        override val timestamp: Instant
-) : MessageKey
 
 data class TestTextMessageKey(
         override val id: UUID,
@@ -42,6 +37,12 @@ data class TestTextMessageKey(
         override val roomId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
+
+data class TestAlertMessageKey(
+        override val id: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageKey
 
 @JsonTypeName("ChatMessage")
 data class TestTextMessage(

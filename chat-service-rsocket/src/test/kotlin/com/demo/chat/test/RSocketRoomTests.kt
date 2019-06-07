@@ -159,8 +159,8 @@ class RSocketRoomTests {
 
         BDDMockito
                 .given(userService.getUsersById(anyObject()))
-                .willReturn(Flux.just(ChatUser(
-                        ChatUserKey(randomUserId, randomUserHandle),
+                .willReturn(Flux.just(TestChatUser(
+                        TestChatUserKey(randomUserId, randomUserHandle),
                         "NAME", Instant.now()
                 )))
 

@@ -1,26 +1,19 @@
 package com.demo.chat.chatconsumers
 
-import com.demo.chat.domain.Room
-import com.demo.chat.domain.RoomKey
-import com.demo.chat.domain.User
-import com.demo.chat.domain.UserKey
+import com.demo.chat.domain.*
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonTypeName
 import reactor.core.publisher.Flux
 import java.time.Instant
 import java.util.*
 
 data class UserRequest(val userHandle: String)
-data class UserRequestId(val userId: UUID)
-data class UserRequestIdList(val userId: Flux<UUID>)
 data class UserCreateRequest(val name: String, val userHandle: String)
 data class UserCreateResponse(val user: ChatUser)
 data class UserResponse(val user: ChatUser)
 
 
 data class RoomCreateRequest(val roomName: String)
-data class RoomCreateResponse(val roomKey: ChatRoomKey)
-data class RoomRequest(val roomId: UUID)
-data class RoomResponse(val room: ChatRoom)
 
 data class RoomJoinRequest(val uid: UUID, val roomId: UUID)
 data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
@@ -49,3 +42,48 @@ data class ChatRoomKey(
         override val roomId: UUID,
         override val name: String
 ) : RoomKey
+
+
+data class ChatMessageKey(
+        override val id: UUID,
+        override val userId: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : TextMessageKey
+
+data class AlertMessageKey(
+        override val id: UUID,
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : MessageKey
+
+@JsonTypeName("ChatMessage")
+data class ChatMessage(
+        override val key: ChatMessageKey,
+        override val value: String,
+        override val visible: Boolean
+) : TextMessage
+
+
+@JsonTypeName("InfoAlert")
+data class TestInfoAlert(
+        override val key: AlertMessageKey,
+        override val value: RoomMetaData,
+        override val visible: Boolean
+) : Message<AlertMessageKey, RoomMetaData>
+
+@JsonTypeName("LeaveAlert")
+data class TestLeaveAlert(
+        override val key: AlertMessageKey,
+        override val value: UUID,
+        override val visible: Boolean
+) : Message<AlertMessageKey, UUID>
+
+@JsonTypeName("JoinAlert")
+data class TestJoinAlert(
+        override val key: AlertMessageKey,
+        override val value: UUID,
+        override val visible: Boolean
+) : Message<AlertMessageKey, UUID>
+
+
