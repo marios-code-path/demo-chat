@@ -1,7 +1,6 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
-import reactor.core.publisher.Flux
 import java.util.*
 
 data class UserRequest(val userHandle: String)
@@ -22,4 +21,3 @@ data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 
 data class MessagesRequest(val topicId: UUID)
 data class MessageRequest(val messageId: UUID)
-data class MessagesResponse(val messages: Message<MessageKey, Any>)

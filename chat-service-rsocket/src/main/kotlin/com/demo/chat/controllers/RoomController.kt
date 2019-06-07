@@ -17,12 +17,9 @@ class RoomController(val roomService: ChatRoomService<out Room<RoomKey>, RoomKey
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-create")
-    fun createRoom(req: RoomCreateRequest): Mono<RoomCreateResponse> =
+    fun createRoom(req: RoomCreateRequest): Mono<out RoomKey> =
             roomService
                     .createRoom(req.roomName)
-                    .map {
-                        RoomCreateResponse(it)
-                    }
 
     @MessageMapping("room-delete")
     fun deleteRoom(req: RoomRequest): Mono<Void> =
@@ -30,20 +27,14 @@ class RoomController(val roomService: ChatRoomService<out Room<RoomKey>, RoomKey
                     .deleteRoom(req.roomId)
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequest): Flux<RoomResponse> =
+    fun listRooms(req: RoomRequest): Flux<out Room<RoomKey>> =
             roomService
                     .getRooms(true)
-                    .map {
-                        RoomResponse(it)
-                    }
 
     @MessageMapping("room-id")
-    fun getRoom(req: RoomRequest): Mono<RoomResponse> =
+    fun getRoom(req: RoomRequest): Mono<out Room<RoomKey>> =
             roomService
                     .getRoomById(req.roomId)
-                    .map {
-                        RoomResponse(it)
-                    }
 
     @MessageMapping("room-join")
     fun joinRoom(req: RoomJoinRequest): Mono<Void> =

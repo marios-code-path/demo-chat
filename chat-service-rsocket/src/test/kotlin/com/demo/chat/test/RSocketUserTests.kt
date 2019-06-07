@@ -1,7 +1,8 @@
 package com.demo.chat.test
 
 import com.demo.chat.*
-import com.demo.chat.domain.*
+import com.demo.chat.domain.User
+import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserService
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -38,12 +39,12 @@ class RSocketUserTests {
     private lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var userService: ChatUserService<ChatUser, UserKey>
+    private lateinit var userService: ChatUserService<out User<UserKey>, UserKey>
 
     val randomHandle = randomAlphaNumeric(4)
     val randomName = randomAlphaNumeric(6)
     val randomUserId = UUID.randomUUID()!!
-    val user = ChatUser(ChatUserKey(randomUserId, randomHandle), randomName, Instant.now())
+    val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, Instant.now())
 
     @BeforeEach
     fun setUp(@Autowired config: RSocketTestConfig) {
@@ -61,27 +62,23 @@ class RSocketUserTests {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userService.createUser(anyObject(), anyObject()))
-                .willReturn(Mono.just(user))
+                .willReturn(Mono.just(randomUser))
 
         StepVerifier
                 .create(
                         requestor
                                 .route("user-create")
                                 .data(UserCreateRequest(randomName, randomHandle))
-                                .retrieveMono(TestUserCreateResponse::class.java)
+                                .retrieveMono(TestChatUser::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
                     Assertions
                             .assertThat(it)
                             .isNotNull
-
-                    Assertions
-                            .assertThat(it.user)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
 
-                    Assertions.assertThat(it.user.key)
+                    Assertions.assertThat(it.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
@@ -93,23 +90,19 @@ class RSocketUserTests {
     @Test
     fun `should get a user by handle`() {
         BDDMockito.given(userService.getUser(anyObject()))
-                .willReturn(Mono.just(user))
+                .willReturn(Mono.just(randomUser))
 
         StepVerifier
                 .create(
                         requestor
                                 .route("user-handle")
-                                .data(TestUserRequest(randomHandle))
-                                .retrieveMono(TestUserResponse::class.java)
+                                .data(UserRequest(randomHandle))
+                                .retrieveMono(TestChatUser::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
                     Assertions
-                            .assertThat(it)
-                            .isNotNull
-
-                    Assertions
-                            .assertThat(it.user.key)
+                            .assertThat(it.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
@@ -121,12 +114,12 @@ class RSocketUserTests {
     @Test
     fun `should list users`() {
         BDDMockito.given(userService.getUsersById(anyObject()))
-                .willReturn(Flux.just(user))
+                .willReturn(Flux.just(randomUser))
 
         StepVerifier.create(requestor
                 .route("user-id-list")
                 .data(Flux.just(UserRequestId(randomUserId)), UserRequestId::class.java)
-                .retrieveFlux(TestUserResponse::class.java)
+                .retrieveFlux(TestChatUser::class.java)
         )
                 .expectSubscription()
                 .assertNext {
@@ -136,12 +129,7 @@ class RSocketUserTests {
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
-                            .assertThat(it.user)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-
-                    Assertions
-                            .assertThat(it.user.key)
+                            .assertThat(it.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)

@@ -1,6 +1,8 @@
 package com.demo.chat.controllers
 
-import com.demo.chat.*
+import com.demo.chat.UserCreateRequest
+import com.demo.chat.UserRequest
+import com.demo.chat.UserRequestId
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserService
@@ -16,35 +18,21 @@ class UserController(val userService: ChatUserService<out User<UserKey>, UserKey
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-create")
-    fun createNewUser(userReq: UserCreateRequest): Mono<UserCreateResponse> =
+    fun createNewUser(userReq: UserCreateRequest): Mono<out User<UserKey>> =
             userService.createUser(userReq.name, userReq.userHandle)
-                    .map {
-                        UserCreateResponse(it)
-                    }
-
 
     @MessageMapping("user-handle")
-    fun findByHandle(userReq: UserRequest): Mono<UserResponse> =
+    fun findByHandle(userReq: UserRequest): Mono<out User<UserKey>> =
             userService.getUser(userReq.userHandle)
-                    .map {
-                        logger.info("The user is: $it")
-                        UserResponse(it!!)
-                    }
 
     @MessageMapping("user-id")
-    fun findByUserId(userReq: UserRequestId): Mono<UserResponse> =
+    fun findByUserId(userReq: UserRequestId): Mono<out User<UserKey>> =
             userService.getUserById(userReq.userId)
-                    .map {
-                        UserResponse(it)
-                    }
 
     @MessageMapping("user-id-list")
-    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<UserResponse> =
+    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User<UserKey>> =
             userService.getUsersById(userReq
                     .map {
                         it.userId
                     })
-                    .map {
-                        UserResponse(it)
-                    }
 }

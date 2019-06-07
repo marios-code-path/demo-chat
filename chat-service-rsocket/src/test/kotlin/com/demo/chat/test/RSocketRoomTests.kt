@@ -53,12 +53,12 @@ class RSocketRoomTests {
     val randomRoomName = randomAlphaNumeric(6) + "Room"
     val randomRoomId: UUID = UUID.randomUUID()
 
-    val room = com.demo.chat.domain.ChatRoom(
-            com.demo.chat.domain.ChatRoomKey(randomRoomId, randomRoomName),
+    val room = TestChatRoom(
+            TestChatRoomKey(randomRoomId, randomRoomName),
             emptySet(), true, Instant.now())
 
-    val roomWithMembers = com.demo.chat.domain.ChatRoom(
-            com.demo.chat.domain.ChatRoomKey(randomRoomId, randomRoomName),
+    val roomWithMembers = TestChatRoom(
+            TestChatRoomKey(randomRoomId, randomRoomName),
             setOf(randomUserId), true, Instant.now())
 
     @BeforeEach
@@ -82,18 +82,13 @@ class RSocketRoomTests {
 
         StepVerifier.create(
                 requestor.route("room-create")
-                        .data(TestRoomCreateRequest(randomRoomName))
-                        .retrieveMono(TestRoomCreateResponse::class.java)
+                        .data(RoomCreateRequest(randomRoomName))
+                        .retrieveMono(TestChatRoomKey::class.java)
         )
                 .expectSubscription()
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-
-                    Assertions
-                            .assertThat(it.roomKey)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                 }
@@ -111,7 +106,7 @@ class RSocketRoomTests {
                         requestor
                                 .route("room-list")
                                 .data(RoomRequest(UUID.randomUUID()))
-                                .retrieveFlux(TestRoomResponse::class.java)
+                                .retrieveFlux(TestChatRoom::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -119,16 +114,11 @@ class RSocketRoomTests {
                             .assertThat(it)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
-
-                    Assertions
-                            .assertThat(it.room)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
                             .hasFieldOrProperty("members")
 
                     Assertions
-                            .assertThat(it.room.key)
+                            .assertThat(it.key)
                             .isNotNull
                             .hasFieldOrPropertyWithValue("name", randomRoomName)
                             .hasFieldOrPropertyWithValue("roomId", randomRoomId)
