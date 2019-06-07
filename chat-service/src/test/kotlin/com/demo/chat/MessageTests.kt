@@ -151,7 +151,7 @@ class MessageTests {
                 is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                         .isNotNull
                         .hasFieldOrProperty("roomId")
-                else -> Assertions.assertThat(msg).`as`("Is a message, afte rall")
+                else -> Assertions.assertThat(msg).`as`("Is a message, afterall")
                         .isNotNull
                         .hasFieldOrProperty("key")
                         .hasFieldOrProperty("value")

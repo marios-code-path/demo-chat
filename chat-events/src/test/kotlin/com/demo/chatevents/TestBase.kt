@@ -29,7 +29,7 @@ data class TestTextMessage(
 
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
-        override val value: RoomInfo,
+        override val value: RoomMetaData,
         override val visible: Boolean
 ) : InfoAlert
 
@@ -46,7 +46,7 @@ data class TestJoinAlert(
         override val visible: Boolean
 ) : JoinAlert
 
-fun textMessageAssertion(msg: TextMessage) = { println(msg)
+fun textMessageAssertion(msg: TextMessage) {
     MatcherAssert
             .assertThat("A Text Message should have property state", msg,
                     Matchers.allOf(
@@ -62,14 +62,14 @@ fun textMessageAssertion(msg: TextMessage) = { println(msg)
 }
 
 
-class TestClosingKey(override val roomId: UUID) : ClosingKey {
+class TestClosingKey(override val roomId: UUID) : AlertMessageKey {
     override val id: UUID
         get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa0000000")
     override val timestamp: Instant
         get() = Instant.now()
 }
 
-class TestClosingAlert(override val key: ClosingKey) : ClosingAlert {
+class TestClosingAlert(override val key: AlertMessageKey) : ClosingAlert {
     override val value: UUID
         get() = UUID.fromString("ecb2cb88-5dd1-44c3-b818-defa1111111")
     override val visible: Boolean

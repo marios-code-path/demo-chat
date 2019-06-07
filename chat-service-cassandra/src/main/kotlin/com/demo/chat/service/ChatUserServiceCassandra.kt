@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
+open class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
                                val userHandleRepo: ChatUserHandleRepository) : ChatUserService<ChatUser, UserKey> {
     override fun authenticateUser(handle: String, password: String): Mono<UserKey> =
             userHandleRepo

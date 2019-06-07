@@ -4,6 +4,7 @@ import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.TextMessage
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
 import reactor.core.publisher.Flux
@@ -11,13 +12,14 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-class ChatMessageServiceCassandra(val messageRepo: ChatMessageRepository,
-                                  val messageRoomRepo: ChatMessageRoomRepository) : ChatMessageService<ChatMessage, MessageKey> {
-    override fun getMessage(id: UUID): Mono<ChatMessage> =
+open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepository,
+                                       private val messageRoomRepo: ChatMessageRoomRepository)
+    : ChatMessageService<TextMessage, MessageKey> {
+    override fun getMessage(id: UUID): Mono<out TextMessage> =
             messageRepo
                     .findByKeyId(id)
 
-    override fun getTopicMessages(roomId: UUID): Flux<ChatMessage> = messageRoomRepo.findByKeyRoomId(roomId)
+    override fun getTopicMessages(roomId: UUID): Flux<out TextMessage> = messageRoomRepo.findByKeyRoomId(roomId)
             .map {
                 ChatMessage(
                         ChatMessageKey(

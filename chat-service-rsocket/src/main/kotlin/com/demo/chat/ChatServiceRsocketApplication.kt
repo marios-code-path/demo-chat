@@ -1,11 +1,9 @@
 package com.demo.chat
 
-import com.demo.chat.domain.RoomMember
-import com.demo.chat.domain.RoomMemberships
-import com.demo.chat.repository.cassandra.ChatRoomNameRepository
-import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.repository.cassandra.ChatUserHandleRepository
-import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.domain.*
+import com.demo.chat.repository.cassandra.*
+import com.demo.chat.service.ChatMessageService
+import com.demo.chat.service.ChatMessageServiceCassandra
 import com.demo.chat.service.ChatRoomServiceCassandra
 import com.demo.chat.service.ChatUserServiceCassandra
 import com.fasterxml.jackson.annotation.JsonInclude
@@ -23,13 +21,18 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.FilterType
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @SpringBootApplication
+@ComponentScan(excludeFilters = [
+    ComponentScan.Filter(type = FilterType.ANNOTATION, value = [ExcludeFromTests::class])
+])
 class ChatServiceRsocketApplication
 
 fun main(args: Array<String>) {
@@ -37,7 +40,10 @@ fun main(args: Array<String>) {
     runApplication<ChatServiceRsocketApplication>(*args)
 }
 
+annotation class ExcludeFromTests
+
 @Configuration
+@ExcludeFromTests
 class ChatServiceModule {
     @Bean
     fun userService(userRepo: ChatUserRepository,
@@ -48,6 +54,11 @@ class ChatServiceModule {
     fun roomService(roomRepo: ChatRoomRepository,
                     roomNameRepo: ChatRoomNameRepository): ChatRoomServiceCassandra =
             ChatRoomServiceCassandra(roomRepo)
+
+    @Bean
+    fun messagesService(messageRepo: ChatMessageRepository,
+                        messageRoomRepo: ChatMessageRoomRepository): ChatMessageServiceCassandra =
+            ChatMessageServiceCassandra(messageRepo, messageRoomRepo)
 }
 
 @Controller
@@ -111,6 +122,21 @@ class RoomController(val roomService: ChatRoomServiceCassandra,
 }
 
 @Controller
+class MessageController(val messageService: ChatMessageService<TextMessage, MessageKey>) {
+    val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
+
+    @MessageMapping("message-list-topic")
+    fun getMessagesForTopic(req: MessagesRequest): Flux<out Message<MessageKey, Any>> =
+            messageService
+                    .getTopicMessages(req.topicId)
+
+    @MessageMapping("message-id")
+    fun getMessage(req: MessageRequest): Mono<out Message<MessageKey, Any>> =
+            messageService
+                    .getMessage(req.messageId)
+}
+
+@Controller
 class UserController(val userService: ChatUserServiceCassandra) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -138,8 +164,11 @@ class UserController(val userService: ChatUserServiceCassandra) {
                     }
 
     @MessageMapping("user-id-list")
-    fun findByUserIdList(userReq: UserRequestIdList): Flux<UserResponse> =
-            userService.getUsersById(userReq.userId)
+    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<UserResponse> =
+            userService.getUsersById(userReq
+                    .map {
+                        it.userId
+                    })
                     .map {
                         UserResponse(it)
                     }
@@ -182,4 +211,5 @@ class ChatRsocketUserServiceRunnable(val userService: ChatUserServiceCassandra) 
         closeable.block()
         logger.warn("STOPPED")
     }
+
 }

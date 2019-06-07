@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomService<ChatRoom, ChatRoomKey> {
+open class ChatRoomServiceCassandra(val roomRepo: ChatRoomRepository) : ChatRoomService<ChatRoom, ChatRoomKey> {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun getRoomById(id: UUID): Mono<ChatRoom> =
