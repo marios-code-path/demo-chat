@@ -18,14 +18,14 @@ class MemoryChatTopicServiceTests {
 
     val log = LoggerFactory.getLogger(this::class.java)
 
-    val topicService: ChatTopicService = MemoryChatTopicService()
+    val topicService: ChatTopicService = ChatTopicInMemoryService()
 
     @Test
     fun `validate user subscription`() {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val subscription = topicService.subscribeMember(userId, testRoom)
+        val subscription = topicService.subscribeToTopic(userId, testRoom)
 
         val steps = Mono.from(subscription)
                 .thenMany(
@@ -49,10 +49,10 @@ class MemoryChatTopicServiceTests {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val subscription = topicService.subscribeMember(userId, testRoom)
+        val subscription = topicService.subscribeToTopic(userId, testRoom)
 
         val steps = Mono.from(subscription)
-                .then(topicService.unsubscribeMember(userId, testRoom))
+                .then(topicService.unSubscribeFromTopic(userId, testRoom))
                 .thenMany(
                         Flux.defer {
                             Flux.fromStream(
@@ -73,7 +73,7 @@ class MemoryChatTopicServiceTests {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val subscription = topicService.subscribeMember(userId, testRoom)
+        val subscription = topicService.subscribeToTopic(userId, testRoom)
 
         val steps = Mono.from(subscription)
                 .thenMany(
@@ -107,8 +107,8 @@ class MemoryChatTopicServiceTests {
         StepVerifier
                 .create(
                         topicService
-                                .subscribeMember(userId, testRoom)
-                                .thenMany(topicService.getTopicStream(userId))
+                                .subscribeToTopic(userId, testRoom)
+                                .thenMany(topicService.receiveTopicEvents(userId))
                 )
                 .then {
                     messageSendSupplier.get().subscribe()
@@ -139,7 +139,7 @@ class MemoryChatTopicServiceTests {
                     }
                 }
                 .then {
-                    topicService.unsubscribeMemberAllTopics(userId).subscribe()
+                    topicService.unSubscribeFromAllTopics(userId).subscribe()
                 }
                 .expectComplete()
                 .verify(Duration.ofMillis(2000))
@@ -155,7 +155,7 @@ class MemoryChatTopicServiceTests {
 
         val subs = Flux
                 .fromStream(users.stream())
-                .flatMap { topicService.subscribeMember(it, testRoom) }
+                .flatMap { topicService.subscribeToTopic(it, testRoom) }
 
         StepVerifier
                 .create(subs)
@@ -167,9 +167,7 @@ class MemoryChatTopicServiceTests {
                 .containsAll(users)
 
         StepVerifier
-                .create(
-                        topicService.unsubscribeTopicAllMembers(testRoom)
-                )
+                .create(topicService.kickallFromTopic(testRoom))
                 .verifyComplete()
 
         Assertions.assertThat(topicService.getTopicMembers(testRoom))

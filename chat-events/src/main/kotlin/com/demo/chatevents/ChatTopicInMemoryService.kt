@@ -16,7 +16,7 @@ import java.util.*
  * A topic is a list of members which will receive messages sent to it.
  * A member is a subscriber to a topic
  */
-class MemoryChatTopicService : ChatTopicService, ChatTopicServiceAdmin {
+class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
@@ -54,7 +54,7 @@ class MemoryChatTopicService : ChatTopicService, ChatTopicServiceAdmin {
                         DirectProcessor.create()
                     }
 
-    override fun getTopicStream(topicId: UUID): Flux<Message<MessageKey, Any>> =
+    override fun receiveTopicEvents(topicId: UUID): Flux<Message<MessageKey, Any>> =
             topicFluxes
                     .getOrPut(topicId) {
                         val processor: DirectProcessor<Message<MessageKey, Any>> = getTopicProcessor(topicId)
@@ -75,21 +75,21 @@ class MemoryChatTopicService : ChatTopicService, ChatTopicServiceAdmin {
                 it.success()
             }.then()
 
-    override fun subscribeMember(uid: UUID, topicId: UUID): Mono<Void> = Mono
+    override fun subscribeToTopic(uid: UUID, topicId: UUID): Mono<Void> = Mono
             .create<Void> {
                 topicToMembers(topicId).add(uid)
                 memberToTopics(uid).add(topicId)
                 it.success()
             }.then()
 
-    override fun unsubscribeMember(uid: UUID, topicId: UUID): Mono<Void> = Mono
+    override fun unSubscribeFromTopic(uid: UUID, topicId: UUID): Mono<Void> = Mono
             .create<Void> {
                 topicToMembers(topicId).remove(uid)
                 memberToTopics(uid).remove(topicId)
                 it.success()
             }.then()
 
-    override fun unsubscribeMemberAllTopics(uid: UUID): Mono<Void> = Mono
+    override fun unSubscribeFromAllTopics(uid: UUID): Mono<Void> = Mono
             .create<Void> {
                 memberToTopics(uid)
                         .stream()
@@ -104,7 +104,7 @@ class MemoryChatTopicService : ChatTopicService, ChatTopicServiceAdmin {
                 it.success()
             }.then()
 
-    override fun unsubscribeTopicAllMembers(topicId: UUID): Mono<Void> = Mono
+    override fun kickallFromTopic(topicId: UUID): Mono<Void> = Mono
             .create<Void> {
                 topicToMembers(topicId)
                         .stream()
@@ -115,4 +115,6 @@ class MemoryChatTopicService : ChatTopicService, ChatTopicServiceAdmin {
                 getTopicProcessor(topicId).sink().complete()
                 it.success()
             }.then()
+
+    override fun closeTopic(topic: UUID): Mono<Void> = Mono.empty()
 }
