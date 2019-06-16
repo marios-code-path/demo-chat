@@ -1,9 +1,11 @@
-package com.demo.chat
+package com.demo.chatevents
 
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
+
+object TestTypes
 
 @JsonTypeName("ChatUser")
 data class TestChatUser(
@@ -44,13 +46,6 @@ data class TestAlertMessageKey(
         override val timestamp: Instant
 ) : MessageKey
 
-@JsonTypeName("ChatMessage")
-data class TestTextMessage(
-        override val key: TestTextMessageKey,
-        override val value: String,
-        override val visible: Boolean
-) : TextMessage
-
 
 @JsonTypeName("InfoAlert")
 data class TestInfoAlert(
@@ -72,3 +67,13 @@ data class TestJoinAlert(
         override val value: UUID,
         override val visible: Boolean
 ) : Message<TestAlertMessageKey, UUID>
+
+@JsonTypeName("ChatMessage")
+data class TestTextMessage(
+        override val key: TestTextMessageKey,
+        override val value: String,
+        override val visible: Boolean
+) : TextMessage
+
+@JsonTypeName("TopicData")
+data class TestTopicData(val state: Message<out MessageKey, Any>)

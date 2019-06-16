@@ -29,7 +29,8 @@
         <module>chat-service-cassandra</module>
         <module>chat-service-rsocket</module>
         <module>chat-consumers</module>
-	<module>chat-events</module>
+	    <module>chat-events</module>
+        <module>chat-gateway</module>
     </modules>
 
        <repositories>

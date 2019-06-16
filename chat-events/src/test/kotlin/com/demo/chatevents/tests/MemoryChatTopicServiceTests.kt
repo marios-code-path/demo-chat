@@ -1,6 +1,7 @@
-package com.demo.chatevents
+package com.demo.chatevents.tests
 
 import com.demo.chat.service.ChatTopicService
+import com.demo.chatevents.*
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
