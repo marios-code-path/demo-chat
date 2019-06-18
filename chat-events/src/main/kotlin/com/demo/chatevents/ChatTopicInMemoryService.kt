@@ -67,7 +67,7 @@ class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
     // how to join multiple streams to have fan-out without iterating through Fluxs
     override fun sendMessageToTopic(message: Message<MessageKey, Any>): Mono<Void> = Mono
             .create<Void> {
-                topicToMembers(message.key.roomId)
+                topicToMembers(message.key.topicId)
                         .stream()
                         .forEach { memberId ->
                             getTopicProcessor(memberId).onNext(message)

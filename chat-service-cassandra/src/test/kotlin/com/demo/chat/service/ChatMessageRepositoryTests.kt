@@ -4,11 +4,11 @@ import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
-import com.demo.chat.domain.ChatMessageRoom
-import com.demo.chat.domain.ChatMessageUser
+import com.demo.chat.domain.ChatMessageByTopic
+import com.demo.chat.domain.ChatMessageByUser
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
-import com.demo.chat.repository.cassandra.ChatMessageUserRepository
+import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
+import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -46,10 +46,10 @@ class ChatMessageRepositoryTests {
     lateinit var repo: ChatMessageRepository
 
     @Autowired
-    lateinit var byRoomRepo: ChatMessageRoomRepository
+    lateinit var byTopicRepo: ChatMessageByTopicRepository
 
     @Autowired
-    lateinit var byUserRepo: ChatMessageUserRepository
+    lateinit var byUserRepo: ChatMessageByUserRepository
 
     @Test
     fun `should save single msg find by message id`() {
@@ -79,7 +79,7 @@ class ChatMessageRepositoryTests {
 
         val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
                 ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
-        val findMsg = byRoomRepo.findByKeyRoomId(roomId)
+        val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -129,11 +129,11 @@ class ChatMessageRepositoryTests {
         val roomSelection = roomIds.random()
 
         val countOfMessagesInSelectedRoom = messages.toStream().asSequence()
-                .count { it.key.roomId == roomSelection }
+                .count { it.key.topicId == roomSelection }
 
         val saveMessageFlux = repo
                 .saveMessages(messages)
-                .thenMany(byRoomRepo.findByKeyRoomId(roomSelection))
+                .thenMany(byTopicRepo.findByKeyTopicId(roomSelection))
 
         // Expecting : ${countOfMessagesInSelectedRoom.toLong()} msgs for room ${roomSelection}
         StepVerifier
@@ -228,29 +228,29 @@ class ChatMessageRepositoryTests {
                     { assertNotNull(msg) },
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
-                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.key.topicId) },
                     { assertNotNull(msg.value) },
                     { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }
             )
 
-    fun chatMessageUserAssertion(msg: ChatMessageUser) =
+    fun chatMessageUserAssertion(msg: ChatMessageByUser) =
             assertAll("message contents in tact",
                     { assertNotNull(msg) },
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
-                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.key.topicId) },
                     { assertNotNull(msg.value) },
                     { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }
             )
 
-    fun chatMessageRoomAssertion(msg: ChatMessageRoom) =
+    fun chatMessageRoomAssertion(msg: ChatMessageByTopic) =
             assertAll("message contents in tact",
                     { assertNotNull(msg) },
                     { assertNotNull(msg.key.id) },
                     { assertNotNull(msg.key.userId) },
-                    { assertNotNull(msg.key.roomId) },
+                    { assertNotNull(msg.key.topicId) },
                     { assertNotNull(msg.value) },
                     { assertEquals(msg.value, "Welcome") },
                     { assertTrue(msg.visible) }

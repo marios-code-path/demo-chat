@@ -16,14 +16,14 @@ import java.util.stream.Stream
 // Variances of Keys we want
 data class TestAlertMessageKey(
         override val id: UUID,
-        override val roomId: UUID,
+        override val topicId: UUID,
         override val timestamp: Instant
 ) : AlertMessageKey
 
 data class TestTextMessageKey(
         override val id: UUID,
         override val userId: UUID,
-        override val roomId: UUID,
+        override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
 
@@ -117,7 +117,7 @@ class MessageTests {
                                 .hasFieldOrProperty("userId")
                         is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                                 .isNotNull
-                                .hasFieldOrProperty("roomId")
+                                .hasFieldOrProperty("topicId")
                         else -> {
                             Assertions.assertThat(msg).`as`("Is a message")
                                     .isNotNull
@@ -150,7 +150,7 @@ class MessageTests {
                         .hasFieldOrProperty("userId")
                 is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                         .isNotNull
-                        .hasFieldOrProperty("roomId")
+                        .hasFieldOrProperty("topicId")
                 else -> Assertions.assertThat(msg).`as`("Is a message, afterall")
                         .isNotNull
                         .hasFieldOrProperty("key")
@@ -182,7 +182,7 @@ class MessageTests {
             Assertions.assertThat(message.key)
                     .`as`("key is consistent state")
                     .isNotNull
-                    .hasFieldOrPropertyWithValue("roomId", roomId)
+                    .hasFieldOrPropertyWithValue("topicId", roomId)
 
             Assertions.assertThat(message.value)
                     .`as`("value is consistent state")

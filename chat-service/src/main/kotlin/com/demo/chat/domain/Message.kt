@@ -27,7 +27,7 @@ interface PauseAlert : Message<AlertMessageKey, UUID>
 
 interface MessageKey {
     val id: UUID
-    val roomId: UUID
+    val topicId: UUID
     val timestamp: Instant
 }
 

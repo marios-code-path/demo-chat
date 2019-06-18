@@ -7,12 +7,12 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatMessageUserRepository : ReactiveCassandraRepository<ChatMessageUser, UUID> {
-    fun findByKeyUserId(userId: UUID) : Flux<ChatMessageUser>
+interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
+    fun findByKeyUserId(userId: UUID) : Flux<ChatMessageByUser>
 }
 
-interface ChatMessageRoomRepository : ReactiveCassandraRepository<ChatMessageRoom, UUID> {
-    fun findByKeyRoomId(roomId: UUID) : Flux<ChatMessageRoom>
+interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessageByTopic, UUID> {
+    fun findByKeyTopicId(topicId: UUID) : Flux<ChatMessageByTopic>
 }
 
 interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, UUID> {
@@ -31,22 +31,22 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
         cassandra
                 .batchOps()
                 .insert(msg)
-                .insert(ChatMessageUser(
-                        ChatMessageUserKey(
+                .insert(ChatMessageByUser(
+                        ChatMessageByUserKey(
                                 msg.key.id,
                                 msg.key.userId,
-                                msg.key.roomId,
+                                msg.key.topicId,
                                 msg.key.timestamp
                         ),
                         msg.value,
                         msg.visible
 
                 ))
-                .insert(ChatMessageRoom(
-                        ChatMessageRoomKey(
+                .insert(ChatMessageByTopic(
+                        ChatMessageByTopicKey(
                                 msg.key.id,
                                 msg.key.userId,
-                                msg.key.roomId,
+                                msg.key.topicId,
                                 msg.key.timestamp
                         ),
                         msg.value,

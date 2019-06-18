@@ -2,7 +2,6 @@ package com.demo.chat.service
 
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.domain.ChatMessageKey
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -37,7 +36,7 @@ class ChatMessageTests {
                 { assertNotNull(msg) },
                 { assertNotNull(msg.key.id) },
                 { assertNotNull(msg.key.userId) },
-                { assertNotNull(msg.key.roomId) },
+                { assertNotNull(msg.key.topicId) },
                 { assertNotNull(msg.key.timestamp) },
                 { assertNotNull(msg.value) },
                 { assertEquals(msg.value, someBody) },

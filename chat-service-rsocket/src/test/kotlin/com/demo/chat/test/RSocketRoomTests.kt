@@ -121,7 +121,7 @@ class RSocketRoomTests {
                             .assertThat(it.key)
                             .isNotNull
                             .hasFieldOrPropertyWithValue("name", randomRoomName)
-                            .hasFieldOrPropertyWithValue("roomId", randomRoomId)
+                            .hasFieldOrPropertyWithValue("topicId", randomRoomId)
                 }
                 .verifyComplete()
 

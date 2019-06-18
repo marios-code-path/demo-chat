@@ -1,10 +1,9 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.config.CassandraConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
+import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
 import org.slf4j.LoggerFactory
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Import
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -37,7 +35,7 @@ class ChatMessageServiceTests {
     lateinit var msgRepo: ChatMessageRepository
 
     @MockBean
-    lateinit var msgRoomRepo: ChatMessageRoomRepository
+    lateinit var msgByTopicRepo: ChatMessageByTopicRepository
 
     val rid: UUID = UUID.randomUUID()
 
@@ -46,15 +44,15 @@ class ChatMessageServiceTests {
     @BeforeEach
     fun setUp() {
         val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
-        val byRoomMessage = ChatMessageRoom(ChatMessageRoomKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
+        val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 
         Mockito.`when`(msgRepo.saveMessage(anyObject()))
                 .thenReturn(Mono.just(newMessage))
 
-        Mockito.`when`(msgRoomRepo.findByKeyRoomId(anyObject()))
+        Mockito.`when`(msgByTopicRepo.findByKeyTopicId(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
-        msgSvc = ChatMessageServiceCassandra(msgRepo, msgRoomRepo)
+        msgSvc = ChatMessageServiceCassandra(msgRepo, msgByTopicRepo)
     }
 
     @Test
@@ -122,7 +120,7 @@ class ChatMessageServiceTests {
                 .assertNext {
                     assertAll("message",
                             { assertNotNull(it.id) },
-                            { assertNotNull(it.roomId) }
+                            { assertNotNull(it.topicId) }
                     )
                 }
                 .verifyComplete()

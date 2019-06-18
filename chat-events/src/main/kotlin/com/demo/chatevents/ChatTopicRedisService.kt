@@ -104,7 +104,7 @@ class ChatTopicRedisService(
         return messageTemplate
                 .opsForStream<String, TopicData>()
                 .add(MapRecord
-                        .create(prefixTopicStreamKey + message.key.roomId.toString(), map)
+                        .create(prefixTopicStreamKey + message.key.topicId.toString(), map)
                         .withId(recordId))
                 .then()
     }
@@ -149,7 +149,7 @@ data class ChatMessage(
 data class ChatMessageKey(
         override val id: UUID,
         override val userId: UUID,
-        override val roomId: UUID,
+        override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
 

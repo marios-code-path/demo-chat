@@ -15,7 +15,7 @@ fun textMessageAssertion(msg: TextMessage) {
                                     Matchers
                                             .allOf(Matchers.notNullValue(),
                                                     Matchers.hasProperty("userId"),
-                                                    Matchers.hasProperty("roomId"))
+                                                    Matchers.hasProperty("topicId"))
                             ))
             )
 }

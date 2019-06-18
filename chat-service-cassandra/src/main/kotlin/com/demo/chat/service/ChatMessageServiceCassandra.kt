@@ -6,26 +6,26 @@ import com.demo.chat.domain.ChatMessageKey
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.repository.cassandra.ChatMessageRoomRepository
+import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
 open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepository,
-                                       private val messageRoomRepo: ChatMessageRoomRepository)
+                                       private val messageByTopicRepo: ChatMessageByTopicRepository)
     : ChatMessageService<TextMessage, MessageKey> {
     override fun getMessage(id: UUID): Mono<ChatMessage> =
             messageRepo
                     .findByKeyId(id)
 
-    override fun getTopicMessages(roomId: UUID): Flux<ChatMessage> = messageRoomRepo.findByKeyRoomId(roomId)
+    override fun getTopicMessages(roomId: UUID): Flux<ChatMessage> = messageByTopicRepo.findByKeyTopicId(roomId)
             .map {
                 ChatMessage(
                         ChatMessageKey(
                                 it.key.id,
                                 it.key.userId,
-                                it.key.roomId,
+                                it.key.topicId,
                                 it.key.timestamp
                         ),
                         it.value,

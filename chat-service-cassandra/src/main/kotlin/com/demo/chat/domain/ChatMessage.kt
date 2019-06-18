@@ -21,52 +21,52 @@ data class ChatMessageKey(
         override val id: UUID,
         @Column("user_id")
         override val userId: UUID,
-        @Column("room_id")
-        override val roomId: UUID,
+        @Column("topic_id")
+        override val topicId: UUID,
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val timestamp: Instant
 ) : TextMessageKey
 
 // ChatMessage By User
 @Table("chat_message_user")
-data class ChatMessageUser(
+data class ChatMessageByUser(
         @PrimaryKey
-        override val key: ChatMessageUserKey,
+        override val key: ChatMessageByUserKey,
         @Column("text")
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
 
 @PrimaryKeyClass
-data class ChatMessageUserKey(
+data class ChatMessageByUserKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val userId: UUID,
-        @Column("room_id")
-        override val roomId: UUID,
+        @Column("topic_id")
+        override val topicId: UUID,
         @Column("msg_time")
         override val timestamp: Instant
 ) : TextMessageKey
 
 // ChatMessage By User
-@Table("chat_message_room")
-data class ChatMessageRoom(
+@Table("chat_message_topic")
+data class ChatMessageByTopic(
         @PrimaryKey
-        override val key: ChatMessageRoomKey,
+        override val key: ChatMessageByTopicKey,
         @Column("text")
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
 
 @PrimaryKeyClass
-data class ChatMessageRoomKey(
+data class ChatMessageByTopicKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val userId: UUID,
-        @Column("room_id")
-        override val roomId: UUID,
+        @Column("topic_id")
+        override val topicId: UUID,
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
         override val timestamp: Instant
 ) : TextMessageKey

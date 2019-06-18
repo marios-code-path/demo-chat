@@ -38,6 +38,6 @@ class ChatServiceModule {
 
     @Bean
     fun messagesService(messageRepo: ChatMessageRepository,
-                        messageRoomRepo: ChatMessageRoomRepository): ChatMessageService<out TextMessage, MessageKey> =
-            ChatMessageServiceCassandra(messageRepo, messageRoomRepo)
+                        messageByTopicRepo: ChatMessageByTopicRepository): ChatMessageService<out TextMessage, MessageKey> =
+            ChatMessageServiceCassandra(messageRepo, messageByTopicRepo)
 }

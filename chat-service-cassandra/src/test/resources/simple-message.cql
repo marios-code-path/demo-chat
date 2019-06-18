@@ -6,7 +6,7 @@ USE chat;
 CREATE TABLE chat_message (
     msg_id TIMEUUID,
     user_id UUID,
-    room_id UUID,
+    topic_id UUID,
     text    varchar,
     msg_time timestamp,
     visible Boolean,
@@ -16,21 +16,21 @@ WITH CLUSTERING ORDER BY (msg_time DESC);
 CREATE TABLE chat_message_user (
 msg_id TIMEUUID,
 user_id UUID,
-room_id UUID,
+topic_id UUID,
 text    varchar,
 msg_time timestamp,
 visible Boolean,
 PRIMARY KEY (user_id, msg_time, msg_id))
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
-CREATE TABLE chat_message_room (
+CREATE TABLE chat_message_topic (
 msg_id TIMEUUID,
 user_id UUID,
-room_id UUID,
+topic_id UUID,
 text    varchar,
 msg_time timestamp,
 visible Boolean,
-PRIMARY KEY (room_id, msg_time, msg_id))
+PRIMARY KEY (topic_id, msg_time, msg_id))
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 

@@ -37,7 +37,7 @@ With this picture in mind, lets model the characteristics of our message keys:
 * Messages by TOPIC-Id
 * Messages by TOPIC-Id && DATE
 
-Thus, our chat message will have the following shape: 
+Thus, our canonical chat message will have the following shape: 
 
 ChatMessage.kt:
 
@@ -50,9 +50,26 @@ ChatMessage.kt:
             override val visible: Boolean
     ) : TextMessage
 
-In order to satisfy our access requirements, lets plug some key fields into our 'key class' and re-use in the other access scenarios ( topic-Id, Date ). For this use case, I decided to partition on msg_id specifically to address the needs of many random message seeks. While userId and roomId are available on this key, we do so in keeping the contract with TextMessageKey interface.
+and it's mundane, single partition key property class.
 
-ChatMessageKey.kt:
+ChatMessageByTopicKey.kt:
+    
+    @PrimaryKeyClass
+    class ChatMessageKey(
+            @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+            override val id: UUID,
+            @Column("user_id")
+            override val userId: UUID,
+            @Column("room_id")
+            override val roomId: UUID,
+            override val timestamp: Instant
+    ) : TextMessageKey
+    
+This Class must be duplicated for 3 separate indexing strategies: by-id, by-topic, and by-user. Full source to these table-variants is [browse-able here](https://github.com/marios-code-path/demo-chat/blob/master/chat-service-cassandra/src/main/kotlin/com/demo/chat/domain/ChatMessage.kt).
+
+To be brief, lets examine the by-topic message key variants. We breakdown column and index configuration by looking at `ChatMessageByTopicKey`
+
+ChatMessageByTopicKey.kt:
     
     @PrimaryKeyClass
     class ChatMessageKey(
@@ -65,12 +82,22 @@ ChatMessageKey.kt:
             override val timestamp: Instant
     ) : TextMessageKey
 
-In order to supply messages by topic, we can specify topic_id as Partition key. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
 
-ChatMessageTopicKey.kt:
+As the JAVADOC for `@PrimaryKeyColumn` states:
+
+PrimaryKeyColumn.java:
+
+     * Identifies the annotated field of a composite primary key class as a primary key field that is either a partition or
+     * cluster key field. Annotated properties must be either reside in a {@link PrimaryKeyClass} to be part of the
+     * composite key or annotated with {@link org.springframework.data.annotation.Id} to identify a single property as
+     * primary key column.
+
+Note that use of `@PrimaryKeyColumn` is specific to our particular use-case wherein `@PrimaryKeyClass` is used to denote [the class holding our composite types](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_using/useCompositePartitionKeyConcept.html) in use on this data type.
+
+ChatMessageByTopicKey.kt:
 
 	@PrimaryKeyClass
-	data class ChatMessageTopicKey(
+	data class ChatMessageByTopicKey(
              @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
              override val id: UUID,
              @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
@@ -80,7 +107,9 @@ ChatMessageTopicKey.kt:
              @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
              override val timestamp: Instant
 	) : TextMessageKey
-    
+
+
+Now, because we are re-using the same class with different tables, we must also annotate our ChatMessage___(topic user and standard) w
 # This Application Needs Query
 
 Use this space to introduce custom Implementations of ReactiveRepositories, Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).
