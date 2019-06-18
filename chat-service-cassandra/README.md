@@ -8,14 +8,16 @@ categories = ["spring","cassandra","data","spring-data"]
 tags = ["demo","spring","webflux","cassandra","data"]
 +++
 
-# The domain 
+# This Application Needs Data
  
-This sort of application will provide data seek and storage access by implementing the `chat-service` interfaces dissussed [in this article](http://www.). We will use Reactive extensions to make maximum flexability of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
+This sort of application will provide data seek and storage access by implementing the [chat messages](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/domain/Message.kt) and [chat services](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/service/ChatService.kt) interfaces in order to compoase a Cassandra-based data-backend to our application. We will use Reactive extensions to make maximum flexability of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
 
 
 # That Data Model Over There (TDMMOT)
 
-This part of the tutorial will focus on chat message data modeling, and access/retrieve operations as (described)[http://www.sudoinit5.com/demo-chat]. The first course of action here is to identify the access methods we will need thus we can construct partition-keys using the (composite key)[http://datastax/composite-key] method.
+This part of the tutorial will focus on chat message data modeling, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
+
+The first course of action here is to identify the access methods we will need across our data type - in this case, a message - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
 * Retrieve Messages by Message-Id (id field)
 * Retrieve by TOPIC-Id (roomId field)
@@ -63,5 +65,12 @@ ChatMessageTopic.kt:
             override val visible: Boolean
         ) : TextMessage
 
+# This Application Needs Query
+
+Use this space to introduce custom Implementations of ReactiveRepositories, Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).
+
+# Next Step - Configuration
+
+With the vital data pieces lined up, lets take advantage our our (hopefully pluggable) data layer to expose endpoints which consume them as microservices.... On to the [r-socket modules](https://github.com/marios-code-path/demo-chat/tree/master/chat-service-rsocket).
 
 
