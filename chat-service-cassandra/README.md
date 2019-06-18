@@ -23,6 +23,9 @@ This part of the tutorial will focus on chat message data modeling, and access/r
 
 Thus, our chat message will have the following shape: 
 
+.`ChatMessage.kt`
+[source,java,indent=0]
+----
 @Table("chat_message")
 data class ChatMessage(
         @PrimaryKey
@@ -31,9 +34,13 @@ data class ChatMessage(
         override val data: String,
         override val visible: Boolean
 ) : TextMessage
+----
 
 In order to satisfy our access requirements, lets plug some key fields into our 'key class' and re-use in the other access scenarios ( topic-Id, Date ). For this use case, I decided to partition on msg_id specifically to address the needs of many random message seeks. While userId and roomId are available on this key, we do so in keeping the contract with TextMessageKey interface.
 
+.`ChatMNessageKey.kt`
+[source,kotlin,indent=0]
+----
 @PrimaryKeyClass
 class ChatMessageKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
@@ -44,17 +51,22 @@ class ChatMessageKey(
         override val roomId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
+----
 
-In order to supply messages in the topics domain, we will create another key that specifies topid_id as the Partition type. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
+In order to supply messages in the topics domain, we will create another key that specifies topic_id as the Partition type. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
+
+.`ChatMessageTopic.kt`
+[source,java,indent=0]
+----
+@Table("chat_message_room")
+data class ChatMessageRoom(
+        @PrimaryKey
+        override val key: ChatMessageRoomKey,
+        @Column("text")
+        override val value: String,
+        override val visible: Boolean
+) : TextMessage
+----
 
 
-  
 
-
-* [WEBFLUX](https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html)
-* [Reactive Security 5](https://spring.io/blog/2017/10/04/spring-tips-reactive-spring-security)
-* [lombok](https://projectlombok.org)
-
-# Review
-
-This brief overview should set you up for engaging the ServerHttpSecurity components. Following it's fluent API is a breeze once we get to know the components that we visit.
