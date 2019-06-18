@@ -2,7 +2,7 @@
 date = 2018-07-05
 publishDate = 2018-07-05
 title = "Hey, look! Its a chat app!"
-description = "A little demonstration of publish-subscribe reactive elements when dealing with CQL/Cassandra as primary datasource"
+description = "A little implementation for cassandra backed messages, users, and app metadata""
 toc = true
 categories = ["spring","cassandra","data","spring-data"]
 tags = ["demo","spring","webflux","cassandra","data"]
@@ -10,46 +10,48 @@ tags = ["demo","spring","webflux","cassandra","data"]
 
 # The domain 
  
- This application will expose several! endpoints for providing a publish-subscribe, and app-action subset API with JSON/REST as the main method of access.
- Essentially, we have to model what it means to interact with app-specific topics called `chatrooms`, while also abstracting away app-specific user-details, and communications plumbing.
- To start, lets create the model for our user - 
- 
- A user is composed of several basic properties and a key that will allow us to store and retrieve from Cassandra with column specific criteria.
- 
-ChatUser.kt:
+ This sort of application will provide data seek and storage access by implementing the `chat-service` interfaces dissussed [in this article](http://www.). We will use Reactive extensions to make maximum flexability of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
 
-    @Table("chat_user")
-    data class ChatUser(
+
+# That Data Model Over There (TDMMOT)
+
+This part of the tutorial will focus on chat message data modeling, and access/retrieve operations as (described)[http://www.sudoinit5.com/demo-chat]. The first course of action here is to identify the access methods we will need thus we can construct partition-keys using the (composite key)[http://datastax/composite-key] method.
+
+* Retrieve Messages by Message-Id (id field)
+* Retrieve by TOPIC-Id (roomId field)
+* Retrieve by TOPIC-Id in a specific date-range (timestamp or /uuID field)
+
+Thus, our chat message will have the following shape: 
+
+@Table("chat_message")
+data class ChatMessage(
         @PrimaryKey
-        @PrimaryKeyColumn(type = PrimaryKeyType.PARTITIONED, ordinal = 1)
-        var id: UUID,
-        val handle: String,
-        val name: String,
-        val timestamp: Date
-    )  
+        override val key: ChatMessageKey,
+        @Column("data")
+        override val data: String,
+        override val visible: Boolean
+) : TextMessage
 
-Important to the understanding of our app, are the 'handle' (nickname), and 'id'. In order to search on one key,
-we will model our data around which property that is indexed.  Because we will search by handle, lets add a new entity
-that finds rows given a specific handle.
+In order to satisfy our access requirements, lets plug some key fields into our 'key class' and re-use in the other access scenarios ( topic-Id, Date ). For this use case, I decided to partition on msg_id specifically to address the needs of many random message seeks. While userId and roomId are available on this key, we do so in keeping the contract with TextMessageKey interface.
 
-ChatUserHandle.kt:
+@PrimaryKeyClass
+class ChatMessageKey(
+        @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+        override val id: UUID,
+        @Column("user_id")
+        override val userId: UUID,
+        @Column("room_id")
+        override val roomId: UUID,
+        override val timestamp: Instant
+) : TextMessageKey
 
-@Table("chat_user_handle")
-data class ChatUserByHandle(
-        var id: UUID,
-        @PrimaryKey
-        @PrimaryKeyColumn(type = PrimaryKeyType.PARTITIONED, ordinal = 1)
-        val handle: String,
-        val name: String,
-        val timestamp: Date
-)
-
-This `ChatUser` model will use `handle` as it's primary key.
+In order to supply messages in the topics domain, we will create another key that specifies topid_id as the Partition type. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
 
 
-## Getting Started
+  
 
-* [WebFlux](https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html)
+
+* [WEBFLUX](https://docs.spring.io/spring/docs/5.0.0.BUILD-SNAPSHOT/spring-framework-reference/html/web-reactive.html)
 * [Reactive Security 5](https://spring.io/blog/2017/10/04/spring-tips-reactive-spring-security)
 * [lombok](https://projectlombok.org)
 

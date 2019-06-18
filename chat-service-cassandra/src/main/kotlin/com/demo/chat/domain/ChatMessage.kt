@@ -9,14 +9,14 @@ import java.util.*
 @Table("chat_message")
 data class ChatMessage(
         @PrimaryKey
-        override val key: ChatMessageKey,
+        override val key: TextMessageKey,
         @Column("text")
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
 
 @PrimaryKeyClass
-class ChatMessageKey(
+data class ChatMessageKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID,
         @Column("user_id")

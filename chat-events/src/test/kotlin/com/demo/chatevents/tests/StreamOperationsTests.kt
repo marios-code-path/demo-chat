@@ -1,18 +1,6 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.TextMessage
 import com.demo.chatevents.*
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.annotation.JsonSubTypes
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -20,7 +8,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
@@ -37,6 +24,7 @@ import redis.embedded.RedisServer
 import java.io.File
 import java.time.Instant
 import java.util.*
+import java.util.stream.Stream
 
 @ExtendWith(SpringExtension::class)
 @Import(ChatEventsRedisConfiguration::class)
@@ -53,9 +41,6 @@ class StreamOperationsTests {
     private lateinit var template: ReactiveRedisTemplate<String, String>
 
     private lateinit var msgTemplate: ReactiveRedisTemplate<String, TopicData>
-
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
 
     @BeforeAll
     fun setupRedis() {
@@ -79,23 +64,25 @@ class StreamOperationsTests {
     fun tearDown() = redisServer.stop()
 
     @Test
-    fun `ser deser`() {
-        val testRoomId = UUID.randomUUID()
-        val testEventId = UUID.randomUUID()
-        val testUserId = UUID.randomUUID()
+    fun `should receive up to 5 messages over 1 minutes`() {
+        val testStreamKey = "TEST_STREAM_" + UUID.randomUUID().toString()
 
-        val message = TestTextMessage(
-                TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
-                "TEST MESSAGE",
-                true
-        )
-        objectMapper.registerSubtypes(TestTextMessage::class.java)
+        val messageStream = Stream
+                .generate {
+                    val testRoomId = UUID.randomUUID()
+                    val testEventId = UUID.randomUUID()
+                    val testUserId = UUID.randomUUID()
 
-        val topic: String = objectMapper.writeValueAsString(TopicData(message))
+                    TestTextMessage(
+                            TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
+                            "TEST ${randomText()}",
+                            true
+                    )
+                }
+                .limit(5)
 
-        val obj = objectMapper.readValue(topic, TopicData::class.java)
 
-        logger.info("Object :${topic}")
+
     }
 
     @Test
@@ -105,14 +92,11 @@ class StreamOperationsTests {
         val testEventId = UUID.randomUUID()
         val testUserId = UUID.randomUUID()
 
-        objectMapper.registerSubtypes(TestTextMessage::class.java)
-
         val message = TestTextMessage(
                 TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
                 "TEST MESSAGE",
                 true
         )
-        val json: String = objectMapper.writeValueAsString(TopicData(message))
 
         val recordId = RecordId.autoGenerate()
 
@@ -120,17 +104,14 @@ class StreamOperationsTests {
 
         val sendStream = msgTemplate
                 .opsForStream<String, TopicData>()
-//                .add(Record.of<String,TopicData>(TopicData(message)).withStreamKey(testStreamKey))
                 .add(MapRecord
                         .create(testStreamKey, map)
                         .withId(recordId))
                 .checkpoint("Send")
 
-        val obj = objectMapper.readValue(json, TopicData::class.java)
-
         val receiveStream = msgTemplate
                 .opsForStream<String, TopicData>()
-                .read( StreamOffset.fromStart(testStreamKey))
+                .read(StreamOffset.fromStart(testStreamKey))
                 .map {
                     it.value
                 }
@@ -151,7 +132,6 @@ class StreamOperationsTests {
 
                     val data = it["data"]?.state
 
-                            //objectMapper.readValue(it["data"]?.state, TestTextMessage::class.java)
                     Assertions
                             .assertThat(data)
                             .isNotNull
