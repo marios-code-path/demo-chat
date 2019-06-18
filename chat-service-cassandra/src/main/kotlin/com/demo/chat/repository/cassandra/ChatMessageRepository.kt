@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
+interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, ChatMessageByUserKey> {
     fun findByKeyUserId(userId: UUID) : Flux<ChatMessageByUser>
 }
 

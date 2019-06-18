@@ -6,14 +6,14 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
-@Table("chat_message")
-data class ChatMessage(
+open class ChatMessageType<T : TextMessageKey>(
         @PrimaryKey
-        override val key: ChatMessageKey,
+        override val key: T,
         @Column("text")
         override val value: String,
+        @Column("visible")
         override val visible: Boolean
-) : TextMessage
+) : Message<T, String>
 
 @PrimaryKeyClass
 data class ChatMessageKey(
@@ -27,16 +27,6 @@ data class ChatMessageKey(
         override val timestamp: Instant
 ) : TextMessageKey
 
-// ChatMessage By User
-@Table("chat_message_user")
-data class ChatMessageByUser(
-        @PrimaryKey
-        override val key: ChatMessageByUserKey,
-        @Column("text")
-        override val value: String,
-        override val visible: Boolean
-) : TextMessage
-
 @PrimaryKeyClass
 data class ChatMessageByUserKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
@@ -49,16 +39,6 @@ data class ChatMessageByUserKey(
         override val timestamp: Instant
 ) : TextMessageKey
 
-// ChatMessage By User
-@Table("chat_message_topic")
-data class ChatMessageByTopic(
-        @PrimaryKey
-        override val key: ChatMessageByTopicKey,
-        @Column("text")
-        override val value: String,
-        override val visible: Boolean
-) : TextMessage
-
 @PrimaryKeyClass
 data class ChatMessageByTopicKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
@@ -70,3 +50,18 @@ data class ChatMessageByTopicKey(
         @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
         override val timestamp: Instant
 ) : TextMessageKey
+
+@Table("chat_message_user")
+class ChatMessageByUser(key: ChatMessageByUserKey,
+                        value: String,
+                        visible: Boolean) : ChatMessageType<ChatMessageByUserKey>(key, value, visible)
+
+@Table("chat_message")
+class ChatMessage(key: ChatMessageKey,
+                  value: String,
+                  visible: Boolean) : ChatMessageType<ChatMessageKey>(key, value, visible)
+
+@Table("chat_message_topic")
+class ChatMessageByTopic(key: ChatMessageByTopicKey,
+                         value: String,
+                         visible: Boolean) : ChatMessageType<ChatMessageByTopicKey>(key, value, visible)

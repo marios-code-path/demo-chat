@@ -1,10 +1,7 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.ChatMessage
-import com.demo.chat.domain.ChatMessageKey
-import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import reactor.core.publisher.Flux
@@ -14,12 +11,12 @@ import java.util.*
 
 open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepository,
                                        private val messageByTopicRepo: ChatMessageByTopicRepository)
-    : ChatMessageService<TextMessage, MessageKey> {
-    override fun getMessage(id: UUID): Mono<ChatMessage> =
-            messageRepo
+    : ChatMessageService<Message<TextMessageKey, Any>, TextMessageKey> {
+    override fun getMessage(id: UUID): Mono<out Message<TextMessageKey, Any>> = messageRepo
                     .findByKeyId(id)
 
-    override fun getTopicMessages(roomId: UUID): Flux<ChatMessage> = messageByTopicRepo.findByKeyTopicId(roomId)
+    override fun getTopicMessages(roomId: UUID): Flux<out Message<TextMessageKey, Any>> = messageByTopicRepo
+            .findByKeyTopicId(roomId)
             .map {
                 ChatMessage(
                         ChatMessageKey(
@@ -33,8 +30,7 @@ open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepos
                 )
             }
 
-    override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<MessageKey> =
-            messageRepo
+    override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<out TextMessageKey> = messageRepo
                     .saveMessage(ChatMessage(ChatMessageKey(UUIDs.timeBased(),
                             uid,
                             roomId,

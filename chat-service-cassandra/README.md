@@ -19,9 +19,9 @@ This part of the tutorial will focus on chat message data modeling, and access/r
 
 The first course of action here is to identify the access methods we will need across our data type - in this case, a message - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
-## But, why multiple data classes?
+## NOSQL? Whats that?
 
-The following picture describes the basic data-access strategy working in Cassandra Column Families:
+The following picture describes the basic data-access strategy working in Cassandra [Column Families](https://academy.datastax.com/units/data-model-and-cql-column-families):
 
 SomeMaps.java:
 
@@ -50,9 +50,9 @@ ChatMessage.kt:
             override val visible: Boolean
     ) : TextMessage
 
-and it's mundane, single partition key property class.
+and it's mundane, single partition-key property bearing class.
 
-ChatMessageByTopicKey.kt:
+ChatMessageKey.kt:
     
     @PrimaryKeyClass
     class ChatMessageKey(
@@ -71,16 +71,17 @@ To be brief, lets examine the by-topic message key variants. We breakdown column
 
 ChatMessageByTopicKey.kt:
     
-    @PrimaryKeyClass
-    class ChatMessageKey(
-            @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-            override val id: UUID,
-            @Column("user_id")
-            override val userId: UUID,
-            @Column("room_id")
-            override val roomId: UUID,
-            override val timestamp: Instant
-    ) : TextMessageKey
+	@PrimaryKeyClass
+	data class ChatMessageByTopicKey(
+             @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
+             override val id: UUID,
+             @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+             override val userId: UUID,
+             @Column("topic_id")
+             override val topicId: UUID,
+             @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
+             override val timestamp: Instant
+	) : TextMessageKey
 
 
 As the JAVADOC for `@PrimaryKeyColumn` states:
@@ -109,10 +110,11 @@ ChatMessageByTopicKey.kt:
 	) : TextMessageKey
 
 
-Now, because we are re-using the same class with different tables, we must also annotate our ChatMessage___(topic user and standard) w
-# This Application Needs Query
+# Using The Repository
 
-Use this space to introduce custom Implementations of ReactiveRepositories, Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).
+lets discuss ReactiveCassandraRepositories and Custom Spring Data Repositories for operating
+ our data sets in Batchses.  this space to introduce custom Implementations of ReactiveRepositories, 
+Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).
 
 # Next Step - Configuration
 
