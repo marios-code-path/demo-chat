@@ -9,7 +9,7 @@ import java.util.*
 @Table("chat_message")
 data class ChatMessage(
         @PrimaryKey
-        override val key: TextMessageKey,
+        override val key: ChatMessageKey,
         @Column("text")
         override val value: String,
         override val visible: Boolean

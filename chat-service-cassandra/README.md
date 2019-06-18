@@ -19,9 +19,23 @@ This part of the tutorial will focus on chat message data modeling, and access/r
 
 The first course of action here is to identify the access methods we will need across our data type - in this case, a message - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
-* Retrieve Messages by Message-Id (id field)
-* Retrieve by TOPIC-Id (roomId field)
-* Retrieve by TOPIC-Id in a specific date-range (timestamp or /uuID field)
+## But, why multiple data classes?
+
+The following picture describes the basic data-access strategy working in Cassandra Column Families:
+
+SomeMaps.java:
+
+	SortedMap<RowKey, SortedMap<ColumnKey, ColumnValue>>
+
+This lets us treat our column as a sorted map of a sorted map of:
+     
+     map[rowKey][columnKey] -> columnValue. 
+
+With this picture in mind, lets model the characteristics of our message keys:
+
+* Messages by MSG-Id
+* Messages by TOPIC-Id
+* Messages by TOPIC-Id && DATE
 
 Thus, our chat message will have the following shape: 
 
@@ -51,20 +65,22 @@ ChatMessageKey.kt:
             override val timestamp: Instant
     ) : TextMessageKey
 
+In order to supply messages by topic, we can specify topic_id as Partition key. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
 
-In order to supply messages in the topics domain, we will create another key that specifies topic_id as the Partition type. Additionally, the timestamp field is turned on as our cluster key. This will provide consistent ordering of messages when browsing them in our app.
+ChatMessageTopicKey.kt:
 
-ChatMessageTopic.kt:
+	@PrimaryKeyClass
+	data class ChatMessageTopicKey(
+             @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
+             override val id: UUID,
+             @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+             override val userId: UUID,
+             @Column("topic_id")
+             override val topicId: UUID,
+             @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
+             override val timestamp: Instant
+	) : TextMessageKey
     
-        @Table("chat_message_room")
-        data class ChatMessageRoom(
-                 @PrimaryKey
-                 override val key: ChatMessageRoomKey,
-            @Column("text")
-            override val value: String,
-            override val visible: Boolean
-        ) : TextMessage
-
 # This Application Needs Query
 
 Use this space to introduce custom Implementations of ReactiveRepositories, Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).

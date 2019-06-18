@@ -15,7 +15,7 @@ interface ChatMessageRoomRepository : ReactiveCassandraRepository<ChatMessageRoo
     fun findByKeyRoomId(roomId: UUID) : Flux<ChatMessageRoom>
 }
 
-interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, ChatMessageKey> {
+interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, UUID> {
     fun findByKeyId(id: UUID) : Mono<ChatMessage>
 }
 
