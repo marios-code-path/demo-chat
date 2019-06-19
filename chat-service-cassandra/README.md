@@ -1,11 +1,11 @@
 +++
-date = 2018-07-05
-publishDate = 2018-07-05
-title = "Hey, look! Its a chat app!"
-description = "A little implementation for cassandra backed messages, users, and app metadata""
+date = 2019-06-18
+publishDate = 2019-06-18
+title = "Modeling a chat application message structure with Kotlin and Cassandra"
+description = "A little implementation for cassandra backed messages, users, and app metadata"
 toc = true
-categories = ["spring","cassandra","data","spring-data"]
-tags = ["demo","spring","webflux","cassandra","data"]
+categories = ["spring","cassandra","data","spring-data", "kotlin"]
+tags = ["demo","spring","webflux","cassandra","data","kotlin"]
 +++
 
 # This Application Needs Data
