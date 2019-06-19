@@ -31,7 +31,7 @@ class RoomController(val roomService: ChatRoomService<out Room<RoomKey>, RoomKey
             roomService
                     .getRooms(true)
 
-    @MessageMapping("room-id")
+    @MessageMapping("room-msgId")
     fun getRoom(req: RoomRequest): Mono<out Room<RoomKey>> =
             roomService
                     .getRoomById(req.roomId)

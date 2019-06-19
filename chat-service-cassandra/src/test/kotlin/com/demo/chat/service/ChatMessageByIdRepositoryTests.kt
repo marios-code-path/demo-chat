@@ -2,10 +2,10 @@ package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceCassandraApp
-import com.demo.chat.domain.ChatMessage
+import com.demo.chat.domain.ChatMessageById
 import com.demo.chat.domain.ChatMessageByTopic
 import com.demo.chat.domain.ChatMessageByUser
-import com.demo.chat.domain.ChatMessageKey
+import com.demo.chat.domain.ChatMessageByIdKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
@@ -38,7 +38,7 @@ import kotlin.streams.asSequence
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
-class ChatMessageRepositoryTests {
+class ChatMessageByIdRepositoryTests {
 
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -57,8 +57,8 @@ class ChatMessageRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo.saveMessages(Flux.just(ChatMessage(
-                ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val saveMsg = repo.saveMessages(Flux.just(ChatMessageById(
+                ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
         val findMsg = repo.findByKeyId(msgId)
 
         val composite = Flux
@@ -78,8 +78,8 @@ class ChatMessageRepositoryTests {
         val msgId = UUIDs.timeBased()
 
         val saveMsg = repo
-                .saveMessages(Flux.just(ChatMessage(
-                        ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+                .saveMessages(Flux.just(ChatMessageById(
+                        ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
 
         val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
@@ -100,8 +100,8 @@ class ChatMessageRepositoryTests {
         val msgId = UUIDs.timeBased()
 
         val saveMsg = repo
-                .saveMessages(Flux.just(ChatMessage(
-                        ChatMessageKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+                .saveMessages(Flux.just(ChatMessageById(
+                        ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
 
         val findMsg = byUserRepo.findByKeyUserId(userId)
 
@@ -122,9 +122,9 @@ class ChatMessageRepositoryTests {
         val getMsg = Supplier { UUIDs.timeBased() }
 
         val messages = Flux
-                .generate<ChatMessage> {
-                    it.next(ChatMessage(
-                            ChatMessageKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
+                .generate<ChatMessageById> {
+                    it.next(ChatMessageById(
+                            ChatMessageByIdKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
                             "Random Message", true))
                 }
                 .take(10)
@@ -154,7 +154,7 @@ class ChatMessageRepositoryTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        val testPublisher = TestPublisher.create<ChatMessage>()
+        val testPublisher = TestPublisher.create<ChatMessageById>()
 
         val testPublisherSupplier = Supplier {
             testPublisher.flux()
@@ -168,7 +168,7 @@ class ChatMessageRepositoryTests {
                 .then {
                     testPublisher
                             .next(
-                                    ChatMessage(ChatMessageKey(
+                                    ChatMessageById(ChatMessageByIdKey(
                                             UUID.randomUUID(),
                                             userId,
                                             roomId,
@@ -186,7 +186,7 @@ class ChatMessageRepositoryTests {
                 .then {
                     testPublisher
                             .emit(
-                                    ChatMessage(ChatMessageKey(
+                                    ChatMessageById(ChatMessageByIdKey(
                                             UUID.randomUUID(),
                                             userId,
                                             roomId,
@@ -211,13 +211,13 @@ class ChatMessageRepositoryTests {
 
         val chatMessageFlux = Flux
                 .just(
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
-                        ChatMessage(ChatMessageKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
+                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
                 )
 
         val saveFindOps = repo
@@ -231,9 +231,9 @@ class ChatMessageRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessage) = assertAll("message contents in tact",
+    fun chatMessageAssertion(msg: ChatMessageById) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.id) },
+            { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
@@ -243,7 +243,7 @@ class ChatMessageRepositoryTests {
 
     fun chatMessageUserAssertion(msg: ChatMessageByUser) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.id) },
+            { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
@@ -253,7 +253,7 @@ class ChatMessageRepositoryTests {
 
     fun chatMessageRoomAssertion(msg: ChatMessageByTopic) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.id) },
+            { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },

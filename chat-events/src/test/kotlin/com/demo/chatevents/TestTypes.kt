@@ -34,17 +34,17 @@ data class TestChatRoomKey(
 
 
 data class TestTextMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
 
 data class TestAlertMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
-) : MessageKey
+) : TopicMessageKey
 
 
 @JsonTypeName("InfoAlert")
@@ -76,4 +76,4 @@ data class TestTextMessage(
 ) : TextMessage
 
 @JsonTypeName("TopicData")
-data class TestTopicData(val state: Message<out MessageKey, Any>)
+data class TestTopicData(val state: Message<out TopicMessageKey, Any>)

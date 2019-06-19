@@ -3,7 +3,7 @@ DROP KEYSPACE IF EXISTS chat;
 CREATE KEYSPACE chat WITH replication={'class' : 'SimpleStrategy', 'replication_factor':1};
 USE chat;
 
-CREATE TABLE chat_message (
+CREATE TABLE chat_message_id (
     msg_id TIMEUUID,
     user_id UUID,
     topic_id UUID,

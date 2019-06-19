@@ -117,7 +117,7 @@ class RSocketUserTests {
                 .willReturn(Flux.just(randomUser))
 
         StepVerifier.create(requestor
-                .route("user-id-list")
+                .route("user-msgId-list")
                 .data(Flux.just(UserRequestId(randomUserId)), UserRequestId::class.java)
                 .retrieveFlux(TestChatUser::class.java)
         )

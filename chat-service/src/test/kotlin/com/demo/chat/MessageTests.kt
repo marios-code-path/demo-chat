@@ -15,13 +15,13 @@ import java.util.stream.Stream
 
 // Variances of Keys we want
 data class TestAlertMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : AlertMessageKey
 
 data class TestTextMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
@@ -82,7 +82,7 @@ class MessageTests {
     @Test
     fun `Should serialize deserialize JSON from to Any Message`() {
         val messageJsons = ArrayList<String>()
-        val messages = ArrayList<Message<MessageKey, Any>>()
+        val messages = ArrayList<Message<TopicMessageKey, Any>>()
 
         Stream.generate { randomMessage() }.limit(5)
                 .forEach { msg ->
@@ -125,7 +125,7 @@ class MessageTests {
                                     .hasFieldOrProperty("value")
                             Assertions.assertThat(msg).`as`("is a message key too")
                                     .isNotNull
-                                    .hasFieldOrProperty("id")
+                                    .hasFieldOrProperty("msgId")
                         }
                     }
                 }
@@ -175,16 +175,16 @@ class MessageTests {
                 2
         )
 
-        val message: Message<MessageKey, *> = TestInfoAlert(key, value, true)
+        val topicMessage: Message<TopicMessageKey, *> = TestInfoAlert(key, value, true)
 
         // Get some message and access specific fields
-        if (message is TestInfoAlert) {
-            Assertions.assertThat(message.key)
+        if (topicMessage is TestInfoAlert) {
+            Assertions.assertThat(topicMessage.key)
                     .`as`("key is consistent state")
                     .isNotNull
                     .hasFieldOrPropertyWithValue("topicId", roomId)
 
-            Assertions.assertThat(message.value)
+            Assertions.assertThat(topicMessage.value)
                     .`as`("value is consistent state")
                     .isNotNull
                     .hasFieldOrPropertyWithValue("totalMessages", 2)

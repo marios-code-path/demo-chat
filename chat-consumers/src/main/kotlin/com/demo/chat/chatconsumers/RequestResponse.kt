@@ -45,17 +45,17 @@ data class ChatRoomKey(
 
 
 data class ChatMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
 
 data class AlertMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
-) : MessageKey
+) : TopicMessageKey
 
 @JsonTypeName("ChatMessage")
 data class ChatMessage(

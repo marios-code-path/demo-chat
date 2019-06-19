@@ -17,21 +17,9 @@ open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepos
 
     override fun getTopicMessages(roomId: UUID): Flux<out Message<TextMessageKey, Any>> = messageByTopicRepo
             .findByKeyTopicId(roomId)
-            .map {
-                ChatMessage(
-                        ChatMessageKey(
-                                it.key.id,
-                                it.key.userId,
-                                it.key.topicId,
-                                it.key.timestamp
-                        ),
-                        it.value,
-                        it.visible
-                )
-            }
 
     override fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<out TextMessageKey> = messageRepo
-                    .saveMessage(ChatMessage(ChatMessageKey(UUIDs.timeBased(),
+                    .saveMessage(ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(),
                             uid,
                             roomId,
                             Instant.now()),

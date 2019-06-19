@@ -25,7 +25,7 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class ChatMessageServiceTests {
+class ChatMessageByIdServiceTests {
 
     val logger = LoggerFactory.getLogger("TESTCASE ")
 
@@ -43,7 +43,7 @@ class ChatMessageServiceTests {
 
     @BeforeEach
     fun setUp() {
-        val newMessage = ChatMessage(ChatMessageKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
+        val newMessage = ChatMessageById(ChatMessageByIdKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
         val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 
         Mockito.`when`(msgRepo.saveMessage(anyObject()))
@@ -119,7 +119,7 @@ class ChatMessageServiceTests {
                 .expectSubscription()
                 .assertNext {
                     assertAll("message",
-                            { assertNotNull(it.id) },
+                            { assertNotNull(it.msgId) },
                             { assertNotNull(it.topicId) }
                     )
                 }

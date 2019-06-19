@@ -30,7 +30,7 @@ interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
 }
 
-interface ChatMessageService<M : Message<MK, Any>, MK : MessageKey> {
+interface ChatMessageService<M : Message<MK, Any>, MK : TopicMessageKey> {
     fun getMessage(id: UUID): Mono<out M>
     fun storeMessage(uid: UUID, roomId: UUID, messageText: String): Mono<out MK>
     fun getTopicMessages(topicId: UUID): Flux<out M>

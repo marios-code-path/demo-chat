@@ -1,7 +1,7 @@
 package com.demo.chatevents
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import org.slf4j.Logger
@@ -21,9 +21,9 @@ class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
     // All [topic]s
-    private val topicProcessors: MutableMap<UUID, DirectProcessor<Message<MessageKey, Any>>> = HashMap()
+    private val topicProcessors: MutableMap<UUID, DirectProcessor<Message<TopicMessageKey, Any>>> = HashMap()
 
-    private val topicFluxes: MutableMap<UUID, Flux<Message<MessageKey, Any>>> = HashMap()
+    private val topicFluxes: MutableMap<UUID, Flux<Message<TopicMessageKey, Any>>> = HashMap()
 
 
     // map of <topic : [UserInbox]s>
@@ -48,16 +48,16 @@ class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
     override fun getTopicMembers(uid: UUID): List<UUID> =
             topicMembers.getOrElse(uid) { HashSet() }.toList()
 
-    override fun getTopicProcessor(topicId: UUID): DirectProcessor<Message<MessageKey, Any>> =
+    override fun getTopicProcessor(topicId: UUID): DirectProcessor<Message<TopicMessageKey, Any>> =
             topicProcessors
                     .getOrPut(topicId) {
                         DirectProcessor.create()
                     }
 
-    override fun receiveTopicEvents(topicId: UUID): Flux<Message<MessageKey, Any>> =
+    override fun receiveTopicEvents(topicId: UUID): Flux<Message<TopicMessageKey, Any>> =
             topicFluxes
                     .getOrPut(topicId) {
-                        val processor: DirectProcessor<Message<MessageKey, Any>> = getTopicProcessor(topicId)
+                        val processor: DirectProcessor<Message<TopicMessageKey, Any>> = getTopicProcessor(topicId)
                         processor
                                 .onBackpressureBuffer()
                                 .publish()
@@ -65,12 +65,12 @@ class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
                     }
 
     // how to join multiple streams to have fan-out without iterating through Fluxs
-    override fun sendMessageToTopic(message: Message<MessageKey, Any>): Mono<Void> = Mono
+    override fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> = Mono
             .create<Void> {
-                topicToMembers(message.key.topicId)
+                topicToMembers(topicMessage.key.topicId)
                         .stream()
                         .forEach { memberId ->
-                            getTopicProcessor(memberId).onNext(message)
+                            getTopicProcessor(memberId).onNext(topicMessage)
                         }
                 it.success()
             }.then()

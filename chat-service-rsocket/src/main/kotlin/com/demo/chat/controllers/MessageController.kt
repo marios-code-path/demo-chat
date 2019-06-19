@@ -3,7 +3,7 @@ package com.demo.chat.controllers
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.ChatMessageService
 import org.slf4j.Logger
@@ -14,16 +14,16 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Controller
-class MessageController(val messageService: ChatMessageService<out TextMessage, MessageKey>) {
+class MessageController(val topicMessageService: ChatMessageService<out TextMessage, TopicMessageKey>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-list-topic")
-    fun getMessagesForTopic(req: MessagesRequest): Flux<out Message<MessageKey, Any>> =
-            messageService
+    fun getMessagesForTopic(req: MessagesRequest): Flux<out Message<TopicMessageKey, Any>> =
+            topicMessageService
                     .getTopicMessages(req.topicId)
 
-    @MessageMapping("message-id")
-    fun getMessage(req: MessageRequest): Mono<out Message<MessageKey, Any>> =
-            messageService
+    @MessageMapping("message-msgId")
+    fun getMessage(req: MessageRequest): Mono<out Message<TopicMessageKey, Any>> =
+            topicMessageService
                     .getMessage(req.messageId)
 }

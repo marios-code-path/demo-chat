@@ -25,11 +25,11 @@ class UserController(val userService: ChatUserService<out User<UserKey>, UserKey
     fun findByHandle(userReq: UserRequest): Mono<out User<UserKey>> =
             userService.getUser(userReq.userHandle)
 
-    @MessageMapping("user-id")
+    @MessageMapping("user-msgId")
     fun findByUserId(userReq: UserRequestId): Mono<out User<UserKey>> =
             userService.getUserById(userReq.userId)
 
-    @MessageMapping("user-id-list")
+    @MessageMapping("user-msgId-list")
     fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User<UserKey>> =
             userService.getUsersById(userReq
                     .map {

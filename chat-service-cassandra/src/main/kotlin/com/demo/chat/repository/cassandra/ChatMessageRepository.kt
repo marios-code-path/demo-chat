@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, ChatMessageByUserKey> {
+interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
     fun findByKeyUserId(userId: UUID) : Flux<ChatMessageByUser>
 }
 
@@ -15,25 +15,25 @@ interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessage
     fun findByKeyTopicId(topicId: UUID) : Flux<ChatMessageByTopic>
 }
 
-interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, UUID> {
-    fun findByKeyId(id: UUID) : Mono<ChatMessage>
+interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessageById, UUID> {
+    fun findByKeyId(id: UUID) : Mono<ChatMessageById>
 }
 
 interface ChatMessageRepositoryCustom {
-    fun saveMessage(msg: ChatMessage): Mono<ChatMessage>
-    fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage>
+    fun saveMessage(msg: ChatMessageById): Mono<ChatMessageById>
+    fun saveMessages(msgStream: Flux<ChatMessageById>): Flux<ChatMessageById>
 }
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
 
-    override fun saveMessage(msg: ChatMessage): Mono<ChatMessage> =
+    override fun saveMessage(msg: ChatMessageById): Mono<ChatMessageById> =
         cassandra
                 .batchOps()
                 .insert(msg)
                 .insert(ChatMessageByUser(
                         ChatMessageByUserKey(
-                                msg.key.id,
+                                msg.key.msgId,
                                 msg.key.userId,
                                 msg.key.topicId,
                                 msg.key.timestamp
@@ -44,7 +44,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                 ))
                 .insert(ChatMessageByTopic(
                         ChatMessageByTopicKey(
-                                msg.key.id,
+                                msg.key.msgId,
                                 msg.key.userId,
                                 msg.key.topicId,
                                 msg.key.timestamp
@@ -55,7 +55,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                 .execute()
                 .thenReturn(msg)
 
-    override fun saveMessages(msgStream: Flux<ChatMessage>): Flux<ChatMessage> =
+    override fun saveMessages(msgStream: Flux<ChatMessageById>): Flux<ChatMessageById> =
             Flux.from(msgStream)
                     .flatMap(this::saveMessage)
 }

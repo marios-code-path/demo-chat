@@ -80,7 +80,7 @@ class RSocketMessagesTests {
         StepVerifier
                 .create(
                         requestor
-                                .route("message-id")
+                                .route("message-msgId")
                                 .data(MessageRequest(UUID.randomUUID()))
                                 .retrieveMono(TestTextMessage::class.java)
                 )

@@ -86,9 +86,9 @@ class ChatTopicRedisService(
                                     .then()
                     )
 
-    override fun sendMessageToTopic(message: Message<MessageKey, Any>): Mono<Void> {
-        val map = mapOf(Pair("id", message.key.id))
-                  //      Pair("data", TopicData(message)))
+    override fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
+        val map = mapOf(Pair("msgId", topicMessage.key.msgId))
+                  //      Pair("data", TopicData(topicMessage)))
 
         /*
             * <li>1    Time-based UUID
@@ -96,20 +96,20 @@ class ChatTopicRedisService(
             * <li>3    Name-based UUID
             * <li>4    Randomly generated UUID
          */
-        val recordId = when (message.key.id.version()) {
-            1 -> RecordId.of(message.key.id.timestamp(), message.key.id.clockSequence().toLong())
+        val recordId = when (topicMessage.key.msgId.version()) {
+            1 -> RecordId.of(topicMessage.key.msgId.timestamp(), topicMessage.key.msgId.clockSequence().toLong())
             else -> RecordId.autoGenerate()
         }
 
         return messageTemplate
                 .opsForStream<String, TopicData>()
                 .add(MapRecord
-                        .create(prefixTopicStreamKey + message.key.topicId.toString(), map)
+                        .create(prefixTopicStreamKey + topicMessage.key.topicId.toString(), map)
                         .withId(recordId))
                 .then()
     }
 
-    override fun receiveTopicEvents(topic: UUID): Flux<out Message<MessageKey, Any>> =
+    override fun receiveTopicEvents(topic: UUID): Flux<out Message<TopicMessageKey, Any>> =
             messageTemplate
                     .opsForStream<String, TopicData>()
                     .read(TopicData::class.java, StreamOffset.fromStart(prefixTopicStreamKey + topic.toString()))
@@ -129,7 +129,7 @@ class ChatTopicRedisService(
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
-    override fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<MessageKey, Any>> {
+    override fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<TopicMessageKey, Any>> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
@@ -137,7 +137,7 @@ class ChatTopicRedisService(
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
-data class TopicData(val state: Message<out MessageKey, Any>)
+data class TopicData(val state: Message<out TopicMessageKey, Any>)
 
 @JsonTypeName("ChatMessage")
 data class ChatMessage(
@@ -147,7 +147,7 @@ data class ChatMessage(
 ) : TextMessage
 
 data class ChatMessageKey(
-        override val id: UUID,
+        override val msgId: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant

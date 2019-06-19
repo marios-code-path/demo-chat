@@ -1,7 +1,7 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.ChatMessage
-import com.demo.chat.domain.ChatMessageKey
+import com.demo.chat.domain.ChatMessageById
+import com.demo.chat.domain.ChatMessageByIdKey
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
@@ -13,7 +13,7 @@ import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-class ChatMessageTests {
+class ChatMessageByIdTests {
 
     @Test
     fun testShouldHoldState() {
@@ -23,7 +23,7 @@ class ChatMessageTests {
 
         val randomBody = UUID.randomUUID().toString()
 
-        val message = ChatMessage(ChatMessageKey(msgUUID, userUUID, roomUUID, Instant.now()), randomBody, true)
+        val message = ChatMessageById(ChatMessageByIdKey(msgUUID, userUUID, roomUUID, Instant.now()), randomBody, true)
 
         StepVerifier
                 .create(Flux.just(message))
@@ -31,10 +31,10 @@ class ChatMessageTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessage, someBody: String) {
+    fun chatMessageAssertion(msg: ChatMessageById, someBody: String) {
         assertAll("message contents in tact",
                 { assertNotNull(msg) },
-                { assertNotNull(msg.key.id) },
+                { assertNotNull(msg.key.msgId) },
                 { assertNotNull(msg.key.userId) },
                 { assertNotNull(msg.key.topicId) },
                 { assertNotNull(msg.key.timestamp) },

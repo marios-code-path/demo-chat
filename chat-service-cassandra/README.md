@@ -15,11 +15,72 @@ This sort of application will provide data seek and storage access by implementi
 
 # That Data Model Over There (TDMMOT)
 
-This part of the tutorial will focus on chat message data modeling, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
+This part of the tutorial will focus on chat topicMessage data modeling, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
 
-The first course of action here is to identify the access methods we will need across our data type - in this case, a message - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
+The first course of action here is to identify the access methods we will need across our data type - in this case, a topicMessage - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
-## NOSQL? Whats that?
+# Data Modeling with Kotlin - Co-variant Types
+
+We want to have a single canonical Message shape for our application, then let individual components decide
+which properties were needed.  In order to facilitate this, I created a `Message` interface that includes a Key, Value, and Timestmap.
+
+ChatMessage.kt
+
+    interface Message<out K, out V> {
+        val key: K
+        val value: V
+        val visible: Boolean
+    }
+
+The `out` keyword tells the JVM that any type of K or V will be a subtype of the specified generic parameter. This gives some sub-type flexibility
+when implementing downstream components that make use of the same Super-Types. See Kotlin's [co-variant/invariante](https://kotlinlang.org/docs/reference/generics.html) discussions for 
+more information on this topic.
+
+## Optimization too soon ? Maybe ?
+
+Furthermore, because early on I knew there would be multiple Keying strategies, I created a separate Key support interface that 
+allowed the inclusion of various key data such as Message ID, Topic ID, User ID, etc... The form of keys used in our Cassandra data implementations 
+will make use of each of these Key ID's by giving them specific Key Column annotation ( cluster vs partition ). As the basic message 
+will include just it's ID and a timestamp. Lets review the super-type key.
+
+MessageKey.kt:
+
+    interface MessageKey {
+        val msgId: UUID
+        val timestamp: Instant
+    }
+
+If I wanted to enforce a canonical topic-level Key, I created the following base type.
+
+TopicMessageKey.kt:
+
+    interface TopicMessageKey : MessageKey {
+        override val msgId: UUID
+        val topicId: UUID
+        override val timestamp: Instant
+    }
+
+To enforce User-Id sourced Messages, I created a sub-type that included the userId in addition to other key components.
+
+TextMessageKey.kt:
+
+    interface TextMessageKey : TopicMessageKey {
+        val userId: UUID
+    }
+
+For the Message body, lets review what we'll deal with for the rest of the application components.
+
+Message.kt:
+    
+    interface Message<out K, out V> {
+        val key: K
+        val value: V
+        val visible: Boolean
+    }
+    
+Now we have an idea of what our application types will look like, lets model these using Cassandra key methodologies.
+
+## NOSQL Data Modeling with Cassandra - QUICK Crash Course
 
 The following picture describes the basic data-access strategy working in Cassandra [Column Families](https://academy.datastax.com/units/data-model-and-cql-column-families):
 
@@ -31,31 +92,31 @@ This lets us treat our column as a sorted map of a sorted map of:
      
      map[rowKey][columnKey] -> columnValue. 
 
-With this picture in mind, lets model the characteristics of our message keys:
+With this picture in mind, lets model the characteristics of our topicMessage keys:
 
 * Messages by MSG-Id
 * Messages by TOPIC-Id
 * Messages by TOPIC-Id && DATE
 
-Thus, our canonical chat message will have the following shape: 
+Thus, our canonical chat TextMessage (any message sent by a user) will have the following shape: 
 
-ChatMessage.kt:
+ChatMessageById.kt:
 
-    @Table("chat_message")
-    data class ChatMessage(
+    open class ChatMessage<T : TextMessageKey>(
             @PrimaryKey
-            override val key: ChatMessageKey,
-            @Column("data")
-            override val data: String,
+            override val key: T,
+            @Column("text")
+            override val value: String,
+            @Column("visible")
             override val visible: Boolean
-    ) : TextMessage
+    ) : Message<T, String>
 
 and it's mundane, single partition-key property bearing class.
 
 ChatMessageKey.kt:
     
     @PrimaryKeyClass
-    class ChatMessageKey(
+    class ChatMessageByIdKey(
             @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
             override val id: UUID,
             @Column("user_id")
@@ -67,7 +128,7 @@ ChatMessageKey.kt:
     
 This Class must be duplicated for 3 separate indexing strategies: by-id, by-topic, and by-user. Full source to these table-variants is [browse-able here](https://github.com/marios-code-path/demo-chat/blob/master/chat-service-cassandra/src/main/kotlin/com/demo/chat/domain/ChatMessage.kt).
 
-To be brief, lets examine the by-topic message key variants. We breakdown column and index configuration by looking at `ChatMessageByTopicKey`
+To be brief, lets examine the by-topic topicMessage key variants. We breakdown column and index configuration by looking at `ChatMessageByTopicKey`
 
 ChatMessageByTopicKey.kt:
     
@@ -110,11 +171,37 @@ ChatMessageByTopicKey.kt:
 	) : TextMessageKey
 
 
+## How about the DDL?
+
+The following DDL's represent Cassadra creeation of our message types.
+
+simple-message.cql:
+
+    CREATE TABLE chat_message_id (
+        msg_id TIMEUUID,
+        user_id UUID,
+        topic_id UUID,
+        text    varchar,
+        msg_time timestamp,
+        visible Boolean,
+        PRIMARY KEY (msg_id, msg_time))
+    WITH CLUSTERING ORDER BY (msg_time DESC);
+
+
+
 # Using The Repository
 
-lets discuss ReactiveCassandraRepositories and Custom Spring Data Repositories for operating
- our data sets in Batchses.  this space to introduce custom Implementations of ReactiveRepositories, 
-Use of CQL for batching operations, and testability of Cassandra using @DataCassandraTest (s).
+Use a ReactiveCassandraRepository to give our application the all-might query-by-any powers. 
+This demo doesnt use Object-keyspace as query criteria, because I wanted to kee p
+
+Lets examine the first interface - ChatMessage - for retrieving individual messages by ID. 
+
+ChatMessageById.kt: 
+
+    interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, UUID> {
+        fun findByKeyId(id: UUID) : Mono<ChatMessage>
+    }
+    
 
 # Next Step - Configuration
 

@@ -2,7 +2,6 @@ package com.demo.chat.domain
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
@@ -26,13 +25,20 @@ interface JoinAlert : Message<AlertMessageKey, UUID>
 interface PauseAlert : Message<AlertMessageKey, UUID>
 
 interface MessageKey {
-    val id: UUID
-    val topicId: UUID
+    val msgId: UUID
     val timestamp: Instant
 }
 
-interface TextMessageKey : MessageKey {
+interface TopicMessageKey : MessageKey {
+    override val msgId: UUID
+    val topicId: UUID
+    override val timestamp: Instant
+}
+
+interface TextMessageKey : TopicMessageKey {
     val userId: UUID
 }
 
-interface AlertMessageKey : MessageKey
+interface AlertMessageKey : TopicMessageKey // {
+//  private val ttl: Int
+// }
