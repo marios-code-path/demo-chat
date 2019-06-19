@@ -187,24 +187,37 @@ simple-message.cql:
         PRIMARY KEY (msg_id, msg_time))
     WITH CLUSTERING ORDER BY (msg_time DESC);
 
+With this DDL statement, we created a basic message with 'msg_id' as it's Partition Key, and the additional `msg_time` field as it's clustering Key (in Descending order).
+We are only really interested in accessing rows in this table by individual ID, thus each message may come from one or more nodes.
 
+To enable field indexing by `topic_id`, I created the following table.
 
-# Using The Repository
+simple-message.cql:
 
-Use a ReactiveCassandraRepository to give our application the all-might query-by-any powers. 
-This demo doesnt use Object-keyspace as query criteria, because I wanted to kee p
+    CREATE TABLE chat_message_topic (
+        msg_id TIMEUUID,
+        user_id UUID,
+        topic_id UUID,
+        text    varchar,
+        msg_time timestamp,
+        visible Boolean,
+        PRIMARY KEY (topic_id, msg_time, msg_id))
+    WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
-Lets examine the first interface - ChatMessage - for retrieving individual messages by ID. 
+If you noticed, I created a compound Key using `topic_id`, `msg_time`, and `msg_id` that enforces order in cluster and allows us to find all messages for a specific topic in the order it was given.
+(NOTE: We will eventually fill streams with this data, but just keep that in mind for future articles).
 
-ChatMessageById.kt: 
+Finally, to enable `user_id` specific indexing, I created the following table:
 
-    interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessage, UUID> {
-        fun findByKeyId(id: UUID) : Mono<ChatMessage>
-    }
-    
+    CREATE TABLE chat_message_user (
+        msg_id TIMEUUID,
+        user_id UUID,
+        topic_id UUID,
+        text    varchar,
+        msg_time timestamp,
+        visible Boolean,
+        PRIMARY KEY (user_id, msg_time, msg_id))
+    WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
-# Next Step - Configuration
-
-With the vital data pieces lined up, lets take advantage our our (hopefully pluggable) data layer to expose endpoints which consume them as microservices.... On to the [r-socket modules](https://github.com/marios-code-path/demo-chat/tree/master/chat-service-rsocket).
-
+This wraps it up for DDL. We can now concentrate on query operations in the next article - [Cassandra Repositories, or how not to do them]()
 
