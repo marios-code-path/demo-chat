@@ -59,7 +59,7 @@ class ChatMessageByIdRepositoryTests {
 
         val saveMsg = repo.saveMessages(Flux.just(ChatMessageById(
                 ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
-        val findMsg = repo.findByKeyId(msgId)
+        val findMsg = repo.findByKeyMsgId(msgId)
 
         val composite = Flux
                 .from(saveMsg)

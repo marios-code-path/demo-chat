@@ -13,7 +13,7 @@ open class ChatMessageServiceCassandra(private val messageRepo: ChatMessageRepos
                                        private val messageByTopicRepo: ChatMessageByTopicRepository)
     : ChatMessageService<Message<TextMessageKey, Any>, TextMessageKey> {
     override fun getMessage(id: UUID): Mono<out Message<TextMessageKey, Any>> = messageRepo
-                    .findByKeyId(id)
+                    .findByKeyMsgId(id)
 
     override fun getTopicMessages(roomId: UUID): Flux<out Message<TextMessageKey, Any>> = messageByTopicRepo
             .findByKeyTopicId(roomId)

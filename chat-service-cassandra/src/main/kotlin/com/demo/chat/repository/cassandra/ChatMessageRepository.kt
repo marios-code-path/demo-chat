@@ -16,7 +16,7 @@ interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessage
 }
 
 interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessageById, UUID> {
-    fun findByKeyId(id: UUID) : Mono<ChatMessageById>
+    fun findByKeyMsgId(id: UUID) : Mono<ChatMessageById>
 }
 
 interface ChatMessageRepositoryCustom {

@@ -20,7 +20,7 @@ class ChatMessageByUser(key: ChatMessageByUserKey,
                         value: String,
                         visible: Boolean) : ChatMessage<ChatMessageByUserKey>(key, value, visible)
 
-@Table("chat_message")
+@Table("chat_message_id")
 class ChatMessageById(key: ChatMessageByIdKey,
                       value: String,
                       visible: Boolean) : ChatMessage<ChatMessageByIdKey>(key, value, visible)
@@ -38,6 +38,7 @@ data class ChatMessageByIdKey(
         override val userId: UUID,
         @Column("topic_id")
         override val topicId: UUID,
+        @Column("msg_time")
         override val timestamp: Instant
 ) : TextMessageKey
 
@@ -57,9 +58,10 @@ data class ChatMessageByUserKey(
 data class ChatMessageByTopicKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val msgId: UUID,
-        @Column("topic_id")
+        @Column("user_id")
         override val userId: UUID,
         @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val topicId: UUID,
+        @Column("msg_time")
         override val timestamp: Instant
 ) : TextMessageKey
