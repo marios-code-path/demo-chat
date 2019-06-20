@@ -28,12 +28,12 @@ annotation class ExcludeFromTests
 class ChatServiceModule {
     @Bean
     fun userService(userRepo: ChatUserRepository,
-                    userHandleRepo: ChatUserHandleRepository): ChatUserService<out User<UserKey>, UserKey> =
+                    userHandleRepo: ChatUserHandleRepository): ChatUserService<out User, UserKey> =
             ChatUserServiceCassandra(userRepo, userHandleRepo)
 
     @Bean
     fun roomService(roomRepo: ChatRoomRepository,
-                    roomNameRepo: ChatRoomNameRepository): ChatRoomService<out Room<RoomKey>, RoomKey> =
+                    roomNameRepo: ChatRoomNameRepository): ChatRoomService<out Room, RoomKey> =
             ChatRoomServiceCassandra(roomRepo)
 
     @Bean

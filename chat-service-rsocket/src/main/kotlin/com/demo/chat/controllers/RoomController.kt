@@ -12,8 +12,8 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Controller
-class RoomController(val roomService: ChatRoomService<out Room<RoomKey>, RoomKey>,
-                     val userService: ChatUserService<out User<UserKey>, UserKey>) {
+class RoomController(val roomService: ChatRoomService<out Room, RoomKey>,
+                     val userService: ChatUserService<out User, UserKey>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-create")
@@ -27,12 +27,12 @@ class RoomController(val roomService: ChatRoomService<out Room<RoomKey>, RoomKey
                     .deleteRoom(req.roomId)
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequest): Flux<out Room<RoomKey>> =
+    fun listRooms(req: RoomRequest): Flux<out Room> =
             roomService
                     .getRooms(true)
 
     @MessageMapping("room-msgId")
-    fun getRoom(req: RoomRequest): Mono<out Room<RoomKey>> =
+    fun getRoom(req: RoomRequest): Mono<out Room> =
             roomService
                     .getRoomById(req.roomId)
 

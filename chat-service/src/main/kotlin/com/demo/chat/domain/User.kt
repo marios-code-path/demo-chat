@@ -5,9 +5,10 @@ import java.time.Instant
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface User<out K> {
-    val key: K
+interface User {
+    val key: UserKey
     val name: String
+    val imageUri: String
     val timestamp: Instant
 }
 

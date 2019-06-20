@@ -11,8 +11,9 @@ object TestTypes
 data class TestChatUser(
         override val key: TestChatUserKey,
         override val name: String,
+        override val imageUri: String,
         override val timestamp: Instant
-) : User<UserKey>
+) : User
 
 data class TestChatUserKey(
         override val userId: UUID,
@@ -25,7 +26,7 @@ data class TestChatRoom(
         override val members: Set<UUID>?,
         val active: Boolean,
         override val timestamp: Instant
-) : Room<RoomKey>
+) : Room
 
 data class TestChatRoomKey(
         override val roomId: UUID,

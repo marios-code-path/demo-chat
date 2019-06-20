@@ -39,12 +39,12 @@ class RSocketUserTests {
     private lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var userService: ChatUserService<out User<UserKey>, UserKey>
-
+    private lateinit var userService: ChatUserService<out User, UserKey>
+    val defaultImgUri = "http://"
     val randomHandle = randomAlphaNumeric(4)
     val randomName = randomAlphaNumeric(6)
     val randomUserId = UUID.randomUUID()!!
-    val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, Instant.now())
+    val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
 
     @BeforeEach
     fun setUp(@Autowired config: RSocketTestConfig) {
@@ -61,14 +61,14 @@ class RSocketUserTests {
 
     @Test
     fun `should call user create`() {
-        BDDMockito.given(userService.createUser(anyObject(), anyObject()))
+        BDDMockito.given(userService.createUser(anyObject(), anyObject(), anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
                 .create(
                         requestor
                                 .route("user-create")
-                                .data(UserCreateRequest(randomName, randomHandle))
+                                .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
                                 .retrieveMono(TestChatUser::class.java)
                 )
                 .expectSubscription()

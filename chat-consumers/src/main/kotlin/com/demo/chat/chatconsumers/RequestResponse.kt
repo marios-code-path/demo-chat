@@ -22,8 +22,9 @@ data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 data class ChatUser(
         override val key: ChatUserKey,
         override val name: String,
+        override val imageUri: String,
         override val timestamp: Instant
-) : User<UserKey>
+) : User
 
 data class ChatUserKey(
         override val userId: UUID,
@@ -36,7 +37,7 @@ data class ChatRoom(
         override val members: Set<UUID>,
         val active: Boolean,
         override val timestamp: Instant
-) : Room<RoomKey>
+) : Room
 
 data class ChatRoomKey(
         override val roomId: UUID,

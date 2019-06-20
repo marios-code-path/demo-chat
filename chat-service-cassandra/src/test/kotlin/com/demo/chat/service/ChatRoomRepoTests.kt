@@ -5,7 +5,6 @@ import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
-import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.cassandraunit.spring.CassandraDataSet
@@ -17,7 +16,6 @@ import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
@@ -132,7 +130,7 @@ class ChatRoomRepoTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext { roomAssertions(it as Room<RoomKey>) }
+                .assertNext { roomAssertions(it as Room) }
                 .verifyComplete()
     }
 
@@ -164,7 +162,7 @@ class ChatRoomRepoTests {
         StepVerifier
                 .create(composed)
                 .assertNext {
-                    roomAssertions(it as Room<RoomKey>)
+                    roomAssertions(it)
                     assertAll("Room members contained",
                             { Assertions.assertTrue(it.members!!.isNotEmpty()) },
                             {
@@ -176,7 +174,7 @@ class ChatRoomRepoTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: Room<RoomKey>) {
+    fun <R : Room> roomAssertions(room: R) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.roomId) },

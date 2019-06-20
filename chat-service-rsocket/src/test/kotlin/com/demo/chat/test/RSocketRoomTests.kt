@@ -42,7 +42,7 @@ class RSocketRoomTests {
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    lateinit var roomService: ChatRoomService<out Room<RoomKey>, RoomKey> //ChatRoomServiceCassandra
+    lateinit var roomService: ChatRoomService<out Room, RoomKey> //ChatRoomServiceCassandra
 
     @Autowired
     lateinit var userService: ChatUserService<out User<UserKey>, UserKey>

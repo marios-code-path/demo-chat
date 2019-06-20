@@ -14,23 +14,23 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Controller
-class UserController(val userService: ChatUserService<out User<UserKey>, UserKey>) {
+class UserController(val userService: ChatUserService<out User, UserKey>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-create")
-    fun createNewUser(userReq: UserCreateRequest): Mono<out User<UserKey>> =
-            userService.createUser(userReq.name, userReq.userHandle)
+    fun createNewUser(userReq: UserCreateRequest): Mono<out User> =
+            userService.createUser(userReq.name, userReq.userHandle, userReq.imgUri)
 
     @MessageMapping("user-handle")
-    fun findByHandle(userReq: UserRequest): Mono<out User<UserKey>> =
+    fun findByHandle(userReq: UserRequest): Mono<out User> =
             userService.getUser(userReq.userHandle)
 
     @MessageMapping("user-msgId")
-    fun findByUserId(userReq: UserRequestId): Mono<out User<UserKey>> =
+    fun findByUserId(userReq: UserRequestId): Mono<out User> =
             userService.getUserById(userReq.userId)
 
     @MessageMapping("user-msgId-list")
-    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User<UserKey>> =
+    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User> =
             userService.getUsersById(userReq
                     .map {
                         it.userId

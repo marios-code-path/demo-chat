@@ -6,11 +6,14 @@ import java.util.*
 
 // Kludge Log: Cassandra requires nullable Set ( when returns with empty set )
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface Room<out T> {
+interface Topic<out T> {
     val key: T
     val members: Set<UUID>?
     val timestamp: Instant
 }
+
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+interface Room : Topic<RoomKey>
 
 interface RoomKey {
     val roomId: UUID

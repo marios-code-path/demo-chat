@@ -5,8 +5,8 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatUserService<U : User<UserKey>, UK : UserKey> {
-    fun createUser(name: String, handle: String): Mono<out U>
+interface ChatUserService<U : User, UK : UserKey> {
+    fun createUser(name: String, handle: String, imgUri: String): Mono<out U>
     fun getUser(handle: String): Mono<out U>
     fun getUsersById(uuids: Flux<UUID>): Flux<out U>
     fun getUserById(uuid: UUID): Mono<out U>
@@ -18,7 +18,7 @@ interface ChatUserService<U : User<UserKey>, UK : UserKey> {
 }
 
 
-interface ChatRoomService<R : Room<RoomKey>, RK : RoomKey> {
+interface ChatRoomService<R : Room, RK : RoomKey> {
     fun getRooms(activeOnly: Boolean): Flux<out R>
     fun getRoomById(id: UUID): Mono<out R>
     fun createRoom(name: String): Mono<out RK>

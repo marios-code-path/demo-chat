@@ -34,8 +34,6 @@ open class ChatRoomServiceCassandra(private val roomRepo: ChatRoomRepository)
                             true,
                             Instant.now()))
                     .map {
-                        println("FOUND A ROOM")
-                        logger.info("FOUND A ROOM $it")
                         it.key
                     }
 

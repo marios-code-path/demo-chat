@@ -22,10 +22,11 @@ open class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
                         }
                     }
 
-    override fun createUser(name: String, handle: String): Mono<ChatUser> = userRepo
+    override fun createUser(name: String, handle: String, defaultImageUri: String): Mono<ChatUser> = userRepo
             .saveUser(ChatUser(
                     ChatUserKey(UUIDs.timeBased(), handle),
                     name,
+                    defaultImageUri,
                     Instant.now()))
 
     override fun createUserAuthentication(uid: UUID, password: String): Mono<Void> {
@@ -38,6 +39,7 @@ open class ChatUserServiceCassandra(val userRepo: ChatUserRepository,
                 ChatUser(
                         ChatUserKey(it.key.userId, it.key.handle),
                         it.name,
+                        it.imageUri,
                         it.timestamp
                 )
             }

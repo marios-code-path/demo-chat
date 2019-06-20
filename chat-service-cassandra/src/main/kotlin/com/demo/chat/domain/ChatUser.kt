@@ -11,9 +11,11 @@ data class ChatUser(
         override val key: ChatUserKey,
         @Column("name")
         override val name: String,
+        @Column("image_uri")
+        override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<UserKey>
+) : User
 
 @PrimaryKeyClass
 data class ChatUserKey(
@@ -29,9 +31,11 @@ data class ChatUserHandle(
         override val key: ChatUserHandleKey,
         @Column("name")
         override val name: String,
+        @Column("image_uri")
+        override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<UserKey>
+) : User
 
 @PrimaryKeyClass
 data class ChatUserHandleKey(

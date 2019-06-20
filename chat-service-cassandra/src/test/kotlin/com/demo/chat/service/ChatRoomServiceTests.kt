@@ -3,7 +3,6 @@ package com.demo.chat.service
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
-import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -87,7 +86,7 @@ class ChatRoomServiceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: Room<RoomKey>) {
+    fun roomAssertions(room: Room) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.roomId) },
