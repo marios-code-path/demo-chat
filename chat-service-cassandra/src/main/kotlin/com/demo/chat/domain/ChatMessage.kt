@@ -14,6 +14,22 @@ open class ChatMessage<T : TextMessageKey>(
         override val visible: Boolean
 ) : Message<T, String>
 
+
+@Table("chat_message_user")
+class ChatMessageByUser(key: ChatMessageByUserKey,
+                        value: String,
+                        visible: Boolean) : ChatMessage<ChatMessageByUserKey>(key, value, visible)
+
+@Table("chat_message")
+class ChatMessageById(key: ChatMessageByIdKey,
+                      value: String,
+                      visible: Boolean) : ChatMessage<ChatMessageByIdKey>(key, value, visible)
+
+@Table("chat_message_topic")
+class ChatMessageByTopic(key: ChatMessageByTopicKey,
+                         value: String,
+                         visible: Boolean) : ChatMessage<ChatMessageByTopicKey>(key, value, visible)
+
 @PrimaryKeyClass
 data class ChatMessageByIdKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
@@ -47,18 +63,3 @@ data class ChatMessageByTopicKey(
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
-
-@Table("chat_message_user")
-class ChatMessageByUser(key: ChatMessageByUserKey,
-                        value: String,
-                        visible: Boolean) : ChatMessage<ChatMessageByUserKey>(key, value, visible)
-
-@Table("chat_message")
-class ChatMessageById(key: ChatMessageByIdKey,
-                      value: String,
-                      visible: Boolean) : ChatMessage<ChatMessageByIdKey>(key, value, visible)
-
-@Table("chat_message_topic")
-class ChatMessageByTopic(key: ChatMessageByTopicKey,
-                         value: String,
-                         visible: Boolean) : ChatMessage<ChatMessageByTopicKey>(key, value, visible)

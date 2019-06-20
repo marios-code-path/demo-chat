@@ -24,7 +24,7 @@ The first course of action here is to identify the access methods we will need a
 We want to have a single canonical Message shape for our application, then let individual components decide
 which properties were needed.  In order to facilitate this, I created a `Message` interface that includes a Key, Value, and Timestmap.
 
-ChatMessage.kt
+Message.kt:
 
     interface Message<out K, out V> {
         val key: K
@@ -33,10 +33,10 @@ ChatMessage.kt
     }
 
 The `out` keyword tells the JVM that any type of K or V will be a subtype of the specified generic parameter. This gives some sub-type flexibility
-when implementing downstream components that make use of the same Super-Types. See Kotlin's [co-variant/invariante](https://kotlinlang.org/docs/reference/generics.html) discussions for 
+when implementing downstream components that make use of the same Super-types. See Kotlin's [co-variant/invariante](https://kotlinlang.org/docs/reference/generics.html) discussions for 
 more information on this topic.
 
-## Optimization too soon ? Maybe ?
+## Complex Composite 
 
 Furthermore, because early on I knew there would be multiple Keying strategies, I created a separate Key support interface that 
 allowed the inclusion of various key data such as Message ID, Topic ID, User ID, etc... The form of keys used in our Cassandra data implementations 
@@ -50,7 +50,7 @@ MessageKey.kt:
         val timestamp: Instant
     }
 
-If I wanted to enforce a canonical topic-level Key, I created the following base type.
+I created the following base type to cover a topic-level message key..
 
 TopicMessageKey.kt:
 
@@ -60,7 +60,7 @@ TopicMessageKey.kt:
         override val timestamp: Instant
     }
 
-To enforce User-Id sourced Messages, I created a sub-type that included the userId in addition to other key components.
+Finally, a key sub-type that included the userId - since most messages will be sourced by actual users.
 
 TextMessageKey.kt:
 
@@ -68,7 +68,7 @@ TextMessageKey.kt:
         val userId: UUID
     }
 
-For the Message body, lets review what we'll deal with for the rest of the application components.
+Any particular message will have it's Key, some kind of Value <generic V parameter> and a visibility flag to indicate whether clients should display whats in the value.
 
 Message.kt:
     
@@ -78,40 +78,31 @@ Message.kt:
         val visible: Boolean
     }
     
-Now we have an idea of what our application types will look like, lets model these using Cassandra key methodologies.
+Now we have an idea of what our application types will look like, lets model these using Cassandra Data Mapping Methodologies. You may like this [write up on mapping within Spring Data](https://github.com/spring-projects/spring-data-cassandra/blob/master/src/main/asciidoc/reference/mapping.adoc).
 
-## NOSQL Data Modeling with Cassandra - QUICK Crash Course
+## QUICK Crash Course
 
-The following picture describes the basic data-access strategy working in Cassandra [Column Families](https://academy.datastax.com/units/data-model-and-cql-column-families):
+A nested, sorted map describes the governing data-access strategy working within Cassandra [Column Families](https://academy.datastax.com/units/data-model-and-cql-column-families):
 
-SomeMaps.java:
+SortedMaps.java:
 
 	SortedMap<RowKey, SortedMap<ColumnKey, ColumnValue>>
 
-This lets us treat our column as a sorted map of a sorted map of:
+This lets us treat our column as a sorted map of a sorted map with the form:
      
      map[rowKey][columnKey] -> columnValue. 
 
-With this picture in mind, lets model the characteristics of our topicMessage keys:
+## Dude Wheres My Keys?
 
-* Messages by MSG-Id
-* Messages by TOPIC-Id
-* Messages by TOPIC-Id && DATE
+With the above mental-model in mind, lets discuss key'ing characteristics for accessing messages. We find 3 descreet scenarios we will want to flesh out in our Key data models.
 
-Thus, our canonical chat TextMessage (any message sent by a user) will have the following shape: 
+| Key Property | Sort Key | Sort Order |
+|--------------|----------|----------|
+| Message-Id   | Message-Id | DESC |
+| Topic-Id | Message-Id | DESC |
+| USER-Id | Message-Id | DESC |
 
-ChatMessageById.kt:
-
-    open class ChatMessage<T : TextMessageKey>(
-            @PrimaryKey
-            override val key: T,
-            @Column("text")
-            override val value: String,
-            @Column("visible")
-            override val visible: Boolean
-    ) : Message<T, String>
-
-and it's mundane, single partition-key property bearing class.
+Thus, for the first strategy, we only need a partition key on the Message-Id. Nothing real fancy here, just simple old distribution across nodes - handy heavy-read intensity of random-keys.
 
 ChatMessageKey.kt:
     
@@ -125,25 +116,8 @@ ChatMessageKey.kt:
             override val roomId: UUID,
             override val timestamp: Instant
     ) : TextMessageKey
-    
-This Class must be duplicated for 3 separate indexing strategies: by-id, by-topic, and by-user. Full source to these table-variants is [browse-able here](https://github.com/marios-code-path/demo-chat/blob/master/chat-service-cassandra/src/main/kotlin/com/demo/chat/domain/ChatMessage.kt).
 
-To be brief, lets examine the by-topic topicMessage key variants. We breakdown column and index configuration by looking at `ChatMessageByTopicKey`
-
-ChatMessageByTopicKey.kt:
-    
-	@PrimaryKeyClass
-	data class ChatMessageByTopicKey(
-             @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-             override val id: UUID,
-             @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-             override val userId: UUID,
-             @Column("topic_id")
-             override val topicId: UUID,
-             @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
-             override val timestamp: Instant
-	) : TextMessageKey
-
+A key annotated with `@PrimaryKeyClass` is used to denote [the class holding our composite types](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_using/useCompositePartitionKeyConcept.html). Similarly each of our cluster and partition keys must be annoated with '@PrimaryKeyColumn'.
 
 As the JAVADOC for `@PrimaryKeyColumn` states:
 
@@ -154,26 +128,78 @@ PrimaryKeyColumn.java:
      * composite key or annotated with {@link org.springframework.data.annotation.Id} to identify a single property as
      * primary key column.
 
-Note that use of `@PrimaryKeyColumn` is specific to our particular use-case wherein `@PrimaryKeyClass` is used to denote [the class holding our composite types](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_using/useCompositePartitionKeyConcept.html) in use on this data type.
+This also means that any time we would want to have a composite primary key, it would have to go into a seperate class designated byt the '@PrimaryKeyClass' annotation.
+
+Lets breakdown our Key configuration a little more by looking at `ChatMessageByTopicKey`, as it makes use of both cluster AND partition keys.
 
 ChatMessageByTopicKey.kt:
 
 	@PrimaryKeyClass
 	data class ChatMessageByTopicKey(
              @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-             override val id: UUID,
-             @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-             override val userId: UUID,
+             override val msgId: UUID,
              @Column("topic_id")
+             override val userId: UUID,
+             @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
              override val topicId: UUID,
-             @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 2, ordering = Ordering.DESCENDING)
              override val timestamp: Instant
 	) : TextMessageKey
 
+Nothing too different except this time, we called our msg_id as our Cluster Key, and Topic_Id became the Parition Key. What this does is bind each 'topic_id' to a single [[set of nodes in a cluster configuration]], while preserving sort ordering using the message_id timeUUID field.
 
+## Referencing Composite Primary Key Properties
+
+Our standard/cannonical message model will have the following shape. We'll annotate the properties here to avoid duplicating efforts for every sub-class. It's simply a sub-type of the Message<T,K> we described earlier.
+
+ChatMessage.kt:
+
+    open class ChatMessage<T : TextMessageKey>(
+            @PrimaryKey
+            override val key: T,
+            @Column("text")
+            override val value: String,
+            @Column("visible")
+            override val visible: Boolean
+    ) : Message<T, String>
+
+This simple base-class contains the necessary metadata for each decendant class - thus we have a single key property, annotated with '@PrimaryKey' annotation. I'll let the Java-Doc describe it's behaviour.
+
+PrimaryKey.java:
+	* Identifies the primary key field of the entity, which may be of a basic type or of a type that represents a composite
+	* primary key class. This field corresponds to the {@code PRIMARY KEY} of the corresponding Cassandra table. Only one
+ 	* field in a given type hierarchy may be annotated with this annotation.
+ 	* Remember, if the Cassandra table has multiple primary key columns, then you must define a class annotated with
+ 	* {@link PrimaryKeyClass} to represent the primary key!
+	* Use {@link PrimaryKeyColumn} in conjunction with {@link Id} to specify extended primary key column properties.
+
+In Summary '@PrimaryKey' is permissible for any single key column property. When you have more than one key column, the backing property must coorespond to a class annotated with '@PrimaryKeyClass'.
+
+## Binding POJO to tables
+
+Lets identify each message sub-class to a backing Cassandra table. Using '@Table' we can easily point Spring Data in the right direction, while specifying our Key Type as the generic parameter to parent class Message.
+
+ChatMessages.kt:
+
+    @Table("chat_message_user")
+    class ChatMessageByUser(key: ChatMessageByUserKey,
+                            value: String,
+                            visible: Boolean) : ChatMessage<ChatMessageByUserKey>(key, value, visible)
+    
+    @Table("chat_message")
+    class ChatMessageById(key: ChatMessageByIdKey,
+                          value: String,
+                          visible: Boolean) : ChatMessage<ChatMessageByIdKey>(key, value, visible)
+    
+    @Table("chat_message_topic")
+    class ChatMessageByTopic(key: ChatMessageByTopicKey,
+                             value: String,
+                             visible: Boolean) : ChatMessage<ChatMessageByTopicKey>(key, value, visible)
+
+I feel this gives maxiumum flexability when creating or extending any additional access concerns.
+   
 ## How about the DDL?
 
-The following DDL's represent Cassadra creeation of our message types.
+The following DDL's represent CQL models to our by-message-id message type.
 
 simple-message.cql:
 
@@ -201,23 +227,10 @@ simple-message.cql:
         text    varchar,
         msg_time timestamp,
         visible Boolean,
-        PRIMARY KEY (topic_id, msg_time, msg_id))
+        PRIMARY KEY (topic_id, msg_id))
     WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
-If you noticed, I created a compound Key using `topic_id`, `msg_time`, and `msg_id` that enforces order in cluster and allows us to find all messages for a specific topic in the order it was given.
-(NOTE: We will eventually fill streams with this data, but just keep that in mind for future articles).
-
-Finally, to enable `user_id` specific indexing, I created the following table:
-
-    CREATE TABLE chat_message_user (
-        msg_id TIMEUUID,
-        user_id UUID,
-        topic_id UUID,
-        text    varchar,
-        msg_time timestamp,
-        visible Boolean,
-        PRIMARY KEY (user_id, msg_time, msg_id))
-    WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
+If you noticed, I created a compound Key using `topic_id` and `msg_id` that enforces order in cluster and allows us to find all messages for a specific topic in the order it was given.
 
 This wraps it up for DDL. We can now concentrate on query operations in the next article - [Cassandra Repositories, or how not to do them]()
 
