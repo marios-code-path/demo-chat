@@ -45,7 +45,7 @@ class RSocketRoomTests {
     lateinit var roomService: ChatRoomService<out Room, RoomKey> //ChatRoomServiceCassandra
 
     @Autowired
-    lateinit var userService: ChatUserService<out User<UserKey>, UserKey>
+    lateinit var userService: ChatUserService<out User, UserKey>
 
     val randomUserHandle = randomAlphaNumeric(4) + "User"
     val randomUserId: UUID = UUID.randomUUID()
@@ -121,7 +121,7 @@ class RSocketRoomTests {
                             .assertThat(it.key)
                             .isNotNull
                             .hasFieldOrPropertyWithValue("name", randomRoomName)
-                            .hasFieldOrPropertyWithValue("topicId", randomRoomId)
+                            .hasFieldOrPropertyWithValue("roomId", randomRoomId)
                 }
                 .verifyComplete()
 
@@ -161,7 +161,7 @@ class RSocketRoomTests {
                 .given(userService.getUsersById(anyObject()))
                 .willReturn(Flux.just(TestChatUser(
                         TestChatUserKey(randomUserId, randomUserHandle),
-                        "NAME", Instant.now()
+                        "NAME", "http://imageURI", Instant.now()
                 )))
 
         StepVerifier

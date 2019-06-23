@@ -4,7 +4,6 @@ import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey
-import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.ChatMessageService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -14,7 +13,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Controller
-class MessageController(val topicMessageService: ChatMessageService<out TextMessage, TopicMessageKey>) {
+class MessageController(val topicMessageService: ChatMessageService<out Message<TopicMessageKey, Any>, TopicMessageKey>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-list-topic")

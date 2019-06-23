@@ -35,8 +35,8 @@ class ChatUserServiceTests {
 
     @BeforeEach
     fun setUp() {
-        val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", Instant.now())
-        val newUserHandle = ChatUserHandle(ChatUserHandleKey(uid, "test-handle"), "test-name", Instant.now())
+        val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", "", Instant.now())
+        val newUserHandle = ChatUserHandle(ChatUserHandleKey(uid, "test-handle"), "test-name", "", Instant.now())
 
         Mockito.`when`(userRepo.findByKeyUserId(anyObject()))
                 .thenReturn(Mono.just(newUser))

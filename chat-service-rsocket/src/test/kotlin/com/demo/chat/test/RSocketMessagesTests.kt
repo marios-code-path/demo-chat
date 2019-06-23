@@ -2,7 +2,7 @@ package com.demo.chat.test
 
 import com.demo.chat.*
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatMessageService
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -42,7 +42,7 @@ class RSocketMessagesTests {
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    private lateinit var messageService: ChatMessageService<Message<out TextMessageKey, Any>, TextMessageKey>
+    private lateinit var messageService: ChatMessageService<out Message<TopicMessageKey, Any>, TopicMessageKey>
 
     private var counter = Random().nextInt()
 

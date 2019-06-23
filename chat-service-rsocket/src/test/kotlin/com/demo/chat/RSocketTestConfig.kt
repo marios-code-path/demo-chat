@@ -22,7 +22,7 @@ class RSocketTestConfig {
     private lateinit var userService: ChatUserService<out User, UserKey>
 
     @MockBean
-    private lateinit var topicMessageService: ChatMessageService<out TextMessage, TopicMessageKey>
+    private lateinit var topicMessageService: ChatMessageService<out Message<TopicMessageKey, Any>, TopicMessageKey>
 
     @Autowired
     private lateinit var rsboot: RSocketServerBootstrap

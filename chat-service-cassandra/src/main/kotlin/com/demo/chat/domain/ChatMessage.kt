@@ -5,14 +5,14 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
-open class ChatMessage<T : TextMessageKey>(
+open class ChatMessage<K : TextMessageKey>(
         @PrimaryKey
-        override val key: T,
+        override val key: K,
         @Column("text")
         override val value: String,
         @Column("visible")
         override val visible: Boolean
-) : Message<T, String>
+) : Message<K, String>
 
 
 @Table("chat_message_user")

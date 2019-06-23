@@ -33,7 +33,7 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                                     u.key.userId,
                                     u.key.handle
                             ),
-                            u.name,
+                            u.name, "DEFAULT",
                             u.timestamp),
                             InsertOptions.builder().withIfNotExists().build()
                     )
