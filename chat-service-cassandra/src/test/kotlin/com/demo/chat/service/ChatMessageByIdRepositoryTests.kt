@@ -52,7 +52,7 @@ class ChatMessageByIdRepositoryTests {
     lateinit var byUserRepo: ChatMessageByUserRepository
 
     @Test
-    fun `should save single msg find by message id`() {
+    fun `should save single message find by message id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
@@ -72,7 +72,7 @@ class ChatMessageByIdRepositoryTests {
     }
 
     @Test
-    fun `should save single msg find in Room by room id`() {
+    fun `should save single message find in room by room id`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
@@ -94,7 +94,7 @@ class ChatMessageByIdRepositoryTests {
     }
 
     @Test
-    fun `should save single msg find message by Userid`() {
+    fun `should save single message find message by userId`() {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()

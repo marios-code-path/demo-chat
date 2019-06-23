@@ -13,11 +13,11 @@ tags = ["demo","spring","webflux","cassandra","data","kotlin"]
 This sort of application will provide data seek and storage access by implementing the [chat messages](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/domain/Message.kt) and [chat services](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/service/ChatService.kt) interfaces in order to compoase a Cassandra-based data-backend to our application. We will use Reactive extensions to make maximum flexability of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
 
 
-# That Data Model Over There (TDMMOT)
+# Thinking of Data Shape
 
-This part of the tutorial will focus on chat topicMessage data modeling, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
+This part of the tutorial will focus on chat topicMessage data shaping, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
 
-The first course of action here is to identify the access methods we will need across our data type - in this case, a topicMessage - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexability when used with distributed, multi-server nodes that do not share a counter per data model. UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
+The first course of action here is to identify the access methods we will need across our data type - in this case, a topicMessage - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexibility when used with distributed, multi-server nodes that do not share a counter (such as SQL's auto-increment). UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
 # Data Modeling with Kotlin - Co-variant Types
 
@@ -33,15 +33,15 @@ Message.kt:
     }
 
 The `out` keyword tells the JVM that any type of K or V will be a subtype of the specified generic parameter. This gives some sub-type flexibility
-when implementing downstream components that make use of the same Super-types. See Kotlin's [co-variant/invariante](https://kotlinlang.org/docs/reference/generics.html) discussions for 
+when implementing downstream components that make use of the same Super-types. See Kotlin's [Generics and Variance documentation](https://kotlinlang.org/docs/reference/generics.html) discussions for 
 more information on this topic.
 
-## Complex Composite 
+## Complex Composite Keys 
 
-Furthermore, because early on I knew there would be multiple Keying strategies, I created a separate Key support interface that 
-allowed the inclusion of various key data such as Message ID, Topic ID, User ID, etc... The form of keys used in our Cassandra data implementations 
+Furthermore, because there would be multiple Keying strategies, there is a separate Key support interface that 
+allowed inclusion of data such as Message ID, Topic ID, User ID, etc... The form of keys used in our Cassandra data implementations 
 will make use of each of these Key ID's by giving them specific Key Column annotation ( cluster vs partition ). As the basic message 
-will include just it's ID and a timestamp. Lets review the super-type key.
+will include just it's ID and a timestamp. Lets review the supertype key.
 
 MessageKey.kt:
 
@@ -50,7 +50,7 @@ MessageKey.kt:
         val timestamp: Instant
     }
 
-I created the following base type to cover a topic-level message key..
+I created the following subtype to cover a application 'topic' message key..
 
 TopicMessageKey.kt:
 
@@ -60,7 +60,7 @@ TopicMessageKey.kt:
         override val timestamp: Instant
     }
 
-Finally, a key sub-type that included the userId - since most messages will be sourced by actual users.
+Finally, a key subtype that included the userId - since most messages will be sourced by actual users.
 
 TextMessageKey.kt:
 
@@ -68,7 +68,7 @@ TextMessageKey.kt:
         val userId: UUID
     }
 
-Any particular message will have it's Key, some kind of Value <generic V parameter> and a visibility flag to indicate whether clients should display whats in the value.
+For the message data, we can include 2 generics - Key type and Value type. I added the visibility flag to indicate whether clients should display whats in the value.
 
 Message.kt:
     
@@ -94,15 +94,15 @@ This lets us treat our column as a sorted map of a sorted map with the form:
 
 ## Dude Wheres My Keys?
 
-With the above mental-model in mind, lets discuss key'ing characteristics for accessing messages. We find 3 descreet scenarios we will want to flesh out in our Key data models.
+With the above mental-model in mind, lets discuss keying characteristics for accessing messages. We find 3 scenarios to work out in our Keys.
 
-| Key Property | Sort Key | Sort Order |
+| Partition Key | Cluster Key | Sort Order |
 |--------------|----------|----------|
 | Message-Id   | Message-Id | DESC |
 | Topic-Id | Message-Id | DESC |
 | USER-Id | Message-Id | DESC |
 
-Thus, for the first strategy, we only need a partition key on the Message-Id. Nothing real fancy here, just simple old distribution across nodes - handy heavy-read intensity of random-keys.
+Thus, for the first strategy, we only need a partition key on the Message-Id. Nothing real fancy here, just simple old distribution across nodes - handy for heavy-read intensity of random-keys.
 
 ChatMessageKey.kt:
     
