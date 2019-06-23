@@ -162,7 +162,7 @@ ChatMessage.kt:
             override val visible: Boolean
     ) : Message<T, String>
 
-This simple base-class contains the necessary metadata for each decendant class - thus we have a single key property, annotated with '@PrimaryKey' annotation. I'll let the Java-Doc describe it's behaviour.
+This simple base-class contains the necessary metadata for each descendant class - thus we have a single key property, annotated with '@PrimaryKey' annotation. I'll let the Java-Doc describe it's behaviour.
 
 PrimaryKey.java:
 	* Identifies the primary key field of the entity, which may be of a basic type or of a type that represents a composite
@@ -195,7 +195,7 @@ ChatMessages.kt:
                              value: String,
                              visible: Boolean) : ChatMessage<ChatMessageByTopicKey>(key, value, visible)
 
-I feel this gives maxiumum flexability when creating or extending any additional access concerns.
+I feel this gives maximum flexibility when creating or extending any additional access concerns.
    
 ## How about the DDL?
 
@@ -232,5 +232,7 @@ simple-message.cql:
 
 If you noticed, I created a compound Key using `topic_id` and `msg_id` that enforces order in cluster and allows us to find all messages for a specific topic in the order it was given.
 
-This wraps it up for DDL. We can now concentrate on query operations in the next article - [Cassandra Repositories, or how not to do them]()
+# Conclusions
+
+This wraps it up for DDL. We can now concentrate on query operations in the next article - TBA-[Cassandra Repositories, or how not to do them](http://www.sudoinit5.com/post/spring-data-cassandra-data-query/)
 
