@@ -2,13 +2,11 @@ package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ChatServiceCassandraApp
-import com.demo.chat.domain.ChatMessageById
-import com.demo.chat.domain.ChatMessageByTopic
-import com.demo.chat.domain.ChatMessageByUser
-import com.demo.chat.domain.ChatMessageByIdKey
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.repository.cassandra.MessageByUserRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
