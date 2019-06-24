@@ -50,3 +50,10 @@ Following standard repository procedures to produce query modes for data with ea
 # Custom Repositories with CQL
 
 # Conclusion 
+
+# Helpful links
+
+Something a few years old but worth reading : 
+[eBays cassandra tutorial series](https://www.ebayinc.com/stories/blogs/tech/cassandra-data-modeling-best-practices-part-1/)
+[part 2 of the series](https://www.ebayinc.com/stories/blogs/tech/cassandra-data-modeling-best-practices-part-2/)
+

@@ -20,11 +20,13 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
+import reactor.test.scheduler.VirtualTimeScheduler
 import redis.embedded.RedisServer
 import java.io.File
+import java.time.Duration
 import java.time.Instant
 import java.util.*
-import java.util.stream.Stream
+import java.util.function.Supplier
 
 @ExtendWith(SpringExtension::class)
 @Import(ChatEventsRedisConfiguration::class)
@@ -59,29 +61,78 @@ class StreamOperationsTests {
         Hooks.onOperatorDebug()
     }
 
-
     @AfterAll
     fun tearDown() = redisServer.stop()
 
     @Test
-    fun `should receive up to 5 messages over 1 minutes`() {
+    fun `should publish and receive topic data`() {
         val testStreamKey = "TEST_STREAM_" + UUID.randomUUID().toString()
 
-        val messageStream = Stream
-                .generate {
-                    val testRoomId = UUID.randomUUID()
-                    val testEventId = UUID.randomUUID()
-                    val testUserId = UUID.randomUUID()
+        val notMessages = Supplier {
 
-                    TestTextMessage(
-                            TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
-                            "TEST ${randomText()}",
-                            true
-                    )
+            val messages = Flux.generate<TestTextMessage> {
+                val testRoomId = UUID.randomUUID()
+                val testEventId = UUID.randomUUID()
+                val testUserId = UUID.randomUUID()
+
+                it.next(TestTextMessage(
+                        TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
+                        "TEST ${randomText()}",
+                        true
+                ))
+            }
+                    .take(1)
+
+            val sender = Flux
+                    .from(messages)
+                    .flatMap {
+                        val recordId = RecordId.autoGenerate()
+                        val dataMap = mapOf(Pair("data", TopicData(it)))
+
+                        msgTemplate
+                                .opsForStream<String, TopicData>()
+                                .add(MapRecord
+                                        .create(testStreamKey, dataMap)
+                                        .withId(recordId))
+                                .checkpoint("Send")
+                    }
+
+            val receiver = msgTemplate
+                    .opsForStream<String, TopicData>()
+                    .read(StreamOffset.fromStart(testStreamKey))
+                    .map {
+                        it.value
+                    }
+                    .checkpoint("receive")
+
+            Flux
+                    .from(sender)
+                    .thenMany(receiver)
+        }
+
+        VirtualTimeScheduler.getOrSet()
+        StepVerifier
+                .withVirtualTime(notMessages)
+                .expectSubscription()
+                .thenAwait(Duration.ofSeconds(1))
+                .assertNext {
+                    Assertions
+                            .assertThat(it["data"])
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                            .hasFieldOrProperty("state")
+
+                    val data = it["data"]?.state
+
+                    Assertions
+                            .assertThat(data)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                            .hasFieldOrProperty("key")
+                            .hasFieldOrProperty("value")
+                            .hasFieldOrPropertyWithValue("visible", true)
                 }
-                .limit(5)
-
-
+                .verifyComplete()
 
     }
 
