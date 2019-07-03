@@ -1,5 +1,7 @@
 package com.demo.chatevents
 
+import com.demo.chat.domain.AlertMessageKey
+import com.demo.chat.domain.LeaveAlert
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
@@ -9,6 +11,7 @@ import org.slf4j.LoggerFactory
 import reactor.core.publisher.DirectProcessor
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.util.*
 
 /**
@@ -17,6 +20,13 @@ import java.util.*
  * A member is a subscriber to a topic
  */
 class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
+    override fun createTopic(topicId: UUID): Mono<Void> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun topicExists(topic: UUID): Mono<Boolean> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 

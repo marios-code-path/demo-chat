@@ -1,8 +1,16 @@
 package com.demo.chatevents
 
 import com.demo.chat.domain.TextMessage
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonTypeName
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
+import org.springframework.data.redis.core.ReactiveRedisTemplate
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
+import org.springframework.data.redis.serializer.RedisSerializationContext
+import org.springframework.data.redis.serializer.StringRedisSerializer
 import java.util.*
 
 fun textMessageAssertion(msg: TextMessage) {
@@ -31,3 +39,31 @@ fun randomUserId(): UUID {
 
 fun randomText() =
         "Text ${Random().nextLong()}"
+
+
+data class Usr(val name: String, val handle: String, val date: Date)
+
+@JsonTypeName("Zoom")
+data class Zoom(var data: String) {
+    constructor() : this("foo")//Usr("","", Date()))
+}
+
+
+fun testTemplate(cf: ReactiveRedisConnectionFactory, objectMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
+    val keys = StringRedisSerializer()
+    val values = Jackson2JsonRedisSerializer(Zoom::class.java)
+    values.setObjectMapper(objectMapper)           // KOTLIN USERS : use setObjectMapper!
+
+    val builder: RedisSerializationContext.RedisSerializationContextBuilder<String,  Zoom> =
+            RedisSerializationContext.newSerializationContext(keys)
+
+    val hashValues = Jackson2JsonRedisSerializer(Zoom::class.java)
+    //hashValues.setObjectMapper(objectMapper())
+
+    builder.key(keys)
+    builder.value(values)
+    builder.hashKey(keys)
+    builder.hashValue(hashValues)
+
+    return ReactiveRedisTemplate(cf, builder.build())
+}

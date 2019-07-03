@@ -8,6 +8,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 interface ChatTopicService {
+    fun createTopic(topicId: UUID): Mono<Void>
     fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void>
     fun unSubscribeFromTopic(member: UUID, topic: UUID): Mono<Void>
     fun unSubscribeFromAllTopics(member: UUID): Mono<Void> // then closes
@@ -17,6 +18,7 @@ interface ChatTopicService {
     fun getMemberTopics(uid: UUID): List<UUID>
     fun getTopicMembers(uid: UUID): List<UUID>
     fun closeTopic(topic: UUID): Mono<Void>
+    fun topicExists(topic: UUID): Mono<Boolean>
 }
 
 interface ChatTopicServiceAdmin {

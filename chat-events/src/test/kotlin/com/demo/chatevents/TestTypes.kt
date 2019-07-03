@@ -1,11 +1,16 @@
 package com.demo.chatevents
 
 import com.demo.chat.domain.*
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
 object TestTypes
+
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+@JsonTypeName("TopicData")
+data class TestTopicData(val state: Message<TopicMessageKey, Any>)
 
 @JsonTypeName("ChatUser")
 data class TestChatUser(
@@ -75,6 +80,3 @@ data class TestTextMessage(
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
-
-@JsonTypeName("TopicData")
-data class TestTopicData(val state: Message<out TopicMessageKey, Any>)

@@ -67,24 +67,22 @@ data class ChatMessage(
 
 
 @JsonTypeName("InfoAlert")
-data class TestInfoAlert(
+data class ChatInfoAlert(
         override val key: AlertMessageKey,
         override val value: RoomMetaData,
         override val visible: Boolean
 ) : Message<AlertMessageKey, RoomMetaData>
 
 @JsonTypeName("LeaveAlert")
-data class TestLeaveAlert(
+data class ChatLeaveAlert(
         override val key: AlertMessageKey,
         override val value: UUID,
         override val visible: Boolean
 ) : Message<AlertMessageKey, UUID>
 
 @JsonTypeName("JoinAlert")
-data class TestJoinAlert(
+data class ChatJoinAlert(
         override val key: AlertMessageKey,
         override val value: UUID,
         override val visible: Boolean
 ) : Message<AlertMessageKey, UUID>
-
-

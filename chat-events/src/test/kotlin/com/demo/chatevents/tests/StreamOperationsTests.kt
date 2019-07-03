@@ -1,6 +1,7 @@
 package com.demo.chatevents.tests
 
 import com.demo.chatevents.*
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -8,14 +9,22 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.connection.stream.StreamOffset
+import org.springframework.data.redis.connection.stream.StreamRecords
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
+import org.springframework.data.redis.hash.Jackson2HashMapper
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
+import org.springframework.data.redis.serializer.RedisSerializationContext
+import org.springframework.data.redis.serializer.StringRedisSerializer
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
@@ -27,7 +36,9 @@ import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.function.Supplier
+import java.util.stream.Collectors
 
+// TODO: Object Hashmap
 @ExtendWith(SpringExtension::class)
 @Import(ChatEventsRedisConfiguration::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -38,11 +49,19 @@ class StreamOperationsTests {
 
     private lateinit var redisServer: RedisServer
 
+    private lateinit var objectMapper: ObjectMapper
+
     private lateinit var lettuce: LettuceConnectionFactory
 
     private lateinit var template: ReactiveRedisTemplate<String, String>
 
     private lateinit var msgTemplate: ReactiveRedisTemplate<String, TopicData>
+
+    private lateinit var objTemplate: ReactiveRedisTemplate<String, Object>
+
+    private lateinit var zoomTemplate: ReactiveRedisTemplate<String, Zoom>
+
+    private lateinit var mapper: Jackson2HashMapper
 
     @BeforeAll
     fun setupRedis() {
@@ -56,16 +75,69 @@ class StreamOperationsTests {
 
         template = ReactiveStringRedisTemplate(lettuce)
 
-        msgTemplate = ChatEventsRedisConfiguration().someCache(lettuce)
+        val config = ChatEventsRedisConfiguration()
+
+        objectMapper = config.objectMapper()
+
+        msgTemplate = config.topicTemplate(lettuce)
+
+        objTemplate = config.objectTemplate(lettuce)
+
+        zoomTemplate = zoomTemplate(lettuce, objectMapper)
+
+        mapper = Jackson2HashMapper(objectMapper, true)
 
         Hooks.onOperatorDebug()
+    }
+
+    fun zoomTemplate(cf: ReactiveRedisConnectionFactory, objMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
+        val keys = StringRedisSerializer()
+
+        val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, Zoom> =
+                RedisSerializationContext.newSerializationContext(keys)
+
+        val defaultSerializer = Jackson2JsonRedisSerializer(Zoom::class.java)
+
+        builder.key(keys)
+        builder.hashKey(keys)
+        builder.value(defaultSerializer)
+        builder.hashValue(defaultSerializer)
+
+        return ReactiveRedisTemplate(cf, builder.build())
     }
 
     @AfterAll
     fun tearDown() = redisServer.stop()
 
+
+    fun `test a hash mapping values`() {
+        val zoom = Zoom("foo")
+
+        val write = zoomTemplate
+                .opsForHash<String, Any>().putAll("test", mapper.toHash(zoom))
+
+        val read = zoomTemplate
+                .opsForHash<String, Any>().entries("test")
+                .collectMap({ it.key }, { it.value })
+
+        StepVerifier
+                .create(
+                        Flux
+                                .from(write)
+                                .thenMany(read)
+                )
+                .expectSubscription()
+                .assertNext {
+                    val newZoom: Zoom = mapper.fromHash(it) as Zoom
+
+                    logger.info("New Zoom Object : $newZoom")
+                }
+                .verifyComplete()
+
+    }
+
     @Test
-    fun `should publish and receive topic data`() {
+    fun `should publish and receive MapRecord of TopicData`() {
         val testStreamKey = "TEST_STREAM_" + UUID.randomUUID().toString()
 
         val notMessages = Supplier {
@@ -90,7 +162,7 @@ class StreamOperationsTests {
                         val dataMap = mapOf(Pair("data", TopicData(it)))
 
                         msgTemplate
-                                .opsForStream<String, TopicData>()
+                                .opsForStream<String, TestTopicData>()
                                 .add(MapRecord
                                         .create(testStreamKey, dataMap)
                                         .withId(recordId))
@@ -136,8 +208,7 @@ class StreamOperationsTests {
 
     }
 
-    @Test
-    fun `should deserialize from json to a valid message type`() {
+    fun `should publish and receive ObjectRecord of TopicData`() {
         val testStreamKey = "TEST_STREAM_" + UUID.randomUUID().toString()
         val testRoomId = UUID.randomUUID()
         val testEventId = UUID.randomUUID()
@@ -151,23 +222,30 @@ class StreamOperationsTests {
 
         val recordId = RecordId.autoGenerate()
 
-        val map = mapOf(Pair("data", TopicData(message)))
+        val objRecord = StreamRecords.newRecord()
+                .`in`(testStreamKey)
+                .ofObject(TopicData(message))
+                .withId(recordId)
 
         val sendStream = msgTemplate
-                .opsForStream<String, TopicData>()
-                .add(MapRecord
-                        .create(testStreamKey, map)
-                        .withId(recordId))
-                .checkpoint("Send")
+                .opsForStream<String, TopicData>(Jackson2HashMapper(true))
+                .add(objRecord)
+                .checkpoint("send")
 
         val receiveStream = msgTemplate
-                .opsForStream<String, TopicData>()
+                .opsForStream<String, Any>(Jackson2HashMapper(true))
                 .read(StreamOffset.fromStart(testStreamKey))
                 .map {
-                    it.value
+                    //it.toObjectRecord<TopicData>(Jackson2HashMapper(true))
+                    Jackson2HashMapper(true).fromHash(it.value)
                 }
                 .checkpoint("receive")
-
+/*
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	default <OV> ObjectRecord<S, OV> toObjectRecord(HashMapper<? super OV, ? super K, ? super V> mapper) {
+		return Record.<S, OV> of((OV) mapper.fromHash((Map) getValue())).withId(getId()).withStreamKey(getStream());
+	}
+ */
         val testStream = Flux.from(sendStream)
                 .thenMany(receiveStream)
 
@@ -175,13 +253,8 @@ class StreamOperationsTests {
                 .create(testStream)
                 .expectSubscription()
                 .assertNext {
-                    Assertions
-                            .assertThat(it["data"])
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrProperty("state")
 
-                    val data = it["data"]?.state
+                    val data: TopicData = it as TopicData
 
                     Assertions
                             .assertThat(data)
