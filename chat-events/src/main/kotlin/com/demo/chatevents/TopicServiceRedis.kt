@@ -43,28 +43,33 @@ class TopicServiceRedis(
         private val messageTemplate: ReactiveRedisTemplate<String, TopicData>
 ) : ChatTopicService, ChatTopicServiceAdmin {
 
-    private val prefixTopicKey = keyConfig.prefixTopicKey
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
     private val prefixTopicToUserSubs = keyConfig.prefixTopicToUserSubs
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
+    private val streamService = StreamService()
+
     override fun topicExists(topic: UUID): Mono<Boolean> = stringTemplate
             .opsForSet()
             .isMember(topicSetKey, topic.toString())
 
-    override fun createTopic(topic: UUID): Mono<Void> = Mono
-            .from(
-                    stringTemplate
-                            .opsForSet()
-                            .add(topicSetKey, topic.toString())
-                            .handle { a, sink ->
-                                when (a) {
-                                    null -> sink.error(ChatException("Unable to create topic"))
-                                    else -> sink.complete()
-                                }
-                            }
-            )
+    // Idempotent
+    override fun createTopic(topic: UUID): Mono<Void> =
+            stringTemplate
+                    .opsForSet()
+                    .add(topicSetKey, topic.toString())
+                    .handle { _, sink ->
+                            streamService.connectStream(topic,
+                                messageTemplate
+                                        .opsForStream<String, TopicData>()
+                                        .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
+                                        .map {
+                                            it.value["data"]?.state!!
+                                        })
+                        sink.complete()
+                    }
+
 
     override fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void> =
             topicExistsOrError(topic)
@@ -92,6 +97,10 @@ class TopicServiceRedis(
                     )
                     .then(
                             sendMessageToTopic(JoinAlert.create(UUID.randomUUID(), topic, member))
+                                    .handle { a, sink ->
+                                        streamService.listenToStream(topic, member)
+                                        sink.complete()
+                                    }
                     )
 
     override fun unSubscribeFromTopic(member: UUID, topic: UUID): Mono<Void> =
@@ -123,6 +132,10 @@ class TopicServiceRedis(
                             topic,
                             member
                     )))
+                    .doOnSuccess {
+                        streamService
+                                .disconnectFromStream(topic, member)
+                    }
 
 
     override fun unSubscribeFromAllTopics(member: UUID): Mono<Void> =
@@ -178,33 +191,41 @@ class TopicServiceRedis(
                 .then()
     }
 
-    override fun receiveTopicEvents(topic: UUID): Flux<out Message<TopicMessageKey, Any>> =
-            messageTemplate
-                    .opsForStream<String, TopicData>()
-                    .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
-                    .map {
-                        it.value["data"]?.state!!
-                    }
+    override fun receiveEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            streamService.getStreamFlux(streamId)
 
-    fun addToTopicStreamListeners(topic: UUID, streamSource :Flux<out Message<TopicMessageKey, Any>>) {
+    override fun getMemberTopics(uid: UUID): Mono<List<UUID>> =
+            stringTemplate
+                    .opsForSet()
+                    .members(
+                            prefixUserToTopicSubs + uid.toString()
+                    )
+                    .map(UUID::fromString)
+                    .collectList()
 
-    }
+    override fun getTopicMembers(topic: UUID): Mono<List<UUID>> =
+            stringTemplate
+                    .opsForSet()
+                    .members(
+                            prefixTopicToUserSubs + topic.toString()
+                    )
+                    .map(UUID::fromString)
+                    .collectList()
 
-    override fun getMemberTopics(uid: UUID): List<UUID> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun closeTopic(topic: UUID): Mono<Void> = messageTemplate
+                .connectionFactory
+                .reactiveConnection
+                .keyCommands()
+                .del(ByteBuffer
+                        .wrap(topic.toString().toByteArray(Charset.defaultCharset())))
+                .doOnNext {
+                    streamService
+                            .closeStream(topic)
+                }.then()
 
-    override fun getTopicMembers(uid: UUID): List<UUID> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<TopicMessageKey, Any>> =
+            streamService.getStreamProcessor(topicId)
 
-    override fun closeTopic(topic: UUID): Mono<Void> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
-
-    override fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<TopicMessageKey, Any>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
 
     private fun topicExistsOrError(topic: UUID): Mono<Void> = topicExists(topic)
             .filter {

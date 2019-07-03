@@ -64,7 +64,7 @@ class ChatTopicInMemoryService : ChatTopicService, ChatTopicServiceAdmin {
                         DirectProcessor.create()
                     }
 
-    override fun receiveTopicEvents(topicId: UUID): Flux<Message<TopicMessageKey, Any>> =
+    override fun receiveEvents(topicId: UUID): Flux<Message<TopicMessageKey, Any>> =
             topicFluxes
                     .getOrPut(topicId) {
                         val processor: DirectProcessor<Message<TopicMessageKey, Any>> = getTopicProcessor(topicId)

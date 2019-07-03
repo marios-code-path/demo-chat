@@ -109,7 +109,7 @@ class MemoryChatTopicServiceTests {
                 .create(
                         topicService
                                 .subscribeToTopic(userId, testRoom)
-                                .thenMany(topicService.receiveTopicEvents(userId))
+                                .thenMany(topicService.receiveEvents(userId))
                 )
                 .then {
                     messageSendSupplier.get().subscribe()
