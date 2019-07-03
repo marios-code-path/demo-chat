@@ -30,7 +30,6 @@ import java.nio.charset.Charset
 import java.util.*
 
 data class KeyConfiguration(
-        val prefixTopicKey: String,
         val topicSetKey: String,
         val prefixTopicStream: String,
         val prefixUserToTopicSubs: String,
@@ -48,7 +47,7 @@ class TopicServiceRedis(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamService = StreamService()
+    private val streamService = StreamManager()
 
     override fun topicExists(topic: UUID): Mono<Boolean> = stringTemplate
             .opsForSet()
@@ -59,16 +58,17 @@ class TopicServiceRedis(
             stringTemplate
                     .opsForSet()
                     .add(topicSetKey, topic.toString())
-                    .handle { _, sink ->
-                            streamService.connectStream(topic,
+                    .thenEmpty {
+                            streamService.subscribeTo(topic,
                                 messageTemplate
                                         .opsForStream<String, TopicData>()
                                         .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
                                         .map {
                                             it.value["data"]?.state!!
                                         })
-                        sink.complete()
+                        it.onComplete()
                     }
+
 
 
     override fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void> =
@@ -98,7 +98,7 @@ class TopicServiceRedis(
                     .then(
                             sendMessageToTopic(JoinAlert.create(UUID.randomUUID(), topic, member))
                                     .handle { a, sink ->
-                                        streamService.listenToStream(topic, member)
+                                        streamService.consumeStream(topic, member)
                                         sink.complete()
                                     }
                     )
@@ -127,16 +127,16 @@ class TopicServiceRedis(
                                         }
                                     }
                     )
+                    .thenEmpty {
+                        streamService
+                                .disconnectFromStream(topic, member)
+                        it.onComplete()
+                    }
                     .then(sendMessageToTopic(LeaveAlert.create(
                             UUID.randomUUID(),
                             topic,
                             member
                     )))
-                    .doOnSuccess {
-                        streamService
-                                .disconnectFromStream(topic, member)
-                    }
-
 
     override fun unSubscribeFromAllTopics(member: UUID): Mono<Void> =
             stringTemplate
@@ -186,7 +186,7 @@ class TopicServiceRedis(
         return messageTemplate
                 .opsForStream<String, TopicData>()
                 .add(MapRecord
-                        .create(prefixTopicToUserSubs + topicMessage.key.topicId.toString(), map)
+                        .create(prefixTopicStream + topicMessage.key.topicId.toString(), map)
                         .withId(recordId))
                 .then()
     }
@@ -194,23 +194,21 @@ class TopicServiceRedis(
     override fun receiveEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
             streamService.getStreamFlux(streamId)
 
-    override fun getMemberTopics(uid: UUID): Mono<List<UUID>> =
+    override fun getMemberTopics(uid: UUID): Flux<UUID> =
             stringTemplate
                     .opsForSet()
                     .members(
                             prefixUserToTopicSubs + uid.toString()
                     )
                     .map(UUID::fromString)
-                    .collectList()
 
-    override fun getTopicMembers(topic: UUID): Mono<List<UUID>> =
+    override fun getTopicMembers(topic: UUID): Flux<UUID> =
             stringTemplate
                     .opsForSet()
                     .members(
                             prefixTopicToUserSubs + topic.toString()
                     )
                     .map(UUID::fromString)
-                    .collectList()
 
     override fun closeTopic(topic: UUID): Mono<Void> = messageTemplate
                 .connectionFactory

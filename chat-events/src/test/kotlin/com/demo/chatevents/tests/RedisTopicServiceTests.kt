@@ -6,13 +6,11 @@ import com.demo.chatevents.ChatEventsRedisConfiguration
 import com.demo.chatevents.KeyConfiguration
 import com.demo.chatevents.TopicServiceRedis
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
@@ -22,9 +20,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 import redis.embedded.RedisServer
-import java.io.File
 import java.util.*
-import javax.validation.constraints.AssertTrue
 
 @ExtendWith(SpringExtension::class)
 @Import(ChatEventsRedisConfiguration::class)
@@ -55,10 +51,10 @@ class RedisTopicServiceTests {
         redisServiceConfig = ChatEventsRedisConfiguration()
 
         topicService = TopicServiceRedis(
-                KeyConfiguration("c_topic_",
-                        "all_topics",
-                        "c_user_topics",
-                        "c_topic_users_"),
+                KeyConfiguration("all_topics",
+                        "st_topic",
+                        "l_user_topics",
+                        "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
                 redisServiceConfig.topicTemplate(lettuce)
         )
@@ -101,7 +97,7 @@ class RedisTopicServiceTests {
                 .expectSubscription()
                 .expectError(ChatException::class.java)
                 .verify()
-                //.verifyError(ChatException::class.java)
+        //.verifyError(ChatException::class.java)
     }
 
     @Test

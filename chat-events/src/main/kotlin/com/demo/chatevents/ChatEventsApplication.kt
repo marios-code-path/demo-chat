@@ -16,6 +16,6 @@ fun main(args: Array<String>) {
 @Configuration
 class ChatEventsConfiguration {
     @Bean
-    fun topicServiceInMemory(): ChatTopicInMemoryService =
-            ChatTopicInMemoryService()
+    fun topicServiceInMemory(): TopicServiceMemory =
+            TopicServiceMemory()
 }

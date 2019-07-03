@@ -42,7 +42,7 @@ import java.util.stream.Collectors
 @ExtendWith(SpringExtension::class)
 @Import(ChatEventsRedisConfiguration::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class StreamOperationsTests {
+class StreamOperationRedisTests {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val port = 6379

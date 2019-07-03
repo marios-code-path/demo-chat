@@ -15,8 +15,8 @@ interface ChatTopicService {
     fun kickallFromTopic(topic: UUID): Mono<Void>
     fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void>
     fun receiveEvents(topic: UUID): Flux<out Message<TopicMessageKey, Any>>
-    fun getMemberTopics(uid: UUID): Mono<List<UUID>>
-    fun getTopicMembers(uid: UUID): Mono<List<UUID>>
+    fun getMemberTopics(uid: UUID): Flux<UUID>
+    fun getTopicMembers(uid: UUID): Flux<UUID>
     fun closeTopic(topic: UUID): Mono<Void>
     fun topicExists(topic: UUID): Mono<Boolean>
 }
