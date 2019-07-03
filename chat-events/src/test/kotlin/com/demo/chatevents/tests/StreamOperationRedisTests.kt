@@ -45,7 +45,7 @@ import java.util.stream.Collectors
 class StreamOperationRedisTests {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
-    private val port = 6379
+    private val port = 6374
 
     private lateinit var redisServer: RedisServer
 

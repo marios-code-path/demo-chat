@@ -169,9 +169,7 @@ class TopicServiceRedis(
                     }
 
     override fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
-        val map = mapOf(Pair("msgId", topicMessage.key.msgId))
-        //      Pair("data", TopicData(topicMessage)))
-
+        val map = mapOf(Pair("data", TopicData(topicMessage)))
         /*
             * <li>1    Time-based UUID
             * <li>2    DCE security UUID
@@ -271,6 +269,8 @@ class ChatEventsRedisConfiguration {
 
         builder.key(keys)
         builder.value(values)
+        builder.hashKey(keys)
+        builder.hashValue(values)
 
         return ReactiveRedisTemplate(cf, builder.build())
     }

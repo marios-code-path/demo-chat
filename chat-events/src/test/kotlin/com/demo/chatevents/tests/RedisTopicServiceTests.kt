@@ -52,8 +52,8 @@ class RedisTopicServiceTests {
 
         topicService = TopicServiceRedis(
                 KeyConfiguration("all_topics",
-                        "st_topic",
-                        "l_user_topics",
+                        "st_topic_",
+                        "l_user_topics_",
                         "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
                 redisServiceConfig.topicTemplate(lettuce)
@@ -97,7 +97,6 @@ class RedisTopicServiceTests {
                 .expectSubscription()
                 .expectError(ChatException::class.java)
                 .verify()
-        //.verifyError(ChatException::class.java)
     }
 
     @Test
