@@ -5,11 +5,10 @@ import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import reactor.core.publisher.DirectProcessor
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
+import reactor.core.publisher.*
 import reactor.core.scheduler.Schedulers
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  *
@@ -18,6 +17,7 @@ import java.util.*
  */
 class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     private val streamManager: StreamManager = StreamManager()
+    private val sourceManager: StreamManager = StreamManager()
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
@@ -27,19 +27,24 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     // map of <UserInbox : [topic]s>
     private val memberTopics: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
 
+    private val topicXSource: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
     override fun createTopic(topicId: UUID): Mono<Void> = Mono
             .fromCallable {
                 topicToMembers(topicId)
-                streamManager.getStreamProcessor(topicId)
+                receiveSourcedEvents(topicId)
             }
             .then()
 
+    fun topicExistsOrError(topic: UUID): Mono<Boolean> =
+            topicExists(topic)
+                    .filter { it == true }
+                    .switchIfEmpty(Mono.error(RoomNotFoundException))
 
     override fun topicExists(topic: UUID): Mono<Boolean> = Mono
             .fromCallable { topicMembers.containsKey(topic) }
 
-    override fun getTopicProcessor(topicId: UUID): DirectProcessor<Message<TopicMessageKey, Any>> =
+    override fun getStreamProcessor(topicId: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
             streamManager
                     .getStreamProcessor(topicId)
 
@@ -47,10 +52,24 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
             streamManager
                     .getStreamFlux(stream)
 
+    /**
+     * Stream Manager becomes subscriber to an upstream from topicXSource
+     */
+    override fun receiveSourcedEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            topicXSource
+                    .getOrPut(streamId, {
+                        val proc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(1)
+                        streamManager.setStreamProcessor(streamId, proc)
+
+                        val reader = streamManager.getStreamFlux(streamId)
+                        topicXSource[streamId] = reader
+
+                        reader
+                    })
+
     // how to join multiple streams to have fan-out without iterating through Fluxs
     override fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> =
-            topicExists(topicMessage.key.topicId)
-                    .filter { it == true }
+            topicExistsOrError(topicMessage.key.topicId)
                     .map {
                         streamManager
                                 .getStreamProcessor(topicMessage.key.topicId)
@@ -61,14 +80,12 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
 
 
     override fun subscribeToTopic(uid: UUID, topicId: UUID): Mono<Void> =
-            topicExists(topicId)
-                    .filter { it == true }
+            topicExistsOrError(topicId)
                     .map {
                         topicToMembers(topicId).add(uid)
                         memberToTopics(uid).add(topicId)
                         streamManager.consumeStream(topicId, uid)
                     }
-                    .switchIfEmpty(Mono.error(RoomNotFoundException))
                     .then()
 
     override fun unSubscribeFromTopic(uid: UUID, topic: UUID): Mono<Void> = Mono
@@ -77,13 +94,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                 memberToTopics(uid).remove(topic)
                 streamManager
                         .disconnectFromStream(topic, uid)
-            }.flatMap {
-                sendMessageToTopic(LeaveAlert.create(
-                        UUID.randomUUID(),
-                        topic,
-                        uid
-                ))
-            }
+            }.then()
 
     override fun unSubscribeFromAllTopics(uid: UUID): Mono<Void> =
             Flux.fromIterable(memberToTopics(uid))

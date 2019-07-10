@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import reactor.core.Disposable
 import reactor.core.publisher.DirectProcessor
 import reactor.core.publisher.Flux
+import reactor.core.publisher.FluxProcessor
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -14,12 +15,11 @@ class StreamManager {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
-    private val streamProcessors: MutableMap<UUID, DirectProcessor<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val streamProcessors: MutableMap<UUID, FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private val streamFluxes: MutableMap<UUID, Flux<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private val streamConsumers: MutableMap<UUID, MutableMap<UUID, Disposable>> = ConcurrentHashMap()
-
 
 
     // Does not replace existing stream! - call closeStream(uuid) then subscribeTo
@@ -27,6 +27,7 @@ class StreamManager {
             source.subscribe {
                 getStreamProcessor(stream).onNext(it)
             }
+
 
     private fun getMaybeConsumer(source: UUID, consumer: UUID): Optional<Disposable> =
             Optional.of(getStreamConsumers(source))
@@ -53,16 +54,11 @@ class StreamManager {
     }
 
     fun closeStream(stream: UUID): Unit {
-        Optional.ofNullable(streamProcessors[stream])
-                .map {
-                    it.onComplete()
-                    streamProcessors.remove(stream)
-                    streamFluxes.remove(stream)
-                    true
-                }
-                .orElseGet {
-                    false
-                }
+        if (streamProcessors.containsKey(stream)) {
+            streamProcessors[stream]?.onComplete()
+            streamProcessors.remove(stream)
+            streamFluxes.remove(stream)
+        }
     }
 
     private fun getStreamConsumers(stream: UUID): MutableMap<UUID, Disposable> =
@@ -70,6 +66,12 @@ class StreamManager {
                     .getOrPut(stream) {
                         ConcurrentHashMap()
                     }
+
+    fun setStreamFlux(stream: UUID, sourceFlux: Flux<Message<TopicMessageKey, Any>>) =
+            streamFluxes.put(stream, sourceFlux)
+
+    fun setStreamProcessor(stream: UUID, proc: FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>) =
+            streamProcessors.put(stream, proc)
 
     fun getStreamFlux(stream: UUID): Flux<Message<TopicMessageKey, Any>> =
             streamFluxes
@@ -80,7 +82,7 @@ class StreamManager {
                                 .autoConnect()
                     }
 
-    fun getStreamProcessor(stream: UUID): DirectProcessor<Message<TopicMessageKey, Any>> =
+    fun getStreamProcessor(stream: UUID): FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>> =
             streamProcessors
                     .getOrPut(stream) {
                         val processor = DirectProcessor.create<Message<TopicMessageKey, Any>>()

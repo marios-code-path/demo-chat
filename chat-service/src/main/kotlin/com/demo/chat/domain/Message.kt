@@ -2,12 +2,13 @@ package com.demo.chat.domain
 
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes(JsonSubTypes.Type(TextMessage::class),
-        JsonSubTypes.Type(InfoAlert::class))
+              JsonSubTypes.Type(InfoAlert::class))
 interface Message<out K, out V> {
     val key: K
     val value: V
@@ -55,6 +56,7 @@ interface AlertMessageKey : TopicMessageKey {
     }
 }
 
+@JsonTypeName("ChatMessage")
 interface TextMessage : Message<TextMessageKey, String> {
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, member: UUID, stringOfData: String): TextMessage = object : TextMessage {
@@ -63,11 +65,12 @@ interface TextMessage : Message<TextMessageKey, String> {
             override val value: String
                 get() = stringOfData
             override val visible: Boolean
-                get() = false
+                get() = true
         }
     }
 }
 
+@JsonTypeName("InfoAlert")
 interface InfoAlert : Message<AlertMessageKey, RoomMetaData> {
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, meta: RoomMetaData): InfoAlert = object : InfoAlert {
@@ -81,6 +84,7 @@ interface InfoAlert : Message<AlertMessageKey, RoomMetaData> {
     }
 }
 
+@JsonTypeName("LeaveAlert")
 interface LeaveAlert : Message<AlertMessageKey, UUID> {
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, member: UUID): LeaveAlert = object : LeaveAlert {
@@ -94,6 +98,7 @@ interface LeaveAlert : Message<AlertMessageKey, UUID> {
     }
 }
 
+@JsonTypeName("JoinAlert")
 interface JoinAlert : Message<AlertMessageKey, UUID> {
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, member: UUID): JoinAlert = object : JoinAlert {
@@ -107,6 +112,7 @@ interface JoinAlert : Message<AlertMessageKey, UUID> {
     }
 }
 
+@JsonTypeName("PauseAlert")
 interface PauseAlert : Message<AlertMessageKey, UUID> {
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, member: UUID): PauseAlert = object : PauseAlert {

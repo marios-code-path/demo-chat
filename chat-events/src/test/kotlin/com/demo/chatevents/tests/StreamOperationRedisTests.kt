@@ -1,15 +1,17 @@
 package com.demo.chatevents.tests
 
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chatevents.*
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
@@ -22,21 +24,19 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.data.redis.hash.Jackson2HashMapper
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
 import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
+import reactor.test.publisher.TestPublisher
 import reactor.test.scheduler.VirtualTimeScheduler
 import redis.embedded.RedisServer
-import java.io.File
 import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.function.Supplier
-import java.util.stream.Collectors
 
 // TODO: Object Hashmap
 @ExtendWith(SpringExtension::class)
@@ -45,7 +45,9 @@ import java.util.stream.Collectors
 class StreamOperationRedisTests {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
-    private val port = 6374
+    private val port = 6379
+
+    private val streamManager = StreamManager()
 
     private lateinit var redisServer: RedisServer
 
@@ -65,9 +67,9 @@ class StreamOperationRedisTests {
 
     @BeforeAll
     fun setupRedis() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), port)
+        //  redisServer = RedisServer(File("/usr/local/bin/redis-server"), port)
 
-        redisServer.start()
+        // redisServer.start()
 
         lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration("127.0.0.1", port))
 
@@ -90,6 +92,13 @@ class StreamOperationRedisTests {
         Hooks.onOperatorDebug()
     }
 
+    @BeforeEach
+    fun tearUp() {
+        objTemplate
+                .connectionFactory.reactiveConnection
+                .serverCommands().flushAll().block()
+    }
+
     fun zoomTemplate(cf: ReactiveRedisConnectionFactory, objMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
         val keys = StringRedisSerializer()
 
@@ -106,8 +115,21 @@ class StreamOperationRedisTests {
         return ReactiveRedisTemplate(cf, builder.build())
     }
 
-    @AfterAll
-    fun tearDown() = redisServer.stop()
+    // @AfterAll
+    // fun tearDown() = redisServer.stop()
+
+
+    @Test
+    fun testShouldPing() {
+
+        val ping = template.connectionFactory.reactiveConnection.ping()
+
+        StepVerifier
+                .create(ping)
+                .expectSubscription()
+                .expectNext("PONG")
+                .verifyComplete()
+    }
 
 
     fun `test a hash mapping values`() {
@@ -288,12 +310,15 @@ class StreamOperationRedisTests {
                         .create(testStreamKey, map)
                         .withId(recordId))
 
-        val receiveStream = Flux
-                .from(sendStream)
-                .thenMany(template
-                        .opsForStream<String, String>()
-                        .read(StreamOffset.fromStart(testStreamKey))
-                )
+        val receiveStream = template
+                .opsForStream<String, String>()
+                .read(StreamOffset.fromStart(testStreamKey))
+
+        StepVerifier
+                .create(sendStream)
+                .expectSubscription()
+                .expectNextCount(1)
+                .verifyComplete()
 
         StepVerifier
                 .create(receiveStream)
@@ -345,14 +370,123 @@ class StreamOperationRedisTests {
     }
 
     @Test
-    fun testShouldPing() {
+    fun `stream manager can handle redis streams`() {
+        val room = testRoomId()
+        val user = testUserId()
 
-        val ping = template.connectionFactory.reactiveConnection.ping()
+        objTemplate
+                .connectionFactory.reactiveConnection
+                .serverCommands().flushAll().block()
+
+        val xread = msgTemplate
+                .opsForStream<String, TopicData>()
+                .read(StreamOffset.fromStart(room.toString()))
+                .map {
+                    it.value["data"]?.state!!
+                }
+
+
+        val xsend = { x: String ->
+            msgTemplate
+                    .opsForStream<String, TopicData>()
+                    .add(MapRecord
+                            .create(room.toString(), mapOf(Pair("data", TopicData(
+                                    TextMessage.create(UUID.randomUUID(), room, user, x)
+                            ))))
+                            .withId(RecordId.autoGenerate()))
+                    .then()
+        }
+
+        val userFlux = streamManager.getStreamFlux(user)
+
+        streamManager.consumeStream(room, user)
+
+        streamManager.subscribeTo(room, xread)
 
         StepVerifier
-                .create(ping)
-                .expectSubscription()
-                .expectNext("PONG")
+                .create(xsend("Hello1"))
                 .verifyComplete()
+
+        StepVerifier
+                .create(xsend("Hello2"))
+                .verifyComplete()
+
+        StepVerifier
+                .create(userFlux)
+                .then {
+                    StepVerifier.create(xread)
+                            .expectNextCount(2)
+                            .verifyComplete()
+                }
+                .expectNextCount(2)
+                .then {
+                    streamManager.disconnectFromStream(room, user)
+                    streamManager.closeStream(user)
+                }
+
+    }
+
+    @Test
+    fun `Test Processor should feed from Xread Command`() {
+        val room = testRoomId()
+        val user = testUserId()
+
+        val xread = msgTemplate
+                .opsForStream<String, TopicData>()
+                .read(StreamOffset.fromStart(room.toString()))
+                .map {
+                    it.value["data"]?.state!!
+                }
+
+        val xsend = { x: String ->
+            msgTemplate
+                    .opsForStream<String, TopicData>()
+                    .add(MapRecord
+                            .create(room.toString(), mapOf(Pair("data", TopicData(
+                                    TextMessage.create(UUID.randomUUID(), room, user, x)
+                            ))))
+                            .withId(RecordId.autoGenerate()))
+                    .then()
+        }
+
+        StepVerifier
+                .create(xsend("HELLO1"))
+                .expectSubscription()
+                .verifyComplete()
+
+        StepVerifier
+                .create(xsend("HELLO2"))
+                .expectSubscription()
+                .verifyComplete()
+
+        val testProcessor: TestPublisher<Message<TopicMessageKey, Any>> =
+                TestPublisher.create()
+
+        val tpDisposable = xread
+                .subscribe {
+                    testProcessor.next(it)
+                }
+
+        val tpFlux = testProcessor
+                .flux()
+                .doOnNext { logger.info("TP : ${it.value}") }
+
+        StepVerifier
+                .create(tpFlux)
+                .then {
+                    StepVerifier.create(xread)
+                            .expectNextCount(2)
+                            .verifyComplete()
+                }
+                .expectNextCount(2)
+                .then {
+                    tpDisposable.dispose()
+                    streamManager.disconnectFromStream(room, user)
+                    streamManager.closeStream(user)
+                    testProcessor.complete()
+                }
+                .expectComplete()
+                .verify(Duration.ofSeconds(2))
+
     }
 }

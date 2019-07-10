@@ -2,9 +2,7 @@ package com.demo.chat.service
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey
-import reactor.core.publisher.DirectProcessor
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
+import reactor.core.publisher.*
 import java.util.*
 
 interface ChatTopicService {
@@ -15,6 +13,7 @@ interface ChatTopicService {
     fun kickallFromTopic(topic: UUID): Mono<Void>
     fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void>
     fun receiveEvents(topic: UUID): Flux<out Message<TopicMessageKey, Any>>
+    fun receiveSourcedEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>>
     fun getMemberTopics(uid: UUID): Flux<UUID>
     fun getTopicMembers(uid: UUID): Flux<UUID>
     fun closeTopic(topic: UUID): Mono<Void>
@@ -22,6 +21,6 @@ interface ChatTopicService {
 }
 
 interface ChatTopicServiceAdmin {
-    fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<TopicMessageKey, Any>>
+    fun getStreamProcessor(topicId: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>>
 
 }

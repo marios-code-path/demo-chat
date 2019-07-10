@@ -7,7 +7,7 @@ import java.time.Instant
 import java.util.*
 
 
-object EmptyMessage: ChatMessage(ChatMessageKey(UUID.randomUUID(),
+object EmptyMessage : ChatMessage(ChatMessageKey(UUID.randomUUID(),
         UUID.randomUUID(),
         UUID.randomUUID(),
         Instant.now()),
@@ -16,7 +16,6 @@ object EmptyMessage: ChatMessage(ChatMessageKey(UUID.randomUUID(),
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
-//data class TopicData(val state: Message<TopicMessageKey, Any>)
 class TopicData(var state: Message<TopicMessageKey, Any>) {
     constructor() : this(EmptyMessage)
 }
@@ -34,3 +33,14 @@ data class ChatMessageKey(
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
+
+@JsonTypeName("JoinAlert")
+data class JoinAlertMessage(override val key: JoinAlertMessageKey,
+                            override val value: UUID,
+                            override val visible: Boolean
+) : JoinAlert
+
+data class JoinAlertMessageKey(override val msgId: UUID,
+                               override val topicId: UUID,
+                               override val timestamp: Instant
+) : AlertMessageKey

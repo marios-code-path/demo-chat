@@ -1,6 +1,9 @@
 package com.demo.chatevents
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.RoomNotFoundException
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import com.fasterxml.jackson.annotation.JsonInclude
@@ -9,6 +12,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
@@ -21,13 +25,15 @@ import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
 import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
 import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
-import reactor.core.publisher.DirectProcessor
 import reactor.core.publisher.Flux
+import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
+import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 data class KeyConfiguration(
         val topicSetKey: String,
@@ -42,12 +48,21 @@ class TopicServiceRedis(
         private val messageTemplate: ReactiveRedisTemplate<String, TopicData>
 ) : ChatTopicService, ChatTopicServiceAdmin {
 
+    private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
     private val prefixTopicToUserSubs = keyConfig.prefixTopicToUserSubs
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamService = StreamManager()
+    private val streamManager = StreamManager()
+    private val topicXReads: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+
+    private fun topicExistsOrError(topic: UUID): Mono<Void> = topicExists(topic)
+            .filter {
+                it == true
+            }
+            .switchIfEmpty(Mono.error(RoomNotFoundException))
+            .then()
 
     override fun topicExists(topic: UUID): Mono<Boolean> = stringTemplate
             .opsForSet()
@@ -59,17 +74,9 @@ class TopicServiceRedis(
                     .opsForSet()
                     .add(topicSetKey, topic.toString())
                     .thenEmpty {
-                            streamService.subscribeTo(topic,
-                                messageTemplate
-                                        .opsForStream<String, TopicData>()
-                                        .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
-                                        .map {
-                                            it.value["data"]?.state!!
-                                        })
+                        receiveSourcedEvents(topic)
                         it.onComplete()
                     }
-
-
 
     override fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void> =
             topicExistsOrError(topic)
@@ -95,13 +102,10 @@ class TopicServiceRedis(
                                         }
                                     }
                     )
-                    .then(
-                            sendMessageToTopic(JoinAlert.create(UUID.randomUUID(), topic, member))
-                                    .handle { a, sink ->
-                                        streamService.consumeStream(topic, member)
-                                        sink.complete()
-                                    }
-                    )
+                    .thenEmpty {
+                        streamManager.consumeStream(topic, member)
+                        it.onComplete()
+                    }
 
     override fun unSubscribeFromTopic(member: UUID, topic: UUID): Mono<Void> =
             topicExistsOrError(topic)
@@ -128,15 +132,10 @@ class TopicServiceRedis(
                                     }
                     )
                     .thenEmpty {
-                        streamService
+                        streamManager
                                 .disconnectFromStream(topic, member)
                         it.onComplete()
                     }
-                    .then(sendMessageToTopic(LeaveAlert.create(
-                            UUID.randomUUID(),
-                            topic,
-                            member
-                    )))
 
     override fun unSubscribeFromAllTopics(member: UUID): Mono<Void> =
             stringTemplate
@@ -181,17 +180,40 @@ class TopicServiceRedis(
             else -> RecordId.autoGenerate()
         }
 
-        return messageTemplate
-                .opsForStream<String, TopicData>()
-                .add(MapRecord
-                        .create(prefixTopicStream + topicMessage.key.topicId.toString(), map)
-                        .withId(recordId))
+        return Mono.from(topicExistsOrError(topicMessage.key.topicId))
+                .thenMany(messageTemplate
+                        .opsForStream<String, TopicData>()
+                        .add(MapRecord
+                                .create(prefixTopicStream + topicMessage.key.topicId.toString(), map)
+                                .withId(recordId)))
                 .then()
     }
 
     override fun receiveEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
-            streamService.getStreamFlux(streamId)
+            streamManager.getStreamFlux(streamId)
 
+    // may need to turn this into a different rturn type ( just start the source using .subscribe() )
+    // Connect a Processor to a flux for message ingest ( xread -> processor )
+    override fun receiveSourcedEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            topicXReads.getOrPut(streamId, {
+                val xread = getXReadFlux(streamId)
+                val reProc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(5)
+                streamManager.setStreamProcessor(streamId, reProc)
+                streamManager.subscribeTo(streamId, xread)
+
+                xread
+            })
+
+    //    topicXSource
+//    .getOrPut(streamId, {
+//        val proc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(1)
+//        streamManager.setStreamProcessor(streamId, proc)
+//
+//        val reader = streamManager.getStreamFlux(streamId)
+//        topicXSource[streamId] = reader
+//
+//        reader
+//    })
     override fun getMemberTopics(uid: UUID): Flux<UUID> =
             stringTemplate
                     .opsForSet()
@@ -201,34 +223,29 @@ class TopicServiceRedis(
                     .map(UUID::fromString)
 
     override fun getTopicMembers(topic: UUID): Flux<UUID> =
-            stringTemplate
-                    .opsForSet()
-                    .members(
-                            prefixTopicToUserSubs + topic.toString()
+            topicExistsOrError(topic)
+                    .thenMany(
+                            stringTemplate
+                                    .opsForSet()
+                                    .members(
+                                            prefixTopicToUserSubs + topic.toString()
+                                    )
+                                    .map(UUID::fromString)
                     )
-                    .map(UUID::fromString)
 
     override fun closeTopic(topic: UUID): Mono<Void> = messageTemplate
-                .connectionFactory
-                .reactiveConnection
-                .keyCommands()
-                .del(ByteBuffer
-                        .wrap(topic.toString().toByteArray(Charset.defaultCharset())))
-                .doOnNext {
-                    streamService
-                            .closeStream(topic)
-                }.then()
+            .connectionFactory
+            .reactiveConnection
+            .keyCommands()
+            .del(ByteBuffer
+                    .wrap((prefixTopicStream + topic.toString()).toByteArray(Charset.defaultCharset())))
+            .doOnNext {
+                streamManager
+                        .closeStream(topic)
+            }.then()
 
-    override fun getTopicProcessor(topicId: UUID): DirectProcessor<out Message<TopicMessageKey, Any>> =
-            streamService.getStreamProcessor(topicId)
-
-
-    private fun topicExistsOrError(topic: UUID): Mono<Void> = topicExists(topic)
-            .filter {
-                it == true
-            }
-            .switchIfEmpty(Mono.error(ChatException("Topic not found.")))
-            .then()
+    override fun getStreamProcessor(topicId: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
+            streamManager.getStreamProcessor(topicId)
 
     private fun keyExists(key: String, errorThrow: Throwable): Mono<Boolean> = stringTemplate
             .connectionFactory.reactiveConnection
@@ -240,6 +257,20 @@ class TopicServiceRedis(
                 it == true
             }
             .switchIfEmpty(Mono.error(errorThrow))
+
+    private fun getXReadFlux(topic: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            messageTemplate
+                    .opsForStream<String, TopicData>()
+                    .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
+                    .map {
+                        it.value["data"]?.state!!
+                    }.doOnNext {
+                        logger.info("XREAD: ${it.key.topicId}")
+                    }.doOnComplete {
+                        topicXReads.remove(topic)
+                    }.repeat()
+
+
 }
 
 @Configuration
@@ -254,7 +285,7 @@ class ChatEventsRedisConfiguration {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
                 //configure(SerializationFeature.WRAP_ROOT_VALUE, true)
-                registerSubtypes(ChatMessage::class.java, TopicData::class.java)
+                registerSubtypes(JoinAlertMessage::class.java, ChatMessage::class.java, TopicData::class.java)
             }.findAndRegisterModules()!!
 
 

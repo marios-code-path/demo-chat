@@ -62,11 +62,12 @@ class StreamManagerTests {
                 .then {
                     streamMan.closeStream(streamId)
                 }
-                .verifyComplete()
+                .expectComplete()
+                .verify(Duration.ofSeconds(2))
     }
 
     @Test
-    fun `should consume streams`() {
+    fun `should consume stream function succeed when no data is passed`() {
         val streamId = UUID.randomUUID()
         val consumerId = UUID.randomUUID()
 
@@ -80,7 +81,7 @@ class StreamManagerTests {
     }
 
     @Test
-    fun `should consumer receive a subscribed streams messages`() {
+    fun `should consumer receive a subscribed stream messages`() {
         val streamId = UUID.randomUUID()
         val consumerId = UUID.randomUUID()
 
