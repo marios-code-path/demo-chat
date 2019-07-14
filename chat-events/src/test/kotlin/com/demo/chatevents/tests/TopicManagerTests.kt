@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.domain.JoinAlert
-import com.demo.chatevents.StreamManager
+import com.demo.chatevents.topic.TopicManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -12,9 +12,9 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 
-class StreamManagerTests {
+class TopicManagerTests {
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
-    private val streamMan = StreamManager()
+    private val streamMan = TopicManager()
 
     @BeforeEach
     fun setUp() {
@@ -25,10 +25,10 @@ class StreamManagerTests {
     fun `should create a stream and flux`() {
         val streamId = UUID.randomUUID()
 
-        streamMan.getStreamProcessor(streamId)
+        streamMan.getTopicProcessor(streamId)
 
         Assertions
-                .assertThat(streamMan.getStreamFlux(streamId))
+                .assertThat(streamMan.getTopicFlux(streamId))
                 .isNotNull
     }
 
@@ -36,7 +36,7 @@ class StreamManagerTests {
     fun `should subscribe to a stream`() {
         val streamId = UUID.randomUUID()
 
-        val subscriber = streamMan.subscribeTo(streamId, Flux.empty())
+        val subscriber = streamMan.subscribeTopicProcessor(streamId, Flux.empty())
 
         Assertions
                 .assertThat(subscriber)
@@ -49,9 +49,9 @@ class StreamManagerTests {
         val dataSource = Flux.just(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
 
         StepVerifier
-                .create(streamMan.getStreamFlux(streamId))
+                .create(streamMan.getTopicFlux(streamId))
                 .then {
-                    streamMan.subscribeTo(streamId, dataSource)
+                    streamMan.subscribeTopicProcessor(streamId, dataSource)
                 }
                 .assertNext {
                     Assertions
@@ -60,7 +60,7 @@ class StreamManagerTests {
                             .isNotNull()
                 }
                 .then {
-                    streamMan.closeStream(streamId)
+                    streamMan.closeTopic(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2))
@@ -71,7 +71,7 @@ class StreamManagerTests {
         val streamId = UUID.randomUUID()
         val consumerId = UUID.randomUUID()
 
-        val disposable = streamMan.consumeStream(streamId, consumerId)
+        val disposable = streamMan.subscribeTopic(streamId, consumerId)
 
         Assertions
                 .assertThat(disposable)
@@ -86,10 +86,10 @@ class StreamManagerTests {
         val consumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(streamMan.getStreamFlux(consumerId))
+                .create(streamMan.getTopicFlux(consumerId))
                 .then {
-                    streamMan.consumeStream(streamId, consumerId)
-                    streamMan.getStreamProcessor(streamId)
+                    streamMan.subscribeTopic(streamId, consumerId)
+                    streamMan.getTopicProcessor(streamId)
                             .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
                 }
                 .assertNext {
@@ -99,8 +99,8 @@ class StreamManagerTests {
                             .isNotNull()
                 }
                 .then {
-                    streamMan.closeStream(consumerId)
-                    streamMan.closeStream(streamId)
+                    streamMan.closeTopic(consumerId)
+                    streamMan.closeTopic(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))
@@ -113,18 +113,18 @@ class StreamManagerTests {
         val otherConsumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(Flux.merge(streamMan.getStreamFlux(consumerId), streamMan.getStreamFlux(otherConsumerId)))
+                .create(Flux.merge(streamMan.getTopicFlux(consumerId), streamMan.getTopicFlux(otherConsumerId)))
                 .then {
-                    streamMan.consumeStream(streamId, consumerId)
-                    streamMan.consumeStream(streamId, otherConsumerId)
-                    streamMan.getStreamProcessor(streamId)
+                    streamMan.subscribeTopic(streamId, consumerId)
+                    streamMan.subscribeTopic(streamId, otherConsumerId)
+                    streamMan.getTopicProcessor(streamId)
                             .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
                 }
                 .expectNextCount(2)
                 .then {
-                    streamMan.closeStream(otherConsumerId)
-                    streamMan.closeStream(consumerId)
-                    streamMan.closeStream(streamId)
+                    streamMan.closeTopic(otherConsumerId)
+                    streamMan.closeTopic(consumerId)
+                    streamMan.closeTopic(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))
@@ -137,22 +137,22 @@ class StreamManagerTests {
         val otherConsumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(Flux.merge(streamMan.getStreamFlux(consumerId), streamMan.getStreamFlux(otherConsumerId)))
+                .create(Flux.merge(streamMan.getTopicFlux(consumerId), streamMan.getTopicFlux(otherConsumerId)))
                 .then {
-                    streamMan.consumeStream(streamId, consumerId)
-                    streamMan.consumeStream(streamId, otherConsumerId)
-                    streamMan.getStreamProcessor(streamId)
+                    streamMan.subscribeTopic(streamId, consumerId)
+                    streamMan.subscribeTopic(streamId, otherConsumerId)
+                    streamMan.getTopicProcessor(streamId)
                             .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
                 }
                 .expectNextCount(2)
                 .then {
-                    streamMan.closeStream(consumerId)
-                    streamMan.getStreamProcessor(streamId)
+                    streamMan.closeTopic(consumerId)
+                    streamMan.getTopicProcessor(streamId)
                             .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
                 }
                 .expectNextCount(1)
                 .then {
-                    streamMan.closeStream(otherConsumerId)
+                    streamMan.closeTopic(otherConsumerId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))

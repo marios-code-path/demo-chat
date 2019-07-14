@@ -20,7 +20,7 @@ data class ChatUser(
 @PrimaryKeyClass
 data class ChatUserKey(
         @PrimaryKeyColumn(name="user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val userId: UUID,
+        override val id: UUID,
         @Column("handle")
         override val handle: String
 ) : UserKey
@@ -40,7 +40,7 @@ data class ChatUserHandle(
 @PrimaryKeyClass
 data class ChatUserHandleKey(
         @Column("user_id")
-        override val userId: UUID,
+        override val id: UUID,
         @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val handle: String
 ) : UserKey

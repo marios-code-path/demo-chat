@@ -22,7 +22,7 @@ fun textMessageAssertion(msg: TextMessage) {
                             Matchers.hasProperty("key",
                                     Matchers
                                             .allOf(Matchers.notNullValue(),
-                                                    Matchers.hasProperty("userId"),
+                                                    Matchers.hasProperty("id"),
                                                     Matchers.hasProperty("topicId"))
                             ))
             )

@@ -53,7 +53,7 @@ class ChatRoomRepoTests {
                 )
 
         val deactivateMono =
-                repo.deactivateRoom(roomId)
+                repo.remRoom(roomId)
 
         val findActiveRooms =
                 repo.findAll()

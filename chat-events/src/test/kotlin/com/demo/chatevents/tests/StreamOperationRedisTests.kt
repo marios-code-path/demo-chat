@@ -4,6 +4,9 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chatevents.*
+import com.demo.chatevents.config.TopicRedisTemplateConfiguration
+import com.demo.chatevents.topic.TopicData
+import com.demo.chatevents.topic.TopicManager
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
@@ -40,14 +43,14 @@ import java.util.function.Supplier
 
 // TODO: Object Hashmap
 @ExtendWith(SpringExtension::class)
-@Import(ChatEventsRedisConfiguration::class)
+@Import(TopicRedisTemplateConfiguration::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StreamOperationRedisTests {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val port = 6379
 
-    private val streamManager = StreamManager()
+    private val streamManager = TopicManager()
 
     private lateinit var redisServer: RedisServer
 
@@ -77,7 +80,7 @@ class StreamOperationRedisTests {
 
         template = ReactiveStringRedisTemplate(lettuce)
 
-        val config = ChatEventsRedisConfiguration()
+        val config = TopicRedisTemplateConfiguration()
 
         objectMapper = config.objectMapper()
 
@@ -298,7 +301,7 @@ class StreamOperationRedisTests {
 
         val map = mapOf(Pair("msgId", testEventId),
                 Pair("visible", true),
-                Pair("userId", testUserId),
+                Pair("id", testUserId),
                 Pair("value", "HELLO TEXT TEST"),
                 Pair("type", "TextMessage"))
 
@@ -339,7 +342,7 @@ class StreamOperationRedisTests {
 
         val map = mapOf(Pair("msgId", testEventId),
                 Pair("visible", true),
-                Pair("userId", testUserId),
+                Pair("id", testUserId),
                 Pair("value", "HELLO TEXT TEST"),
                 Pair("type", "TextMessage"))
 
@@ -397,11 +400,11 @@ class StreamOperationRedisTests {
                     .then()
         }
 
-        val userFlux = streamManager.getStreamFlux(user)
+        val userFlux = streamManager.getTopicFlux(user)
 
-        streamManager.consumeStream(room, user)
+        streamManager.subscribeTopic(room, user)
 
-        streamManager.subscribeTo(room, xread)
+        streamManager.subscribeTopicProcessor(room, xread)
 
         StepVerifier
                 .create(xsend("Hello1"))
@@ -420,8 +423,8 @@ class StreamOperationRedisTests {
                 }
                 .expectNextCount(2)
                 .then {
-                    streamManager.disconnectFromStream(room, user)
-                    streamManager.closeStream(user)
+                    streamManager.quitTopic(room, user)
+                    streamManager.closeTopic(user)
                 }
 
     }
@@ -481,8 +484,8 @@ class StreamOperationRedisTests {
                 .expectNextCount(2)
                 .then {
                     tpDisposable.dispose()
-                    streamManager.disconnectFromStream(room, user)
-                    streamManager.closeStream(user)
+                    streamManager.quitTopic(room, user)
+                    streamManager.closeTopic(user)
                     testProcessor.complete()
                 }
                 .expectComplete()

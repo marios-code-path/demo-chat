@@ -55,8 +55,11 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo.saveMessages(Flux.just(ChatMessageById(
-                ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val saveMsg = Flux.just(TextMessage.create(TextMessageKey.create(msgId, roomId, userId), "Welcome", true))
+                .flatMap {
+                    repo.add(it)
+                }
+
         val findMsg = repo.findByKeyMsgId(msgId)
 
         val composite = Flux
@@ -75,9 +78,9 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo
-                .saveMessages(Flux.just(ChatMessageById(
-                        ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val saveMsg = repo.add(TextMessage
+                .create(TextMessageKey.create(msgId, roomId, userId),
+                        "Welcome",true))
 
         val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
@@ -97,9 +100,9 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo
-                .saveMessages(Flux.just(ChatMessageById(
-                        ChatMessageByIdKey(msgId, userId, roomId, Instant.now()), "Welcome", true)))
+        val saveMsg =repo.add(
+                TextMessage.create(TextMessageKey.create(msgId, roomId, userId),
+                        "Welcome", true))
 
         val findMsg = byUserRepo.findByKeyUserId(userId)
 
@@ -135,8 +138,10 @@ class ChatMessageByIdRepositoryTests {
                 .asSequence()
                 .count { it.key.topicId == roomSelection }
 
-        val saveMessageFlux = repo
-                .saveMessages(messages)
+        val saveMessageFlux = Flux.from(messages)
+                .flatMap {
+                    repo.add(it)
+                }
                 .thenMany(byTopicRepo.findByKeyTopicId(roomSelection))
 
         // Expecting : ${countOfMessagesInSelectedRoom.toLong()} msgs for room ${roomSelection}
@@ -207,7 +212,7 @@ class ChatMessageByIdRepositoryTests {
     fun `should save many find four by user id`() {
         val userId = UUIDs.timeBased()
 
-        val chatMessageFlux = Flux
+        val messages = Flux
                 .just(
                         ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
                         ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
@@ -217,9 +222,11 @@ class ChatMessageByIdRepositoryTests {
                         ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
                         ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
                 )
+                .flatMap {
+                    repo.add(it)
+                }
 
-        val saveFindOps = repo
-                .saveMessages(chatMessageFlux)
+        val saveFindOps = Flux.from(messages)
                 .thenMany(byUserRepo.findByKeyUserId(userId))
 
         StepVerifier
@@ -229,7 +236,7 @@ class ChatMessageByIdRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessageById) = assertAll("message contents in tact",
+    fun chatMessageAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },
@@ -239,7 +246,7 @@ class ChatMessageByIdRepositoryTests {
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageUserAssertion(msg: ChatMessageByUser) = assertAll("message contents in tact",
+    fun chatMessageUserAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },
@@ -249,7 +256,7 @@ class ChatMessageByIdRepositoryTests {
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageRoomAssertion(msg: ChatMessageByTopic) = assertAll("message contents in tact",
+    fun chatMessageRoomAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.msgId) },
             { assertNotNull(msg.key.userId) },

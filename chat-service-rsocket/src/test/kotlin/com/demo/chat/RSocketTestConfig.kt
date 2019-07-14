@@ -1,9 +1,9 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
-import com.demo.chat.service.ChatMessageService
-import com.demo.chat.service.ChatRoomService
-import com.demo.chat.service.ChatUserService
+import com.demo.chat.service.TextMessagePersistence
+import com.demo.chat.service.ChatRoomPersistence
+import com.demo.chat.service.ChatUserPersistence
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.rsocket.server.RSocketServerBootstrap
@@ -16,13 +16,13 @@ class RSocketTestConfig {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
-    private lateinit var roomService: ChatRoomService<out Room, RoomKey>
+    private lateinit var roomPersistence: ChatRoomPersistence<out Room, RoomKey>
 
     @MockBean
-    private lateinit var userService: ChatUserService<out User, UserKey>
+    private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
 
     @MockBean
-    private lateinit var topicMessageService: ChatMessageService<out Message<TopicMessageKey, Any>, TopicMessageKey>
+    private lateinit var topicMessagePersistence: TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey>
 
     @Autowired
     private lateinit var rsboot: RSocketServerBootstrap

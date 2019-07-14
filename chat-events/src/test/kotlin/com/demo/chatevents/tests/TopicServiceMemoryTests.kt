@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.service.ChatTopicServiceAdmin
-import com.demo.chatevents.TopicServiceMemory
+import com.demo.chatevents.service.TopicServiceMemory
 import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks
 

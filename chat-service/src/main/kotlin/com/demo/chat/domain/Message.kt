@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
+/* TODO: visible flag needs to be in Message not Key */
+/* TODO: create Factory with visible flag too */
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes(JsonSubTypes.Type(TextMessage::class),
               JsonSubTypes.Type(InfoAlert::class))
@@ -13,9 +15,19 @@ interface Message<out K, out V> {
     val key: K
     val value: V
     val visible: Boolean
+    companion object Factory {
+        fun <K, V>create(key: K, value: V, visible: Boolean): Message<K, V> = object : Message<K, V> {
+            override val key: K
+                get() = key
+            override val value: V
+                get() = value
+            override val visible: Boolean
+                get() = visible
+        }
+    }
 }
 
-interface MessageKey {
+interface MessageKey{
     val msgId: UUID
     val timestamp: Instant
 }
@@ -34,10 +46,10 @@ interface TextMessageKey : TopicMessageKey {
                 get() = messageId
             override val topicId: UUID
                 get() = topic
-            override val timestamp: Instant
-                get() = Instant.now()
             override val userId: UUID
                 get() = member
+            override val timestamp: Instant
+                get() = Instant.now()
         }
     }
 }
@@ -67,6 +79,15 @@ interface TextMessage : Message<TextMessageKey, String> {
             override val visible: Boolean
                 get() = true
         }
+        fun create(key: TextMessageKey, text: String, visible: Boolean): TextMessage = object : TextMessage {
+            override val key: TextMessageKey
+                get() = key
+            override val value: String
+                get() = text
+            override val visible: Boolean
+                get() = visible
+
+        }
     }
 }
 
@@ -79,7 +100,15 @@ interface InfoAlert : Message<AlertMessageKey, RoomMetaData> {
             override val value: RoomMetaData
                 get() = meta
             override val visible: Boolean
-                get() = false
+                get() = true
+        }
+        fun create(key :AlertMessageKey, meta: RoomMetaData, visible: Boolean): InfoAlert = object : InfoAlert {
+            override val key: AlertMessageKey
+                get() = key
+            override val value: RoomMetaData
+                get() = meta
+            override val visible: Boolean
+                get() = visible
         }
     }
 }
@@ -95,6 +124,14 @@ interface LeaveAlert : Message<AlertMessageKey, UUID> {
             override val visible: Boolean
                 get() = false
         }
+        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): LeaveAlert = object : LeaveAlert {
+            override val key: AlertMessageKey
+                get() = key
+            override val value: UUID
+                get() = member
+            override val visible: Boolean
+                get() = visible
+        }
     }
 }
 
@@ -109,6 +146,14 @@ interface JoinAlert : Message<AlertMessageKey, UUID> {
             override val visible: Boolean
                 get() = false
         }
+        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): JoinAlert = object : JoinAlert {
+            override val key: AlertMessageKey
+                get() = key
+            override val value: UUID
+                get() = member
+            override val visible: Boolean
+                get() = visible
+        }
     }
 }
 
@@ -122,6 +167,14 @@ interface PauseAlert : Message<AlertMessageKey, UUID> {
                 get() = member
             override val visible: Boolean
                 get() = false
+        }
+        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): PauseAlert = object : PauseAlert {
+            override val key: AlertMessageKey
+                get() = key
+            override val value: UUID
+                get() = member
+            override val visible: Boolean
+                get() = visible
         }
     }
 }

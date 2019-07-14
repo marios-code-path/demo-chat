@@ -17,9 +17,9 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class ChatRoomServiceTests {
+class ChatRoomPersistenceTests {
 
-    lateinit var roomSvc: ChatRoomServiceCassandra
+    lateinit var roomSvc: ChatRoomPersistenceCassandra
 
     @MockBean
     lateinit var roomRepo: ChatRoomRepository
@@ -48,21 +48,21 @@ class ChatRoomServiceTests {
         BDDMockito.given(roomRepo.leaveRoom(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomRepo.deactivateRoom(anyObject()))
+        BDDMockito.given(roomRepo.remRoom(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(roomRepo.messageCount(anyObject()))
                 .willReturn(Mono.just(1))
 
-        roomSvc = ChatRoomServiceCassandra(roomRepo)
+        roomSvc = ChatRoomPersistenceCassandra(roomRepo)
     }
 
     // TODO - check for nullable return types in  Room-Service.
     @Test
     fun `should join and leave a ficticious room`() {
         val serviceFlux = roomSvc
-                .joinRoom(uid, rid)
-                .thenMany(roomSvc.leaveRoom(uid, rid))
+                .addMember(uid, rid)
+                .thenMany(roomSvc.remMember(uid, rid))
 
         StepVerifier
                 .create(serviceFlux)
@@ -76,9 +76,9 @@ class ChatRoomServiceTests {
         StepVerifier
                 .create(
                         roomSvc
-                                .createRoom(randomAlphaNumeric(5))
-                                .then(roomSvc.createRoom(randomAlphaNumeric(5)))
-                                .thenMany(roomSvc.getRooms(true))
+                                .add(randomAlphaNumeric(5))
+                                .then(roomSvc.add(randomAlphaNumeric(5)))
+                                .thenMany(roomSvc.getAll(true))
                 )
                 .expectSubscription()
                 .assertNext(this::roomAssertions)

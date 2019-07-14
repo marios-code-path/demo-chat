@@ -12,7 +12,7 @@ open class ChatMessage<K : TextMessageKey>(
         override val value: String,
         @Column("visible")
         override val visible: Boolean
-) : Message<K, String>
+) : TextMessage
 
 
 @Table("chat_message_user")

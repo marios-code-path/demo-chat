@@ -1,4 +1,4 @@
-package com.demo.chatevents
+package com.demo.chatevents.service
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
@@ -6,25 +6,13 @@ import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.demo.chatevents.topic.TopicManager
+import com.demo.chatevents.topic.TopicData
 import org.slf4j.LoggerFactory
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.ReactiveRedisTemplate
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
-import org.springframework.data.redis.serializer.RedisSerializationContext
-import org.springframework.data.redis.serializer.StringRedisSerializer
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
@@ -42,7 +30,7 @@ data class KeyConfiguration(
         val prefixTopicToUserSubs: String
 )
 
-class TopicServiceRedis(
+class TopicServiceRedisStream(
         keyConfig: KeyConfiguration,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, TopicData>
@@ -54,36 +42,36 @@ class TopicServiceRedis(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamManager = StreamManager()
+    private val streamManager = TopicManager()
     private val topicXReads: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
-    private fun topicExistsOrError(topic: UUID): Mono<Void> = topicExists(topic)
+    private fun topicExistsOrError(topic: UUID): Mono<Void> = exists(topic)
             .filter {
                 it == true
             }
             .switchIfEmpty(Mono.error(RoomNotFoundException))
             .then()
 
-    override fun topicExists(topic: UUID): Mono<Boolean> = stringTemplate
+    override fun exists(id: UUID): Mono<Boolean> = stringTemplate
             .opsForSet()
-            .isMember(topicSetKey, topic.toString())
+            .isMember(topicSetKey, id.toString())
 
     // Idempotent
-    override fun createTopic(topic: UUID): Mono<Void> =
+    override fun add(id: UUID): Mono<Void> =
             stringTemplate
                     .opsForSet()
-                    .add(topicSetKey, topic.toString())
+                    .add(topicSetKey, id.toString())
                     .thenEmpty {
-                        receiveSourcedEvents(topic)
+                        receiveSourcedEvents(id)
                         it.onComplete()
                     }
 
-    override fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void> =
-            topicExistsOrError(topic)
+    override fun subscribe(member: UUID, id: UUID): Mono<Void> =
+            topicExistsOrError(id)
                     .then(
                             stringTemplate
                                     .opsForSet()
-                                    .add(prefixTopicToUserSubs + topic.toString(), member.toString())
+                                    .add(prefixTopicToUserSubs + id.toString(), member.toString())
                                     .handle<Long> { a, sink ->
                                         when (a) {
                                             null -> sink.error(ChatException("Unable to subscribe to stream"))
@@ -94,7 +82,7 @@ class TopicServiceRedis(
                     .then(
                             stringTemplate
                                     .opsForSet()
-                                    .add(prefixUserToTopicSubs + member.toString(), topic.toString())
+                                    .add(prefixUserToTopicSubs + member.toString(), id.toString())
                                     .handle<Long> { a, sink ->
                                         when (a) {
                                             null -> sink.error(ChatException("Unable to subscribe to stream"))
@@ -103,16 +91,16 @@ class TopicServiceRedis(
                                     }
                     )
                     .thenEmpty {
-                        streamManager.consumeStream(topic, member)
+                        streamManager.subscribeTopic(id, member)
                         it.onComplete()
                     }
 
-    override fun unSubscribeFromTopic(member: UUID, topic: UUID): Mono<Void> =
-            topicExistsOrError(topic)
+    override fun unSubscribe(member: UUID, id: UUID): Mono<Void> =
+            topicExistsOrError(id)
                     .then(
                             stringTemplate    // todo Streams entries too!
                                     .opsForSet()
-                                    .remove(prefixUserToTopicSubs + member.toString(), topic.toString())
+                                    .remove(prefixUserToTopicSubs + member.toString(), id.toString())
                                     .handle<Void> { a, sink ->
                                         when (a) {
                                             null -> sink.error(ChatException("Unable to unsubscribe from stream."))
@@ -123,7 +111,7 @@ class TopicServiceRedis(
                     .then(
                             stringTemplate    // todo Streams entries too!
                                     .opsForSet()
-                                    .remove(prefixTopicToUserSubs + topic.toString(), member.toString())
+                                    .remove(prefixTopicToUserSubs + id.toString(), member.toString())
                                     .handle<Void> { a, sink ->
                                         when (a) {
                                             null -> sink.error(ChatException("Unable to unsubscribe from stream."))
@@ -133,11 +121,11 @@ class TopicServiceRedis(
                     )
                     .thenEmpty {
                         streamManager
-                                .disconnectFromStream(topic, member)
+                                .quitTopic(id, member)
                         it.onComplete()
                     }
 
-    override fun unSubscribeFromAllTopics(member: UUID): Mono<Void> =
+    override fun unSubscribeAll(member: UUID): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .members(prefixUserToTopicSubs + member.toString())
@@ -146,28 +134,28 @@ class TopicServiceRedis(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribeFromTopic(member, UUID.fromString(topicId))
+                                    unSubscribe(member, UUID.fromString(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun kickallFromTopic(topic: UUID): Mono<Void> =
+    override fun unSubscribeAllIn(id: UUID): Mono<Void> =
             stringTemplate
                     .opsForSet()
-                    .members(prefixTopicToUserSubs + topic.toString())
+                    .members(prefixTopicToUserSubs + id.toString())
                     .collectList()
                     .flatMap { members ->
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribeFromTopic(UUID.fromString(member), topic)
+                                    unSubscribe(UUID.fromString(member), id)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
+    override fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
         val map = mapOf(Pair("data", TopicData(topicMessage)))
         /*
             * <li>1    Time-based UUID
@@ -189,32 +177,22 @@ class TopicServiceRedis(
                 .then()
     }
 
-    override fun receiveEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
-            streamManager.getStreamFlux(streamId)
+    override fun receiveOn(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            streamManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
-            topicXReads.getOrPut(streamId, {
-                val xread = getXReadFlux(streamId)
+    override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =
+            topicXReads.getOrPut(id, {
+                val xread = getXReadFlux(id)
                 val reProc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(5)
-                streamManager.setStreamProcessor(streamId, reProc)
-                streamManager.subscribeTo(streamId, xread)
+                streamManager.setTopicProcessor(id, reProc)
+                streamManager.subscribeTopicProcessor(id, xread)
 
                 xread
             })
 
-    //    topicXSource
-//    .getOrPut(streamId, {
-//        val proc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(1)
-//        streamManager.setStreamProcessor(streamId, proc)
-//
-//        val reader = streamManager.getStreamFlux(streamId)
-//        topicXSource[streamId] = reader
-//
-//        reader
-//    })
-    override fun getMemberTopics(uid: UUID): Flux<UUID> =
+    override fun getTopicsByUser(uid: UUID): Flux<UUID> =
             stringTemplate
                     .opsForSet()
                     .members(
@@ -222,30 +200,30 @@ class TopicServiceRedis(
                     )
                     .map(UUID::fromString)
 
-    override fun getTopicMembers(topic: UUID): Flux<UUID> =
-            topicExistsOrError(topic)
+    override fun getUsersBy(id: UUID): Flux<UUID> =
+            topicExistsOrError(id)
                     .thenMany(
                             stringTemplate
                                     .opsForSet()
                                     .members(
-                                            prefixTopicToUserSubs + topic.toString()
+                                            prefixTopicToUserSubs + id.toString()
                                     )
                                     .map(UUID::fromString)
                     )
 
-    override fun closeTopic(topic: UUID): Mono<Void> = messageTemplate
+    override fun rem(id: UUID): Mono<Void> = messageTemplate
             .connectionFactory
             .reactiveConnection
             .keyCommands()
             .del(ByteBuffer
-                    .wrap((prefixTopicStream + topic.toString()).toByteArray(Charset.defaultCharset())))
+                    .wrap((prefixTopicStream + id.toString()).toByteArray(Charset.defaultCharset())))
             .doOnNext {
                 streamManager
-                        .closeStream(topic)
+                        .closeTopic(id)
             }.then()
 
-    override fun getStreamProcessor(topicId: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
-            streamManager.getStreamProcessor(topicId)
+    override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
+            streamManager.getTopicProcessor(id)
 
     private fun keyExists(key: String, errorThrow: Throwable): Mono<Boolean> = stringTemplate
             .connectionFactory.reactiveConnection
@@ -268,58 +246,8 @@ class TopicServiceRedis(
                         logger.info("XREAD: ${it.key.topicId}")
                     }.doOnComplete {
                         topicXReads.remove(topic)
-                    }.repeat()
+                    }
+    // TODO Strategy needed to manage consumer groups and synchronous looping of Xreads
 
-
-}
-
-@Configuration
-class ChatEventsRedisConfiguration {
-    @Bean
-    fun redisConnectionFactory(): ReactiveRedisConnectionFactory = LettuceConnectionFactory()
-
-    @Bean
-    fun objectMapper(): ObjectMapper =
-            jacksonObjectMapper().registerModule(KotlinModule()).apply {
-                propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
-                setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
-                //configure(SerializationFeature.WRAP_ROOT_VALUE, true)
-                registerSubtypes(JoinAlertMessage::class.java, ChatMessage::class.java, TopicData::class.java)
-            }.findAndRegisterModules()!!
-
-
-    @Bean
-    fun topicTemplate(cf: ReactiveRedisConnectionFactory): ReactiveRedisTemplate<String, TopicData> {
-        val keys = StringRedisSerializer()
-        val values = Jackson2JsonRedisSerializer(TopicData::class.java)
-        values.setObjectMapper(objectMapper())           // KOTLIN USERS : use setObjectMapper!
-
-        val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, TopicData> =
-                RedisSerializationContext.newSerializationContext(keys)
-
-        builder.key(keys)
-        builder.value(values)
-        builder.hashKey(keys)
-        builder.hashValue(values)
-
-        return ReactiveRedisTemplate(cf, builder.build())
-    }
-
-    @Bean
-    fun objectTemplate(cf: ReactiveRedisConnectionFactory): ReactiveRedisTemplate<String, Object> {
-        val keys = StringRedisSerializer()
-
-        val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, Object> =
-                RedisSerializationContext.newSerializationContext(keys)
-
-        val defaultSerializer = JdkSerializationRedisSerializer(this.javaClass.classLoader)
-
-        builder.key(keys)
-        builder.hashKey(keys)
-        builder.hashValue(defaultSerializer)
-
-        return ReactiveRedisTemplate(cf, builder.build())
-    }
 
 }

@@ -2,6 +2,7 @@ package com.demo.chat
 
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.annotation.JsonTypeName
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.SerializationFeature
@@ -13,7 +14,7 @@ import java.time.Instant
 import java.util.*
 import java.util.stream.Stream
 
-// Variances of Keys we want
+
 data class TestAlertMessageKey(
         override val msgId: UUID,
         override val topicId: UUID,
@@ -27,25 +28,14 @@ data class TestTextMessageKey(
         override val timestamp: Instant
 ) : TextMessageKey
 
+@JsonTypeName("ChatMessage")
 data class TestTextMessage(
         override val key: TestTextMessageKey,
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
 
-data class TestInfoAlert(
-        override val key: TestAlertMessageKey,
-        override val value: RoomMetaData,
-        override val visible: Boolean
-) : InfoAlert
-
-
-data class TestLeaveAlert(
-        override val key: TestAlertMessageKey,
-        override val value: UUID,
-        override val visible: Boolean
-) : LeaveAlert
-
+@JsonTypeName("JoinAlert")
 data class TestJoinAlert(
         override val key: TestAlertMessageKey,
         override val value: UUID,
@@ -60,6 +50,7 @@ class MessageTests {
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
         configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
         //configure(SerializationFeature.WRAP_ROOT_VALUE, true)
+        registerSubtypes(TestTextMessage::class.java, TestJoinAlert::class.java)
     }.findAndRegisterModules()!!
 
     private fun randomMessage(): Message<Any, Any> {
@@ -70,13 +61,12 @@ class MessageTests {
         counter++
 
         return if (counter % 2 == 0)
-            TestJoinAlert(TestAlertMessageKey(
-                    messageId, roomId, Instant.now()
-            ), userId, true)
+            JoinAlert.create(
+                    AlertMessageKey.create(messageId, roomId),  userId, true)
         else
-            TestTextMessage(TestTextMessageKey(
-                    messageId, userId, roomId, Instant.now()
-            ), "Hello $counter !", true)
+            TextMessage.create(
+                    TextMessageKey.create(messageId, roomId, userId),
+                    "Hello $counter !",true)
     }
 
     @Test
@@ -97,8 +87,8 @@ class MessageTests {
                         val rootName = tree.fieldNames().next()
 
                         when (rootName) {
-                            "TestTextMessage" -> messages.add(mapper.readValue<TestTextMessage>(it))
-                            "TestJoinAlert" -> messages.add(mapper.readValue<TestJoinAlert>(it))
+                            "ChatMessage" -> messages.add(mapper.readValue<TextMessage>(it))
+                            "JoinAlert" -> messages.add(mapper.readValue<JoinAlert>(it))
                         }
                     }
 
@@ -112,10 +102,10 @@ class MessageTests {
         messages
                 .forEach { msg ->
                     when (msg) {
-                        is TestTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
+                        is TextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                                 .isNotNull
-                                .hasFieldOrProperty("userId")
-                        is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
+                                .hasFieldOrProperty("msgId")
+                        is JoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                                 .isNotNull
                                 .hasFieldOrProperty("topicId")
                         else -> {
@@ -134,21 +124,18 @@ class MessageTests {
     @Test
     fun `returns many message and smart casts`() {
         val messages = listOf(randomMessage(), randomMessage(),
-                TestLeaveAlert(
-                        TestAlertMessageKey(
-                                UUID.randomUUID(),
-                                UUID.randomUUID(),
-                                Instant.now()
-                        ), UUID.randomUUID(), true),
+                LeaveAlert.create(
+                        AlertMessageKey.create(UUID.randomUUID(), UUID.randomUUID()),
+                        UUID.randomUUID(), true),
                 randomMessage(), randomMessage(), randomMessage())
 
         messages.forEach { msg ->
 
             when (msg) {
-                is TestTextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
+                is TextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                         .isNotNull
-                        .hasFieldOrProperty("userId")
-                is TestJoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
+                        .hasFieldOrProperty("msgId")
+                is JoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                         .isNotNull
                         .hasFieldOrProperty("topicId")
                 else -> Assertions.assertThat(msg).`as`("Is a message, afterall")
@@ -164,10 +151,9 @@ class MessageTests {
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
 
-        val key = TestAlertMessageKey(
+        val key = AlertMessageKey.create(
                 messageId,
-                roomId,
-                Instant.now()
+                roomId
         )
 
         val value = RoomMetaData(
@@ -175,21 +161,24 @@ class MessageTests {
                 2
         )
 
-        val topicMessage: Message<TopicMessageKey, *> = TestInfoAlert(key, value, true)
+        val topicMessage: Message<AlertMessageKey, RoomMetaData> =
+                InfoAlert.create(key, value, true)
 
         // Get some message and access specific fields
-        if (topicMessage is TestInfoAlert) {
+        if (topicMessage is InfoAlert) {
             Assertions.assertThat(topicMessage.key)
-                    .`as`("key is consistent state")
+                    .`as`("infoAlert key is consistent state")
                     .isNotNull
                     .hasFieldOrPropertyWithValue("topicId", roomId)
 
             Assertions.assertThat(topicMessage.value)
-                    .`as`("value is consistent state")
+                    .`as`("Message value is consistent state")
                     .isNotNull
                     .hasFieldOrPropertyWithValue("totalMessages", 2)
+        } else {
+            Assertions
+                    .assertThat(topicMessage)
+                    .isInstanceOf(InfoAlert::class.java)
         }
-
-
     }
 }

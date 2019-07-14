@@ -23,37 +23,37 @@ interface ChatRoomRepository :
 }
 
 interface ChatRoomRepositoryCustom {
-    fun saveRoom(room: ChatRoom): Mono<ChatRoom>
-    fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom>
+    fun saveRoom(room: Room): Mono<Void>
+    fun remRoom(roomKey: RoomKey): Mono<Void>
     fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
     fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
     fun messageCount(roomId: UUID): Mono<Int>
-    fun deactivateRoom(roomId: UUID): Mono<Void>
 
 }
 
 class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
-    override fun deactivateRoom(roomId: UUID): Mono<Void> =
+    override fun remRoom(roomKey: RoomKey): Mono<Void> =
             cassandra
-                    .update(Query.query(where("room_id").`is`(roomId)),
+                    .batchOps()
+                    .update(Query.query(where("room_id").`is`(roomKey.roomId)),
                             Update.empty().set("active", false),
                             ChatRoom::class.java
                     )
+                    .update(Query.query(where("room_id").`is`(roomKey.roomId)),
+                            Update.empty().set("active", false),
+                            ChatRoomName::class.java
+                    )
+                    .execute()
                     .map {
-                        if (!it)
+                        if (!it.wasApplied())
                             throw ChatException("Cannot De-Active Room")
                     }
-                    .then()
+                    .then(
+                    )
 
-
-    override fun saveRooms(rooms: Flux<ChatRoom>): Flux<ChatRoom> =
-            rooms
-                    .flatMap {
-                        saveRoom(it)
-                    }
-
-    override fun saveRoom(room: ChatRoom): Mono<ChatRoom> = cassandra
+    override fun saveRoom(room: Room): Mono<Void> = cassandra
+            .batchOps()
             .insert(
                     ChatRoomName(
                             ChatRoomNameKey(
@@ -64,9 +64,17 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                             room.timestamp
                     )
             )
-            .flatMap {
-                cassandra.insert(room)
-            }
+            .insert(ChatRoom(
+                    ChatRoomKey(
+                            room.key.roomId,
+                            room.key.name
+                    ),
+                    emptySet(),
+                    true,
+                    room.timestamp
+            ))
+            .execute()
+            .then()
 
     override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void> = cassandra
             .update(Query.query(where("room_id").`is`(roomId)),

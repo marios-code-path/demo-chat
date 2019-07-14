@@ -29,7 +29,7 @@ class ChatMessageByIdServiceTests {
 
     val logger = LoggerFactory.getLogger("TESTCASE ")
 
-    lateinit var msgSvc: ChatMessageServiceCassandra
+    lateinit var msgSvc: TextMessagePersistenceCassandra
 
     @MockBean
     lateinit var msgRepo: ChatMessageRepository
@@ -46,18 +46,18 @@ class ChatMessageByIdServiceTests {
         val newMessage = ChatMessageById(ChatMessageByIdKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
         val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
 
-        Mockito.`when`(msgRepo.saveMessage(anyObject()))
+        Mockito.`when`(msgRepo.save(anyObject()))
                 .thenReturn(Mono.just(newMessage))
 
         Mockito.`when`(msgByTopicRepo.findByKeyTopicId(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
-        msgSvc = ChatMessageServiceCassandra(msgRepo, msgByTopicRepo)
+        msgSvc = TextMessagePersistenceCassandra(msgRepo, msgByTopicRepo)
     }
 
     @Test
     fun `dud test`() {
-        val messages = msgSvc.getTopicMessages(UUID.randomUUID())
+        val messages = msgSvc.getAll(UUID.randomUUID())
                 .doOnNext {
                     logger.info("A message found; ${it}")
                 }
@@ -79,9 +79,9 @@ class ChatMessageByIdServiceTests {
         val userId = UUID.randomUUID()
 
         val messages = msgSvc
-                .storeMessage(userId, roomId, "")
+                .add(userId, roomId, "")
                 .flatMap {
-                    msgSvc.getTopicMessages(roomId)
+                    msgSvc.getAll(roomId)
                             .collectList()
                 }
 
@@ -112,7 +112,7 @@ class ChatMessageByIdServiceTests {
         val userId = UUIDs.timeBased()
         val roomId = UUIDs.timeBased()
         val sendMessageFlux = msgSvc
-                .storeMessage(userId, roomId, "Hello there")
+                .add(userId, roomId, "Hello there")
 
         StepVerifier
                 .create(sendMessageFlux)

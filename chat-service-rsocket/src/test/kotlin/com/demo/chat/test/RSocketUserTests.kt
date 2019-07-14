@@ -3,7 +3,7 @@ package com.demo.chat.test
 import com.demo.chat.*
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
-import com.demo.chat.service.ChatUserService
+import com.demo.chat.service.ChatUserPersistence
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.Assertions
@@ -39,7 +39,7 @@ class RSocketUserTests {
     private lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var userService: ChatUserService<out User, UserKey>
+    private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
     val defaultImgUri = "http://"
     val randomHandle = randomAlphaNumeric(4)
     val randomName = randomAlphaNumeric(6)
@@ -61,7 +61,7 @@ class RSocketUserTests {
 
     @Test
     fun `should call user create`() {
-        BDDMockito.given(userService.createUser(anyObject(), anyObject(), anyObject()))
+        BDDMockito.given(userPersistence.add(anyObject(), anyObject(), anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
@@ -89,7 +89,7 @@ class RSocketUserTests {
 
     @Test
     fun `should get a user by handle`() {
-        BDDMockito.given(userService.getUser(anyObject()))
+        BDDMockito.given(userPersistence.getByHandle(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
@@ -106,14 +106,14 @@ class RSocketUserTests {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("userId", randomUserId)
+                            .hasFieldOrPropertyWithValue("id", randomUserId)
                 }
                 .verifyComplete()
     }
 
     @Test
     fun `should list users`() {
-        BDDMockito.given(userService.getUsersById(anyObject()))
+        BDDMockito.given(userPersistence.findByIds(anyObject()))
                 .willReturn(Flux.just(randomUser))
 
         StepVerifier.create(requestor
@@ -133,7 +133,7 @@ class RSocketUserTests {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("userId", randomUserId)
+                            .hasFieldOrPropertyWithValue("id", randomUserId)
                 }
                 .verifyComplete()
     }

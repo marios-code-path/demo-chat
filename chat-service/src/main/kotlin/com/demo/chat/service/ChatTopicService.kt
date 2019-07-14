@@ -6,21 +6,22 @@ import reactor.core.publisher.*
 import java.util.*
 
 interface ChatTopicService {
-    fun createTopic(topicId: UUID): Mono<Void>
-    fun subscribeToTopic(member: UUID, topic: UUID): Mono<Void>
-    fun unSubscribeFromTopic(member: UUID, topic: UUID): Mono<Void>
-    fun unSubscribeFromAllTopics(member: UUID): Mono<Void> // then closes
-    fun kickallFromTopic(topic: UUID): Mono<Void>
-    fun sendMessageToTopic(topicMessage: Message<TopicMessageKey, Any>): Mono<Void>
-    fun receiveEvents(topic: UUID): Flux<out Message<TopicMessageKey, Any>>
-    fun receiveSourcedEvents(streamId: UUID): Flux<out Message<TopicMessageKey, Any>>
-    fun getMemberTopics(uid: UUID): Flux<UUID>
-    fun getTopicMembers(uid: UUID): Flux<UUID>
-    fun closeTopic(topic: UUID): Mono<Void>
-    fun topicExists(topic: UUID): Mono<Boolean>
+    fun add(id: UUID): Mono<Void>
+    fun rem(id: UUID): Mono<Void>
+    fun subscribe(member: UUID, id: UUID): Mono<Void>
+    fun unSubscribe(member: UUID, id: UUID): Mono<Void>
+    fun unSubscribeAll(member: UUID): Mono<Void> // then closes
+    fun unSubscribeAllIn(id: UUID): Mono<Void>
+    fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void>
+    fun receiveOn(id: UUID): Flux<out Message<TopicMessageKey, Any>>
+    fun getTopicsByUser(uid: UUID): Flux<UUID>
+    fun getUsersBy(id: UUID): Flux<UUID>
+    fun exists(id: UUID): Mono<Boolean>
+
+    fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>>
 }
 
 interface ChatTopicServiceAdmin {
-    fun getStreamProcessor(topicId: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>>
+    fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>>
 
 }

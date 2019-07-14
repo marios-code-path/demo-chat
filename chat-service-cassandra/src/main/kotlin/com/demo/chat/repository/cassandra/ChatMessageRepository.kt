@@ -2,66 +2,95 @@ package com.demo.chat.repository.cassandra
 
 import com.demo.chat.domain.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import org.springframework.data.cassandra.core.query.Query
+import org.springframework.data.cassandra.core.query.Update
+import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-data class UserMessageKey(val userId: UUID)
-data class TopicMessageKey(val topicId: UUID)
-data class IdMessageKey(val messageId: UUID)
-
-interface MessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UserMessageKey>
+interface MessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID>
 
 interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
-    fun findByKeyUserId(userId: UUID) : Flux<ChatMessageByUser>
+    fun findByKeyUserId(userId: UUID): Flux<TextMessage>
 }
 
 interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessageByTopic, UUID> {
-    fun findByKeyTopicId(topicId: UUID) : Flux<ChatMessageByTopic>
+    fun findByKeyTopicId(topicId: UUID): Flux<TextMessage>
 }
 
 interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessageById, UUID> {
-    fun findByKeyMsgId(id: UUID) : Mono<ChatMessageById>
+    fun findByKeyMsgId(id: UUID): Mono<TextMessage>
 }
 
 interface ChatMessageRepositoryCustom {
-    fun saveMessage(msg: ChatMessageById): Mono<ChatMessageById>
-    fun saveMessages(msgStream: Flux<ChatMessageById>): Flux<ChatMessageById>
+    fun rem(key: TextMessageKey): Mono<Void>
+    fun add(msg: TextMessage): Mono<Void>
 }
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
-
-    override fun saveMessage(msg: ChatMessageById): Mono<ChatMessageById> =
+    override fun rem(key: TextMessageKey): Mono<Void> =
         cassandra
                 .batchOps()
-                .insert(msg)
-                .insert(ChatMessageByUser(
-                        ChatMessageByUserKey(
-                                msg.key.msgId,
-                                msg.key.userId,
-                                msg.key.topicId,
-                                msg.key.timestamp
-                        ),
-                        msg.value,
-                        msg.visible
-
-                ))
-                .insert(ChatMessageByTopic(
-                        ChatMessageByTopicKey(
-                                msg.key.msgId,
-                                msg.key.userId,
-                                msg.key.topicId,
-                                msg.key.timestamp
-                        ),
-                        msg.value,
-                        msg.visible
-                ))
+                .update(Query.query(where("msg_id").`is`(key.msgId)),
+                        Update.empty().set("visible", false),
+                        ChatMessageByUser::class.java
+                )
+                .update(Query.query(where("msg_id").`is`(key.msgId)),
+                        Update.empty().set("visible", false),
+                        ChatMessageByTopic::class.java
+                )
+                .update(Query.query(where("msg_id").`is`(key.msgId)),
+                        Update.empty().set("visible", false),
+                        ChatMessageById::class.java
+                )
                 .execute()
-                .thenReturn(msg)
+                .map {
+                    if (!it.wasApplied())
+                        throw ChatException("Cannot Remove Room")
+                }
+                .then()
 
-    override fun saveMessages(msgStream: Flux<ChatMessageById>): Flux<ChatMessageById> =
-            Flux.from(msgStream)
-                    .flatMap(this::saveMessage)
+    override fun add(msg: TextMessage): Mono<Void> =
+            cassandra
+                    .batchOps()
+                    .insert(ChatMessageById(
+                            ChatMessageByIdKey(
+                                    msg.key.msgId,
+                                    msg.key.userId,
+                                    msg.key.topicId,
+                                    msg.key.timestamp
+                            ),
+                            msg.value,
+                            msg.visible
+                    ))
+                    .insert(ChatMessageByUser(
+                            ChatMessageByUserKey(
+                                    msg.key.msgId,
+                                    msg.key.userId,
+                                    msg.key.topicId,
+                                    msg.key.timestamp
+                            ),
+                            msg.value,
+                            msg.visible
+
+                    ))
+                    .insert(ChatMessageByTopic(
+                            ChatMessageByTopicKey(
+                                    msg.key.msgId,
+                                    msg.key.userId,
+                                    msg.key.topicId,
+                                    msg.key.timestamp
+                            ),
+                            msg.value,
+                            msg.visible
+                    ))
+                    .execute()
+                    .map {
+                        if (!it.wasApplied())
+                            throw ChatException("Cannot Add User")
+                    }
+                    .then()
 }

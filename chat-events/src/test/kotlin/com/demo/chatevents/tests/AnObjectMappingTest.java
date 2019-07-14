@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests;
 
-import com.demo.chatevents.ChatEventsRedisConfiguration;
-import com.demo.chatevents.TopicData;
+import com.demo.chatevents.config.TopicRedisTemplateConfiguration;
+import com.demo.chatevents.topic.TopicData;
 import com.demo.chatevents.Zoom;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @ExtendWith(SpringExtension.class)
-@Import(ChatEventsRedisConfiguration.class)
+@Import(TopicRedisTemplateConfiguration.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @AutoConfigureJsonTesters
 public class AnObjectMappingTest {

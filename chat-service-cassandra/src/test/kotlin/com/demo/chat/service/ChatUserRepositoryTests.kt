@@ -7,7 +7,6 @@ import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.repository.cassandra.MessageByUserRepository
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -24,7 +23,6 @@ import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.time.Instant
@@ -49,14 +47,23 @@ class ChatUserRepositoryTests {
 
     @Test
     fun shouldFindDarkbit() {
-        val findFlux = handleRepo.findByKeyHandle("darkbit")
+        val defaultImageUri = "http://localhost:7070/s3"
 
-        val setupAndFind = Flux
-                .from(setUp(repo))
-                .then(findFlux)
+        val users = Flux.just(
+                ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
+                ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()) )
+                .flatMap {
+                    repo.saveUser(it)
+                }
+
+        val find = handleRepo.findByKeyHandle("darkbit")
+
+        val saveAndFind = Flux
+                .from(users)
+                .then(find)
 
         StepVerifier
-                .create(setupAndFind)
+                .create(saveAndFind)
                 .expectSubscription()
                 .assertNext { userStateAssertions(it, "darkbit", "mario") }
                 .verifyComplete()
@@ -77,7 +84,6 @@ class ChatUserRepositoryTests {
                 .truncate(ChatUser::class.java)
                 .then(repo.saveUser(user1))
                 .then(repo.saveUser(user2))
-        //.thenMany(repo.saveUsers(Flux.just(user1, user2)))
 
         StepVerifier
                 .create(stream)
@@ -95,10 +101,10 @@ class ChatUserRepositoryTests {
                 ChatUser(ChatUserKey(id1, "vedder"), "eddie", defaultImageUri, Instant.now()),
                 ChatUser(ChatUserKey(id2, "jackson"), "Michael", defaultImageUri, Instant.now())
         )
+                .flatMap { repo.saveUser(it) }
 
-        val stream = template
-                .truncate(ChatUser::class.java)
-                .thenMany(repo.saveUsers(chatUsers))
+        val stream = Flux
+                .from(chatUsers)
                 .thenMany(repo.findByKeyUserIdIn(Flux.just(id1, id2)))
 
         StepVerifier
@@ -122,7 +128,7 @@ class ChatUserRepositoryTests {
 
         assertAll("user",
                 { Assertions.assertNotNull(user) },
-                { Assertions.assertEquals(uuid, user.key.userId) },
+                { Assertions.assertEquals(uuid, user.key.id) },
                 { Assertions.assertEquals("Eddie", user.key.handle) },
                 { Assertions.assertEquals("EddiesHandle", user.name) })
 
@@ -131,7 +137,7 @@ class ChatUserRepositoryTests {
                 .assertNext { u ->
                     assertAll("simple user assertion",
                             { Assertions.assertNotNull(u) },
-                            { Assertions.assertEquals(uuid, u.key.userId) }
+                            { Assertions.assertEquals(uuid, u.key.id) }
                     )
                 }
                 .verifyComplete()
@@ -170,13 +176,11 @@ class ChatUserRepositoryTests {
 
     @Test
     fun shouldPerformTruncateAndSave() {
-        val chatUser = ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", defaultImageUri, Instant.now())
+        val chatUsers = Flux.just(ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", defaultImageUri, Instant.now()))
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
-                .thenMany(
-                        Flux.just(chatUser)
-                )
+                .thenMany(chatUsers)
                 .flatMap(template::insert)
 
         StepVerifier
@@ -184,11 +188,9 @@ class ChatUserRepositoryTests {
                 .expectSubscription()
                 .assertNext { userAssertions(it) }
                 .verifyComplete()
-
     }
 
-
-    fun userAssertions(user: ChatUser) {
+    fun userAssertions(user: User) {
         MatcherAssert
                 .assertThat("A User has key and properties", user,
                         Matchers.allOf(
@@ -199,7 +201,7 @@ class ChatUserRepositoryTests {
                                                 .allOf(
                                                         Matchers.notNullValue(),
                                                         Matchers.hasProperty("handle"),
-                                                        Matchers.hasProperty("userId")
+                                                        Matchers.hasProperty("id")
                                                 )
                                 )
                         ))
@@ -210,7 +212,7 @@ class ChatUserRepositoryTests {
     fun userStateAssertions(user: User, handle: String?, name: String?) {
         assertAll("User Assertion",
                 { Assertions.assertNotNull(user) },
-                { Assertions.assertNotNull(user.key.userId) },
+                { Assertions.assertNotNull(user.key.id) },
                 { Assertions.assertNotNull(user.key.handle) },
                 { Assertions.assertEquals(handle, user.key.handle) },
                 { Assertions.assertEquals(name, user.name) }
@@ -218,15 +220,4 @@ class ChatUserRepositoryTests {
     }
 
 
-}
-
-fun setUp(repo: ChatUserRepository): Mono<Void> {
-    val defaultImageUri = "http://localhost:7070/s3"
-
-    val user1 = ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now())
-    val user2 = ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now())
-
-    return repo
-            .saveUsers(Flux.just(user1, user2))
-            .then()
 }

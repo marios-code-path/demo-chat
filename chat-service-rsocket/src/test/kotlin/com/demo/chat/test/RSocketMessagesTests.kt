@@ -2,8 +2,9 @@ package com.demo.chat.test
 
 import com.demo.chat.*
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TopicMessageKey
-import com.demo.chat.service.ChatMessageService
+import com.demo.chat.service.TextMessagePersistence
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.AssertionsForClassTypes
@@ -24,7 +25,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Instant
 import java.util.*
 import java.util.stream.Stream
 
@@ -42,20 +42,19 @@ class RSocketMessagesTests {
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    private lateinit var messageService: ChatMessageService<out Message<TopicMessageKey, Any>, TopicMessageKey>
+    private lateinit var messagePersistence: TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey>
 
     private var counter = Random().nextInt()
 
-    private fun randomMessage(): TestTextMessage {
+    private fun randomMessage(): TextMessage {
 
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
         counter++
 
-        return TestTextMessage(TestTextMessageKey(
-                messageId, userId, roomId, Instant.now()
-        ), "Hello $counter !", true)
+        return TextMessage.create(messageId, roomId, userId, "Hello $counter !")
+
     }
 
     @BeforeEach
@@ -74,15 +73,15 @@ class RSocketMessagesTests {
     @Test
     fun `should fetch a single message`() {
         BDDMockito
-                .given(messageService.getMessage(anyObject()))
+                .given(messagePersistence.getById(anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
         StepVerifier
                 .create(
                         requestor
-                                .route("message-msgId")
+                                .route("message-msg-id")
                                 .data(MessageRequest(UUID.randomUUID()))
-                                .retrieveMono(TestTextMessage::class.java)
+                                .retrieveMono(TextMessage::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -99,7 +98,7 @@ class RSocketMessagesTests {
     @Test
     fun `should receive messages from a random topic`() {
         BDDMockito
-                .given(messageService.getTopicMessages(anyObject()))
+                .given(messagePersistence.getAll(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         StepVerifier

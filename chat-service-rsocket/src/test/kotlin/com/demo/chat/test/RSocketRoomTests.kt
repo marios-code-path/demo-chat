@@ -3,8 +3,8 @@ package com.demo.chat.test
 
 import com.demo.chat.*
 import com.demo.chat.domain.*
-import com.demo.chat.service.ChatRoomService
-import com.demo.chat.service.ChatUserService
+import com.demo.chat.service.ChatRoomPersistence
+import com.demo.chat.service.ChatUserPersistence
 import io.rsocket.RSocket
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -42,10 +42,10 @@ class RSocketRoomTests {
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    lateinit var roomService: ChatRoomService<out Room, RoomKey> //ChatRoomServiceCassandra
+    lateinit var roomPersistence: ChatRoomPersistence<out Room, RoomKey> //ChatRoomPersistenceCassandra
 
     @Autowired
-    lateinit var userService: ChatUserService<out User, UserKey>
+    lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
 
     val randomUserHandle = randomAlphaNumeric(4) + "User"
     val randomUserId: UUID = UUID.randomUUID()
@@ -77,7 +77,7 @@ class RSocketRoomTests {
     @Test
     fun `should create a room receive response`() {
         BDDMockito
-                .given(roomService.createRoom(anyObject()))
+                .given(roomPersistence.add(anyObject()))
                 .willReturn(Mono.just(room.key))
 
         StepVerifier.create(
@@ -98,7 +98,7 @@ class RSocketRoomTests {
     @Test
     fun `should receive list of rooms`() {
         BDDMockito
-                .given(roomService.getRooms(anyBoolean()))
+                .given(roomPersistence.getAll(anyBoolean()))
                 .willReturn(Flux.just(room))
 
         StepVerifier
@@ -131,7 +131,7 @@ class RSocketRoomTests {
     @Test
     fun `should not join a non existent Room`() {
         BDDMockito
-                .given(roomService.joinRoom(anyObject(), anyObject()))
+                .given(roomPersistence.addMember(anyObject(), anyObject()))
                 .willReturn(Mono.error(RoomNotFoundException))
 
         StepVerifier
@@ -148,17 +148,17 @@ class RSocketRoomTests {
 
     @Test
     fun `joins a room and appears in member list`() {
-        BDDMockito.given(roomService.joinRoom(anyObject(), anyObject()))
+        BDDMockito.given(roomPersistence.addMember(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomService.getRoomById(anyObject()))
+        BDDMockito.given(roomPersistence.getById(anyObject()))
                 .willReturn(Mono.just(roomWithMembers))
 
-        BDDMockito.given(roomService.roomMembers(anyObject()))
+        BDDMockito.given(roomPersistence.members(anyObject()))
                 .willReturn(Mono.just(roomWithMembers.members!!))
 
         BDDMockito
-                .given(userService.getUsersById(anyObject()))
+                .given(userPersistence.findByIds(anyObject()))
                 .willReturn(Flux.just(TestChatUser(
                         TestChatUserKey(randomUserId, randomUserHandle),
                         "NAME", "http://imageURI", Instant.now()

@@ -27,7 +27,7 @@ data class ChatUser(
 ) : User
 
 data class ChatUserKey(
-        override val userId: UUID,
+        override val id: UUID,
         override val handle: String
 ) : UserKey
 

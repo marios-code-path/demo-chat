@@ -1,13 +1,11 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.JoinAlert
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -30,7 +28,7 @@ open class TopicServiceTestBase {
         val testRoom = testRoomId()
 
         val steps = topicService
-                .subscribeToTopic(userId, testRoom)
+                .subscribe(userId, testRoom)
 
         StepVerifier
                 .create(steps)
@@ -42,10 +40,10 @@ open class TopicServiceTestBase {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val steps = topicService.createTopic(testRoom)
-                .then(topicService.subscribeToTopic(userId, testRoom))
-                .then(topicService.unSubscribeFromTopic(userId, testRoom))
-                .thenMany(topicService.getTopicMembers(testRoom))
+        val steps = topicService.add(testRoom)
+                .then(topicService.subscribe(userId, testRoom))
+                .then(topicService.unSubscribe(userId, testRoom))
+                .thenMany(topicService.getUsersBy(testRoom))
                 .map(UUID::toString)
 
         StepVerifier
@@ -61,9 +59,9 @@ open class TopicServiceTestBase {
         val testRoom = testRoomId()
 
         val steps = topicService
-                .createTopic(testRoom)
-                .then(topicService.subscribeToTopic(userId, testRoom))
-                .thenMany(topicService.getTopicMembers(testRoom))
+                .add(testRoom)
+                .then(topicService.subscribe(userId, testRoom))
+                .thenMany(topicService.getUsersBy(testRoom))
                 .map(UUID::toString)
 
         StepVerifier
@@ -79,7 +77,7 @@ open class TopicServiceTestBase {
         val testRoom = testRoomId()
 
         val steps = topicService
-                .sendMessageToTopic(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
+                .sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
 
         StepVerifier
                 .create(steps)
@@ -92,13 +90,13 @@ open class TopicServiceTestBase {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val steps = topicService.subscribeToTopic(userId, testRoom)
+        val steps = topicService.subscribe(userId, testRoom)
 
         StepVerifier
                 .create(steps)
                 .then {
                     topicService
-                            .sendMessageToTopic(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
+                            .sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
                 }
                 .verifyError()
     }
@@ -109,9 +107,9 @@ open class TopicServiceTestBase {
         val userId = testUserId()
         val testRoom = testRoomId()
 
-        val steps = topicService.createTopic(testRoom)
-                .then(topicService.subscribeToTopic(userId, testRoom))
-                .thenMany(topicService.getTopicMembers(testRoom))
+        val steps = topicService.add(testRoom)
+                .then(topicService.subscribe(userId, testRoom))
+                .thenMany(topicService.getUsersBy(testRoom))
                 .map(UUID::toString)
 
         StepVerifier
@@ -126,8 +124,8 @@ open class TopicServiceTestBase {
         val topicId = UUID.randomUUID()
 
         val stream = topicService
-                .createTopic(topicId)
-                .then(topicService.topicExists(topicId))
+                .add(topicId)
+                .then(topicService.exists(topicId))
 
         StepVerifier
                 .create(stream)
@@ -147,13 +145,13 @@ open class TopicServiceTestBase {
         val topicId = UUID.randomUUID()
 
         val createTopic = topicService
-                .createTopic(topicId)
+                .add(topicId)
 
         val subscriber = topicService
-                .subscribeToTopic(userId, topicId)
+                .subscribe(userId, topicId)
 
         val unsubscribe = topicService
-                .unSubscribeFromTopic(userId, topicId)
+                .unSubscribe(userId, topicId)
 
         val stream = Flux
                 .from(createTopic)
@@ -166,4 +164,52 @@ open class TopicServiceTestBase {
                 .verifyComplete()
     }
 
+
+    @Test
+    fun `should send message to created topic and verify reception`() {
+        val userId = testUserId()
+        val testRoom = testRoomId()
+
+        StepVerifier
+                .create(topicService.add(testRoom))
+                .expectSubscription()
+                .expectComplete()
+                .verify(Duration.ofSeconds(1))
+
+        StepVerifier
+                .create(topicService.subscribe(userId, testRoom))
+                .expectSubscription()
+                .expectComplete()
+                .verify(Duration.ofSeconds(1))
+
+        StepVerifier
+                .create(topicService.sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId)))
+                .expectSubscription()
+                .expectComplete()
+                .verify(Duration.ofSeconds(1))
+
+        val uFlux = topicService.receiveOn(userId).doOnNext { logger.info("GOT: ${it.key.topicId}") }
+
+        StepVerifier
+                .create(uFlux)
+                .expectSubscription()
+                .then {
+                    Assertions
+                            .assertThat(topicAdmin.getProcessor(userId).downstreamCount())
+                            .isGreaterThanOrEqualTo(1)
+                }
+
+                .then {
+                    StepVerifier
+                            .create(Flux.merge(
+                                    topicService.unSubscribe(userId, testRoom),
+                                    topicService.rem(userId),
+                                    topicService.rem(testRoom)
+                            ))
+                            .expectSubscription()
+                            .verifyComplete()
+                }
+                .expectComplete()
+                .verify(Duration.ofSeconds(3))
+    }
 }

@@ -134,7 +134,7 @@ key_cache_size_in_mb:
 # Default is 14400 or 4 hours.
 key_cache_save_period: 14400
 
-# Number of keys from the key cache to save
+# Number of keys from the key cache to add
 # Disabled by default, meaning all keys are going to be saved
 # key_cache_keys_to_save: 100
 
@@ -155,7 +155,7 @@ row_cache_size_in_mb: 0
 # Default is 0 to disable saving the row cache.
 row_cache_save_period: 0
 
-# Number of keys from the row cache to save
+# Number of keys from the row cache to add
 # Disabled by default, meaning all keys are going to be saved
 # row_cache_keys_to_save: 100
 

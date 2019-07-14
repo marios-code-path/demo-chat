@@ -1,4 +1,4 @@
-package com.demo.chatevents
+package com.demo.chatevents.topic
 
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.annotation.JsonTypeInfo

@@ -19,9 +19,9 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class ChatUserServiceTests {
+class ChatUserPersistenceTests {
 
-    lateinit var userSvc: ChatUserServiceCassandra
+    lateinit var userSvc: ChatUserPersistenceCassandra
 
     @MockBean
     lateinit var userRepo: ChatUserRepository
@@ -47,7 +47,7 @@ class ChatUserServiceTests {
         Mockito.`when`(userHandleRepo.findByKeyHandle(anyObject()))
                 .thenReturn(Mono.just(newUserHandle))
 
-        userSvc = ChatUserServiceCassandra(userRepo, userHandleRepo)
+        userSvc = ChatUserPersistenceCassandra(userRepo, userHandleRepo)
 
     }
 

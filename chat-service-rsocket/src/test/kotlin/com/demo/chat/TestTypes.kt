@@ -14,7 +14,7 @@ data class TestChatUser(
 ) : User
 
 data class TestChatUserKey(
-        override val userId: UUID,
+        override val id: UUID,
         override val handle: String
 ) : UserKey
 
