@@ -17,7 +17,7 @@ data class ChatRoom(
 @PrimaryKeyClass
 data class ChatRoomKey(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val roomId: UUID,
+        override val id: UUID,
         override val name: String
 ) : RoomKey
 
@@ -33,7 +33,7 @@ data class ChatRoomName(
 @PrimaryKeyClass
 data class ChatRoomNameKey(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-        override val roomId: UUID,
+        override val id: UUID,
         @PrimaryKeyColumn(name = "name", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val name: String
 ) : RoomKey

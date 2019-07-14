@@ -14,11 +14,31 @@ interface Topic<out K> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface Room : Topic<RoomKey>
+interface Room : Topic<RoomKey> {
+    companion object Factory {
+        fun create(key: RoomKey, members: Set<UUID>?) = object : Room {
+            override val key: RoomKey
+                get() = key
+            override val members: Set<UUID>?
+                get() = members
+            override val timestamp: Instant
+                get() = Instant.now()
+        }
+    }
+}
 
 interface RoomKey {
-    val roomId: UUID
+    val id: UUID
     val name: String
+
+    companion object Factory {
+        fun create(roomId: UUID, name: String) = object : RoomKey {
+            override val name: String
+                get() = name
+            override val id: UUID
+                get() = roomId
+        }
+    }
 }
 
 @JsonTypeName("RoomMeta")

@@ -19,28 +19,28 @@ interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatRoomName, Str
 interface ChatRoomRepository :
         ReactiveCassandraRepository<ChatRoom, UUID>,
         ChatRoomRepositoryCustom {
-    fun findByKeyRoomId(id: UUID): Mono<ChatRoom>
+    fun findByKeyId(id: UUID): Mono<ChatRoom>
 }
 
 interface ChatRoomRepositoryCustom {
-    fun saveRoom(room: Room): Mono<Void>
-    fun remRoom(roomKey: RoomKey): Mono<Void>
-    fun joinRoom(uid: UUID, roomId: UUID): Mono<Void>
-    fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void>
+    fun add(room: Room): Mono<Void>
+    fun rem(roomKey: RoomKey): Mono<Void>
+    fun join(uid: UUID, roomId: UUID): Mono<Void>
+    fun leave(uid: UUID, roomId: UUID): Mono<Void>
     fun messageCount(roomId: UUID): Mono<Int>
 
 }
 
 class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
-    override fun remRoom(roomKey: RoomKey): Mono<Void> =
+    override fun rem(roomKey: RoomKey): Mono<Void> =
             cassandra
                     .batchOps()
-                    .update(Query.query(where("room_id").`is`(roomKey.roomId)),
+                    .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
                             ChatRoom::class.java
                     )
-                    .update(Query.query(where("room_id").`is`(roomKey.roomId)),
+                    .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
                             ChatRoomName::class.java
                     )
@@ -52,12 +52,12 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                     .then(
                     )
 
-    override fun saveRoom(room: Room): Mono<Void> = cassandra
+    override fun add(room: Room): Mono<Void> = cassandra
             .batchOps()
             .insert(
                     ChatRoomName(
                             ChatRoomNameKey(
-                                    room.key.roomId,
+                                    room.key.id,
                                     room.key.name),
                             emptySet(),
                             true,
@@ -66,7 +66,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
             )
             .insert(ChatRoom(
                     ChatRoomKey(
-                            room.key.roomId,
+                            room.key.id,
                             room.key.name
                     ),
                     emptySet(),
@@ -76,7 +76,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
             .execute()
             .then()
 
-    override fun leaveRoom(uid: UUID, roomId: UUID): Mono<Void> = cassandra
+    override fun leave(uid: UUID, roomId: UUID): Mono<Void> = cassandra
             .update(Query.query(where("room_id").`is`(roomId)),
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
@@ -89,7 +89,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
             }
             .then()
 
-    override fun joinRoom(uid: UUID, roomId: UUID): Mono<Void> =
+    override fun join(uid: UUID, roomId: UUID): Mono<Void> =
             cassandra
                     .update(Query.query(where("room_id").`is`(roomId)),
                             Update.of(listOf(Update.AddToOp(

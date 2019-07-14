@@ -53,7 +53,7 @@ class ChatUserRepositoryTests {
                 ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
                 ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()) )
                 .flatMap {
-                    repo.saveUser(it)
+                    repo.add(it)
                 }
 
         val find = handleRepo.findByKeyHandle("darkbit")
@@ -82,8 +82,8 @@ class ChatUserRepositoryTests {
 
         val stream = template
                 .truncate(ChatUser::class.java)
-                .then(repo.saveUser(user1))
-                .then(repo.saveUser(user2))
+                .then(repo.add(user1))
+                .then(repo.add(user2))
 
         StepVerifier
                 .create(stream)
@@ -101,11 +101,11 @@ class ChatUserRepositoryTests {
                 ChatUser(ChatUserKey(id1, "vedder"), "eddie", defaultImageUri, Instant.now()),
                 ChatUser(ChatUserKey(id2, "jackson"), "Michael", defaultImageUri, Instant.now())
         )
-                .flatMap { repo.saveUser(it) }
+                .flatMap { repo.add(it) }
 
         val stream = Flux
                 .from(chatUsers)
-                .thenMany(repo.findByKeyUserIdIn(Flux.just(id1, id2)))
+                .thenMany(repo.findByKeyIdIn(Flux.just(id1, id2)))
 
         StepVerifier
                 .create(stream)
@@ -158,10 +158,10 @@ class ChatUserRepositoryTests {
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
                 .thenMany(Flux.just(chatUser))
-                .flatMap(repo::saveUser)
+                .flatMap(repo::add)
 
         val find = repo
-                .findByKeyUserId(userId)
+                .findByKeyId(userId)
 
         val composed = Flux
                 .from(truncateAndSave)

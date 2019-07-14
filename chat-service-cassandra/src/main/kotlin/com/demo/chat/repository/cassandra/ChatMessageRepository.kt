@@ -10,18 +10,16 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface MessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID>
-
 interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
-    fun findByKeyUserId(userId: UUID): Flux<TextMessage>
+    fun findByKeyUserId(userId: UUID): Flux<ChatMessageByUser>
 }
 
 interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessageByTopic, UUID> {
-    fun findByKeyTopicId(topicId: UUID): Flux<TextMessage>
+    fun findByKeyTopicId(topicId: UUID): Flux<ChatMessageByTopic>
 }
 
 interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessageById, UUID> {
-    fun findByKeyMsgId(id: UUID): Mono<TextMessage>
+    fun findByKeyMsgId(id: UUID): Mono<ChatMessageById>
 }
 
 interface ChatMessageRepositoryCustom {
@@ -32,26 +30,26 @@ interface ChatMessageRepositoryCustom {
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
     override fun rem(key: TextMessageKey): Mono<Void> =
-        cassandra
-                .batchOps()
-                .update(Query.query(where("msg_id").`is`(key.msgId)),
-                        Update.empty().set("visible", false),
-                        ChatMessageByUser::class.java
-                )
-                .update(Query.query(where("msg_id").`is`(key.msgId)),
-                        Update.empty().set("visible", false),
-                        ChatMessageByTopic::class.java
-                )
-                .update(Query.query(where("msg_id").`is`(key.msgId)),
-                        Update.empty().set("visible", false),
-                        ChatMessageById::class.java
-                )
-                .execute()
-                .map {
-                    if (!it.wasApplied())
-                        throw ChatException("Cannot Remove Room")
-                }
-                .then()
+            cassandra
+                    .batchOps()
+                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                            Update.empty().set("visible", false),
+                            ChatMessageByUser::class.java
+                    )
+                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                            Update.empty().set("visible", false),
+                            ChatMessageByTopic::class.java
+                    )
+                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                            Update.empty().set("visible", false),
+                            ChatMessageById::class.java
+                    )
+                    .execute()
+                    .map {
+                        if (!it.wasApplied())
+                            throw ChatException("Cannot Disable Message")
+                    }
+                    .then()
 
     override fun add(msg: TextMessage): Mono<Void> =
             cassandra
@@ -90,7 +88,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     .execute()
                     .map {
                         if (!it.wasApplied())
-                            throw ChatException("Cannot Add User")
+                            throw ChatException("Cannot Add Message")
                     }
                     .then()
 }

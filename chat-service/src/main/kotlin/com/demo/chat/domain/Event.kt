@@ -2,7 +2,6 @@ package com.demo.chat.domain
 
 import java.util.*
 
-/* TODO raise EventKey as supertype to MessageKey */
 interface EventKey {
     val id: UUID
     companion object Factory {

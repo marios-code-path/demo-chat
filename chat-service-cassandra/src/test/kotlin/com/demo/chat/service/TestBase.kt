@@ -1,9 +1,19 @@
 package com.demo.chat.service
 
+import com.demo.chat.domain.EventKey
 import org.mockito.Mockito
+import reactor.core.publisher.Mono
+import java.util.*
 
 // KLUDGE needed to get mockito to talk with Kotlin (type soup remember me?)
 object TestBase
+
+object TestKeyService : KeyService {
+    override fun id(): Mono<EventKey> = Mono.just(EventKey.create(UUID.randomUUID()))
+
+    override fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T> =
+            id().map { create(it) }
+}
 
 fun <T> anyObject(): T {
     Mockito.anyObject<T>()

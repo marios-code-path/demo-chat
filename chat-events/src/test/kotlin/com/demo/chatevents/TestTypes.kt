@@ -34,7 +34,7 @@ data class TestChatRoom(
 ) : Room
 
 data class TestChatRoomKey(
-        override val roomId: UUID,
+        override val id: UUID,
         override val name: String
 ) : RoomKey
 

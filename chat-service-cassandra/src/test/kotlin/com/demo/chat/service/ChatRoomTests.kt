@@ -44,7 +44,7 @@ class ChatRoomTests {
     fun roomAssertions(room: ChatRoom) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.key.roomId) },
+                { Assertions.assertNotNull(room.key.id) },
                 { Assertions.assertNotNull(room.key.name) },
                 { Assertions.assertNotNull(room.timestamp) }
         )

@@ -5,6 +5,7 @@ import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
+import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.cassandraunit.spring.CassandraDataSet
@@ -41,19 +42,14 @@ class ChatRoomRepoTests {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
+        val room = Room.create(RoomKey.create(
+                roomId, "XYZ"
+        ), emptySet())
 
-        val saveFlux = repo
-                .saveRoom(
-                        ChatRoom(
-                                ChatRoomKey(
-                                        roomId, "XYZ"),
-                                emptySet(),
-                                true,
-                                Instant.now())
-                )
+        val saveFlux = repo.add(room)
 
         val deactivateMono =
-                repo.remRoom(roomId)
+                repo.rem(RoomKey.create(roomId, "XYZ"))
 
         val findActiveRooms =
                 repo.findAll()
@@ -75,7 +71,7 @@ class ChatRoomRepoTests {
     @Test
     fun `should fail to find room`() {
         val queryFlux = repo
-                .findByKeyRoomId(UUID.randomUUID())
+                .findByKeyId(UUID.randomUUID())
                 .switchIfEmpty { Mono.error(Exception("No Such Room")) }
 
         StepVerifier
@@ -89,19 +85,20 @@ class ChatRoomRepoTests {
     fun `should save many and find as list`() {
         StepVerifier
                 .create(
-                        repo
-                                .saveRooms(Flux.just(
-                                        ChatRoom(
-                                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
-                                                Collections.emptySet(),
-                                                true,
-                                                Instant.now()),
-                                        ChatRoom(
-                                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
-                                                Collections.emptySet(),
-                                                true,
-                                                Instant.now())
-                                ))
+                        Flux.just(
+                                ChatRoom(
+                                        ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
+                                        Collections.emptySet(),
+                                        true,
+                                        Instant.now()),
+                                ChatRoom(
+                                        ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
+                                        Collections.emptySet(),
+                                        true,
+                                        Instant.now())
+                        ).flatMap {
+                            repo.add(it)
+                        }
                                 .thenMany(repo.findAll())
                 )
                 .expectSubscription()
@@ -112,14 +109,12 @@ class ChatRoomRepoTests {
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = repo
-                .saveRooms(Flux.just(
-                        ChatRoom(
-                                ChatRoomKey(UUIDs.timeBased(), "XYZ"),
-                                Collections.emptySet(),
-                                true,
-                                Instant.now())
-                ))
+        val saveFlux = Flux.just(
+                        Room.create(RoomKey.create(UUIDs.timeBased(), "XYZ"),
+                                Collections.emptySet()))
+                .flatMap {
+                    repo.add(it)
+                }
 
         val findFlux = byNameRepo
                 .findByKeyName("XYZ")
@@ -140,7 +135,7 @@ class ChatRoomRepoTests {
         val userId = UUID.randomUUID()
 
         val saveFlux = repo
-                .saveRoom(
+                .add(
                         ChatRoom(
                                 ChatRoomKey(
                                         roomId, "XYZ"),
@@ -149,10 +144,10 @@ class ChatRoomRepoTests {
                                 Instant.now())
                 )
 
-        val updateFlux = repo.joinRoom(userId, roomId)
+        val updateFlux = repo.join(userId, roomId)
 
         val findFlux = repo
-                .findByKeyRoomId(roomId)
+                .findByKeyId(roomId)
 
         val composed = Flux
                 .from(saveFlux)
@@ -177,7 +172,7 @@ class ChatRoomRepoTests {
     fun <R : Room> roomAssertions(room: R) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.key.roomId) },
+                { Assertions.assertNotNull(room.key.id) },
                 { Assertions.assertNotNull(room.key.name) },
                 { Assertions.assertNotNull(room.timestamp) }
         )

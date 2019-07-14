@@ -11,19 +11,20 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
+
 interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, UUID>,
         ChatUserRepositoryCustom {
-    fun findByKeyUserId(uuid: UUID): Mono<User>
-    fun findByKeyUserIdIn(uuids: Flux<UUID>): Flux<User>
+    fun findByKeyId(uuid: UUID): Mono<ChatUser>
+    fun findByKeyIdIn(uuids: Flux<UUID>): Flux<ChatUser>
 }
 
 interface ChatUserHandleRepository
     : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey> {
-    fun findByKeyHandle(handle: String): Mono<User>
+    fun findByKeyHandle(handle: String): Mono<ChatUserHandle>
 }
 
 interface ChatUserRepositoryCustom {
-    fun saveUser(user: User): Mono<Void>
+    fun add(user: User): Mono<Void>
     fun rem(key: UserKey): Mono<Void>
 }
 
@@ -34,11 +35,11 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     .batchOps()
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
-                            ChatRoom::class.java
+                            ChatUser::class.java
                     )
-                    .update(Query.query(where("room_id").`is`(key.id)),
+                    .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
-                            ChatRoomName::class.java
+                            ChatUserHandle::class.java
                     )
                     .execute()
                     .map {
@@ -48,7 +49,7 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     .then(
                     )
 
-    override fun saveUser(u: User): Mono<Void> =
+    override fun add(u: User): Mono<Void> =
             cassandra
                     .batchOps()
                     .insert(ChatUser(ChatUserKey(
@@ -70,7 +71,7 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                             InsertOptions.builder().withIfNotExists().build()
                     )
                     .execute()
-                    .handle<ChatUser> { write, sink ->
+                    .handle<Void>{ write, sink ->
                         when (write.wasApplied()) {
                             false -> sink.error(DuplicateUserException)
                             else -> sink.complete()

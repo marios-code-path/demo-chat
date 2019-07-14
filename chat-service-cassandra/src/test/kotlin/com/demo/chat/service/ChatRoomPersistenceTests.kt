@@ -24,37 +24,39 @@ class ChatRoomPersistenceTests {
     @MockBean
     lateinit var roomRepo: ChatRoomRepository
 
-    val rid: UUID = UUID.randomUUID()
+    private val keyService: KeyService = TestKeyService
 
-    val uid: UUID = UUID.randomUUID()
+    private val rid: UUID = UUID.randomUUID()
+
+    private val uid: UUID = UUID.randomUUID()
 
     @BeforeEach
     fun setUp() {
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
         val roomTwo = ChatRoom(ChatRoomKey(UUID.randomUUID(), randomAlphaNumeric(6)), emptySet(), true, Instant.now())
 
-        BDDMockito.given(roomRepo.joinRoom(anyObject(), anyObject()))
+        BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomRepo.saveRoom(anyObject()))
-                .willReturn(Mono.just(newRoom))
+        BDDMockito.given(roomRepo.add(anyObject()))
+                .willReturn(Mono.empty())
 
         BDDMockito.given(roomRepo.findAll())
                 .willReturn(Flux.just(newRoom, roomTwo))
 
-        BDDMockito.given(roomRepo.findByKeyRoomId(anyObject()))
+        BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(newRoom))
 
-        BDDMockito.given(roomRepo.leaveRoom(anyObject(), anyObject()))
+        BDDMockito.given(roomRepo.leave(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomRepo.remRoom(anyObject()))
+        BDDMockito.given(roomRepo.rem(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(roomRepo.messageCount(anyObject()))
                 .willReturn(Mono.just(1))
 
-        roomSvc = ChatRoomPersistenceCassandra(roomRepo)
+        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo)
     }
 
     // TODO - check for nullable return types in  Room-Service.
@@ -75,9 +77,13 @@ class ChatRoomPersistenceTests {
     fun `should create some rooms then get a list`() {
         StepVerifier
                 .create(
-                        roomSvc
-                                .add(randomAlphaNumeric(5))
-                                .then(roomSvc.add(randomAlphaNumeric(5)))
+                        Flux.just(randomAlphaNumeric(5), randomAlphaNumeric(5))
+                                .flatMap {
+                                    roomSvc.key(it)
+                                }
+                                .flatMap {
+                                    roomSvc.add(it)
+                                }
                                 .thenMany(roomSvc.getAll(true))
                 )
                 .expectSubscription()
@@ -86,12 +92,13 @@ class ChatRoomPersistenceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: Room) {
-        assertAll("room contents in tact",
-                { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.key.roomId) },
-                { Assertions.assertNotNull(room.key.name) },
-                { Assertions.assertNotNull(room.timestamp) }
-        )
-    }
+    fun roomAssertions(room: Room)
+ {
+    assertAll("room contents in tact",
+            { Assertions.assertNotNull(room) },
+            { Assertions.assertNotNull(room.key.id) },
+            { Assertions.assertNotNull(room.key.name) },
+            { Assertions.assertNotNull(room.timestamp) }
+    )
+}
 }

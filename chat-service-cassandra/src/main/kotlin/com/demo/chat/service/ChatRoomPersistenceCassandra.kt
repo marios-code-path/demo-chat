@@ -1,6 +1,5 @@
 package com.demo.chat.service
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.slf4j.LoggerFactory
@@ -9,19 +8,19 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-interface KeyService {
-    fun id(): UUID
-}
-open class ChatRoomPersistenceCassandra(private val roomRepo: ChatRoomRepository)
+open class ChatRoomPersistenceCassandra(private val keyService: KeyService,
+                                        private val roomRepo: ChatRoomRepository)
     : ChatRoomPersistence<Room, RoomKey> {
-    override fun key(name: String): Mono<out RoomKey> =
-            Mono.just(ChatRoomKey(UUIDs.timeBased(), name))
-
     val logger = LoggerFactory.getLogger(this::class.simpleName)
+
+    override fun key(name: String): Mono<out RoomKey> =
+            keyService.key(RoomKey::class.java) {
+                RoomKey.create(it.id, name)
+            }
 
     override fun getById(id: UUID): Mono<ChatRoom> =
             roomRepo
-                    .findByKeyRoomId(id)
+                    .findByKeyId(id)
 
     override fun getAll(activeOnly: Boolean): Flux<ChatRoom> =
             roomRepo.findAll()
@@ -31,9 +30,9 @@ open class ChatRoomPersistenceCassandra(private val roomRepo: ChatRoomRepository
 
     override fun add(key: RoomKey): Mono<Void> =
             roomRepo
-                    .saveRoom(ChatRoom(
+                    .add(ChatRoom(
                             ChatRoomKey(
-                                    key.roomId,
+                                    key.id,
                                     key.name
                             ),
                             emptySet(),
@@ -44,7 +43,7 @@ open class ChatRoomPersistenceCassandra(private val roomRepo: ChatRoomRepository
 
     override fun size(roomId: UUID): Mono<Int> =
             roomRepo
-                    .findByKeyRoomId(roomId)
+                    .findByKeyId(roomId)
                     .switchIfEmpty(Mono.error(RoomNotFoundException))
                     .handle { it, sink ->
                         when (it) {
@@ -61,7 +60,7 @@ open class ChatRoomPersistenceCassandra(private val roomRepo: ChatRoomRepository
 
     override fun members(roomId: UUID): Mono<Set<UUID>> =
             roomRepo
-                    .findByKeyRoomId(roomId)
+                    .findByKeyId(roomId)
                     .flatMap { room ->
                         when (room) {
                             null -> Mono.error(RoomNotFoundException)
@@ -71,24 +70,24 @@ open class ChatRoomPersistenceCassandra(private val roomRepo: ChatRoomRepository
 
     override fun rem(key: RoomKey): Mono<Void> =
             roomRepo
-                    .findByKeyRoomId(key.roomId)
+                    .findByKeyId(key.id)
                     .flatMap {
                         when (it) {
                             null -> Mono.error(RoomNotFoundException)
-                            else -> roomRepo.remRoom(key)
+                            else -> roomRepo.rem(key)
                         }
                     }
 
     override fun addMember(uid: UUID, roomId: UUID): Mono<Void> =
             verifyRoom(roomId)
-                    .then(roomRepo.joinRoom(uid, roomId))
+                    .then(roomRepo.join(uid, roomId))
 
     override fun remMember(uid: UUID, roomId: UUID): Mono<Void> =
             verifyRoom(roomId)
-                    .then(roomRepo.leaveRoom(uid, roomId))
+                    .then(roomRepo.leave(uid, roomId))
 
     private fun verifyRoom(roomId: UUID): Mono<Void> =
-            roomRepo.findByKeyRoomId(roomId)
+            roomRepo.findByKeyId(roomId)
                     .switchIfEmpty(Mono.error(RoomNotFoundException))
                     .then()
 

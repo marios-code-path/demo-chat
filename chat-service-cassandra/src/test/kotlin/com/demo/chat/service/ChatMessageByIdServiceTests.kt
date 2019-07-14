@@ -1,9 +1,8 @@
 package com.demo.chat.service
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
+import com.demo.chat.repository.cassandra.ChatMessageRepository
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,7 +26,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 class ChatMessageByIdServiceTests {
 
-    val logger = LoggerFactory.getLogger("TESTCASE ")
+    val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     lateinit var msgSvc: TextMessagePersistenceCassandra
 
@@ -37,22 +36,24 @@ class ChatMessageByIdServiceTests {
     @MockBean
     lateinit var msgByTopicRepo: ChatMessageByTopicRepository
 
-    val rid: UUID = UUID.randomUUID()
+    private val keyService: KeyService = TestKeyService
 
-    val uid: UUID = UUID.randomUUID()
+    private val rid: UUID = UUID.randomUUID()
+
+    private val uid: UUID = UUID.randomUUID()
 
     @BeforeEach
     fun setUp() {
-        val newMessage = ChatMessageById(ChatMessageByIdKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
-        val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), uid, rid, Instant.now()), "SUP TEST", true)
+        val newMessage = ChatMessageById(ChatMessageByIdKey(UUID.randomUUID(), rid, uid, Instant.now()), "SUP TEST", true)
+        val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), rid, uid, Instant.now()), "SUP TEST", true)
 
-        Mockito.`when`(msgRepo.save(anyObject()))
-                .thenReturn(Mono.just(newMessage))
+        Mockito.`when`(msgRepo.add(anyObject()))
+                .thenReturn(Mono.empty())
 
         Mockito.`when`(msgByTopicRepo.findByKeyTopicId(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
-        msgSvc = TextMessagePersistenceCassandra(msgRepo, msgByTopicRepo)
+        msgSvc = TextMessagePersistenceCassandra(keyService, msgRepo, msgByTopicRepo)
     }
 
     @Test
@@ -78,12 +79,11 @@ class ChatMessageByIdServiceTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val messages = msgSvc
-                .add(userId, roomId, "")
+        val messages = msgSvc.key(userId, roomId)
                 .flatMap {
-                    msgSvc.getAll(roomId)
-                            .collectList()
+                    msgSvc.add(it, "")
                 }
+                .thenMany(msgSvc.getAll(roomId).collectList())
 
         StepVerifier
                 .create(messages)
@@ -102,25 +102,6 @@ class ChatMessageByIdServiceTests {
                                         { assertEquals("SUP TEST", it.first().value) })
                             }
 
-                    )
-                }
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should send message to room`() {
-        val userId = UUIDs.timeBased()
-        val roomId = UUIDs.timeBased()
-        val sendMessageFlux = msgSvc
-                .add(userId, roomId, "Hello there")
-
-        StepVerifier
-                .create(sendMessageFlux)
-                .expectSubscription()
-                .assertNext {
-                    assertAll("message",
-                            { assertNotNull(it.msgId) },
-                            { assertNotNull(it.topicId) }
                     )
                 }
                 .verifyComplete()

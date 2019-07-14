@@ -19,7 +19,6 @@ interface ChatUserPersistence<U : User, UK : UserKey> {
     fun authenticate(name: String, password: String): Mono<out UK>
 }
 
-
 interface ChatRoomPersistence<R : Room, RK : RoomKey> {
     fun key(name: String): Mono<out RK>
     fun add(key: RK): Mono<Void>
@@ -33,10 +32,15 @@ interface ChatRoomPersistence<R : Room, RK : RoomKey> {
     fun remMember(uid: UUID, roomId: UUID): Mono<Void>
 }
 
-interface TextMessagePersistence<M : Message<MK, Any>, MK : TextMessageKey> {
+interface TextMessagePersistence<M : TextMessage, MK : TextMessageKey> {
     fun key(uid: UUID, roomId: UUID): Mono<out MK>
     fun add(key: MK, messageText: String): Mono<Void>
     fun rem(key: MK): Mono<Void>
     fun getById(id: UUID): Mono<out M>
     fun getAll(topicId: UUID): Flux<out M>
+}
+
+interface KeyService {
+    fun id(): Mono<EventKey>
+    fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T>
 }
