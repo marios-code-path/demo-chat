@@ -50,7 +50,8 @@ data class RoomMetaData(
 @JsonTypeName("RoomMember")
 data class RoomMember(
         val uid: UUID,
-        val handle: String
+        val handle: String,
+        val imgUri: String
 )
 
 // For later , when we disconnect room.memberSet into it's own Column

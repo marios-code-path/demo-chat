@@ -8,6 +8,7 @@ import com.demo.chat.domain.*
 import com.demo.chat.service.ChatRoomPersistence
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.KeyService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -19,29 +20,30 @@ import java.util.*
 @Controller
 class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>,
                      val userPersistence: ChatUserPersistence<out User, UserKey>,
-                     val topicService: ChatTopicService) {
+                     val topicService: ChatTopicService,
+                     val keyService: KeyService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    @MessageMapping("room-create")
-    fun createRoom(req: RoomCreateRequest): Mono<out RoomKey> =
+    @MessageMapping("room-add")
+    fun addRoom(req: RoomCreateRequest): Mono<out RoomKey> =
             roomPersistence
-                    .add(req.roomName)
+                    .key(req.roomName)
                     .flatMap { key ->
-                        topicService
-                                .add(key.roomId)
+                        roomPersistence
+                                .add(key)
+                                .then(topicService.add(key.id))
                                 .map { key }
                     }
 
-    @MessageMapping("room-delete")
+    @MessageMapping("room-rem")
     fun deleteRoom(req: RoomRequest): Mono<Void> =
             roomPersistence
-                    .rem(req.roomId)
+                    .getById(req.roomId)
                     .flatMap {
-                        topicService
-                                .unSubscribeAllIn(req.roomId)
-                                .then(topicService.rem(req.roomId))
+                        roomPersistence.rem(it.key)
                     }
-                    .then()
+                    .then(topicService.unSubscribeAllIn(req.roomId))
+                    .then(topicService.rem(req.roomId))
 
     @MessageMapping("room-list")
     fun listRooms(req: RoomRequest): Flux<out Room> =
@@ -58,31 +60,34 @@ class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>
             roomPersistence
                     .addMember(req.uid, req.roomId)
                     .flatMap {
-                        topicService
-                                .sendMessage(JoinAlert
-                                        .create(UUID.randomUUID(), req.roomId, req.uid))
-                                .then(topicService
-                                        .subscribe(req.uid, req.roomId))
-                    }.then()
+                        keyService.id()
+                                .flatMap {id ->
+                                    topicService
+                                            .sendMessage(JoinAlert.create(id.id, req.roomId, req.uid))
+                                            .then(topicService.subscribe(req.uid, req.roomId))
+                                }
+                    }
 
     @MessageMapping("room-leave")
     fun leaveRoom(req: RoomLeaveRequest): Mono<Void> =
             roomPersistence
                     .remMember(req.uid, req.roomId)
                     .flatMap {
-                        topicService.sendMessage(LeaveAlert.create(UUID.randomUUID(), req.roomId, req.uid))
-                                .then(topicService.unSubscribe(req.uid, req.roomId))
-                    }.then()
+                        keyService.id()
+                                .flatMap { id ->
+                                    topicService
+                                            .sendMessage(LeaveAlert.create(id.id, req.roomId, req.uid))
+                                            .then(topicService.unSubscribe(req.uid, req.roomId))
+                                }
+                    }
 
     @MessageMapping("room-members")
     fun roomMembers(req: RoomRequest): Mono<RoomMemberships> = roomPersistence
             .members(req.roomId)
             .flatMap { members ->
-                userPersistence // kludge! This is nullable ! make sure enforce non-nullability across service contract
+                userPersistence
                         .findByIds(Flux.fromStream(members.stream()))
-                        .map { u ->
-                            RoomMember(u.key.id, u.key.handle)
-                        }
+                        .map { u -> RoomMember(u.key.id, u.key.handle, u.imageUri) }
                         .collectList()
                         .map { memberList ->
                             RoomMemberships(memberList.toSet())
