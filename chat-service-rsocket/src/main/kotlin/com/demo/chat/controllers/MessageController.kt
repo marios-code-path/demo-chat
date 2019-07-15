@@ -3,6 +3,8 @@ package com.demo.chat.controllers
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.TextMessagePersistence
 import com.demo.chat.service.ChatTopicService
@@ -15,7 +17,7 @@ import reactor.core.publisher.Mono
 
 @Controller
 class MessageController(
-        val dataPersistence: TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey>,
+        val dataPersistence: TextMessagePersistence<out TextMessage, TextMessageKey>,
         val topicService: ChatTopicService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 

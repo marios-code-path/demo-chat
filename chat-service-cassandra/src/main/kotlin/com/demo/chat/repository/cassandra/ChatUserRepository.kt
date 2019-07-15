@@ -1,6 +1,8 @@
 package com.demo.chat.repository.cassandra
 
+import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.demo.chat.domain.*
+import com.google.common.collect.ImmutableSet
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
@@ -32,50 +34,58 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
     override fun rem(key: UserKey): Mono<Void> =
             cassandra
-                    .batchOps()
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
                             ChatUser::class.java
                     )
-                    .update(Query.query(where("user_id").`is`(key.id)),
-                            Update.empty().set("active", false),
-                            ChatUserHandle::class.java
-                    )
-                    .execute()
-                    .map {
-                        if (!it.wasApplied())
-                            throw ChatException("Cannot De-Active Room")
-                    }
                     .then(
-                    )
+                            cassandra.update(Query.query(where("user_id").`is`(key.id), where("handle").`is`(key.handle)),
+                                    Update.empty().set("active", false),
+                                    ChatUserHandle::class.java
+                            ))
+                    .then()
 
     override fun add(u: User): Mono<Void> =
             cassandra
                     .batchOps()
-                    .insert(ChatUser(ChatUserKey(
+                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
                             u.key.id,
                             u.key.handle
                     ),
                             u.name,
                             u.imageUri,
-                            u.timestamp),
-                            InsertOptions.builder().withIfNotExists().build()
-                    )
-                    .insert(ChatUserHandle(
-                            ChatUserHandleKey(
-                                    u.key.id,
-                                    u.key.handle
-                            ),
-                            u.name, u.imageUri,
-                            u.timestamp),
-                            InsertOptions.builder().withIfNotExists().build()
+                            u.timestamp)),
+                            InsertOptions.builder().withIfNotExists()
+                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                    .build()
                     )
                     .execute()
-                    .handle<Void>{ write, sink ->
+                    .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
                             false -> sink.error(DuplicateUserException)
                             else -> sink.complete()
                         }
                     }
+                    .then(
+                            cassandra.batchOps()
+                                    .insert(ImmutableSet.of(
+                                            ChatUserHandle(ChatUserHandleKey(
+                                                    u.key.id,
+                                                    u.key.handle
+                                            ),
+                                                    u.name,
+                                                    u.imageUri,
+                                                    u.timestamp
+                                            )), InsertOptions.builder().withIfNotExists()
+                                            .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                            .build())
+                                    .execute()
+                                    .handle<Void> { write, sink ->
+                                        when (write.wasApplied()) {
+                                            false -> sink.error(DuplicateUserException)
+                                            else -> sink.complete()
+                                        }
+                                    }
+                    )
                     .then()
 }

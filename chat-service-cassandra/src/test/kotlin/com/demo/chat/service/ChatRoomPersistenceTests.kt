@@ -43,7 +43,6 @@ class ChatRoomPersistenceTests {
 
         BDDMockito.given(roomRepo.findAll())
                 .willReturn(Flux.just(newRoom, roomTwo))
-
         BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(newRoom))
 
@@ -92,13 +91,12 @@ class ChatRoomPersistenceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: Room)
- {
-    assertAll("room contents in tact",
-            { Assertions.assertNotNull(room) },
-            { Assertions.assertNotNull(room.key.id) },
-            { Assertions.assertNotNull(room.key.name) },
-            { Assertions.assertNotNull(room.timestamp) }
-    )
-}
+    fun roomAssertions(room: Room) {
+        assertAll("room contents in tact",
+                { Assertions.assertNotNull(room) },
+                { Assertions.assertNotNull(room.key.id) },
+                { Assertions.assertNotNull(room.key.name) },
+                { Assertions.assertNotNull(room.timestamp) }
+        )
+    }
 }

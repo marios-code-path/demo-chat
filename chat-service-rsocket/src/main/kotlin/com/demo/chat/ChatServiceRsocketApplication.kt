@@ -1,7 +1,6 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
-import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chatevents.config.TopicRedisTemplateConfiguration
@@ -35,19 +34,25 @@ annotation class ExcludeFromTests
 @ExcludeFromTests
 class ChatServiceModule {
     @Bean
-    fun userPersistence(userRepo: ChatUserRepository,
+    fun keyService(): KeyService = KeyServiceCassandra
+
+    @Bean
+    fun userPersistence(keyService: KeyService,
+                        userRepo: ChatUserRepository,
                         userHandleRepo: ChatUserHandleRepository): ChatUserPersistence<out User, UserKey> =
-            ChatUserPersistenceCassandra(userRepo, userHandleRepo)
+            ChatUserPersistenceCassandra(keyService, userRepo, userHandleRepo)
 
     @Bean
-    fun roomPersistence(roomRepo: ChatRoomRepository,
+    fun roomPersistence(keyService: KeyService,
+                        roomRepo: ChatRoomRepository,
                         roomNameRepo: ChatRoomNameRepository): ChatRoomPersistence<out Room, RoomKey> =
-            ChatRoomPersistenceCassandra(roomRepo)
+            ChatRoomPersistenceCassandra(keyService, roomRepo)
 
     @Bean
-    fun messagePersistence(messageRepo: ChatMessageRepository,
-                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey> =
-            TextMessagePersistenceCassandra(messageRepo, messageByTopicRepo)
+    fun messagePersistence(keyService: KeyService,
+                           messageRepo: ChatMessageRepository,
+                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence<TextMessage, TextMessageKey> =
+            TextMessagePersistenceCassandra(keyService, messageRepo, messageByTopicRepo)
 
     @Bean
     fun topicServiceInMemory(): ChatTopicService = TopicServiceMemory()

@@ -35,20 +35,16 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
     override fun rem(roomKey: RoomKey): Mono<Void> =
             cassandra
-                    .batchOps()
                     .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
                             ChatRoom::class.java
                     )
-                    .update(Query.query(where("room_id").`is`(roomKey.id)),
-                            Update.empty().set("active", false),
-                            ChatRoomName::class.java
+                    .then(cassandra
+                            .update(Query.query(where("room_id").`is`(roomKey.id),where("name").`is`(roomKey.name)),
+                                    Update.empty().set("active", false),
+                                    ChatRoomName::class.java
+                            )
                     )
-                    .execute()
-                    .map {
-                        if (!it.wasApplied())
-                            throw ChatException("Cannot De-Active Room")
-                    }
                     .then(
                     )
 

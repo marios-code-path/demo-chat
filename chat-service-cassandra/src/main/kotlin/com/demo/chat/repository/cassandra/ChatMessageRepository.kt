@@ -32,11 +32,11 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     override fun rem(key: TextMessageKey): Mono<Void> =
             cassandra
                     .batchOps()
-                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                    .update(Query.query(where("msg_id").`is`(key.msgId),where("user_id").`is`(key.userId)),
                             Update.empty().set("visible", false),
                             ChatMessageByUser::class.java
                     )
-                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                    .update(Query.query(where("msg_id").`is`(key.msgId),where("topic_id").`is`(key.topicId)),
                             Update.empty().set("visible", false),
                             ChatMessageByTopic::class.java
                     )
