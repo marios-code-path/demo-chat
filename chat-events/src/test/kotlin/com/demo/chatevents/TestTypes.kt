@@ -8,6 +8,15 @@ import java.util.*
 
 object TestTypes
 
+
+data class Usr(val name: String, val handle: String, val date: Date)
+
+@JsonTypeName("Zoom")
+data class Zoom(var data: String) {
+    constructor() : this("foo")//Usr("","", Date()))
+}
+
+
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
 data class TestTopicData(val state: Message<TopicMessageKey, Any>)

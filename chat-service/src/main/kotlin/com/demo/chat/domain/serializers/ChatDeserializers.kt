@@ -7,17 +7,12 @@ import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.sun.tools.javac.util.Assert
 import java.util.*
 
 
 class TextMessageDeserializer : JsonDeserializer<TextMessage>() {
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): TextMessage {
-
-        Assert.checkNonNull(jp)
-        Assert.checkNonNull(ctxt)
 
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)

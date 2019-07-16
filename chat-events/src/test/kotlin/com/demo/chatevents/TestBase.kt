@@ -1,8 +1,6 @@
 package com.demo.chatevents
 
 import com.demo.chat.domain.TextMessage
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -40,21 +38,12 @@ fun randomUserId(): UUID {
 fun randomText() =
         "Text ${Random().nextLong()}"
 
-
-data class Usr(val name: String, val handle: String, val date: Date)
-
-@JsonTypeName("Zoom")
-data class Zoom(var data: String) {
-    constructor() : this("foo")//Usr("","", Date()))
-}
-
-
 fun testTemplate(cf: ReactiveRedisConnectionFactory, objectMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
     val keys = StringRedisSerializer()
     val values = Jackson2JsonRedisSerializer(Zoom::class.java)
     values.setObjectMapper(objectMapper)           // KOTLIN USERS : use setObjectMapper!
 
-    val builder: RedisSerializationContext.RedisSerializationContextBuilder<String,  Zoom> =
+    val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, Zoom> =
             RedisSerializationContext.newSerializationContext(keys)
 
     val hashValues = Jackson2JsonRedisSerializer(Zoom::class.java)
