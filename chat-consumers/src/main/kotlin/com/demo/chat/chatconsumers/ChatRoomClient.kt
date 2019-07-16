@@ -13,7 +13,22 @@ class ChatRoomClient(val socket: RSocketRequester){
     fun callCreateRoom(roomName: String) = socket
             .route("room-add")
             .data(RoomCreateRequest(roomName))
-            .retrieveMono(ChatRoomKey::class.java)
+            .retrieveMono(Void::class.java)
+
+    fun callGetRoom(roomId: UUID) = socket
+            .route("room-by-id")
+            .data(RoomRequestId(roomId))
+            .retrieveMono(ChatRoom::class.java)
+
+    fun callGetRoomByName(roomName: String) = socket
+            .route("room-by-name")
+            .data(RoomRequestName(roomName))
+            .retrieveMono(ChatRoom::class.java)
+
+    fun callGetRooms() = socket
+            .route("room-list")
+            .data(Void.TYPE)
+            .retrieveFlux(ChatRoom::class.java)
 
     fun callJoinRoom(uid: UUID, roomId: UUID) = socket
             .route("room-join")
@@ -28,10 +43,4 @@ class ChatRoomClient(val socket: RSocketRequester){
                     uid, roomId
             ))
             .retrieveMono(Void::class.java)
-
-    fun callGetRooms() = socket
-            .route("room-list")
-            .data(Void.TYPE)
-            .retrieveFlux(ChatRoom::class.java)
-
 }

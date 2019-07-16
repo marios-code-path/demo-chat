@@ -8,12 +8,15 @@ import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.KeyService
 import com.demo.chat.service.TextMessagePersistence
+import com.demo.chatevents.topic.JoinAlertMessage
+import com.demo.chatevents.topic.TopicData
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.AssertionsForClassTypes
@@ -27,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.test.context.junit.jupiter.SpringExtension

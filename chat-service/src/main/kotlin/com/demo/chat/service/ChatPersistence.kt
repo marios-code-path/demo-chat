@@ -25,6 +25,7 @@ interface ChatRoomPersistence<R : Room, RK : RoomKey> {
     fun rem(key: RK): Mono<Void>
     fun getAll(activeOnly: Boolean): Flux<out R>
     fun getById(id: UUID): Mono<out R>
+    fun getByName(name: String): Mono<out R>
     fun size(roomId: UUID): Mono<Int>
     fun members(roomId: UUID): Mono<Set<UUID>>
 

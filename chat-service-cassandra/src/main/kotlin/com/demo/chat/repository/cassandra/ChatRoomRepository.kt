@@ -13,7 +13,7 @@ import java.util.*
 
 
 interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatRoomName, String> {
-    fun findByKeyName(name: String): Flux<ChatRoomName>
+    fun findByKeyName(name: String): Mono<ChatRoomName>
 }
 
 interface ChatRoomRepository :

@@ -15,7 +15,8 @@ data class UserCreateResponse(val user: User)
 
 data class RoomCreateRequest(val roomName: String)
 data class RoomCreateResponse(val roomKey: RoomKey)
-data class RoomRequest(val roomId: UUID)
+data class RoomRequestId(val roomId: UUID)
+data class RoomRequestName(val name: String)
 data class RoomResponse(val room: Room)
 
 data class RoomJoinRequest(val uid: UUID, val roomId: UUID)

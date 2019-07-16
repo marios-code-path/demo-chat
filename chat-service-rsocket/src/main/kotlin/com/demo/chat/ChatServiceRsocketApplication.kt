@@ -9,10 +9,7 @@ import com.demo.chatevents.service.TopicServiceMemory
 import com.demo.chatevents.service.TopicServiceRedisPubSub
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.ComponentScan
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.FilterType
+import org.springframework.context.annotation.*
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
@@ -21,6 +18,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 @ComponentScan(excludeFilters = [
     ComponentScan.Filter(type = FilterType.ANNOTATION, value = [ExcludeFromTests::class])
 ])
+@Import(PersistenceConfiguration::class)
 class ChatServiceRsocketApplication
 
 fun main(args: Array<String>) {
@@ -30,9 +28,10 @@ fun main(args: Array<String>) {
 
 annotation class ExcludeFromTests
 
-@Configuration
+
 @ExcludeFromTests
-class ChatServiceModule {
+@Configuration
+class PersistenceConfiguration {
     @Bean
     fun keyService(): KeyService = KeyServiceCassandra
 
@@ -46,12 +45,12 @@ class ChatServiceModule {
     fun roomPersistence(keyService: KeyService,
                         roomRepo: ChatRoomRepository,
                         roomNameRepo: ChatRoomNameRepository): ChatRoomPersistence<out Room, RoomKey> =
-            ChatRoomPersistenceCassandra(keyService, roomRepo)
+            ChatRoomPersistenceCassandra(keyService, roomRepo, roomNameRepo)
 
     @Bean
     fun messagePersistence(keyService: KeyService,
                            messageRepo: ChatMessageRepository,
-                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence<TextMessage, TextMessageKey> =
+                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence<out TextMessage, TextMessageKey> =
             TextMessagePersistenceCassandra(keyService, messageRepo, messageByTopicRepo)
 
     @Bean

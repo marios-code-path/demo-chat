@@ -112,7 +112,7 @@ class RSocketRoomTests {
                 .create(
                         requestor
                                 .route("room-list")
-                                .data(RoomRequest(UUID.randomUUID()))
+                                .data(RoomRequestId(UUID.randomUUID()))
                                 .retrieveFlux(TestChatRoom::class.java)
                 )
                 .expectSubscription()
@@ -180,7 +180,7 @@ class RSocketRoomTests {
                 .create(
                         requestor
                                 .route("room-members")
-                                .data(RoomRequest(randomRoomId))
+                                .data(RoomRequestId(randomRoomId))
                                 .retrieveMono(RoomMemberships::class.java)
                 )
                 .expectSubscription()

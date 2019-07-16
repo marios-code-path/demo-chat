@@ -1,6 +1,7 @@
 package com.demo.chat.service
 
 import com.demo.chat.domain.*
+import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -9,7 +10,8 @@ import java.time.Instant
 import java.util.*
 
 open class ChatRoomPersistenceCassandra(private val keyService: KeyService,
-                                        private val roomRepo: ChatRoomRepository)
+                                        private val roomRepo: ChatRoomRepository,
+                                        private val roomByNameRepo: ChatRoomNameRepository)
     : ChatRoomPersistence<Room, RoomKey> {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -19,8 +21,10 @@ open class ChatRoomPersistenceCassandra(private val keyService: KeyService,
             }
 
     override fun getById(id: UUID): Mono<ChatRoom> =
-            roomRepo
-                    .findByKeyId(id)
+            roomRepo.findByKeyId(id)
+
+    override fun getByName(name: String): Mono<out Room> =
+            roomByNameRepo.findByKeyName(name)
 
     override fun getAll(activeOnly: Boolean): Flux<ChatRoom> =
             roomRepo.findAll()

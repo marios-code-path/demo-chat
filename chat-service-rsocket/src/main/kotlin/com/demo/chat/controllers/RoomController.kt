@@ -1,9 +1,6 @@
 package com.demo.chat.controllers
 
-import com.demo.chat.RoomCreateRequest
-import com.demo.chat.RoomJoinRequest
-import com.demo.chat.RoomLeaveRequest
-import com.demo.chat.RoomRequest
+import com.demo.chat.*
 import com.demo.chat.domain.*
 import com.demo.chat.service.ChatRoomPersistence
 import com.demo.chat.service.ChatTopicService
@@ -36,7 +33,7 @@ class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>
                     }
 
     @MessageMapping("room-rem")
-    fun deleteRoom(req: RoomRequest): Mono<Void> =
+    fun deleteRoom(req: RoomRequestId): Mono<Void> =
             roomPersistence
                     .getById(req.roomId)
                     .flatMap {
@@ -46,14 +43,24 @@ class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>
                     .then(topicService.rem(req.roomId))
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequest): Flux<out Room> =
+    fun listRooms(req: RoomRequestId): Flux<out Room> =
             roomPersistence
                     .getAll(true)
 
-    @MessageMapping("room-msgId")
-    fun getRoom(req: RoomRequest): Mono<out Room> =
+    @MessageMapping("room-by-id")
+    fun getRoom(req: RoomRequestId): Mono<out Room> =
             roomPersistence
                     .getById(req.roomId)
+
+    @MessageMapping("room-by-name")
+    fun getRoomByName(req: RoomRequestName): Mono<out Room> =
+            roomPersistence
+                    .getByName(req.name)
+                    .map {// TODO check that the null set is set to empty set when we get data out of cassandra
+                        if(it.members == null)
+                            Room.create(it.key, emptySet())
+                        else it
+                    }
 
     @MessageMapping("room-join")
     fun joinRoom(req: RoomJoinRequest): Mono<Void> =
@@ -82,7 +89,7 @@ class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>
                     }
 
     @MessageMapping("room-members")
-    fun roomMembers(req: RoomRequest): Mono<RoomMemberships> = roomPersistence
+    fun roomMembers(req: RoomRequestId): Mono<RoomMemberships> = roomPersistence
             .members(req.roomId)
             .flatMap { members ->
                 userPersistence

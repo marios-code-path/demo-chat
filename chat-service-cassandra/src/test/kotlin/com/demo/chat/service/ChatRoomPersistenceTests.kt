@@ -1,8 +1,7 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.ChatRoom
-import com.demo.chat.domain.ChatRoomKey
-import com.demo.chat.domain.Room
+import com.demo.chat.domain.*
+import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -22,6 +21,9 @@ class ChatRoomPersistenceTests {
     lateinit var roomSvc: ChatRoomPersistenceCassandra
 
     @MockBean
+    lateinit var roomByNameRepo: ChatRoomNameRepository
+
+    @MockBean
     lateinit var roomRepo: ChatRoomRepository
 
     private val keyService: KeyService = TestKeyService
@@ -33,7 +35,11 @@ class ChatRoomPersistenceTests {
     @BeforeEach
     fun setUp() {
         val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
+        val roomNameRoom = ChatRoomName(ChatRoomNameKey(rid, "test-room"), emptySet(), true, Instant.now())
         val roomTwo = ChatRoom(ChatRoomKey(UUID.randomUUID(), randomAlphaNumeric(6)), emptySet(), true, Instant.now())
+
+        BDDMockito.given(roomByNameRepo.findByKeyName(anyObject()))
+                .willReturn(Mono.just(roomNameRoom))
 
         BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
@@ -55,7 +61,7 @@ class ChatRoomPersistenceTests {
         BDDMockito.given(roomRepo.messageCount(anyObject()))
                 .willReturn(Mono.just(1))
 
-        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo)
+        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo, roomByNameRepo)
     }
 
     // TODO - check for nullable return types in  Room-Service.
@@ -87,6 +93,22 @@ class ChatRoomPersistenceTests {
                 )
                 .expectSubscription()
                 .assertNext(this::roomAssertions)
+                .assertNext(this::roomAssertions)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should create room fetch by name`() {
+        StepVerifier
+                .create(
+                        Flux.just(randomAlphaNumeric(5), randomAlphaNumeric(5))
+                                .flatMap {
+                                    roomSvc.key(it)
+                                            .flatMap(roomSvc::add)
+                                }
+                                .then(roomSvc.getByName("test-room"))
+                )
+                .expectSubscription()
                 .assertNext(this::roomAssertions)
                 .verifyComplete()
     }

@@ -33,7 +33,6 @@ class RSocketTestConfig {
     @MockBean
     private lateinit var keyService: KeyService
 
-
     fun customize(): RSocketStrategiesCustomizer = RSocketStrategiesCustomizer {
         builder-> builder.build()
     }

@@ -8,13 +8,15 @@ import java.time.Instant
 import java.util.*
 
 data class UserRequest(val userHandle: String)
-data class UserCreateRequest(val name: String, val userHandle: String)
+data class UserCreateRequest(val name: String, val userHandle: String, val imgUri: String)
 data class UserCreateResponse(val user: ChatUser)
 data class UserResponse(val user: ChatUser)
+data class UserRequestId(val userId: UUID)
 
 
 data class RoomCreateRequest(val roomName: String)
-
+data class RoomRequestId(val roomId: UUID)
+data class RoomRequestName(val name: String)
 data class RoomJoinRequest(val uid: UUID, val roomId: UUID)
 data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 

@@ -13,7 +13,7 @@ interface Topic<out K> {
     val timestamp: Instant
 }
 
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+@JsonTypeName("ChatRoom")
 interface Room : Topic<RoomKey> {
     companion object Factory {
         fun create(key: RoomKey, members: Set<UUID>?) = object : Room {

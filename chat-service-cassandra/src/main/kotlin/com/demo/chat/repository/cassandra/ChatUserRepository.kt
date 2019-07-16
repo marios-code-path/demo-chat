@@ -48,17 +48,17 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     override fun add(u: User): Mono<Void> =
             cassandra
                     .batchOps()
-                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
-                            u.key.id,
-                            u.key.handle
-                    ),
-                            u.name,
-                            u.imageUri,
-                            u.timestamp)),
-                            InsertOptions.builder().withIfNotExists()
-                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                    .build()
-                    )
+                    .insert(ImmutableSet.of(
+                            ChatUserHandle(ChatUserHandleKey(
+                                    u.key.id,
+                                    u.key.handle
+                            ),
+                                    u.name,
+                                    u.imageUri,
+                                    u.timestamp
+                            )), InsertOptions.builder().withIfNotExists()
+                            .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                            .build())
                     .execute()
                     .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
@@ -68,17 +68,17 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     }
                     .then(
                             cassandra.batchOps()
-                                    .insert(ImmutableSet.of(
-                                            ChatUserHandle(ChatUserHandleKey(
-                                                    u.key.id,
-                                                    u.key.handle
-                                            ),
-                                                    u.name,
-                                                    u.imageUri,
-                                                    u.timestamp
-                                            )), InsertOptions.builder().withIfNotExists()
-                                            .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                            .build())
+                                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
+                                            u.key.id,
+                                            u.key.handle
+                                    ),
+                                            u.name,
+                                            u.imageUri,
+                                            u.timestamp)),
+                                            InsertOptions.builder().withIfNotExists()
+                                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                                    .build()
+                                    )
                                     .execute()
                                     .handle<Void> { write, sink ->
                                         when (write.wasApplied()) {
