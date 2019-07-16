@@ -45,13 +45,12 @@ data class TestAlertMessageKey(
         override val timestamp: Instant
 ) : TopicMessageKey
 
-@JsonTypeName("ChatMessageById")
+@JsonTypeName("ChatMessage")
 data class TestTextMessage(
         override val key: TestTextMessageKey,
         override val value: String,
         override val visible: Boolean
 ) : TextMessage
-
 
 @JsonTypeName("InfoAlert")
 data class TestInfoAlert(

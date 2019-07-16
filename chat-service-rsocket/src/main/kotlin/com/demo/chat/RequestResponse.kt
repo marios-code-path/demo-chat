@@ -1,8 +1,8 @@
 package com.demo.chat
 
-import com.demo.chat.domain.Room
-import com.demo.chat.domain.RoomKey
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
+import com.fasterxml.jackson.annotation.JsonTypeName
+import java.time.Instant
 import java.util.*
 
 data class UserRequest(val userHandle: String)
@@ -23,3 +23,19 @@ data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 
 data class MessagesRequest(val topicId: UUID)
 data class MessageRequest(val messageId: UUID)
+data class MessageSendRequest(val msg: Message<out TopicMessageKey, Any>)
+data class TextMessageSend(val uid: UUID, val topic: UUID, val text: String)
+
+@JsonTypeName("ChatMessage")
+data class ChatMessage(
+        override val key: ChatMessageKey,
+        override val value: String,
+        override val visible: Boolean
+) : TextMessage
+
+data class ChatMessageKey(
+        override val msgId: UUID,
+        override val userId: UUID,
+        override val topicId: UUID,
+        override val timestamp: Instant
+) : TextMessageKey

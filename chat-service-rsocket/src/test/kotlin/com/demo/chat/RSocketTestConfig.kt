@@ -1,11 +1,11 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
-import com.demo.chat.service.TextMessagePersistence
-import com.demo.chat.service.ChatRoomPersistence
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.*
+import me.prettyprint.cassandra.serializers.UUIDSerializer
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Configuration
@@ -22,10 +22,21 @@ class RSocketTestConfig {
     private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
 
     @MockBean
-    private lateinit var topicMessagePersistence: TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey>
+    private lateinit var topicMessagePersistence: TextMessagePersistence<out TextMessage, TextMessageKey>
+
+    @MockBean
+    private lateinit var topicService: ChatTopicService
 
     @Autowired
     private lateinit var rsboot: RSocketServerBootstrap
+
+    @MockBean
+    private lateinit var keyService: KeyService
+
+
+    fun customize(): RSocketStrategiesCustomizer = RSocketStrategiesCustomizer {
+        builder-> builder.build()
+    }
 
     fun rSocketInit() = when (rsboot.isRunning) {
         false -> {

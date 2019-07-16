@@ -1,8 +1,13 @@
 package com.demo.chat.domain
 
+import com.demo.chat.domain.serializers.TextMessageDeserializer
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
+import com.fasterxml.jackson.databind.ser.std.UUIDSerializer
 import java.time.Instant
 import java.util.*
 
@@ -68,6 +73,7 @@ interface AlertMessageKey : TopicMessageKey {
     }
 }
 
+///@JsonDeserialize(using = TextMessageDeserializer::class)
 @JsonTypeName("ChatMessage")
 interface TextMessage : Message<TextMessageKey, String> {
     companion object Factory {

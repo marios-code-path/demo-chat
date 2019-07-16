@@ -4,7 +4,9 @@ package com.demo.chat.test
 import com.demo.chat.*
 import com.demo.chat.domain.*
 import com.demo.chat.service.ChatRoomPersistence
+import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatUserPersistence
+import com.demo.chatevents.topic.TopicManager
 import io.rsocket.RSocket
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -47,6 +49,9 @@ class RSocketRoomTests {
     @Autowired
     lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
 
+    @Autowired
+    lateinit var topicService: ChatTopicService
+
     val randomUserHandle = randomAlphaNumeric(4) + "User"
     val randomUserId: UUID = UUID.randomUUID()
 
@@ -75,23 +80,25 @@ class RSocketRoomTests {
     }
 
     @Test
-    fun `should create a room receive response`() {
+    fun `should create a room receive Void response`() {
         BDDMockito
                 .given(roomPersistence.add(anyObject()))
-                .willReturn(Mono.just(room.key))
+                .willReturn(Mono.empty())
+
+        BDDMockito
+                .given(topicService.add(anyObject()))
+                .willReturn(Mono.empty())
+
+        BDDMockito
+                .given(roomPersistence.key(anyObject()))
+                .willReturn(Mono.just(RoomKey.create(UUID.randomUUID(), "randomRoomName")))
 
         StepVerifier.create(
-                requestor.route("room-create")
+                requestor.route("room-add")
                         .data(RoomCreateRequest(randomRoomName))
-                        .retrieveMono(TestChatRoomKey::class.java)
+                        .retrieveMono(Void::class.java)
         )
                 .expectSubscription()
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                }
                 .verifyComplete()
     }
 
@@ -124,8 +131,6 @@ class RSocketRoomTests {
                             .hasFieldOrPropertyWithValue("id", randomRoomId)
                 }
                 .verifyComplete()
-
-
     }
 
     @Test
@@ -157,12 +162,19 @@ class RSocketRoomTests {
         BDDMockito.given(roomPersistence.members(anyObject()))
                 .willReturn(Mono.just(roomWithMembers.members!!))
 
+        BDDMockito.given(roomPersistence.add(anyObject()))
+                .willReturn(Mono.empty())
+
         BDDMockito
                 .given(userPersistence.findByIds(anyObject()))
                 .willReturn(Flux.just(TestChatUser(
                         TestChatUserKey(randomUserId, randomUserHandle),
                         "NAME", "http://imageURI", Instant.now()
                 )))
+
+        BDDMockito
+                .given(topicService.add(anyObject()))
+                .willReturn(Mono.empty())
 
         StepVerifier
                 .create(

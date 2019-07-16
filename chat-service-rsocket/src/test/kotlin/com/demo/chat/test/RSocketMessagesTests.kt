@@ -1,28 +1,37 @@
 package com.demo.chat.test
 
 import com.demo.chat.*
+import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.KeyService
 import com.demo.chat.service.TextMessagePersistence
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
+import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
@@ -42,7 +51,16 @@ class RSocketMessagesTests {
     private lateinit var builder: RSocketRequester.Builder
 
     @Autowired
-    private lateinit var messagePersistence: TextMessagePersistence<out Message<TopicMessageKey, Any>, TopicMessageKey>
+    private lateinit var messagePersistence: TextMessagePersistence<out TextMessage, TextMessageKey>
+
+    @Autowired
+    private lateinit var rsboot: RSocketServerBootstrap
+
+    @Autowired
+    private lateinit var keyService: KeyService
+
+    @Autowired
+    private lateinit var topicService: ChatTopicService
 
     private var counter = Random().nextInt()
 
@@ -53,16 +71,24 @@ class RSocketMessagesTests {
         val messageId = UUID.randomUUID()
         counter++
 
-        return TextMessage.create(messageId, roomId, userId, "Hello $counter !")
-
+        val msg = TextMessage.create(messageId, roomId, userId, "Hello $counter !")
+        //return TestTextMessage(TestTextMessageKey(msg.key.msgId, msg.key.userId, msg.key.topicId, msg.key.timestamp), msg.value, msg.visible)
+        return msg
     }
 
     @BeforeEach
     fun setUp(@Autowired config: RSocketTestConfig) {
         config.rSocketInit()
 
-        requestor = builder.connect(TcpClientTransport.create(7070)).block()!!
+        requestor = builder.connect(TcpClientTransport.create(7070))
+                .block()!!
         socket = requestor.rsocket()
+
+        BDDMockito
+                .given(keyService.id())
+                .willReturn(Mono.just(EventKey.create(UUID.randomUUID())))
+
+        Hooks.onOperatorDebug()
     }
 
     @AfterEach
@@ -79,9 +105,9 @@ class RSocketMessagesTests {
         StepVerifier
                 .create(
                         requestor
-                                .route("message-msg-id")
+                                .route("message-by-id")
                                 .data(MessageRequest(UUID.randomUUID()))
-                                .retrieveMono(TextMessage::class.java)
+                                .retrieveMono(ChatMessage::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -101,14 +127,19 @@ class RSocketMessagesTests {
                 .given(messagePersistence.getAll(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
+        BDDMockito
+                .given(topicService.receiveOn(anyObject()))
+                .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
+
+        val receiverFlux = requestor
+                .route("message-listen-topic")
+                .data(MessagesRequest(UUID.randomUUID()))
+                .retrieveFlux(ChatMessage::class.java)
+
         StepVerifier
-                .create(
-                        requestor
-                                .route("message-list-topic")
-                                .data(MessagesRequest(UUID.randomUUID()))
-                                .retrieveMono(TestTextMessage::class.java)
-                )
+                .create(receiverFlux)
                 .expectSubscription()
+                .expectNextCount(10)
                 .thenConsumeWhile({
                     it != null
                 }, {
@@ -122,7 +153,6 @@ class RSocketMessagesTests {
                     MatcherAssert
                             .assertThat("Message begins with Hello", it.value,
                                     Matchers.startsWith("Hello"))
-
                 })
                 .expectComplete()
                 .verify()

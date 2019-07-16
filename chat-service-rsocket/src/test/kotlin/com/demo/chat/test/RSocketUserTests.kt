@@ -7,6 +7,7 @@ import com.demo.chat.service.ChatUserPersistence
 import io.rsocket.RSocket
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.Assertions
+import org.hamcrest.MatcherAssert
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -62,14 +63,25 @@ class RSocketUserTests {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.add(anyObject(), anyObject(), anyObject()))
+                .willReturn(Mono.empty())
+
+        BDDMockito.given(userPersistence.getById(anyObject()))
                 .willReturn(Mono.just(randomUser))
+        StepVerifier
+                .create(
+                        requestor
+                                .route("user-add")
+                                .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
+                                .retrieveMono(Void::class.java)
+                )
+                .verifyComplete()
 
         StepVerifier
                 .create(
                         requestor
-                                .route("user-create")
-                                .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
-                                .retrieveMono(TestChatUser::class.java)
+                                .route("user-by-id")
+                                .data(UserRequestId(randomUserId))
+                                .retrieveMono(UserResponse::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -78,7 +90,7 @@ class RSocketUserTests {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
 
-                    Assertions.assertThat(it.key)
+                    Assertions.assertThat(it.user.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
