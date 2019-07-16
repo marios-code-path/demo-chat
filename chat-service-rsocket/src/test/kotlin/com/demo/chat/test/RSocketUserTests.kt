@@ -1,6 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.*
+import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserPersistence
@@ -62,11 +63,15 @@ class RSocketUserTests {
 
     @Test
     fun `should call user create`() {
+        BDDMockito.given(userPersistence.key(anyObject()))
+                .willReturn(Mono.just(UserKey.create(UUID.randomUUID(), randomHandle)))
+
         BDDMockito.given(userPersistence.add(anyObject(), anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(userPersistence.getById(anyObject()))
                 .willReturn(Mono.just(randomUser))
+
         StepVerifier
                 .create(
                         requestor
@@ -81,7 +86,7 @@ class RSocketUserTests {
                         requestor
                                 .route("user-by-id")
                                 .data(UserRequestId(randomUserId))
-                                .retrieveMono(UserResponse::class.java)
+                                .retrieveMono(TestChatUser::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -90,7 +95,7 @@ class RSocketUserTests {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
 
-                    Assertions.assertThat(it.user.key)
+                    Assertions.assertThat(it.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
@@ -107,7 +112,7 @@ class RSocketUserTests {
         StepVerifier
                 .create(
                         requestor
-                                .route("user-handle")
+                                .route("user-by-handle")
                                 .data(UserRequest(randomHandle))
                                 .retrieveMono(TestChatUser::class.java)
                 )
@@ -129,7 +134,7 @@ class RSocketUserTests {
                 .willReturn(Flux.just(randomUser))
 
         StepVerifier.create(requestor
-                .route("user-msgId-list")
+                .route("user-by-ids")
                 .data(Flux.just(UserRequestId(randomUserId)), UserRequestId::class.java)
                 .retrieveFlux(TestChatUser::class.java)
         )

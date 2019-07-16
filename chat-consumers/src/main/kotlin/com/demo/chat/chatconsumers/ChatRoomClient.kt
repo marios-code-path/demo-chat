@@ -11,7 +11,7 @@ class ChatRoomClient(val socket: RSocketRequester){
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     fun callCreateRoom(roomName: String) = socket
-            .route("room-create")
+            .route("room-add")
             .data(RoomCreateRequest(roomName))
             .retrieveMono(ChatRoomKey::class.java)
 
