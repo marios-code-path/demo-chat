@@ -18,7 +18,6 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     private val topicManager: TopicManager = TopicManager()
-    private val sourceManager: TopicManager = TopicManager()
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 

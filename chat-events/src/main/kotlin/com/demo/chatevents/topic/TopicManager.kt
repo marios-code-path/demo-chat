@@ -21,7 +21,6 @@ class TopicManager {
 
     private val streamConsumers: MutableMap<UUID, MutableMap<UUID, Disposable>> = ConcurrentHashMap()
 
-
     // Does not replace existing stream! - call rem(uuid) then subscribeTopicProcessor
     fun subscribeTopicProcessor(stream: UUID, source: Flux<out Message<TopicMessageKey, Any>>): Disposable =
             source.subscribe {
@@ -66,9 +65,6 @@ class TopicManager {
                     .getOrPut(stream) {
                         ConcurrentHashMap()
                     }
-
-    fun setTopicFlux(stream: UUID, sourceFlux: Flux<Message<TopicMessageKey, Any>>) =
-            streamFluxes.put(stream, sourceFlux)
 
     fun setTopicProcessor(stream: UUID, proc: FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>) =
             streamProcessors.put(stream, proc)

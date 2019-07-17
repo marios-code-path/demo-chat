@@ -1,8 +1,10 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceCassandraApp
-import com.demo.chat.domain.*
+import com.demo.chat.domain.ChatMessageById
+import com.demo.chat.domain.ChatMessageByIdKey
+import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
@@ -32,7 +34,7 @@ import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
 @CassandraUnit
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
 class ChatMessageByIdRepositoryTests {
@@ -79,7 +81,7 @@ class ChatMessageByIdRepositoryTests {
 
         val saveMsg = repo.add(TextMessage
                 .create(TextMessageKey.create(msgId, roomId, userId),
-                        "Welcome",true))
+                        "Welcome", true))
 
         val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
@@ -99,7 +101,7 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg =repo.add(
+        val saveMsg = repo.add(
                 TextMessage.create(TextMessageKey.create(msgId, roomId, userId),
                         "Welcome", true))
 

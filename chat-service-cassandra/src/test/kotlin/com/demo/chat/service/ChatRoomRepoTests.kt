@@ -1,7 +1,6 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
 import com.demo.chat.domain.Room
@@ -26,7 +25,7 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @ImportAutoConfiguration
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
@@ -110,8 +109,8 @@ class ChatRoomRepoTests {
     @Test
     fun `should save and find by name`() {
         val saveFlux = Flux.just(
-                        Room.create(RoomKey.create(UUIDs.timeBased(), "XYZ"),
-                                Collections.emptySet()))
+                Room.create(RoomKey.create(UUIDs.timeBased(), "XYZ"),
+                        Collections.emptySet()))
                 .flatMap {
                     repo.add(it)
                 }

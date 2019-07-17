@@ -156,9 +156,8 @@ class TopicServiceRedisPubSub(
     override fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
         val topic = topicMessage.key.topicId
 
-        return Mono.from(topicExistsOrError(topicMessage.key.topicId))
-                .then(messageTemplate
-                        .convertAndSend(topic.toString(), TopicData(topicMessage)))
+        return Mono.from(topicExistsOrError(topic))
+                .then(messageTemplate.convertAndSend(topic.toString(), TopicData(topicMessage)))
                 .then()
     }
 

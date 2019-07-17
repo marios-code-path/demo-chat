@@ -1,7 +1,6 @@
 package com.demo.chat.service
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.ChatServiceCassandraApp
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.User
@@ -29,7 +28,7 @@ import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatServiceCassandraApp::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-user.cql")
@@ -51,7 +50,7 @@ class ChatUserRepositoryTests {
 
         val users = Flux.just(
                 ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
-                ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()) )
+                ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()))
                 .flatMap {
                     repo.add(it)
                 }
