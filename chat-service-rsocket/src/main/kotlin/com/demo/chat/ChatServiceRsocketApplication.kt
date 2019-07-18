@@ -1,5 +1,7 @@
 package com.demo.chat
 
+import com.demo.chat.config.ClusterConfigurationCassandra
+import com.demo.chat.config.ConfigurationPropertiesCassandra
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
@@ -7,7 +9,9 @@ import com.demo.chatevents.config.TopicRedisTemplateConfiguration
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicServiceMemory
 import com.demo.chatevents.service.TopicServiceRedisPubSub
+import org.apache.cassandra.thrift.Cassandra
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.*
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
@@ -18,20 +22,31 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 @ComponentScan(excludeFilters = [
     ComponentScan.Filter(type = FilterType.ANNOTATION, value = [ExcludeFromTests::class])
 ])
-@Import(PersistenceConfiguration::class)
 class ChatServiceRsocketApplication
 
 fun main(args: Array<String>) {
-
     runApplication<ChatServiceRsocketApplication>(*args)
 }
 
 annotation class ExcludeFromTests
 
+@Profile("cassandra-persistence")
+@ConfigurationProperties("cassandra-repo")
+data class CassandraProperties(override val contactPoints: String,
+                               override val port: Int,
+                               override val keyspace: String,
+                               override val basePackages: String) : ConfigurationPropertiesCassandra
 
+
+@Profile("cassandra-persistence")
 @ExcludeFromTests
 @Configuration
 class PersistenceConfiguration {
+
+    @Profile("cassandra-persistence")
+    @Configuration
+    class CassandraCluster(props : ConfigurationPropertiesCassandra) : ClusterConfigurationCassandra(props)
+
     @Bean
     fun keyService(): KeyService = KeyServiceCassandra
 

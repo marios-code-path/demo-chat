@@ -1,15 +1,15 @@
 package com.demo.chat
 
+import com.demo.chat.config.ConfigurationPropertiesCassandra
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
-import me.prettyprint.cassandra.serializers.UUIDSerializer
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-
 
 @Configuration
 class RSocketTestConfig {
@@ -33,8 +33,8 @@ class RSocketTestConfig {
     @MockBean
     private lateinit var keyService: KeyService
 
-    fun customize(): RSocketStrategiesCustomizer = RSocketStrategiesCustomizer {
-        builder-> builder.build()
+    fun customize(): RSocketStrategiesCustomizer = RSocketStrategiesCustomizer { builder ->
+        builder.build()
     }
 
     fun rSocketInit() = when (rsboot.isRunning) {
@@ -54,7 +54,5 @@ class RSocketTestConfig {
             log.warn("rSocket Was already not Running.")
 
         }
-
     }
 }
-
