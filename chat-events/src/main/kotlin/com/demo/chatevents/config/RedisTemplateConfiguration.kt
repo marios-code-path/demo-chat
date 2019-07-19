@@ -20,15 +20,15 @@ import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer
 import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
 
+interface ConfigurationPropertiesTopicRedis {
+    val host: String
+    val port: Int
+}
 
-@Configuration
-class TopicRedisTemplateConfiguration {
-
-    val host = "127.0.0.1"
-    val port = 6379
+class ConfigurationTopicRedis(val props: ConfigurationPropertiesTopicRedis) {
 
     @Bean
-    fun redisConnection(): ReactiveRedisConnectionFactory = LettuceConnectionFactory(RedisStandaloneConfiguration(host, port))
+    fun redisConnection(): ReactiveRedisConnectionFactory = LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 
     @Bean
     fun objectMapper(): ObjectMapper =

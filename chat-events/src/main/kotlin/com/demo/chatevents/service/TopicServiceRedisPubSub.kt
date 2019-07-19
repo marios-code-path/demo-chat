@@ -6,7 +6,6 @@ import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
-import com.demo.chatevents.topic.TopicManager
 import com.demo.chatevents.topic.TopicData
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate

@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.domain.JoinAlert
-import com.demo.chatevents.topic.TopicManager
+import com.demo.chatevents.service.TopicManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

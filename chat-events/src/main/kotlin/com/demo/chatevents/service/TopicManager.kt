@@ -1,4 +1,4 @@
-package com.demo.chatevents.topic
+package com.demo.chatevents.service
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey

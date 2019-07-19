@@ -4,9 +4,9 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chatevents.*
-import com.demo.chatevents.config.TopicRedisTemplateConfiguration
+import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.topic.TopicData
-import com.demo.chatevents.topic.TopicManager
+import com.demo.chatevents.service.TopicManager
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
@@ -43,7 +43,7 @@ import java.util.function.Supplier
 
 // TODO: Object Hashmap
 @ExtendWith(SpringExtension::class)
-@Import(TopicRedisTemplateConfiguration::class)
+@Import(ConfigurationTopicRedis::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StreamOperationRedisTests {
 
@@ -80,7 +80,7 @@ class StreamOperationRedisTests {
 
         template = ReactiveStringRedisTemplate(lettuce)
 
-        val config = TopicRedisTemplateConfiguration()
+        val config = ConfigurationTopicRedis()
 
         objectMapper = config.objectMapper()
 

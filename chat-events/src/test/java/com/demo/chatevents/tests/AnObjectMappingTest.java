@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests;
 
 import com.demo.chatevents.Zoom;
-import com.demo.chatevents.config.TopicRedisTemplateConfiguration;
+import com.demo.chatevents.config.ConfigurationTopicRedis;
 import com.demo.chatevents.topic.TopicData;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;

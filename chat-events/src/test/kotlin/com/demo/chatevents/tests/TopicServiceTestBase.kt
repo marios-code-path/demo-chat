@@ -3,6 +3,7 @@ package com.demo.chatevents.tests
 import com.demo.chat.domain.JoinAlert
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
+import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
 import org.assertj.core.api.Assertions
@@ -21,6 +22,11 @@ open class TopicServiceTestBase {
     lateinit var topicService: ChatTopicService
 
     lateinit var topicAdmin : ChatTopicServiceAdmin
+
+    object configProps : ConfigurationPropertiesTopicRedis  {
+        override val port: Int = 6374
+        override val host: String = "127.0.0.1"
+    }
 
     @Test
     fun `cannot subscribe to non existent topic`() {

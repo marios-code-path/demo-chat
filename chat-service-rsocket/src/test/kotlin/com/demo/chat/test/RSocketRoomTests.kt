@@ -6,7 +6,6 @@ import com.demo.chat.domain.*
 import com.demo.chat.service.ChatRoomPersistence
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatUserPersistence
-import com.demo.chatevents.topic.TopicManager
 import io.rsocket.RSocket
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.transport.netty.client.TcpClientTransport

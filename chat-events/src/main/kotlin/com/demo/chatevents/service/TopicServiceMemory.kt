@@ -3,7 +3,6 @@ package com.demo.chatevents.service
 import com.demo.chat.domain.*
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
-import com.demo.chatevents.topic.TopicManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.*

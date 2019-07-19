@@ -1,9 +1,10 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.service.ChatTopicServiceAdmin
-import com.demo.chatevents.config.TopicRedisTemplateConfiguration
+import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfiguration
 import com.demo.chatevents.service.TopicServiceRedisStream
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
@@ -15,31 +16,30 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import redis.embedded.RedisServer
+import java.io.File
 
 @ExtendWith(SpringExtension::class)
-@Import(TopicRedisTemplateConfiguration::class)
+@Import(ConfigurationTopicRedis::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TopicServiceRedisStreamTests : TopicServiceTestBase() {
-
-    private val port = 6379
 
     private lateinit var redisServer: RedisServer
 
     private lateinit var lettuce: LettuceConnectionFactory
 
-    private lateinit var redisTemplateServiceConfig: TopicRedisTemplateConfiguration
+    private lateinit var redisTemplateServiceConfigTopicRedis: ConfigurationTopicRedis
 
     @BeforeAll
     fun setUp() {
-        //  redisServer = RedisServer(File("/usr/local/bin/redis-server"), port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), configProps.port)
 
-        //  redisServer.start()
+        redisServer.start()
 
-        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration("127.0.0.1", port))
+        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(configProps.host, configProps.port))
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfig = TopicRedisTemplateConfiguration()
+        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
 
         topicService = TopicServiceRedisStream(
                 KeyConfiguration("all_topics",
@@ -47,7 +47,7 @@ class TopicServiceRedisStreamTests : TopicServiceTestBase() {
                         "l_user_topics_",
                         "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfig.topicTemplate(lettuce)
+                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce)
         )
 
         topicAdmin = topicService as ChatTopicServiceAdmin
@@ -57,11 +57,11 @@ class TopicServiceRedisStreamTests : TopicServiceTestBase() {
 
     @BeforeEach
     fun tearUp() {
-        redisTemplateServiceConfig.objectTemplate(lettuce)
+        redisTemplateServiceConfigTopicRedis.objectTemplate(lettuce)
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }
 
-    // @AfterAll
-    // fun tearDown() = redisServer.stop()
+     @AfterAll
+     fun tearDown() = redisServer.stop()
 }
