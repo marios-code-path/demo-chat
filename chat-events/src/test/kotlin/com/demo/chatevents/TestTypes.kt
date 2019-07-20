@@ -11,8 +11,8 @@ object TestTypes
 
 data class Usr(val name: String, val handle: String, val date: Date)
 
-@JsonTypeName("Zoom")
-data class Zoom(var data: String) {
+@JsonTypeName("TestEntity")
+data class TestEntity(var data: String) {
     constructor() : this("foo")//Usr("","", Date()))
 }
 

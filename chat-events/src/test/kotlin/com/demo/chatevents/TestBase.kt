@@ -38,15 +38,15 @@ fun randomUserId(): UUID {
 fun randomText() =
         "Text ${Random().nextLong()}"
 
-fun testTemplate(cf: ReactiveRedisConnectionFactory, objectMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
+fun testTemplate(cf: ReactiveRedisConnectionFactory, objectMapper: ObjectMapper): ReactiveRedisTemplate<String, TestEntity> {
     val keys = StringRedisSerializer()
-    val values = Jackson2JsonRedisSerializer(Zoom::class.java)
+    val values = Jackson2JsonRedisSerializer(TestEntity::class.java)
     values.setObjectMapper(objectMapper)           // KOTLIN USERS : use setObjectMapper!
 
-    val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, Zoom> =
+    val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, TestEntity> =
             RedisSerializationContext.newSerializationContext(keys)
 
-    val hashValues = Jackson2JsonRedisSerializer(Zoom::class.java)
+    val hashValues = Jackson2JsonRedisSerializer(TestEntity::class.java)
     //hashValues.setObjectMapper(objectMapper())
 
     builder.key(keys)

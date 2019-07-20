@@ -6,14 +6,10 @@ import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks
 
 class TopicServiceMemoryTests : TopicServiceTestBase() {
-
-
     @BeforeEach
     fun setUp() {
         Hooks.onOperatorDebug()
         this.topicService = TopicServiceMemory()
         topicAdmin = topicService as ChatTopicServiceAdmin
     }
-
-
 }

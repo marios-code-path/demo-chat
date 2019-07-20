@@ -1,6 +1,7 @@
 package com.demo.chat.chatconsumers
 
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
@@ -11,6 +12,7 @@ import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(classes = [ChatConsumersApplication::class])
+@Disabled
 class RoomConsumerTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 

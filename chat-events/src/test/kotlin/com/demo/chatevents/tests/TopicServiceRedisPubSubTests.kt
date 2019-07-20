@@ -4,12 +4,8 @@ import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicServiceRedisPubSub
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.context.annotation.Import
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
@@ -19,7 +15,6 @@ import redis.embedded.RedisServer
 import java.io.File
 
 @ExtendWith(SpringExtension::class)
-@Import(ConfigurationTopicRedis::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class TopicServiceRedisPubSubTests : TopicServiceTestBase() {
 

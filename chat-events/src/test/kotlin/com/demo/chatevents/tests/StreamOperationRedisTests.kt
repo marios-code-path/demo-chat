@@ -6,17 +6,14 @@ import com.demo.chat.domain.TopicMessageKey
 import com.demo.chatevents.*
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
-import com.demo.chatevents.topic.TopicData
 import com.demo.chatevents.service.TopicManager
+import com.demo.chatevents.topic.TopicData
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.context.annotation.Import
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
@@ -37,6 +34,7 @@ import reactor.test.StepVerifier
 import reactor.test.publisher.TestPublisher
 import reactor.test.scheduler.VirtualTimeScheduler
 import redis.embedded.RedisServer
+import java.io.File
 import java.time.Duration
 import java.time.Instant
 import java.util.*
@@ -44,7 +42,6 @@ import java.util.function.Supplier
 
 // TODO: Object Hashmap
 @ExtendWith(SpringExtension::class)
-@Import(ConfigurationTopicRedis::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StreamOperationRedisTests {
 
@@ -53,8 +50,7 @@ class StreamOperationRedisTests {
         override val host: String = "127.0.0.1"
     }
 
-    private val logger = LoggerFactory.getLogger(this::class.simpleName)
-    private val port = 6379
+    private val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private val streamManager = TopicManager()
 
@@ -70,17 +66,17 @@ class StreamOperationRedisTests {
 
     private lateinit var objTemplate: ReactiveRedisTemplate<String, Object>
 
-    private lateinit var zoomTemplate: ReactiveRedisTemplate<String, Zoom>
+    private lateinit var testEntityTemplate: ReactiveRedisTemplate<String, TestEntity>
 
     private lateinit var mapper: Jackson2HashMapper
 
     @BeforeAll
     fun setupRedis() {
-        //  redisServer = RedisServer(File("/usr/local/bin/redis-server"), port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), ConfigProps.port)
 
-        // redisServer.start()
+        redisServer.start()
 
-        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration("127.0.0.1", port))
+        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(ConfigProps.host, ConfigProps.port))
 
         lettuce.afterPropertiesSet()
 
@@ -94,7 +90,7 @@ class StreamOperationRedisTests {
 
         objTemplate = config.objectTemplate(lettuce)
 
-        zoomTemplate = zoomTemplate(lettuce, objectMapper)
+        testEntityTemplate = testTemplate(lettuce, objectMapper)
 
         mapper = Jackson2HashMapper(objectMapper, true)
 
@@ -108,13 +104,16 @@ class StreamOperationRedisTests {
                 .serverCommands().flushAll().block()
     }
 
-    fun zoomTemplate(cf: ReactiveRedisConnectionFactory, objMapper: ObjectMapper): ReactiveRedisTemplate<String, Zoom> {
+    @AfterAll
+    fun tearDown() = redisServer.stop()
+
+    fun testTemplate(cf: ReactiveRedisConnectionFactory, objMapper: ObjectMapper): ReactiveRedisTemplate<String, TestEntity> {
         val keys = StringRedisSerializer()
 
-        val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, Zoom> =
+        val builder: RedisSerializationContext.RedisSerializationContextBuilder<String, TestEntity> =
                 RedisSerializationContext.newSerializationContext(keys)
 
-        val defaultSerializer = Jackson2JsonRedisSerializer(Zoom::class.java)
+        val defaultSerializer = Jackson2JsonRedisSerializer(TestEntity::class.java)
 
         builder.key(keys)
         builder.hashKey(keys)
@@ -123,10 +122,6 @@ class StreamOperationRedisTests {
 
         return ReactiveRedisTemplate(cf, builder.build())
     }
-
-    // @AfterAll
-    // fun tearDown() = redisServer.stop()
-
 
     @Test
     fun testShouldPing() {
@@ -142,12 +137,12 @@ class StreamOperationRedisTests {
 
 
     fun `test a hash mapping values`() {
-        val zoom = Zoom("foo")
+        val zoom = TestEntity("foo")
 
-        val write = zoomTemplate
+        val write = testEntityTemplate
                 .opsForHash<String, Any>().putAll("test", mapper.toHash(zoom))
 
-        val read = zoomTemplate
+        val read = testEntityTemplate
                 .opsForHash<String, Any>().entries("test")
                 .collectMap({ it.key }, { it.value })
 
@@ -159,9 +154,9 @@ class StreamOperationRedisTests {
                 )
                 .expectSubscription()
                 .assertNext {
-                    val newZoom: Zoom = mapper.fromHash(it) as Zoom
+                    val newTestEntity: TestEntity = mapper.fromHash(it) as TestEntity
 
-                    logger.info("New Zoom Object : $newZoom")
+                    logger.info("New TestEntity Object : $newTestEntity")
                 }
                 .verifyComplete()
 
