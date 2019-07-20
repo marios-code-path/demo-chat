@@ -1,6 +1,5 @@
 package com.demo.chat
 
-import com.demo.chat.config.ConfigurationPropertiesCassandra
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import org.slf4j.LoggerFactory
@@ -8,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.boot.rsocket.server.RSocketServerBootstrap
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration

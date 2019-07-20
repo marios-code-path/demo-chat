@@ -19,7 +19,6 @@ data class CassandraProperties(override val contactPoints: String,
 
 
 @Profile("cassandra-persistence")
-@ExcludeFromTests
 @Configuration
 class PersistenceConfiguration {
 

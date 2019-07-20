@@ -4,6 +4,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chatevents.*
+import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.topic.TopicData
 import com.demo.chatevents.service.TopicManager
@@ -47,6 +48,11 @@ import java.util.function.Supplier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StreamOperationRedisTests {
 
+    object ConfigProps : ConfigurationPropertiesTopicRedis {
+        override val port: Int = 6374
+        override val host: String = "127.0.0.1"
+    }
+
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val port = 6379
 
@@ -80,7 +86,7 @@ class StreamOperationRedisTests {
 
         template = ReactiveStringRedisTemplate(lettuce)
 
-        val config = ConfigurationTopicRedis()
+        val config = ConfigurationTopicRedis(ConfigProps)
 
         objectMapper = config.objectMapper()
 
