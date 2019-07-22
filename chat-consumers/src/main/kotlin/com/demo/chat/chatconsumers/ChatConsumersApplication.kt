@@ -17,14 +17,7 @@ class ChatConsumersApplication {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
     val latch: CountDownLatch = CountDownLatch(1)
-    @Bean
-    fun appRunner(client: ChatUserClient) =
-            ApplicationRunner { args ->
-                logger.info("Client App is up and Running")
 
-                latch.await(10, TimeUnit.SECONDS)
-
-            }
 }
 
 fun main(args: Array<String>) {

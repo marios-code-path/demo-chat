@@ -1,6 +1,5 @@
 package com.demo.chat.config
 
-import com.demo.chat.ExcludeFromTests
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*

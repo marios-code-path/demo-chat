@@ -31,7 +31,7 @@ class TopicConfigurationRedis {
     fun redisConnectionFactory(): ReactiveRedisConnectionFactory = LettuceConnectionFactory()
 
     @Bean
-    fun topicServiceRedis( props: ConfigurationPropertiesTopicRedis): TopicServiceRedisPubSub {
+    fun topicServiceRedis(props: ConfigurationPropertiesTopicRedis): TopicServiceRedisPubSub {
         val topicConfigRedis = ConfigurationTopicRedis(props)
 
         val factory = redisConnectionFactory()
