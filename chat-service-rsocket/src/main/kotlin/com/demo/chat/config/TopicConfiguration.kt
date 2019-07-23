@@ -27,16 +27,14 @@ data class ConfigurationRedisTopics(override val host: String = "127.0.0.1",
                                     override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
 
 @Profile("redis-topics")
+@Configuration
 class TopicConfigurationRedis {
+    @Bean
+    fun configurationTopicRedis(props: ConfigurationPropertiesTopicRedis): ConfigurationTopicRedis = ConfigurationTopicRedis(props)
 
     @Bean
-    fun redisConnectionFactory(): ReactiveRedisConnectionFactory = LettuceConnectionFactory()
-
-    @Bean
-    fun topicServiceRedis(props: ConfigurationPropertiesTopicRedis): TopicServiceRedisPubSub {
-        val topicConfigRedis = ConfigurationTopicRedis(props)
-
-        val factory = redisConnectionFactory()
+    fun topicServiceRedis(config: ConfigurationTopicRedis): ChatTopicService {
+        val factory = config.redisConnection()
 
         return TopicServiceRedisPubSub(
                 KeyConfigurationPubSub("all_topics",
@@ -44,7 +42,7 @@ class TopicConfigurationRedis {
                         "l_user_topics_",
                         "l_topic_users_"),
                 ReactiveStringRedisTemplate(factory),
-                topicConfigRedis.topicTemplate(factory)
+                config.topicTemplate(factory)
         )
     }
 }

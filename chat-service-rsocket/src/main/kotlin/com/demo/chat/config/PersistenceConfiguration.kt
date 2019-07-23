@@ -8,13 +8,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 
-/**
- *     @Bean
-fun cassandraProperties(): ConfigurationPropertiesCassandra = CassandraProperties("127.0.0.1",
-9142,
-"chat",
-"com.demo.chat.repository.cassandra")
- */
 @Profile("cassandra-persistence")
 @ConfigurationProperties("cassandra-repo")
 data class CassandraProperties(override val contactPoints: String = "127.0.0.1",
@@ -22,14 +15,12 @@ data class CassandraProperties(override val contactPoints: String = "127.0.0.1",
                                override val keyspace: String = "chat",
                                override val basePackages: String = "com.demo.chat.repository.cassandra") : ConfigurationPropertiesCassandra
 
-
 @Profile("cassandra-persistence")
 @Configuration
 class PersistenceConfiguration {
 
-    @Profile("cassandra-persistence")
-    @Configuration
-    class CassandraCluster(props: ConfigurationPropertiesCassandra) : ClusterConfigurationCassandra(props)
+    @Bean
+    fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
     fun keyService(): KeyService = KeyServiceCassandra
