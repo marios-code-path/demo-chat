@@ -1,11 +1,16 @@
 package com.demo.chatevents.service
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.RoomNotFoundException
+import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import reactor.core.publisher.*
+import reactor.core.publisher.Flux
+import reactor.core.publisher.FluxProcessor
+import reactor.core.publisher.Mono
+import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -13,7 +18,11 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  *
  * A topic is a list of members which will receive messages sent to it.
- * A member is a subscriber to a topic
+ * A member is a subscriber to a topic.
+ * This service handles the behaviour of topic distribution without using an external
+ * resource such as Redis, Kafka, Rabbit, etc...
+ *
+ * For now, this service is restricted to single-node bound chat-rooms, no-persistence
  */
 class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     private val topicManager: TopicManager = TopicManager()
@@ -116,14 +125,9 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                 topicManager.closeTopic(id)
             }.then()
 
+    override fun getTopicsByUser(uid: UUID): Flux<UUID> = Flux.fromIterable(memberToTopics(uid))
 
-    override fun getTopicsByUser(uid: UUID): Flux<UUID> = Flux.fromIterable(
-            memberToTopics(uid)
-    )
-
-    override fun getUsersBy(id: UUID): Flux<UUID> = Flux.fromIterable(
-            topicToMembers(id)
-    )
+    override fun getUsersBy(id: UUID): Flux<UUID> = Flux.fromIterable(topicToMembers(id))
 
     private fun memberToTopics(memberId: UUID): MutableSet<UUID> =
             memberTopics.getOrPut(memberId) {
@@ -134,5 +138,4 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
             topicMembers.getOrPut(topicId) {
                 HashSet()
             }
-
 }

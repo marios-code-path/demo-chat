@@ -37,10 +37,10 @@ class TopicServiceRedisPubSubTests : TopicServiceTestBase() {
         redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
 
         topicService = TopicServiceRedisPubSub(
-                KeyConfigurationPubSub("all_topics",
-                        "st_topic_",
-                        "l_user_topics_",
-                        "l_topic_users_"),
+                KeyConfigurationPubSub("t_all_topics",
+                        "t_st_topic_",
+                        "t_l_user_topics_",
+                        "t_l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
                 redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce)
         )

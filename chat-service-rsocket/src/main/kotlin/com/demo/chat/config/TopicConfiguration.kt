@@ -8,12 +8,14 @@ import com.demo.chatevents.service.TopicServiceMemory
 import com.demo.chatevents.service.TopicServiceRedisPubSub
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 
 @Profile("memory-topics")
+@Configuration
 class TopicConfigurationMemory {
     @Bean
     fun topicServiceInMemory(): ChatTopicService = TopicServiceMemory()
@@ -21,8 +23,8 @@ class TopicConfigurationMemory {
 
 @Profile("redis-topics")
 @ConfigurationProperties("redis-topics")
-data class ConfigurationRedisTopics(override val host: String,
-                                    override val port: Int) : ConfigurationPropertiesTopicRedis
+data class ConfigurationRedisTopics(override val host: String = "127.0.0.1",
+                                    override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
 
 @Profile("redis-topics")
 class TopicConfigurationRedis {

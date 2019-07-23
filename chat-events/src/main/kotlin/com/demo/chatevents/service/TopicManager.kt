@@ -11,6 +11,10 @@ import reactor.core.publisher.FluxProcessor
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
+/*
+    Hopefully this class contains use-case common to the distribution of a many to many stream
+    relationship.
+ */
 class TopicManager {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
