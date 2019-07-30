@@ -1,5 +1,6 @@
 package com.demo.chat.config
 
+import com.demo.chat.ExcludeFromTests
 import com.demo.chat.service.ChatTopicService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
@@ -26,6 +27,7 @@ class TopicConfigurationMemory {
 data class ConfigurationRedisTopics(override val host: String = "127.0.0.1",
                                     override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
 
+@ExcludeFromTests
 @Profile("redis-topics")
 @Configuration
 class TopicConfigurationRedis {

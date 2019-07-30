@@ -1,25 +1,18 @@
 package com.demo.chat.test
 
 import com.demo.chat.*
-import com.demo.chat.domain.ChatUser
+import com.demo.chat.controllers.UserController
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserPersistence
-import io.rsocket.RSocket
-import io.rsocket.transport.netty.client.TcpClientTransport
 import org.assertj.core.api.Assertions
-import org.hamcrest.MatcherAssert
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -27,39 +20,20 @@ import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@SpringBootTest(classes = [ChatServiceRsocketApplication::class])
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(RSocketTestConfig::class)
-class RSocketUserTests {
+@Import(RSocketTestConfig::class, UserController::class)
+class RSocketUserTests : RSocketTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var builder: RSocketRequester.Builder
-
-    private lateinit var socket: RSocket
-    private lateinit var requestor: RSocketRequester
-
-    @Autowired
     private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
-    val defaultImgUri = "http://"
-    val randomHandle = randomAlphaNumeric(4)
-    val randomName = randomAlphaNumeric(6)
-    val randomUserId = UUID.randomUUID()!!
-    val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
 
-    @BeforeEach
-    fun setUp(@Autowired config: RSocketTestConfig) {
-        config.rSocketInit()
-
-        requestor = builder.connect(TcpClientTransport.create(7070)).block()!!
-        socket = requestor.rsocket()
-    }
-
-    @AfterEach
-    fun tearDown(@Autowired config: RSocketTestConfig) {
-        config.rSocketComplete()
-    }
+    private val defaultImgUri = "http://"
+    private val randomHandle = randomAlphaNumeric(4)
+    private val randomName = randomAlphaNumeric(6)
+    private val randomUserId = UUID.randomUUID()!!
+    private val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
 
     @Test
     fun `should call user create`() {

@@ -1,5 +1,6 @@
 package com.demo.chat.config
 
+import com.demo.chat.ExcludeFromTests
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
@@ -10,11 +11,12 @@ import org.springframework.context.annotation.Profile
 
 @Profile("cassandra-persistence")
 @ConfigurationProperties("cassandra-repo")
-data class CassandraProperties(override val contactPoints: String = "127.0.0.1",
-                               override val port: Int = 9042,
-                               override val keyspace: String = "chat",
-                               override val basePackages: String = "com.demo.chat.repository.cassandra") : ConfigurationPropertiesCassandra
+data class CassandraProperties(override val contactPoints: String,
+                               override val port: Int,
+                               override val keyspace: String,
+                               override val basePackages: String) : ConfigurationPropertiesCassandra
 
+@ExcludeFromTests
 @Profile("cassandra-persistence")
 @Configuration
 class PersistenceConfiguration {
