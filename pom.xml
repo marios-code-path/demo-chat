@@ -16,12 +16,11 @@
     <name>Demo Chat Parent</name>
 
     <properties>
- 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>1.8</java.version>
         <kotlin.version>1.3.21</kotlin.version>
-	<spring-cloud.version>Greenwich.SR1</spring-cloud.version>
+	    <spring-cloud.version>Greenwich.SR1</spring-cloud.version>
     </properties>
 
     <modules>

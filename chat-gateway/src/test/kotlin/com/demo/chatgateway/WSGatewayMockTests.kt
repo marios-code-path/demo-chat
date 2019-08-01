@@ -4,13 +4,10 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
-import org.springframework.http.MediaType
-import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient
-import org.springframework.web.reactive.socket.client.WebSocketClient
 import reactor.core.publisher.Mono
+import reactor.netty.ReactorNetty
 import java.net.URI
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -21,7 +18,7 @@ class WSGatewayMockTests {
     lateinit var configurationProperties: WebSocketConfigurationProperties
 
     @BeforeAll
-    fun setUpOnce(){
+    fun setUpOnce() {
         context = AnnotationConfigApplicationContext(WebSocketConfiguration::class.java, TestWSConfiguration::class.java)
 
         configurationProperties = context.getBean(WebSocketConfigurationProperties::class.java)
@@ -36,6 +33,19 @@ class WSGatewayMockTests {
                     .assertThat(it)
                     .isNotNull
             Mono.empty()
+        }
+    }
+
+    @Test
+    fun `needs to connect and receive infoalert event`() {
+        val client = ReactorNettyWebSocketClient()
+        client.execute(URI("ws://localhost:" + configurationProperties.port + "/dist")
+        ) {
+            it.
+            it.receive()
+                    .map {
+
+                    }
         }
     }
 
