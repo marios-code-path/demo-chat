@@ -3,6 +3,7 @@ package com.demo.chatgateway
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
+import com.demo.chatevents.service.TopicServiceMemory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -21,7 +22,6 @@ import java.util.*
 @ConfigurationProperties("ws-gateway-config")
 class WebSocketConfigurationProperties(val port: Int)
 
-
 @EnableWebFlux
 @Configuration
 class WebSocketConfiguration(val config: WebSocketConfigurationProperties) {
@@ -29,14 +29,12 @@ class WebSocketConfiguration(val config: WebSocketConfigurationProperties) {
     @Bean
     fun webSocketHandlerAdapter(): WebSocketHandlerAdapter {
         return WebSocketHandlerAdapter()
-
     }
 
     @Bean
     fun urlMapping(): HandlerMapping {
         val simpleMapping = SimpleUrlHandlerMapping()
         simpleMapping.urlMap = mapOf(Pair("/dist", webSocketHandler()))
-
         return simpleMapping
     }
 
@@ -48,16 +46,19 @@ class WebSocketConfiguration(val config: WebSocketConfigurationProperties) {
                         .map<WebSocketMessage> { session.textMessage(it) })
                 .and(session.receive()
                         .map { it.payloadAsText }
-
                 )
     }
 
 }
 
+@Configuration
+class TopicConfiguration {
+    fun topicPublisher() = TopicServiceMemory()
+}
 @Controller
 class WebSocketController(val topicManager: ChatTopicService) {
 
-    @MessageMapping("/userbox")
+    @MessageMapping("/userdist")
     fun getUserFeed(uid: UUID): Flux<out Message<TopicMessageKey, Any>> = topicManager.receiveSourcedEvents(uid)
 
 }

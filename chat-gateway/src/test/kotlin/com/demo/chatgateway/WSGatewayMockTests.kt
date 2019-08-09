@@ -7,7 +7,6 @@ import org.junit.jupiter.api.TestInstance
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient
 import reactor.core.publisher.Mono
-import reactor.netty.ReactorNetty
 import java.net.URI
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -19,7 +18,11 @@ class WSGatewayMockTests {
 
     @BeforeAll
     fun setUpOnce() {
-        context = AnnotationConfigApplicationContext(WebSocketConfiguration::class.java, TestWSConfiguration::class.java)
+
+        context = AnnotationConfigApplicationContext(
+                WebSocketConfiguration::class.java,
+                TestWSConfiguration::class.java
+        )
 
         configurationProperties = context.getBean(WebSocketConfigurationProperties::class.java)
     }
@@ -37,15 +40,12 @@ class WSGatewayMockTests {
     }
 
     @Test
-    fun `needs to connect and receive infoalert event`() {
+    fun `needs to connect and receive info-alert event`() {
         val client = ReactorNettyWebSocketClient()
-        client.execute(URI("ws://localhost:" + configurationProperties.port + "/dist")
+        client.execute(URI("ws://localhost:" + configurationProperties.port + "/userdist")
         ) {
-            it.
-            it.receive()
-                    .map {
-
-                    }
+            // push into processor the events this user should receive
+            it.receive().then()
         }
     }
 

@@ -14,6 +14,12 @@ Spring Data Repository programming model is comprised of a set of CRUD operation
 It allows us to program queries in a way that is domain specific. For instance, we can query our message-by-user
 with the following interface.
 
+SampleRepository.kt:
+
+    interface PersonRepository : CrudRepository<Person, Int> {
+        find byFirstName(firstName: String): Collection<Person>
+    }
+
 Reactive queries are similar to classic repository queries, only we wrap our <T> object in a reactive publisher.
 
 MessageRepository.kt:

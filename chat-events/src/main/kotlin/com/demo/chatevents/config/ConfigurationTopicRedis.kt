@@ -71,5 +71,4 @@ class ConfigurationTopicRedis(val props: ConfigurationPropertiesTopicRedis) {
 
         return ReactiveRedisTemplate(cf, builder.build())
     }
-
 }
