@@ -4,22 +4,23 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.web.reactive.context.AnnotationConfigReactiveWebServerApplicationContext
 import org.springframework.boot.web.server.LocalServerPort
-import org.springframework.boot.web.servlet.context.AnnotationConfigServletWebServerApplicationContext
-import org.springframework.context.ApplicationContext
 import org.springframework.test.web.reactive.server.WebTestClient
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient
+import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 import java.net.URI
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class WSMappingTests {
 
+    private val log = LoggerFactory.getLogger(this::class.qualifiedName)
+
     @LocalServerPort
-    var port: Int? = null
+    var port: Int? = 9090
 
     @Autowired
     private lateinit var context: AnnotationConfigReactiveWebServerApplicationContext
@@ -27,7 +28,7 @@ class WSMappingTests {
     @BeforeAll
     fun setUp() {
         context = AnnotationConfigReactiveWebServerApplicationContext(TestWSConfiguration::class.java)
-
+        Hooks.onOperatorDebug()
     }
 
     @Test
@@ -53,19 +54,20 @@ class WSMappingTests {
                             .isNotNull()
                             .isNotEmpty()
                 }
-
     }
 
     @Test
     fun `connect to WS endpoint`() {
         val client = ReactorNettyWebSocketClient()
-        val wsFlux = client
-                .execute(URI("ws://localhost:${port}/app/userdist")) {
-                    it
-                            .receive()
-                            .doOnNext(System.out::println)
-                            .then()
-                }
+        val uri = "ws://localhost:${port}/dist"
+        val wsFlux = client.execute(URI(uri)) { it ->
+            it.receive().doOnNext {
+                log.info("Data: $it")
+            }
+                    .then()
+        }
+
+        log.info("uri is: $uri")
 
         StepVerifier
                 .create(wsFlux)

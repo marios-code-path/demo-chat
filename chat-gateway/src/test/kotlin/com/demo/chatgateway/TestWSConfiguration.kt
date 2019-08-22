@@ -13,6 +13,8 @@ import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Controller
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.WebFluxConfigurationSupport
 import org.springframework.web.reactive.function.server.RouterFunction
@@ -41,15 +43,6 @@ class TestWSConfiguration {
     class MyWebFluxConfigurationSupport : WebFluxConfigurationSupport()
 
     @Bean
-    fun route(): RouterFunction<ServerResponse> = router {
-        GET("/foo") {
-            ServerResponse
-                    .ok()
-                    .body(Flux.just("HELLO"), String::class.java)
-        }
-    }
-
-    @Bean
     fun serverFactory(): ReactiveWebServerFactory = NettyReactiveWebServerFactory(websocketConfiguration().port)
 
     @Bean
@@ -61,6 +54,8 @@ class TestWSConfiguration {
     fun urlMapping(): HandlerMapping {
         val simpleMapping = SimpleUrlHandlerMapping()
         simpleMapping.urlMap = mapOf(Pair("/dist", webSocketHandler()))
+        simpleMapping.setCorsConfigurations(mapOf(Pair("*", CorsConfiguration().applyPermitDefaultValues())))
+        simpleMapping.order = 10
         return simpleMapping
     }
 
