@@ -8,11 +8,46 @@ categories = ["spring","cassandra","data","spring-data", "kotlin"]
 tags = ["demo","spring","webflux","cassandra","data","kotlin"]
 +++
 
+# Configuration Guidelines
+
+First, lets speak about how we plan to configure our application to connect to the backing datasource providing persistence to our data model. Because we are using Cassandra, we can plan to use a few specific configuration properties. Lets look at them here, and discuss a bit in-depth:
+
+ClusterConfigurationCassandra.kt:
+
+    interface ConfigurationPropertiesCassandra {
+    	val contactPoints: String
+    	val port: Int
+    	val keyspace: String
+    	val basePackages: String
+    }
+
+We have abstracted just the bits we need to talk with the data model parts that our persistence engine knows ab out.  In this case we will connect to a Cassandra cluster given the properties shown above. These are actually derivative of the [AbstractClusterConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractClusterConfiguration.html) and [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) bean properties. If we can describe their usages, lets see what we can extract from their property descriptions.
+
+### App-Specific Cassandra Configuration Properties
+
+|-----------|------------|----------------|----------|
+| property | description | possible/default values| Spring property |
+| contactPoints | cluster host | localhost| spring.data.cassandra.contact-points |
+| port | host port | 9042 | spring.data.cassandra.port |
+| keyspace | database name aka 'KeySpace' | chat | spring.data.cassandra.keyspace-name |
+| basePackages | Entity bean definition base-package | com.demo.chat.domain | N/A |
+| jmxReporting | report JMX metrics | false | N/A |
+
+
+These properites can then get fed to our own instance of [AbstractReactiveCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractReactiveCassandraConfiguration.html) which gets used to wire up our reactive cassandra cluster connection/driver.
+
+Our own `ClusterConfigurationCassandra` will handle the chore of matching configuratyion properties with the components that needs it. These configuration steps consist of a [CassandraClusterFactoryBean](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/CassandraClusterFactoryBean.html) and something that tells our application context to figure out repositories in [EnableReactiveCassandraRepositories](https://github.com/spring-projects/spring-data-cassandra/blob/master/src/main/asciidoc/reference/reactive-cassandra-repositories.adoc).
+
+NOTE:  We can alternately use the spring module configuration properties as shown in the following table:```
+
+# Connecting to Cassandra
+
+  What functions assist in delivering a configured cassandra connection, How is node configuration and connection handled (This is probably at the ops level, so explain that). How to bring up Cassandra using PCF ?
+ 
 # Query Strategy
 
 Spring Data Repository programming model is comprised of a set of CRUD operations defined in a Spring Data repository interface.
-It allows us to program queries in a way that is domain specific. For instance, we can query our message-by-user
-with the following interface.
+It allows us to program queries in a way that is domain specific. For instance, we can query our message-by-user with the following interface.
 
 SampleRepository.kt:
 
@@ -20,9 +55,9 @@ SampleRepository.kt:
         find byFirstName(firstName: String): Collection<Person>
     }
 
-Reactive queries are similar to classic repository queries, only we wrap our <T> object in a reactive publisher.
+Reactive queries are similar to classic repository queries, only we wrap our <T> object in a reactive [publisher](https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html).
 
-MessageRepository.kt:
+MessageRepositories.kt:
 
     interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
         fun findByKeyUserId(userId: UUID) : Flux<ChatMessageByUser>

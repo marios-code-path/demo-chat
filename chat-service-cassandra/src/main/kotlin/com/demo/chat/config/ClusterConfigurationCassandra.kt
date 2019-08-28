@@ -11,6 +11,7 @@ interface ConfigurationPropertiesCassandra {
     val port: Int
     val keyspace: String
     val basePackages: String
+    val jmxReporting: Boolean
 }
 
 class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
@@ -34,10 +35,9 @@ class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra)
         return arrayOf(props.basePackages)
     }
 
-    override
-    fun cluster(): CassandraClusterFactoryBean {
+    override fun cluster(): CassandraClusterFactoryBean {
         val cluster = super.cluster()
-        cluster.setJmxReportingEnabled(false)
+        cluster.setJmxReportingEnabled(props.jmxReporting)
         return cluster
     }
 

@@ -61,13 +61,13 @@ class WSMappingTests {
         val client = ReactorNettyWebSocketClient()
         val uri = "ws://localhost:${port}/dist"
         val wsFlux = client.execute(URI(uri)) { it ->
-            it.receive().doOnNext {
-                log.info("Data: $it")
+            it.receive()
+                    .limitRequest(2)
+                    .doOnNext {
+                log.info("Data: ${it.payloadAsText}")
             }
                     .then()
         }
-
-        log.info("uri is: $uri")
 
         StepVerifier
                 .create(wsFlux)

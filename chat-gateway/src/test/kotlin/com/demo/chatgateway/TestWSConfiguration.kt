@@ -37,10 +37,10 @@ import java.util.concurrent.ConcurrentHashMap
 @Configuration
 class TestWSConfiguration {
     @Configuration
-    class MyHttpHandlerAutoConfiguration : HttpHandlerAutoConfiguration()
+    class MyTestHttpHandlerAutoConfiguration : HttpHandlerAutoConfiguration()
 
     @Configuration
-    class MyWebFluxConfigurationSupport : WebFluxConfigurationSupport()
+    class MyTestWebFluxConfigurationSupport : WebFluxConfigurationSupport()
 
     @Bean
     fun serverFactory(): ReactiveWebServerFactory = NettyReactiveWebServerFactory(websocketConfiguration().port)
