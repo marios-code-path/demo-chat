@@ -40,7 +40,6 @@ open class RSocketTestBase {
     private var counter = Random().nextInt()
 
     fun randomMessage(): TextMessage {
-
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()

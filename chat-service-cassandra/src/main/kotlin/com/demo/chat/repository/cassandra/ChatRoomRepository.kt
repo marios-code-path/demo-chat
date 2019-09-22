@@ -28,7 +28,6 @@ interface ChatRoomRepositoryCustom {
     fun join(uid: UUID, roomId: UUID): Mono<Void>
     fun leave(uid: UUID, roomId: UUID): Mono<Void>
     fun messageCount(roomId: UUID): Mono<Int>
-
 }
 
 class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :

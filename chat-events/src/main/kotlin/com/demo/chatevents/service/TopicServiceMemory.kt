@@ -29,10 +29,10 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
-    // map of <topic : [UserInbox]s>
+    // map of <topic : [msgInbox]s>
     private val topicMembers: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
 
-    // map of <UserInbox : [topic]s>
+    // map of <msgInbox : [topic]s>
     private val memberTopics: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
 
     private val topicXSource: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
@@ -62,6 +62,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
 
     /**
      * Stream Manager becomes subscriber to an upstream from topicXSource
+     * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
     override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =
             topicXSource

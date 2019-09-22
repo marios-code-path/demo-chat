@@ -18,6 +18,10 @@ interface ChatTopicService {
     fun getUsersBy(id: UUID): Flux<UUID>
     fun exists(id: UUID): Mono<Boolean>
 
+    // receive externally bound resources by attaching a processor to that resources flux
+    // 1.  attach to some external source (like a redis pubsub channel)
+    // 2.  create FluxProcessor that will handle fanout from our source to any subscriber fluxes
+    // 3.  subscribe our processor to the source
     fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>>
 }
 

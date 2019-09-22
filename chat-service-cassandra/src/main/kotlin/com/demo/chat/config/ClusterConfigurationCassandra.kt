@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.CassandraClusterFactoryBean
 import org.springframework.data.cassandra.config.SchemaAction
+import org.springframework.data.cassandra.core.CassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 interface ConfigurationPropertiesCassandra {
@@ -44,5 +45,4 @@ class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra)
     @Configuration
     @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
     class RepositoryConfigurationCassandra
-
 }

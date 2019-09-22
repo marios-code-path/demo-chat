@@ -21,12 +21,12 @@ ClusterConfigurationCassandra.kt:
     	val basePackages: String
     }
 
-We have abstracted just the bits we need to talk with the data model parts that our persistence engine knows ab out.  In this case we will connect to a Cassandra cluster given the properties shown above. These are actually derivative of the [AbstractClusterConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractClusterConfiguration.html) and [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) bean properties. If we can describe their usages, lets see what we can extract from their property descriptions.
+We have abstracted just the bits we need to talk with the data model parts that our persistence engine knows ab out.  In this case we will connect to a Cassandra cluster given the properties shown above. These are actually derivative of the [AbstractClusterConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractClusterConfiguration.html) and [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) bean properties. Knowing where and what uses these properties, lets see what we can extract from their property descriptions.
 
 ### App-Specific Cassandra Configuration Properties
 
-|-----------|------------|----------------|----------|
 | property | description | possible/default values| Spring property |
+|---------|-------------|-----------------------|-------------------|
 | contactPoints | cluster host | localhost| spring.data.cassandra.contact-points |
 | port | host port | 9042 | spring.data.cassandra.port |
 | keyspace | database name aka 'KeySpace' | chat | spring.data.cassandra.keyspace-name |
@@ -34,15 +34,29 @@ We have abstracted just the bits we need to talk with the data model parts that 
 | jmxReporting | report JMX metrics | false | N/A |
 
 
-These properites can then get fed to our own instance of [AbstractReactiveCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractReactiveCassandraConfiguration.html) which gets used to wire up our reactive cassandra cluster connection/driver.
+These properites can then get fed to our own instance of [AbstractReactiveCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractReactiveCassandraConfiguration.html) which gets used to wire up our reactive cassandra cluster connection/driver, provides reactive [session](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/ReactiveSession.html) and gives us an instance of [ReactiveCassandraTemplate](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/core/ReactiveCassandraTemplate.html).
 
-Our own `ClusterConfigurationCassandra` will handle the chore of matching configuratyion properties with the components that needs it. These configuration steps consist of a [CassandraClusterFactoryBean](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/CassandraClusterFactoryBean.html) and something that tells our application context to figure out repositories in [EnableReactiveCassandraRepositories](https://github.com/spring-projects/spring-data-cassandra/blob/master/src/main/asciidoc/reference/reactive-cassandra-repositories.adoc).
+ClusterConfigurationCassandra.kt:
 
-NOTE:  We can alternately use the spring module configuration properties as shown in the following table:```
+	class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
+	      override fun getKeyspaceName(): String { ...
+	      override fun getContactPoints(): String { ...
+	      override fun getPort(): Int { ...
+	      override fun getSchemaAction(): SchemaAction { ...
+	      override fun getEntityBasePackages: Array<String> { ...
+	      override fun cluster(): CassandraClusterFactoryBean {
+	      	       val cluster = super.cluster()
+		       cluster.setJmxReportingEnabled(props.jmxReporting)
+		       return cluster
+	      }
 
-# Connecting to Cassandra
+	      @Configuration
+	      @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+	      class RepositoryConfigurationCassandra
+        }
+	      
+Our own `ClusterConfigurationCassandra` will handle the chore of matching configuratyion properties with the components that needs it. These configuration steps consist of a [CassandraClusterFactoryBean](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/CassandraClusterFactoryBean.html) which provides the cassandra session and we will need something that tells our application context to figure out repositories in [EnableReactiveCassandraRepositories](https://github.com/spring-projects/spring-data-cassandra/blob/master/src/main/asciidoc/reference/reactive-cassandra-repositories.adoc).
 
-  What functions assist in delivering a configured cassandra connection, How is node configuration and connection handled (This is probably at the ops level, so explain that). How to bring up Cassandra using PCF ?
  
 # Query Strategy
 
@@ -66,7 +80,7 @@ MessageRepositories.kt:
 From this last interface, you can see I defined the UUID as the key type even though the key for our message types is a regular type.
 The reason behind this is I wanted to take advantage of query methods but not have to fill out the entire Key class every time.
 
-For example, I avoid the following:
+For example, I avoid the following since the information needed for that ChatMessageByUserKey requries more data than is available before query:
 
     interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, ChatMessageByUserKey> {
         fun findByKey(userKey: ChatMessageByUserKey) : Flux<ChatMessageByUser>
@@ -84,11 +98,13 @@ MessageRepository.kt:
         fun findByKeyMsgId(id: UUID) : Mono<ChatMessageById>
     }
 
-Following standard repository procedures to produce query modes for data with each Key. 
-    
-# Repositories
+With this strategy in mind - however limiting - we can make up for the limitations by using a useful technique in [Spring Data
+Custom Repositories](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.custom-implementations).
 
 # Custom Repositories with CQL
+
+
+
 
 # Conclusion 
 

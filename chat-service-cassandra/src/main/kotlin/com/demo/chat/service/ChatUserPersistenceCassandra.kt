@@ -9,7 +9,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-// TODO flexability on what classes go in and out of repository thru persistence
+// TODO flexibility on what classes go in and out of repository thru persistence
 open class ChatUserPersistenceCassandra(val keyService: KeyService,
                                         val userRepo: ChatUserRepository,
                                         val userHandleRepo: ChatUserHandleRepository)
