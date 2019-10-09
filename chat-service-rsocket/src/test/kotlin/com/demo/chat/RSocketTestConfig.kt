@@ -21,7 +21,7 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 
 @Configuration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
-class RSocketTestConfig {
+class rsockettestconfig {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean

@@ -49,7 +49,6 @@ class RSocketMessagesTests : RSocketTestBase() {
                                 .route("message-by-id")
                                 .data(MessageRequest(UUID.randomUUID()))
                                 .retrieveMono(ChatMessage::class.java)
-
                 )
                 .expectSubscription()
                 .assertNext {

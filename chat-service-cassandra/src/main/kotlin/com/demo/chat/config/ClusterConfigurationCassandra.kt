@@ -15,7 +15,7 @@ interface ConfigurationPropertiesCassandra {
     val jmxReporting: Boolean
 }
 
-class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
+open class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
     override fun getKeyspaceName(): String {
         return props.keyspace
     }
@@ -29,7 +29,7 @@ class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra)
     }
 
     override fun getSchemaAction(): SchemaAction {
-        return SchemaAction.NONE
+        return SchemaAction.CREATE
     }
 
     override fun getEntityBasePackages(): Array<String> {
