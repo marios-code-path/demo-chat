@@ -3,6 +3,7 @@ package com.demo.chat.service
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
+import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -64,51 +65,25 @@ class ChatRoomPersistenceTests {
         roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo, roomByNameRepo)
     }
 
-    // TODO - check for nullable return types in  Room-Service.
-    @Test
-    fun `should join and leave a ficticious room`() {
-        val serviceFlux = roomSvc
-                .addMember(uid, rid)
-                .thenMany(roomSvc.remMember(uid, rid))
-
-        StepVerifier
-                .create(serviceFlux)
-                .expectSubscription()
-                .expectNextCount(0)
-                .verifyComplete()
-    }
-
     @Test
     fun `should create some rooms then get a list`() {
         StepVerifier
                 .create(
                         Flux.just(randomAlphaNumeric(5), randomAlphaNumeric(5))
-                                .flatMap {
-                                    roomSvc.key(it)
+                                .flatMap { name ->
+                                    roomSvc.key()
+                                            .flatMap { key ->
+                                                roomSvc.add(Room.create(
+                                                        RoomKey.create(key.id, name),
+                                                        setOf()
+                                                )
+                                                )
+                                            }
                                 }
-                                .flatMap {
-                                    roomSvc.add(it)
-                                }
-                                .thenMany(roomSvc.getAll(true))
+                                .thenMany(roomSvc.all())
                 )
                 .expectSubscription()
                 .assertNext(this::roomAssertions)
-                .assertNext(this::roomAssertions)
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should create room fetch by name`() {
-        StepVerifier
-                .create(
-                        Flux.just(randomAlphaNumeric(5), randomAlphaNumeric(5))
-                                .flatMap {
-                                    roomSvc.key(it)
-                                            .flatMap(roomSvc::add)
-                                }
-                                .then(roomSvc.getByName("test-room"))
-                )
-                .expectSubscription()
                 .assertNext(this::roomAssertions)
                 .verifyComplete()
     }
@@ -121,4 +96,5 @@ class ChatRoomPersistenceTests {
                 { Assertions.assertNotNull(room.timestamp) }
         )
     }
+
 }

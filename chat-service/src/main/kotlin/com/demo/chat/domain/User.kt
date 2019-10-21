@@ -26,8 +26,7 @@ interface User {
     }
 }
 
-interface UserKey {
-    val id: UUID
+interface UserKey : EventKey {
     val handle: String
     companion object Factory {
         fun create(id: UUID, handle: String) : UserKey = object : UserKey {

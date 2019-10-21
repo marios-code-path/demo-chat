@@ -28,7 +28,7 @@ open class ChatMessage(
 ) : TextMessage
 
 data class ChatMessageKey(
-        override val msgId: UUID,
+        override val id: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
@@ -40,7 +40,7 @@ data class JoinAlertMessage(override val key: JoinAlertMessageKey,
                             override val visible: Boolean
 ) : JoinAlert
 
-data class JoinAlertMessageKey(override val msgId: UUID,
+data class JoinAlertMessageKey(override val id: UUID,
                                override val topicId: UUID,
                                override val timestamp: Instant
 ) : AlertMessageKey

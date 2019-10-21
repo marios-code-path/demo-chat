@@ -27,65 +27,37 @@ interface ChatUserHandleRepository
 
 interface ChatUserRepositoryCustom {
     fun add(user: User): Mono<Void>
-    fun rem(key: UserKey): Mono<Void>
+    fun rem(key: EventKey): Mono<Void>
 }
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
-    override fun rem(key: UserKey): Mono<Void> =
+    override fun rem(key: EventKey): Mono<Void> =
             cassandra
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
                             ChatUser::class.java
                     )
-                    .then(
-                            cassandra.update(Query.query(where("user_id").`is`(key.id), where("handle").`is`(key.handle)),
-                                    Update.empty().set("active", false),
-                                    ChatUserHandle::class.java
-                            ))
                     .then()
 
     override fun add(u: User): Mono<Void> =
             cassandra
-                    .batchOps()
-                    .insert(ImmutableSet.of(
-                            ChatUserHandle(ChatUserHandleKey(
-                                    u.key.id,
-                                    u.key.handle
-                            ),
-                                    u.name,
-                                    u.imageUri,
-                                    u.timestamp
-                            )), InsertOptions.builder().withIfNotExists()
-                            .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                            .build())
-                    .execute()
+                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
+                            u.key.id,
+                            u.key.handle
+                    ),
+                            u.name,
+                            u.imageUri,
+                            u.timestamp)),
+                            InsertOptions.builder().withIfNotExists()
+                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                    .build()
+                    )
                     .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
                             false -> sink.error(DuplicateUserException)
                             else -> sink.complete()
                         }
                     }
-                    .then(
-                            cassandra.batchOps()
-                                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
-                                            u.key.id,
-                                            u.key.handle
-                                    ),
-                                            u.name,
-                                            u.imageUri,
-                                            u.timestamp)),
-                                            InsertOptions.builder().withIfNotExists()
-                                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                                    .build()
-                                    )
-                                    .execute()
-                                    .handle<Void> { write, sink ->
-                                        when (write.wasApplied()) {
-                                            false -> sink.error(DuplicateUserException)
-                                            else -> sink.complete()
-                                        }
-                                    }
-                    )
                     .then()
 }

@@ -33,7 +33,7 @@ class ChatMessageByTopic(key: ChatMessageByTopicKey,
 @PrimaryKeyClass
 data class ChatMessageByIdKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val msgId: UUID,
+        override val id: UUID,
         @Column("user_id")
         override val userId: UUID,
         @Column("topic_id")
@@ -45,7 +45,7 @@ data class ChatMessageByIdKey(
 @PrimaryKeyClass
 data class ChatMessageByUserKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-        override val msgId: UUID,
+        override val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val userId: UUID,
         @Column("topic_id")
@@ -57,7 +57,7 @@ data class ChatMessageByUserKey(
 @PrimaryKeyClass
 data class ChatMessageByTopicKey(
         @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-        override val msgId: UUID,
+        override val id: UUID,
         @Column("user_id")
         override val userId: UUID,
         @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)

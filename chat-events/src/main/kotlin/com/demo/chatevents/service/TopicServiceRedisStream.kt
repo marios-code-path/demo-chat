@@ -162,8 +162,8 @@ class TopicServiceRedisStream(
             * <li>3    Name-based UUID
             * <li>4    Randomly generated UUID
          */
-        val recordId = when (topicMessage.key.msgId.version()) {
-            1 -> RecordId.of(topicMessage.key.msgId.timestamp(), topicMessage.key.msgId.clockSequence().toLong())
+        val recordId = when (topicMessage.key.id.version()) {
+            1 -> RecordId.of(topicMessage.key.id.timestamp(), topicMessage.key.id.clockSequence().toLong())
             else -> RecordId.autoGenerate()
         }
 

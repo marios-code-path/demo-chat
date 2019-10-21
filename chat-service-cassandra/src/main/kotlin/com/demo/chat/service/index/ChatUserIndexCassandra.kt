@@ -1,11 +1,10 @@
-package com.demo.chat.service
+package com.demo.chat.service.index
 
-import com.demo.chat.domain.ChatUserHandle
-import com.demo.chat.domain.ChatUserHandleKey
-import com.demo.chat.domain.User
-import com.demo.chat.domain.UserKey
+import com.datastax.driver.core.policies.DefaultRetryPolicy
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.demo.chat.service.ChatUserIndexService
+import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -13,26 +12,33 @@ import org.springframework.data.cassandra.core.query.where
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
-import java.util.*
 
 class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
-                             val cassandra: ReactiveCassandraTemplate) : ChatIndexService<UserKey, Map<String, String>> {
+                             val cassandra: ReactiveCassandraTemplate) : ChatUserIndexService {
     override fun add(key: UserKey, criteria: Map<String, String>): Mono<Void> =
-            userHandleRepo
+            cassandra
                     .insert(ChatUserHandle(
                             ChatUserHandleKey(key.id, key.handle),
                             criteria["name"] ?: error(""),
-                            criteria["defaultImageUri"] ?: error(""),
-                            Instant.now())
+                            criteria["imageUri"] ?: error(""),
+                            Instant.now()),
+                            InsertOptions.builder().withIfNotExists()
+                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                    .build()
                     )
-                    .then()
+                    .handle<Void> { write, sink ->
+                        when (write.wasApplied()) {
+                            false -> sink.error(DuplicateUserException)
+                            else -> sink.complete()
+                        }
+                    }
 
-    override fun rem(key: UserKey): Mono<Void> = cassandra
-            .update(Query.query(where("user_id").`is`(key.id), where("handle").`is`(key.handle)),
+    override fun rem(key: UserKey): Mono<Void> =
+            cassandra.update(Query.query(where("user_id").`is`(key.id), where("handle").`is`(key.handle)),
                     Update.empty().set("active", false),
                     ChatUserHandle::class.java
             )
-            .then()
+                    .then()
 
     override fun findBy(query: Map<String, String>): Flux<UserKey> =
             userHandleRepo

@@ -27,8 +27,7 @@ interface Room : Topic<RoomKey> {
     }
 }
 
-interface RoomKey {
-    val id: UUID
+interface RoomKey : EventKey{
     val name: String
 
     companion object Factory {

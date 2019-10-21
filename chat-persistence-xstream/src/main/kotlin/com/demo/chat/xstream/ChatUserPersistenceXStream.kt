@@ -6,13 +6,17 @@ import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserPersistence
 import com.demo.chat.service.KeyService
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.toMono
 import java.time.Instant
 import java.util.*
+import java.util.Optional.of
+import java.util.Optional.ofNullable
 
 data class KeyConfiguration(
         val keyStreamKey: String,
@@ -23,6 +27,16 @@ class ChatUserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
                                  private val keyService: KeyService,
                                  private val userTemplate: ReactiveRedisTemplate<String, User>
 ) : ChatUserPersistence<User, UserKey> {
+    override fun get(key: UserKey): Mono<out User> = userTemplate
+            .opsForStream<String, String>()
+            .range(keyConfiguration.keyUserStreamKey, Range.just(key.id.mostSignificantBits.toString()))
+            .map {
+                User.create(key,
+                        ofNullable(it.value["name"]).orElse(""),
+                        ofNullable(it.value["imageUri"]).orElse(""))
+            }
+            .single()
+
     override fun key(handle: String): Mono<out UserKey> =
             keyService
                     .key(UserKey::class.java) {

@@ -16,13 +16,13 @@ import java.util.stream.Stream
 
 
 data class TestAlertMessageKey(
-        override val msgId: UUID,
+        override val id: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : AlertMessageKey
 
 data class TestTextMessageKey(
-        override val msgId: UUID,
+        override val id: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant

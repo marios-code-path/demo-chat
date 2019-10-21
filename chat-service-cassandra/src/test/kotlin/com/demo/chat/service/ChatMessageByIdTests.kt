@@ -34,7 +34,7 @@ class ChatMessageByIdTests {
     fun chatMessageAssertion(msg: ChatMessageById, someBody: String) {
         assertAll("message contents in tact",
                 { assertNotNull(msg) },
-                { assertNotNull(msg.key.msgId) },
+                { assertNotNull(msg.key.id) },
                 { assertNotNull(msg.key.userId) },
                 { assertNotNull(msg.key.topicId) },
                 { assertNotNull(msg.key.timestamp) },

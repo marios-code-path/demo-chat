@@ -1,13 +1,25 @@
 package com.demo.chat.service
 
+import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
- * Given Key [K], and Query[Q] we will add, remove and seek K's for a given Q
+ * Given Key [K], and Query[Q] we will add, remove and seek K's for a given [WQ]
  */
-interface ChatIndexService<K, Q> {
-    fun add(key: K, criteria: Q): Mono<Void>
+interface ChatIndexService<K : EventKey, Q, WQ> {
+    fun add(key: K, criteria: WQ): Mono<Void>
     fun rem(key: K): Mono<Void>
     fun findBy(query: Q): Flux<K>
 }
+
+// Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
+interface ChatUserIndexService : ChatIndexService<UserKey, Map<String, String>, Map<String, String>>
+
+interface ChatRoomIndexService : ChatIndexService<RoomKey, Map<String, String>, Map<String, String>> {
+    fun size(roomId: EventKey): Mono<Int>
+    fun addMember(uid: EventKey, roomId: EventKey): Mono<Void>
+    fun remMember(uid: EventKey, roomId: EventKey): Mono<Void>
+}
+
+interface ChatMessageIndexService : ChatIndexService<TextMessageKey, Map<String, String>, Map<String, String>>

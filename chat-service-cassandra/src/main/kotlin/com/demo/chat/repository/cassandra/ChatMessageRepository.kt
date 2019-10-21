@@ -23,40 +23,25 @@ interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandra
 }
 
 interface ChatMessageRepositoryCustom {
-    fun rem(key: TextMessageKey): Mono<Void>
+    fun rem(key: EventKey): Mono<Void>
     fun add(msg: TextMessage): Mono<Void>
 }
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
-    override fun rem(key: TextMessageKey): Mono<Void> =
+    override fun rem(key: EventKey): Mono<Void> =
             cassandra
-                    .batchOps()
-                    .update(Query.query(where("msg_id").`is`(key.msgId),where("user_id").`is`(key.userId)),
-                            Update.empty().set("visible", false),
-                            ChatMessageByUser::class.java
-                    )
-                    .update(Query.query(where("msg_id").`is`(key.msgId),where("topic_id").`is`(key.topicId)),
-                            Update.empty().set("visible", false),
-                            ChatMessageByTopic::class.java
-                    )
-                    .update(Query.query(where("msg_id").`is`(key.msgId)),
+                    .update(Query.query(where("msg_id").`is`(key.id)),
                             Update.empty().set("visible", false),
                             ChatMessageById::class.java
                     )
-                    .execute()
-                    .map {
-                        if (!it.wasApplied())
-                            throw ChatException("Cannot Disable Message")
-                    }
                     .then()
 
     override fun add(msg: TextMessage): Mono<Void> =
             cassandra
-                    .batchOps()
                     .insert(ChatMessageById(
                             ChatMessageByIdKey(
-                                    msg.key.msgId,
+                                    msg.key.id,
                                     msg.key.userId,
                                     msg.key.topicId,
                                     msg.key.timestamp
@@ -64,31 +49,6 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                             msg.value,
                             msg.visible
                     ))
-                    .insert(ChatMessageByUser(
-                            ChatMessageByUserKey(
-                                    msg.key.msgId,
-                                    msg.key.userId,
-                                    msg.key.topicId,
-                                    msg.key.timestamp
-                            ),
-                            msg.value,
-                            msg.visible
-
-                    ))
-                    .insert(ChatMessageByTopic(
-                            ChatMessageByTopicKey(
-                                    msg.key.msgId,
-                                    msg.key.userId,
-                                    msg.key.topicId,
-                                    msg.key.timestamp
-                            ),
-                            msg.value,
-                            msg.visible
-                    ))
-                    .execute()
-                    .map {
-                        if (!it.wasApplied())
-                            throw ChatException("Cannot Add Message")
-                    }
                     .then()
+
 }

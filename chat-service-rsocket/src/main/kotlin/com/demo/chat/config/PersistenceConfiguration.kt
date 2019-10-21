@@ -4,6 +4,9 @@ import com.demo.chat.ExcludeFromTests
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
+import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
+import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
+import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

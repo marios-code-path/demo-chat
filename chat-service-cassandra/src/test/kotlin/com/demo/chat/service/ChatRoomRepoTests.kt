@@ -85,19 +85,15 @@ class ChatRoomRepoTests {
         StepVerifier
                 .create(
                         Flux.just(
-                                ChatRoom(
-                                        ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
-                                        Collections.emptySet(),
-                                        true,
-                                        Instant.now()),
-                                ChatRoom(
-                                        ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
-                                        Collections.emptySet(),
-                                        true,
-                                        Instant.now())
-                        ).flatMap {
-                            repo.add(it)
-                        }
+                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
+                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6))
+                        )
+                                .map {
+                                    ChatRoom(it, Collections.emptySet(), true, Instant.now())
+                                }
+                                .flatMap {
+                                    repo.add(it)
+                                }
                                 .thenMany(repo.findAll())
                 )
                 .expectSubscription()
@@ -108,11 +104,9 @@ class ChatRoomRepoTests {
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = Flux.just(
-                Room.create(RoomKey.create(UUIDs.timeBased(), "XYZ"),
-                        Collections.emptySet()))
+        val saveFlux = Flux.just(RoomKey.create(UUIDs.timeBased(), "XYZ"))
                 .flatMap {
-                    repo.add(it)
+                    repo.add(Room.create(it, Collections.emptySet()))
                 }
 
         val findFlux = byNameRepo

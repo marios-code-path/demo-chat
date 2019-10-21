@@ -1,13 +1,8 @@
 package com.demo.chat.domain
 
-import com.demo.chat.domain.serializers.TextMessageDeserializer
 import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
-import com.fasterxml.jackson.databind.ser.std.UUIDSerializer
 import java.time.Instant
 import java.util.*
 
@@ -15,13 +10,14 @@ import java.util.*
 /* TODO: create Factory with visible flag too */
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes(JsonSubTypes.Type(TextMessage::class),
-              JsonSubTypes.Type(InfoAlert::class))
+        JsonSubTypes.Type(InfoAlert::class))
 interface Message<out K, out V> {
     val key: K
     val value: V
     val visible: Boolean
+
     companion object Factory {
-        fun <K, V>create(key: K, value: V, visible: Boolean): Message<K, V> = object : Message<K, V> {
+        fun <K, V> create(key: K, value: V, visible: Boolean): Message<K, V> = object : Message<K, V> {
             override val key: K
                 get() = key
             override val value: V
@@ -32,22 +28,22 @@ interface Message<out K, out V> {
     }
 }
 
-interface MessageKey{
-    val msgId: UUID
+interface MessageKey : EventKey {
     val timestamp: Instant
 }
 
 interface TopicMessageKey : MessageKey {
-    override val msgId: UUID
+    override val id: UUID
     val topicId: UUID
     override val timestamp: Instant
 }
 
 interface TextMessageKey : TopicMessageKey {
     val userId: UUID
+
     companion object Factory {
         fun create(messageId: UUID, topic: UUID, member: UUID): TextMessageKey = object : TextMessageKey {
-            override val msgId: UUID
+            override val id: UUID
                 get() = messageId
             override val topicId: UUID
                 get() = topic
@@ -63,7 +59,7 @@ interface AlertMessageKey : TopicMessageKey {
     //  private val ttl: Int
     companion object Factory {
         fun create(messageId: UUID, topic: UUID): AlertMessageKey = object : AlertMessageKey {
-            override val msgId: UUID
+            override val id: UUID
                 get() = messageId
             override val topicId: UUID
                 get() = topic
@@ -85,6 +81,7 @@ interface TextMessage : Message<TextMessageKey, String> {
             override val visible: Boolean
                 get() = true
         }
+
         fun create(key: TextMessageKey, text: String, visible: Boolean): TextMessage = object : TextMessage {
             override val key: TextMessageKey
                 get() = key
@@ -108,7 +105,8 @@ interface InfoAlert : Message<AlertMessageKey, RoomMetaData> {
             override val visible: Boolean
                 get() = true
         }
-        fun create(key :AlertMessageKey, meta: RoomMetaData, visible: Boolean): InfoAlert = object : InfoAlert {
+
+        fun create(key: AlertMessageKey, meta: RoomMetaData, visible: Boolean): InfoAlert = object : InfoAlert {
             override val key: AlertMessageKey
                 get() = key
             override val value: RoomMetaData
@@ -130,7 +128,8 @@ interface LeaveAlert : Message<AlertMessageKey, UUID> {
             override val visible: Boolean
                 get() = false
         }
-        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): LeaveAlert = object : LeaveAlert {
+
+        fun create(key: AlertMessageKey, member: UUID, visible: Boolean): LeaveAlert = object : LeaveAlert {
             override val key: AlertMessageKey
                 get() = key
             override val value: UUID
@@ -152,7 +151,8 @@ interface JoinAlert : Message<AlertMessageKey, UUID> {
             override val visible: Boolean
                 get() = false
         }
-        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): JoinAlert = object : JoinAlert {
+
+        fun create(key: AlertMessageKey, member: UUID, visible: Boolean): JoinAlert = object : JoinAlert {
             override val key: AlertMessageKey
                 get() = key
             override val value: UUID
@@ -174,7 +174,8 @@ interface PauseAlert : Message<AlertMessageKey, UUID> {
             override val visible: Boolean
                 get() = false
         }
-        fun create(key :AlertMessageKey, member: UUID, visible: Boolean): PauseAlert = object : PauseAlert {
+
+        fun create(key: AlertMessageKey, member: UUID, visible: Boolean): PauseAlert = object : PauseAlert {
             override val key: AlertMessageKey
                 get() = key
             override val value: UUID
@@ -184,5 +185,3 @@ interface PauseAlert : Message<AlertMessageKey, UUID> {
         }
     }
 }
-
-

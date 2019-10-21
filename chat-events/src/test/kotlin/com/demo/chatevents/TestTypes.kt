@@ -49,14 +49,14 @@ data class TestChatRoomKey(
 
 
 data class TestTextMessageKey(
-        override val msgId: UUID,
+        override val id: UUID,
         override val userId: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TextMessageKey
 
 data class TestAlertMessageKey(
-        override val msgId: UUID,
+        override val id: UUID,
         override val topicId: UUID,
         override val timestamp: Instant
 ) : TopicMessageKey

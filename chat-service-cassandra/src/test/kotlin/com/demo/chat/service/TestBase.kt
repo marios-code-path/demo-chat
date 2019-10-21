@@ -9,10 +9,12 @@ import java.util.*
 object TestBase
 
 object TestKeyService : KeyService {
-    override fun id(): Mono<EventKey> = Mono.just(EventKey.create(UUID.randomUUID()))
+    override fun <T> id(kind: Class<T>): Mono<EventKey> = Mono.just(EventKey.create(UUID.randomUUID()))
 
     override fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T> =
-            id().map { create(it) }
+            id(kind).map { create(it) }
+
+    override fun rem(key: EventKey): Mono<Void> = Mono.never()
 }
 
 fun <T> anyObject(): T {

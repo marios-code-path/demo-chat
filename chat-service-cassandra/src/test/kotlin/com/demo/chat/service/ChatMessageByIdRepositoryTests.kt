@@ -239,7 +239,7 @@ class ChatMessageByIdRepositoryTests {
 
     fun chatMessageAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.msgId) },
+            { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
@@ -249,7 +249,7 @@ class ChatMessageByIdRepositoryTests {
 
     fun chatMessageUserAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.msgId) },
+            { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
@@ -259,7 +259,7 @@ class ChatMessageByIdRepositoryTests {
 
     fun chatMessageRoomAssertion(msg: TextMessage) = assertAll("message contents in tact",
             { assertNotNull(msg) },
-            { assertNotNull(msg.key.msgId) },
+            { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },

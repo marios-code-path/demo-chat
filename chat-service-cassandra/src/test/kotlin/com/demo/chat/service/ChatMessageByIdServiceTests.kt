@@ -3,6 +3,7 @@ package com.demo.chat.service
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals
