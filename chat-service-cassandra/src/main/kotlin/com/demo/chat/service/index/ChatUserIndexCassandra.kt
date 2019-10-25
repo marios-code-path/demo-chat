@@ -16,8 +16,7 @@ import java.time.Instant
 class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                              val cassandra: ReactiveCassandraTemplate) : ChatUserIndexService {
     override fun add(key: UserKey, criteria: Map<String, String>): Mono<Void> =
-            cassandra
-                    .insert(ChatUserHandle(
+            cassandra.insert(ChatUserHandle(
                             ChatUserHandleKey(key.id, key.handle),
                             criteria["name"] ?: error(""),
                             criteria["imageUri"] ?: error(""),
@@ -40,11 +39,10 @@ class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
             )
                     .then()
 
-    override fun findBy(query: Map<String, String>): Flux<UserKey> =
-            userHandleRepo
-                    .findByKeyHandle(query["handle"] ?: error(""))
+    override fun findBy(query: Map<String, String>): Flux<out UserKey> =
+            userHandleRepo.findByKeyHandle(query["handle"] ?: error(""))
                     .map {
-                        UserKey.create(it.key.id, it.key.handle)
+                        it.key
                     }
                     .flux()
 }

@@ -1,13 +1,12 @@
-package com.demo.chat.service
+package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.ChatMessageById
-import com.demo.chat.domain.ChatMessageByIdKey
-import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.test.TestClusterConfiguration
+import com.demo.chat.test.TestConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -37,7 +36,9 @@ import kotlin.streams.asSequence
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
-class ChatMessageByIdRepositoryTests {
+class TextMessageRepositoryTests {
+
+    private val MSGTEXT = "SUP TEST"
 
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -56,12 +57,14 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = Flux.just(TextMessage.create(TextMessageKey.create(msgId, roomId, userId), "Welcome", true))
-                .flatMap {
-                    repo.add(it)
+        val saveMsg = Flux
+                .just(ChatMessageByIdKey(msgId, roomId, userId, Instant.now()))
+                .map { key ->
+                    ChatMessageById(key, MSGTEXT, true)
                 }
+                .flatMap(repo::add)
 
-        val findMsg = repo.findByKeyMsgId(msgId)
+        val findMsg = repo.findByKeyId(msgId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -79,9 +82,12 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo.add(TextMessage
-                .create(TextMessageKey.create(msgId, roomId, userId),
-                        "Welcome", true))
+        val saveMsg = Flux
+                .just(ChatMessageByTopicKey(msgId, roomId, userId, Instant.now()))
+                .map { key ->
+                    ChatMessageByTopic(key, MSGTEXT, true)
+                }
+                .flatMap(repo::add)
 
         val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
@@ -101,9 +107,12 @@ class ChatMessageByIdRepositoryTests {
         val roomId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
-        val saveMsg = repo.add(
-                TextMessage.create(TextMessageKey.create(msgId, roomId, userId),
-                        "Welcome", true))
+        val saveMsg = Flux
+                .just(ChatMessageByUserKey(msgId, roomId, userId, Instant.now()))
+                .map { key ->
+                    ChatMessageByUser(key, MSGTEXT, true)
+                }
+                .flatMap(repo::add)
 
         val findMsg = byUserRepo.findByKeyUserId(userId)
 
@@ -118,7 +127,7 @@ class ChatMessageByIdRepositoryTests {
     }
 
     @Test
-    fun `should save many messages and find by roomId`() {
+    fun `should save many messages into random rooms and find by specific roomId`() {
         val roomIds = listOf<UUID>(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
         val getUser = Supplier { UUIDs.timeBased() }
         val getMsg = Supplier { UUIDs.timeBased() }
@@ -127,7 +136,7 @@ class ChatMessageByIdRepositoryTests {
                 .generate<ChatMessageById> {
                     it.next(ChatMessageById(
                             ChatMessageByIdKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
-                            "Random Message", true))
+                            MSGTEXT, true))
                 }
                 .take(10)
                 .cache()
@@ -139,7 +148,8 @@ class ChatMessageByIdRepositoryTests {
                 .asSequence()
                 .count { it.key.topicId == roomSelection }
 
-        val saveMessageFlux = Flux.from(messages)
+        val saveMessageFlux = Flux
+                .from(messages)
                 .flatMap {
                     repo.add(it)
                 }
@@ -178,7 +188,7 @@ class ChatMessageByIdRepositoryTests {
                                             roomId,
                                             Instant.ofEpochMilli(VirtualTimeScheduler.get().now(TimeUnit.MILLISECONDS))
                                     ),
-                                            "Hello",
+                                            MSGTEXT,
                                             true)
                             )
                 }
@@ -196,7 +206,7 @@ class ChatMessageByIdRepositoryTests {
                                             roomId,
                                             Instant.ofEpochMilli(VirtualTimeScheduler.get().now(TimeUnit.MILLISECONDS))
                                     ),
-                                            "Hello",
+                                            MSGTEXT,
                                             true)
                             )
 
@@ -237,33 +247,33 @@ class ChatMessageByIdRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: TextMessage) = assertAll("message contents in tact",
+    fun chatMessageAssertion(msg: TextMessage) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
-            { assertEquals(msg.value, "Welcome") },
+            { assertEquals(msg.value, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageUserAssertion(msg: TextMessage) = assertAll("message contents in tact",
+    fun chatMessageUserAssertion(msg: TextMessage) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
-            { assertEquals(msg.value, "Welcome") },
+            { assertEquals(msg.value, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageRoomAssertion(msg: TextMessage) = assertAll("message contents in tact",
+    fun chatMessageRoomAssertion(msg: TextMessage) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
             { assertNotNull(msg.value) },
-            { assertEquals(msg.value, "Welcome") },
+            { assertEquals(msg.value, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 }

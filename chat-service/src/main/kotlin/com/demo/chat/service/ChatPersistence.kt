@@ -6,8 +6,8 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 interface ChatPersistence<OT, KT : EventKey>{
-    fun key(): Mono<EventKey>
-    fun add(data: OT): Mono<Void>
+    fun key(): Mono<out EventKey>
+    fun add(o: OT): Mono<Void>
     fun rem(key: EventKey): Mono<Void>
     fun get(key: EventKey): Mono<out OT>
     fun all(): Flux<out OT>

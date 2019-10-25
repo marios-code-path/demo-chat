@@ -1,16 +1,17 @@
 package com.demo.chat.config
 
 import com.demo.chat.ExcludeFromTests
-import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
 import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
+import com.demo.chat.service.persistence.KeyPersistenceCassandra
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
 @ConfigurationProperties("sample")
 data class SampleProps(val name:String)
@@ -32,23 +33,23 @@ class PersistenceConfiguration {
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
-    fun keyService(): KeyService = KeyServiceCassandra
+    fun keyService(template: ReactiveCassandraTemplate): KeyService = KeyPersistenceCassandra(template)
 
     @Bean
     fun userPersistence(keyService: KeyService,
                         userRepo: ChatUserRepository,
-                        userHandleRepo: ChatUserHandleRepository): ChatUserPersistence<out User, UserKey> =
-            ChatUserPersistenceCassandra(keyService, userRepo, userHandleRepo)
+                        userHandleRepo: ChatUserHandleRepository): ChatUserPersistence =
+            ChatUserPersistenceCassandra(keyService, userRepo)
 
     @Bean
     fun roomPersistence(keyService: KeyService,
                         roomRepo: ChatRoomRepository,
-                        roomNameRepo: ChatRoomNameRepository): ChatRoomPersistence<out Room, RoomKey> =
+                        roomNameRepo: ChatRoomNameRepository): ChatRoomPersistence =
             ChatRoomPersistenceCassandra(keyService, roomRepo, roomNameRepo)
 
     @Bean
     fun messagePersistence(keyService: KeyService,
                            messageRepo: ChatMessageRepository,
-                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence<out TextMessage, TextMessageKey> =
-            TextMessagePersistenceCassandra(keyService, messageRepo, messageByTopicRepo)
+                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence =
+            TextMessagePersistenceCassandra(keyService, messageRepo)
 }

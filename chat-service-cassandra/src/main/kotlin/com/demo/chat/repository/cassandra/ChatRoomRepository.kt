@@ -18,7 +18,8 @@ interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatRoomName, Str
 
 interface ChatRoomRepository :
         ReactiveCassandraRepository<ChatRoom, UUID>,
-        ChatRoomRepositoryCustom {
+        ChatRoomRepositoryCustom
+{
     fun findByKeyId(id: UUID): Mono<ChatRoom>
 }
 
@@ -38,8 +39,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                             Update.empty().set("active", false),
                             ChatRoom::class.java
                     )
-                    .then(
-                    )
+                    .then()
 
     override fun add(room: Room): Mono<Void> = cassandra
             .insert(ChatRoom(

@@ -27,7 +27,7 @@ class RSocketUserTests : RSocketTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
+    private lateinit var userPersistence: ChatUserPersistence
 
     private val defaultImgUri = "http://"
     private val randomHandle = randomAlphaNumeric(4)
@@ -37,13 +37,13 @@ class RSocketUserTests : RSocketTestBase() {
 
     @Test
     fun `should call user create`() {
-        BDDMockito.given(userPersistence.key(anyObject()))
+        BDDMockito.given(userPersistence.key())
                 .willReturn(Mono.just(UserKey.create(UUID.randomUUID(), randomHandle)))
 
-        BDDMockito.given(userPersistence.add(anyObject(), anyObject(), anyObject()))
+        BDDMockito.given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(userPersistence.getById(anyObject()))
+        BDDMockito.given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
@@ -77,35 +77,10 @@ class RSocketUserTests : RSocketTestBase() {
                 .verifyComplete()
     }
 
-
-    @Test
-    fun `should get a user by handle`() {
-        BDDMockito.given(userPersistence.getByHandle(anyObject()))
-                .willReturn(Mono.just(randomUser))
-
-        StepVerifier
-                .create(
-                        requestor
-                                .route("user-by-handle")
-                                .data(UserRequest(randomHandle))
-                                .retrieveMono(TestChatUser::class.java)
-                )
-                .expectSubscription()
-                .assertNext {
-                    Assertions
-                            .assertThat(it.key)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("id", randomUserId)
-                }
-                .verifyComplete()
-    }
-
     @Test
     fun `should list users`() {
-        BDDMockito.given(userPersistence.findByIds(anyObject()))
-                .willReturn(Flux.just(randomUser))
+        BDDMockito.given(userPersistence.get(anyObject()))
+                .willReturn(Mono.just(randomUser))
 
         StepVerifier.create(requestor
                 .route("user-by-ids")

@@ -1,9 +1,6 @@
 package com.demo.chat
 
-import com.demo.chat.controllers.MessageController
-import com.demo.chat.domain.*
 import com.demo.chat.service.*
-import com.fasterxml.jackson.core.io.JsonStringEncoder
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -12,26 +9,23 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.core.codec.*
-import org.springframework.http.codec.json.Jackson2JsonDecoder
-import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.messaging.rsocket.MessageHandlerAcceptor
 import org.springframework.messaging.rsocket.RSocketMessageHandler
 import org.springframework.messaging.rsocket.RSocketStrategies
 
 @Configuration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
-class rsockettestconfig {
+class RSocketTestConfig {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
-    private lateinit var roomPersistence: ChatRoomPersistence<out Room, RoomKey>
+    private lateinit var roomPersistence: ChatRoomPersistence
 
     @MockBean
-    private lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
+    private lateinit var userPersistence: ChatUserPersistence
 
     @MockBean
-    private lateinit var topicMessagePersistence: TextMessagePersistence<out TextMessage, TextMessageKey>
+    private lateinit var topicMessagePersistence: TextMessagePersistence
 
     @MockBean
     private lateinit var topicService: ChatTopicService

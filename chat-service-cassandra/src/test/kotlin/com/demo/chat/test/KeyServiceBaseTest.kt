@@ -1,18 +1,37 @@
-package com.demo.chat.service
+package com.demo.chat.test
 
 import com.demo.chat.domain.UserKey
+import com.demo.chat.service.KeyService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
-class KeyServiceTests {
+open class KeyServiceBaseTest {
 
-    private val svc: KeyService = TestKeyService
+    lateinit var svc: KeyService
+
     private val handle = "darkbit"
 
     @Test
-    fun `should create an ID`() {
+    fun `created key should Exist`() {
+        val keyStream = svc
+                .id(UserKey::class.java)
+                .flatMap(svc::exists)
+
+        StepVerifier
+                .create(keyStream)
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull()
+                            .isTrue()
+                }
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should create an key`() {
         val key = svc.id(UserKey::class.java)
 
         StepVerifier

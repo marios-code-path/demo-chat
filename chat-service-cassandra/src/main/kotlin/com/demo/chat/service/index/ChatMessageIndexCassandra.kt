@@ -64,7 +64,7 @@ class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
                     }
                     .then()
 
-    override fun findBy(query: Map<String, String>): Flux<TextMessageKey> {
+    override fun findBy(query: Map<String, String>): Flux<out TextMessageKey> {
         val searchFor = query.keys.first()
         return when (searchFor) {
             "topicId" -> findByTopic(UUID.fromString(query[searchFor]))

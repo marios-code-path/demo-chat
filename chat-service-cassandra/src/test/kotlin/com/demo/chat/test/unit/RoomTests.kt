@@ -1,4 +1,4 @@
-package com.demo.chat.service
+package com.demo.chat.test.unit
 
 import com.demo.chat.domain.ChatRoom
 import com.demo.chat.domain.ChatRoomKey
@@ -14,7 +14,7 @@ import java.util.*
 import kotlin.collections.HashSet
 
 @ExtendWith(SpringExtension::class)
-class ChatRoomTests {
+class RoomTests {
 
     @Test
     fun `should hold members in room`() {

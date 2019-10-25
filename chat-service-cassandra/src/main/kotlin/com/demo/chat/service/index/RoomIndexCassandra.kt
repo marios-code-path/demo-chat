@@ -13,10 +13,9 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 
 class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
-                         private val nameRepo: ChatRoomNameRepository,
-                         private val cassandra: ReactiveCassandraTemplate) : ChatRoomIndexService {
-    override fun add(key: RoomKey, criteria: Map<String, String>): Mono<Void> = cassandra
-            .insert(
+                         private val nameRepo: ChatRoomNameRepository) : ChatRoomIndexService {
+    override fun add(key: RoomKey, criteria: Map<String, String>): Mono<Void> =
+            nameRepo.save(
                     ChatRoomName(
                             ChatRoomNameKey(
                                     key.id,
@@ -28,50 +27,42 @@ class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
             )
             .then()
 
-    override fun rem(key: RoomKey): Mono<Void> = cassandra
-            .update(Query.query(where("room_id").`is`(key.id), where("name").`is`(key.name)),
-                    Update.empty().set("active", false),
-                    ChatRoomName::class.java
-            )
-            .then(
-            )
+    override fun rem(key: RoomKey): Mono<Void> = nameRepo.insert(ChatRoomName(
+            ChatRoomNameKey(key.id, key.name), setOf(), false, Instant.now()
+    )).then()
 
-    override fun findBy(query: Map<String, String>): Flux<RoomKey> =
-            nameRepo
-                    .findByKeyName(query["name"] ?: error(""))
-                    .map {
-                        RoomKey.create(it.key.id, it.key.name)
-                    }
-                    .flux()
 
-    override fun size(roomId: EventKey): Mono<Int> =
-            roomRepo
-                    .findByKeyId(roomId.id)
-                    .switchIfEmpty(Mono.error(RoomNotFoundException))
-                    .handle { it, sink ->
-                        when (it) {
-                            null -> sink.error(RoomNotFoundException)
-                            else -> {
-                                var size = when (it.members) {
-                                    null -> 0
-                                    else -> it.members.size
-                                }
-                                sink.next(size)
-                            }
+    override fun findBy(query: Map<String, String>): Flux<out RoomKey> = nameRepo
+            .findByKeyName(query["name"] ?: error("Name not valid"))
+            .map {
+                it.key
+            }
+            .flux()
+
+    override fun size(roomId: EventKey): Mono<Int> = roomRepo
+            .findByKeyId(roomId.id)
+            .switchIfEmpty(Mono.error(RoomNotFoundException))
+            .handle { it, sink ->
+                when (it) {
+                    null -> sink.error(RoomNotFoundException)
+                    else -> {
+                        var size = when (it.members) {
+                            null -> 0
+                            else -> it.members.size
                         }
+                        sink.next(size)
                     }
+                }
+            }
 
-    override fun addMember(uid: EventKey, roomId: EventKey): Mono<Void> =
-            verifyRoom(roomId)
-                    .then(roomRepo.join(uid.id, roomId.id))
+    override fun addMember(uid: EventKey, roomId: EventKey): Mono<Void> = verifyRoom(roomId)
+            .then(roomRepo.join(uid.id, roomId.id))
 
-    override fun remMember(uid: EventKey, roomId: EventKey): Mono<Void> =
-            verifyRoom(roomId)
-                    .then(roomRepo.leave(uid.id, roomId.id))
+    override fun remMember(uid: EventKey, roomId: EventKey): Mono<Void> = verifyRoom(roomId)
+            .then(roomRepo.leave(uid.id, roomId.id))
 
-
-    private fun verifyRoom(roomId: EventKey): Mono<Void> =
-            roomRepo.findByKeyId(roomId.id)
-                    .switchIfEmpty(Mono.error(RoomNotFoundException))
-                    .then()
+    private fun verifyRoom(roomId: EventKey): Mono<Void> = roomRepo
+            .findByKeyId(roomId.id)
+            .switchIfEmpty(Mono.error(RoomNotFoundException))
+            .then()
 }

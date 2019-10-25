@@ -11,5 +11,6 @@ import reactor.core.publisher.Mono
 interface KeyService {
     fun <T> id(kind: Class<T>): Mono<EventKey>
     fun rem(key: EventKey): Mono<Void>
-    fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T>
+    fun exists(key: EventKey): Mono<Boolean>
+    fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<out T>
 }

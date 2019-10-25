@@ -1,4 +1,4 @@
-package com.demo.chat.service
+package com.demo.chat.test
 
 import com.demo.chat.config.ClusterConfigurationCassandra
 import com.demo.chat.config.ConfigurationPropertiesCassandra
@@ -9,7 +9,6 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 @Configuration
 @ComponentScan("com.demo.chat")

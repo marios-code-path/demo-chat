@@ -1,9 +1,12 @@
-package com.demo.chat.service
+package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.service.KeyService
 import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
+import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.anyObject
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -16,7 +19,7 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class ChatUserPersistenceTests {
+class UserPersistenceTests {
 
     lateinit var userSvc: ChatUserPersistenceCassandra
 
@@ -38,7 +41,6 @@ class ChatUserPersistenceTests {
                 .thenReturn(Mono.just(newUser))
 
         userSvc = ChatUserPersistenceCassandra(keyService, userRepo)
-
     }
 
 }

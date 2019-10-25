@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 interface ChatIndexService<K : EventKey, Q, WQ> {
     fun add(key: K, criteria: WQ): Mono<Void>
     fun rem(key: K): Mono<Void>
-    fun findBy(query: Q): Flux<K>
+    fun findBy(query: Q): Flux<out K>
 }
 
 // Split out specific definitions for visibility elsewhere (where's DDD's idea here? )

@@ -13,13 +13,13 @@ open class TextMessagePersistenceCassandra(private val keyService: KeyService,
                                            private val messageRepo: ChatMessageRepository)
     : TextMessagePersistence {
 
-    override fun key(): Mono<EventKey> =
+    override fun key(): Mono<out EventKey> =
             keyService.id(TextMessageKey::class.java)
 
     override fun rem(key: EventKey): Mono<Void> = messageRepo.rem(key)
 
     override fun get(key: EventKey): Mono<out TextMessage> =
-            messageRepo.findByKeyMsgId(key.id)
+            messageRepo.findByKeyId(key.id)
 
     override fun all(): Flux<out TextMessage> = messageRepo.findAll()
 

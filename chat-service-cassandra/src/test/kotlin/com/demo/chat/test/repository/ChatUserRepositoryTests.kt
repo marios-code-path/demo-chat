@@ -1,4 +1,4 @@
-package com.demo.chat.service
+package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.ChatUser
@@ -6,6 +6,7 @@ import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.test.TestConfiguration
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -45,9 +46,13 @@ class ChatUserRepositoryTests {
     val defaultImageUri = "http://localhost:7070/s3"
 
     @Test
-    fun shouldFindDarkbit() {
-        val defaultImageUri = "http://localhost:7070/s3"
+    fun shouldContextLoad() {
+        assertAll("Reactive Template Exists",
+                { Assertions.assertNotNull(template) })
+    }
 
+    @Test
+    fun shouldFindDarkbit() {
         val users = Flux.just(
                 ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
                 ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()))
@@ -140,12 +145,6 @@ class ChatUserRepositoryTests {
                     )
                 }
                 .verifyComplete()
-    }
-
-    @Test
-    fun shouldContextLoad() {
-        assertAll("Reactive Template Exists",
-                { Assertions.assertNotNull(template) })
     }
 
     @Test

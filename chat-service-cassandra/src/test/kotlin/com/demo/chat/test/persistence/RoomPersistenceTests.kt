@@ -1,9 +1,14 @@
-package com.demo.chat.service
+package com.demo.chat.test.persistence
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
+import com.demo.chat.service.KeyService
 import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
+import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -17,7 +22,9 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class ChatRoomPersistenceTests {
+class RoomPersistenceTests {
+
+    val ROOMNAME = "test-room"
 
     lateinit var roomSvc: ChatRoomPersistenceCassandra
 
@@ -35,12 +42,10 @@ class ChatRoomPersistenceTests {
 
     @BeforeEach
     fun setUp() {
-        val newRoom = ChatRoom(ChatRoomKey(rid, "test-room"), emptySet(), true, Instant.now())
-        val roomNameRoom = ChatRoomName(ChatRoomNameKey(rid, "test-room"), emptySet(), true, Instant.now())
+        val newRoom = ChatRoom(ChatRoomKey(rid, ROOMNAME), emptySet(), true, Instant.now())
+        val roomNameRoom = ChatRoomName(ChatRoomNameKey(rid, ROOMNAME), emptySet(), true, Instant.now())
         val roomTwo = ChatRoom(ChatRoomKey(UUID.randomUUID(), randomAlphaNumeric(6)), emptySet(), true, Instant.now())
 
-        BDDMockito.given(roomByNameRepo.findByKeyName(anyObject()))
-                .willReturn(Mono.just(roomNameRoom))
 
         BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
@@ -50,6 +55,7 @@ class ChatRoomPersistenceTests {
 
         BDDMockito.given(roomRepo.findAll())
                 .willReturn(Flux.just(newRoom, roomTwo))
+
         BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(newRoom))
 
@@ -67,20 +73,18 @@ class ChatRoomPersistenceTests {
 
     @Test
     fun `should create some rooms then get a list`() {
+        val names = setOf(randomAlphaNumeric(5), randomAlphaNumeric(5))
+
+        val roomStore = Flux
+                .fromStream(names.stream())
+                .map { name ->
+                    Room.create(RoomKey.create(UUIDs.timeBased(), name), setOf())
+                }
+                .flatMap(roomSvc::add)
+
         StepVerifier
                 .create(
-                        Flux.just(randomAlphaNumeric(5), randomAlphaNumeric(5))
-                                .flatMap { name ->
-                                    roomSvc.key()
-                                            .flatMap { key ->
-                                                roomSvc.add(Room.create(
-                                                        RoomKey.create(key.id, name),
-                                                        setOf()
-                                                )
-                                                )
-                                            }
-                                }
-                                .thenMany(roomSvc.all())
+                        Flux.from(roomStore).thenMany(roomSvc.all())
                 )
                 .expectSubscription()
                 .assertNext(this::roomAssertions)
@@ -89,7 +93,7 @@ class ChatRoomPersistenceTests {
     }
 
     fun roomAssertions(room: Room) {
-        assertAll("room contents in tact",
+        assertAll("room state test",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.id) },
                 { Assertions.assertNotNull(room.key.name) },

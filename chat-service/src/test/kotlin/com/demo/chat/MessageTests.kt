@@ -104,7 +104,7 @@ class MessageTests {
                     when (msg) {
                         is TextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                                 .isNotNull
-                                .hasFieldOrProperty("msgId")
+                                .hasFieldOrProperty("id")
                         is JoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                                 .isNotNull
                                 .hasFieldOrProperty("topicId")
@@ -115,7 +115,7 @@ class MessageTests {
                                     .hasFieldOrProperty("value")
                             Assertions.assertThat(msg).`as`("is a message key too")
                                     .isNotNull
-                                    .hasFieldOrProperty("msgId")
+                                    .hasFieldOrProperty("id")
                         }
                     }
                 }
@@ -134,7 +134,7 @@ class MessageTests {
             when (msg) {
                 is TextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
                         .isNotNull
-                        .hasFieldOrProperty("msgId")
+                        .hasFieldOrProperty("id")
                 is JoinAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
                         .isNotNull
                         .hasFieldOrProperty("topicId")

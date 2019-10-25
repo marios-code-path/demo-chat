@@ -26,7 +26,7 @@ interface ChatUserHandleRepository
 }
 
 interface ChatUserRepositoryCustom {
-    fun add(user: User): Mono<Void>
+    fun add(u: User): Mono<Void>
     fun rem(key: EventKey): Mono<Void>
 }
 

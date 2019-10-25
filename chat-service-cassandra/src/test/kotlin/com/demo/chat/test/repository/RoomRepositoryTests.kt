@@ -1,4 +1,4 @@
-package com.demo.chat.service
+package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.ChatRoom
@@ -7,6 +7,8 @@ import com.demo.chat.domain.Room
 import com.demo.chat.domain.RoomKey
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
+import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.randomAlphaNumeric
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
@@ -30,7 +32,9 @@ import java.util.*
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-room.cql")
-class ChatRoomRepoTests {
+class RoomRepositoryTests {
+
+    private val ROOMNAME = "XYZ"
 
     @Autowired
     lateinit var repo: ChatRoomRepository
@@ -41,14 +45,11 @@ class ChatRoomRepoTests {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
-        val room = Room.create(RoomKey.create(
-                roomId, "XYZ"
-        ), emptySet())
+        val room = Room.create(RoomKey.create(roomId, ROOMNAME), emptySet())
 
         val saveFlux = repo.add(room)
 
-        val deactivateMono =
-                repo.rem(RoomKey.create(roomId, "XYZ"))
+        val deleteMono = repo.rem(RoomKey.create(roomId, ROOMNAME))
 
         val findActiveRooms =
                 repo.findAll()
@@ -57,7 +58,7 @@ class ChatRoomRepoTests {
                         }
 
         val composed = Flux.from(saveFlux)
-                .then(deactivateMono)
+                .then(deleteMono)
                 .thenMany(findActiveRooms)
 
         StepVerifier

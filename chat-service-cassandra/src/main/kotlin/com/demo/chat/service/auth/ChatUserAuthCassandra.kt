@@ -1,9 +1,8 @@
-package com.demo.chat.service
+package com.demo.chat.service.auth
 
 import com.demo.chat.domain.UserKey
-import com.demo.chat.domain.UserNotFoundException
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
-import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.service.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
