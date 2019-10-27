@@ -14,20 +14,60 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 
-interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, UUID>,
+interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, ChatUserKey>,
         ChatUserRepositoryCustom {
     fun findByKeyId(uuid: UUID): Mono<ChatUser>
     fun findByKeyIdIn(uuids: Flux<UUID>): Flux<ChatUser>
 }
 
 interface ChatUserHandleRepository
-    : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey> {
+    : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey>,
+        ChatUserHandleRepositoryCustom {
     fun findByKeyHandle(handle: String): Mono<ChatUserHandle>
 }
 
 interface ChatUserRepositoryCustom {
     fun add(u: User): Mono<Void>
     fun rem(key: EventKey): Mono<Void>
+}
+
+interface ChatUserHandleRepositoryCustom {
+    fun add(u: User): Mono<Void>
+    fun rem(key: EventKey): Mono<Void>
+}
+
+class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
+    : ChatUserHandleRepositoryCustom {
+    override fun rem(key: EventKey): Mono<Void> =
+            cassandra
+                    .update(Query.query(where("user_id").`is`(key.id)),
+                            Update.empty().set("active", false),
+                            ChatUserHandle::class.java
+                    )
+                    .then()
+
+    override fun add(u: User): Mono<Void> =
+            cassandra
+                    .insert(
+                            ChatUserHandle(
+                                    ChatUserHandleKey(
+                                            u.key.id,
+                                            u.key.handle
+                                    ),
+                                    u.name,
+                                    u.imageUri,
+                                    u.timestamp),
+                            InsertOptions.builder().withIfNotExists()
+                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                                    .build()
+                    )
+                    .handle<Void> { write, sink ->
+                        when (write.wasApplied()) {
+                            false -> sink.error(DuplicateUserException)
+                            else -> sink.complete()
+                        }
+                    }
+                    .then()
 }
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
@@ -42,13 +82,15 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
 
     override fun add(u: User): Mono<Void> =
             cassandra
-                    .insert(ImmutableSet.of(ChatUser(ChatUserKey(
-                            u.key.id,
-                            u.key.handle
-                    ),
-                            u.name,
-                            u.imageUri,
-                            u.timestamp)),
+                    .insert(
+                            ChatUser(
+                                    ChatUserKey(
+                                            u.key.id,
+                                            u.key.handle
+                                    ),
+                                    u.name,
+                                    u.imageUri,
+                                    u.timestamp),
                             InsertOptions.builder().withIfNotExists()
                                     .retryPolicy(DefaultRetryPolicy.INSTANCE)
                                     .build()

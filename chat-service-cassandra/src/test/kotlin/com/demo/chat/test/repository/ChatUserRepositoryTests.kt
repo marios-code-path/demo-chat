@@ -1,9 +1,7 @@
 package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.ChatUser
-import com.demo.chat.domain.ChatUserKey
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.test.TestConfiguration
@@ -52,12 +50,12 @@ class ChatUserRepositoryTests {
     }
 
     @Test
-    fun shouldFindDarkbit() {
+    fun `should search and find single user after insert many`() {
         val users = Flux.just(
-                ChatUser(ChatUserKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
-                ChatUser(ChatUserKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()))
+                ChatUserHandle(ChatUserHandleKey(UUID.randomUUID(), "vedder"), "eddie", defaultImageUri, Instant.now()),
+                ChatUserHandle(ChatUserHandleKey(UUID.randomUUID(), "darkbit"), "mario", defaultImageUri, Instant.now()))
                 .flatMap {
-                    repo.add(it)
+                    handleRepo.save(it)
                 }
 
         val find = handleRepo.findByKeyHandle("darkbit")
@@ -79,15 +77,15 @@ class ChatUserRepositoryTests {
         val id2 = UUIDs.timeBased()
 
         val user1 =
-                ChatUser(ChatUserKey(id1, "vedder"), "eddie1", defaultImageUri, Instant.now())
+                ChatUserHandle(ChatUserHandleKey(id1, "vedder"), "eddie1", defaultImageUri, Instant.now())
         val user2 =
-                ChatUser(ChatUserKey(id2, "vedder"), "eddie2", defaultImageUri, Instant.now())
+                ChatUserHandle(ChatUserHandleKey(id2, "vedder"), "eddie2", defaultImageUri, Instant.now())
 
 
         val stream = template
-                .truncate(ChatUser::class.java)
-                .then(repo.add(user1))
-                .then(repo.add(user2))
+                .truncate(ChatUserHandle::class.java)
+                .then(handleRepo.add(user1))
+                .then(handleRepo.add(user2))
 
         StepVerifier
                 .create(stream)
@@ -151,12 +149,13 @@ class ChatUserRepositoryTests {
     fun `should store and find single by ID`() {
         val userId = UUIDs.timeBased()
 
-        val chatUser = ChatUser(ChatUserKey(userId, "vedder"), "eddie", defaultImageUri, Instant.now())
+        val chatUser = ChatUser(
+                ChatUserKey(userId, "vedder"),
+                "eddie", defaultImageUri, Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
-                .thenMany(Flux.just(chatUser))
-                .flatMap(repo::add)
+                .then(repo.add(chatUser))
 
         val find = repo
                 .findByKeyId(userId)

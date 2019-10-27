@@ -1,5 +1,6 @@
 package com.demo.chat.service.persistence
 
+import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
