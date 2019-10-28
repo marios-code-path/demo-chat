@@ -3,10 +3,7 @@ package com.demo.chat.test
 import com.demo.chat.RSocketTestConfig
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TextMessageKey
-import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.KeyService
-import com.demo.chat.service.TextMessagePersistence
 import io.rsocket.RSocket
 import io.rsocket.RSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
@@ -71,7 +68,7 @@ open class RSocketTestBase {
         socket = requestor.rsocket()
 
         BDDMockito
-                .given(keyService.id())
+                .given(keyService.id(String::class.java))
                 .willReturn(Mono.just(EventKey.create(UUID.randomUUID())))
 
         Hooks.onOperatorDebug()

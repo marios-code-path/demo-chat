@@ -23,7 +23,7 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
 
     @Bean
     fun cassandraProperties(): ConfigurationPropertiesCassandra = CassandraProperties("127.0.0.1",
-            9142,
+            9042,
             "chat",
             "com.demo.chat.repository.cassandra",
             false)

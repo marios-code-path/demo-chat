@@ -4,9 +4,12 @@ import com.demo.chat.domain.UserKey
 import com.demo.chat.service.KeyService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
+@ExtendWith(SpringExtension::class)
 open class KeyServiceBaseTest {
 
     lateinit var svc: KeyService
@@ -56,9 +59,6 @@ open class KeyServiceBaseTest {
         StepVerifier
                 .create(deleteStream)
                 .expectSubscription()
-                .assertNext {
-                    // No error found, should return OK
-                }
                 .verifyComplete()
     }
 
