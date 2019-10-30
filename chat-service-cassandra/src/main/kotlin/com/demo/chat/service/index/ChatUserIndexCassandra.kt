@@ -13,18 +13,19 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
+
 class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                              val cassandra: ReactiveCassandraTemplate) : ChatUserIndexService {
     override fun add(key: UserKey, criteria: Map<String, String>): Mono<Void> =
             cassandra.insert(ChatUserHandle(
-                            ChatUserHandleKey(key.id, key.handle),
-                            criteria["name"] ?: error(""),
-                            criteria["imageUri"] ?: error(""),
-                            Instant.now()),
-                            InsertOptions.builder().withIfNotExists()
-                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                    .build()
-                    )
+                    ChatUserHandleKey(key.id, key.handle),
+                    criteria[NAME] ?: error(""),
+                    criteria[IMAGEURI] ?: error(""),
+                    Instant.now()),
+                    InsertOptions.builder().withIfNotExists()
+                            .retryPolicy(DefaultRetryPolicy.INSTANCE)
+                            .build()
+            )
                     .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
                             false -> sink.error(DuplicateUserException)
@@ -32,17 +33,20 @@ class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                         }
                     }
 
-    override fun rem(key: UserKey): Mono<Void> =
-            cassandra.update(Query.query(where("user_id").`is`(key.id), where("handle").`is`(key.handle)),
-                    Update.empty().set("active", false),
-                    ChatUserHandle::class.java
-            )
-                    .then()
+    override fun rem(key: UserKey): Mono<Void> = userHandleRepo.rem(key)
 
     override fun findBy(query: Map<String, String>): Flux<out UserKey> =
-            userHandleRepo.findByKeyHandle(query["handle"] ?: error(""))
+            userHandleRepo.findByKeyHandle(query[HANDLE] ?: error(""))
                     .map {
                         it.key
                     }
                     .flux()
+
+    companion object {
+        const val NAME = "name"
+        const val IMAGEURI = "imageUri"
+        const val ACTIVE = "active"
+        const val HANDLE = "handle"
+        const val ID = "userId"
+    }
 }

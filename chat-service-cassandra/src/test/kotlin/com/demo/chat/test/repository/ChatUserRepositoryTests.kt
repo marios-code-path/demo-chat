@@ -81,7 +81,6 @@ class ChatUserRepositoryTests {
         val user2 =
                 ChatUserHandle(ChatUserHandleKey(id2, "vedder"), "eddie2", defaultImageUri, Instant.now())
 
-
         val stream = template
                 .truncate(ChatUserHandle::class.java)
                 .then(handleRepo.add(user1))

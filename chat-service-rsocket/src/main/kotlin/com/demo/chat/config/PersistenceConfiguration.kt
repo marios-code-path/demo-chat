@@ -3,6 +3,9 @@ package com.demo.chat.config
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
+import com.demo.chat.service.index.ChatMessageIndexCassandra
+import com.demo.chat.service.index.ChatUserIndexCassandra
+import com.demo.chat.service.index.RoomIndexCassandra
 import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
 import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
 import com.demo.chat.service.persistence.KeyPersistenceCassandra
@@ -14,7 +17,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
 @ConfigurationProperties("sample")
-data class SampleProps(val name:String)
+data class SampleProps(val name: String)
 
 @Profile("cassandra-persistence")
 @ConfigurationProperties("cassandra-repo")
@@ -25,10 +28,28 @@ data class CassandraProperties(override val contactPoints: String,
                                override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
 
 @ExcludeFromTests
+@Profile("cassandra-index")
+@Configuration
+class IndexConfiguration {
+    @Bean
+    fun userIndex(userHandleRepo: ChatUserHandleRepository,
+                  cassandra: ReactiveCassandraTemplate) = ChatUserIndexCassandra(userHandleRepo, cassandra)
+
+    @Bean
+    fun roomIndex(roomRepo: ChatRoomRepository,
+                  nameRepo: ChatRoomNameRepository) = RoomIndexCassandra(roomRepo, nameRepo)
+
+    @Bean
+    fun messageIndex(cassandra: ReactiveCassandraTemplate,
+                     byUserRepo: ChatMessageByUserRepository,
+                     byTopicRepo: ChatMessageByTopicRepository) =
+            ChatMessageIndexCassandra(cassandra, byUserRepo, byTopicRepo)
+}
+
+@ExcludeFromTests
 @Profile("cassandra-persistence")
 @Configuration
 class PersistenceConfiguration {
-
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
@@ -37,8 +58,7 @@ class PersistenceConfiguration {
 
     @Bean
     fun userPersistence(keyService: KeyService,
-                        userRepo: ChatUserRepository,
-                        userHandleRepo: ChatUserHandleRepository): ChatUserPersistence =
+                        userRepo: ChatUserRepository): ChatUserPersistence =
             ChatUserPersistenceCassandra(keyService, userRepo)
 
     @Bean
@@ -49,7 +69,6 @@ class PersistenceConfiguration {
 
     @Bean
     fun messagePersistence(keyService: KeyService,
-                           messageRepo: ChatMessageRepository,
-                           messageByTopicRepo: ChatMessageByTopicRepository): TextMessagePersistence =
+                           messageRepo: ChatMessageRepository): TextMessagePersistence =
             TextMessagePersistenceCassandra(keyService, messageRepo)
 }

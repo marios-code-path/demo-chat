@@ -4,10 +4,6 @@ import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.service.ChatRoomIndexService
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.data.cassandra.core.query.Query
-import org.springframework.data.cassandra.core.query.Update
-import org.springframework.data.cassandra.core.query.where
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
@@ -31,14 +27,19 @@ class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
             ChatRoomNameKey(key.id, key.name), setOf(), false, Instant.now()
     )).then()
 
-
-    override fun findBy(query: Map<String, String>): Flux<out RoomKey> = nameRepo
-            .findByKeyName(query["name"] ?: error("Name not valid"))
-            .map {
-                it.key
-            }
-            .flux()
-
+    override fun findBy(query: Map<String, String>): Flux<out RoomKey>  {
+        val queryBy = query.keys.first()
+        return when(queryBy) {
+             NAME -> {nameRepo
+                     .findByKeyName(query[NAME] ?: error("Name not valid"))
+                     .map {
+                         it.key
+                     }
+                     .flux() }
+            ALL -> { roomRepo.findAll().map {it.key} }
+            else -> { Flux.empty() }
+        }
+    }
     override fun size(roomId: EventKey): Mono<Int> = roomRepo
             .findByKeyId(roomId.id)
             .switchIfEmpty(Mono.error(RoomNotFoundException))
@@ -65,4 +66,12 @@ class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
             .findByKeyId(roomId.id)
             .switchIfEmpty(Mono.error(RoomNotFoundException))
             .then()
+
+    companion object {
+        const val NAME = "name"
+        const val ID = "ID"
+        const val IDS = "IDS"
+        const val ALL = "ALL"
+        const val USERIN = "USERIN"
+    }
 }

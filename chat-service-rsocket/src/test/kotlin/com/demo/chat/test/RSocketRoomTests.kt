@@ -31,10 +31,10 @@ class RSocketRoomTests : RSocketTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var roomPersistence: ChatRoomPersistence<out Room, RoomKey> //ChatRoomPersistenceCassandra
+    lateinit var roomPersistence: ChatRoomPersistence
 
     @Autowired
-    lateinit var userPersistence: ChatUserPersistence<out User, UserKey>
+    lateinit var userPersistence: ChatUserPersistence
 
     @Autowired
     lateinit var topicService: ChatTopicService
@@ -64,7 +64,7 @@ class RSocketRoomTests : RSocketTestBase() {
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(roomPersistence.key(anyObject()))
+                .given(roomPersistence.key())
                 .willReturn(Mono.just(RoomKey.create(UUID.randomUUID(), "randomRoomName")))
 
         StepVerifier.create(
@@ -79,7 +79,7 @@ class RSocketRoomTests : RSocketTestBase() {
     @Test
     fun `should receive list of rooms`() {
         BDDMockito
-                .given(roomPersistence.getAll(anyBoolean()))
+                .given(roomPersistence.all())
                 .willReturn(Flux.just(room))
 
         StepVerifier

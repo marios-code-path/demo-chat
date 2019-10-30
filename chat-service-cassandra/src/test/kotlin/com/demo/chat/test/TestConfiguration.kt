@@ -9,6 +9,10 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
+import org.springframework.data.cassandra.config.CassandraClusterFactoryBean
+import org.springframework.data.cassandra.core.mapping.CassandraMappingContext
+import org.springframework.data.cassandra.core.mapping.SimpleUserTypeResolver
+
 
 @Configuration
 @ComponentScan("com.demo.chat")
@@ -21,12 +25,20 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
         applicationContext.environment.setActiveProfiles("cassandra-persistence")
     }
 
-    @Bean
+    @Bean // TODO find a random port please :)
     fun cassandraProperties(): ConfigurationPropertiesCassandra = CassandraProperties("127.0.0.1",
-            9042,
+            9142,
             "chat",
             "com.demo.chat.repository.cassandra",
             false)
+
+    @Bean
+    @Throws(Exception::class)
+    fun mappingContext(cluster: CassandraClusterFactoryBean): CassandraMappingContext {
+        val mappingContext = CassandraMappingContext()
+        mappingContext.setUserTypeResolver(SimpleUserTypeResolver(cluster.getObject(), "chat"))
+        return mappingContext
+    }
 }
 
 @Configuration

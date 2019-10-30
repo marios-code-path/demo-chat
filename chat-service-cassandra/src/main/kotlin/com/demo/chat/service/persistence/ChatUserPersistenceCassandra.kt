@@ -1,6 +1,5 @@
 package com.demo.chat.service.persistence
 
-import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
@@ -23,4 +22,7 @@ open class ChatUserPersistenceCassandra(val keyService: KeyService,
     override fun rem(key: EventKey): Mono<Void> = userRepo.rem(key)
 
     override fun add(user: User): Mono<Void> = userRepo.add(user)
+
+    override fun byIds(keys: List<EventKey>): Flux<out User> =
+            userRepo.findByKeyIdIn(Flux.fromStream(keys.stream().map { it.id }))
 }

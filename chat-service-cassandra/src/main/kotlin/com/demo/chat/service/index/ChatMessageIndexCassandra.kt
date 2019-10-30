@@ -49,11 +49,11 @@ class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
     override fun rem(key: TextMessageKey): Mono<Void> =
             cassandra
                     .batchOps()
-                    .update(Query.query(where("msg_id").`is`(key.id), where("user_id").`is`(key.userId)),
+                    .delete(Query.query(where("msg_id").`is`(key.id), where("user_id").`is`(key.userId)),
                             Update.empty().set("visible", false),
                             ChatMessageByUser::class.java
                     )
-                    .update(Query.query(where("msg_id").`is`(key.id), where("topic_id").`is`(key.topicId)),
+                    .delete(Query.query(where("msg_id").`is`(key.id), where("topic_id").`is`(key.topicId)),
                             Update.empty().set("visible", false),
                             ChatMessageByTopic::class.java
                     )
@@ -67,12 +67,17 @@ class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
     override fun findBy(query: Map<String, String>): Flux<out TextMessageKey> {
         val searchFor = query.keys.first()
         return when (searchFor) {
-            "topicId" -> findByTopic(UUID.fromString(query[searchFor]))
-            "userId" -> findByUser(UUID.fromString(query[searchFor]))
+            TOPIC -> findByTopic(UUID.fromString(query[searchFor]))
+            USER -> findByUser(UUID.fromString(query[searchFor]))
             else -> Flux.never()
         }.map {
             it.key
         }
+    }
+
+    companion object {
+        const val TOPIC = "topicId"
+        const val USER = "userId"
     }
 
     fun findByTopic(topic: UUID) = byTopicRepo.findByKeyTopicId(topic)
