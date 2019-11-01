@@ -10,6 +10,7 @@ import org.assertj.core.api.Assertions
 import org.cassandraunit.spring.CassandraDataSet
 import org.cassandraunit.spring.CassandraUnit
 import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,8 +18,12 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
+import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.util.*
+import java.util.stream.Stream
+import kotlin.streams.toList
+
+//https://stackoverflow.com/questions/38862460/user-defined-type-with-spring-data-cassandra/42036202#42036202
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
@@ -35,12 +40,17 @@ class ChatMembershipRepositoryTests {
     @Autowired
     lateinit var byMemberOfRepo: ChatMembershipByMemberOfRepository
 
+    @BeforeEach
+    fun setUp() {
+        repo.deleteAll().block()
+    }
+    
     @Test
     fun `should save, find all`() {
         val membership = ChatMembership(
                 MemberShipKey(UUIDs.timeBased()),
-                DSEventKey(UUIDs.timeBased()),
-                DSEventKey(UUIDs.timeBased())
+                CSEventKeyType(UUIDs.timeBased()),
+                CSEventKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -63,8 +73,8 @@ class ChatMembershipRepositoryTests {
         val keyId = MemberShipKey(UUIDs.timeBased())
         val membership = ChatMembership(
                 keyId,
-                DSEventKey(UUIDs.timeBased()),
-                DSEventKey(UUIDs.timeBased())
+                CSEventKeyType(UUIDs.timeBased()),
+                CSEventKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -86,9 +96,9 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberId`() {
         val keyId = MemberShipKeyByMember(UUIDs.timeBased())
         val membership = ChatMembershipByMember(
-                DSEventKey(UUIDs.timeBased()),
+                CSEventKeyType(UUIDs.timeBased()),
                 keyId,
-                DSEventKey(UUIDs.timeBased())
+                CSEventKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = byMemberRepo
@@ -110,8 +120,8 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberOf`() {
         val keyId = MemberShipKeyByMemberOf(UUIDs.timeBased())
         val membership = ChatMembershipByMemberOf(
-                DSEventKey(UUIDs.timeBased()),
-                DSEventKey(UUIDs.timeBased()),
+                CSEventKeyType(UUIDs.timeBased()),
+                CSEventKeyType(UUIDs.timeBased()),
                 keyId
         )
 
@@ -127,6 +137,31 @@ class ChatMembershipRepositoryTests {
                             .assertThat(it)
                             .isNotNull
                 }
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save many find by Ids`() {
+        val keyList = Stream.generate {
+            EventKey.create(UUIDs.timeBased())
+        }.limit(5).toList()
+
+        val keyIdsList = keyList.stream().map { it.id }.toList()
+        val memberships = Flux.fromIterable(keyList
+                .map {
+                    ChatMembership(MemberShipKey(it.id),
+                            CSEventKeyType(UUIDs.timeBased()),
+                            CSEventKeyType((UUIDs.timeBased())))
+                })
+
+        val repoStream = repo
+                .saveAll(memberships)
+                .thenMany(repo.findByKeyIdIn(keyIdsList))
+
+        StepVerifier
+                .create(repoStream)
+                .expectSubscription()
+                .expectNextCount(5)
                 .verifyComplete()
     }
 }

@@ -9,7 +9,7 @@ CREATE TYPE event_key_type(
 
 CREATE TABLE chat_membership
 (
-    id       TIMEUUID,
+    id       UUID,
     member   frozen<event_key_type>,
     memberOf frozen<event_key_type>,
     PRIMARY KEY (id)

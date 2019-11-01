@@ -11,29 +11,29 @@ open class ChatMembership(
         override val key: MemberShipKey,
         @Column("member")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val member: DSEventKey,
+        override val member: CSEventKeyType,
         @Column("memberOf")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val memberOf: DSEventKey
+        override val memberOf: CSEventKeyType
 ) : RoomMembership
 
 // TODO This is incomplete abstraction!
 @Table("chat_membership_by_member")
 open class ChatMembershipByMember(
         @Column("id")
-        override val key: DSEventKey,
+        override val key: CSEventKeyType,
         @PrimaryKey
         override val member: MemberShipKeyByMember,
         @Column("memberOf")
-        override val memberOf: DSEventKey
+        override val memberOf: CSEventKeyType
 ) : RoomMembership
 
 @Table("chat_membership_by_memberof")
 open class ChatMembershipByMemberOf(
         @Column("id")
-        override val key: DSEventKey,
+        override val key: CSEventKeyType,
         @Column("member")
-        override val member: DSEventKey,
+        override val member: CSEventKeyType,
         @PrimaryKey
         override val memberOf: MemberShipKeyByMemberOf
 ) : RoomMembership
@@ -51,10 +51,4 @@ data class MemberShipKeyByMemberOf(
 @PrimaryKeyClass
 data class MemberShipKey(
         @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID) : EventKey
-
-
-@UserDefinedType("event_key_type")
-data class DSEventKey(
-        @CassandraType(type = DataType.Name.UUID)
         override val id: UUID) : EventKey
