@@ -37,11 +37,7 @@ class ChatUserAuthCassandra(private val userIndex: ChatUserIndexService,
             passwordStore.addCredential(ChatCredential(uid, password))
 
 
-    override fun authorize(uid: UUID, target: UUID, action: String): Mono<Void> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun authorize(uid: UUID, target: UUID, action: String): Mono<Void> = Mono.empty()
 
-    override fun findAuthorizationsFor(uid: UUID): Flux<AuthorizationMeta> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-    }
+    override fun findAuthorizationsFor(uid: UUID): Flux<AuthorizationMeta> = Flux.empty()
 }

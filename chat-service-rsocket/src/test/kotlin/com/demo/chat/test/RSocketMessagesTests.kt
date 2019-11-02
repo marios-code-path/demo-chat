@@ -23,16 +23,14 @@ import reactor.test.StepVerifier
 import java.util.*
 import java.util.stream.Stream
 
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 @Import(RSocketTestConfig::class, MessageController::class)
 class RSocketMessagesTests : RSocketTestBase() {
-
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var messagePersistence: TextMessagePersistence<out TextMessage, TextMessageKey>
+    private lateinit var messagePersistence: TextMessagePersistence
 
     @Autowired
     private lateinit var topicService: ChatTopicService
@@ -40,7 +38,7 @@ class RSocketMessagesTests : RSocketTestBase() {
     @Test
     fun `should fetch a single message`() {
         BDDMockito
-                .given(messagePersistence.getById(anyObject()))
+                .given(messagePersistence.get(anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
         StepVerifier
@@ -65,7 +63,7 @@ class RSocketMessagesTests : RSocketTestBase() {
     @Test
     fun `should receive messages from a random topic`() {
         BDDMockito
-                .given(messagePersistence.getAll(anyObject()))
+                .given(messagePersistence.all())
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
@@ -98,5 +96,4 @@ class RSocketMessagesTests : RSocketTestBase() {
                 .expectComplete()
                 .verify()
     }
-
 }

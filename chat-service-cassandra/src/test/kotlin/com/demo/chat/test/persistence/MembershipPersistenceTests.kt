@@ -32,17 +32,11 @@ class MembershipPersistenceTests {
 
     private val keyService: KeyService = TestKeyService
 
-    val keyId = UUIDs.timeBased()
-    val memberId = UUIDs.timeBased()
-    val topicId = UUIDs.timeBased()
+    private val keyId = UUIDs.timeBased()
+    private val memberId = UUIDs.timeBased()
+    private val topicId = UUIDs.timeBased()
 
-    val testChatMembership = ChatMembership(
-            MemberShipKey(keyId),
-            CSEventKeyType(memberId),
-            CSEventKeyType(topicId)
-    )
-
-    val testMembership = Membership.create<EventKey>(
+    private val testChatMembership = ChatMembership(
             MemberShipKey(keyId),
             CSEventKeyType(memberId),
             CSEventKeyType(topicId)
@@ -75,7 +69,7 @@ class MembershipPersistenceTests {
 
     @Test
     fun `gets all memberships`() {
-        var allMemberships = svc.all()
+        val allMemberships = svc.all()
 
         StepVerifier
                 .create(allMemberships)
@@ -90,13 +84,32 @@ class MembershipPersistenceTests {
 
     @Test
     fun `add the membership, finds all` () {
-        var saveNFind = svc
+        val saveNFind = svc
                 .add(testChatMembership)
                 .thenMany(svc.all())
 
         StepVerifier
                 .create(saveNFind)
                 .expectSubscription()
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                }
+                .verifyComplete()
+    }
+
+    @Test
+    fun `deletes a membership`() {
+        StepVerifier
+                .create(svc.rem(testChatMembership.key))
+                .verifyComplete()
+    }
+
+    @Test
+    fun `gets a single membership`() {
+        StepVerifier
+                .create(svc.get(testChatMembership.key))
                 .assertNext {
                     Assertions
                             .assertThat(it)

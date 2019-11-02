@@ -20,6 +20,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
+import java.util.*
 import java.util.stream.Stream
 import kotlin.streams.toList
 
@@ -91,6 +92,42 @@ class ChatMembershipRepositoryTests {
                 }
                 .verifyComplete()
     }
+
+    @Test
+    fun `should save, delete one, find remaining one by all`() {
+        val memberships = mutableSetOf<ChatMembership>()
+        val streamOfMemberships = Flux.generate <MemberShipKey> { s -> s.next(MemberShipKey(UUIDs.timeBased())) }
+                .take(2)
+                .map {key ->
+                    val i = ChatMembership(
+                            key,
+                            CSEventKeyType(UUIDs.timeBased()),
+                            CSEventKeyType(UUIDs.timeBased())
+                    )
+                    memberships.add(i)
+
+                    i
+                }
+
+        val membershipSave = repo
+                .saveAll(streamOfMemberships)
+                .collectList()
+                .flatMap {
+                    repo.delete(memberships.last())
+                }
+                .thenMany(repo.findAll())
+
+        StepVerifier
+                .create(membershipSave)
+                .expectSubscription()
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                }
+                .verifyComplete()
+    }
+
 
     @Test
     fun `should save, find by memberId`() {
