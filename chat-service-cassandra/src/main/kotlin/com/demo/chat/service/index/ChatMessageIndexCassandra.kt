@@ -16,51 +16,51 @@ import java.util.*
 class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
                                 val byUserRepo: ChatMessageByUserRepository,
                                 val byTopicRepo: ChatMessageByTopicRepository) : ChatMessageIndexService {
-    override fun add(key: TextMessageKey, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: TextMessage, criteria: Map<String, String>): Mono<Void> =
             cassandra
                     .batchOps()
                     .insert(ChatMessageByUser(
                             ChatMessageByUserKey(
-                                    key.id,
-                                    UUID.fromString(criteria["userId"]),
-                                    UUID.fromString(criteria["topicId"]),
+                                    ent.key.id,
+                                    ent.key.userId,
+                                    ent.key.topicId,
                                     Instant.now()
                             ),
-                            criteria["value"] ?: error(""),
-                            (criteria["visible"] ?: error("false")).toBoolean()
+                            ent.value,
+                            ent.visible
                     ))
                     .insert(ChatMessageByTopic(
                             ChatMessageByTopicKey(
-                                    key.id,
-                                    UUID.fromString(criteria["userId"]),
-                                    UUID.fromString(criteria["topicId"]),
+                                    ent.key.id,
+                                    ent.key.userId,
+                                    ent.key.topicId,
                                     Instant.now()
                             ),
-                            criteria["value"] ?: error(""),
-                            (criteria["visible"] ?: error("false")).toBoolean()
+                            ent.value,
+                            ent.visible
                     ))
                     .execute()
                     .map {
                         if (!it.wasApplied())
-                            throw ChatIndexException(key.id)
+                            throw ChatIndexException(ent.key.id)
                     }
                     .then()
 
-    override fun rem(key: TextMessageKey): Mono<Void> =
+    override fun rem(ent: TextMessage): Mono<Void> =
             cassandra
                     .batchOps()
-                    .delete(Query.query(where("msg_id").`is`(key.id), where("user_id").`is`(key.userId)),
+                    .delete(Query.query(where("msg_id").`is`(ent.key.id), where("user_id").`is`(ent.key.userId)),
                             Update.empty().set("visible", false),
                             ChatMessageByUser::class.java
                     )
-                    .delete(Query.query(where("msg_id").`is`(key.id), where("topic_id").`is`(key.topicId)),
+                    .delete(Query.query(where("msg_id").`is`(ent.key.id), where("topic_id").`is`(ent.key.topicId)),
                             Update.empty().set("visible", false),
                             ChatMessageByTopic::class.java
                     )
                     .execute()
                     .map {
                         if (!it.wasApplied())
-                            throw ChatIndexException(key.id)
+                            throw ChatIndexException(ent.key.id)
                     }
                     .then()
 

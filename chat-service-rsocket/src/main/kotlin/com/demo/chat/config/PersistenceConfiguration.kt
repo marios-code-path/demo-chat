@@ -8,7 +8,7 @@ import com.demo.chat.service.index.ChatUserIndexCassandra
 import com.demo.chat.service.index.RoomIndexCassandra
 import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
 import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
-import com.demo.chat.service.persistence.KeyPersistenceCassandra
+import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -54,7 +54,7 @@ class PersistenceConfiguration {
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
-    fun keyService(template: ReactiveCassandraTemplate): KeyService = KeyPersistenceCassandra(template)
+    fun keyService(template: ReactiveCassandraTemplate): KeyService = KeyServiceCassandra(template)
 
     @Bean
     fun userPersistence(keyService: KeyService,

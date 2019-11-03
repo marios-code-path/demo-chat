@@ -19,6 +19,15 @@ class RSocketTestConfig {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
+    private lateinit var roomIndex: ChatRoomIndexService
+
+    @MockBean
+    private lateinit var userIndex: ChatUserIndexService
+
+    @MockBean
+    private lateinit var messageIndex: ChatMessageIndexService
+    
+    @MockBean
     private lateinit var roomPersistence: ChatRoomPersistence
 
     @MockBean

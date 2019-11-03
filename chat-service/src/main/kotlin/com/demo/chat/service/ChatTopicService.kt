@@ -27,5 +27,4 @@ interface ChatTopicService {
 
 interface ChatTopicServiceAdmin {
     fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>>
-
 }

@@ -11,7 +11,7 @@ import java.time.Duration
 import java.util.*
 
 
-class KeyPersistenceCassandra(private val template: ReactiveCassandraTemplate) : KeyService {
+class KeyServiceCassandra(private val template: ReactiveCassandraTemplate) : KeyService {
     override fun rem(key: EventKey): Mono<Void> = template
             .deleteById(CassandraEventKey(key.id, CassandraEventKey::class.simpleName!!), CassandraEventKey::class.java)
             .then()

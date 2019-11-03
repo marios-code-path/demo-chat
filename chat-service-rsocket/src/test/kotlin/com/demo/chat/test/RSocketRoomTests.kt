@@ -3,16 +3,15 @@ package com.demo.chat.test
 
 import com.demo.chat.*
 import com.demo.chat.controllers.RoomController
-import com.demo.chat.domain.*
-import com.demo.chat.service.ChatRoomPersistence
-import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.domain.RoomKey
+import com.demo.chat.domain.RoomMemberships
+import com.demo.chat.domain.RoomNotFoundException
+import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers.anyBoolean
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,6 +28,15 @@ import java.util.*
 @Import(RSocketTestConfig::class, RoomController::class)
 class RSocketRoomTests : RSocketTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
+
+    @Autowired
+    lateinit var roomIndex: ChatRoomIndexService
+
+    @Autowired
+    lateinit var userIndex: ChatUserIndexService
+
+    @Autowired
+    lateinit var messageIndex: ChatMessageIndexService
 
     @Autowired
     lateinit var roomPersistence: ChatRoomPersistence
@@ -110,7 +118,7 @@ class RSocketRoomTests : RSocketTestBase() {
     @Test
     fun `should not join a non existent Room`() {
         BDDMockito
-                .given(roomPersistence.addMember(anyObject(), anyObject()))
+                .given(roomIndex.addMember(anyObject(), anyObject()))
                 .willReturn(Mono.error(RoomNotFoundException))
 
         StepVerifier
@@ -127,14 +135,14 @@ class RSocketRoomTests : RSocketTestBase() {
 
     @Test
     fun `joins a room and appears in member list`() {
-        BDDMockito.given(roomPersistence.addMember(anyObject(), anyObject()))
+        BDDMockito.given(roomIndex.addMember(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomPersistence.getById(anyObject()))
+        BDDMockito.given(roomPersistence.get(anyObject()))
                 .willReturn(Mono.just(roomWithMembers))
 
-        BDDMockito.given(roomPersistence.members(anyObject()))
-                .willReturn(Mono.just(roomWithMembers.members!!))
+        BDDMockito.given(roomIndex.findBy(anyObject()))
+                .willReturn(Flux.just(roomWithMembers.key))
 
         BDDMockito.given(roomPersistence.add(anyObject()))
                 .willReturn(Mono.empty())

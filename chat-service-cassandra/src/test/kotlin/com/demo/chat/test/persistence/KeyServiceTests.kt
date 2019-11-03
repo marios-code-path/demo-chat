@@ -1,6 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.service.persistence.KeyPersistenceCassandra
+import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.KeyServiceBaseTest
 import com.demo.chat.test.TestConfiguration
 import org.cassandraunit.spring.CassandraDataSet
@@ -21,7 +21,7 @@ import org.springframework.test.context.support.DependencyInjectionTestExecution
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-keys.cql")
-class KeyPersistenceCassandraTests : KeyServiceBaseTest() {
+class KeyServiceTests : KeyServiceBaseTest() {
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     @Autowired
     private lateinit var template: ReactiveCassandraTemplate
@@ -29,8 +29,6 @@ class KeyPersistenceCassandraTests : KeyServiceBaseTest() {
     @BeforeEach
     fun setUp() {
         logger.info("Setup persistence cassandra")
-        this.svc = KeyPersistenceCassandra(template)
+        this.svc = KeyServiceCassandra(template)
     }
-
-    private val handle = "darkbit"
 }

@@ -2,32 +2,30 @@ package com.demo.chat.controllers
 
 import com.demo.chat.*
 import com.demo.chat.domain.*
-import com.demo.chat.service.ChatRoomPersistence
-import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatUserPersistence
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 @Controller
-class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>,
-                     val userPersistence: ChatUserPersistence<out User, UserKey>,
+class RoomController(val roomPersistence: ChatRoomPersistence,
+                     val roomIndex: ChatRoomIndexService,
                      val topicService: ChatTopicService,
-                     val keyService: KeyService) {
+                     val userPersistence: ChatUserPersistence,
+                     val membershipPersistence: ChatMembershipPersistence,
+                     val membershipIndex: ChatMembershipIndexService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
-    fun addRoom(req: RoomCreateRequest): Mono<out RoomKey> =
+    fun addRoom(req: RoomCreateRequest): Mono<out EventKey> =
             roomPersistence
-                    .key(req.roomName)
+                    .key()
                     .flatMap { key ->
                         roomPersistence
-                                .add(key)
+                                .add(Room.create(RoomKey.create(key.id, req.roomName), setOf()))
                                 .then(topicService.add(key.id))
                                 .map { key }
                     }
@@ -35,69 +33,77 @@ class RoomController(val roomPersistence: ChatRoomPersistence<out Room, RoomKey>
     @MessageMapping("room-rem")
     fun deleteRoom(req: RoomRequestId): Mono<Void> =
             roomPersistence
-                    .getById(req.roomId)
+                    .get(EventKey.create(req.roomId))
                     .flatMap {
+                        roomIndex.rem(it)
                         roomPersistence.rem(it.key)
+                                .then(topicService.unSubscribeAllIn(it.key.id))
+                                .then(topicService.rem(it.key.id))
                     }
-                    .then(topicService.unSubscribeAllIn(req.roomId))
-                    .then(topicService.rem(req.roomId))
+                    .then()
 
     @MessageMapping("room-list")
     fun listRooms(req: RoomRequestId): Flux<out Room> =
             roomPersistence
-                    .getAll(true)
+                    .all()
 
     @MessageMapping("room-by-id")
     fun getRoom(req: RoomRequestId): Mono<out Room> =
             roomPersistence
-                    .getById(req.roomId)
+                    .get(EventKey.create(req.roomId))
 
     @MessageMapping("room-by-name")
     fun getRoomByName(req: RoomRequestName): Mono<out Room> =
-            roomPersistence
-                    .getByName(req.name)
-                    .map {// TODO check that the null set is set to empty set when we get data out of cassandra
-                        if(it.members == null)
-                            Room.create(it.key, emptySet())
-                        else it
+            roomIndex
+                    .findBy(mapOf(Pair(ChatRoomIndexService.NAME, req.name)))
+                    .single()
+                    .flatMap {
+                        roomPersistence.get(it)
                     }
 
     @MessageMapping("room-join")
     fun joinRoom(req: RoomJoinRequest): Mono<Void> =
-            roomPersistence
-                    .addMember(req.uid, req.roomId)
-                    .flatMap {
-                        keyService.id()
-                                .flatMap {id ->
-                                    topicService
-                                            .sendMessage(JoinAlert.create(id.id, req.roomId, req.uid))
-                                            .then(topicService.subscribe(req.uid, req.roomId))
-                                }
+            membershipPersistence
+                    .key()
+                    .flatMap { eventKey ->
+                        membershipPersistence
+                                .add(Membership.create(eventKey, EventKey.create(req.roomId), EventKey.create(req.uid)))
+                                .thenMany(topicService
+                                        .sendMessage(JoinAlert.create(eventKey.id, req.roomId, req.uid))
+                                        .then(topicService.subscribe(req.uid, req.roomId)))
+                                .then()
                     }
+
 
     @MessageMapping("room-leave")
     fun leaveRoom(req: RoomLeaveRequest): Mono<Void> =
-            roomPersistence
-                    .remMember(req.uid, req.roomId)
+            membershipPersistence
+                    .get(EventKey.create(req.roomId))
                     .flatMap {
-                        keyService.id()
-                                .flatMap { id ->
-                                    topicService
-                                            .sendMessage(LeaveAlert.create(id.id, req.roomId, req.uid))
-                                            .then(topicService.unSubscribe(req.uid, req.roomId))
-                                }
+                        membershipPersistence.rem(it.key)
+                                .thenMany(topicService
+                                        .sendMessage(LeaveAlert.create(it.key.id, it.member.id, it.memberOf.id))
+                                        .then(topicService.unSubscribe(it.member.id, it.memberOf.id)))
+                                .then()
+
                     }
 
     @MessageMapping("room-members")
-    fun roomMembers(req: RoomRequestId): Mono<RoomMemberships> = roomPersistence
-            .members(req.roomId)
-            .flatMap { members ->
-                userPersistence
-                        .findByIds(Flux.fromStream(members.stream()))
-                        .map { u -> RoomMember(u.key.id, u.key.handle, u.imageUri) }
-                        .collectList()
-                        .map { memberList ->
-                            RoomMemberships(memberList.toSet())
-                        }
-            }
+    fun roomMembers(req: RoomRequestId): Mono<RoomMemberships> =
+            membershipIndex.findBy(mapOf(Pair("MEMBEROF", req.roomId.toString())))
+                    .collectList()
+                    .flatMapMany { membershipList ->
+                        membershipPersistence.byIds(membershipList)
+                    }
+                    .flatMap { membership ->
+                        userPersistence
+                                .get(EventKey.create(membership.member.id))
+                                .map { user ->
+                                    RoomMember(req.roomId, user.key.handle, user.imageUri)
+                                }
+                    }
+                    .collectList()
+                    .map {
+                        RoomMemberships(it.toSet())
+                    }
 }

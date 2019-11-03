@@ -25,7 +25,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class MembershipPersistenceTests {
-    lateinit var svc: ChatMembershipPersistence
+    lateinit var membershipPersistence: ChatMembershipPersistence
 
     @MockBean
     lateinit var repo: ChatMembershipRepository
@@ -37,7 +37,7 @@ class MembershipPersistenceTests {
     private val topicId = UUIDs.timeBased()
 
     private val testChatMembership = ChatMembership(
-            MemberShipKey(keyId),
+            ChatMembershipKey(keyId),
             CSEventKeyType(memberId),
             CSEventKeyType(topicId)
     )
@@ -64,12 +64,12 @@ class MembershipPersistenceTests {
                 .given(repo.deleteById(Mockito.any(UUID::class.java)))
                 .willReturn(Mono.empty())
 
-        svc = ChatMembershipPersistenceCassandra(keyService, repo)
+        membershipPersistence = ChatMembershipPersistenceCassandra(keyService, repo)
     }
 
     @Test
     fun `gets all memberships`() {
-        val allMemberships = svc.all()
+        val allMemberships = membershipPersistence.all()
 
         StepVerifier
                 .create(allMemberships)
@@ -84,9 +84,9 @@ class MembershipPersistenceTests {
 
     @Test
     fun `add the membership, finds all` () {
-        val saveNFind = svc
+        val saveNFind = membershipPersistence
                 .add(testChatMembership)
-                .thenMany(svc.all())
+                .thenMany(membershipPersistence.all())
 
         StepVerifier
                 .create(saveNFind)
@@ -102,14 +102,14 @@ class MembershipPersistenceTests {
     @Test
     fun `deletes a membership`() {
         StepVerifier
-                .create(svc.rem(testChatMembership.key))
+                .create(membershipPersistence.rem(testChatMembership.key))
                 .verifyComplete()
     }
 
     @Test
     fun `gets a single membership`() {
         StepVerifier
-                .create(svc.get(testChatMembership.key))
+                .create(membershipPersistence.get(testChatMembership.key))
                 .assertNext {
                     Assertions
                             .assertThat(it)

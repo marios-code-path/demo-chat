@@ -5,7 +5,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatPersistence<OT, in KT>{
+interface ChatPersistence<OT, in KT :OT>{
     fun key(): Mono<out EventKey>
     fun add(o: KT): Mono<Void>
     fun rem(key: EventKey): Mono<Void>
@@ -21,3 +21,5 @@ interface ChatRoomPersistence : ChatPersistence<Room, Room>
 interface ChatMembershipPersistence : ChatPersistence<Membership<EventKey>, Membership<in EventKey>>
 
 interface TextMessagePersistence : ChatPersistence<TextMessage, TextMessage>
+
+interface KeyPersistence : ChatPersistence<EventKey, EventKey>

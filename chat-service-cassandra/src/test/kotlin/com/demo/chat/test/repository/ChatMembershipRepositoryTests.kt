@@ -20,7 +20,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.util.*
 import java.util.stream.Stream
 import kotlin.streams.toList
 
@@ -49,7 +48,7 @@ class ChatMembershipRepositoryTests {
     @Test
     fun `should save, find all`() {
         val membership = ChatMembership(
-                MemberShipKey(UUIDs.timeBased()),
+                ChatMembershipKey(UUIDs.timeBased()),
                 CSEventKeyType(UUIDs.timeBased()),
                 CSEventKeyType(UUIDs.timeBased())
         )
@@ -71,7 +70,7 @@ class ChatMembershipRepositoryTests {
 
     @Test
     fun `should save, find by key id`() {
-        val keyId = MemberShipKey(UUIDs.timeBased())
+        val keyId = ChatMembershipKey(UUIDs.timeBased())
         val membership = ChatMembership(
                 keyId,
                 CSEventKeyType(UUIDs.timeBased()),
@@ -96,7 +95,7 @@ class ChatMembershipRepositoryTests {
     @Test
     fun `should save, delete one, find remaining one by all`() {
         val memberships = mutableSetOf<ChatMembership>()
-        val streamOfMemberships = Flux.generate <MemberShipKey> { s -> s.next(MemberShipKey(UUIDs.timeBased())) }
+        val streamOfMemberships = Flux.generate <ChatMembershipKey> { s -> s.next(ChatMembershipKey(UUIDs.timeBased())) }
                 .take(2)
                 .map {key ->
                     val i = ChatMembership(
@@ -131,7 +130,7 @@ class ChatMembershipRepositoryTests {
 
     @Test
     fun `should save, find by memberId`() {
-        val keyId = MemberShipKeyByMember(UUIDs.timeBased())
+        val keyId = ChatMembershipKeyByMember(UUIDs.timeBased())
         val membership = ChatMembershipByMember(
                 CSEventKeyType(UUIDs.timeBased()),
                 keyId,
@@ -155,7 +154,7 @@ class ChatMembershipRepositoryTests {
 
     @Test
     fun `should save, find by memberOf`() {
-        val keyId = MemberShipKeyByMemberOf(UUIDs.timeBased())
+        val keyId = ChatMembershipKeyByMemberOf(UUIDs.timeBased())
         val membership = ChatMembershipByMemberOf(
                 CSEventKeyType(UUIDs.timeBased()),
                 CSEventKeyType(UUIDs.timeBased()),
@@ -186,7 +185,7 @@ class ChatMembershipRepositoryTests {
         val keyIdsList = keyList.stream().map { it.id }.toList()
         val memberships = Flux.fromIterable(keyList
                 .map {
-                    ChatMembership(MemberShipKey(it.id),
+                    ChatMembership(ChatMembershipKey(it.id),
                             CSEventKeyType(UUIDs.timeBased()),
                             CSEventKeyType((UUIDs.timeBased())))
                 })

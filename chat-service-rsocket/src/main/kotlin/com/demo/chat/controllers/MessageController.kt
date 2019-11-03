@@ -8,6 +8,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.service.ChatMessageIndexService
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.TextMessagePersistence
 import org.slf4j.Logger
@@ -19,7 +20,8 @@ import reactor.core.publisher.Mono
 
 @Controller
 class MessageController(
-        val dataPersistence: TextMessagePersistence<out TextMessage, TextMessageKey>,
+        val messageIndex: ChatMessageIndexService,
+        val dataPersistence: TextMessagePersistence,
         val topicService: ChatTopicService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 

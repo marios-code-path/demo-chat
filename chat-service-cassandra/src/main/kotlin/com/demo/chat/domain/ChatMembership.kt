@@ -8,7 +8,7 @@ import java.util.*
 @Table("chat_membership")
 open class ChatMembership(
         @PrimaryKey
-        override val key: MemberShipKey,
+        override val key: ChatMembershipKey,
         @Column("member")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
         override val member: CSEventKeyType,
@@ -23,7 +23,7 @@ open class ChatMembershipByMember(
         @Column("id")
         override val key: CSEventKeyType,
         @PrimaryKey
-        override val member: MemberShipKeyByMember,
+        override val member: ChatMembershipKeyByMember,
         @Column("memberOf")
         override val memberOf: CSEventKeyType
 ) : RoomMembership
@@ -35,20 +35,20 @@ open class ChatMembershipByMemberOf(
         @Column("member")
         override val member: CSEventKeyType,
         @PrimaryKey
-        override val memberOf: MemberShipKeyByMemberOf
+        override val memberOf: ChatMembershipKeyByMemberOf
 ) : RoomMembership
 
 @PrimaryKeyClass
-data class MemberShipKeyByMember(
+data class ChatMembershipKeyByMember(
         @PrimaryKeyColumn(name = "member", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID) : EventKey
 
 @PrimaryKeyClass
-data class MemberShipKeyByMemberOf(
+data class ChatMembershipKeyByMemberOf(
         @PrimaryKeyColumn(name = "memberOf", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID) : EventKey
 
 @PrimaryKeyClass
-data class MemberShipKey(
+data class ChatMembershipKey(
         @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID) : EventKey

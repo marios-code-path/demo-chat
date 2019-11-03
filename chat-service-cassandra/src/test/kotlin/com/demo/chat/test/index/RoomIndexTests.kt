@@ -87,19 +87,6 @@ class RoomIndexTests {
     private val ROOMNAME = "ROOM_TEST"
 
     @Test
-    fun `should join and leave a ficticious room`() {
-        val serviceFlux = roomIndex
-                .addMember(uid, rid)
-                .thenMany(roomIndex.remMember(uid, rid))
-
-        StepVerifier
-                .create(serviceFlux)
-                .expectSubscription()
-                .expectNextCount(0)
-                .verifyComplete()
-    }
-
-    @Test
     fun `should create 2 rooms, fetch by random name`() {
         StepVerifier
                 .create(

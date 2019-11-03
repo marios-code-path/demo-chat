@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
  * TODO: remove key in possible scenarios !
  * key generation is used to combine a created ID() with model object's consturctor
  */
-interface KeyService {
+interface  KeyService {
     fun <T> id(kind: Class<T>): Mono<EventKey>
     fun rem(key: EventKey): Mono<Void>
     fun exists(key: EventKey): Mono<Boolean>
