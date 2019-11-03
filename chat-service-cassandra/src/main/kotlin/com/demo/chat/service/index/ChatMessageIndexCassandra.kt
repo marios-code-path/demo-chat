@@ -4,6 +4,8 @@ import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.service.ChatMessageIndexService
+import com.demo.chat.service.ChatMessageIndexService.Companion.TOPIC
+import com.demo.chat.service.ChatMessageIndexService.Companion.USER
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -73,11 +75,6 @@ class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
         }.map {
             it.key
         }
-    }
-
-    companion object {
-        const val TOPIC = "topicId"
-        const val USER = "userId"
     }
 
     fun findByTopic(topic: UUID) = byTopicRepo.findByKeyTopicId(topic)

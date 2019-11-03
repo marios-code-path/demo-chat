@@ -25,12 +25,15 @@ class UserController(val userPersistence: ChatUserPersistence,
             userPersistence
                     .key()
                     .flatMap {
+                        val user = User.create(
+                                UserKey.create(it.id, userReq.userHandle),
+                                userReq.name,
+                                userReq.imgUri
+                        )
                         userPersistence
-                                .add(User.create(
-                                        UserKey.create(it.id, userReq.userHandle),
-                                        userReq.name,
-                                        userReq.imgUri
-                                ))
+                                .add(user)
+                                .thenMany(userIndex.add(user, mapOf()))
+                                .then()
                     }
 
     @MessageMapping("user-by-handle")

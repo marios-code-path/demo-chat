@@ -38,4 +38,9 @@ interface ChatMembershipIndexService : ChatIndexService<EventKey, RoomMembership
     }
 }
 
-interface ChatMessageIndexService : ChatIndexService<TextMessageKey, TextMessage, Map<String, String>, Map<String, String>>
+interface ChatMessageIndexService : ChatIndexService<TextMessageKey, TextMessage, Map<String, String>, Map<String, String>> {
+    companion object {
+        const val TOPIC = "topicId"
+        const val USER = "userId"
+    }
+}

@@ -24,8 +24,12 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
             roomPersistence
                     .key()
                     .flatMap { key ->
+                        val room = Room.create(RoomKey.create(key.id, req.roomName), setOf())
                         roomPersistence
-                                .add(Room.create(RoomKey.create(key.id, req.roomName), setOf()))
+                                .add(room)
+                                .flatMap {
+                                    roomIndex.add(room, mapOf())
+                                }
                                 .then(topicService.add(key.id))
                                 .map { key }
                     }
@@ -35,8 +39,8 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
             roomPersistence
                     .get(EventKey.create(req.roomId))
                     .flatMap {
-                        roomIndex.rem(it)
                         roomPersistence.rem(it.key)
+                                .then(roomIndex.rem(it))
                                 .then(topicService.unSubscribeAllIn(it.key.id))
                                 .then(topicService.rem(it.key.id))
                     }
