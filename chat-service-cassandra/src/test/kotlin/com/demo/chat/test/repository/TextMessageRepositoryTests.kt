@@ -83,11 +83,10 @@ class TextMessageRepositoryTests {
         val msgId = UUIDs.timeBased()
 
         val saveMsg = Flux
-                .just(ChatMessageByTopicKey(msgId, roomId, userId, Instant.now()))
-                .map { key ->
-                    ChatMessageByTopic(key, MSGTEXT, true)
+                .just(ChatMessageByTopicKey(msgId, userId, roomId, Instant.now()))
+                .flatMap { key ->
+                    byTopicRepo.save(ChatMessageByTopic(key, MSGTEXT, true))
                 }
-                .flatMap(repo::add)
 
         val findMsg = byTopicRepo.findByKeyTopicId(roomId)
 
@@ -108,11 +107,10 @@ class TextMessageRepositoryTests {
         val msgId = UUIDs.timeBased()
 
         val saveMsg = Flux
-                .just(ChatMessageByUserKey(msgId, roomId, userId, Instant.now()))
-                .map { key ->
-                    ChatMessageByUser(key, MSGTEXT, true)
+                .just(ChatMessageByUserKey(msgId, userId, roomId, Instant.now()))
+                .flatMap { key ->
+                    byUserRepo.save(ChatMessageByUser(key, MSGTEXT, true))
                 }
-                .flatMap(repo::add)
 
         val findMsg = byUserRepo.findByKeyUserId(userId)
 
@@ -133,9 +131,9 @@ class TextMessageRepositoryTests {
         val getMsg = Supplier { UUIDs.timeBased() }
 
         val messages = Flux
-                .generate<ChatMessageById> {
-                    it.next(ChatMessageById(
-                            ChatMessageByIdKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
+                .generate<ChatMessageByTopic> {
+                    it.next(ChatMessageByTopic(
+                            ChatMessageByTopicKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
                             MSGTEXT, true))
                 }
                 .take(10)
@@ -151,7 +149,7 @@ class TextMessageRepositoryTests {
         val saveMessageFlux = Flux
                 .from(messages)
                 .flatMap {
-                    repo.add(it)
+                    byTopicRepo.save(it)
                 }
                 .thenMany(byTopicRepo.findByKeyTopicId(roomSelection))
 
@@ -225,16 +223,16 @@ class TextMessageRepositoryTests {
 
         val messages = Flux
                 .just(
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
-                        ChatMessageById(ChatMessageByIdKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
+                        ChatMessageByUser(ChatMessageByUserKey(UUIDs.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
                 )
                 .flatMap {
-                    repo.add(it)
+                    byUserRepo.save(it)
                 }
 
         val saveFindOps = Flux.from(messages)

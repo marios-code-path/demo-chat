@@ -1,10 +1,7 @@
 package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.ChatRoom
-import com.demo.chat.domain.ChatRoomKey
-import com.demo.chat.domain.Room
-import com.demo.chat.domain.RoomKey
+import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.test.TestConfiguration
@@ -107,7 +104,7 @@ class RoomRepositoryTests {
     fun `should save and find by name`() {
         val saveFlux = Flux.just(RoomKey.create(UUIDs.timeBased(), "XYZ"))
                 .flatMap {
-                    repo.add(Room.create(it, Collections.emptySet()))
+                    byNameRepo.save(ChatRoomName(ChatRoomNameKey(it.id,it.name), Collections.emptySet(), true, Instant.now()))
                 }
 
         val findFlux = byNameRepo

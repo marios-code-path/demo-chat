@@ -5,7 +5,6 @@ import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.service.ChatRoomIndexService
 import com.demo.chat.service.index.RoomIndexCassandra
-import com.demo.chat.test.KeyServiceBaseTest
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito

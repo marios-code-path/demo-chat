@@ -118,7 +118,7 @@ class RSocketRoomTests : RSocketTestBase() {
     @Test
     fun `should not join a non existent Room`() {
         BDDMockito
-                .given(roomIndex.addMember(anyObject(), anyObject()))
+                .given(roomIndex.add(anyObject(), anyObject()))
                 .willReturn(Mono.error(RoomNotFoundException))
 
         StepVerifier
@@ -135,7 +135,7 @@ class RSocketRoomTests : RSocketTestBase() {
 
     @Test
     fun `joins a room and appears in member list`() {
-        BDDMockito.given(roomIndex.addMember(anyObject(), anyObject()))
+        BDDMockito.given(roomIndex.add(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(roomPersistence.get(anyObject()))
@@ -148,7 +148,7 @@ class RSocketRoomTests : RSocketTestBase() {
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(userPersistence.findByIds(anyObject()))
+                .given(userPersistence.byIds(anyObject()))
                 .willReturn(Flux.just(TestChatUser(
                         TestChatUserKey(randomUserId, randomUserHandle),
                         "NAME", "http://imageURI", Instant.now()
