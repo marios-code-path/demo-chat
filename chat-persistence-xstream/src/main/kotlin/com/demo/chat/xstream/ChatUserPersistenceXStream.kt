@@ -18,6 +18,10 @@ import java.util.*
 import java.util.Optional.of
 import java.util.Optional.ofNullable
 
+// Producer and Consumers are group together to reduce
+// memory pressure from copying and network pressure
+// from transmission.
+
 data class KeyConfiguration(
         val keyStreamKey: String,
         val keyUserStreamKey: String
@@ -26,7 +30,15 @@ data class KeyConfiguration(
 class ChatUserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
                                  private val keyService: KeyService,
                                  private val userTemplate: ReactiveRedisTemplate<String, User>
-) : ChatUserPersistence<User, UserKey> {
+) : ChatUserPersistence {
+    override fun add(o: UserKey): Mono<Void> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun all(): Flux<out User> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
     override fun get(key: UserKey): Mono<out User> = userTemplate
             .opsForStream<String, String>()
             .range(keyConfiguration.keyUserStreamKey, Range.just(key.id.mostSignificantBits.toString()))
@@ -37,10 +49,10 @@ class ChatUserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             }
             .single()
 
-    override fun key(handle: String): Mono<out UserKey> =
+    override fun key(): Mono<out EventKey> =
             keyService
                     .key(UserKey::class.java) {
-                        UserKey.create(it.id, handle)
+                        EventKey.create(it.id)
                     }
 
     override fun add(key: UserKey, name: String, imgUri: String): Mono<Void> =

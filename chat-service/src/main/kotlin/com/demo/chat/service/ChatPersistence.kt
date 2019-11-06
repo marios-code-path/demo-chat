@@ -5,21 +5,21 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatPersistence<OT, in KT :OT>{
+interface ChatPersistence<ENTITY>{
     fun key(): Mono<out EventKey>
-    fun add(o: KT): Mono<Void>
+    fun add(ent: ENTITY): Mono<Void>
     fun rem(key: EventKey): Mono<Void>
-    fun get(key: EventKey): Mono<out OT>
-    fun all(): Flux<out OT>
-    fun byIds(keys: List<EventKey>): Flux<out OT> = Flux.empty()
+    fun get(key: EventKey): Mono<out ENTITY>
+    fun all(): Flux<out ENTITY>
+    fun byIds(keys: List<EventKey>): Flux<out ENTITY> = Flux.empty()
 }
 
-interface ChatUserPersistence : ChatPersistence<User, User>
+interface ChatUserPersistence : ChatPersistence<User>
 
-interface ChatRoomPersistence : ChatPersistence<Room, Room>
+interface ChatRoomPersistence : ChatPersistence<Room>
 
-interface ChatMembershipPersistence : ChatPersistence<Membership<EventKey>, Membership<in EventKey>>
+interface ChatMembershipPersistence : ChatPersistence<Membership<in EventKey>>
 
-interface TextMessagePersistence : ChatPersistence<TextMessage, TextMessage>
+interface TextMessagePersistence : ChatPersistence<TextMessage>
 
-interface KeyPersistence : ChatPersistence<EventKey, EventKey>
+interface KeyPersistence : ChatPersistence<EventKey>

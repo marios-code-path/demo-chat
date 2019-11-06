@@ -69,6 +69,4 @@ class MembershipIndexCassandra(val byMemberRepo: ChatMembershipByMemberRepositor
                     it.key
                 }
     }
-
-
 }

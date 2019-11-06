@@ -10,11 +10,8 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 open class ChatRoomPersistenceCassandra(private val keyService: KeyService,
-                                        private val roomRepo: ChatRoomRepository,
-                                        private val roomByNameRepo: ChatRoomNameRepository)
+                                        private val roomRepo: ChatRoomRepository)
     : ChatRoomPersistence {
-    private val logger = LoggerFactory.getLogger(this::class.simpleName)
-
     override fun all(): Flux<out Room> = roomRepo.findAll()
 
     override fun get(key: EventKey): Mono<out Room> = roomRepo.findByKeyId(key.id)

@@ -2,6 +2,7 @@ package com.demo.chat.xstream
 
 import com.demo.chat.domain.EventKey
 import com.demo.chat.service.KeyService
+import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -16,6 +17,13 @@ import java.util.*
  */
 class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
                         private val stringTemplate: ReactiveRedisTemplate<String, String>) : KeyService {
+    override fun exists(key: EventKey): Mono<Boolean> =
+            stringTemplate
+                    .opsForStream<String, String>()
+                    .range(keyConfiguration.keyStreamKey, Range.just(key.id.mostSignificantBits.toString()))
+                    .singleOrEmpty()
+                    .hasElement()
+
     override fun <T> id(kind: Class<T>): Mono<EventKey> =
             stringTemplate
                     .opsForStream<String, String>()

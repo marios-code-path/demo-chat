@@ -68,7 +68,7 @@ class RoomPersistenceTests {
         BDDMockito.given(roomRepo.messageCount(anyObject()))
                 .willReturn(Mono.just(1))
 
-        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo, roomByNameRepo)
+        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo)
     }
 
     @Test

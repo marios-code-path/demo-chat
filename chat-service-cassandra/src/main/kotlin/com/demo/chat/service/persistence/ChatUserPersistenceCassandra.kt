@@ -4,6 +4,7 @@ import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.service.ChatPersistence
 import com.demo.chat.service.ChatUserPersistence
 import com.demo.chat.service.KeyService
 import reactor.core.publisher.Flux
