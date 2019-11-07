@@ -42,6 +42,12 @@ class RSocketTestConfig {
     @MockBean
     private lateinit var keyService: KeyService
 
+    @MockBean
+    private lateinit var membershipPersistence: ChatMembershipPersistence
+
+    @MockBean
+    private lateinit var membershipIndex: ChatMembershipIndexService
+
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies
 

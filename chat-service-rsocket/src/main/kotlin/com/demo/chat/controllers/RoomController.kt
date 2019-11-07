@@ -103,7 +103,7 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
                         userPersistence
                                 .get(EventKey.create(membership.member.id))
                                 .map { user ->
-                                    RoomMember(req.roomId, user.key.handle, user.imageUri)
+                                    RoomMember(user.key.id, user.key.handle, user.imageUri)
                                 }
                     }
                     .collectList()

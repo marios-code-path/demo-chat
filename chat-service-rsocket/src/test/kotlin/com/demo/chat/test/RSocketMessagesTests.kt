@@ -4,6 +4,7 @@ import com.demo.chat.*
 import com.demo.chat.controllers.MessageController
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.service.ChatMessageIndexService
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.TextMessagePersistence
 import org.assertj.core.api.AssertionsForClassTypes
@@ -35,6 +36,9 @@ class RSocketMessagesTests : RSocketTestBase() {
     @Autowired
     private lateinit var topicService: ChatTopicService
 
+    @Autowired
+    private lateinit var messageIndex: ChatMessageIndexService
+
     @Test
     fun `should fetch a single message`() {
         BDDMockito
@@ -63,12 +67,16 @@ class RSocketMessagesTests : RSocketTestBase() {
     @Test
     fun `should receive messages from a random topic`() {
         BDDMockito
-                .given(messagePersistence.all())
+                .given(messagePersistence.byIds(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
                 .given(topicService.receiveOn(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
+
+        BDDMockito
+                .given(messageIndex.findBy(anyObject()))
+                .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requestor
                 .route("message-listen-topic")

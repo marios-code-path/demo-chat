@@ -32,7 +32,8 @@ class UserController(val userPersistence: ChatUserPersistence,
                         )
                         userPersistence
                                 .add(user)
-                                .thenMany(userIndex.add(user, mapOf()))
+                                .thenMany(
+                                        userIndex.add(user, mapOf()))
                                 .then()
                     }
 

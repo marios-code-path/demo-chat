@@ -3,9 +3,7 @@ package com.demo.chat.test
 
 import com.demo.chat.*
 import com.demo.chat.controllers.RoomController
-import com.demo.chat.domain.RoomKey
-import com.demo.chat.domain.RoomMemberships
-import com.demo.chat.domain.RoomNotFoundException
+import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
@@ -46,6 +44,12 @@ class RSocketRoomTests : RSocketTestBase() {
 
     @Autowired
     lateinit var topicService: ChatTopicService
+
+    @Autowired
+    lateinit var membershipIndex: ChatMembershipIndexService
+
+    @Autowired
+    lateinit var membershipPersistence: ChatMembershipPersistence
 
     private val randomUserHandle = randomAlphaNumeric(4) + "User"
     private val randomUserId: UUID = UUID.randomUUID()
@@ -135,6 +139,8 @@ class RSocketRoomTests : RSocketTestBase() {
 
     @Test
     fun `joins a room and appears in member list`() {
+        val membershipId = UUID.randomUUID()
+
         BDDMockito.given(roomIndex.add(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
@@ -153,6 +159,24 @@ class RSocketRoomTests : RSocketTestBase() {
                         TestChatUserKey(randomUserId, randomUserHandle),
                         "NAME", "http://imageURI", Instant.now()
                 )))
+
+        BDDMockito
+                .given(userPersistence.get(anyObject()))
+                .willReturn(Mono.just(TestChatUser(
+                        TestChatUserKey(randomUserId, randomUserHandle),
+                        "NAME", "http://imageURI", Instant.now()
+                )))
+
+        BDDMockito
+                .given(membershipPersistence.byIds(anyObject()))
+                .willReturn(Flux.just(RoomMembership.create(
+                        EventKey.create(membershipId),
+                        EventKey.create(randomRoomId),
+                        EventKey.create(randomUserId))))
+
+        BDDMockito
+                .given(membershipIndex.findBy(anyObject()))
+                .willReturn(Flux.just(EventKey.create(membershipId)))
 
         BDDMockito
                 .given(topicService.add(anyObject()))
