@@ -71,7 +71,7 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
                     .key()
                     .flatMap { eventKey ->
                         membershipPersistence
-                                .add(Membership.create(eventKey, EventKey.create(req.roomId), EventKey.create(req.uid)))
+                                .add(RoomMembership.create(eventKey, EventKey.create(req.roomId), EventKey.create(req.uid)))
                                 .thenMany(topicService
                                         .sendMessage(JoinAlert.create(eventKey.id, req.roomId, req.uid))
                                         .then(topicService.subscribe(req.uid, req.roomId)))
@@ -83,11 +83,11 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
     fun leaveRoom(req: RoomLeaveRequest): Mono<Void> =
             membershipPersistence
                     .get(EventKey.create(req.roomId))
-                    .flatMap {
-                        membershipPersistence.rem(it.key)
+                    .flatMap { m ->
+                        membershipPersistence.rem(m.key)
                                 .thenMany(topicService
-                                        .sendMessage(LeaveAlert.create(it.key.id, it.member.id, it.memberOf.id))
-                                        .then(topicService.unSubscribe(it.member.id, it.memberOf.id)))
+                                        .sendMessage(LeaveAlert.create(m.key.id, m.member.id, m.memberOf.id))
+                                        .then(topicService.unSubscribe(m.member.id, m.memberOf.id)))
                                 .then()
 
                     }

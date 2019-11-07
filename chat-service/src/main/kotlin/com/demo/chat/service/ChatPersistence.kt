@@ -18,7 +18,7 @@ interface ChatUserPersistence : ChatPersistence<User>
 
 interface ChatRoomPersistence : ChatPersistence<Room>
 
-interface ChatMembershipPersistence : ChatPersistence<Membership<in EventKey>>
+interface ChatMembershipPersistence : ChatPersistence<Membership<EventKey>>
 
 interface TextMessagePersistence : ChatPersistence<TextMessage>
 

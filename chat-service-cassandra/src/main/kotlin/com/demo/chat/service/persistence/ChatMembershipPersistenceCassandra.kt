@@ -14,7 +14,7 @@ class ChatMembershipPersistenceCassandra (
 ) : ChatMembershipPersistence {
     override fun key(): Mono<out EventKey> = keyService.id(Membership::class.java)
 
-    override fun  add(entity: Membership<in EventKey>): Mono<Void> = membershipRepo
+    override fun  add(entity: Membership<EventKey>): Mono<Void> = membershipRepo
             .save(entity as ChatMembership)
             .then()
 

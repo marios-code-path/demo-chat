@@ -11,16 +11,17 @@ import java.util.*
 
 /**
  * Key Services using stream as source for new ID's
- * Deleting a key removes that ID from the stream
+ * Deleting a key only adds a record for key removal
  *
- * Downstream services should also remove a deleted key
+ * Downstream services should also remove a deleted key from their
+ * respective stores.
  */
 class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
                         private val stringTemplate: ReactiveRedisTemplate<String, String>) : KeyService {
     override fun exists(key: EventKey): Mono<Boolean> =
             stringTemplate
                     .opsForStream<String, String>()
-                    .range(keyConfiguration.keyStreamKey, Range.just(key.id.mostSignificantBits.toString()))
+                    .range(keyConfiguration.keyStreamKey, Range.just(key.id.timestamp().toString()))
                     .singleOrEmpty()
                     .hasElement()
 
@@ -28,7 +29,7 @@ class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
-                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("kind", kind.simpleName)))
+                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("kind", kind.simpleName), Pair("exists", true)))
                             .withId(RecordId.autoGenerate()))
                     .map {
                         EventKey.create(UUID(it.timestamp!!, it.sequence!!))
@@ -37,7 +38,9 @@ class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
     override fun rem(key: EventKey): Mono<Void> =
             stringTemplate
                     .opsForStream<String, String>()
-                    .delete(keyConfiguration.keyStreamKey, RecordId.of(key.id.mostSignificantBits, key.id.leastSignificantBits))
+                    .add(MapRecord
+                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("keyId", "${key.id.timestamp()}-${key.id.clockSequence()}"), Pair("exists", "false")))
+                            .withId(RecordId.autoGenerate()))
                     .then()
 
     override fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T> =

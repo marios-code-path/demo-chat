@@ -55,6 +55,7 @@ class MessageController(
             is TextMessage -> messagePersistence
                     .add(req.msg)
                     .thenMany(messageIndex.add(req.msg, mapOf()))
+                    .then()
             else -> Mono.empty()
         }
 

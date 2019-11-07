@@ -27,4 +27,15 @@ interface Membership<KT : EventKey> {
     }
 }
 
-interface RoomMembership : Membership<EventKey>
+interface RoomMembership : Membership<EventKey> {
+    companion object Factory {
+        fun create(k: EventKey, mof: EventKey, m: EventKey): RoomMembership = object : RoomMembership {
+            override val key: EventKey
+                get() = k
+            override val member: EventKey
+                get() = m
+            override val memberOf: EventKey
+                get() = mof
+        }
+    }
+}

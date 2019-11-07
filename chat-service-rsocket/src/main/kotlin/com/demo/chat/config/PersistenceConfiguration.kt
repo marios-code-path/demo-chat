@@ -65,7 +65,7 @@ class PersistenceConfiguration {
     fun roomPersistence(keyService: KeyService,
                         roomRepo: ChatRoomRepository,
                         roomNameRepo: ChatRoomNameRepository): ChatRoomPersistence =
-            ChatRoomPersistenceCassandra(keyService, roomRepo, roomNameRepo)
+            ChatRoomPersistenceCassandra(keyService, roomRepo)
 
     @Bean
     fun messagePersistence(keyService: KeyService,
