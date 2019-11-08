@@ -66,6 +66,4 @@ class RSocketTestConfig {
         handler.afterPropertiesSet()
         return handler
     }
-
-
 }
