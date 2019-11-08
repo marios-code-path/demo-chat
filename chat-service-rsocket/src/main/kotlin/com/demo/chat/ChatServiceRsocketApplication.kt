@@ -22,8 +22,11 @@ class ChatServiceRsocketApplication
 @Configuration
 class ServiceDiscoveryConfiguration {
     private val log = LoggerFactory.getLogger(this::class.qualifiedName)
-    fun main(args: Array<String>) {
-        runApplication<ChatServiceRsocketApplication>(*args)
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            runApplication<ChatServiceRsocketApplication>(*args)
+        }
     }
 
     @Bean
@@ -32,4 +35,5 @@ class ServiceDiscoveryConfiguration {
                 log.info("SampleProp: ${sampleProp.name}")
             }
 }
+
 annotation class ExcludeFromTests
