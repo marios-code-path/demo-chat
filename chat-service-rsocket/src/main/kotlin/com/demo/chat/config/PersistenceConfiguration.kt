@@ -11,15 +11,16 @@ import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import org.springframework.stereotype.Component
+import java.beans.ConstructorProperties
 
-@ConfigurationProperties("sample")
-data class SampleProps(val name: String)
-
-@Profile("cassandra-persistence")
+@ConstructorBinding
 @ConfigurationProperties("cassandra-repo")
 data class CassandraProperties(override val contactPoints: String,
                                override val port: Int,
@@ -33,16 +34,16 @@ data class CassandraProperties(override val contactPoints: String,
 class IndexConfiguration {
     @Bean
     fun userIndex(userHandleRepo: ChatUserHandleRepository,
-                  cassandra: ReactiveCassandraTemplate) = ChatUserIndexCassandra(userHandleRepo, cassandra)
+                  cassandra: ReactiveCassandraTemplate): ChatUserIndexService = ChatUserIndexCassandra(userHandleRepo, cassandra)
 
     @Bean
     fun roomIndex(roomRepo: ChatRoomRepository,
-                  nameRepo: ChatRoomNameRepository) = RoomIndexCassandra(roomRepo, nameRepo)
+                  nameRepo: ChatRoomNameRepository): ChatRoomIndexService = RoomIndexCassandra(roomRepo, nameRepo)
 
     @Bean
     fun messageIndex(cassandra: ReactiveCassandraTemplate,
                      byUserRepo: ChatMessageByUserRepository,
-                     byTopicRepo: ChatMessageByTopicRepository) =
+                     byTopicRepo: ChatMessageByTopicRepository): ChatMessageIndexService =
             ChatMessageIndexCassandra(cassandra, byUserRepo, byTopicRepo)
 }
 

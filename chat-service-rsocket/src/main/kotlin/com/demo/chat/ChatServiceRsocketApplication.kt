@@ -1,12 +1,10 @@
 package com.demo.chat
 
-import com.demo.chat.config.SampleProps
-import org.slf4j.LoggerFactory
-import org.springframework.boot.ApplicationRunner
+import com.demo.chat.config.CassandraProperties
+import com.demo.chat.config.ConfigurationRedisTopics
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.FilterType
@@ -17,23 +15,16 @@ import org.springframework.context.annotation.FilterType
 ])
 class ChatServiceRsocketApplication
 
-@EnableConfigurationProperties
+@EnableConfigurationProperties(CassandraProperties::class, ConfigurationRedisTopics::class)
 @ExcludeFromTests
 @Configuration
 class ServiceDiscoveryConfiguration {
-    private val log = LoggerFactory.getLogger(this::class.qualifiedName)
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
             runApplication<ChatServiceRsocketApplication>(*args)
         }
     }
-
-    @Bean
-    fun appRun(sampleProp: SampleProps): ApplicationRunner =
-            ApplicationRunner {args ->
-                log.info("SampleProp: ${sampleProp.name}")
-            }
 }
 
 annotation class ExcludeFromTests

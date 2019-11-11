@@ -8,6 +8,7 @@ import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicServiceMemory
 import com.demo.chatevents.service.TopicServiceRedisPubSub
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
@@ -23,6 +24,7 @@ class TopicConfigurationMemory {
 }
 
 @Profile("redis-topics")
+@ConstructorBinding
 @ConfigurationProperties("redis-topics")
 data class ConfigurationRedisTopics(override val host: String = "127.0.0.1",
                                     override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
