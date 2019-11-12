@@ -3,7 +3,6 @@ package com.demo.chat.chatconsumers
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
-import reactor.core.publisher.Flux
 import java.time.Instant
 import java.util.*
 

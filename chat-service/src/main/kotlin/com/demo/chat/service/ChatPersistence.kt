@@ -5,7 +5,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatPersistence<ENTITY>{
+interface ChatPersistence<ENTITY> {
     fun key(): Mono<out EventKey>
     fun add(ent: ENTITY): Mono<Void>
     fun rem(key: EventKey): Mono<Void>

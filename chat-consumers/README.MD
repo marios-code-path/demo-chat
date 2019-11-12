@@ -1,4 +1,4 @@
-# consuming Demo-chat Simple clients
+# Instructions for Consumers of Demo-chat
 
 ## Key Service
 

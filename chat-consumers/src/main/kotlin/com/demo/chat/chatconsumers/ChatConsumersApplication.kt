@@ -1,5 +1,6 @@
 package com.demo.chat.chatconsumers
 
+import com.demo.chat.service.ChatUserPersistence
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

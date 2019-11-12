@@ -1,6 +1,7 @@
 package com.demo.chat
 
 import com.demo.chat.service.*
+import io.rsocket.SocketAcceptor
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -9,9 +10,8 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.rsocket.MessageHandlerAcceptor
-import org.springframework.messaging.rsocket.RSocketMessageHandler
 import org.springframework.messaging.rsocket.RSocketStrategies
+import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 
 @Configuration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
@@ -26,7 +26,7 @@ class RSocketTestConfig {
 
     @MockBean
     private lateinit var messageIndex: ChatMessageIndexService
-    
+
     @MockBean
     private lateinit var roomPersistence: ChatRoomPersistence
 
@@ -52,15 +52,10 @@ class RSocketTestConfig {
     private lateinit var rsocketStrategies: RSocketStrategies
 
     @Bean
-    fun handlerAcceptor(strategies: RSocketStrategies): MessageHandlerAcceptor {
-        val acc = MessageHandlerAcceptor()
-        acc.rSocketStrategies = strategies
-        acc.afterPropertiesSet()
-        return acc
-    }
+    fun responderAcceptor(handler: RSocketMessageHandler): SocketAcceptor = handler.responder()
 
     @Bean
-    fun messageHandler(strategies: RSocketStrategies ): RSocketMessageHandler {
+    fun messageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
         val handler = RSocketMessageHandler()
         handler.rSocketStrategies = strategies
         handler.afterPropertiesSet()

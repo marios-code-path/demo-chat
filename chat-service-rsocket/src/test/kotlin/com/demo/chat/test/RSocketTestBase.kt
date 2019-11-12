@@ -6,6 +6,7 @@ import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.KeyService
 import io.rsocket.RSocket
 import io.rsocket.RSocketFactory
+import io.rsocket.SocketAcceptor
 import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.server.CloseableChannel
 import io.rsocket.transport.netty.server.TcpServerTransport
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
-import org.springframework.messaging.rsocket.MessageHandlerAcceptor
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -48,7 +48,7 @@ open class RSocketTestBase {
 
     @BeforeEach
     fun setUp(context: ApplicationContext) {
-        val messageHandler = context.getBean(MessageHandlerAcceptor::class.java)
+        val messageHandler = context.getBean(SocketAcceptor::class.java)
 
         server = RSocketFactory.receive()
                 .frameDecoder(PayloadDecoder.ZERO_COPY)
