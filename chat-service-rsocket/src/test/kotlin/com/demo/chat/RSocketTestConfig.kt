@@ -55,7 +55,7 @@ class RSocketTestConfig {
     fun responderAcceptor(handler: RSocketMessageHandler): SocketAcceptor = handler.responder()
 
     @Bean
-    fun messageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
+    fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
         val handler = RSocketMessageHandler()
         handler.rSocketStrategies = strategies
         handler.afterPropertiesSet()
