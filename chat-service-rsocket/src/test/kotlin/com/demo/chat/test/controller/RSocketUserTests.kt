@@ -1,8 +1,7 @@
-package com.demo.chat.test
+package com.demo.chat.test.controller
 
 import com.demo.chat.*
 import com.demo.chat.controllers.UserController
-import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.ChatUserIndexService
 import com.demo.chat.service.ChatUserPersistence
@@ -24,8 +23,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(RSocketTestConfig::class, UserController::class)
-class RSocketUserTests : RSocketTestBase() {
+@Import(ConfigurationRSocket::class, UserController::class)
+class RSocketUserTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired

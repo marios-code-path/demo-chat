@@ -1,12 +1,18 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
+import com.fasterxml.jackson.annotation.JsonCreator
+import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonTypeName
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
+import com.fasterxml.jackson.databind.ser.std.UUIDSerializer
 import java.time.Instant
 import java.util.*
 
-@JsonTypeName("ChatUser")
-data class TestChatUser(
+@JsonTypeName("User")
+data class TestChatUser (
         override val key: TestChatUserKey,
         override val name: String,
         override val imageUri: String,
@@ -17,6 +23,10 @@ data class TestChatUserKey(
         override val id: UUID,
         override val handle: String
 ) : UserKey
+
+data class TestEventKey(
+        override val id: UUID
+) : EventKey
 
 @JsonTypeName("ChatRoom")
 data class TestChatRoom(

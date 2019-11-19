@@ -12,7 +12,9 @@ interface User {
     val name: String
     val imageUri: String
     val timestamp: Instant
+
     companion object Factory {
+        @JvmStatic
         fun create(key: UserKey, name: String, imageUri: String): User = object : User {
             override val key: UserKey
                 get() = key
@@ -28,8 +30,10 @@ interface User {
 
 interface UserKey : EventKey {
     val handle: String
+
     companion object Factory {
-        fun create(id: UUID, handle: String) : UserKey = object : UserKey {
+        @JvmStatic
+        fun create(id: UUID, handle: String): UserKey = object : UserKey {
             override val id: UUID
                 get() = id
             override val handle: String

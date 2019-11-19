@@ -1,6 +1,8 @@
 package com.demo.chat.config
 
 import com.demo.chat.ExcludeFromTests
+import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chat.service.index.ChatMessageIndexCassandra
@@ -51,6 +53,7 @@ class IndexConfiguration {
 @Profile("cassandra-persistence")
 @Configuration
 class PersistenceConfiguration {
+
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 

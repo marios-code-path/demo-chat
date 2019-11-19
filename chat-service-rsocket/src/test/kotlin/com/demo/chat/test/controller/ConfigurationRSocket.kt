@@ -1,7 +1,6 @@
-package com.demo.chat
+package com.demo.chat.test.controller
 
 import com.demo.chat.service.*
-import io.rsocket.SocketAcceptor
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -15,7 +14,7 @@ import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHa
 
 @Configuration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
-class RSocketTestConfig {
+class ConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
@@ -50,9 +49,6 @@ class RSocketTestConfig {
 
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies
-
-    @Bean
-    fun responderAcceptor(handler: RSocketMessageHandler): SocketAcceptor = handler.responder()
 
     @Bean
     fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {

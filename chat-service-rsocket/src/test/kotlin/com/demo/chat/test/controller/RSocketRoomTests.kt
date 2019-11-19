@@ -1,4 +1,4 @@
-package com.demo.chat.test
+package com.demo.chat.test.controller
 
 
 import com.demo.chat.*
@@ -23,18 +23,12 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(RSocketTestConfig::class, RoomController::class)
-class RSocketRoomTests : RSocketTestBase() {
+@Import(ConfigurationRSocket::class, RoomController::class)
+class RSocketRoomTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
     lateinit var roomIndex: ChatRoomIndexService
-
-    @Autowired
-    lateinit var userIndex: ChatUserIndexService
-
-    @Autowired
-    lateinit var messageIndex: ChatMessageIndexService
 
     @Autowired
     lateinit var roomPersistence: ChatRoomPersistence

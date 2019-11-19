@@ -1,9 +1,7 @@
-package com.demo.chat.test
+package com.demo.chat.test.controller
 
 import com.demo.chat.*
 import com.demo.chat.controllers.MessageController
-import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.service.ChatMessageIndexService
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.TextMessagePersistence
@@ -14,6 +12,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
+import org.mockito.Mockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
@@ -26,8 +25,8 @@ import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-@Import(RSocketTestConfig::class, MessageController::class)
-class RSocketMessagesTests : RSocketTestBase() {
+@Import(ConfigurationRSocket::class, MessageController::class)
+class RSocketMessagesTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
@@ -75,7 +74,7 @@ class RSocketMessagesTests : RSocketTestBase() {
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(messageIndex.findBy(anyObject()))
+                .given(messageIndex.findBy(Mockito.any()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requestor

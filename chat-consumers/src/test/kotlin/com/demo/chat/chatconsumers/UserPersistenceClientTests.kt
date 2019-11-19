@@ -1,5 +1,8 @@
 package com.demo.chat.chatconsumers
 
+import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.User
+import com.demo.chat.service.ChatUserPersistence
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -8,6 +11,24 @@ import java.time.Duration
 
 class UserPersistenceClientTests {
 
+
+    private interface UserClientHandler : ChatUserPersistence {
+        @MessageMapping("key")
+        override fun key(): Mono<out EventKey>
+
+        @MessageMapping("add")
+        override fun add(ent: User): Mono<Void>
+
+        @MessageMapping("rem")
+        override fun rem(key: EventKey): Mono<Void>
+
+        @MessageMapping("get")
+        override fun get(key: EventKey): Mono<out User>
+
+        @MessageMapping("all")
+        override fun all(): Flux<out User>
+
+    }
     private class ClientHandler {
 
         internal val fireForgetPayloads = ReplayProcessor.create<String>()
