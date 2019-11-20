@@ -69,13 +69,9 @@ open class ServiceTestBase {
 
     lateinit var server: CloseableChannel
 
-    @Autowired
-    lateinit var mapper: ObjectMapper
-
     @BeforeEach
     fun setUp(context: ApplicationContext) {
         val messageHandler = context.getBean(RSocketMessageHandler::class.java)
-        mapper.registeredModuleIds.forEach{ println("SERVERMODULE:$it")}
 
         server = RSocketFactory.receive()
                 .frameDecoder(PayloadDecoder.ZERO_COPY)
@@ -83,7 +79,6 @@ open class ServiceTestBase {
                 .transport(TcpServerTransport.create("localhost", 0))
                 .start()
                 .block()!!
-
 
         val strategies = context.getBean(RSocketStrategies::class.java)
 
@@ -94,7 +89,6 @@ open class ServiceTestBase {
                 .block()!!
 
         socket = requestor.rsocket()
-
 
         Hooks.onOperatorDebug()
     }

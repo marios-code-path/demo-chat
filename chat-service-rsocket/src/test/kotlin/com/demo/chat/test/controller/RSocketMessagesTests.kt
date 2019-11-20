@@ -74,7 +74,7 @@ class RSocketMessagesTests : ControllerTestBase() {
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(messageIndex.findBy(Mockito.any()))
+                .given(messageIndex.findBy(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requestor

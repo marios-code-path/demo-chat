@@ -6,14 +6,8 @@ import com.demo.chat.TestEventKey
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.service.ChatPersistence
-import com.demo.chat.service.ChatPersistenceRSocket
 import com.demo.chat.service.ChatUserPersistence
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.demo.chat.service.PersistenceRSocket
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -141,6 +135,6 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         lateinit var userPersistence: ChatUserPersistence
 
         @Controller
-        class RSocketUserPersistence(t: ChatPersistence<User>) : ChatPersistenceRSocket<User>(t)
+        class RSocketUserPersistence(t: ChatPersistence<User>) : PersistenceRSocket<User>(t)
     }
 }
