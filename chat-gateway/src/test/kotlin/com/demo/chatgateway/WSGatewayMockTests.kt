@@ -20,7 +20,6 @@ class WSGatewayMockTests {
     fun setUpOnce() {
 
         context = AnnotationConfigApplicationContext(
-                WebSocketConfiguration::class.java,
                 TestWSConfiguration::class.java
         )
 

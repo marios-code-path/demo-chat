@@ -3,7 +3,7 @@ package com.demo.chat.xstream
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.KeyService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Range
@@ -25,10 +25,10 @@ data class KeyConfiguration(
         val keyUserStreamKey: String
 )
 
-class ChatUserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
-                                 private val keyService: KeyService,
-                                 private val userTemplate: ReactiveRedisTemplate<String, User>
-) : ChatUserPersistence {
+class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
+                             private val keyService: KeyService,
+                             private val userTemplate: ReactiveRedisTemplate<String, User>
+) : UserPersistence {
     override fun all(): Flux<out User> = userTemplate
             .opsForStream<String, String>()
             .read(StreamOffset.fromStart(keyConfiguration.keyUserStreamKey))

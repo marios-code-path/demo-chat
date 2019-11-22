@@ -7,16 +7,18 @@ import reactor.core.publisher.Mono
 /**
  * for given Type T, Given Key [K], and Query[Q] we will add, remove and seek K's for a given WriteCriteria[WQ]
  */
-interface ChatIndexService<out K : EventKey, in T, Q, WQ> {
+interface IndexService<out K : EventKey, in T, Q, WQ> {
     fun add(entity: T, criteria: WQ): Mono<Void>
     fun rem(entity: T): Mono<Void>
     fun findBy(query: Q): Flux<out K>
 }
 
-// Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
-interface ChatUserIndexService : ChatIndexService<UserKey, User, Map<String, String>, Map<String, String>>
+interface MapQueryIndexService<K : EventKey, T> : IndexService<K, T, Map<String, String>, Map<String, String>>
 
-interface ChatRoomIndexService : ChatIndexService<RoomKey, Room, Map<String, String>, Map<String, String>> {
+// Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
+interface UserIndexService : IndexService<UserKey, User, Map<String, String>, Map<String, String>>
+
+interface RoomIndexService : MapQueryIndexService<RoomKey, Room> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
@@ -26,7 +28,7 @@ interface ChatRoomIndexService : ChatIndexService<RoomKey, Room, Map<String, Str
     }
 }
 
-interface ChatMembershipIndexService : ChatIndexService<EventKey, RoomMembership, Map<String, String>, Map<String, String>> {
+interface MembershipIndexService : MapQueryIndexService<EventKey, RoomMembership> {
     fun size(roomId: EventKey): Mono<Int>
     fun addMember(membership: RoomMembership): Mono<Void>
     fun remMember(membership: RoomMembership): Mono<Void>
@@ -38,7 +40,7 @@ interface ChatMembershipIndexService : ChatIndexService<EventKey, RoomMembership
     }
 }
 
-interface ChatMessageIndexService : ChatIndexService<TextMessageKey, TextMessage, Map<String, String>, Map<String, String>> {
+interface MessageIndexService : MapQueryIndexService<TextMessageKey, TextMessage> {
     companion object {
         const val TOPIC = "topicId"
         const val USER = "userId"

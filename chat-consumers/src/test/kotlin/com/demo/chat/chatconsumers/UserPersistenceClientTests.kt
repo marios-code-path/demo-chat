@@ -2,7 +2,7 @@ package com.demo.chat.chatconsumers
 
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserPersistence
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -12,7 +12,7 @@ import java.time.Duration
 class UserPersistenceClientTests {
 
 
-    private interface UserClientHandler : ChatUserPersistence {
+    private interface UserClientHandler : UserPersistence {
         @MessageMapping("key")
         override fun key(): Mono<out EventKey>
 

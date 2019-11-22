@@ -3,15 +3,15 @@ package com.demo.chat.service.index
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.ChatMembershipByMemberRepository
-import com.demo.chat.service.ChatMembershipIndexService
-import com.demo.chat.service.ChatMembershipIndexService.Companion.MEMBER
-import com.demo.chat.service.ChatMembershipIndexService.Companion.MEMBEROF
+import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.MembershipIndexService.Companion.MEMBER
+import com.demo.chat.service.MembershipIndexService.Companion.MEMBEROF
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
 class MembershipIndexCassandra(val byMemberRepo: ChatMembershipByMemberRepository,
-                               val byMemberOfRepo: ChatMembershipByMemberOfRepository) : ChatMembershipIndexService {
+                               val byMemberOfRepo: ChatMembershipByMemberOfRepository) : MembershipIndexService {
 
     override fun add(ent: RoomMembership, criteria: Map<String, String>): Mono<Void> =
             byMemberRepo

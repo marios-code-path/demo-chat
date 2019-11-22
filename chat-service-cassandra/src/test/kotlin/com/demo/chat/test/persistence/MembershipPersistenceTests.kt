@@ -3,9 +3,9 @@ package com.demo.chat.test.persistence
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
-import com.demo.chat.service.ChatMembershipPersistence
+import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.KeyService
-import com.demo.chat.service.persistence.ChatMembershipPersistenceCassandra
+import com.demo.chat.service.persistence.MembershipPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -25,7 +25,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class MembershipPersistenceTests {
-    lateinit var membershipPersistence: ChatMembershipPersistence
+    lateinit var membershipPersistence: MembershipPersistence
 
     @MockBean
     lateinit var repo: ChatMembershipRepository
@@ -64,7 +64,7 @@ class MembershipPersistenceTests {
                 .given(repo.deleteById(Mockito.any(UUID::class.java)))
                 .willReturn(Mono.empty())
 
-        membershipPersistence = ChatMembershipPersistenceCassandra(keyService, repo)
+        membershipPersistence = MembershipPersistenceCassandra(keyService, repo)
     }
 
     @Test

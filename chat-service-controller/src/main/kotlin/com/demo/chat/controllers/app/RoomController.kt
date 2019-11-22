@@ -1,4 +1,4 @@
-package com.demo.chat.controllers
+package com.demo.chat.controllers.app
 
 import com.demo.chat.*
 import com.demo.chat.domain.*
@@ -6,17 +6,15 @@ import com.demo.chat.service.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-@Controller
-class RoomController(val roomPersistence: ChatRoomPersistence,
-                     val roomIndex: ChatRoomIndexService,
-                     val topicService: ChatTopicService,
-                     val userPersistence: ChatUserPersistence,
-                     val membershipPersistence: ChatMembershipPersistence,
-                     val membershipIndex: ChatMembershipIndexService) {
+open class RoomController(val roomPersistence: RoomPersistence,
+                          val roomIndex: RoomIndexService,
+                          val topicService: ChatTopicService,
+                          val userPersistence: UserPersistence,
+                          val membershipPersistence: MembershipPersistence,
+                          val membershipIndex: MembershipIndexService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
@@ -59,7 +57,7 @@ class RoomController(val roomPersistence: ChatRoomPersistence,
     @MessageMapping("room-by-name")
     fun getRoomByName(req: RoomRequestName): Mono<out Room> =
             roomIndex
-                    .findBy(mapOf(Pair(ChatRoomIndexService.NAME, req.name)))
+                    .findBy(mapOf(Pair(RoomIndexService.NAME, req.name)))
                     .single()
                     .flatMap {
                         roomPersistence.get(it)

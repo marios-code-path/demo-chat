@@ -430,7 +430,6 @@ class StreamOperationRedisTests {
 
     }
 
-    @Test
     fun `Test Processor should feed from Xread Command`() {
         val room = testRoomId()
         val user = testUserId()

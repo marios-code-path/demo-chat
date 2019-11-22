@@ -1,4 +1,4 @@
-package com.demo.chat.controllers
+package com.demo.chat.controllers.app
 
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequest
@@ -6,18 +6,16 @@ import com.demo.chat.UserRequestId
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
-import com.demo.chat.service.ChatUserIndexService
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.UserPersistence
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-@Controller
-class UserController(val userPersistence: ChatUserPersistence,
-                     val userIndex: ChatUserIndexService) {
+open class UserController(val userPersistence: UserPersistence,
+                          val userIndex: UserIndexService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-add")
@@ -30,17 +28,16 @@ class UserController(val userPersistence: ChatUserPersistence,
                                 userReq.name,
                                 userReq.imgUri
                         )
-                        userPersistence
-                                .add(user)
-                                .thenMany(
-                                        userIndex.add(user, mapOf()))
+                        Flux.concat(
+                                userPersistence.add(user),
+                                userIndex.add(user, mapOf())
+                        )
                                 .then()
                     }
 
     @MessageMapping("user-by-handle")
-    fun findByHandle(userReq: UserRequest): Mono<out User> = userIndex
+    fun findByHandle(userReq: UserRequest): Flux<out User> = userIndex
             .findBy(mapOf(Pair("handle", userReq.userHandle)))
-            .last()
             .flatMap(userPersistence::get)
 
     @MessageMapping("user-by-id")

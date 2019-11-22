@@ -1,9 +1,11 @@
 package com.demo.chat.test.controller
 
-import com.demo.chat.*
-import com.demo.chat.controllers.MessageController
-import com.demo.chat.service.ChatMessageIndexService
+import com.demo.chat.ChatMessage
+import com.demo.chat.MessageRequest
+import com.demo.chat.MessagesRequest
+import com.demo.chat.controllers.app.MessageController
 import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.TextMessagePersistence
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
@@ -12,10 +14,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.mockito.Mockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -25,7 +28,7 @@ import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-@Import(ConfigurationRSocket::class, MessageController::class)
+@Import(ConfigurationRSocket::class, RSocketMessagesTests.TestConfiguration::class)
 class RSocketMessagesTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -36,7 +39,7 @@ class RSocketMessagesTests : ControllerTestBase() {
     private lateinit var topicService: ChatTopicService
 
     @Autowired
-    private lateinit var messageIndex: ChatMessageIndexService
+    private lateinit var messageIndex: MessageIndexService
 
     @Test
     fun `should fetch a single message`() {
@@ -102,5 +105,14 @@ class RSocketMessagesTests : ControllerTestBase() {
                 })
                 .expectComplete()
                 .verify()
+    }
+
+    @Configuration
+    class TestConfiguration {
+        @Controller
+        class TestMessageController(
+                val messageIdx: MessageIndexService,
+                val messagePst: TextMessagePersistence,
+                val topicSvc: ChatTopicService) : MessageController(messageIdx, messagePst, topicSvc)
     }
 }

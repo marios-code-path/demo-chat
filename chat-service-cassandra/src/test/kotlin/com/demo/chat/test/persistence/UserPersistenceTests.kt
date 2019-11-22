@@ -5,7 +5,7 @@ import com.demo.chat.domain.ChatUserKey
 import com.demo.chat.domain.EventKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.KeyService
-import com.demo.chat.service.persistence.ChatUserPersistenceCassandra
+import com.demo.chat.service.persistence.UserPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.mockito.Mockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -27,7 +26,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 class UserPersistenceTests {
 
-    lateinit var userSvc: ChatUserPersistenceCassandra
+    lateinit var userSvc: UserPersistenceCassandra
 
     @MockBean
     lateinit var userRepo: ChatUserRepository
@@ -60,7 +59,7 @@ class UserPersistenceTests {
                 .given(userRepo.findAll())
                 .willReturn(Flux.just(newUser))
 
-        userSvc = ChatUserPersistenceCassandra(keyService, userRepo)
+        userSvc = UserPersistenceCassandra(keyService, userRepo)
     }
 
     @Test

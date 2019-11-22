@@ -3,15 +3,15 @@ package com.demo.chat.service.index
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.service.ChatRoomIndexService
-import com.demo.chat.service.ChatRoomIndexService.Companion.ALL
-import com.demo.chat.service.ChatRoomIndexService.Companion.NAME
+import com.demo.chat.service.RoomIndexService
+import com.demo.chat.service.RoomIndexService.Companion.ALL
+import com.demo.chat.service.RoomIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
 class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
-                         private val nameRepo: ChatRoomNameRepository) : ChatRoomIndexService {
+                         private val nameRepo: ChatRoomNameRepository) : RoomIndexService {
     override fun add(ent: Room, criteria: Map<String, String>): Mono<Void> =
             nameRepo.save(
                     ChatRoomName(

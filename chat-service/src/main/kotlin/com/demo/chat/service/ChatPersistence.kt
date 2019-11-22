@@ -12,13 +12,14 @@ interface ChatPersistence<ENTITY> {
     fun get(key: EventKey): Mono<out ENTITY>
     fun all(): Flux<out ENTITY>
     fun byIds(keys: List<EventKey>): Flux<out ENTITY> = Flux.empty()
+    // consider setModel(SomeEntityModel)
 }
 
-interface ChatUserPersistence : ChatPersistence<User>
+interface UserPersistence : ChatPersistence<User>
 
-interface ChatRoomPersistence : ChatPersistence<Room>
+interface RoomPersistence : ChatPersistence<Room>
 
-interface ChatMembershipPersistence : ChatPersistence<Membership<EventKey>>
+interface MembershipPersistence : ChatPersistence<Membership<EventKey>>
 
 interface TextMessagePersistence : ChatPersistence<TextMessage>
 

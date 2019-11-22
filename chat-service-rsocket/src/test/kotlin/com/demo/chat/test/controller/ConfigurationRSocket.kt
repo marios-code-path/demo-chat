@@ -18,19 +18,19 @@ class ConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
-    private lateinit var roomIndex: ChatRoomIndexService
+    private lateinit var roomIndex: RoomIndexService
 
     @MockBean
-    private lateinit var userIndex: ChatUserIndexService
+    private lateinit var userIndex: UserIndexService
 
     @MockBean
-    private lateinit var messageIndex: ChatMessageIndexService
+    private lateinit var messageIndex: MessageIndexService
 
     @MockBean
-    private lateinit var roomPersistence: ChatRoomPersistence
+    private lateinit var roomPersistence: RoomPersistence
 
     @MockBean
-    private lateinit var userPersistence: ChatUserPersistence
+    private lateinit var userPersistence: UserPersistence
 
     @MockBean
     private lateinit var topicMessagePersistence: TextMessagePersistence
@@ -42,10 +42,10 @@ class ConfigurationRSocket {
     private lateinit var keyService: KeyService
 
     @MockBean
-    private lateinit var membershipPersistence: ChatMembershipPersistence
+    private lateinit var membershipPersistence: MembershipPersistence
 
     @MockBean
-    private lateinit var membershipIndex: ChatMembershipIndexService
+    private lateinit var membershipIndex: MembershipIndexService
 
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies

@@ -3,7 +3,7 @@ package com.demo.chat.test.index
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.service.ChatRoomIndexService
+import com.demo.chat.service.RoomIndexService
 import com.demo.chat.service.index.RoomIndexCassandra
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -45,7 +45,7 @@ class RoomIndexTests {
     @MockBean
     lateinit var nameRepo: ChatRoomNameRepository
 
-    lateinit var roomIndex: ChatRoomIndexService
+    lateinit var roomIndex: RoomIndexService
 
     @BeforeEach
     fun setUp() {

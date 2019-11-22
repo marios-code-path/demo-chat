@@ -26,53 +26,23 @@ class WebSocketConfigurationProperties(var port: Int) {
     constructor() : this(0) {}
 }
 
-
 @Configuration
 class WebSocketConfiguration() {
 
     @Bean
-    fun reactiveServerFactory(): ReactiveWebServerFactory = NettyReactiveWebServerFactory(websocketConfiguration().port)
+    fun reactiveServerFactory(): ReactiveWebServerFactory = NettyReactiveWebServerFactory(websocketConfigurationProperties().port)
 
     @Bean
-    fun websocketConfiguration() = WebSocketConfigurationProperties(9090)
+    fun websocketConfigurationProperties() = WebSocketConfigurationProperties(9090)
 
     @Bean
     fun webSocketHandlerAdapter(): WebSocketHandlerAdapter {
         return WebSocketHandlerAdapter()
     }
-
-    @Bean
-    fun urlMapping(): HandlerMapping {
-        val simpleMapping = SimpleUrlHandlerMapping()
-        simpleMapping.urlMap = mapOf(Pair("/dist", webSocketHandler()))
-        simpleMapping.order = 10
-        simpleMapping.setCorsConfigurations(mapOf(Pair("*", CorsConfiguration().applyPermitDefaultValues())))
-        return simpleMapping
-    }
-
-    @Bean
-    fun webSocketHandler(): WebSocketHandler = WebSocketHandler { session ->
-        session.send(
-                Flux.interval(Duration.ofSeconds(1))
-                        .map { n -> n!!.toString() }
-                        .map<WebSocketMessage> { session.textMessage(it) })
-                .and(session.receive()
-                        .map { it.payloadAsText }
-                )
-    }
-
 }
 
 @Configuration
 class TopicConfiguration {
     @Bean
     fun topicPublisher() = TopicServiceMemory()
-}
-
-@Controller
-class WebSocketController(val topicManager: ChatTopicService) {
-
-    @MessageMapping("/userdist")
-    fun getUserFeed(uid: UUID): Flux<out Message<TopicMessageKey, Any>> = topicManager.receiveSourcedEvents(uid)
-
 }

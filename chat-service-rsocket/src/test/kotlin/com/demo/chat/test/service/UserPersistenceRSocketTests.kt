@@ -6,7 +6,7 @@ import com.demo.chat.TestEventKey
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.service.ChatPersistence
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.PersistenceRSocket
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -28,11 +28,11 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(RSocketTestConfiguration::class, UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
+@Import(TestConfigurationRSocket::class, UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
 class UserPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired
-    lateinit var userPersistence: ChatUserPersistence
+    lateinit var userPersistence: UserPersistence
 
     private val defaultImgUri = "http://cdn.test.com/image.jpg"
     private val randomHandle = randomAlphaNumeric(4)
@@ -122,7 +122,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
     }
 
     @Configuration
-    @Import(RSocketTestConfiguration::class)
+    @Import(TestConfigurationRSocket::class)
     class UserPersistenceTestConfiguration {
 
         @Bean
@@ -132,7 +132,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         fun eventKeyModule() = com.demo.chat.module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
 
         @MockBean
-        lateinit var userPersistence: ChatUserPersistence
+        lateinit var userPersistence: UserPersistence
 
         @Controller
         class RSocketUserPersistence(t: ChatPersistence<User>) : PersistenceRSocket<User>(t)

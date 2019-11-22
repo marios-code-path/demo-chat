@@ -1,11 +1,10 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.EventKey
-import com.demo.chat.domain.Room
+import com.demo.chat.domain.*
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+
 
 open class PersistenceRSocket<T>(val that: ChatPersistence<T>) : ChatPersistence<T> {
     @MessageMapping("key")
@@ -22,5 +21,10 @@ open class PersistenceRSocket<T>(val that: ChatPersistence<T>) : ChatPersistence
 
     @MessageMapping("all")
     override fun all(): Flux<out T> = that.all()
-
 }
+
+class RSocketUserPersistence(t: UserPersistence) : PersistenceRSocket<User>(t)
+class RSocketKeyPersistence(t: KeyPersistence) : PersistenceRSocket<EventKey>(t)
+class RSocketMessagePersistence(t: TextMessagePersistence) : PersistenceRSocket<TextMessage>(t)
+class RSocketRoomPersistence(t: RoomPersistence) : PersistenceRSocket<Room>(t)
+class RSocketMembershipPersistence(t: MembershipPersistence) : PersistenceRSocket<Membership<EventKey>>(t)

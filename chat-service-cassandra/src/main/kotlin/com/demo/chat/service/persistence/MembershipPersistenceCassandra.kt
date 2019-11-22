@@ -2,16 +2,16 @@ package com.demo.chat.service.persistence
 
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
-import com.demo.chat.service.ChatMembershipPersistence
+import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.KeyService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
-class ChatMembershipPersistenceCassandra (
+class MembershipPersistenceCassandra (
         private val keyService: KeyService,
         private val membershipRepo: ChatMembershipRepository
-) : ChatMembershipPersistence {
+) : MembershipPersistence {
     override fun key(): Mono<out EventKey> = keyService.id(Membership::class.java)
 
     override fun  add(entity: Membership<EventKey>): Mono<Void> = membershipRepo

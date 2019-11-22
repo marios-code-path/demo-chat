@@ -21,7 +21,7 @@ class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
     override fun exists(key: EventKey): Mono<Boolean> =
             stringTemplate
                     .opsForStream<String, String>()
-                    .range(keyConfiguration.keyStreamKey, Range.just(key.id.timestamp().toString()))
+                    .range(keyConfiguration.keyStreamKey, Range.just(key.id.mostSignificantBits.toString()))
                     .singleOrEmpty()
                     .hasElement()
 
@@ -39,7 +39,7 @@ class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
-                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("keyId", "${key.id.timestamp()}-${key.id.clockSequence()}"), Pair("exists", "false")))
+                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("keyId", "${key.id.mostSignificantBits}-${key.id.leastSignificantBits}"), Pair("exists", "false")))
                             .withId(RecordId.autoGenerate()))
                     .then()
 

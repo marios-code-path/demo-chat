@@ -1,11 +1,11 @@
-package com.demo.chat.controllers
+package com.demo.chat.controllers.app
 
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessageSendRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.TextMessageSend
 import com.demo.chat.domain.*
-import com.demo.chat.service.ChatMessageIndexService
+import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.TextMessagePersistence
 import org.slf4j.Logger
@@ -15,9 +15,8 @@ import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-@Controller
-class MessageController(
-        val messageIndex: ChatMessageIndexService,
+open class MessageController(
+        val messageIndex: MessageIndexService,
         val messagePersistence: TextMessagePersistence,
         val topicService: ChatTopicService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -25,7 +24,7 @@ class MessageController(
     @MessageMapping("message-listen-topic")
     fun byTopic(req: MessagesRequest): Flux<out Message<TopicMessageKey, Any>> =
             Flux.concat(messageIndex
-                    .findBy(mapOf(Pair(ChatMessageIndexService.TOPIC, req.topicId.toString())))
+                    .findBy(mapOf(Pair(MessageIndexService.TOPIC, req.topicId.toString())))
                     .collectList()
                     .flatMapMany { messageKeys ->
                         messagePersistence.byIds(messageKeys)

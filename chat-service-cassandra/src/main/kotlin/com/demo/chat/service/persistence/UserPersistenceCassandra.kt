@@ -4,16 +4,15 @@ import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.service.ChatPersistence
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.KeyService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 // TODO flexibility on what classes go in and out of repository thru persistence
-open class ChatUserPersistenceCassandra(val keyService: KeyService,
-                                        val userRepo: ChatUserRepository)
-    : ChatUserPersistence {
+open class UserPersistenceCassandra(val keyService: KeyService,
+                                    val userRepo: ChatUserRepository)
+    : UserPersistence {
     override fun all(): Flux<out User> = userRepo.findAll()
 
     override fun get(key: EventKey): Mono<out User> = userRepo.findByKeyId(key.id)

@@ -1,10 +1,10 @@
 package com.demo.chat.test.controller
 
 import com.demo.chat.*
-import com.demo.chat.controllers.UserController
+import com.demo.chat.controllers.app.UserController
 import com.demo.chat.domain.UserKey
-import com.demo.chat.service.ChatUserIndexService
-import com.demo.chat.service.ChatUserPersistence
+import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.UserPersistence
 import org.assertj.core.api.Assertions
 import org.junit.Ignore
 import org.junit.jupiter.api.Test
@@ -13,7 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -23,15 +25,15 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, UserController::class)
+@Import(ConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
 class RSocketUserTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var userIndex: ChatUserIndexService
+    private lateinit var userIndex: UserIndexService
 
     @Autowired
-    private lateinit var userPersistence: ChatUserPersistence
+    private lateinit var userPersistence: UserPersistence
 
     private val defaultImgUri = "http://"
     private val randomHandle = randomAlphaNumeric(4)
@@ -109,5 +111,12 @@ class RSocketUserTests : ControllerTestBase() {
                             .hasFieldOrPropertyWithValue("id", randomUserId)
                 }
                 .verifyComplete()
+    }
+
+    @Configuration
+    class TestConfiguration {
+        @Controller
+        class TestUserController(val persistence: UserPersistence,
+                                 val index: UserIndexService) : UserController(persistence, index)
     }
 }

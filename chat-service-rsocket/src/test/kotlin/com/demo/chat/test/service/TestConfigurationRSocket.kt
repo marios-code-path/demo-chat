@@ -17,7 +17,7 @@ import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHa
 
 @Configuration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
-class RSocketTestConfiguration {
+class TestConfigurationRSocket {
 
     @Bean
     fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {

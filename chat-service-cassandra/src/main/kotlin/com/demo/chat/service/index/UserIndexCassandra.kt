@@ -3,19 +3,16 @@ package com.demo.chat.service.index
 import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
-import com.demo.chat.service.ChatUserIndexService
+import com.demo.chat.service.UserIndexService
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.data.cassandra.core.query.Query
-import org.springframework.data.cassandra.core.query.Update
-import org.springframework.data.cassandra.core.query.where
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
 
-class ChatUserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
-                             val cassandra: ReactiveCassandraTemplate) : ChatUserIndexService {
+class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
+                         val cassandra: ReactiveCassandraTemplate) : UserIndexService {
     override fun add(ent: User, criteria: Map<String, String>): Mono<Void> =
             cassandra.insert(ChatUserHandle(
                     ChatUserHandleKey(ent.key.id, ent.key.handle),

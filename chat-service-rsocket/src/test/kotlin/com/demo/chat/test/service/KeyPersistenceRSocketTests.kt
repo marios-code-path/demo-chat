@@ -22,7 +22,7 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(RSocketTestConfiguration::class, KeyPersistenceRSocketTests.KeyPersistenceTestConfiguration::class)
+@Import(TestConfigurationRSocket::class, KeyPersistenceRSocketTests.KeyPersistenceTestConfiguration::class)
 class KeyPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired

@@ -5,7 +5,7 @@ import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatRoomNameRepository
 import com.demo.chat.repository.cassandra.ChatRoomRepository
 import com.demo.chat.service.KeyService
-import com.demo.chat.service.persistence.ChatRoomPersistenceCassandra
+import com.demo.chat.service.persistence.RoomPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
@@ -26,7 +26,7 @@ class RoomPersistenceTests {
 
     val ROOMNAME = "test-room"
 
-    lateinit var roomSvc: ChatRoomPersistenceCassandra
+    lateinit var roomSvc: RoomPersistenceCassandra
 
     @MockBean
     lateinit var roomByNameRepo: ChatRoomNameRepository
@@ -68,7 +68,7 @@ class RoomPersistenceTests {
         BDDMockito.given(roomRepo.messageCount(anyObject()))
                 .willReturn(Mono.just(1))
 
-        roomSvc = ChatRoomPersistenceCassandra(keyService, roomRepo)
+        roomSvc = RoomPersistenceCassandra(keyService, roomRepo)
     }
 
     @Test

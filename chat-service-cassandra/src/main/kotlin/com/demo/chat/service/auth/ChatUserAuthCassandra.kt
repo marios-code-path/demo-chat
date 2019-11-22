@@ -11,7 +11,7 @@ import java.util.*
  * Should do the chore of handling any authentication and authorization operations
  * using Cassandra components as the backing store
  */
-class ChatUserAuthCassandra(private val userIndex: ChatUserIndexService,
+class ChatUserAuthCassandra(private val userIndex: UserIndexService,
                             private val passwordStore: ChatPasswordStore) : ChatAuthService<UserKey> {
 
     override fun authenticate(handle: String, password: String): Mono<UserKey> =

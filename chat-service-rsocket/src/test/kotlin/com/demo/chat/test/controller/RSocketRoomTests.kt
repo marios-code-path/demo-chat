@@ -2,7 +2,7 @@ package com.demo.chat.test.controller
 
 
 import com.demo.chat.*
-import com.demo.chat.controllers.RoomController
+import com.demo.chat.controllers.app.RoomController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
@@ -13,7 +13,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -23,27 +25,27 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, RoomController::class)
+@Import(ConfigurationRSocket::class, RSocketRoomTests.TestConfiguration::class)
 class RSocketRoomTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var roomIndex: ChatRoomIndexService
+    lateinit var roomIndex: RoomIndexService
 
     @Autowired
-    lateinit var roomPersistence: ChatRoomPersistence
+    lateinit var roomPersistence: RoomPersistence
 
     @Autowired
-    lateinit var userPersistence: ChatUserPersistence
+    lateinit var userPersistence: UserPersistence
 
     @Autowired
     lateinit var topicService: ChatTopicService
 
     @Autowired
-    lateinit var membershipIndex: ChatMembershipIndexService
+    lateinit var membershipIndex: MembershipIndexService
 
     @Autowired
-    lateinit var membershipPersistence: ChatMembershipPersistence
+    lateinit var membershipPersistence: MembershipPersistence
 
     private val randomUserHandle = randomAlphaNumeric(4) + "User"
     private val randomUserId: UUID = UUID.randomUUID()
@@ -203,6 +205,16 @@ class RSocketRoomTests : ControllerTestBase() {
                             .hasFieldOrPropertyWithValue("handle", randomUserHandle)
                 }
                 .verifyComplete()
+    }
 
+    @Configuration
+    class TestConfiguration {
+        @Controller
+        class TestRoomController(roomP: RoomPersistence,
+                                 roomInd: RoomIndexService,
+                                 topicSvc: ChatTopicService,
+                                 userP: UserPersistence,
+                                 membershipP: MembershipPersistence,
+                                 membershipInd: MembershipIndexService) : RoomController(roomP, roomInd, topicSvc, userP, membershipP, membershipInd)
     }
 }

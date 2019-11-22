@@ -39,24 +39,6 @@ class WSMappingTests {
     }
 
     @Test
-    fun `get a hello`() {
-        WebTestClient
-                .bindToApplicationContext(context)
-                .build()
-                .get()
-                .uri("/foo")
-                .exchange()
-                .expectStatus().isOk
-                .expectBody()
-                .consumeWith {
-                    Assertions
-                            .assertThat(it.responseBodyContent)
-                            .isNotNull()
-                            .isNotEmpty()
-                }
-    }
-
-    @Test
     fun `connect to WS endpoint`() {
         val client = ReactorNettyWebSocketClient()
         val uri = "ws://localhost:${port}/dist"

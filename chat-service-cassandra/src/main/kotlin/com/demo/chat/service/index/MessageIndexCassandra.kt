@@ -3,9 +3,9 @@ package com.demo.chat.service.index
 import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
-import com.demo.chat.service.ChatMessageIndexService
-import com.demo.chat.service.ChatMessageIndexService.Companion.TOPIC
-import com.demo.chat.service.ChatMessageIndexService.Companion.USER
+import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.MessageIndexService.Companion.TOPIC
+import com.demo.chat.service.MessageIndexService.Companion.USER
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -15,9 +15,9 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 import java.util.*
 
-class ChatMessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
-                                val byUserRepo: ChatMessageByUserRepository,
-                                val byTopicRepo: ChatMessageByTopicRepository) : ChatMessageIndexService {
+class MessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
+                            val byUserRepo: ChatMessageByUserRepository,
+                            val byTopicRepo: ChatMessageByTopicRepository) : MessageIndexService {
     override fun add(ent: TextMessage, criteria: Map<String, String>): Mono<Void> =
             cassandra
                     .batchOps()
