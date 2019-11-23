@@ -69,11 +69,7 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
                 .verifyComplete()
     }
 
-    @Configuration
     class KeyPersistenceTestConfiguration {
-        @Bean
-        fun eventKeyModule() = com.demo.chat.module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
-
         @MockBean
         lateinit var keyPersistence: KeyPersistence
 

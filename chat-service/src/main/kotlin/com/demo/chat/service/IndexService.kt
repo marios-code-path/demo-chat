@@ -28,7 +28,7 @@ interface RoomIndexService : MapQueryIndexService<RoomKey, Room> {
     }
 }
 
-interface MembershipIndexService : MapQueryIndexService<EventKey, RoomMembership> {
+interface MembershipIndexService : IndexService<EventKey, RoomMembership,Map<String, String>, Map<String, String>> {
     fun size(roomId: EventKey): Mono<Int>
     fun addMember(membership: RoomMembership): Mono<Void>
     fun remMember(membership: RoomMembership): Mono<Void>
@@ -40,7 +40,7 @@ interface MembershipIndexService : MapQueryIndexService<EventKey, RoomMembership
     }
 }
 
-interface MessageIndexService : MapQueryIndexService<TextMessageKey, TextMessage> {
+interface MessageIndexService : IndexService<TextMessageKey, TextMessage,Map<String, String>, Map<String, String>> {
     companion object {
         const val TOPIC = "topicId"
         const val USER = "userId"

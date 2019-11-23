@@ -16,7 +16,6 @@ import org.springframework.context.annotation.FilterType
 class ChatServiceRsocketApplication
 
 @EnableConfigurationProperties(CassandraProperties::class, ConfigurationRedisTopics::class)
-@ExcludeFromTests
 @Configuration
 class ServiceDiscoveryConfiguration {
     companion object {

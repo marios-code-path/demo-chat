@@ -122,16 +122,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
 
     }
 
-    @Configuration
-    @Import(TestConfigurationRSocket::class)
     class UserPersistenceTestConfiguration {
-
-        @Bean
-        fun userModule() = com.demo.chat.module("USERS", User::class.java, TestChatUser::class.java)
-
-        @Bean
-        fun eventKeyModule() = com.demo.chat.module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
-
         @MockBean
         lateinit var userPersistence: UserPersistence
 

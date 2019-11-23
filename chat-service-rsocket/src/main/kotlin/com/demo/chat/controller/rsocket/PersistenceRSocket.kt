@@ -8,7 +8,7 @@ import org.springframework.stereotype.Controller
 @Controller
 class RSocketUserPersistence(t: UserPersistence) : PersistenceServiceController<User>(t)
 
-@Controller
+//@Controller
 class RSocketKeyPersistence(t: KeyPersistence) : PersistenceServiceController<EventKey>(t)
 
 @Controller

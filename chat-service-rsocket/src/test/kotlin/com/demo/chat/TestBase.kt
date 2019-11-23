@@ -28,10 +28,5 @@ fun randomAlphaNumeric(size: Int): String {
 
 // Register this abstract module to let the app know when it sees a Interface type, which
 // concrete type to use on the way out.
-fun <T> module(name: String, iface : Class<T>, concrete: Class<out T>) =  SimpleModule("CustomModel$name", Version.unknownVersion()).apply {
-
-    val resolver = SimpleAbstractTypeResolver().apply {
-        addMapping(iface, concrete)
-    }
-    setAbstractTypes(resolver)
-}
+fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) = SimpleModule("CustomModel$name", Version.unknownVersion())
+        .apply { setAbstractTypes(SimpleAbstractTypeResolver().apply { addMapping(iface, concrete) }) }
