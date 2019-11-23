@@ -1,7 +1,10 @@
-package com.demo.chat.test.controller
+package com.demo.chat.test.controller.app
 
-import com.demo.chat.*
-import com.demo.chat.controllers.app.UserController
+import com.demo.chat.TestChatUser
+import com.demo.chat.TestChatUserKey
+import com.demo.chat.UserCreateRequest
+import com.demo.chat.UserRequestId
+import com.demo.chat.controller.app.UserController
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -13,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -27,8 +31,6 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(ConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
 class RSocketUserTests : ControllerTestBase() {
-    val log = LoggerFactory.getLogger(this::class.simpleName)
-
     @Autowired
     private lateinit var userIndex: UserIndexService
 
@@ -116,7 +118,7 @@ class RSocketUserTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestUserController(val persistence: UserPersistence,
-                                 val index: UserIndexService) : UserController(persistence, index)
+        class TestUserController(persistence: UserPersistence,
+                               index: UserIndexService) : UserController(persistence, index)
     }
 }

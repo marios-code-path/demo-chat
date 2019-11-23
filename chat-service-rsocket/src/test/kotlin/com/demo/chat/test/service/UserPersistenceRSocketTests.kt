@@ -3,11 +3,12 @@ package com.demo.chat.test.service
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
 import com.demo.chat.TestEventKey
+import com.demo.chat.controller.rsocket.RSocketUserPersistence
+import com.demo.chat.controller.service.PersistenceServiceController
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.User
 import com.demo.chat.service.ChatPersistence
 import com.demo.chat.service.UserPersistence
-import com.demo.chat.service.PersistenceRSocket
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -134,7 +135,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         @MockBean
         lateinit var userPersistence: UserPersistence
 
-        @Controller
-        class RSocketUserPersistence(t: ChatPersistence<User>) : PersistenceRSocket<User>(t)
+        @Bean
+        fun persistenceController() = RSocketUserPersistence(userPersistence)
     }
 }

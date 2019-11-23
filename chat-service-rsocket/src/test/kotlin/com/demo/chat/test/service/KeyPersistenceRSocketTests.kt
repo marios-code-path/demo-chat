@@ -1,8 +1,9 @@
 package com.demo.chat.test.service
 
 import com.demo.chat.TestEventKey
+import com.demo.chat.controller.rsocket.RSocketKeyPersistence
+import com.demo.chat.controller.service.PersistenceServiceController
 import com.demo.chat.domain.EventKey
-import com.demo.chat.service.PersistenceRSocket
 import com.demo.chat.service.KeyPersistence
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -69,16 +70,16 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
     }
 
     @Configuration
-    @Import(KeyPersistenceRSocket::class)
     class KeyPersistenceTestConfiguration {
         @Bean
         fun eventKeyModule() = com.demo.chat.module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
 
         @MockBean
         lateinit var keyPersistence: KeyPersistence
+
+        @Bean
+        fun keyPersistenceRSocket() = RSocketKeyPersistence(keyPersistence)
     }
 
-    @Controller
-    class KeyPersistenceRSocket(val t: KeyPersistence) : PersistenceRSocket<EventKey>(t)
 
 }

@@ -41,6 +41,7 @@ import java.util.*
 import java.util.function.Supplier
 
 // TODO: Object Hashmap
+// TODO: These tests currently do not execute without fail 100% of the time!
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class StreamOperationRedisTests {
@@ -430,6 +431,7 @@ class StreamOperationRedisTests {
 
     }
 
+    @Test
     fun `Test Processor should feed from Xread Command`() {
         val room = testRoomId()
         val user = testUserId()

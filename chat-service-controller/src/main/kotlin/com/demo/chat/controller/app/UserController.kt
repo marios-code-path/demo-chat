@@ -1,4 +1,4 @@
-package com.demo.chat.controllers.app
+package com.demo.chat.controller.app
 
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequest

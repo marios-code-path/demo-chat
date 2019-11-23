@@ -1,4 +1,4 @@
-package com.demo.chat.test.controller
+package com.demo.chat.test.controller.app
 
 import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.TextMessage

@@ -1,9 +1,9 @@
-package com.demo.chat.test.controller
+package com.demo.chat.test.controller.app
 
 import com.demo.chat.ChatMessage
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
-import com.demo.chat.controllers.app.MessageController
+import com.demo.chat.controller.app.MessageController
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.TextMessagePersistence
@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -110,9 +111,8 @@ class RSocketMessagesTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestMessageController(
-                val messageIdx: MessageIndexService,
-                val messagePst: TextMessagePersistence,
-                val topicSvc: ChatTopicService) : MessageController(messageIdx, messagePst, topicSvc)
+        class TestMessageController(messageIdx: MessageIndexService,
+                                messagePst: TextMessagePersistence,
+                                topicSvc: ChatTopicService) : MessageController(messageIdx, messagePst, topicSvc)
     }
 }

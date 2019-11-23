@@ -1,4 +1,4 @@
-package com.demo.chat.controllers.app
+package com.demo.chat.controller.app
 
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessageSendRequest
@@ -11,7 +11,6 @@ import com.demo.chat.service.TextMessagePersistence
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 

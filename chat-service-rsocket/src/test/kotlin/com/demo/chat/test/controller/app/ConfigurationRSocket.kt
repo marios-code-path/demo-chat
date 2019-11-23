@@ -1,4 +1,4 @@
-package com.demo.chat.test.controller
+package com.demo.chat.test.controller.app
 
 import com.demo.chat.service.*
 import org.slf4j.LoggerFactory

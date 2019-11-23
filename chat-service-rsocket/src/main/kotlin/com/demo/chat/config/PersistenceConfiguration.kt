@@ -6,10 +6,7 @@ import com.demo.chat.service.*
 import com.demo.chat.service.index.MessageIndexCassandra
 import com.demo.chat.service.index.UserIndexCassandra
 import com.demo.chat.service.index.RoomIndexCassandra
-import com.demo.chat.service.persistence.RoomPersistenceCassandra
-import com.demo.chat.service.persistence.UserPersistenceCassandra
-import com.demo.chat.service.persistence.KeyServiceCassandra
-import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
+import com.demo.chat.service.persistence.*
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.context.annotation.Bean
@@ -70,4 +67,9 @@ class PersistenceConfiguration {
     fun messagePersistence(keyService: KeyService,
                            messageRepo: ChatMessageRepository): TextMessagePersistence =
             TextMessagePersistenceCassandra(keyService, messageRepo)
+
+    @Bean
+    fun memberPersistence(keyService: KeyService,
+                          membershipRepo: ChatMembershipRepository): MembershipPersistence =
+            MembershipPersistenceCassandra(keyService, membershipRepo)
 }

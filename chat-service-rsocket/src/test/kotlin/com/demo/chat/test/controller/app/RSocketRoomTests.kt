@@ -1,8 +1,8 @@
-package com.demo.chat.test.controller
+package com.demo.chat.test.controller.app
 
 
 import com.demo.chat.*
-import com.demo.chat.controllers.app.RoomController
+import com.demo.chat.controller.app.RoomController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -211,10 +212,11 @@ class RSocketRoomTests : ControllerTestBase() {
     class TestConfiguration {
         @Controller
         class TestRoomController(roomP: RoomPersistence,
-                                 roomInd: RoomIndexService,
-                                 topicSvc: ChatTopicService,
-                                 userP: UserPersistence,
-                                 membershipP: MembershipPersistence,
-                                 membershipInd: MembershipIndexService) : RoomController(roomP, roomInd, topicSvc, userP, membershipP, membershipInd)
+                               roomInd: RoomIndexService,
+                               topicSvc: ChatTopicService,
+                               userP: UserPersistence,
+                               membershipP: MembershipPersistence,
+                               membershipInd: MembershipIndexService) :
+                RoomController(roomP, roomInd, topicSvc, userP, membershipP, membershipInd)
     }
 }

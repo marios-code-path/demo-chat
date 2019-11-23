@@ -1,4 +1,4 @@
-package com.demo.chat.controllers.service
+package com.demo.chat.controller.service
 
 import com.demo.chat.domain.EventKey
 import com.demo.chat.service.IndexService
@@ -8,11 +8,11 @@ import reactor.core.publisher.Mono
 
 open class IndexServiceController<out K : EventKey, in T, Q, WQ>(val that: IndexService<K, T, Q, WQ>) : IndexService<K, T, Q, WQ> {
     @MessageMapping("add")
-    override fun add(entity: T, criteria: WQ): Mono<Void> = Mono.empty()
+    override fun add(entity: T, criteria: WQ): Mono<Void> = that.add(entity, criteria)
 
     @MessageMapping("rem")
-    override fun rem(entity: T): Mono<Void> = Mono.empty()
+    override fun rem(entity: T): Mono<Void> = that.rem(entity)
 
     @MessageMapping("query")
-    override fun findBy(query: Q): Flux<out K> = Flux.empty()
+    override fun findBy(query: Q): Flux<out K> = that.findBy(query)
 }

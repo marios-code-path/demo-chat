@@ -1,4 +1,4 @@
-package com.demo.chat.controllers.app
+package com.demo.chat.controller.app
 
 import com.demo.chat.*
 import com.demo.chat.domain.*

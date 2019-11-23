@@ -1,4 +1,4 @@
-package com.demo.chat.controllers.service
+package com.demo.chat.controller.service
 
 import com.demo.chat.domain.EventKey
 import com.demo.chat.service.ChatPersistence
