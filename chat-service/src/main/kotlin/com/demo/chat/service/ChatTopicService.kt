@@ -6,6 +6,23 @@ import com.demo.chat.domain.TopicMessageKey
 import reactor.core.publisher.*
 import java.util.*
 
+/**
+ * GIVEN: PRINCIPLE = TOPIC[MEMBERSHIP, MESSAGE, STAT]
+ * GIVEN: ROOM = TOPIC[STAT, MEMBERSHIP, MESSAGE]
+ *  ROOM.MEMBERSHIP && ROOM.STAT == true
+ *  ROOM.MESSAGE && ROOM.STAT == true
+ *  ROOM.STAT != PRINCIPLE.STAT
+ *  PRINCIPLE is owner of ROOM. PRINCIPLE creates ROOM
+ *  ROOM receives individual ID
+ *  thus
+ *  createRoom(name) = ROOM.apply {
+ *      MEMBERSHIP = createTopic(MEMBERSHIP)
+ *      STAT = createTopic(STAT)
+ *      MESSAGES = createTopic(MESSAGE)
+ *  }
+ * svc.subscribe PRINCIPLE[MEMBERSHIP] with ROOM[MEMBERSHIP]
+ *
+ */
 interface TopicService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
     fun unSubscribe(member: T, topic: T): Mono<Void>

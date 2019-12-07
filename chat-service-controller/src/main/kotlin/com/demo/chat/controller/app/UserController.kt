@@ -24,8 +24,9 @@ open class UserController(val userPersistence: UserPersistence,
                     .key()
                     .flatMap {
                         val user = User.create(
-                                UserKey.create(it.id, userReq.userHandle),
+                                UserKey.create(it.id),
                                 userReq.name,
+                                userReq.userHandle,
                                 userReq.imgUri
                         )
                         Flux.concat(

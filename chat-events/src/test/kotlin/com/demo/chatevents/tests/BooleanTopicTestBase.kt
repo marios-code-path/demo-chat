@@ -17,9 +17,10 @@ open class BooleanTopicTestBase() {
         val topicKey = EventKey.create(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
-        svc
-                .add(topicKey, myId)
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                svc
+                        .add(topicKey, myId)
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -34,12 +35,13 @@ open class BooleanTopicTestBase() {
         val topicKey = EventKey.create(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
-        svc
-                .add(topicKey, myId)
-                .thenMany(
-                        svc.compute(topicKey)
-                )
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                svc
+                        .add(topicKey, myId)
+                        .thenMany(
+                                svc.compute(topicKey)
+                        )
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -56,15 +58,16 @@ open class BooleanTopicTestBase() {
         val topicKey = EventKey.create(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
-        Flux
-                .concat(
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, myId)
-                )
-                .thenMany(
-                        svc.compute(topicKey)
-                )
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                Flux
+                        .concat(
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, myId)
+                        )
+                        .thenMany(
+                                svc.compute(topicKey)
+                        )
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -82,16 +85,17 @@ open class BooleanTopicTestBase() {
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
 
-        Flux
-                .concat(
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, anotherId)
-                )
-                .thenMany(
-                        svc.compute(topicKey)
-                )
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                Flux
+                        .concat(
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, anotherId)
+                        )
+                        .thenMany(
+                                svc.compute(topicKey)
+                        )
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -108,21 +112,21 @@ open class BooleanTopicTestBase() {
         val topicKey = EventKey.create(UUID.randomUUID())
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
-
-        Flux
-                .concat(
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, anotherId)
-                )
-                .then(svc.add(topicKey, myId))
-                .map {
-                    svc.reset(topicKey, it)
-                }
-                .thenMany(
-                        svc.compute(topicKey)
-                )
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                Flux
+                        .concat(
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, anotherId)
+                        )
+                        .then(svc.add(topicKey, myId))
+                        .map {
+                            svc.reset(topicKey, it)
+                        }
+                        .thenMany(
+                                svc.compute(topicKey)
+                        )
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions
@@ -138,21 +142,22 @@ open class BooleanTopicTestBase() {
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
 
-        Flux
-                .concat(
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, myId),
-                        svc.add(topicKey, anotherId)
-                )
-                .then(svc.add(topicKey, myId))
-                .map {
-                    svc.reset(topicKey, it)
-                }
-                .then(svc.add(topicKey, myId))
-                .thenMany(
-                        svc.compute(topicKey)
-                )
-                .`as`(StepVerifier::create)
+        StepVerifier.create(
+                Flux
+                        .concat(
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, myId),
+                                svc.add(topicKey, anotherId)
+                        )
+                        .then(svc.add(topicKey, myId))
+                        .map {
+                            svc.reset(topicKey, it)
+                        }
+                        .then(svc.add(topicKey, myId))
+                        .thenMany(
+                                svc.compute(topicKey)
+                        )
+        )
                 .expectSubscription()
                 .assertNext {
                     Assertions

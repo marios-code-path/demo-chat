@@ -104,12 +104,11 @@ class RSocketTopicTests : ControllerTestBase() {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
-                            .hasFieldOrProperty("members")
+                            .hasFieldOrPropertyWithValue("name", randomRoomName)
 
                     Assertions
                             .assertThat(it.key)
                             .isNotNull
-                            .hasFieldOrPropertyWithValue("name", randomRoomName)
                             .hasFieldOrPropertyWithValue("id", randomRoomId)
                 }
                 .verifyComplete()

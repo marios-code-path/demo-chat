@@ -46,7 +46,7 @@ class RSocketUserTests : ControllerTestBase() {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.key())
-                .willReturn(Mono.just(UserKey.create(UUID.randomUUID(), randomHandle)))
+                .willReturn(Mono.just(UserKey.create(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())

@@ -53,7 +53,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     override fun exists(id: UUID): Mono<Boolean> = Mono
             .fromCallable { topicXSource.containsKey(id) }
 
-    override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
+  //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
     override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
             topicManager
@@ -64,7 +64,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     .getTopicFlux(stream)
 
     /**
-     * Stream Manager becomes subscriber to an upstream from topicXSource
+     * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
     override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =

@@ -35,9 +35,10 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             .map { record ->
                 User.create(
                         UserKey.create(
-                                UUID.fromString(ofNullable(record.value["userId"]).orElse("")),
-                                ofNullable(record.value["handle"]).orElse("")),
+                                UUID.fromString(ofNullable(record.value["userId"]).orElse(""))
+                        ),
                         ofNullable(record.value["name"]).orElse(""),
+                        ofNullable(record.value["handle"]).orElse(""),
                         ofNullable(record.value["imageUri"]).orElse("")
                 )
             }
@@ -48,8 +49,9 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             .range(keyConfiguration.keyUserStreamKey, Range.just(key.id.mostSignificantBits.toString()))
             .map { record ->
                 User.create(
-                        UserKey.create(key.id, ofNullable(record.value["handle"]).orElse("")),
+                        UserKey.create(key.id),
                         ofNullable(record.value["name"]).orElse(""),
+                        ofNullable(record.value["handle"]).orElse(""),
                         ofNullable(record.value["imageUri"]).orElse("")
                 )
             }

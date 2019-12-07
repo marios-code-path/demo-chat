@@ -23,26 +23,24 @@ data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 data class ChatUser(
         override val key: ChatUserKey,
         override val name: String,
+        override val handle: String,
         override val imageUri: String,
         override val timestamp: Instant
 ) : User
 
 data class ChatUserKey(
-        override val id: UUID,
-        override val handle: String
+        override val id: UUID
 ) : UserKey
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 data class ChatTopic(
         override val key: ChatRoomKey,
-        override val members: Set<UUID>,
         val active: Boolean,
-        override val timestamp: Instant
+        override val name: String
 ) : Topic
 
 data class ChatRoomKey(
-        override val id: UUID,
-        override val name: String
+        override val id: UUID
 ) : TopicKey
 
 

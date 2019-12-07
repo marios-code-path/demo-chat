@@ -25,26 +25,24 @@ data class TestTopicData(val state: Message<TopicMessageKey, Any>)
 data class TestChatUser(
         override val key: TestChatUserKey,
         override val name: String,
+        override val handle: String,
         override val imageUri: String,
         override val timestamp: Instant
 ) : User
 
 data class TestChatUserKey(
-        override val id: UUID,
-        override val handle: String
+        override val id: UUID
 ) : UserKey
 
 @JsonTypeName("ChatRoom")
 data class TestChatTopic(
         override val key: TestChatRoomKey,
-        override val members: Set<UUID>?,
-        val active: Boolean,
-        override val timestamp: Instant
+        override val name: String,
+        val active: Boolean
 ) : Topic
 
 data class TestChatRoomKey(
-        override val id: UUID,
-        override val name: String
+        override val id: UUID
 ) : TopicKey
 
 

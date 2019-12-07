@@ -22,7 +22,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
             roomPersistence
                     .key()
                     .flatMap { key ->
-                        val room = Topic.create(TopicKey.create(key.id, req.roomName), setOf())
+                        val room = Topic.create(TopicKey.create(key.id), req.roomName)
                         roomPersistence
                                 .add(room)
                                 .flatMap {
@@ -101,7 +101,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
                         userPersistence
                                 .get(EventKey.create(membership.member.id))
                                 .map { user ->
-                                    TopicMember(user.key.id, user.key.handle, user.imageUri)
+                                    TopicMember(user.key.id, user.handle, user.imageUri)
                                 }
                     }
                     .collectList()
