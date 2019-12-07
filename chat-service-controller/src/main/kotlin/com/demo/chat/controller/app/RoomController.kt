@@ -22,7 +22,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
             roomPersistence
                     .key()
                     .flatMap { key ->
-                        val room = Room.create(RoomKey.create(key.id, req.roomName), setOf())
+                        val room = Topic.create(TopicKey.create(key.id, req.roomName), setOf())
                         roomPersistence
                                 .add(room)
                                 .flatMap {
@@ -45,17 +45,17 @@ open class RoomController(val roomPersistence: RoomPersistence,
                     .then()
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequestId): Flux<out Room> =
+    fun listRooms(req: RoomRequestId): Flux<out Topic> =
             roomPersistence
                     .all()
 
     @MessageMapping("room-by-id")
-    fun getRoom(req: RoomRequestId): Mono<out Room> =
+    fun getRoom(req: RoomRequestId): Mono<out Topic> =
             roomPersistence
                     .get(EventKey.create(req.roomId))
 
     @MessageMapping("room-by-name")
-    fun getRoomByName(req: RoomRequestName): Mono<out Room> =
+    fun getRoomByName(req: RoomRequestName): Mono<out Topic> =
             roomIndex
                     .findBy(mapOf(Pair(RoomIndexService.NAME, req.name)))
                     .single()
@@ -91,7 +91,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
                     }
 
     @MessageMapping("room-members")
-    fun roomMembers(req: RoomRequestId): Mono<RoomMemberships> =
+    fun roomMembers(req: RoomRequestId): Mono<TopicMemberships> =
             membershipIndex.findBy(mapOf(Pair("MEMBEROF", req.roomId.toString())))
                     .collectList()
                     .flatMapMany { membershipList ->
@@ -101,11 +101,11 @@ open class RoomController(val roomPersistence: RoomPersistence,
                         userPersistence
                                 .get(EventKey.create(membership.member.id))
                                 .map { user ->
-                                    RoomMember(user.key.id, user.key.handle, user.imageUri)
+                                    TopicMember(user.key.id, user.key.handle, user.imageUri)
                                 }
                     }
                     .collectList()
                     .map {
-                        RoomMemberships(it.toSet())
+                        TopicMemberships(it.toSet())
                     }
 }

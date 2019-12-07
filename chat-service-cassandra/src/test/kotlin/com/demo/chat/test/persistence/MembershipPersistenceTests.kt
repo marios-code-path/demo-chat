@@ -38,8 +38,8 @@ class MembershipPersistenceTests {
 
     private val testChatMembership = ChatMembership(
             ChatMembershipKey(keyId),
-            CSEventKeyType(memberId),
-            CSEventKeyType(topicId)
+            CassandraEventKeyType(memberId),
+            CassandraEventKeyType(topicId)
     )
 
     @BeforeEach

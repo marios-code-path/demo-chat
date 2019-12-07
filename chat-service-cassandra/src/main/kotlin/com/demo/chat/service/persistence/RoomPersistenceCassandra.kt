@@ -10,15 +10,15 @@ import reactor.core.publisher.Mono
 open class RoomPersistenceCassandra(private val keyService: KeyService,
                                     private val roomRepo: ChatRoomRepository)
     : RoomPersistence {
-    override fun all(): Flux<out Room> = roomRepo.findAll()
+    override fun all(): Flux<out Topic> = roomRepo.findAll()
 
-    override fun get(key: EventKey): Mono<out Room> = roomRepo.findByKeyId(key.id)
+    override fun get(key: EventKey): Mono<out Topic> = roomRepo.findByKeyId(key.id)
 
-    override fun key(): Mono<EventKey> = keyService.id(RoomKey::class.java)
+    override fun key(): Mono<EventKey> = keyService.id(TopicKey::class.java)
 
-    override fun add(room: Room): Mono<Void> =
+    override fun add(topic: Topic): Mono<Void> =
             roomRepo
-                    .add(room)
+                    .add(topic)
                     .then()
 
     override fun rem(key: EventKey): Mono<Void> =

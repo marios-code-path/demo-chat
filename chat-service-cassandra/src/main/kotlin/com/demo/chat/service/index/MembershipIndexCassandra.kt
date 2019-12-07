@@ -16,28 +16,28 @@ class MembershipIndexCassandra(val byMemberRepo: ChatMembershipByMemberRepositor
     override fun add(ent: RoomMembership, criteria: Map<String, String>): Mono<Void> =
             byMemberRepo
                     .save(ChatMembershipByMember(
-                            CSEventKeyType(ent.key.id),
+                            CassandraEventKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CSEventKeyType(ent.memberOf.id)
+                            CassandraEventKeyType(ent.memberOf.id)
                     ))
                     .thenMany(byMemberOfRepo
                             .save(ChatMembershipByMemberOf(
-                                    CSEventKeyType(ent.key.id),
-                                    CSEventKeyType(ent.member.id),
+                                    CassandraEventKeyType(ent.key.id),
+                                    CassandraEventKeyType(ent.member.id),
                                     ChatMembershipKeyByMemberOf(ent.memberOf.id)
                             ))).then()
 
     override fun rem(ent: RoomMembership): Mono<Void> =
             byMemberRepo
                     .delete(ChatMembershipByMember(
-                            CSEventKeyType(ent.key.id),
+                            CassandraEventKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CSEventKeyType(ent.memberOf.id)))
+                            CassandraEventKeyType(ent.memberOf.id)))
                     .flatMap {
                         byMemberOfRepo
                                 .delete(ChatMembershipByMemberOf(
-                                        CSEventKeyType(ent.key.id),
-                                        CSEventKeyType(ent.member.id),
+                                        CassandraEventKeyType(ent.key.id),
+                                        CassandraEventKeyType(ent.member.id),
                                         ChatMembershipKeyByMemberOf(ent.memberOf.id))
                                 )
                     }

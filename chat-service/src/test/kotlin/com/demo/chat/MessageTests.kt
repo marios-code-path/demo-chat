@@ -10,6 +10,9 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import reactor.core.Disposable
+import reactor.core.publisher.Flux
+import reactor.core.publisher.ReplayProcessor
 import java.time.Instant
 import java.util.*
 import java.util.stream.Stream
@@ -67,6 +70,26 @@ class MessageTests {
             TextMessage.create(
                     TextMessageKey.create(messageId, roomId, userId),
                     "Hello $counter !",true)
+    }
+    // use a replay processor to handle subscriber state lol
+    //
+    @Test
+    fun `should test streaming only through publisher`() {
+        val publisher = Flux.just(1)
+        val subscribers: Flux<Disposable> = ReplayProcessor
+                .create { sink ->
+                    sink.next(
+                            publisher.subscribe { myInt ->
+                                sink.onRequest { myLong ->
+
+                                }
+                            }
+                    )
+                }
+
+        publisher.subscribe {
+
+        }
     }
 
     @Test
@@ -156,12 +179,12 @@ class MessageTests {
                 roomId
         )
 
-        val value = RoomMetaData(
+        val value = TopicMetaData(
                 1,
                 2
         )
 
-        val topicMessage: Message<AlertMessageKey, RoomMetaData> =
+        val topicMessage: Message<AlertMessageKey, TopicMetaData> =
                 InfoAlert.create(key, value, true)
 
         // Get some message and access specific fields

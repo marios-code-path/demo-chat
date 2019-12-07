@@ -7,27 +7,29 @@ import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
 import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
 
-interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatRoomName, String> {
-    fun findByKeyName(name: String): Mono<ChatRoomName>
+interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatTopicName, String> {
+    fun findByKeyName(name: String): Mono<ChatTopicName>
 }
 
 interface ChatRoomRepository :
-        ReactiveCassandraRepository<ChatRoom, UUID>,
+        ReactiveCassandraRepository<ChatTopic, UUID>,
         ChatRoomRepositoryCustom
 {
-    fun findByKeyId(id: UUID): Mono<ChatRoom>
+    fun findByKeyId(id: UUID): Mono<ChatTopic>
 }
 
 interface ChatRoomRepositoryCustom {
-    fun add(room: Room): Mono<Void>
+    fun add(topic: Topic): Mono<Void>
     fun rem(roomKey: EventKey): Mono<Void>
+    @Deprecated("join/leave not part of topic tracking")
     fun join(uid: UUID, roomId: UUID): Mono<Void>
+    @Deprecated("join/leave not part of topic tracking")
     fun leave(uid: UUID, roomId: UUID): Mono<Void>
+    @Deprecated("message count not supported per topic")
     fun messageCount(roomId: UUID): Mono<Int>
 }
 
@@ -37,20 +39,17 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
             cassandra
                     .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
-                            ChatRoom::class.java
+                            ChatTopic::class.java
                     )
                     .then()
 
-    override fun add(room: Room): Mono<Void> = cassandra
-            .insert(ChatRoom(
-                    ChatRoomKey(
-                            room.key.id,
-                            room.key.name
+    override fun add(topic: Topic): Mono<Void> = cassandra
+            .insert(ChatTopic(
+                    ChatTopicKey(
+                            topic.key.id
                     ),
-                    emptySet(),
-                    true,
-                    room.timestamp
-            ))
+                    topic.name,
+                    true))
             .then()
 
     override fun leave(uid: UUID, roomId: UUID): Mono<Void> = cassandra
@@ -58,7 +57,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
                             listOf(uid)))),
-                    ChatRoom::class.java
+                    ChatTopic::class.java
             )
             .map {
                 if (!it)
@@ -73,7 +72,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                                     ColumnName.from("members"),
                                     listOf(uid),
                                     Update.AddToOp.Mode.APPEND))),
-                            ChatRoom::class.java
+                            ChatTopic::class.java
                     )
                     .map {
                         if (!it)
@@ -82,19 +81,5 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                     .then()
 
     override fun messageCount(roomId: UUID): Mono<Int> =
-            cassandra
-                    .select(Query.query(where("room_id").`is`(roomId)), ChatRoom::class.java)
-                    .map {
-                        it.members
-                    }
-                    .defaultIfEmpty(Collections.emptySet())
-                    .zipWith(
-                            cassandra
-                                    .select(Query.query(where("room_id").`is`(roomId)), ChatMessageById::class.java)
-                                    .count()
-                    )
-                    .map {
-                        it.t1.size
-                    }
-                    .single()
+            Mono.empty()
 }

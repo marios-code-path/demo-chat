@@ -33,17 +33,17 @@ data class ChatUserKey(
 ) : UserKey
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class ChatRoom(
+data class ChatTopic(
         override val key: ChatRoomKey,
         override val members: Set<UUID>,
         val active: Boolean,
         override val timestamp: Instant
-) : Room
+) : Topic
 
 data class ChatRoomKey(
         override val id: UUID,
         override val name: String
-) : RoomKey
+) : TopicKey
 
 
 data class ChatMessageKey(
@@ -70,9 +70,9 @@ data class ChatMessage(
 @JsonTypeName("InfoAlert")
 data class ChatInfoAlert(
         override val key: AlertMessageKey,
-        override val value: RoomMetaData,
+        override val value: TopicMetaData,
         override val visible: Boolean
-) : Message<AlertMessageKey, RoomMetaData>
+) : Message<AlertMessageKey, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class ChatLeaveAlert(

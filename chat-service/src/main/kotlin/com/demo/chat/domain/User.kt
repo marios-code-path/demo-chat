@@ -10,16 +10,19 @@ import java.util.*
 interface User {
     val key: UserKey
     val name: String
+    val handle: String
     val imageUri: String
     val timestamp: Instant
 
     companion object Factory {
         @JvmStatic
-        fun create(key: UserKey, name: String, imageUri: String): User = object : User {
+        fun create(key: UserKey, name: String, handle: String, imageUri: String): User = object : User {
             override val key: UserKey
                 get() = key
             override val name: String
                 get() = name
+            override val handle: String
+                get() = handle
             override val imageUri: String
                 get() = imageUri
             override val timestamp: Instant
@@ -29,15 +32,12 @@ interface User {
 }
 
 interface UserKey : EventKey {
-    val handle: String
 
     companion object Factory {
         @JvmStatic
-        fun create(id: UUID, handle: String): UserKey = object : UserKey {
+        fun create(id: UUID): UserKey = object : UserKey {
             override val id: UUID
                 get() = id
-            override val handle: String
-                get() = handle
         }
     }
 }

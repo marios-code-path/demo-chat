@@ -17,12 +17,11 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Instant
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class RoomPersistenceTests {
+class TopicPersistenceTests {
 
     val ROOMNAME = "test-room"
 
@@ -42,9 +41,9 @@ class RoomPersistenceTests {
 
     @BeforeEach
     fun setUp() {
-        val newRoom = ChatRoom(ChatRoomKey(rid, ROOMNAME), emptySet(), true, Instant.now())
-        val roomNameRoom = ChatRoomName(ChatRoomNameKey(rid, ROOMNAME), emptySet(), true, Instant.now())
-        val roomTwo = ChatRoom(ChatRoomKey(UUID.randomUUID(), randomAlphaNumeric(6)), emptySet(), true, Instant.now())
+        val newRoom = ChatTopic(ChatTopicKey(rid), ROOMNAME, true)
+        val roomNameRoom = ChatTopicName(ChatRoomNameKey(rid, ROOMNAME), true)
+        val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
 
 
         BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
@@ -78,7 +77,7 @@ class RoomPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    Room.create(RoomKey.create(UUIDs.timeBased(), name), setOf())
+                    Topic.create(TopicKey.create(UUIDs.timeBased()), name)
                 }
                 .flatMap(roomSvc::add)
 
@@ -92,12 +91,11 @@ class RoomPersistenceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(room: Room) {
+    fun roomAssertions(topic: Topic) {
         assertAll("room state test",
-                { Assertions.assertNotNull(room) },
-                { Assertions.assertNotNull(room.key.id) },
-                { Assertions.assertNotNull(room.key.name) },
-                { Assertions.assertNotNull(room.timestamp) }
+                { Assertions.assertNotNull(topic) },
+                { Assertions.assertNotNull(topic.key.id) },
+                { Assertions.assertNotNull(topic.name) }
         )
     }
 

@@ -21,7 +21,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
-import java.time.Instant
 import java.util.*
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
@@ -29,7 +28,7 @@ import java.util.*
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-room.cql")
-class RoomRepositoryTests {
+class TopicRepositoryTests {
 
     private val ROOMNAME = "XYZ"
 
@@ -42,11 +41,11 @@ class RoomRepositoryTests {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
-        val room = Room.create(RoomKey.create(roomId, ROOMNAME), emptySet())
+        val room = Topic.create(TopicKey.create(roomId), ROOMNAME)
 
         val saveFlux = repo.add(room)
 
-        val deleteMono = repo.rem(RoomKey.create(roomId, ROOMNAME))
+        val deleteMono = repo.rem(TopicKey.create(roomId))
 
         val findActiveRooms =
                 repo.findAll()
@@ -83,11 +82,11 @@ class RoomRepositoryTests {
         StepVerifier
                 .create(
                         Flux.just(
-                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6)),
-                                ChatRoomKey(UUIDs.timeBased(), randomAlphaNumeric(6))
+                                ChatTopicKey(UUIDs.timeBased()),
+                                ChatTopicKey(UUIDs.timeBased())
                         )
                                 .map {
-                                    ChatRoom(it, Collections.emptySet(), true, Instant.now())
+                                    ChatTopic(it, randomAlphaNumeric(6), true)
                                 }
                                 .flatMap {
                                     repo.add(it)
@@ -102,9 +101,9 @@ class RoomRepositoryTests {
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = Flux.just(RoomKey.create(UUIDs.timeBased(), "XYZ"))
+        val saveFlux = Flux.just(TopicKey.create(UUIDs.timeBased()))
                 .flatMap {
-                    byNameRepo.save(ChatRoomName(ChatRoomNameKey(it.id,it.name), Collections.emptySet(), true, Instant.now()))
+                    byNameRepo.save(ChatTopicName(ChatRoomNameKey(it.id, "XYZ"), true))
                 }
 
         val findFlux = byNameRepo
@@ -116,57 +115,14 @@ class RoomRepositoryTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext { roomAssertions(it as Room) }
+                .assertNext { roomAssertions(it as Topic) }
                 .verifyComplete()
     }
 
-    @Test
-    fun `should update members and verify`() {
-        val roomId = UUID.randomUUID()
-        val userId = UUID.randomUUID()
-
-        val saveFlux = repo
-                .add(
-                        ChatRoom(
-                                ChatRoomKey(
-                                        roomId, "XYZ"),
-                                Collections.emptySet(),
-                                true,
-                                Instant.now())
-                )
-
-        val updateFlux = repo.join(userId, roomId)
-
-        val findFlux = repo
-                .findByKeyId(roomId)
-
-        val composed = Flux
-                .from(saveFlux)
-                .then(updateFlux)
-                .thenMany(findFlux)
-
-        StepVerifier
-                .create(composed)
-                .assertNext {
-                    roomAssertions(it)
-                    assertAll("Room members contained",
-                            { Assertions.assertTrue(it.members!!.isNotEmpty()) },
-                            {
-                                Assertions.assertEquals(userId,
-                                        it.members!!.first())
-                            }
-                    )
-                }
-                .verifyComplete()
-    }
-
-    fun <R : Room> roomAssertions(room: R) {
+    fun <R : Topic> roomAssertions(room: R) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.id) },
-                { Assertions.assertNotNull(room.key.name) },
-                { Assertions.assertNotNull(room.timestamp) }
-        )
+                { Assertions.assertNotNull(room.name) })
     }
-
 }

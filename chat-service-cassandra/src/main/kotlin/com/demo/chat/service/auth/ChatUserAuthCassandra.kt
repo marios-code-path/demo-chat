@@ -29,7 +29,7 @@ class ChatUserAuthCassandra(private val userIndex: UserIndexService,
                     .handle { key, s ->
                         when (key) {
                             null -> s.error(UsernamePasswordAuthenticationException)
-                            else -> s.next(UserKey.create(key.id, key.handle))
+                            else -> s.next(UserKey.create(key.id))
                         }
                     }
 

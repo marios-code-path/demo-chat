@@ -5,6 +5,7 @@ import com.demo.chat.domain.TopicMessageKey
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.Disposable
+import reactor.core.Disposables
 import reactor.core.publisher.DirectProcessor
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxProcessor
@@ -18,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap
 class TopicManager {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
-
+// TODO seek the Disposable Swap, and Composite to manage the disposable
     private val streamProcessors: MutableMap<UUID, FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private val streamFluxes: MutableMap<UUID, Flux<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
@@ -38,6 +39,11 @@ class TopicManager {
                         consumerMap[consumer]
                     }
 
+    // This can leak sas downstream subscription activity can cause
+    // this disposable to not call the dispose method ( and remove ) in this API.
+    // Probably fix that by: making Flux operations commute termination to given
+    // disposable.
+    //
     // Does not replace. Disconnect, then reconnect when needed
     fun subscribeTopic(source: UUID, consumer: UUID) =
             getMaybeConsumer(source, consumer)
@@ -56,7 +62,7 @@ class TopicManager {
                 }
     }
 
-    fun closeTopic(stream: UUID): Unit {
+    fun closeTopic(stream: UUID) {
         if (streamProcessors.containsKey(stream)) {
             streamProcessors[stream]?.onComplete()
             streamProcessors.remove(stream)

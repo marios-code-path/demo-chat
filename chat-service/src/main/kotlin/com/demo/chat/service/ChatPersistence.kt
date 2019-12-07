@@ -3,7 +3,6 @@ package com.demo.chat.service
 import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 interface ChatPersistence<ENTITY> {
     fun key(): Mono<out EventKey>
@@ -17,7 +16,7 @@ interface ChatPersistence<ENTITY> {
 
 interface UserPersistence : ChatPersistence<User>
 
-interface RoomPersistence : ChatPersistence<Room>
+interface RoomPersistence : ChatPersistence<Topic>
 
 interface MembershipPersistence : ChatPersistence<Membership<EventKey>>
 

@@ -35,17 +35,17 @@ data class TestChatUserKey(
 ) : UserKey
 
 @JsonTypeName("ChatRoom")
-data class TestChatRoom(
+data class TestChatTopic(
         override val key: TestChatRoomKey,
         override val members: Set<UUID>?,
         val active: Boolean,
         override val timestamp: Instant
-) : Room
+) : Topic
 
 data class TestChatRoomKey(
         override val id: UUID,
         override val name: String
-) : RoomKey
+) : TopicKey
 
 
 data class TestTextMessageKey(
@@ -65,9 +65,9 @@ data class TestAlertMessageKey(
 @JsonTypeName("InfoAlert")
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
-        override val value: RoomMetaData,
+        override val value: TopicMetaData,
         override val visible: Boolean
-) : Message<TestAlertMessageKey, RoomMetaData>
+) : Message<TestAlertMessageKey, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class TestLeaveAlert(

@@ -12,24 +12,22 @@ import java.time.Instant
 
 class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
                          private val nameRepo: ChatRoomNameRepository) : RoomIndexService {
-    override fun add(ent: Room, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: Topic, criteria: Map<String, String>): Mono<Void> =
             nameRepo.save(
-                    ChatRoomName(
+                    ChatTopicName(
                             ChatRoomNameKey(
                                     ent.key.id,
-                                    ent.key.name),
-                            emptySet(),
-                            true,
-                            Instant.now()
+                                    ent.name),
+                            true
                     )
             )
                     .then()
 
-    override fun rem(ent: Room): Mono<Void> = nameRepo.insert(ChatRoomName(
-            ChatRoomNameKey(ent.key.id, ent.key.name), setOf(), false, Instant.now()
+    override fun rem(ent: Topic): Mono<Void> = nameRepo.insert(ChatTopicName(
+            ChatRoomNameKey(ent.key.id, ent.name), false
     )).then()
 
-    override fun findBy(query: Map<String, String>): Flux<out RoomKey> {
+    override fun findBy(query: Map<String, String>): Flux<out TopicKey> {
         val queryBy = query.keys.first()
         return when (queryBy) {
             NAME -> {

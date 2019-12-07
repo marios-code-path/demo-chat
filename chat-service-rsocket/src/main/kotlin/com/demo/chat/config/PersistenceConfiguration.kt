@@ -3,9 +3,10 @@ package com.demo.chat.config
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
+import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.index.MessageIndexCassandra
-import com.demo.chat.service.index.UserIndexCassandra
 import com.demo.chat.service.index.RoomIndexCassandra
+import com.demo.chat.service.index.UserIndexCassandra
 import com.demo.chat.service.persistence.*
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -33,6 +34,11 @@ class IndexConfiguration {
     @Bean
     fun roomIndex(roomRepo: ChatRoomRepository,
                   nameRepo: ChatRoomNameRepository): RoomIndexService = RoomIndexCassandra(roomRepo, nameRepo)
+
+    @Bean
+    fun membershipIndex(byMemberRepo: ChatMembershipByMemberRepository,
+                        byMemberOfRepo: ChatMembershipByMemberOfRepository): MembershipIndexService =
+            MembershipIndexCassandra(byMemberRepo, byMemberOfRepo)
 
     @Bean
     fun messageIndex(cassandra: ReactiveCassandraTemplate,
@@ -69,7 +75,7 @@ class PersistenceConfiguration {
             TextMessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
-    fun memberPersistence(keyService: KeyService,
+    fun membershipPersistence(keyService: KeyService,
                           membershipRepo: ChatMembershipRepository): MembershipPersistence =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }

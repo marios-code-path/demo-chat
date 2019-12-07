@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -26,8 +25,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, RSocketRoomTests.TestConfiguration::class)
-class RSocketRoomTests : ControllerTestBase() {
+@Import(ConfigurationRSocket::class, RSocketTopicTests.TestConfiguration::class)
+class RSocketTopicTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
@@ -54,13 +53,13 @@ class RSocketRoomTests : ControllerTestBase() {
     private val randomRoomName = randomAlphaNumeric(6) + "Room"
     private val randomRoomId: UUID = UUID.randomUUID()
 
-    private val room = TestChatRoom(
+    private val room = TestChatTopic(
             TestChatRoomKey(randomRoomId, randomRoomName),
-            emptySet(), true, Instant.now())
+            true)
 
-    private val roomWithMembers = TestChatRoom(
+    private val roomWithMembers = TestChatTopic(
             TestChatRoomKey(randomRoomId, randomRoomName),
-            setOf(randomUserId), true, Instant.now())
+            true)
 
     @Test
     fun `should create a room receive Void response`() {
@@ -74,7 +73,7 @@ class RSocketRoomTests : ControllerTestBase() {
 
         BDDMockito
                 .given(roomPersistence.key())
-                .willReturn(Mono.just(RoomKey.create(UUID.randomUUID(), "randomRoomName")))
+                .willReturn(Mono.just(TopicKey.create(UUID.randomUUID())))
 
         StepVerifier.create(
                 requestor.route("room-add")
@@ -96,7 +95,7 @@ class RSocketRoomTests : ControllerTestBase() {
                         requestor
                                 .route("room-list")
                                 .data(RoomRequestId(UUID.randomUUID()))
-                                .retrieveFlux(TestChatRoom::class.java)
+                                .retrieveFlux(TestChatTopic::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -184,7 +183,7 @@ class RSocketRoomTests : ControllerTestBase() {
                         requestor
                                 .route("room-members")
                                 .data(RoomRequestId(randomRoomId))
-                                .retrieveMono(RoomMemberships::class.java)
+                                .retrieveMono(TopicMemberships::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -212,11 +211,11 @@ class RSocketRoomTests : ControllerTestBase() {
     class TestConfiguration {
         @Controller
         class TestRoomController(roomP: RoomPersistence,
-                               roomInd: RoomIndexService,
-                               topicSvc: ChatTopicService,
-                               userP: UserPersistence,
-                               membershipP: MembershipPersistence,
-                               membershipInd: MembershipIndexService) :
+                                 roomInd: RoomIndexService,
+                                 topicSvc: ChatTopicService,
+                                 userP: UserPersistence,
+                                 membershipP: MembershipPersistence,
+                                 membershipInd: MembershipIndexService) :
                 RoomController(roomP, roomInd, topicSvc, userP, membershipP, membershipInd)
     }
 }

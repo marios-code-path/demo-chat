@@ -9,7 +9,7 @@ import org.springframework.data.cassandra.core.mapping.UserDefinedType
 import java.util.*
 
 @UserDefinedType("event_key_type")
-data class CSEventKeyType(
+data class CassandraEventKeyType(
         @CassandraType(type = DataType.Name.UUID)
         override val id: UUID) : EventKey
 

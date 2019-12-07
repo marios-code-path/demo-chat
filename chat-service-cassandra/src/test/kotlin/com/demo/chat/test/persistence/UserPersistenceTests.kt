@@ -37,7 +37,7 @@ class UserPersistenceTests {
 
     @BeforeEach
     fun setUp() {
-        val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", "", Instant.now())
+        val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle","", Instant.now())
 
         BDDMockito
                 .given(userRepo.findByKeyIdIn(anyObject()))
@@ -108,7 +108,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should save and find users`() {
-        val newUser = ChatUser(ChatUserKey(uid, "test-handle"), "test-name", "", Instant.now())
+        val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle", "", Instant.now())
 
         val publisher = userSvc
                 .add(newUser)

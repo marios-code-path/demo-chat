@@ -18,7 +18,7 @@ interface MapQueryIndexService<K : EventKey, T> : IndexService<K, T, Map<String,
 // Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
 interface UserIndexService : IndexService<UserKey, User, Map<String, String>, Map<String, String>>
 
-interface RoomIndexService : MapQueryIndexService<RoomKey, Room> {
+interface RoomIndexService : MapQueryIndexService<TopicKey, Topic> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"

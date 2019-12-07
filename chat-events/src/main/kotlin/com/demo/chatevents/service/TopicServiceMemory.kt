@@ -1,5 +1,6 @@
 package com.demo.chatevents.service
 
+import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.domain.TopicMessageKey
@@ -50,7 +51,9 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     .switchIfEmpty(Mono.error(RoomNotFoundException))
 
     override fun exists(id: UUID): Mono<Boolean> = Mono
-            .fromCallable { topicMembers.containsKey(id) }
+            .fromCallable { topicXSource.containsKey(id) }
+
+    override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
     override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
             topicManager

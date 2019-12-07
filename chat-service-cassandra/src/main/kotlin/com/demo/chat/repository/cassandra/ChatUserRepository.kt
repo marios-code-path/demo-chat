@@ -11,6 +11,7 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.util.*
 
 
@@ -52,7 +53,7 @@ class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplat
                             ChatUserHandle(
                                     ChatUserHandleKey(
                                             u.key.id,
-                                            u.key.handle
+                                            u.handle
                                     ),
                                     u.name,
                                     u.imageUri,
@@ -85,12 +86,12 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     .insert(
                             ChatUser(
                                     ChatUserKey(
-                                            u.key.id,
-                                            u.key.handle
+                                            u.key.id
                                     ),
                                     u.name,
+                                    u.handle,
                                     u.imageUri,
-                                    u.timestamp),
+                                    Instant.now()),
                             InsertOptions.builder().withIfNotExists()
                                     .retryPolicy(DefaultRetryPolicy.INSTANCE)
                                     .build()

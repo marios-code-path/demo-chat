@@ -90,7 +90,7 @@ class KeyServiceTests {
     @Test
     fun `should create new UserKey`() {
         val userKey = svc.key(UserKey::class.java) {
-            UserKey.create(it.id, handle)
+            UserKey.create(it.id)
         }
 
         StepVerifier
@@ -103,9 +103,8 @@ class KeyServiceTests {
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
-                            .assertThat(it.handle)
+                            .assertThat(it.id)
                             .isNotNull()
-                            .isEqualTo(handle)
                 }
                 .verifyComplete()
     }

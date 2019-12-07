@@ -1,13 +1,7 @@
 package com.demo.chat
 
 import com.demo.chat.domain.*
-import com.fasterxml.jackson.annotation.JsonCreator
-import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonTypeName
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.annotation.JsonSerialize
-import com.fasterxml.jackson.databind.deser.std.UUIDDeserializer
-import com.fasterxml.jackson.databind.ser.std.UUIDSerializer
 import java.time.Instant
 import java.util.*
 
@@ -17,11 +11,13 @@ data class TestChatUser (
         override val name: String,
         override val imageUri: String,
         override val timestamp: Instant
-) : User
+) : User {
+    override val handle: String = key.handle
+}
 
 data class TestChatUserKey(
         override val id: UUID,
-        override val handle: String
+        val handle: String
 ) : UserKey
 
 data class TestEventKey(
@@ -29,17 +25,17 @@ data class TestEventKey(
 ) : EventKey
 
 @JsonTypeName("ChatRoom")
-data class TestChatRoom(
+data class TestChatTopic(
         override val key: TestChatRoomKey,
-        override val members: Set<UUID>?,
-        val active: Boolean,
-        override val timestamp: Instant
-) : Room
+        val active: Boolean
+) : Topic {
+    override val name = key.name
+}
 
 data class TestChatRoomKey(
         override val id: UUID,
-        override val name: String
-) : RoomKey
+        val name: String
+) : TopicKey
 
 
 data class TestTextMessageKey(
@@ -65,9 +61,9 @@ data class TestTextMessage(
 @JsonTypeName("InfoAlert")
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
-        override val value: RoomMetaData,
+        override val value: TopicMetaData,
         override val visible: Boolean
-) : Message<TestAlertMessageKey, RoomMetaData>
+) : Message<TestAlertMessageKey, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class TestLeaveAlert(

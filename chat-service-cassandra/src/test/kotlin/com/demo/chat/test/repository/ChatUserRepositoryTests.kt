@@ -99,8 +99,8 @@ class ChatUserRepositoryTests {
         val id2 = UUIDs.timeBased()
 
         val chatUsers = Flux.just(
-                ChatUser(ChatUserKey(id1, "vedder"), "eddie", defaultImageUri, Instant.now()),
-                ChatUser(ChatUserKey(id2, "jackson"), "Michael", defaultImageUri, Instant.now())
+                ChatUser(ChatUserKey(id1), "eddie", "vedder", defaultImageUri, Instant.now()),
+                ChatUser(ChatUserKey(id2), "Michael",  "jackson", defaultImageUri, Instant.now())
         )
                 .flatMap { repo.add(it) }
 
@@ -124,14 +124,14 @@ class ChatUserRepositoryTests {
     @Test
     fun `should user hold consistent states`() {
         val uuid = UUIDs.timeBased()
-        val user = ChatUser(ChatUserKey(uuid, "Eddie"),
+        val user = ChatUser(ChatUserKey(uuid),"Eddie",
                 "EddiesHandle", defaultImageUri, Instant.now())
 
         assertAll("user",
                 { Assertions.assertNotNull(user) },
                 { Assertions.assertEquals(uuid, user.key.id) },
-                { Assertions.assertEquals("Eddie", user.key.handle) },
-                { Assertions.assertEquals("EddiesHandle", user.name) })
+                { Assertions.assertEquals("Eddie", user.name) },
+                { Assertions.assertEquals("EddiesHandle", user.handle) })
 
         StepVerifier
                 .create(Flux.just(user))
@@ -149,8 +149,8 @@ class ChatUserRepositoryTests {
         val userId = UUIDs.timeBased()
 
         val chatUser = ChatUser(
-                ChatUserKey(userId, "vedder"),
-                "eddie", defaultImageUri, Instant.now())
+                ChatUserKey(userId),
+                "eddie", "vedder", defaultImageUri, Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
@@ -172,7 +172,7 @@ class ChatUserRepositoryTests {
 
     @Test
     fun shouldPerformTruncateAndSave() {
-        val chatUsers = Flux.just(ChatUser(ChatUserKey(UUIDs.timeBased(), "vedder"), "eddie", defaultImageUri, Instant.now()))
+        val chatUsers = Flux.just(ChatUser(ChatUserKey(UUIDs.timeBased()), "eddie", "vedder", defaultImageUri, Instant.now()))
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)
@@ -191,12 +191,12 @@ class ChatUserRepositoryTests {
                 .assertThat("A User has key and properties", user,
                         Matchers.allOf(
                                 Matchers.notNullValue(),
+                                Matchers.hasProperty("handle"),
                                 Matchers.hasProperty("name", Matchers.not(Matchers.isEmptyOrNullString())),
                                 Matchers.hasProperty("key",
                                         Matchers
                                                 .allOf(
                                                         Matchers.notNullValue(),
-                                                        Matchers.hasProperty("handle"),
                                                         Matchers.hasProperty("id")
                                                 )
                                 )
@@ -209,8 +209,8 @@ class ChatUserRepositoryTests {
         assertAll("User Assertion",
                 { Assertions.assertNotNull(user) },
                 { Assertions.assertNotNull(user.key.id) },
-                { Assertions.assertNotNull(user.key.handle) },
-                { Assertions.assertEquals(handle, user.key.handle) },
+                { Assertions.assertNotNull(user.handle) },
+                { Assertions.assertEquals(handle, user.handle) },
                 { Assertions.assertEquals(name, user.name) }
         )
     }

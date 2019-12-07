@@ -13,7 +13,6 @@ import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Instant
 import java.util.*
 
 private val ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -37,7 +36,7 @@ fun <T> uninitialized(): T = null as T
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class RoomIndexTests {
+class TopicIndexTests {
 
     @MockBean
     lateinit var roomRepo: ChatRoomRepository
@@ -49,15 +48,15 @@ class RoomIndexTests {
 
     @BeforeEach
     fun setUp() {
-        val idRoom = ChatRoom(ChatRoomKey(rid.id, ROOMNAME), setOf(), true, Instant.now())
-        val nameRoom = ChatRoomName(ChatRoomNameKey(rid.id, ROOMNAME), setOf(), true, Instant.now())
+        val idRoom = ChatTopic(ChatTopicKey(rid.id), ROOMNAME, true)
+        val nameRoom = ChatTopicName(ChatRoomNameKey(rid.id, ROOMNAME), true)
 
         BDDMockito
                 .given(roomRepo.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(nameRepo.save(Mockito.any(ChatRoomName::class.java)))
+                .given(nameRepo.save(Mockito.any(ChatTopicName::class.java)))
                 .willReturn(Mono.just(nameRoom))
 
         BDDMockito
@@ -74,7 +73,7 @@ class RoomIndexTests {
                 .willReturn(Mono.empty())
 
         BDDMockito.given(roomRepo.leave(anyObject(), anyObject()))
-                .willReturn(Mono.empty ())
+                .willReturn(Mono.empty())
 
         roomIndex = RoomIndexCassandra(roomRepo, nameRepo)
     }
@@ -96,11 +95,10 @@ class RoomIndexTests {
                 .verifyComplete()
     }
 
-    private fun roomKeyAssertions(key: RoomKey) {
+    private fun roomKeyAssertions(key: TopicKey) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(key) },
-                { Assertions.assertNotNull(key.id) },
-                { Assertions.assertNotNull(key.name) }
+                { Assertions.assertNotNull(key.id) }
         )
     }
 }

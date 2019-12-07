@@ -15,7 +15,7 @@ class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                          val cassandra: ReactiveCassandraTemplate) : UserIndexService {
     override fun add(ent: User, criteria: Map<String, String>): Mono<Void> =
             cassandra.insert(ChatUserHandle(
-                    ChatUserHandleKey(ent.key.id, ent.key.handle),
+                    ChatUserHandleKey(ent.key.id, ent.handle),
                     ent.name,
                     ent.imageUri,
                     Instant.now()),

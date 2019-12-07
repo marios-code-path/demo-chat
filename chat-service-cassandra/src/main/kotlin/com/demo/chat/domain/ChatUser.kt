@@ -1,5 +1,6 @@
 package com.demo.chat.domain
 
+import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
@@ -11,6 +12,8 @@ data class ChatUser(
         override val key: ChatUserKey,
         @Column("name")
         override val name: String,
+        @Column("handle")
+        override val handle: String,
         @Column("image_uri")
         override val imageUri: String,
         @Column("timestamp")
@@ -19,10 +22,8 @@ data class ChatUser(
 
 @PrimaryKeyClass
 data class ChatUserKey(
-        @PrimaryKeyColumn(name="user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID,
-        @Column("handle")
-        override val handle: String
+        @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
+        override val id: UUID
 ) : UserKey
 
 @Table("chat_user_handle")
@@ -35,12 +36,15 @@ data class ChatUserHandle(
         override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User
+) : User {
+    @Transient
+    override val handle: String = key.handle
+}
 
 @PrimaryKeyClass
 data class ChatUserHandleKey(
         @Column("user_id")
         override val id: UUID,
         @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val handle: String
+        val handle: String
 ) : UserKey

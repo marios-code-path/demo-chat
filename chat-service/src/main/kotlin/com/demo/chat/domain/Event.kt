@@ -1,6 +1,5 @@
 package com.demo.chat.domain
 
-import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.util.*
@@ -9,6 +8,7 @@ import java.util.*
 @JsonTypeName("EventKey")
 interface EventKey {
     val id: UUID
+
     companion object Factory {
         @JvmStatic
         fun create(id: UUID): EventKey = object : EventKey {
@@ -23,8 +23,9 @@ interface EventKey {
 interface Event<T> {
     val key: EventKey
     val data: T
+
     companion object Factory {
-        fun <T>create(key: EventKey, data: T): Event<T> = object : Event<T> {
+        fun <T> create(key: EventKey, data: T): Event<T> = object : Event<T> {
             override val key: EventKey
                 get() = key
             override val data: T
