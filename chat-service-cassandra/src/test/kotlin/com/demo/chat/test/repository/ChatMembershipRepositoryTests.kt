@@ -49,8 +49,8 @@ class ChatMembershipRepositoryTests {
     fun `should save, find all`() {
         val membership = ChatMembership(
                 ChatMembershipKey(UUIDs.timeBased()),
-                CassandraEventKeyType(UUIDs.timeBased()),
-                CassandraEventKeyType(UUIDs.timeBased())
+                CassandraKeyType(UUIDs.timeBased()),
+                CassandraKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -73,8 +73,8 @@ class ChatMembershipRepositoryTests {
         val keyId = ChatMembershipKey(UUIDs.timeBased())
         val membership = ChatMembership(
                 keyId,
-                CassandraEventKeyType(UUIDs.timeBased()),
-                CassandraEventKeyType(UUIDs.timeBased())
+                CassandraKeyType(UUIDs.timeBased()),
+                CassandraKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -100,8 +100,8 @@ class ChatMembershipRepositoryTests {
                 .map {key ->
                     val i = ChatMembership(
                             key,
-                            CassandraEventKeyType(UUIDs.timeBased()),
-                            CassandraEventKeyType(UUIDs.timeBased())
+                            CassandraKeyType(UUIDs.timeBased()),
+                            CassandraKeyType(UUIDs.timeBased())
                     )
                     memberships.add(i)
 
@@ -131,9 +131,9 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberId`() {
         val keyId = ChatMembershipKeyByMember(UUIDs.timeBased())
         val membership = ChatMembershipByMember(
-                CassandraEventKeyType(UUIDs.timeBased()),
+                CassandraKeyType(UUIDs.timeBased()),
                 keyId,
-                CassandraEventKeyType(UUIDs.timeBased())
+                CassandraKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = byMemberRepo
@@ -155,8 +155,8 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberOf`() {
         val keyId = ChatMembershipKeyByMemberOf(UUIDs.timeBased())
         val membership = ChatMembershipByMemberOf(
-                CassandraEventKeyType(UUIDs.timeBased()),
-                CassandraEventKeyType(UUIDs.timeBased()),
+                CassandraKeyType(UUIDs.timeBased()),
+                CassandraKeyType(UUIDs.timeBased()),
                 keyId
         )
 
@@ -178,15 +178,15 @@ class ChatMembershipRepositoryTests {
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
-            EventKey.create(UUIDs.timeBased())
+            Key.eventKey(UUIDs.timeBased())
         }.limit(5).toList()
 
         val keyIdsList = keyList.stream().map { it.id }.toList()
         val memberships = Flux.fromIterable(keyList
                 .map {
                     ChatMembership(ChatMembershipKey(it.id),
-                            CassandraEventKeyType(UUIDs.timeBased()),
-                            CassandraEventKeyType((UUIDs.timeBased())))
+                            CassandraKeyType(UUIDs.timeBased()),
+                            CassandraKeyType((UUIDs.timeBased())))
                 })
 
         val repoStream = repo

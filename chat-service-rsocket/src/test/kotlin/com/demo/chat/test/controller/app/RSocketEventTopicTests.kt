@@ -25,8 +25,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, RSocketTopicTests.TestConfiguration::class)
-class RSocketTopicTests : ControllerTestBase() {
+@Import(ConfigurationRSocket::class, RSocketEventTopicTests.TestConfiguration::class)
+class RSocketEventTopicTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
@@ -53,11 +53,11 @@ class RSocketTopicTests : ControllerTestBase() {
     private val randomRoomName = randomAlphaNumeric(6) + "Room"
     private val randomRoomId: UUID = UUID.randomUUID()
 
-    private val room = TestChatTopic(
+    private val room = TestChatEventTopic(
             TestChatRoomKey(randomRoomId, randomRoomName),
             true)
 
-    private val roomWithMembers = TestChatTopic(
+    private val roomWithMembers = TestChatEventTopic(
             TestChatRoomKey(randomRoomId, randomRoomName),
             true)
 
@@ -95,7 +95,7 @@ class RSocketTopicTests : ControllerTestBase() {
                         requestor
                                 .route("room-list")
                                 .data(RoomRequestId(UUID.randomUUID()))
-                                .retrieveFlux(TestChatTopic::class.java)
+                                .retrieveFlux(TestChatEventTopic::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -164,14 +164,14 @@ class RSocketTopicTests : ControllerTestBase() {
 
         BDDMockito
                 .given(membershipPersistence.byIds(anyObject()))
-                .willReturn(Flux.just(RoomMembership.create(
-                        EventKey.create(membershipId),
-                        EventKey.create(randomRoomId),
-                        EventKey.create(randomUserId))))
+                .willReturn(Flux.just(TopicMembership.create(
+                        Key.eventKey(membershipId),
+                        Key.eventKey(randomRoomId),
+                        Key.eventKey(randomUserId))))
 
         BDDMockito
                 .given(membershipIndex.findBy(anyObject()))
-                .willReturn(Flux.just(EventKey.create(membershipId)))
+                .willReturn(Flux.just(Key.eventKey(membershipId)))
 
         BDDMockito
                 .given(topicService.add(anyObject()))

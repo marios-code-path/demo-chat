@@ -2,9 +2,12 @@ package com.demo.chatevents.tests
 
 import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.config.ConfigurationTopicRedis
-import com.demo.chatevents.service.KeyConfigurationPubSub
-import com.demo.chatevents.service.TopicServiceRedisPubSub
-import org.junit.jupiter.api.*
+import com.demo.chatevents.service.KeyConfiguration
+import com.demo.chatevents.service.TopicServiceRedisStream
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
@@ -16,7 +19,7 @@ import java.io.File
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TopicServiceRedisPubSubTests : TopicServiceTestBase() {
+class EventTopicServiceRedisStreamTests : EventTopicServiceTestBase() {
 
     private lateinit var redisServer: RedisServer
 
@@ -36,11 +39,11 @@ class TopicServiceRedisPubSubTests : TopicServiceTestBase() {
 
         redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
 
-        topicService = TopicServiceRedisPubSub(
-                KeyConfigurationPubSub("t_all_topics",
-                        "t_st_topic_",
-                        "t_l_user_topics_",
-                        "t_l_topic_users_"),
+        topicService = TopicServiceRedisStream(
+                KeyConfiguration("all_topics",
+                        "st_topic_",
+                        "l_user_topics_",
+                        "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
                 redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce)
         )

@@ -5,7 +5,7 @@ import com.demo.chatevents.service.TopicServiceMemory
 import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks
 
-class TopicServiceMemoryTests : TopicServiceTestBase() {
+class EventTopicServiceMemoryTests : EventTopicServiceTestBase() {
     @BeforeEach
     fun setUp() {
         Hooks.onOperatorDebug()

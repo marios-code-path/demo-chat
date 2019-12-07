@@ -13,47 +13,47 @@ import java.util.*
 class MembershipIndexCassandra(val byMemberRepo: ChatMembershipByMemberRepository,
                                val byMemberOfRepo: ChatMembershipByMemberOfRepository) : MembershipIndexService {
 
-    override fun add(ent: RoomMembership, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: TopicMembership, criteria: Map<String, String>): Mono<Void> =
             byMemberRepo
                     .save(ChatMembershipByMember(
-                            CassandraEventKeyType(ent.key.id),
+                            CassandraKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CassandraEventKeyType(ent.memberOf.id)
+                            CassandraKeyType(ent.memberOf.id)
                     ))
                     .thenMany(byMemberOfRepo
                             .save(ChatMembershipByMemberOf(
-                                    CassandraEventKeyType(ent.key.id),
-                                    CassandraEventKeyType(ent.member.id),
+                                    CassandraKeyType(ent.key.id),
+                                    CassandraKeyType(ent.member.id),
                                     ChatMembershipKeyByMemberOf(ent.memberOf.id)
                             ))).then()
 
-    override fun rem(ent: RoomMembership): Mono<Void> =
+    override fun rem(ent: TopicMembership): Mono<Void> =
             byMemberRepo
                     .delete(ChatMembershipByMember(
-                            CassandraEventKeyType(ent.key.id),
+                            CassandraKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CassandraEventKeyType(ent.memberOf.id)))
+                            CassandraKeyType(ent.memberOf.id)))
                     .flatMap {
                         byMemberOfRepo
                                 .delete(ChatMembershipByMemberOf(
-                                        CassandraEventKeyType(ent.key.id),
-                                        CassandraEventKeyType(ent.member.id),
+                                        CassandraKeyType(ent.key.id),
+                                        CassandraKeyType(ent.member.id),
                                         ChatMembershipKeyByMemberOf(ent.memberOf.id))
                                 )
                     }
                     .then()
 
-    override fun size(roomId: EventKey): Mono<Int> =
+    override fun size(roomId: UUIDKey): Mono<Int> =
             byMemberOfRepo.findByMemberOfId(roomId.id)
                     .reduce(0) { c, m ->
                         c + 1
                     }
 
-    override fun addMember(membership: RoomMembership): Mono<Void> = add(membership, mapOf())
+    override fun addMember(membership: TopicMembership): Mono<Void> = add(membership, mapOf())
 
-    override fun remMember(membership: RoomMembership): Mono<Void> = rem(membership)
+    override fun remMember(membership: TopicMembership): Mono<Void> = rem(membership)
 
-    override fun findBy(query: Map<String, String>): Flux<out EventKey> {
+    override fun findBy(query: Map<String, String>): Flux<out UUIDKey> {
         return when (val queryBy = query.keys.first()) {
             MEMBER -> {
                 byMemberRepo.findByMemberId(UUID.fromString(query[queryBy] ?: error("member not valid")))

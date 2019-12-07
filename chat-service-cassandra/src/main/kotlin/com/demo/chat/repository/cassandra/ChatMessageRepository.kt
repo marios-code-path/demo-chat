@@ -23,13 +23,13 @@ interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandra
 }
 
 interface ChatMessageRepositoryCustom {
-    fun rem(key: EventKey): Mono<Void>
+    fun rem(key: UUIDKey): Mono<Void>
     fun add(msg: TextMessage): Mono<Void>
 }
 
 class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom {
-    override fun rem(key: EventKey): Mono<Void> =
+    override fun rem(key: UUIDKey): Mono<Void> =
             cassandra
                     .update(Query.query(where("msg_id").`is`(key.id)),
                             Update.empty().set("visible", false),

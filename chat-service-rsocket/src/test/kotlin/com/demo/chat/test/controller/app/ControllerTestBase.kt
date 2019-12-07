@@ -1,6 +1,7 @@
 package com.demo.chat.test.controller.app
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.KeyService
 import io.rsocket.RSocket
@@ -89,7 +90,7 @@ open class ControllerTestBase {
 
         BDDMockito
                 .given(keyService.id(String::class.java))
-                .willReturn(Mono.just(EventKey.create(UUID.randomUUID())))
+                .willReturn(Mono.just(Key.eventKey(UUID.randomUUID())))
 
         Hooks.onOperatorDebug()
     }

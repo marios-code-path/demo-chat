@@ -2,7 +2,8 @@ package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.ChatUser
 import com.demo.chat.domain.ChatUserKey
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.KeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
@@ -78,7 +79,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get many by Ids`() {
-        val publisher = userSvc.byIds(listOf(EventKey.create(UUID.randomUUID())))
+        val publisher = userSvc.byIds(listOf(Key.eventKey(UUID.randomUUID())))
 
         StepVerifier
                 .create(publisher)
@@ -93,7 +94,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get single`() {
-        val publisher = userSvc.get(EventKey.create(UUID.randomUUID()))
+        val publisher = userSvc.get(Key.eventKey(UUID.randomUUID()))
 
         StepVerifier
                 .create(publisher)

@@ -31,7 +31,7 @@ interface User {
     }
 }
 
-interface UserKey : EventKey {
+interface UserKey : UUIDKey {
 
     companion object Factory {
         @JvmStatic

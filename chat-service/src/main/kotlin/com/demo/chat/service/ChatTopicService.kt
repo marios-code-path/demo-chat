@@ -1,6 +1,6 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMessageKey
 import reactor.core.publisher.*
@@ -41,17 +41,17 @@ interface TopicService<T, V> {
 
 }
 
-interface BooleanTopicService<T : EventKey, V> : TopicService<T, V> {
-    fun add(topic: T, message: V): Mono<EventKey>
+interface BooleanTopicService<T : UUIDKey, V> : TopicService<T, V> {
+    fun add(topic: T, message: V): Mono<UUIDKey>
     fun compute(topic: T): Mono<Set<V>>
-    fun reset(topic: T, startKey: T): Mono<EventKey>
+    fun reset(topic: T, startKey: T): Mono<UUIDKey>
 }
 
-interface CountingTopicService<T : EventKey, V> : TopicService<T , V> {
-    fun add(topic: T, message: V): Mono<EventKey>
-    fun rem(topic: T, message: V): Mono<EventKey>
+interface CountingTopicService<T : UUIDKey, V> : TopicService<T , V> {
+    fun add(topic: T, message: V): Mono<UUIDKey>
+    fun rem(topic: T, message: V): Mono<UUIDKey>
     fun compute(topic: T): Mono<Set<V>>
-    fun reset(topic: T, startKey: T): Mono<EventKey>
+    fun reset(topic: T, startKey: T): Mono<UUIDKey>
 
 }
 

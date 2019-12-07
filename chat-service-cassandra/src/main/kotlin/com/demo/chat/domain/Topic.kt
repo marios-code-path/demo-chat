@@ -6,19 +6,19 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.util.*
 
 @Table("chat_room")
-data class ChatTopic(
+data class ChatEventTopic(
         @PrimaryKey
         override val key: ChatTopicKey,
         override val name: String,
         val active: Boolean
-) : Topic
+) : EventTopic
 
 @Table("chat_room_name")
-data class ChatTopicName(
+data class ChatEventTopicName(
         @PrimaryKey
         override val key: ChatRoomNameKey,
         val active: Boolean
-) : Topic
+) : EventTopic
 {
         @Transient
         override val name: String = key.name

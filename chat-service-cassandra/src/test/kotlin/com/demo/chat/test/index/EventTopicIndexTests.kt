@@ -36,7 +36,7 @@ fun <T> uninitialized(): T = null as T
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class TopicIndexTests {
+class EventTopicIndexTests {
 
     @MockBean
     lateinit var roomRepo: ChatRoomRepository
@@ -48,15 +48,15 @@ class TopicIndexTests {
 
     @BeforeEach
     fun setUp() {
-        val idRoom = ChatTopic(ChatTopicKey(rid.id), ROOMNAME, true)
-        val nameRoom = ChatTopicName(ChatRoomNameKey(rid.id, ROOMNAME), true)
+        val idRoom = ChatEventTopic(ChatTopicKey(rid.id), ROOMNAME, true)
+        val nameRoom = ChatEventTopicName(ChatRoomNameKey(rid.id, ROOMNAME), true)
 
         BDDMockito
                 .given(roomRepo.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(nameRepo.save(Mockito.any(ChatTopicName::class.java)))
+                .given(nameRepo.save(Mockito.any(ChatEventTopicName::class.java)))
                 .willReturn(Mono.just(nameRoom))
 
         BDDMockito
@@ -78,9 +78,9 @@ class TopicIndexTests {
         roomIndex = RoomIndexCassandra(roomRepo, nameRepo)
     }
 
-    private val rid: EventKey = EventKey.create(UUID.randomUUID())
+    private val rid: UUIDKey = Key.eventKey(UUID.randomUUID())
 
-    private val uid: EventKey = EventKey.create(UUID.randomUUID())
+    private val uid: UUIDKey = Key.eventKey(UUID.randomUUID())
 
     private val ROOMNAME = "ROOM_TEST"
 

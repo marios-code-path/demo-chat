@@ -8,13 +8,12 @@ import com.demo.chat.service.RoomIndexService.Companion.ALL
 import com.demo.chat.service.RoomIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.Instant
 
 class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
                          private val nameRepo: ChatRoomNameRepository) : RoomIndexService {
-    override fun add(ent: Topic, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: EventTopic, criteria: Map<String, String>): Mono<Void> =
             nameRepo.save(
-                    ChatTopicName(
+                    ChatEventTopicName(
                             ChatRoomNameKey(
                                     ent.key.id,
                                     ent.name),
@@ -23,7 +22,7 @@ class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
             )
                     .then()
 
-    override fun rem(ent: Topic): Mono<Void> = nameRepo.insert(ChatTopicName(
+    override fun rem(ent: EventTopic): Mono<Void> = nameRepo.insert(ChatEventTopicName(
             ChatRoomNameKey(ent.key.id, ent.name), false
     )).then()
 

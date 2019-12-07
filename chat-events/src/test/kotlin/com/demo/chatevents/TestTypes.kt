@@ -35,11 +35,11 @@ data class TestChatUserKey(
 ) : UserKey
 
 @JsonTypeName("ChatRoom")
-data class TestChatTopic(
+data class TestChatEventTopic(
         override val key: TestChatRoomKey,
         override val name: String,
         val active: Boolean
-) : Topic
+) : EventTopic
 
 data class TestChatRoomKey(
         override val id: UUID

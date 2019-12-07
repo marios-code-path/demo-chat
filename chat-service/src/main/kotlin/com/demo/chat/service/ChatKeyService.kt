@@ -1,6 +1,6 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.UUIDKey
 import reactor.core.publisher.Mono
 
 /**
@@ -9,8 +9,8 @@ import reactor.core.publisher.Mono
  * key generation is used to combine a created ID() with model object's consturctor
  */
 interface  KeyService {
-    fun <T> id(kind: Class<T>): Mono<EventKey>
-    fun rem(key: EventKey): Mono<Void>
-    fun exists(key: EventKey): Mono<Boolean>
-    fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<out T>
+    fun <T> id(kind: Class<T>): Mono<UUIDKey>
+    fun rem(key: UUIDKey): Mono<Void>
+    fun exists(key: UUIDKey): Mono<Boolean>
+    fun <T> key(kind: Class<T>, create: (key: UUIDKey) -> T): Mono<out T>
 }

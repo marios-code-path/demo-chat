@@ -1,6 +1,6 @@
 package com.demo.chat.chatconsumers
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -14,16 +14,16 @@ class UserPersistenceClientTests {
 
     private interface UserClientHandler : UserPersistence {
         @MessageMapping("key")
-        override fun key(): Mono<out EventKey>
+        override fun key(): Mono<out UUIDKey>
 
         @MessageMapping("add")
         override fun add(ent: User): Mono<Void>
 
         @MessageMapping("rem")
-        override fun rem(key: EventKey): Mono<Void>
+        override fun rem(key: UUIDKey): Mono<Void>
 
         @MessageMapping("get")
-        override fun get(key: EventKey): Mono<out User>
+        override fun get(key: UUIDKey): Mono<out User>
 
         @MessageMapping("all")
         override fun all(): Flux<out User>

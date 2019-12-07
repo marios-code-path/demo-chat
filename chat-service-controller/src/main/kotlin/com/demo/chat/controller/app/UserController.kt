@@ -3,7 +3,8 @@ package com.demo.chat.controller.app
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequest
 import com.demo.chat.UserRequestId
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserIndexService
@@ -43,7 +44,7 @@ open class UserController(val userPersistence: UserPersistence,
 
     @MessageMapping("user-by-id")
     fun findByUserId(userReq: UserRequestId): Mono<out User> = userPersistence
-            .get(EventKey.create(userReq.userId))
+            .get(Key.eventKey(userReq.userId))
 
 //    @MessageMapping("user-by-ids")
 //    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User> =

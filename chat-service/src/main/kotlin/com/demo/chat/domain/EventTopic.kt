@@ -7,15 +7,12 @@ import java.util.*
 // Must name become a permenant member of Room ?
 // Kludge Log: Cassandra requires nullable Set ( when returns with empty set )
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface EventTopic<out K, N> {
+interface Topic<out K, N> {
     val key: K
     val name: N
-}
 
-@JsonTypeName("Topic") // should be 'Topic'
-interface Topic : EventTopic<EventKey, String> {
     companion object Factory {
-        fun create(key: TopicKey, name: String) = object : Topic {
+        fun create(key: TopicKey, name: String) = object : Topic<UUIDKey, String> {
             override val key: TopicKey
                 get() = key
             override val name: String
@@ -24,7 +21,19 @@ interface Topic : EventTopic<EventKey, String> {
     }
 }
 
-interface TopicKey : EventKey {
+@JsonTypeName("Topic") // should be 'Topic'
+interface EventTopic : Topic<UUIDKey, String> {
+    companion object Factory {
+        fun create(key: TopicKey, name: String) = object : EventTopic {
+            override val key: TopicKey
+                get() = key
+            override val name: String
+                get() = name
+        }
+    }
+}
+
+interface TopicKey : UUIDKey {
     companion object Factory {
         fun create(roomId: UUID) = object : TopicKey {
             override val id: UUID

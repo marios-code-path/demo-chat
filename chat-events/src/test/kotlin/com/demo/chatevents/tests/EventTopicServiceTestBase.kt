@@ -15,7 +15,7 @@ import java.time.Duration
 import java.util.*
 
 
-open class TopicServiceTestBase {
+open class EventTopicServiceTestBase {
 
     val logger = LoggerFactory.getLogger(this::class.java)
 

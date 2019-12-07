@@ -10,13 +10,13 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 // topic Key = TK
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Membership")
-interface Membership<KT : EventKey> {
+interface Membership<KT : UUIDKey> {
     val key: KT
     val memberOf: KT
     val member: KT
 
     companion object Factory {
-        fun <KT : EventKey> create(k: KT, mof: KT, m: KT): Membership<KT> = object : Membership<KT> {
+        fun <KT : UUIDKey> create(k: KT, mof: KT, m: KT): Membership<KT> = object : Membership<KT> {
             override val key: KT
                 get() = k
             override val member: KT
@@ -27,14 +27,14 @@ interface Membership<KT : EventKey> {
     }
 }
 
-interface RoomMembership : Membership<EventKey> {
+interface TopicMembership : Membership<UUIDKey> {
     companion object Factory {
-        fun create(k: EventKey, mof: EventKey, m: EventKey): RoomMembership = object : RoomMembership {
-            override val key: EventKey
+        fun create(k: UUIDKey, mof: UUIDKey, m: UUIDKey): TopicMembership = object : TopicMembership {
+            override val key: UUIDKey
                 get() = k
-            override val member: EventKey
+            override val member: UUIDKey
                 get() = m
-            override val memberOf: EventKey
+            override val memberOf: UUIDKey
                 get() = mof
         }
     }

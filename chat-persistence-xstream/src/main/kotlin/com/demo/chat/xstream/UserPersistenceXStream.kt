@@ -1,6 +1,6 @@
 package com.demo.chat.xstream
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserPersistence
@@ -44,7 +44,7 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             }
 
 
-    override fun get(key: EventKey): Mono<out User> = userTemplate
+    override fun get(key: UUIDKey): Mono<out User> = userTemplate
             .opsForStream<String, String>()
             .range(keyConfiguration.keyUserStreamKey, Range.just(key.id.mostSignificantBits.toString()))
             .map { record ->
@@ -57,7 +57,7 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             }
             .single()
 
-    override fun key(): Mono<out EventKey> = keyService.id(UserKey::class.java)
+    override fun key(): Mono<out UUIDKey> = keyService.id(UserKey::class.java)
 
     override fun add(ent: User): Mono<Void> =
             userTemplate
@@ -68,5 +68,5 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
                                             .convertValue(ent, Map::class.java) as MutableMap<Any, Any>))
                     .then()
 
-    override fun rem(key: EventKey): Mono<Void> = keyService.rem(key)
+    override fun rem(key: UUIDKey): Mono<Void> = keyService.rem(key)
 }

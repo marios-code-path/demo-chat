@@ -28,7 +28,7 @@ import java.util.*
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-room.cql")
-class TopicRepositoryTests {
+class EventTopicRepositoryTests {
 
     private val ROOMNAME = "XYZ"
 
@@ -41,7 +41,7 @@ class TopicRepositoryTests {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
-        val room = Topic.create(TopicKey.create(roomId), ROOMNAME)
+        val room = EventTopic.create(TopicKey.create(roomId), ROOMNAME)
 
         val saveFlux = repo.add(room)
 
@@ -86,7 +86,7 @@ class TopicRepositoryTests {
                                 ChatTopicKey(UUIDs.timeBased())
                         )
                                 .map {
-                                    ChatTopic(it, randomAlphaNumeric(6), true)
+                                    ChatEventTopic(it, randomAlphaNumeric(6), true)
                                 }
                                 .flatMap {
                                     repo.add(it)
@@ -103,7 +103,7 @@ class TopicRepositoryTests {
     fun `should save and find by name`() {
         val saveFlux = Flux.just(TopicKey.create(UUIDs.timeBased()))
                 .flatMap {
-                    byNameRepo.save(ChatTopicName(ChatRoomNameKey(it.id, "XYZ"), true))
+                    byNameRepo.save(ChatEventTopicName(ChatRoomNameKey(it.id, "XYZ"), true))
                 }
 
         val findFlux = byNameRepo
@@ -115,11 +115,11 @@ class TopicRepositoryTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext { roomAssertions(it as Topic) }
+                .assertNext { roomAssertions(it as EventTopic) }
                 .verifyComplete()
     }
 
-    fun <R : Topic> roomAssertions(room: R) {
+    fun <R : EventTopic> roomAssertions(room: R) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.id) },

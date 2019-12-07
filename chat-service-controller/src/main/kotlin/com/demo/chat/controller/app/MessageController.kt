@@ -33,7 +33,7 @@ open class MessageController(
     @MessageMapping("message-by-id")
     fun getOne(req: MessageRequest): Mono<out Message<TopicMessageKey, Any>> =
             messagePersistence
-                    .get(EventKey.create(req.messageId))
+                    .get(Key.eventKey(req.messageId))
 
     @MessageMapping("text-message-send")
     fun putTextMessage(req: TextMessageSend): Mono<out TopicMessageKey> =

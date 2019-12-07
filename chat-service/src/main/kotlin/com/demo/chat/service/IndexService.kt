@@ -7,18 +7,18 @@ import reactor.core.publisher.Mono
 /**
  * for given Type T, Given Key [K], and Query[Q] we will add, remove and seek K's for a given WriteCriteria[WQ]
  */
-interface IndexService<out K : EventKey, in T, Q, WQ> {
+interface IndexService<out K : UUIDKey, in T, Q, WQ> {
     fun add(entity: T, criteria: WQ): Mono<Void>
     fun rem(entity: T): Mono<Void>
     fun findBy(query: Q): Flux<out K>
 }
 
-interface MapQueryIndexService<K : EventKey, T> : IndexService<K, T, Map<String, String>, Map<String, String>>
+interface MapQueryIndexService<K : UUIDKey, T> : IndexService<K, T, Map<String, String>, Map<String, String>>
 
 // Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
 interface UserIndexService : IndexService<UserKey, User, Map<String, String>, Map<String, String>>
 
-interface RoomIndexService : MapQueryIndexService<TopicKey, Topic> {
+interface RoomIndexService : MapQueryIndexService<TopicKey, EventTopic> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
@@ -28,10 +28,10 @@ interface RoomIndexService : MapQueryIndexService<TopicKey, Topic> {
     }
 }
 
-interface MembershipIndexService : IndexService<EventKey, RoomMembership,Map<String, String>, Map<String, String>> {
-    fun size(roomId: EventKey): Mono<Int>
-    fun addMember(membership: RoomMembership): Mono<Void>
-    fun remMember(membership: RoomMembership): Mono<Void>
+interface MembershipIndexService : IndexService<UUIDKey, TopicMembership,Map<String, String>, Map<String, String>> {
+    fun size(roomId: UUIDKey): Mono<Int>
+    fun addMember(membership: TopicMembership): Mono<Void>
+    fun remMember(membership: TopicMembership): Mono<Void>
 
     companion object {
         const val ID = "ID"

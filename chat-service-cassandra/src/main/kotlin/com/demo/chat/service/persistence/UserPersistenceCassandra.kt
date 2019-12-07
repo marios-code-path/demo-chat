@@ -1,6 +1,6 @@
 package com.demo.chat.service.persistence
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
@@ -15,14 +15,14 @@ open class UserPersistenceCassandra(val keyService: KeyService,
     : UserPersistence {
     override fun all(): Flux<out User> = userRepo.findAll()
 
-    override fun get(key: EventKey): Mono<out User> = userRepo.findByKeyId(key.id)
+    override fun get(key: UUIDKey): Mono<out User> = userRepo.findByKeyId(key.id)
 
-    override fun key(): Mono<EventKey> = keyService.id(UserKey::class.java)
+    override fun key(): Mono<UUIDKey> = keyService.id(UserKey::class.java)
 
-    override fun rem(key: EventKey): Mono<Void> = userRepo.rem(key)
+    override fun rem(key: UUIDKey): Mono<Void> = userRepo.rem(key)
 
     override fun add(user: User): Mono<Void> = userRepo.add(user)
 
-    override fun byIds(keys: List<EventKey>): Flux<out User> =
+    override fun byIds(keys: List<UUIDKey>): Flux<out User> =
             userRepo.findByKeyIdIn(Flux.fromStream(keys.stream().map { it.id }))
 }

@@ -1,7 +1,8 @@
 package com.demo.chat.test
 
-import com.demo.chat.TestEventKey
-import com.demo.chat.domain.EventKey
+import com.demo.chat.TestUUIDKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.module
 import com.fasterxml.jackson.annotation.*
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -22,12 +23,12 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TestKey")
-interface TestKey {
-    val id: UUID
+interface TestKey : Key<UUID> {
+    override val id: UUID
 
     companion object Factory {
         @JvmStatic
-        fun create(eid: UUID): TestKey = object : TestKey {
+        fun create(eid: UUID): UUIDKey = object : UUIDKey {
             override val id: UUID
                 @JsonProperty("eid") get() = eid
         }
@@ -57,11 +58,11 @@ class SerializationTests {
             System.out.println("MODULE: $it")
         }
 
-        val randomEventKey = EventKey.create(UUID.randomUUID())
+        val randomEventKey = Key.eventKey(UUID.randomUUID())
 
         val data = mapper.writeValueAsString(randomEventKey)
 
-        val obj = mapper.readValue(data, EventKey::class.java)
+        val obj = mapper.readValue(data, UUIDKey::class.java)
 
     }
 
@@ -82,7 +83,7 @@ class SerializationTests {
         }
 
         @Bean
-        fun eventKeyModule() = module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
+        fun eventKeyModule() = module("EVENTKEY", UUIDKey::class.java, TestUUIDKey::class.java)
 
         fun jacksonBuilder(): Jackson2ObjectMapperBuilder {
             val b = Jackson2ObjectMapperBuilder()
@@ -90,7 +91,7 @@ class SerializationTests {
             b.indentOutput(true).dateFormat(SimpleDateFormat("yyyy-MM-dd"))
             b.modules(
                     module("TESTKEY", TestKey::class.java, ETestKey::class.java),
-                    module("EVENTKEY", EventKey::class.java, TestEventKey::class.java)
+                    module("EVENTKEY", UUIDKey::class.java, TestUUIDKey::class.java)
             )
             return b
         }

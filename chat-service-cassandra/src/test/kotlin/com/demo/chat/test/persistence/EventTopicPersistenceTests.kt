@@ -21,7 +21,7 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class TopicPersistenceTests {
+class EventTopicPersistenceTests {
 
     val ROOMNAME = "test-room"
 
@@ -41,9 +41,9 @@ class TopicPersistenceTests {
 
     @BeforeEach
     fun setUp() {
-        val newRoom = ChatTopic(ChatTopicKey(rid), ROOMNAME, true)
-        val roomNameRoom = ChatTopicName(ChatRoomNameKey(rid, ROOMNAME), true)
-        val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
+        val newRoom = ChatEventTopic(ChatTopicKey(rid), ROOMNAME, true)
+        val roomNameRoom = ChatEventTopicName(ChatRoomNameKey(rid, ROOMNAME), true)
+        val roomTwo = ChatEventTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
 
 
         BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
@@ -77,7 +77,7 @@ class TopicPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    Topic.create(TopicKey.create(UUIDs.timeBased()), name)
+                    EventTopic.create(TopicKey.create(UUIDs.timeBased()), name)
                 }
                 .flatMap(roomSvc::add)
 
@@ -91,11 +91,11 @@ class TopicPersistenceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(topic: Topic) {
+    fun roomAssertions(eventTopic: EventTopic) {
         assertAll("room state test",
-                { Assertions.assertNotNull(topic) },
-                { Assertions.assertNotNull(topic.key.id) },
-                { Assertions.assertNotNull(topic.name) }
+                { Assertions.assertNotNull(eventTopic) },
+                { Assertions.assertNotNull(eventTopic.key.id) },
+                { Assertions.assertNotNull(eventTopic.name) }
         )
     }
 

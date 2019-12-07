@@ -11,20 +11,20 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 
-interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatTopicName, String> {
-    fun findByKeyName(name: String): Mono<ChatTopicName>
+interface ChatRoomNameRepository : ReactiveCassandraRepository<ChatEventTopicName, String> {
+    fun findByKeyName(name: String): Mono<ChatEventTopicName>
 }
 
 interface ChatRoomRepository :
-        ReactiveCassandraRepository<ChatTopic, UUID>,
+        ReactiveCassandraRepository<ChatEventTopic, UUID>,
         ChatRoomRepositoryCustom
 {
-    fun findByKeyId(id: UUID): Mono<ChatTopic>
+    fun findByKeyId(id: UUID): Mono<ChatEventTopic>
 }
 
 interface ChatRoomRepositoryCustom {
-    fun add(topic: Topic): Mono<Void>
-    fun rem(roomKey: EventKey): Mono<Void>
+    fun add(eventTopic: EventTopic): Mono<Void>
+    fun rem(roomKey: UUIDKey): Mono<Void>
     @Deprecated("join/leave not part of topic tracking")
     fun join(uid: UUID, roomId: UUID): Mono<Void>
     @Deprecated("join/leave not part of topic tracking")
@@ -35,20 +35,20 @@ interface ChatRoomRepositoryCustom {
 
 class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         ChatRoomRepositoryCustom {
-    override fun rem(roomKey: EventKey): Mono<Void> =
+    override fun rem(roomKey: UUIDKey): Mono<Void> =
             cassandra
                     .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
-                            ChatTopic::class.java
+                            ChatEventTopic::class.java
                     )
                     .then()
 
-    override fun add(topic: Topic): Mono<Void> = cassandra
-            .insert(ChatTopic(
+    override fun add(eventTopic: EventTopic): Mono<Void> = cassandra
+            .insert(ChatEventTopic(
                     ChatTopicKey(
-                            topic.key.id
+                            eventTopic.key.id
                     ),
-                    topic.name,
+                    eventTopic.name,
                     true))
             .then()
 
@@ -57,7 +57,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                     Update.of(listOf(Update.RemoveOp(
                             ColumnName.from("members"),
                             listOf(uid)))),
-                    ChatTopic::class.java
+                    ChatEventTopic::class.java
             )
             .map {
                 if (!it)
@@ -72,7 +72,7 @@ class ChatRoomRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                                     ColumnName.from("members"),
                                     listOf(uid),
                                     Update.AddToOp.Mode.APPEND))),
-                            ChatTopic::class.java
+                            ChatEventTopic::class.java
                     )
                     .map {
                         if (!it)

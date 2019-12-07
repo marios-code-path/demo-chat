@@ -1,6 +1,5 @@
 package com.demo.chatevents.service
 
-import com.demo.chat.domain.EventKey
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.RoomNotFoundException
 import com.demo.chat.domain.TopicMessageKey

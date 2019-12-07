@@ -1,6 +1,7 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.service.BooleanTopicService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -8,13 +9,13 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
 
-open class BooleanTopicTestBase() {
+open class BooleanEventTopicTestBase() {
 
-    lateinit var svc: BooleanTopicService<EventKey, String>
+    lateinit var svc: BooleanTopicService<UUIDKey, String>
 
     @Test
     fun `should put item into topic`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
         StepVerifier.create(
@@ -32,7 +33,7 @@ open class BooleanTopicTestBase() {
 
     @Test
     fun `should put and receive item into topic`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
         StepVerifier.create(
@@ -55,7 +56,7 @@ open class BooleanTopicTestBase() {
 
     @Test
     fun `should put twice to remove`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = UUID.randomUUID().toString()
 
         StepVerifier.create(
@@ -81,7 +82,7 @@ open class BooleanTopicTestBase() {
 
     @Test
     fun `should puts be entry safe`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
 
@@ -109,7 +110,7 @@ open class BooleanTopicTestBase() {
 
     @Test
     fun `should reset to key where reduce is empty`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
         StepVerifier.create(
@@ -138,7 +139,7 @@ open class BooleanTopicTestBase() {
 
     @Test
     fun `should reduce be safe after reset`() {
-        val topicKey = EventKey.create(UUID.randomUUID())
+        val topicKey = Key.eventKey(UUID.randomUUID())
         val myId = fnUUIDStr()
         val anotherId = fnUUIDStr()
 

@@ -9,13 +9,13 @@ import org.springframework.stereotype.Controller
 class RSocketUserPersistence(t: UserPersistence) : PersistenceServiceController<User>(t)
 
 @Controller
-class RSocketKeyPersistence(t: KeyPersistence) : PersistenceServiceController<EventKey>(t)
+class RSocketKeyPersistence(t: KeyPersistence) : PersistenceServiceController<UUIDKey>(t)
 
 @Controller
 class RSocketMessagePersistence(t: TextMessagePersistence) : PersistenceServiceController<TextMessage>(t)
 
 @Controller
-class RSocketRoomPersistence(t: RoomPersistence) : PersistenceServiceController<Topic>(t)
+class RSocketRoomPersistence(t: RoomPersistence) : PersistenceServiceController<EventTopic>(t)
 
 @Controller
-class RSocketMembershipPersistence(t: MembershipPersistence) : PersistenceServiceController<Membership<EventKey>>(t)
+class RSocketMembershipPersistence(t: MembershipPersistence) : PersistenceServiceController<Membership<UUIDKey>>(t)

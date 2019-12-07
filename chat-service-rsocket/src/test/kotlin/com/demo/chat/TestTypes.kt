@@ -20,15 +20,15 @@ data class TestChatUserKey(
         val handle: String
 ) : UserKey
 
-data class TestEventKey(
+data class TestUUIDKey(
         override val id: UUID
-) : EventKey
+) : UUIDKey
 
 @JsonTypeName("ChatRoom")
-data class TestChatTopic(
+data class TestChatEventTopic(
         override val key: TestChatRoomKey,
         val active: Boolean
-) : Topic {
+) : EventTopic {
     override val name = key.name
 }
 

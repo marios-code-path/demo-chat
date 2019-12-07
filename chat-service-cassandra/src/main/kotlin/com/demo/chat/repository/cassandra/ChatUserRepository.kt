@@ -2,7 +2,6 @@ package com.demo.chat.repository.cassandra
 
 import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.demo.chat.domain.*
-import com.google.common.collect.ImmutableSet
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
@@ -29,17 +28,17 @@ interface ChatUserHandleRepository
 
 interface ChatUserRepositoryCustom {
     fun add(u: User): Mono<Void>
-    fun rem(key: EventKey): Mono<Void>
+    fun rem(key: UUIDKey): Mono<Void>
 }
 
 interface ChatUserHandleRepositoryCustom {
     fun add(u: User): Mono<Void>
-    fun rem(key: EventKey): Mono<Void>
+    fun rem(key: UUIDKey): Mono<Void>
 }
 
 class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserHandleRepositoryCustom {
-    override fun rem(key: EventKey): Mono<Void> =
+    override fun rem(key: UUIDKey): Mono<Void> =
             cassandra
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
@@ -73,7 +72,7 @@ class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplat
 
 class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
     : ChatUserRepositoryCustom {
-    override fun rem(key: EventKey): Mono<Void> =
+    override fun rem(key: UUIDKey): Mono<Void> =
             cassandra
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),

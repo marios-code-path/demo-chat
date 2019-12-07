@@ -93,7 +93,7 @@ interface Message<out K, out V> {
     }
 }
 
-interface MessageKey : EventKey {
+interface MessageKey : UUIDKey {
     val timestamp: Instant
 }
 
@@ -116,7 +116,7 @@ interface TextMessageKey : TopicMessageKey {
                 get() = Instant.now()
         }
 
-        fun create(key: EventKey, topic: UUID, member: UUID): TextMessageKey = object : TextMessageKey {
+        fun create(key: UUIDKey, topic: UUID, member: UUID): TextMessageKey = object : TextMessageKey {
             override val id: UUID
                 get() = key.id
             override val topicId: UUID

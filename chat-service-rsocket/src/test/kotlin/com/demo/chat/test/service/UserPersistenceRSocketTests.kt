@@ -2,12 +2,8 @@ package com.demo.chat.test.service
 
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
-import com.demo.chat.TestEventKey
+import com.demo.chat.TestUUIDKey
 import com.demo.chat.controller.rsocket.RSocketUserPersistence
-import com.demo.chat.controller.service.PersistenceServiceController
-import com.demo.chat.domain.EventKey
-import com.demo.chat.domain.User
-import com.demo.chat.service.ChatPersistence
 import com.demo.chat.service.UserPersistence
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -17,9 +13,7 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -102,7 +96,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                 .create(
                         requestor
                                 .route("get")
-                                .data(Mono.just(TestEventKey(userKey.id)))
+                                .data(Mono.just(TestUUIDKey(userKey.id)))
                                 .retrieveMono(TestChatUser::class.java)
                 )
                 .assertNext {

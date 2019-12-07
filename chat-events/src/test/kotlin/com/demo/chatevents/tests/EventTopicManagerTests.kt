@@ -12,7 +12,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 
-class TopicManagerTests {
+class EventTopicManagerTests {
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val streamMan = TopicManager()
 

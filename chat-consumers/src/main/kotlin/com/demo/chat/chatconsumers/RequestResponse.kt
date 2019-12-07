@@ -33,11 +33,11 @@ data class ChatUserKey(
 ) : UserKey
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class ChatTopic(
+data class ChatEventTopic(
         override val key: ChatRoomKey,
         val active: Boolean,
         override val name: String
-) : Topic
+) : EventTopic
 
 data class ChatRoomKey(
         override val id: UUID

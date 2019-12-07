@@ -9,13 +9,13 @@ import org.springframework.data.cassandra.core.mapping.UserDefinedType
 import java.util.*
 
 @UserDefinedType("event_key_type")
-data class CassandraEventKeyType(
+data class CassandraKeyType(
         @CassandraType(type = DataType.Name.UUID)
-        override val id: UUID) : EventKey
+        override val id: UUID) : UUIDKey
 
 @Table("keys")
-data class CassandraEventKey(
+data class CassandraKey(
         @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID,
         val kind: String
-) : EventKey
+) : UUIDKey

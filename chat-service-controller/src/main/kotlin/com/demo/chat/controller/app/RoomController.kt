@@ -18,11 +18,11 @@ open class RoomController(val roomPersistence: RoomPersistence,
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
-    fun addRoom(req: RoomCreateRequest): Mono<out EventKey> =
+    fun addRoom(req: RoomCreateRequest): Mono<out UUIDKey> =
             roomPersistence
                     .key()
                     .flatMap { key ->
-                        val room = Topic.create(TopicKey.create(key.id), req.roomName)
+                        val room = EventTopic.create(TopicKey.create(key.id), req.roomName)
                         roomPersistence
                                 .add(room)
                                 .flatMap {
@@ -35,7 +35,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
     @MessageMapping("room-rem")
     fun deleteRoom(req: RoomRequestId): Mono<Void> =
             roomPersistence
-                    .get(EventKey.create(req.roomId))
+                    .get(Key.eventKey(req.roomId))
                     .flatMap {
                         roomPersistence.rem(it.key)
                                 .then(roomIndex.rem(it))
@@ -45,17 +45,17 @@ open class RoomController(val roomPersistence: RoomPersistence,
                     .then()
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequestId): Flux<out Topic> =
+    fun listRooms(req: RoomRequestId): Flux<out EventTopic> =
             roomPersistence
                     .all()
 
     @MessageMapping("room-by-id")
-    fun getRoom(req: RoomRequestId): Mono<out Topic> =
+    fun getRoom(req: RoomRequestId): Mono<out EventTopic> =
             roomPersistence
-                    .get(EventKey.create(req.roomId))
+                    .get(Key.eventKey(req.roomId))
 
     @MessageMapping("room-by-name")
-    fun getRoomByName(req: RoomRequestName): Mono<out Topic> =
+    fun getRoomByName(req: RoomRequestName): Mono<out EventTopic> =
             roomIndex
                     .findBy(mapOf(Pair(RoomIndexService.NAME, req.name)))
                     .single()
@@ -69,7 +69,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
                     .key()
                     .flatMap { eventKey ->
                         membershipPersistence
-                                .add(RoomMembership.create(eventKey, EventKey.create(req.roomId), EventKey.create(req.uid)))
+                                .add(TopicMembership.create(eventKey, Key.eventKey(req.roomId), Key.eventKey(req.uid)))
                                 .thenMany(topicService
                                         .sendMessage(JoinAlert.create(eventKey.id, req.roomId, req.uid))
                                         .then(topicService.subscribe(req.uid, req.roomId)))
@@ -80,7 +80,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
     @MessageMapping("room-leave")
     fun leaveRoom(req: RoomLeaveRequest): Mono<Void> =
             membershipPersistence
-                    .get(EventKey.create(req.roomId))
+                    .get(Key.eventKey(req.roomId))
                     .flatMap { m ->
                         membershipPersistence.rem(m.key)
                                 .thenMany(topicService
@@ -99,7 +99,7 @@ open class RoomController(val roomPersistence: RoomPersistence,
                     }
                     .flatMap { membership ->
                         userPersistence
-                                .get(EventKey.create(membership.member.id))
+                                .get(Key.eventKey(membership.member.id))
                                 .map { user ->
                                     TopicMember(user.key.id, user.handle, user.imageUri)
                                 }

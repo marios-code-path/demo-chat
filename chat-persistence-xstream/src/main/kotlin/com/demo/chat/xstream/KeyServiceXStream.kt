@@ -1,6 +1,7 @@
 package com.demo.chat.xstream
 
-import com.demo.chat.domain.EventKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.UUIDKey
 import com.demo.chat.service.KeyService
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
@@ -18,24 +19,24 @@ import java.util.*
  */
 class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
                         private val stringTemplate: ReactiveRedisTemplate<String, String>) : KeyService {
-    override fun exists(key: EventKey): Mono<Boolean> =
+    override fun exists(key: UUIDKey): Mono<Boolean> =
             stringTemplate
                     .opsForStream<String, String>()
                     .range(keyConfiguration.keyStreamKey, Range.just(key.id.mostSignificantBits.toString()))
                     .singleOrEmpty()
                     .hasElement()
 
-    override fun <T> id(kind: Class<T>): Mono<EventKey> =
+    override fun <T> id(kind: Class<T>): Mono<UUIDKey> =
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
                             .create(keyConfiguration.keyStreamKey, mapOf(Pair("kind", kind.simpleName), Pair("exists", true)))
                             .withId(RecordId.autoGenerate()))
                     .map {
-                        EventKey.create(UUID(it.timestamp!!, it.sequence!!))
+                        Key.eventKey(UUID(it.timestamp!!, it.sequence!!))
                     }
 
-    override fun rem(key: EventKey): Mono<Void> =
+    override fun rem(key: UUIDKey): Mono<Void> =
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
@@ -43,6 +44,6 @@ class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
                             .withId(RecordId.autoGenerate()))
                     .then()
 
-    override fun <T> key(kind: Class<T>, create: (eventKey: EventKey) -> T): Mono<T> =
+    override fun <T> key(kind: Class<T>, create: (key: UUIDKey) -> T): Mono<T> =
             id(kind).map { create(it) }
 }

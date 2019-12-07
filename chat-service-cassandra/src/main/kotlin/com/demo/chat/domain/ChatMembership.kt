@@ -31,44 +31,44 @@ open class ChatMembership(
         override val key: ChatMembershipKey,
         @Column("member")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val member: CassandraEventKeyType,
+        override val member: CassandraKeyType,
         @Column("memberOf")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val memberOf: CassandraEventKeyType
-) : RoomMembership
+        override val memberOf: CassandraKeyType
+) : TopicMembership
 
 // TODO This is incomplete abstraction!
 @Table("chat_membership_by_member")
 open class ChatMembershipByMember(
         @Column("id")
-        override val key: CassandraEventKeyType,
+        override val key: CassandraKeyType,
         @PrimaryKey
         override val member: ChatMembershipKeyByMember,
         @Column("memberOf")
-        override val memberOf: CassandraEventKeyType
-) : RoomMembership
+        override val memberOf: CassandraKeyType
+) : TopicMembership
 
 @Table("chat_membership_by_memberof")
 open class ChatMembershipByMemberOf(
         @Column("id")
-        override val key: CassandraEventKeyType,
+        override val key: CassandraKeyType,
         @Column("member")
-        override val member: CassandraEventKeyType,
+        override val member: CassandraKeyType,
         @PrimaryKey
         override val memberOf: ChatMembershipKeyByMemberOf
-) : RoomMembership
+) : TopicMembership
 
 @PrimaryKeyClass
 data class ChatMembershipKeyByMember(
         @PrimaryKeyColumn(name = "member", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID) : EventKey
+        override val id: UUID) : UUIDKey
 
 @PrimaryKeyClass
 data class ChatMembershipKeyByMemberOf(
         @PrimaryKeyColumn(name = "memberOf", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID) : EventKey
+        override val id: UUID) : UUIDKey
 
 @PrimaryKeyClass
 data class ChatMembershipKey(
         @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID) : EventKey
+        override val id: UUID) : UUIDKey
