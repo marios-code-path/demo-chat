@@ -1,6 +1,10 @@
 package com.demo.chat.service.index
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.ChatMessageByTopic
+import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
+import com.demo.chat.domain.cassandra.ChatMessageByUser
+import com.demo.chat.domain.cassandra.ChatMessageByUserKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.service.MessageIndexService

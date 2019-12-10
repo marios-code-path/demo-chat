@@ -1,6 +1,7 @@
 package com.demo.chat.service.index
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.*
 import com.demo.chat.repository.cassandra.ChatMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.ChatMembershipByMemberRepository
 import com.demo.chat.service.MembershipIndexService

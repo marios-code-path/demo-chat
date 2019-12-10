@@ -1,8 +1,8 @@
 package com.demo.chat.repository.cassandra
 
-import com.demo.chat.domain.ChatMembership
-import com.demo.chat.domain.ChatMembershipByMember
-import com.demo.chat.domain.ChatMembershipByMemberOf
+import com.demo.chat.domain.cassandra.ChatMembership
+import com.demo.chat.domain.cassandra.ChatMembershipByMember
+import com.demo.chat.domain.cassandra.ChatMembershipByMemberOf
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

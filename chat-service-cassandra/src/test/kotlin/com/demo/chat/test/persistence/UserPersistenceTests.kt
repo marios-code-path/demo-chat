@@ -1,11 +1,10 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.ChatUser
-import com.demo.chat.domain.ChatUserKey
+import com.demo.chat.domain.cassandra.ChatUser
+import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
 import com.demo.chat.repository.cassandra.ChatUserRepository
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
@@ -32,13 +31,13 @@ class UserPersistenceTests {
     @MockBean
     lateinit var userRepo: ChatUserRepository
 
-    private val keyService: KeyService = TestKeyService
+    private val keyService: UUIDKeyService = TestKeyService
 
     val uid: UUID = UUID.randomUUID()
 
     @BeforeEach
     fun setUp() {
-        val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle","", Instant.now())
+        val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle", "", Instant.now())
 
         BDDMockito
                 .given(userRepo.findByKeyIdIn(anyObject()))

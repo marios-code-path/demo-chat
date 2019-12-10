@@ -2,14 +2,14 @@ package com.demo.chat.test
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import org.mockito.Mockito
 import reactor.core.publisher.Mono
 import java.util.*
 
 object TestBase
 
-object TestKeyService : KeyService {
+object TestKeyService : UUIDKeyService {
     override fun exists(key: UUIDKey): Mono<Boolean> = Mono.just(true)
 
     override fun <T> id(kind: Class<T>): Mono<UUIDKey> = Mono.just(Key.eventKey(UUID.randomUUID()))

@@ -4,22 +4,21 @@ import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface ChatPersistence<ENTITY> {
+interface PersistenceStore<ENTITY> {
     fun key(): Mono<out UUIDKey>
     fun add(ent: ENTITY): Mono<Void>
     fun rem(key: UUIDKey): Mono<Void>
     fun get(key: UUIDKey): Mono<out ENTITY>
     fun all(): Flux<out ENTITY>
     fun byIds(keys: List<UUIDKey>): Flux<out ENTITY> = Flux.empty()
-    // consider setModel(SomeEntityModel)
 }
 
-interface UserPersistence : ChatPersistence<User>
+interface UserPersistence : PersistenceStore<User>
 
-interface RoomPersistence : ChatPersistence<EventTopic>
+interface TopicPersistence : PersistenceStore<EventTopic>
 
-interface MembershipPersistence : ChatPersistence<Membership<UUIDKey>>
+interface MembershipPersistence : PersistenceStore<Membership<UUIDKey>>
 
-interface TextMessagePersistence : ChatPersistence<TextMessage>
+interface TextMessagePersistence : PersistenceStore<TextMessage>
 
-interface KeyPersistence : ChatPersistence<UUIDKey>
+interface KeyPersistence : PersistenceStore<UUIDKey>

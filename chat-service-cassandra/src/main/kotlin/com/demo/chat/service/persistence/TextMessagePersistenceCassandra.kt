@@ -4,12 +4,12 @@ import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.TextMessageKey
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.TextMessagePersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class TextMessagePersistenceCassandra(private val keyService: KeyService,
+open class TextMessagePersistenceCassandra(private val keyService: UUIDKeyService,
                                            private val messageRepo: ChatMessageRepository)
     : TextMessagePersistence {
 

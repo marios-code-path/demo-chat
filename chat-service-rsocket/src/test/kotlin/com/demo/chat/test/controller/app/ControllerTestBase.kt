@@ -1,9 +1,8 @@
 package com.demo.chat.test.controller.app
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import io.rsocket.RSocket
 import io.rsocket.RSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
@@ -51,7 +50,7 @@ open class ControllerTestBase {
     lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var keyService: KeyService
+    private lateinit var keyService: UUIDKeyService
 
     private lateinit var server: CloseableChannel
 

@@ -1,9 +1,13 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.ChatMessageById
+import com.demo.chat.domain.cassandra.ChatMessageByIdKey
+import com.demo.chat.domain.cassandra.ChatMessageByTopic
+import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
@@ -42,7 +46,7 @@ class TextMessageServiceTests {
     @MockBean
     lateinit var msgByTopicRepo: ChatMessageByTopicRepository
 
-    private val keyService: KeyService = TestKeyService
+    private val keyService: UUIDKeyService = TestKeyService
 
     private val rid: UUID = UUID.randomUUID()
 

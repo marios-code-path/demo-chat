@@ -1,16 +1,18 @@
 package com.demo.chat.service.index
 
 import com.demo.chat.domain.*
-import com.demo.chat.repository.cassandra.ChatRoomNameRepository
-import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.service.RoomIndexService
-import com.demo.chat.service.RoomIndexService.Companion.ALL
-import com.demo.chat.service.RoomIndexService.Companion.NAME
+import com.demo.chat.domain.cassandra.ChatEventTopicName
+import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.repository.cassandra.TopicByNameRepository
+import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.TopicIndexService.Companion.ALL
+import com.demo.chat.service.TopicIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class RoomIndexCassandra(private val roomRepo: ChatRoomRepository,
-                         private val nameRepo: ChatRoomNameRepository) : RoomIndexService {
+class TopicIndexCassandra(private val roomRepo: TopicRepository,
+                          private val nameRepo: TopicByNameRepository) : TopicIndexService {
     override fun add(ent: EventTopic, criteria: Map<String, String>): Mono<Void> =
             nameRepo.save(
                     ChatEventTopicName(

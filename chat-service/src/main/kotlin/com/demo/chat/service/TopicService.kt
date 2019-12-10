@@ -16,12 +16,16 @@ import java.util.*
  *  ROOM receives individual ID
  *  thus
  *  createRoom(name) = ROOM.apply {
- *      MEMBERSHIP = createTopic(MEMBERSHIP)
- *      STAT = createTopic(STAT)
+ *      MEMBERSHIP = createExchangeTopic(MEMBERSHIP)
+ *      STAT = this
  *      MESSAGES = createTopic(MESSAGE)
  *  }
- * svc.subscribe PRINCIPLE[MEMBERSHIP] with ROOM[MEMBERSHIP]
+ *  to join said room:
  *
+ * svc.subscribe to (look up by user_id or room_id) ROOM_ID
+ * svc.subscribe to ROOM[MEMBERSHIP]
+ * svc.send to ROOM[MEMBERSHIP] with PRINCIPLE[MEMBERSHIP]
+ * svc.send ( message ) to ROOM[MESSAGES]
  */
 interface TopicService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
@@ -37,8 +41,6 @@ interface TopicService<T, V> {
     fun receiveSourcedEvents(topic: T): Flux<out V>
     fun exists(topic: T): Mono<Boolean>
     //fun keyExists(topic: T, key: T): Mono<Boolean>
-
-
 }
 
 interface BooleanTopicService<T : UUIDKey, V> : TopicService<T, V> {

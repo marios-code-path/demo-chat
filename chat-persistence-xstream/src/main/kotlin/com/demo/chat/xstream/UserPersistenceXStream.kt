@@ -4,7 +4,7 @@ import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserPersistence
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
@@ -26,7 +26,7 @@ data class KeyConfiguration(
 )
 
 class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
-                             private val keyService: KeyService,
+                             private val keyService: UUIDKeyService,
                              private val userTemplate: ReactiveRedisTemplate<String, User>
 ) : UserPersistence {
     override fun all(): Flux<out User> = userTemplate

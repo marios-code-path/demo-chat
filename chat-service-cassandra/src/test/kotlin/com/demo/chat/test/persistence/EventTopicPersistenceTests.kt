@@ -2,10 +2,14 @@ package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.cassandra.ChatRoomNameRepository
-import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.service.KeyService
-import com.demo.chat.service.persistence.RoomPersistenceCassandra
+import com.demo.chat.domain.cassandra.ChatEventTopic
+import com.demo.chat.domain.cassandra.ChatEventTopicName
+import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopicKey
+import com.demo.chat.repository.cassandra.TopicByNameRepository
+import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.service.UUIDKeyService
+import com.demo.chat.service.persistence.TopicPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
@@ -25,15 +29,15 @@ class EventTopicPersistenceTests {
 
     val ROOMNAME = "test-room"
 
-    lateinit var roomSvc: RoomPersistenceCassandra
+    lateinit var roomSvc: TopicPersistenceCassandra
 
     @MockBean
-    lateinit var roomByNameRepo: ChatRoomNameRepository
+    lateinit var roomByNameRepo: TopicByNameRepository
 
     @MockBean
-    lateinit var roomRepo: ChatRoomRepository
+    lateinit var roomRepo: TopicRepository
 
-    private val keyService: KeyService = TestKeyService
+    private val keyService: UUIDKeyService = TestKeyService
 
     private val rid: UUID = UUID.randomUUID()
 
@@ -45,10 +49,6 @@ class EventTopicPersistenceTests {
         val roomNameRoom = ChatEventTopicName(ChatRoomNameKey(rid, ROOMNAME), true)
         val roomTwo = ChatEventTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
 
-
-        BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
-                .willReturn(Mono.empty())
-
         BDDMockito.given(roomRepo.add(anyObject()))
                 .willReturn(Mono.empty())
 
@@ -58,16 +58,10 @@ class EventTopicPersistenceTests {
         BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(newRoom))
 
-        BDDMockito.given(roomRepo.leave(anyObject(), anyObject()))
-                .willReturn(Mono.empty())
-
         BDDMockito.given(roomRepo.rem(anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomRepo.messageCount(anyObject()))
-                .willReturn(Mono.just(1))
-
-        roomSvc = RoomPersistenceCassandra(keyService, roomRepo)
+        roomSvc = TopicPersistenceCassandra(keyService, roomRepo)
     }
 
     @Test

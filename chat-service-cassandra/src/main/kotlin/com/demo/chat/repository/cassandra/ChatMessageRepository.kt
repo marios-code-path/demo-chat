@@ -1,6 +1,10 @@
 package com.demo.chat.repository.cassandra
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.ChatMessageById
+import com.demo.chat.domain.cassandra.ChatMessageByIdKey
+import com.demo.chat.domain.cassandra.ChatMessageByTopic
+import com.demo.chat.domain.cassandra.ChatMessageByUser
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update

@@ -2,6 +2,10 @@ package com.demo.chat.repository.cassandra
 
 import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.ChatUser
+import com.demo.chat.domain.cassandra.ChatUserHandle
+import com.demo.chat.domain.cassandra.ChatUserHandleKey
+import com.demo.chat.domain.cassandra.ChatUserKey
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query

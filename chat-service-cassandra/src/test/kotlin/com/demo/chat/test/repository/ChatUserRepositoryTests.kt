@@ -2,6 +2,10 @@ package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.ChatUser
+import com.demo.chat.domain.cassandra.ChatUserHandle
+import com.demo.chat.domain.cassandra.ChatUserHandleKey
+import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.test.TestConfiguration
@@ -100,7 +104,7 @@ class ChatUserRepositoryTests {
 
         val chatUsers = Flux.just(
                 ChatUser(ChatUserKey(id1), "eddie", "vedder", defaultImageUri, Instant.now()),
-                ChatUser(ChatUserKey(id2), "Michael",  "jackson", defaultImageUri, Instant.now())
+                ChatUser(ChatUserKey(id2), "Michael", "jackson", defaultImageUri, Instant.now())
         )
                 .flatMap { repo.add(it) }
 
@@ -124,7 +128,7 @@ class ChatUserRepositoryTests {
     @Test
     fun `should user hold consistent states`() {
         val uuid = UUIDs.timeBased()
-        val user = ChatUser(ChatUserKey(uuid),"Eddie",
+        val user = ChatUser(ChatUserKey(uuid), "Eddie",
                 "EddiesHandle", defaultImageUri, Instant.now())
 
         assertAll("user",

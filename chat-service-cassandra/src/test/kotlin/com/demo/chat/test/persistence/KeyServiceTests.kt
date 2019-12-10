@@ -1,7 +1,7 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.UserKey
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.TestConfiguration
 import org.assertj.core.api.Assertions
@@ -31,7 +31,7 @@ class KeyServiceTests {
     @Autowired
     private lateinit var template: ReactiveCassandraTemplate
 
-    lateinit var svc: KeyService
+    lateinit var svc: UUIDKeyService
 
     private val handle = "darkbit"
 

@@ -2,7 +2,7 @@ package com.demo.chat.xstream
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
@@ -18,7 +18,7 @@ import java.util.*
  * respective stores.
  */
 class KeyServiceXStream(private val keyConfiguration: KeyConfiguration,
-                        private val stringTemplate: ReactiveRedisTemplate<String, String>) : KeyService {
+                        private val stringTemplate: ReactiveRedisTemplate<String, String>) : UUIDKeyService {
     override fun exists(key: UUIDKey): Mono<Boolean> =
             stringTemplate
                     .opsForStream<String, String>()

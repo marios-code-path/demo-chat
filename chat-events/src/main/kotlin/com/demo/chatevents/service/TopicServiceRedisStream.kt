@@ -2,7 +2,7 @@ package com.demo.chatevents.service
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.RoomNotFoundException
+import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.domain.TopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
@@ -48,7 +48,7 @@ class TopicServiceRedisStream(
             .filter {
                 it == true
             }
-            .switchIfEmpty(Mono.error(RoomNotFoundException))
+            .switchIfEmpty(Mono.error(TopicNotFoundException))
             .then()
 
     override fun exists(id: UUID): Mono<Boolean> = stringTemplate

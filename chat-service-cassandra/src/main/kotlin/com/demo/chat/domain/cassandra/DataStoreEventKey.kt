@@ -1,6 +1,7 @@
-package com.demo.chat.domain
+package com.demo.chat.domain.cassandra
 
 import com.datastax.driver.core.DataType
+import com.demo.chat.domain.UUIDKey
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.CassandraType
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn

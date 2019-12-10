@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfi
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
@@ -19,7 +18,7 @@ class ConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
-    private lateinit var roomIndex: RoomIndexService
+    private lateinit var topicIndex: TopicIndexService
 
     @MockBean
     private lateinit var userIndex: UserIndexService
@@ -28,7 +27,7 @@ class ConfigurationRSocket {
     private lateinit var messageIndex: MessageIndexService
 
     @MockBean
-    private lateinit var roomPersistence: RoomPersistence
+    private lateinit var topicPersistence: TopicPersistence
 
     @MockBean
     private lateinit var userPersistence: UserPersistence
@@ -40,7 +39,7 @@ class ConfigurationRSocket {
     private lateinit var topicService: ChatTopicService
 
     @MockBean
-    private lateinit var keyService: KeyService
+    private lateinit var keyService: UUIDKeyService
 
     @MockBean
     private lateinit var membershipPersistence: MembershipPersistence

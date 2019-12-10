@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.util.*
 
-// Must name become a permenant member of Room ?
-// Kludge Log: Cassandra requires nullable Set ( when returns with empty set )
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 interface Topic<out K, N> {
     val key: K
@@ -21,7 +19,7 @@ interface Topic<out K, N> {
     }
 }
 
-@JsonTypeName("Topic") // should be 'Topic'
+@JsonTypeName("Topic")
 interface EventTopic : Topic<UUIDKey, String> {
     companion object Factory {
         fun create(key: TopicKey, name: String) = object : EventTopic {

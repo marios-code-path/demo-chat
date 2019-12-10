@@ -1,10 +1,14 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.*
-import com.demo.chat.repository.cassandra.ChatRoomNameRepository
-import com.demo.chat.repository.cassandra.ChatRoomRepository
-import com.demo.chat.service.RoomIndexService
-import com.demo.chat.service.index.RoomIndexCassandra
+import com.demo.chat.domain.cassandra.ChatEventTopic
+import com.demo.chat.domain.cassandra.ChatEventTopicName
+import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopicKey
+import com.demo.chat.repository.cassandra.TopicByNameRepository
+import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.index.TopicIndexCassandra
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -39,12 +43,12 @@ fun <T> uninitialized(): T = null as T
 class EventTopicIndexTests {
 
     @MockBean
-    lateinit var roomRepo: ChatRoomRepository
+    lateinit var roomRepo: TopicRepository
 
     @MockBean
-    lateinit var nameRepo: ChatRoomNameRepository
+    lateinit var nameRepo: TopicByNameRepository
 
-    lateinit var roomIndex: RoomIndexService
+    lateinit var topicIndex: TopicIndexService
 
     @BeforeEach
     fun setUp() {
@@ -69,13 +73,7 @@ class EventTopicIndexTests {
         BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(idRoom))
 
-        BDDMockito.given(roomRepo.join(anyObject(), anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito.given(roomRepo.leave(anyObject(), anyObject()))
-                .willReturn(Mono.empty())
-
-        roomIndex = RoomIndexCassandra(roomRepo, nameRepo)
+        topicIndex = TopicIndexCassandra(roomRepo, nameRepo)
     }
 
     private val rid: UUIDKey = Key.eventKey(UUID.randomUUID())
@@ -88,7 +86,7 @@ class EventTopicIndexTests {
     fun `should create 2 rooms, fetch by random name`() {
         StepVerifier
                 .create(
-                        roomIndex.findBy(mapOf(Pair("name", randomAlphaNumeric(5))))
+                        topicIndex.findBy(mapOf(Pair("name", randomAlphaNumeric(5))))
                 )
                 .expectSubscription()
                 .assertNext(this::roomKeyAssertions)

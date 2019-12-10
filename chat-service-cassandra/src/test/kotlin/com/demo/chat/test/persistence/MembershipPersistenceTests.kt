@@ -1,10 +1,12 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.*
+import com.demo.chat.domain.cassandra.CassandraKeyType
+import com.demo.chat.domain.cassandra.ChatMembership
+import com.demo.chat.domain.cassandra.ChatMembershipKey
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
 import com.demo.chat.service.MembershipPersistence
-import com.demo.chat.service.KeyService
+import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
@@ -30,7 +32,7 @@ class MembershipPersistenceTests {
     @MockBean
     lateinit var repo: ChatMembershipRepository
 
-    private val keyService: KeyService = TestKeyService
+    private val keyService: UUIDKeyService = TestKeyService
 
     private val keyId = UUIDs.timeBased()
     private val memberId = UUIDs.timeBased()

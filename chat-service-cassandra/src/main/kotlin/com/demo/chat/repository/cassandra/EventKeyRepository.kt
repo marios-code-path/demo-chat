@@ -1,6 +1,6 @@
 package com.demo.chat.repository.cassandra
 
-import com.demo.chat.domain.CassandraKey
+import com.demo.chat.domain.cassandra.CassandraKey
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import java.util.*
 

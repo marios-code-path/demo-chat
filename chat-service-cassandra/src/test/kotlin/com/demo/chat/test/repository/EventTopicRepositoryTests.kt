@@ -2,8 +2,12 @@ package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.repository.cassandra.ChatRoomNameRepository
-import com.demo.chat.repository.cassandra.ChatRoomRepository
+import com.demo.chat.domain.cassandra.ChatEventTopic
+import com.demo.chat.domain.cassandra.ChatEventTopicName
+import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopicKey
+import com.demo.chat.repository.cassandra.TopicByNameRepository
+import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.test.TestConfiguration
 import com.demo.chat.test.randomAlphaNumeric
 import org.cassandraunit.spring.CassandraDataSet
@@ -33,10 +37,10 @@ class EventTopicRepositoryTests {
     private val ROOMNAME = "XYZ"
 
     @Autowired
-    lateinit var repo: ChatRoomRepository
+    lateinit var repo: TopicRepository
 
     @Autowired
-    lateinit var byNameRepo: ChatRoomNameRepository
+    lateinit var byNameRepo: TopicByNameRepository
 
     @Test
     fun `inactive rooms dont appear`() {

@@ -30,10 +30,10 @@ class RSocketEventTopicTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var roomIndex: RoomIndexService
+    lateinit var topicIndex: TopicIndexService
 
     @Autowired
-    lateinit var roomPersistence: RoomPersistence
+    lateinit var topicPersistence: TopicPersistence
 
     @Autowired
     lateinit var userPersistence: UserPersistence
@@ -64,7 +64,7 @@ class RSocketEventTopicTests : ControllerTestBase() {
     @Test
     fun `should create a room receive Void response`() {
         BDDMockito
-                .given(roomPersistence.add(anyObject()))
+                .given(topicPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
@@ -72,7 +72,7 @@ class RSocketEventTopicTests : ControllerTestBase() {
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(roomPersistence.key())
+                .given(topicPersistence.key())
                 .willReturn(Mono.just(TopicKey.create(UUID.randomUUID())))
 
         StepVerifier.create(
@@ -87,7 +87,7 @@ class RSocketEventTopicTests : ControllerTestBase() {
     @Test
     fun `should receive list of rooms`() {
         BDDMockito
-                .given(roomPersistence.all())
+                .given(topicPersistence.all())
                 .willReturn(Flux.just(room))
 
         StepVerifier
@@ -117,8 +117,8 @@ class RSocketEventTopicTests : ControllerTestBase() {
     @Test
     fun `should not join a non existent Room`() {
         BDDMockito
-                .given(roomIndex.add(anyObject(), anyObject()))
-                .willReturn(Mono.error(RoomNotFoundException))
+                .given(topicIndex.add(anyObject(), anyObject()))
+                .willReturn(Mono.error(TopicNotFoundException))
 
         StepVerifier
                 .create(
@@ -136,16 +136,16 @@ class RSocketEventTopicTests : ControllerTestBase() {
     fun `joins a room and appears in member list`() {
         val membershipId = UUID.randomUUID()
 
-        BDDMockito.given(roomIndex.add(anyObject(), anyObject()))
+        BDDMockito.given(topicIndex.add(anyObject(), anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(roomPersistence.get(anyObject()))
+        BDDMockito.given(topicPersistence.get(anyObject()))
                 .willReturn(Mono.just(roomWithMembers))
 
-        BDDMockito.given(roomIndex.findBy(anyObject()))
+        BDDMockito.given(topicIndex.findBy(anyObject()))
                 .willReturn(Flux.just(roomWithMembers.key))
 
-        BDDMockito.given(roomPersistence.add(anyObject()))
+        BDDMockito.given(topicPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
@@ -209,12 +209,12 @@ class RSocketEventTopicTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestRoomController(roomP: RoomPersistence,
-                                 roomInd: RoomIndexService,
+        class TestRoomController(topicP: TopicPersistence,
+                                 topicInd: TopicIndexService,
                                  topicSvc: ChatTopicService,
                                  userP: UserPersistence,
                                  membershipP: MembershipPersistence,
                                  membershipInd: MembershipIndexService) :
-                RoomController(roomP, roomInd, topicSvc, userP, membershipP, membershipInd)
+                RoomController(topicP, topicInd, topicSvc, userP, membershipP, membershipInd)
     }
 }

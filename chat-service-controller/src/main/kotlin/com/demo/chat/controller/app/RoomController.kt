@@ -9,8 +9,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class RoomController(val roomPersistence: RoomPersistence,
-                          val roomIndex: RoomIndexService,
+open class RoomController(val topicPersistence: TopicPersistence,
+                          val topicIndex: TopicIndexService,
                           val topicService: ChatTopicService,
                           val userPersistence: UserPersistence,
                           val membershipPersistence: MembershipPersistence,
@@ -19,14 +19,14 @@ open class RoomController(val roomPersistence: RoomPersistence,
 
     @MessageMapping("room-add")
     fun addRoom(req: RoomCreateRequest): Mono<out UUIDKey> =
-            roomPersistence
+            topicPersistence
                     .key()
                     .flatMap { key ->
                         val room = EventTopic.create(TopicKey.create(key.id), req.roomName)
-                        roomPersistence
+                        topicPersistence
                                 .add(room)
                                 .flatMap {
-                                    roomIndex.add(room, mapOf())
+                                    topicIndex.add(room, mapOf())
                                 }
                                 .then(topicService.add(key.id))
                                 .map { key }
@@ -34,11 +34,11 @@ open class RoomController(val roomPersistence: RoomPersistence,
 
     @MessageMapping("room-rem")
     fun deleteRoom(req: RoomRequestId): Mono<Void> =
-            roomPersistence
+            topicPersistence
                     .get(Key.eventKey(req.roomId))
                     .flatMap {
-                        roomPersistence.rem(it.key)
-                                .then(roomIndex.rem(it))
+                        topicPersistence.rem(it.key)
+                                .then(topicIndex.rem(it))
                                 .then(topicService.unSubscribeAllIn(it.key.id))
                                 .then(topicService.rem(it.key.id))
                     }
@@ -46,21 +46,21 @@ open class RoomController(val roomPersistence: RoomPersistence,
 
     @MessageMapping("room-list")
     fun listRooms(req: RoomRequestId): Flux<out EventTopic> =
-            roomPersistence
+            topicPersistence
                     .all()
 
     @MessageMapping("room-by-id")
     fun getRoom(req: RoomRequestId): Mono<out EventTopic> =
-            roomPersistence
+            topicPersistence
                     .get(Key.eventKey(req.roomId))
 
     @MessageMapping("room-by-name")
     fun getRoomByName(req: RoomRequestName): Mono<out EventTopic> =
-            roomIndex
-                    .findBy(mapOf(Pair(RoomIndexService.NAME, req.name)))
+            topicIndex
+                    .findBy(mapOf(Pair(TopicIndexService.NAME, req.name)))
                     .single()
                     .flatMap {
-                        roomPersistence.get(it)
+                        topicPersistence.get(it)
                     }
 
     @MessageMapping("room-join")

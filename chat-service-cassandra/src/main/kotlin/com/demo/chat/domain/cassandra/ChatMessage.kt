@@ -1,5 +1,7 @@
-package com.demo.chat.domain
+package com.demo.chat.domain.cassandra
 
+import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.TextMessageKey
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant

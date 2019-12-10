@@ -1,12 +1,12 @@
 package com.demo.chat.controller.service
 
 import com.demo.chat.domain.UUIDKey
-import com.demo.chat.service.ChatPersistence
+import com.demo.chat.service.PersistenceStore
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class PersistenceServiceController<T>(val that: ChatPersistence<T>) : ChatPersistence<T> {
+open class PersistenceServiceController<T>(val that: PersistenceStore<T>) : PersistenceStore<T> {
     @MessageMapping("key")
     override fun key(): Mono<out UUIDKey> = that.key()
 
