@@ -1,11 +1,10 @@
 package com.demo.chatevents.service
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.Disposable
-import reactor.core.Disposables
 import reactor.core.publisher.DirectProcessor
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxProcessor
@@ -20,18 +19,17 @@ class TopicManager {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 // TODO seek the Disposable Swap, and Composite to manage the disposable
-    private val streamProcessors: MutableMap<UUID, FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val streamProcessors: MutableMap<UUID, FluxProcessor<Message<UUIDTopicMessageKey, Any>, Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
 
-    private val streamFluxes: MutableMap<UUID, Flux<Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val streamFluxes: MutableMap<UUID, Flux<Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private val streamConsumers: MutableMap<UUID, MutableMap<UUID, Disposable>> = ConcurrentHashMap()
 
     // Does not replace existing stream! - call rem(uuid) then subscribeTopicProcessor
-    fun subscribeTopicProcessor(stream: UUID, source: Flux<out Message<TopicMessageKey, Any>>): Disposable =
+    fun subscribeTopicProcessor(stream: UUID, source: Flux<out Message<UUIDTopicMessageKey, Any>>): Disposable =
             source.subscribe {
                 getTopicProcessor(stream).onNext(it)
             }
-
 
     private fun getMaybeConsumer(source: UUID, consumer: UUID): Optional<Disposable> =
             Optional.of(getTopicConsumers(source))
@@ -76,10 +74,10 @@ class TopicManager {
                         ConcurrentHashMap()
                     }
 
-    fun setTopicProcessor(stream: UUID, proc: FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>>) =
+    fun setTopicProcessor(stream: UUID, proc: FluxProcessor<Message<UUIDTopicMessageKey, Any>, Message<UUIDTopicMessageKey, Any>>) =
             streamProcessors.put(stream, proc)
 
-    fun getTopicFlux(stream: UUID): Flux<Message<TopicMessageKey, Any>> =
+    fun getTopicFlux(stream: UUID): Flux<Message<UUIDTopicMessageKey, Any>> =
             streamFluxes
                     .getOrPut(stream) {
                         getTopicProcessor(stream)
@@ -88,10 +86,10 @@ class TopicManager {
                                 .autoConnect()
                     }
 
-    fun getTopicProcessor(stream: UUID): FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>> =
+    fun getTopicProcessor(stream: UUID): FluxProcessor<Message<UUIDTopicMessageKey, Any>, Message<UUIDTopicMessageKey, Any>> =
             streamProcessors
                     .getOrPut(stream) {
-                        val processor = DirectProcessor.create<Message<TopicMessageKey, Any>>()
+                        val processor = DirectProcessor.create<Message<UUIDTopicMessageKey, Any>>()
 
                         processor
                     }

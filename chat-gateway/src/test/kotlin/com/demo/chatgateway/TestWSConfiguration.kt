@@ -1,30 +1,23 @@
 package com.demo.chatgateway
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import org.springframework.boot.autoconfigure.web.reactive.HttpHandlerAutoConfiguration
 import org.springframework.boot.web.embedded.netty.NettyReactiveWebServerFactory
 import org.springframework.boot.web.reactive.server.ReactiveWebServerFactory
-import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.http.server.reactive.HttpHandler
 import org.springframework.messaging.handler.annotation.DestinationVariable
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Controller
-import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.reactive.HandlerMapping
 import org.springframework.web.reactive.config.WebFluxConfigurationSupport
-import org.springframework.web.reactive.function.server.RouterFunction
-import org.springframework.web.reactive.function.server.ServerResponse
-import org.springframework.web.reactive.function.server.router
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
 import org.springframework.web.reactive.socket.WebSocketMessage
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter
-import org.springframework.web.server.adapter.WebHttpHandlerBuilder
 import reactor.core.Disposable
 import reactor.core.publisher.Flux
 import reactor.core.publisher.FluxProcessor
@@ -91,16 +84,16 @@ class TestMappers {
 @Component
 class TestClientHandlers {
 
-    val clientProcessor: FluxProcessor<Message<TopicMessageKey, Any>, Message<TopicMessageKey, Any>> = ReplayProcessor.create<Message<TopicMessageKey, Any>>()
+    val clientProcessor: FluxProcessor<Message<UUIDTopicMessageKey, Any>, Message<UUIDTopicMessageKey, Any>> = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>()
 
     @MessageMapping("/userdist")
-    fun getUserFeed(stream: Flux<out Message<TopicMessageKey, Any>>): Disposable =
+    fun getUserFeed(stream: Flux<out Message<UUIDTopicMessageKey, Any>>): Disposable =
             clientProcessor
                     .subscribe {
                         clientProcessor.onNext(it)
                     }
 
-    fun receiveEvents(): Flux<Message<TopicMessageKey, Any>> = clientProcessor
+    fun receiveEvents(): Flux<Message<UUIDTopicMessageKey, Any>> = clientProcessor
             .onBackpressureBuffer()
             .publish()
             .autoConnect()

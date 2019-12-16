@@ -7,15 +7,16 @@ import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.UserIndexService
 import org.springframework.stereotype.Controller
+import java.util.*
 
 @Controller
-class UserIndexRSocket(t: UserIndexService) : IndexServiceController<UserKey, User, Map<String, String>, Map<String, String>>(t)
+class UserIndexRSocket(t: UserIndexService) : IndexServiceController<UUID, User, Map<String, String>, Map<String, String>>(t)
 
 @Controller
-class MessageIndexRSocket(t: MessageIndexService) : IndexServiceController<MessageKey, TextMessage, Map<String, String>, Map<String, String>>(t)
+class MessageIndexRSocket(t: MessageIndexService) : IndexServiceController<UUID, TextMessage, Map<String, String>, Map<String, String>>(t)
 
 @Controller
-class RoomIndexRSocket(t: TopicIndexService) : IndexServiceController<TopicKey, EventTopic, Map<String, String>, Map<String, String>>(t)
+class RoomIndexRSocket(t: TopicIndexService) : IndexServiceController<UUID, MessageTopic, Map<String, String>, Map<String, String>>(t)
 
 @Controller
-class MembershipIndexRSocket(t: MembershipIndexService) : IndexServiceController<UUIDKey, TopicMembership, Map<String, String>, Map<String, String>>(t)
+class MembershipIndexRSocket(t: MembershipIndexService) : IndexServiceController<UUID, TopicMembership, Map<String, String>, Map<String, String>>(t)

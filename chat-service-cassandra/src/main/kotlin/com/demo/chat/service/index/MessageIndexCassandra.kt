@@ -32,7 +32,7 @@ class MessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
                                     ent.key.topicId,
                                     Instant.now()
                             ),
-                            ent.value,
+                            ent.data,
                             ent.visible
                     ))
                     .insert(ChatMessageByTopic(
@@ -42,7 +42,7 @@ class MessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
                                     ent.key.topicId,
                                     Instant.now()
                             ),
-                            ent.value,
+                            ent.data,
                             ent.visible
                     ))
                     .execute()
@@ -70,7 +70,7 @@ class MessageIndexCassandra(val cassandra: ReactiveCassandraTemplate,
                     }
                     .then()
 
-    override fun findBy(query: Map<String, String>): Flux<out TextMessageKey> {
+    override fun findBy(query: Map<String, String>): Flux<out UserMessageKey> {
         val searchFor = query.keys.first()
         return when (searchFor) {
             TOPIC -> findByTopic(UUID.fromString(query[searchFor]))

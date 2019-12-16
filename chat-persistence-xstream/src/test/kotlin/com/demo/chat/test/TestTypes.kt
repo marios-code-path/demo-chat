@@ -19,7 +19,7 @@ data class TestEntity(var data: String) {
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
-data class TestTopicData(val state: Message<TopicMessageKey, Any>)
+data class TestTopicData(val state: Message<UUID, Any>)
 
 @JsonTypeName("ChatUser")
 data class TestChatUser(
@@ -35,55 +35,55 @@ data class TestChatUserKey(
 ) : UserKey
 
 @JsonTypeName("ChatRoom")
-data class TestChatEventTopic(
+data class TestChatMessageTopic(
         override val key: TestChatRoomKey,
-        override val name: String,
+        override val data: String,
         val active: Boolean
-) : EventTopic
+) : MessageTopic<UUID>
 
 data class TestChatRoomKey(
         override val id: UUID
-) : TopicKey
+) : Key<UUID>
 
 
-data class TestTextMessageKey(
+data class TestUserMessageKey(
         override val id: UUID,
         override val userId: UUID,
-        override val topicId: UUID,
+        override val dest: UUID,
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey<UUID, UUID, UUID>
 
 data class TestAlertMessageKey(
         override val id: UUID,
-        override val topicId: UUID,
+        override val dest: UUID,
         override val timestamp: Instant
-) : TopicMessageKey
+) : MessageKey<UUID, UUID>
 
 
 @JsonTypeName("InfoAlert")
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
-        override val value: TopicMetaData,
+        override val data: TopicMetaData,
         override val visible: Boolean
-) : Message<TestAlertMessageKey, TopicMetaData>
+) : Message<UUID, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class TestLeaveAlert(
         override val key: TestAlertMessageKey,
-        override val value: UUID,
+        override val data: UUID,
         override val visible: Boolean
-) : Message<TestAlertMessageKey, UUID>
+) : Message<UUID, UUID>
 
 @JsonTypeName("JoinAlert")
 data class TestJoinAlert(
         override val key: TestAlertMessageKey,
-        override val value: UUID,
+        override val data: UUID,
         override val visible: Boolean
-) : Message<TestAlertMessageKey, UUID>
+) : Message<UUID, UUID>
 
 @JsonTypeName("ChatMessage")
 data class TestTextMessage(
-        override val key: TestTextMessageKey,
-        override val value: String,
+        override val key: TestUserMessageKey,
+        override val data: String,
         override val visible: Boolean
-) : TextMessage
+) : TextMessage<UUID>

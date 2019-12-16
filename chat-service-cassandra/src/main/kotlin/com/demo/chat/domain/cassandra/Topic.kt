@@ -1,36 +1,39 @@
 package com.demo.chat.domain.cassandra
 
-import com.demo.chat.domain.EventTopic
-import com.demo.chat.domain.TopicKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageTopic
 import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
-import org.springframework.data.cassandra.core.mapping.*
+import org.springframework.data.cassandra.core.mapping.PrimaryKey
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
+import org.springframework.data.cassandra.core.mapping.Table
 import java.util.*
 
 @Table("chat_room")
-data class ChatEventTopic(
+data class ChatMessageTopic(
         @PrimaryKey
         override val key: ChatTopicKey,
-        override val name: String,
+        override val data: String,
         val active: Boolean
-) : EventTopic
+) : MessageTopic<UUID>
 
 @Table("chat_room_name")
-data class ChatEventTopicName(
+data class ChatMessageTopicName(
         @PrimaryKey
         override val key: ChatRoomNameKey,
         val active: Boolean
-) : EventTopic
+) : MessageTopic<UUID>
 {
         @Transient
-        override val name: String = key.name
+        override val data: String = key.name
 }
 
 @PrimaryKeyClass
 data class ChatTopicKey(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val id: UUID
-) : TopicKey
+) : Key<UUID>
 
 @PrimaryKeyClass
 data class ChatRoomNameKey(
@@ -38,4 +41,4 @@ data class ChatRoomNameKey(
         override val id: UUID,
         @PrimaryKeyColumn(name = "name", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         val name: String
-) : TopicKey
+) : Key<UUID>

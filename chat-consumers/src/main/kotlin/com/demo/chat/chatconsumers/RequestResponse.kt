@@ -33,55 +33,55 @@ data class ChatUserKey(
 ) : UserKey
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class ChatEventTopic(
+data class ChatMessageTopic(
         override val key: ChatRoomKey,
         val active: Boolean,
-        override val name: String
-) : EventTopic
+        override val data: String
+) : MessageTopic<UUID>
 
 data class ChatRoomKey(
         override val id: UUID
-) : TopicKey
+) : Key<UUID>
 
 
 data class ChatMessageKey(
         override val id: UUID,
         override val userId: UUID,
-        override val topicId: UUID,
+        override val dest: UUID,
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey<UUID, UUID, UUID>
 
 data class AlertMessageKey(
         override val id: UUID,
-        override val topicId: UUID,
+        override val dest: UUID,
         override val timestamp: Instant
-) : TopicMessageKey
+) : MessageKey<UUID, UUID>
 
 @JsonTypeName("ChatMessage")
 data class ChatMessage(
         override val key: ChatMessageKey,
-        override val value: String,
+        override val data: String,
         override val visible: Boolean
-) : TextMessage
+) : TextMessage<UUID>
 
 
 @JsonTypeName("InfoAlert")
 data class ChatInfoAlert(
         override val key: AlertMessageKey,
-        override val value: TopicMetaData,
+        override val data: TopicMetaData,
         override val visible: Boolean
-) : Message<AlertMessageKey, TopicMetaData>
+) : Message<UUID, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class ChatLeaveAlert(
         override val key: AlertMessageKey,
-        override val value: UUID,
+        override val data: UUID,
         override val visible: Boolean
-) : Message<AlertMessageKey, UUID>
+) : Message<UUID, UUID>
 
 @JsonTypeName("JoinAlert")
 data class ChatJoinAlert(
         override val key: AlertMessageKey,
-        override val value: UUID,
+        override val data: UUID,
         override val visible: Boolean
-) : Message<AlertMessageKey, UUID>
+) : Message<UUID, UUID>

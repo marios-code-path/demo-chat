@@ -1,8 +1,9 @@
 package com.demo.chat.repository.cassandra
 
-import com.demo.chat.domain.*
-import com.demo.chat.domain.cassandra.ChatEventTopic
-import com.demo.chat.domain.cassandra.ChatEventTopicName
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.cassandra.ChatMessageTopic
+import com.demo.chat.domain.cassandra.ChatMessageTopicName
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
@@ -13,38 +14,37 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 
-interface TopicByNameRepository : ReactiveCassandraRepository<ChatEventTopicName, String> {
-    fun findByKeyName(name: String): Mono<ChatEventTopicName>
+interface TopicByNameRepository : ReactiveCassandraRepository<ChatMessageTopicName, String> {
+    fun findByKeyName(name: String): Mono<out Key<UUID>>
 }
 
 interface TopicRepository :
-        ReactiveCassandraRepository<ChatEventTopic, UUID>,
-        TopicRepositoryCustom
-{
-    fun findByKeyId(id: UUID): Mono<ChatEventTopic>
+        ReactiveCassandraRepository<ChatMessageTopic, UUID>,
+        TopicRepositoryCustom {
+    fun findByKeyId(id: UUID): Mono<out MessageTopic<UUID>>
 }
 
 interface TopicRepositoryCustom {
-    fun add(eventTopic: EventTopic): Mono<Void>
-    fun rem(roomKey: UUIDKey): Mono<Void>
+    fun add(messageTopic: MessageTopic<UUID>): Mono<Void>
+    fun rem(roomKey: Key<UUID>): Mono<Void>
 }
 
 class TopicRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
         TopicRepositoryCustom {
-    override fun rem(key: UUIDKey): Mono<Void> =
+    override fun rem(key: Key<UUID>): Mono<Void> =
             cassandra
                     .update(Query.query(where("room_id").`is`(key.id)),
                             Update.empty().set("active", false),
-                            ChatEventTopic::class.java
+                            ChatMessageTopic::class.java
                     )
                     .then()
 
-    override fun add(eventTopic: EventTopic): Mono<Void> = cassandra
-            .insert(ChatEventTopic(
+    override fun add(messageTopic: MessageTopic<UUID>): Mono<Void> = cassandra
+            .insert(ChatMessageTopic(
                     ChatTopicKey(
-                            eventTopic.key.id
+                            messageTopic.key.id
                     ),
-                    eventTopic.name,
+                    messageTopic.data,
                     true))
             .then()
 }

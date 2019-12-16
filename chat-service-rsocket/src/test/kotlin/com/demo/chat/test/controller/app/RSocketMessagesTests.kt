@@ -16,9 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -103,7 +100,7 @@ class RSocketMessagesTests : ControllerTestBase() {
                             .hasFieldOrProperty("key")
 
                     MatcherAssert
-                            .assertThat("Message begins with Hello", it.value,
+                            .assertThat("Message begins with Hello", it.data,
                                     Matchers.startsWith("Hello"))
                 })
                 .expectComplete()

@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 
 open class RoomController(val topicPersistence: TopicPersistence,
                           val topicIndex: TopicIndexService,
@@ -18,11 +19,11 @@ open class RoomController(val topicPersistence: TopicPersistence,
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
-    fun addRoom(req: RoomCreateRequest): Mono<out UUIDKey> =
+    fun addRoom(req: RoomCreateRequest): Mono<out Key<UUID>> =
             topicPersistence
                     .key()
                     .flatMap { key ->
-                        val room = EventTopic.create(TopicKey.create(key.id), req.roomName)
+                        val room = MessageTopic.create(Key.eventKey(key.id), req.roomName)
                         topicPersistence
                                 .add(room)
                                 .flatMap {
@@ -45,17 +46,17 @@ open class RoomController(val topicPersistence: TopicPersistence,
                     .then()
 
     @MessageMapping("room-list")
-    fun listRooms(req: RoomRequestId): Flux<out EventTopic> =
+    fun listRooms(req: RoomRequestId): Flux<out MessageTopic> =
             topicPersistence
                     .all()
 
     @MessageMapping("room-by-id")
-    fun getRoom(req: RoomRequestId): Mono<out EventTopic> =
+    fun getRoom(req: RoomRequestId): Mono<out MessageTopic> =
             topicPersistence
                     .get(Key.eventKey(req.roomId))
 
     @MessageMapping("room-by-name")
-    fun getRoomByName(req: RoomRequestName): Mono<out EventTopic> =
+    fun getRoomByName(req: RoomRequestName): Mono<out MessageTopic> =
             topicIndex
                     .findBy(mapOf(Pair(TopicIndexService.NAME, req.name)))
                     .single()

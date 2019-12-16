@@ -72,7 +72,6 @@ class SerializationTests {
         fun mapper(): ObjectMapper {
             return ObjectMapper().apply {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
                 registerModule(KotlinModule())
                 setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
                 setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.NONE)
@@ -85,9 +84,13 @@ class SerializationTests {
         @Bean
         fun eventKeyModule() = module("EVENTKEY", UUIDKey::class.java, TestUUIDKey::class.java)
 
+        @Bean
+        fun testKeyModule() = module("TESTKEY", TestKey::class.java, ETestKey::class.java)
+
+        // old but useful to explain where this could potentially happen where autoscanning is not
+        // used.
         fun jacksonBuilder(): Jackson2ObjectMapperBuilder {
             val b = Jackson2ObjectMapperBuilder()
-            println("AM I IN MODULE LAND ? ? ? ? ")
             b.indentOutput(true).dateFormat(SimpleDateFormat("yyyy-MM-dd"))
             b.modules(
                     module("TESTKEY", TestKey::class.java, ETestKey::class.java),

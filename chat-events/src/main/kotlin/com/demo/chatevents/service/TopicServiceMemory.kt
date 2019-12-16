@@ -2,7 +2,7 @@ package com.demo.chatevents.service
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import org.slf4j.Logger
@@ -35,7 +35,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
     // map of <msgInbox : [topic]s>
     private val memberTopics: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
 
-    private val topicXSource: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val topicXSource: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
 
     override fun add(id: UUID): Mono<Void> = Mono
             .fromCallable {
@@ -54,11 +54,11 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
 
   //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
+    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
             topicManager
                     .getTopicProcessor(id)
 
-    override fun receiveOn(stream: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveOn(stream: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             topicManager
                     .getTopicFlux(stream)
 
@@ -66,10 +66,10 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             topicXSource
                     .getOrPut(id, {
-                        val proc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(1)
+                        val proc = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(1)
                         topicManager.setTopicProcessor(id, proc)
 
                         val reader = topicManager.getTopicFlux(id)
@@ -79,7 +79,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     })
 
     // how to join multiple streams to have fan-out without iterating through Fluxs
-    override fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> =
+    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> =
             topicExistsOrError(topicMessage.key.topicId)
                     .map {
                         topicManager

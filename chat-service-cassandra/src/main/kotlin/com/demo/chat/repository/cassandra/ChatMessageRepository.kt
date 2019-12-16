@@ -50,7 +50,7 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                                     msg.key.topicId,
                                     msg.key.timestamp
                             ),
-                            msg.value,
+                            msg.data,
                             msg.visible
                     ))
                     .then()

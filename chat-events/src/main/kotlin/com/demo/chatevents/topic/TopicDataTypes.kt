@@ -16,23 +16,23 @@ object EmptyMessage : ChatMessage(ChatMessageKey(UUID.randomUUID(),
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
-class TopicData(var state: Message<TopicMessageKey, Any>) {
+class TopicData(var state: Message<UUIDTopicMessageKey, Any>) {
     constructor() : this(EmptyMessage)
 }
 
 @JsonTypeName("ChatMessage")
 open class ChatMessage(
         override val key: ChatMessageKey,
-        override val value: String,
+        override val data: String,
         override val visible: Boolean
 ) : TextMessage
 
 data class ChatMessageKey(
         override val id: UUID,
         override val userId: UUID,
-        override val topicId: UUID,
+        val dest: UUID,
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey
 
 @JsonTypeName("JoinAlert")
 data class JoinAlertMessage(override val key: JoinAlertMessageKey,
@@ -43,4 +43,4 @@ data class JoinAlertMessage(override val key: JoinAlertMessageKey,
 data class JoinAlertMessageKey(override val id: UUID,
                                override val topicId: UUID,
                                override val timestamp: Instant
-) : AlertMessageKey
+) : SnapMessageKey

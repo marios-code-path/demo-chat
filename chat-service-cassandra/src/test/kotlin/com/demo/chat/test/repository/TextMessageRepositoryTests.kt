@@ -145,7 +145,7 @@ class TextMessageRepositoryTests {
         val countOfMessagesInSelectedRoom = messages
                 .toStream()
                 .asSequence()
-                .count { it.key.topicId == roomSelection }
+                .count { it.key.dest == roomSelection }
 
         val saveMessageFlux = Flux
                 .from(messages)
@@ -251,8 +251,8 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
-            { assertNotNull(msg.value) },
-            { assertEquals(msg.value, MSGTEXT) },
+            { assertNotNull(msg.data) },
+            { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
@@ -261,8 +261,8 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
-            { assertNotNull(msg.value) },
-            { assertEquals(msg.value, MSGTEXT) },
+            { assertNotNull(msg.data) },
+            { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
@@ -271,8 +271,8 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.topicId) },
-            { assertNotNull(msg.value) },
-            { assertEquals(msg.value, MSGTEXT) },
+            { assertNotNull(msg.data) },
+            { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 }

@@ -3,7 +3,7 @@ package com.demo.chatevents.service
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.topic.TopicData
@@ -42,7 +42,7 @@ class TopicServiceRedisStream(
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
     private val streamManager = TopicManager()
-    private val topicXReads: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val topicXReads: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: UUID): Mono<Void> = exists(topic)
             .filter {
@@ -154,7 +154,7 @@ class TopicServiceRedisStream(
                                 .then()
                     }
 
-    override fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
+    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> {
         val map = mapOf(Pair("data", TopicData(topicMessage)))
         /*
             * <li>1    Time-based UUID
@@ -176,15 +176,15 @@ class TopicServiceRedisStream(
                 .then()
     }
 
-    override fun receiveOn(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveOn(streamId: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             streamManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             topicXReads.getOrPut(id, {
                 val xread = getXReadFlux(id)
-                val reProc = ReplayProcessor.create<Message<TopicMessageKey, Any>>(5)
+                val reProc = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(5)
                 streamManager.setTopicProcessor(id, reProc)
                 streamManager.subscribeTopicProcessor(id, xread)
 
@@ -221,7 +221,7 @@ class TopicServiceRedisStream(
                         .closeTopic(id)
             }.then()
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
+    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
             streamManager.getTopicProcessor(id)
 
     private fun keyExists(key: String, errorThrow: Throwable): Mono<Boolean> = stringTemplate
@@ -235,7 +235,7 @@ class TopicServiceRedisStream(
             }
             .switchIfEmpty(Mono.error(errorThrow))
 
-    private fun getXReadFlux(topic: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    private fun getXReadFlux(topic: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             messageTemplate
                     .opsForStream<String, TopicData>()
                     .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))

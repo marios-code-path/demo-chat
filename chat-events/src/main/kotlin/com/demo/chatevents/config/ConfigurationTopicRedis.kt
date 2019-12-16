@@ -36,8 +36,8 @@ class ConfigurationTopicRedis(val props: ConfigurationPropertiesTopicRedis) {
                 propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
-                registerSubtypes(JoinAlertMessage::class.java, ChatMessage::class.java, TopicData::class.java)
-            }.findAndRegisterModules()!!
+                findAndRegisterModules()
+            }!!
 
     @Bean
     fun topicTemplate(cf: ReactiveRedisConnectionFactory): ReactiveRedisTemplate<String, TopicData> {

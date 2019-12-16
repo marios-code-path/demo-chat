@@ -93,8 +93,8 @@ class TextMessageServiceTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val messageKey = keyService.key(TextMessageKey::class.java) { i ->
-            TextMessageKey.create(i.id, roomId, userId)
+        val messageKey = keyService.key(UserMessageKey::class.java) { i ->
+            UserMessageKey.create(i.id, roomId, userId)
         }
         val messages = messageKey
                 .flatMap {
@@ -122,7 +122,7 @@ class TextMessageServiceTests {
                             },
                             {
                                 assertAll("message",
-                                        { assertEquals(MSGTEXT, it.first().value) })
+                                        { assertEquals(MSGTEXT, it.first().data) })
                             }
 
                     )

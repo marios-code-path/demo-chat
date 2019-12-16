@@ -1,17 +1,17 @@
 package com.demo.chat.domain.cassandra
 
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.domain.UserMessageKey
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 import java.util.*
 
-open class ChatMessage<K : TextMessageKey>(
+open class ChatMessage<K : UserMessageKey>(
         @PrimaryKey
         override val key: K,
         @Column("text")
-        override val value: String,
+        override val data: String,
         @Column("visible")
         override val visible: Boolean
 ) : TextMessage
@@ -38,11 +38,10 @@ data class ChatMessageByIdKey(
         override val id: UUID,
         @Column("user_id")
         override val userId: UUID,
-        @Column("topic_id")
-        override val topicId: UUID,
+        @Column("topic_id") val dest: UUID,
         @Column("msg_time")
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey
 
 @PrimaryKeyClass
 data class ChatMessageByUserKey(
@@ -50,11 +49,10 @@ data class ChatMessageByUserKey(
         override val id: UUID,
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         override val userId: UUID,
-        @Column("topic_id")
-        override val topicId: UUID,
+        @Column("topic_id") val dest: UUID,
         @Column("msg_time")
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey
 
 @PrimaryKeyClass
 data class ChatMessageByTopicKey(
@@ -62,8 +60,7 @@ data class ChatMessageByTopicKey(
         override val id: UUID,
         @Column("user_id")
         override val userId: UUID,
-        @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val topicId: UUID,
+        @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0) val dest: UUID,
         @Column("msg_time")
         override val timestamp: Instant
-) : TextMessageKey
+) : UserMessageKey

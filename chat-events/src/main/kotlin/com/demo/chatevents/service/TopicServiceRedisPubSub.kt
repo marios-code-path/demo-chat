@@ -3,7 +3,7 @@ package com.demo.chatevents.service
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.topic.TopicData
@@ -40,7 +40,7 @@ class TopicServiceRedisPubSub(
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
     private val topicManager = TopicManager()
-    private val topicXSource: MutableMap<UUID, Flux<out Message<TopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val topicXSource: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: UUID): Mono<Void> = exists(topic)
             .filter {
@@ -152,7 +152,7 @@ class TopicServiceRedisPubSub(
                                 .then()
                     }
 
-    override fun sendMessage(topicMessage: Message<TopicMessageKey, Any>): Mono<Void> {
+    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> {
         val topic = topicMessage.key.topicId
 
         return Mono.from(topicExistsOrError(topic))
@@ -160,15 +160,15 @@ class TopicServiceRedisPubSub(
                 .then()
     }
 
-    override fun receiveOn(streamId: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveOn(streamId: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             topicManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             topicXSource.getOrPut(id, {
                 val listen = getPubSubFluxFor(id)
-                val processor = ReplayProcessor.create<Message<TopicMessageKey, Any>>(5)
+                val processor = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(5)
                 topicManager.setTopicProcessor(id, processor)
                 topicManager.subscribeTopicProcessor(id, listen)
 
@@ -205,10 +205,10 @@ class TopicServiceRedisPubSub(
                         .closeTopic(id)
             }.then()
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<TopicMessageKey, Any>, out Message<TopicMessageKey, Any>> =
+    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
             topicManager.getTopicProcessor(id)
 
-    private fun getPubSubFluxFor(topic: UUID): Flux<out Message<TopicMessageKey, Any>> =
+    private fun getPubSubFluxFor(topic: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
             messageTemplate
                     .listenTo(ChannelTopic(topic.toString()))
                     .map {

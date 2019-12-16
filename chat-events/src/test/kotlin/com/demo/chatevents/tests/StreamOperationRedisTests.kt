@@ -2,7 +2,7 @@ package com.demo.chatevents.tests
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TopicMessageKey
+import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chatevents.*
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
@@ -175,7 +175,7 @@ class StreamOperationRedisTests {
                 val testUserId = UUID.randomUUID()
 
                 it.next(TestTextMessage(
-                        TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
+                        TestUserMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
                         "TEST ${randomText()}",
                         true
                 ))
@@ -242,7 +242,7 @@ class StreamOperationRedisTests {
         val testUserId = UUID.randomUUID()
 
         val message = TestTextMessage(
-                TestTextMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
+                TestUserMessageKey(testEventId, testUserId, testRoomId, Instant.now()),
                 "TEST MESSAGE",
                 true
         )
@@ -464,7 +464,7 @@ class StreamOperationRedisTests {
                 .expectSubscription()
                 .verifyComplete()
 
-        val testProcessor: TestPublisher<Message<TopicMessageKey, Any>> =
+        val testProcessor: TestPublisher<Message<UUIDTopicMessageKey, Any>> =
                 TestPublisher.create()
 
         val tpDisposable = xread
@@ -474,7 +474,7 @@ class StreamOperationRedisTests {
 
         val tpFlux = testProcessor
                 .flux()
-                .doOnNext { logger.info("TP : ${it.value}") }
+                .doOnNext { logger.info("TP : ${it.data}") }
 
         StepVerifier
                 .create(tpFlux)

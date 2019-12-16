@@ -13,15 +13,16 @@ import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 
 open class MessageController(
         val messageIndex: MessageIndexService,
-        val messagePersistence: TextMessagePersistence,
+        val messagePersistence: TextMessagePersistence<UUID>,
         val topicService: ChatTopicService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
-    fun byTopic(req: MessagesRequest): Flux<out Message<TopicMessageKey, Any>> =
+    fun byTopic(req: MessagesRequest): Flux<out Message<UUID, Any>> =
             Flux.concat(messageIndex
                     .findBy(mapOf(Pair(MessageIndexService.TOPIC, req.topicId.toString())))
                     .collectList()
@@ -31,17 +32,17 @@ open class MessageController(
                     topicService.receiveOn(req.topicId))
 
     @MessageMapping("message-by-id")
-    fun getOne(req: MessageRequest): Mono<out Message<TopicMessageKey, Any>> =
+    fun getOne(req: MessageRequest): Mono<out Message<UUID, Any>> =
             messagePersistence
                     .get(Key.eventKey(req.messageId))
 
     @MessageMapping("text-message-send")
-    fun putTextMessage(req: TextMessageSend): Mono<out TopicMessageKey> =
+    fun putTextMessage(req: TextMessageSend): Mono<out MessageKey<UUID, UUID>> =
             messagePersistence
                     .key()
                     .map { key ->
                         MessageSendRequest(TextMessage.create(
-                                TextMessageKey.create(key, req.topic, req.uid), req.text, true))
+                                UserMessageKey.create(key, req.topic, req.uid), req.text, true))
                     }
                     .flatMap { put -> add(put).map { put.msg.key } }
 

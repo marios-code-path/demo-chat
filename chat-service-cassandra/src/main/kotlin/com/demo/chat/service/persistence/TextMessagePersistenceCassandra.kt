@@ -2,7 +2,7 @@ package com.demo.chat.service.persistence
 
 import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.TextMessageKey
+import com.demo.chat.domain.UserMessageKey
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.TextMessagePersistence
@@ -14,7 +14,7 @@ open class TextMessagePersistenceCassandra(private val keyService: UUIDKeyServic
     : TextMessagePersistence {
 
     override fun key(): Mono<out UUIDKey> =
-            keyService.id(TextMessageKey::class.java)
+            keyService.id(UserMessageKey::class.java)
 
     override fun rem(key: UUIDKey): Mono<Void> = messageRepo.rem(key)
 
