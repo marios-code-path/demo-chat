@@ -10,16 +10,16 @@ import java.util.*
  * TODO: remove key in possible scenarios !
  * key generation is used to combine a created ID() with model object's consturctor
  */
-interface  UUIDKeyService : IKeyService<UUID, UUIDKey>{
-    override fun <T> id(kind: Class<T>): Mono<UUIDKey>
-    override fun rem(key: UUIDKey): Mono<Void>
-    override fun exists(key: UUIDKey): Mono<Boolean>
-    override fun <T> key(kind: Class<T>, create: (key: UUIDKey) -> T): Mono<out T>
+interface  UUIDKeyService : IKeyService<UUID>{
+    override fun <T> id(kind: Class<T>): Mono<out Key<UUID>>
+    override fun rem(key: Key<UUID>): Mono<Void>
+    override fun exists(key: Key<UUID>): Mono<Boolean>
+    override fun <T> key(kind: Class<T>, create: (key: Key<UUID>) -> T): Mono<out T>
 }
 
-interface  IKeyService <I, K: Key<I>> {
-    fun <T> id(kind: Class<T>): Mono<out K>
-    fun rem(key: K): Mono<Void>
-    fun exists(key: K): Mono<Boolean>
-    fun <T> key(kind: Class<T>, create: (key: K) -> T): Mono<out T>
+interface  IKeyService <K> {
+    fun <T> id(kind: Class<T>): Mono<out Key<K>>
+    fun rem(key: Key<K>): Mono<Void>
+    fun exists(key: Key<K>): Mono<Boolean>
+    fun <T> key(kind: Class<T>, create: (key: Key<K>) -> T): Mono<out T>
 }

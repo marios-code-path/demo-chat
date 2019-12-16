@@ -35,8 +35,7 @@ data class TestChatMessageTopic(
 data class TestChatRoomKey(
         override val id: UUID,
         val name: String
-) : TopicKey
-
+) : Key<UUID>
 
 data class TestUserMessageKey(
         override val id: UUID,

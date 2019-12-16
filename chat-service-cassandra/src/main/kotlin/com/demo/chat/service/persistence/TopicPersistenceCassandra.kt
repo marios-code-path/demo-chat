@@ -15,7 +15,7 @@ open class TopicPersistenceCassandra(private val keyService: UUIDKeyService,
 
     override fun get(key: Key<UUID>): Mono<out MessageTopic<UUID>> = roomRepo.findByKeyId(key.id)
 
-    override fun key(): Mono<UUIDKey> = keyService.id(TopicKey::class.java)
+    override fun key(): Mono<out Key<UUID>> = keyService.id(Key::class.java)
 
     override fun add(messageTopic: MessageTopic<UUID>): Mono<Void> =
             roomRepo

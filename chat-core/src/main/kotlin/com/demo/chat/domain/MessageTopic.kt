@@ -17,15 +17,6 @@ interface MessageTopic<K> : KeyDataPair<K, String> {
     }
 }
 
-interface TopicKey : Key<UUID> {
-    companion object Factory {
-        fun create(roomId: UUID) = object : TopicKey {
-            override val id: UUID
-                get() = roomId
-        }
-    }
-}
-
 @JsonTypeName("TopicMeta")
 @Deprecated("Topic Metadata no longer associated at Data-Store level")
 data class TopicMetaData(

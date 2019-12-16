@@ -1,9 +1,34 @@
-package com.demo.chat
+package com.demo.chat.test
 
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.serializers.KeyDeserializer
+import com.demo.chat.domain.serializers.TopicDeserializer
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.Version
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.module.SimpleAbstractTypeResolver
 import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.mockito.Mockito
+import java.util.*
+
+open class TestBase {
+
+    var counter = Random().nextInt()
+
+    val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule()).apply {
+        propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
+        setSerializationInclusion(JsonInclude.Include.NON_NULL)
+        findAndRegisterModules()
+        registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
+            addDeserializer(MessageTopic::class.java, TopicDeserializer())
+            addDeserializer(Key::class.java, KeyDeserializer())
+        })
+    }!!
+
+}
 
 fun <T> anyObject(): T {
     Mockito.anyObject<T>()

@@ -3,10 +3,8 @@ package com.demo.chat.test
 import com.demo.chat.TestUUIDKey
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
-import com.demo.chat.module
 import com.fasterxml.jackson.annotation.*
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
