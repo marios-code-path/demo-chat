@@ -1,7 +1,9 @@
 package com.demo.chat.service.index
 
 import com.datastax.driver.core.policies.DefaultRetryPolicy
-import com.demo.chat.domain.*
+import com.demo.chat.domain.DuplicateUserException
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUserHandle
 import com.demo.chat.domain.cassandra.ChatUserHandleKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
@@ -11,12 +13,11 @@ import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
-import java.util.*
 
 
-class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
-                         val cassandra: ReactiveCassandraTemplate) : UserIndexService {
-    override fun add(ent: User<UUID>, criteria: Map<String, String>): Mono<Void> =
+class UserIndexCassandra<T>(val userHandleRepo: ChatUserHandleRepository<T>,
+                            val cassandra: ReactiveCassandraTemplate) : UserIndexService<T> {
+    override fun add(ent: User<T>, criteria: Map<String, String>): Mono<Void> =
             cassandra.insert(ChatUserHandle(
                     ChatUserHandleKey(ent.key.id, ent.handle),
                     ent.name,
@@ -33,9 +34,9 @@ class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                         }
                     }
 
-    override fun rem(ent: User<UUID>): Mono<Void> = userHandleRepo.rem(ent.key)
+    override fun rem(ent: User<T>): Mono<Void> = userHandleRepo.rem(ent.key)
 
-    override fun findBy(query: Map<String, String>): Flux<out Key<UUID>> =
+    override fun findBy(query: Map<String, String>): Flux<out Key<T>> =
             userHandleRepo.findByKeyHandle(query[HANDLE] ?: error(""))
                     .map {
                         it.key

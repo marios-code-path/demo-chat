@@ -11,4 +11,4 @@ open class AuthenticationException(msg: String) : Exception(msg)
 object UsernamePasswordAuthenticationException : AuthenticationException("Invalid Credentials")
 
 open class IndexException(msg: String) : ChatException(msg)
-class ChatIndexException(id: UUID) : IndexException("Unable to access index for item $id")
+class ChatIndexException(id: String) : IndexException("Unable to access index for item $id")

@@ -73,27 +73,27 @@ interface MessageKey<K, TK> : Key<K> {
     val timestamp: Instant
 }
 
-interface UserMessageKey<K, TK, U> : MessageKey<K, TK> {
-    val userId: U
+interface UserMessageKey<T> : MessageKey<T, T> {
+    val userId: T
 
     companion object Factory {
-        fun <K, TK, U> create(messageId: K, topic: TK, member: U): UserMessageKey<K, TK, U> = object : UserMessageKey<K, TK, U> {
-            override val id: K
+        fun <T> create(messageId: T, topic: T, member: T): UserMessageKey<T> = object : UserMessageKey<T> {
+            override val id: T
                 get() = messageId
-            override val dest: TK
+            override val dest: T
                 get() = topic
-            override val userId: U
+            override val userId: T
                 get() = member
             override val timestamp: Instant
                 get() = Instant.now()
         }
 
-        fun <K, TK, U> create(messageKey: Key<K>, topic: TK, member: U): UserMessageKey<K, TK, U> = object : UserMessageKey<K, TK, U> {
-            override val id: K
+        fun <T> create(messageKey: Key<T>, topic: T, member: T): UserMessageKey<T> = object : UserMessageKey<T> {
+            override val id: T
                 get() = messageKey.id
-            override val dest: TK
+            override val dest: T
                 get() = topic
-            override val userId: U
+            override val userId: T
                 get() = member
             override val timestamp: Instant
                 get() = Instant.now()
@@ -103,14 +103,14 @@ interface UserMessageKey<K, TK, U> : MessageKey<K, TK> {
 
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface Message<K, V> : KeyDataPair<K, V> {
+interface Message<T, E> : KeyDataPair<T, E> {
     val visible: Boolean
 
     companion object Factory {
-        fun <K, V> create(key: Key<K>, value: V, visible: Boolean): Message<K, V> = object : Message<K, V> {
-            override val key: Key<K>
+        fun <T, E> create(key: Key<T>, value: E, visible: Boolean): Message<T, E> = object : Message<T, E> {
+            override val key: Key<T>
                 get() = key
-            override val data: V
+            override val data: E
                 get() = value
             override val visible: Boolean
                 get() = visible
@@ -120,10 +120,12 @@ interface Message<K, V> : KeyDataPair<K, V> {
 
 // TODO :  Relax requirements (TextMessage to Message) on the Persistence layer so we can identify any Message Key and Payload.
 @JsonTypeName("TextMessage")
-interface TextMessage<K> : Message<K, String> {
+interface TextMessage<T> : Message<T, String> {
+    override val key: UserMessageKey<T>
+
     companion object Factory {
-        fun <K, T, U> create(messageId: K, topic: T, member: U, stringOfData: String): TextMessage<K> = object : TextMessage<K> {
-            override val key: Key<K>
+        fun <T> create(messageId: T, topic: T, member: T, stringOfData: String): TextMessage<T> = object : TextMessage<T> {
+            override val key: UserMessageKey<T>
                 get() = UserMessageKey.create(messageId, topic, member)
             override val data: String
                 get() = stringOfData
@@ -131,8 +133,8 @@ interface TextMessage<K> : Message<K, String> {
                 get() = true
         }
 
-        fun <K> create(key: Key<K>, text: String, visible: Boolean): TextMessage<K> = object : TextMessage<K> {
-            override val key: Key<K>
+        fun <T> create(key: UserMessageKey<T>, text: String, visible: Boolean): TextMessage<T> = object : TextMessage<T> {
+            override val key: UserMessageKey<T>
                 get() = key
             override val data: String
                 get() = text

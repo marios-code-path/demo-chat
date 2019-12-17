@@ -4,7 +4,7 @@ import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chat.service.index.MembershipIndexCassandra
-import com.demo.chat.service.index.MessageIndexCassandra
+import com.demo.chat.service.index.TextMessageIndexCassandra
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.service.index.UserIndexCassandra
 import com.demo.chat.service.persistence.*
@@ -43,8 +43,8 @@ class IndexConfiguration {
     @Bean
     fun messageIndex(cassandra: ReactiveCassandraTemplate,
                      byUserRepo: ChatMessageByUserRepository,
-                     byTopicRepo: ChatMessageByTopicRepository): MessageIndexService =
-            MessageIndexCassandra(cassandra, byUserRepo, byTopicRepo)
+                     byTopicRepo: ChatMessageByTopicRepository): TextMessageIndexService =
+            TextMessageIndexCassandra(cassandra, byUserRepo, byTopicRepo)
 }
 
 @ExcludeFromTests

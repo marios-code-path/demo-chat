@@ -5,7 +5,7 @@ import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.controller.app.MessageController
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.TextMessageIndexService
 import com.demo.chat.service.TextMessagePersistence
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
@@ -39,7 +39,7 @@ class RSocketMessagesTests : ControllerTestBase() {
     private lateinit var topicService: ChatTopicService
 
     @Autowired
-    private lateinit var messageIndex: MessageIndexService
+    private lateinit var textMessageIndex: TextMessageIndexService
 
     @Test
     fun `should fetch a single message`() {
@@ -77,7 +77,7 @@ class RSocketMessagesTests : ControllerTestBase() {
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(messageIndex.findBy(anyObject()))
+                .given(textMessageIndex.findBy(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requestor
@@ -110,8 +110,8 @@ class RSocketMessagesTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestMessageController(messageIdx: MessageIndexService,
-                                messagePst: TextMessagePersistence,
-                                topicSvc: ChatTopicService) : MessageController(messageIdx, messagePst, topicSvc)
+        class TestMessageController(textMessageIdx: TextMessageIndexService,
+                                    messagePst: TextMessagePersistence,
+                                    topicSvc: ChatTopicService) : MessageController(textMessageIdx, messagePst, topicSvc)
     }
 }

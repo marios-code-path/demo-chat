@@ -24,7 +24,7 @@ class ConfigurationRSocket {
     private lateinit var userIndex: UserIndexService
 
     @MockBean
-    private lateinit var messageIndex: MessageIndexService
+    private lateinit var textMessageIndex: TextMessageIndexService
 
     @MockBean
     private lateinit var topicPersistence: TopicPersistence

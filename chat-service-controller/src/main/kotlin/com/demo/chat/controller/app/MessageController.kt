@@ -5,7 +5,7 @@ import com.demo.chat.MessageSendRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.TextMessageSend
 import com.demo.chat.domain.*
-import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.TextMessageIndexService
 import com.demo.chat.service.ChatTopicService
 import com.demo.chat.service.TextMessagePersistence
 import org.slf4j.Logger
@@ -16,15 +16,15 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 open class MessageController(
-        val messageIndex: MessageIndexService,
+        val textMessageIndex: TextMessageIndexService,
         val messagePersistence: TextMessagePersistence<UUID>,
         val topicService: ChatTopicService) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
     fun byTopic(req: MessagesRequest): Flux<out Message<UUID, Any>> =
-            Flux.concat(messageIndex
-                    .findBy(mapOf(Pair(MessageIndexService.TOPIC, req.topicId.toString())))
+            Flux.concat(textMessageIndex
+                    .findBy(mapOf(Pair(TextMessageIndexService.TOPIC, req.topicId.toString())))
                     .collectList()
                     .flatMapMany { messageKeys ->
                         messagePersistence.byIds(messageKeys)
@@ -53,7 +53,7 @@ open class MessageController(
         val publisher = when (req.msg) {
             is TextMessage -> messagePersistence
                     .add(req.msg)
-                    .thenMany(messageIndex.add(req.msg, mapOf()))
+                    .thenMany(textMessageIndex.add(req.msg, mapOf()))
                     .then()
             else -> Mono.empty()
         }

@@ -6,8 +6,8 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Key")
-interface Key<K> {
-    val id: K
+interface Key<T> {
+    val id: T
 
     companion object Factory {
         @JvmStatic
@@ -32,9 +32,9 @@ interface UUIDKey : Key<UUID>{
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("KeyData")
-interface KeyDataPair<K, T> {
-    val key: Key<K>
-    val data: T
+interface KeyDataPair<T, E> {
+    val key: Key<T>
+    val data: E
 
     companion object Factory {
         @JvmStatic
@@ -46,10 +46,10 @@ interface KeyDataPair<K, T> {
         }
 
         @JvmStatic
-        fun <K, T> keyDataPair(key: Key<K>, data :T): KeyDataPair<K, T> = object : KeyDataPair<K, T> {
-            override val key: Key<K>
+        fun <T, E> keyDataPair(key: Key<T>, data :E): KeyDataPair<T, E> = object : KeyDataPair<T, E> {
+            override val key: Key<T>
                 get() = key
-            override val data: T
+            override val data: E
                 get() = data
         }
     }

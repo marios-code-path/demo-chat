@@ -13,26 +13,26 @@ import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface ChatMessageByUserRepository<K> : ReactiveCassandraRepository<ChatMessageByUser<K>, K> {
-    fun findByKeyUserId(userId: K): Flux<ChatMessageByUser<K>>
+interface ChatMessageByUserRepository<T> : ReactiveCassandraRepository<ChatMessageByUser<T>, T> {
+    fun findByKeyUserId(userId: T): Flux<ChatMessageByUser<T>>
 }
 
-interface ChatMessageByTopicRepository<K> : ReactiveCassandraRepository<ChatMessageByTopic<K>, K> {
-    fun findByKeyTopicId(topicId: K): Flux<ChatMessageByTopic<K>>
+interface ChatMessageByTopicRepository<T> : ReactiveCassandraRepository<ChatMessageByTopic<T>, T> {
+    fun findByKeyTopicId(topicId: T): Flux<ChatMessageByTopic<T>>
 }
 
-interface ChatMessageRepository<K> : ChatMessageRepositoryCustom<K>, ReactiveCassandraRepository<ChatMessageById<K>, K> {
-    fun findByKeyId(id: K): Mono<ChatMessageById<K>>
+interface ChatMessageRepository<T> : ChatMessageRepositoryCustom<T>, ReactiveCassandraRepository<ChatMessageById<T>, T> {
+    fun findByKeyId(id: T): Mono<ChatMessageById<T>>
 }
 
-interface ChatMessageRepositoryCustom<K> {
-    fun rem(key: Key<K>): Mono<Void>
-    fun add(msg: TextMessage<K>): Mono<Void>
+interface ChatMessageRepositoryCustom<T> {
+    fun rem(key: Key<T>): Mono<Void>
+    fun add(msg: TextMessage<T>): Mono<Void>
 }
 
-class ChatMessageRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplate)
-    : ChatMessageRepositoryCustom<K> {
-    override fun rem(key: Key<K>): Mono<Void> =
+class ChatMessageRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate)
+    : ChatMessageRepositoryCustom<T> {
+    override fun rem(key: Key<T>): Mono<Void> =
             cassandra
                     .update(Query.query(where("msg_id").`is`(key.id)),
                             Update.empty().set("visible", false),
@@ -40,7 +40,7 @@ class ChatMessageRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplat
                     )
                     .then()
 
-    override fun add(msg: TextMessage<K>): Mono<Void> =
+    override fun add(msg: TextMessage<T>): Mono<Void> =
             cassandra
                     .insert(msg)
                     .then()

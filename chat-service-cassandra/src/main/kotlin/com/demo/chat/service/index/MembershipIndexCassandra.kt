@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 class MembershipIndexCassandra<T>(val byMemberRepo: ChatMembershipByMemberRepository<T>,
-                               val byMemberOfRepo: ChatMembershipByMemberOfRepository<T>)
+                                  val byMemberOfRepo: ChatMembershipByMemberOfRepository<T>)
     : MembershipIndexService<T>  {
 
     override fun add(ent: Membership<T>, criteria: Map<T, String>): Mono<Void> =
@@ -47,7 +47,7 @@ class MembershipIndexCassandra<T>(val byMemberRepo: ChatMembershipByMemberReposi
 
     override fun size(roomId: Key<T>): Mono<Int> =
             byMemberOfRepo.findByMemberOfId(roomId.id)
-                    .reduce(0) { c, m ->
+                    .reduce(0) { c, _ ->
                         c + 1
                     }
 
@@ -58,10 +58,10 @@ class MembershipIndexCassandra<T>(val byMemberRepo: ChatMembershipByMemberReposi
     override fun findBy(query: Map<String, T>): Flux<out Key<T>> {
         return when (val queryBy = query.keys.first()) {
             MEMBER -> {
-                byMemberRepo.findByMemberId(query[queryBy] ?: error("member not valid"))
+                byMemberRepo.findByMemberId(query[queryBy] ?: error("missing Member"))
             }
             MEMBEROF -> {
-                byMemberOfRepo.findByMemberOfId(query[queryBy] ?: error("memberOf not valid"))
+                byMemberOfRepo.findByMemberOfId(query[queryBy] ?: error("missing memberOf"))
             }
             else -> {
                 Flux.empty()

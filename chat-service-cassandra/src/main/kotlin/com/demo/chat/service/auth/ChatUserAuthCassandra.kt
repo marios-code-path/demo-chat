@@ -12,16 +12,16 @@ import java.util.*
  * Should do the chore of handling any authentication and authorization operations
  * using Cassandra components as the backing store
  */
-class ChatUserAuthCassandra(private val userIndex: UserIndexService,
-                            private val passwordStore: PasswordStore) : ChatAuthService<UUID> {
+class ChatUserAuthCassandra<T>(private val userIndex: UserIndexService<T>,
+                            private val passwordStore: PasswordStore<T>) : ChatAuthService<T> {
 
-    override fun authenticate(handle: String, password: String): Mono<out Key<UUID>> =
+    override fun authenticate(handle: String, password: String): Mono<out Key<T>> =
             userIndex
                     .findBy(mapOf(Pair("handle", handle)))
                     .last()
                     .flatMap { key ->
                         passwordStore
-                                .getStoredCredentials(key.id)
+                                .getStoredCredentials(key)
                                 .map {
                                     if (it.password == password) key
                                     else null
@@ -30,15 +30,15 @@ class ChatUserAuthCassandra(private val userIndex: UserIndexService,
                     .handle { key, s ->
                         when (key) {
                             null -> s.error(UsernamePasswordAuthenticationException)
-                            else -> s.next(Key.anyKey(key.id))
+                            else -> s.next(key)
                         }
                     }
 
-    override fun createAuthentication(uid: UUID, password: String): Mono<Void> =
+    override fun createAuthentication(uid: T, password: String): Mono<Void> =
             passwordStore.addCredential(ChatCredential(uid, password))
 
 
-    override fun authorize(uid: UUID, target: UUID, action: String): Mono<Void> = Mono.empty()
+    override fun authorize(uid: T, target: T, action: String): Mono<Void> = Mono.empty()
 
-    override fun findAuthorizationsFor(uid: UUID): Flux<AuthorizationMeta> = Flux.empty()
+    override fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T, T>> = Flux.empty()
 }

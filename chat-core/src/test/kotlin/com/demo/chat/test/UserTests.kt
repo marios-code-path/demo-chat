@@ -17,7 +17,7 @@ class UserTests : TestBase() {
         val topicJsons = ArrayList<String>()
         val topics = ArrayList<MessageTopic<out Any>>()
 
-        Stream.generate { User.create(Key.anyKey(Random.nextInt()), "Test-Topic-R") }.limit(5)
+        Stream.generate { MessageTopic.create(Key.anyKey(Random.nextInt()), "Test-Topic-R") }.limit(5)
                 .forEach { msg ->
                     topicJsons.add(mapper.writeValueAsString(msg))
                 }
