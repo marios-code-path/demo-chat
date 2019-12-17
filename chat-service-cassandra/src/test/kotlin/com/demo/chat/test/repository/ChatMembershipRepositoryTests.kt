@@ -21,6 +21,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
+import java.util.*
 import java.util.stream.Stream
 import kotlin.streams.toList
 
@@ -33,13 +34,13 @@ import kotlin.streams.toList
 @CassandraDataSet("simple-membership.cql")
 class ChatMembershipRepositoryTests {
     @Autowired
-    lateinit var repo: ChatMembershipRepository
+    lateinit var repo: ChatMembershipRepository<UUID>
 
     @Autowired
-    lateinit var byMemberRepo: ChatMembershipByMemberRepository
+    lateinit var byMemberRepo: ChatMembershipByMemberRepository<UUID>
 
     @Autowired
-    lateinit var byMemberOfRepo: ChatMembershipByMemberOfRepository
+    lateinit var byMemberOfRepo: ChatMembershipByMemberOfRepository<UUID>
 
     @BeforeEach
     fun setUp() {
@@ -50,8 +51,8 @@ class ChatMembershipRepositoryTests {
     fun `should save, find all`() {
         val membership = ChatMembership(
                 ChatMembershipKey(UUIDs.timeBased()),
-                CassandraKeyType(UUIDs.timeBased()),
-                CassandraKeyType(UUIDs.timeBased())
+                CassandraUUIDKeyType(UUIDs.timeBased()),
+                CassandraUUIDKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -74,8 +75,8 @@ class ChatMembershipRepositoryTests {
         val keyId = ChatMembershipKey(UUIDs.timeBased())
         val membership = ChatMembership(
                 keyId,
-                CassandraKeyType(UUIDs.timeBased()),
-                CassandraKeyType(UUIDs.timeBased())
+                CassandraUUIDKeyType(UUIDs.timeBased()),
+                CassandraUUIDKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = repo
@@ -95,14 +96,14 @@ class ChatMembershipRepositoryTests {
 
     @Test
     fun `should save, delete one, find remaining one by all`() {
-        val memberships = mutableSetOf<ChatMembership>()
-        val streamOfMemberships = Flux.generate <ChatMembershipKey> { s -> s.next(ChatMembershipKey(UUIDs.timeBased())) }
+        val memberships = mutableSetOf<ChatMembership<UUID>>()
+        val streamOfMemberships = Flux.generate <ChatMembershipKey<UUID>> { s -> s.next(ChatMembershipKey(UUIDs.timeBased())) }
                 .take(2)
                 .map {key ->
                     val i = ChatMembership(
                             key,
-                            CassandraKeyType(UUIDs.timeBased()),
-                            CassandraKeyType(UUIDs.timeBased())
+                            CassandraUUIDKeyType(UUIDs.timeBased()),
+                            CassandraUUIDKeyType(UUIDs.timeBased())
                     )
                     memberships.add(i)
 
@@ -132,9 +133,9 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberId`() {
         val keyId = ChatMembershipKeyByMember(UUIDs.timeBased())
         val membership = ChatMembershipByMember(
-                CassandraKeyType(UUIDs.timeBased()),
+                CassandraUUIDKeyType(UUIDs.timeBased()),
                 keyId,
-                CassandraKeyType(UUIDs.timeBased())
+                CassandraUUIDKeyType(UUIDs.timeBased())
         )
 
         val membershipSave = byMemberRepo
@@ -156,8 +157,8 @@ class ChatMembershipRepositoryTests {
     fun `should save, find by memberOf`() {
         val keyId = ChatMembershipKeyByMemberOf(UUIDs.timeBased())
         val membership = ChatMembershipByMemberOf(
-                CassandraKeyType(UUIDs.timeBased()),
-                CassandraKeyType(UUIDs.timeBased()),
+                CassandraUUIDKeyType(UUIDs.timeBased()),
+                CassandraUUIDKeyType(UUIDs.timeBased()),
                 keyId
         )
 
@@ -186,8 +187,8 @@ class ChatMembershipRepositoryTests {
         val memberships = Flux.fromIterable(keyList
                 .map {
                     ChatMembership(ChatMembershipKey(it.id),
-                            CassandraKeyType(UUIDs.timeBased()),
-                            CassandraKeyType((UUIDs.timeBased())))
+                            CassandraUUIDKeyType(UUIDs.timeBased()),
+                            CassandraUUIDKeyType((UUIDs.timeBased())))
                 })
 
         val repoStream = repo

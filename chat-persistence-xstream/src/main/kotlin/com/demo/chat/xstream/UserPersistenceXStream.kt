@@ -1,5 +1,6 @@
 package com.demo.chat.xstream
 
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
@@ -27,9 +28,9 @@ data class KeyConfiguration(
 
 class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
                              private val keyService: UUIDKeyService,
-                             private val userTemplate: ReactiveRedisTemplate<String, User>
+                             private val userTemplate: ReactiveRedisTemplate<String, User<UUID>>
 ) : UserPersistence {
-    override fun all(): Flux<out User> = userTemplate
+    override fun all(): Flux<out User<UUID>> = userTemplate
             .opsForStream<String, String>()
             .read(StreamOffset.fromStart(keyConfiguration.keyUserStreamKey))
             .map { record ->
@@ -57,9 +58,9 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
             }
             .single()
 
-    override fun key(): Mono<out UUIDKey> = keyService.id(UserKey::class.java)
+    override fun key(): Mono<out Key<UUID>> = keyService.key(User::class.java)
 
-    override fun add(ent: User): Mono<Void> =
+    override fun add(ent: User<UUID>): Mono<Void> =
             userTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
@@ -68,5 +69,5 @@ class UserPersistenceXStream(private val keyConfiguration: KeyConfiguration,
                                             .convertValue(ent, Map::class.java) as MutableMap<Any, Any>))
                     .then()
 
-    override fun rem(key: UUIDKey): Mono<Void> = keyService.rem(key)
+    override fun rem(key: Key<UUID>): Mono<Void> = keyService.rem(key)
 }

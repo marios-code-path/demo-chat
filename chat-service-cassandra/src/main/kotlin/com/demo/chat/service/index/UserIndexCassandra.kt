@@ -11,11 +11,12 @@ import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
+import java.util.*
 
 
 class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                          val cassandra: ReactiveCassandraTemplate) : UserIndexService {
-    override fun add(ent: User, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: User<UUID>, criteria: Map<String, String>): Mono<Void> =
             cassandra.insert(ChatUserHandle(
                     ChatUserHandleKey(ent.key.id, ent.handle),
                     ent.name,
@@ -32,9 +33,9 @@ class UserIndexCassandra(val userHandleRepo: ChatUserHandleRepository,
                         }
                     }
 
-    override fun rem(ent: User): Mono<Void> = userHandleRepo.rem(ent.key)
+    override fun rem(ent: User<UUID>): Mono<Void> = userHandleRepo.rem(ent.key)
 
-    override fun findBy(query: Map<String, String>): Flux<out UserKey> =
+    override fun findBy(query: Map<String, String>): Flux<out Key<UUID>> =
             userHandleRepo.findByKeyHandle(query[HANDLE] ?: error(""))
                     .map {
                         it.key

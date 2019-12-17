@@ -8,37 +8,35 @@ import org.springframework.data.cassandra.core.mapping.PrimaryKey
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
 import org.springframework.data.cassandra.core.mapping.Table
-import java.util.*
 
 @Table("chat_room")
-data class ChatMessageTopic(
+data class ChatMessageTopic<K>(
         @PrimaryKey
-        override val key: ChatTopicKey,
+        override val key: ChatTopicKey<K>,
         override val data: String,
         val active: Boolean
-) : MessageTopic<UUID>
+) : MessageTopic<K>
 
 @Table("chat_room_name")
-data class ChatMessageTopicName(
+data class ChatMessageTopicName<K>(
         @PrimaryKey
-        override val key: ChatRoomNameKey,
+        override val key: ChatRoomNameKey<K>,
         val active: Boolean
-) : MessageTopic<UUID>
-{
-        @Transient
-        override val data: String = key.name
+) : MessageTopic<K> {
+    @Transient
+    override val data: String = key.name
 }
 
 @PrimaryKeyClass
-data class ChatTopicKey(
+data class ChatTopicKey<K>(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID
-) : Key<UUID>
+        override val id: K
+) : Key<K>
 
 @PrimaryKeyClass
-data class ChatRoomNameKey(
+data class ChatRoomNameKey<K>(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-        override val id: UUID,
+        override val id: K,
         @PrimaryKeyColumn(name = "name", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         val name: String
-) : Key<UUID>
+) : Key<K>

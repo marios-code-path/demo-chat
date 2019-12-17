@@ -1,7 +1,9 @@
 package com.demo.chat.repository.cassandra
 
 import com.datastax.driver.core.policies.DefaultRetryPolicy
-import com.demo.chat.domain.*
+import com.demo.chat.domain.DuplicateUserException
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUser
 import com.demo.chat.domain.cassandra.ChatUserHandle
 import com.demo.chat.domain.cassandra.ChatUserHandleKey
@@ -15,34 +17,33 @@ import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
-import java.util.*
 
 
-interface ChatUserRepository : ReactiveCassandraRepository<ChatUser, ChatUserKey>,
-        ChatUserRepositoryCustom {
-    fun findByKeyId(uuid: UUID): Mono<ChatUser>
-    fun findByKeyIdIn(uuids: Flux<UUID>): Flux<ChatUser>
+interface ChatUserRepository<K> : ReactiveCassandraRepository<ChatUser<K>, K>,
+        ChatUserRepositoryCustom<K> {
+    fun findByKeyId(id: K): Mono<out ChatUser<K>>
+    fun findByKeyIdIn(ids: Flux<K>): Flux<out ChatUser<K>>
 }
 
-interface ChatUserHandleRepository
-    : ReactiveCassandraRepository<ChatUserHandle, ChatUserHandleKey>,
-        ChatUserHandleRepositoryCustom {
-    fun findByKeyHandle(handle: String): Mono<ChatUserHandle>
+interface ChatUserHandleRepository<K>
+    : ReactiveCassandraRepository<ChatUserHandle<K>, K>,
+        ChatUserHandleRepositoryCustom<K> {
+    fun findByKeyHandle(handle: String): Mono<ChatUserHandle<K>>
 }
 
-interface ChatUserRepositoryCustom {
-    fun add(u: User): Mono<Void>
-    fun rem(key: UUIDKey): Mono<Void>
+interface ChatUserRepositoryCustom<K> {
+    fun add(u: User<K>): Mono<Void>
+    fun rem(key: Key<K>): Mono<Void>
 }
 
-interface ChatUserHandleRepositoryCustom {
-    fun add(u: User): Mono<Void>
-    fun rem(key: UUIDKey): Mono<Void>
+interface ChatUserHandleRepositoryCustom<K> {
+    fun add(u: User<K>): Mono<Void>
+    fun rem(key: Key<K>): Mono<Void>
 }
 
-class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
-    : ChatUserHandleRepositoryCustom {
-    override fun rem(key: UUIDKey): Mono<Void> =
+class ChatUserHandleRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplate)
+    : ChatUserHandleRepositoryCustom<K> {
+    override fun rem(key: Key<K>): Mono<Void> =
             cassandra
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
@@ -50,7 +51,7 @@ class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplat
                     )
                     .then()
 
-    override fun add(u: User): Mono<Void> =
+    override fun add(u: User<K>): Mono<Void> =
             cassandra
                     .insert(
                             ChatUserHandle(
@@ -74,9 +75,9 @@ class ChatUserHandleRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplat
                     .then()
 }
 
-class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
-    : ChatUserRepositoryCustom {
-    override fun rem(key: UUIDKey): Mono<Void> =
+class ChatUserRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplate)
+    : ChatUserRepositoryCustom<K> {
+    override fun rem(key: Key<K>): Mono<Void> =
             cassandra
                     .update(Query.query(where("user_id").`is`(key.id)),
                             Update.empty().set("active", false),
@@ -84,7 +85,7 @@ class ChatUserRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     )
                     .then()
 
-    override fun add(u: User): Mono<Void> =
+    override fun add(u: User<K>): Mono<Void> =
             cassandra
                     .insert(
                             ChatUser(

@@ -1,5 +1,6 @@
 package com.demo.chat.repository.cassandra
 
+import com.demo.chat.domain.Membership
 import com.demo.chat.domain.cassandra.ChatMembership
 import com.demo.chat.domain.cassandra.ChatMembershipByMember
 import com.demo.chat.domain.cassandra.ChatMembershipByMemberOf
@@ -8,15 +9,15 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-interface ChatMembershipRepository : ReactiveCassandraRepository<ChatMembership, UUID> {
-    fun findByKeyId(id: UUID) : Mono<ChatMembership>
-    fun findByKeyIdIn(ids: List<UUID>): Flux<ChatMembership>
+interface ChatMembershipRepository<S> : ReactiveCassandraRepository<Membership<S>, S> {
+    fun findByKeyId(id: S) : Mono<ChatMembership<S>>
+    fun findByKeyIdIn(ids: List<S>): Flux<ChatMembership<S>>
 }
 
-interface ChatMembershipByMemberRepository : ReactiveCassandraRepository<ChatMembershipByMember, UUID> {
-    fun findByMemberId(id: UUID) : Flux<ChatMembershipByMember>
+interface ChatMembershipByMemberRepository<S> : ReactiveCassandraRepository<Membership<S>, S> {
+    fun findByMemberId(id: S) : Flux<ChatMembershipByMember<S>>
 }
 
-interface ChatMembershipByMemberOfRepository : ReactiveCassandraRepository<ChatMembershipByMemberOf, UUID> {
-    fun findByMemberOfId(id: UUID) : Flux<ChatMembershipByMemberOf>
+interface ChatMembershipByMemberOfRepository<S> : ReactiveCassandraRepository<Membership<S>, S> {
+    fun findByMemberOfId(id: S) : Flux<ChatMembershipByMemberOf<S>>
 }

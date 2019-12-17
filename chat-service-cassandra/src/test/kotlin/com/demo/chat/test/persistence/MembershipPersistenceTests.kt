@@ -1,7 +1,7 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.cassandra.CassandraKeyType
+import com.demo.chat.domain.cassandra.CassandraUUIDKeyType
 import com.demo.chat.domain.cassandra.ChatMembership
 import com.demo.chat.domain.cassandra.ChatMembershipKey
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
@@ -40,8 +40,8 @@ class MembershipPersistenceTests {
 
     private val testChatMembership = ChatMembership(
             ChatMembershipKey(keyId),
-            CassandraKeyType(memberId),
-            CassandraKeyType(topicId)
+            CassandraUUIDKeyType(memberId),
+            CassandraUUIDKeyType(topicId)
     )
 
     @BeforeEach

@@ -1,6 +1,7 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.UserKey
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.TestConfiguration
@@ -20,6 +21,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
+import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
@@ -31,7 +33,7 @@ class KeyServiceTests {
     @Autowired
     private lateinit var template: ReactiveCassandraTemplate
 
-    lateinit var svc: UUIDKeyService
+    lateinit var svc: IKeyService<UUID>
 
     private val handle = "darkbit"
 
@@ -44,7 +46,7 @@ class KeyServiceTests {
     @Test
     fun `created key should Exist`() {
         val keyStream = svc
-                .id(UserKey::class.java)
+                .key(UserKey::class.java)
                 .flatMap(svc::exists)
 
         StepVerifier
@@ -60,7 +62,7 @@ class KeyServiceTests {
 
     @Test
     fun `should create an key`() {
-        val key = svc.id(UserKey::class.java)
+        val key = svc.key(UserKey::class.java)
 
         StepVerifier
                 .create(key)
@@ -76,7 +78,7 @@ class KeyServiceTests {
 
     @Test
     fun `should delete a key`() {
-        val key = svc.id(UserKey::class.java)
+        val key = svc.key(UserKey::class.java)
         val deleteStream = Flux
                 .from(key)
                 .flatMap(svc::rem)
@@ -89,9 +91,7 @@ class KeyServiceTests {
 
     @Test
     fun `should create new UserKey`() {
-        val userKey = svc.key(UserKey::class.java) {
-            UserKey.create(it.id)
-        }
+        val userKey = svc.key(UserKey::class.java)
 
         StepVerifier
                 .create(userKey)

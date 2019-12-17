@@ -11,27 +11,26 @@ import org.springframework.data.cassandra.core.query.Update
 import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
-import java.util.*
 
 
-interface TopicByNameRepository : ReactiveCassandraRepository<ChatMessageTopicName, String> {
-    fun findByKeyName(name: String): Mono<out Key<UUID>>
+interface TopicByNameRepository<K> : ReactiveCassandraRepository<ChatMessageTopicName<K>, K> {
+    fun findByKeyName(name: String): Mono<out Key<K>>
 }
 
-interface TopicRepository :
-        ReactiveCassandraRepository<ChatMessageTopic, UUID>,
-        TopicRepositoryCustom {
-    fun findByKeyId(id: UUID): Mono<out MessageTopic<UUID>>
+interface TopicRepository<K> :
+        ReactiveCassandraRepository<ChatMessageTopic<K>, K>,
+        TopicRepositoryCustom<K> {
+    fun findByKeyId(id: K): Mono<out MessageTopic<K>>
 }
 
-interface TopicRepositoryCustom {
-    fun add(messageTopic: MessageTopic<UUID>): Mono<Void>
-    fun rem(roomKey: Key<UUID>): Mono<Void>
+interface TopicRepositoryCustom<K> {
+    fun add(messageTopic: MessageTopic<K>): Mono<Void>
+    fun rem(roomKey: Key<K>): Mono<Void>
 }
 
-class TopicRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
-        TopicRepositoryCustom {
-    override fun rem(key: Key<UUID>): Mono<Void> =
+class TopicRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplate) :
+        TopicRepositoryCustom<K> {
+    override fun rem(key: Key<K>): Mono<Void> =
             cassandra
                     .update(Query.query(where("room_id").`is`(key.id)),
                             Update.empty().set("active", false),
@@ -39,7 +38,7 @@ class TopicRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate) :
                     )
                     .then()
 
-    override fun add(messageTopic: MessageTopic<UUID>): Mono<Void> = cassandra
+    override fun add(messageTopic: MessageTopic<K>): Mono<Void> = cassandra
             .insert(ChatMessageTopic(
                     ChatTopicKey(
                             messageTopic.key.id

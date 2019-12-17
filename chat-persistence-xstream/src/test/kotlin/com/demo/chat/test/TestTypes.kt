@@ -28,11 +28,11 @@ data class TestChatUser(
         override val handle: String,
         override val imageUri: String,
         override val timestamp: Instant
-) : User
+) : User<UUID>
 
 data class TestChatUserKey(
         override val id: UUID
-) : UserKey
+) : Key<UUID>
 
 @JsonTypeName("ChatRoom")
 data class TestChatMessageTopic(

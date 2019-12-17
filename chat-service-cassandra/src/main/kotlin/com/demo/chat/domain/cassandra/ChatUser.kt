@@ -1,5 +1,6 @@
 package com.demo.chat.domain.cassandra
 
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserKey
 import org.springframework.data.annotation.Transient
@@ -9,9 +10,9 @@ import java.time.Instant
 import java.util.*
 
 @Table("chat_user")
-data class ChatUser(
+data class ChatUser<K>(
         @PrimaryKey
-        override val key: ChatUserKey,
+        override val key: ChatUserKey<K>,
         @Column("name")
         override val name: String,
         @Column("handle")
@@ -20,33 +21,33 @@ data class ChatUser(
         override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User
+) : User<K>
 
 @PrimaryKeyClass
-data class ChatUserKey(
+data class ChatUserKey<K>(
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: UUID
-) : UserKey
+        override val id: K
+) : Key<K>
 
 @Table("chat_user_handle")
-data class ChatUserHandle(
+data class ChatUserHandle<K>(
         @PrimaryKey
-        override val key: ChatUserHandleKey,
+        override val key: ChatUserHandleKey<K>,
         @Column("name")
         override val name: String,
         @Column("image_uri")
         override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User {
+) : User<K> {
     @Transient
     override val handle: String = key.handle
 }
 
 @PrimaryKeyClass
-data class ChatUserHandleKey(
+data class ChatUserHandleKey<K>(
         @Column("user_id")
-        override val id: UUID,
+        override val id: K,
         @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         val handle: String
-) : UserKey
+) : Key<K>

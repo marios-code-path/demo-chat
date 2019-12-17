@@ -11,14 +11,14 @@ data class TestChatUser(
         override val name: String,
         override val imageUri: String,
         override val timestamp: Instant
-) : User {
+) : User<UUID> {
     override val handle: String = key.handle
 }
 
 data class TestChatUserKey(
         override val id: UUID,
         val handle: String
-) : UserKey
+) : Key<UUID>
 
 data class TestUUIDKey(
         override val id: UUID

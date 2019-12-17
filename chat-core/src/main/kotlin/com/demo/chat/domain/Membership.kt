@@ -2,6 +2,7 @@ package com.demo.chat.domain
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
+import java.util.*
 
 // I'd like to make memberships cross relational in the chat domain, thus
 // I've parameterized the types for Member, and Member-Of
@@ -10,31 +11,18 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 // topic Key = TK
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Membership")
-interface Membership<KT : UUIDKey> {
-    val key: KT
-    val memberOf: KT
-    val member: KT
+interface Membership<S> {
+    val key: Key<S>
+    val memberOf: Key<S>
+    val member: Key<S>
 
     companion object Factory {
-        fun <KT : UUIDKey> create(k: KT, mof: KT, m: KT): Membership<KT> = object : Membership<KT> {
-            override val key: KT
+        fun <KT> create(k: Key<KT>, mof: Key<KT>, m: Key<KT>): Membership<KT> = object : Membership<KT> {
+            override val key: Key<KT>
                 get() = k
-            override val member: KT
+            override val member: Key<KT>
                 get() = m
-            override val memberOf: KT
-                get() = mof
-        }
-    }
-}
-
-interface TopicMembership : Membership<UUIDKey> {
-    companion object Factory {
-        fun create(k: UUIDKey, mof: UUIDKey, m: UUIDKey): TopicMembership = object : TopicMembership {
-            override val key: UUIDKey
-                get() = k
-            override val member: UUIDKey
-                get() = m
-            override val memberOf: UUIDKey
+            override val memberOf: Key<KT>
                 get() = mof
         }
     }

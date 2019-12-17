@@ -1,25 +1,26 @@
 package com.demo.chat.service
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.Membership
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.User
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 /**
- * for given Type T, Given Key [K], and Query[Q] we will add, remove and seek K's for a given WriteCriteria[WQ]
+ * given [T]ype of key, in [E]ntity, [Q]uery request, [W]rite Query request
  */
-interface IndexService<K, in T, Q, WQ> {
-    fun add(entity: T, criteria: WQ): Mono<Void>
-    fun rem(entity: T): Mono<Void>
-    fun findBy(query: Q): Flux<out Key<K>>
+interface IndexService<E, Q, W> {
+    fun add(entity: E, criteria: W): Mono<Void>
+    fun rem(entity: E): Mono<Void>
+    fun findBy(query: Q): Flux<out Key<out Any>>
 }
 
-interface MapQueryIndexService<K, T> : IndexService<K, T, Map<String, String>, Map<String, String>>
+interface MapQueryIndexService<E> : IndexService<E, Map<String, E>, Map<E, String>>
 
-// Split out specific definitions for visibility elsewhere (where's DDD's idea here? )
-interface UserIndexService : IndexService<UUID, User, Map<String, String>, Map<String, String>>
+interface UserIndexService<T> : IndexService<User<T>, Map<String, String>, Map<String, String>>
 
-interface TopicIndexService : MapQueryIndexService<UUID, MessageTopic<UUID>> {
+interface TopicIndexService<T> : MapQueryIndexService<MessageTopic<T>> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
@@ -29,10 +30,10 @@ interface TopicIndexService : MapQueryIndexService<UUID, MessageTopic<UUID>> {
     }
 }
 
-interface MembershipIndexService : IndexService<UUID, TopicMembership,Map<String, String>, Map<String, String>> {
-    fun size(roomId: UUIDKey): Mono<Int>
-    fun addMember(membership: TopicMembership): Mono<Void>
-    fun remMember(membership: TopicMembership): Mono<Void>
+interface MembershipIndexService<T> : MapQueryIndexService<Membership<T>> {
+    fun size(roomId: Key<T>): Mono<Int>
+    fun addMember(membership: Membership<T>): Mono<Void>
+    fun remMember(membership: Membership<T>): Mono<Void>
 
     companion object {
         const val ID = "ID"
@@ -41,7 +42,7 @@ interface MembershipIndexService : IndexService<UUID, TopicMembership,Map<String
     }
 }
 
-interface MessageIndexService : IndexService<UUID, TextMessage<UUID>,Map<String, String>, Map<String, String>> {
+interface MessageIndexService<T> : MapQueryIndexService<Membership<T>> {
     companion object {
         const val TOPIC = "topicId"
         const val USER = "userId"

@@ -11,56 +11,57 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-class MembershipIndexCassandra(val byMemberRepo: ChatMembershipByMemberRepository,
-                               val byMemberOfRepo: ChatMembershipByMemberOfRepository) : MembershipIndexService {
+class MembershipIndexCassandra<T>(val byMemberRepo: ChatMembershipByMemberRepository<T>,
+                               val byMemberOfRepo: ChatMembershipByMemberOfRepository<T>)
+    : MembershipIndexService<T>  {
 
-    override fun add(ent: TopicMembership, criteria: Map<String, String>): Mono<Void> =
+    override fun add(ent: Membership<T>, criteria: Map<T, String>): Mono<Void> =
             byMemberRepo
                     .save(ChatMembershipByMember(
-                            CassandraKeyType(ent.key.id),
+                            CassandraUUIDKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CassandraKeyType(ent.memberOf.id)
+                            CassandraUUIDKeyType(ent.memberOf.id)
                     ))
                     .thenMany(byMemberOfRepo
                             .save(ChatMembershipByMemberOf(
-                                    CassandraKeyType(ent.key.id),
-                                    CassandraKeyType(ent.member.id),
+                                    CassandraUUIDKeyType(ent.key.id),
+                                    CassandraUUIDKeyType(ent.member.id),
                                     ChatMembershipKeyByMemberOf(ent.memberOf.id)
                             ))).then()
 
-    override fun rem(ent: TopicMembership): Mono<Void> =
+    override fun rem(ent: Membership<T>): Mono<Void> =
             byMemberRepo
                     .delete(ChatMembershipByMember(
-                            CassandraKeyType(ent.key.id),
+                            CassandraUUIDKeyType(ent.key.id),
                             ChatMembershipKeyByMember(ent.member.id),
-                            CassandraKeyType(ent.memberOf.id)))
+                            CassandraUUIDKeyType(ent.memberOf.id)))
                     .flatMap {
                         byMemberOfRepo
                                 .delete(ChatMembershipByMemberOf(
-                                        CassandraKeyType(ent.key.id),
-                                        CassandraKeyType(ent.member.id),
+                                        CassandraUUIDKeyType(ent.key.id),
+                                        CassandraUUIDKeyType(ent.member.id),
                                         ChatMembershipKeyByMemberOf(ent.memberOf.id))
                                 )
                     }
                     .then()
 
-    override fun size(roomId: UUIDKey): Mono<Int> =
+    override fun size(roomId: Key<T>): Mono<Int> =
             byMemberOfRepo.findByMemberOfId(roomId.id)
                     .reduce(0) { c, m ->
                         c + 1
                     }
 
-    override fun addMember(membership: TopicMembership): Mono<Void> = add(membership, mapOf())
+    override fun addMember(membership: Membership<T>): Mono<Void> = add(membership, mapOf())
 
-    override fun remMember(membership: TopicMembership): Mono<Void> = rem(membership)
+    override fun remMember(membership: Membership<T>): Mono<Void> = rem(membership)
 
-    override fun findBy(query: Map<String, String>): Flux<out UUIDKey> {
+    override fun findBy(query: Map<String, T>): Flux<out Key<T>> {
         return when (val queryBy = query.keys.first()) {
             MEMBER -> {
-                byMemberRepo.findByMemberId(UUID.fromString(query[queryBy] ?: error("member not valid")))
+                byMemberRepo.findByMemberId(query[queryBy] ?: error("member not valid"))
             }
             MEMBEROF -> {
-                byMemberOfRepo.findByMemberOfId(UUID.fromString(query[queryBy] ?: error("memberOf not valid")))
+                byMemberOfRepo.findByMemberOfId(query[queryBy] ?: error("memberOf not valid"))
             }
             else -> {
                 Flux.empty()

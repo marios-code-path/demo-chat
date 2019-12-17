@@ -1,8 +1,8 @@
 package com.demo.chat.repository.cassandra
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.TextMessage
 import com.demo.chat.domain.cassandra.ChatMessageById
-import com.demo.chat.domain.cassandra.ChatMessageByIdKey
 import com.demo.chat.domain.cassandra.ChatMessageByTopic
 import com.demo.chat.domain.cassandra.ChatMessageByUser
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -12,28 +12,27 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
-interface ChatMessageByUserRepository : ReactiveCassandraRepository<ChatMessageByUser, UUID> {
-    fun findByKeyUserId(userId: UUID): Flux<ChatMessageByUser>
+interface ChatMessageByUserRepository<K> : ReactiveCassandraRepository<ChatMessageByUser<K>, K> {
+    fun findByKeyUserId(userId: K): Flux<ChatMessageByUser<K>>
 }
 
-interface ChatMessageByTopicRepository : ReactiveCassandraRepository<ChatMessageByTopic, UUID> {
-    fun findByKeyTopicId(topicId: UUID): Flux<ChatMessageByTopic>
+interface ChatMessageByTopicRepository<K> : ReactiveCassandraRepository<ChatMessageByTopic<K>, K> {
+    fun findByKeyTopicId(topicId: K): Flux<ChatMessageByTopic<K>>
 }
 
-interface ChatMessageRepository : ChatMessageRepositoryCustom, ReactiveCassandraRepository<ChatMessageById, UUID> {
-    fun findByKeyId(id: UUID): Mono<ChatMessageById>
+interface ChatMessageRepository<K> : ChatMessageRepositoryCustom<K>, ReactiveCassandraRepository<ChatMessageById<K>, K> {
+    fun findByKeyId(id: K): Mono<ChatMessageById<K>>
 }
 
-interface ChatMessageRepositoryCustom {
-    fun rem(key: UUIDKey): Mono<Void>
-    fun add(msg: TextMessage): Mono<Void>
+interface ChatMessageRepositoryCustom<K> {
+    fun rem(key: Key<K>): Mono<Void>
+    fun add(msg: TextMessage<K>): Mono<Void>
 }
 
-class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
-    : ChatMessageRepositoryCustom {
-    override fun rem(key: UUIDKey): Mono<Void> =
+class ChatMessageRepositoryCustomImpl<K>(val cassandra: ReactiveCassandraTemplate)
+    : ChatMessageRepositoryCustom<K> {
+    override fun rem(key: Key<K>): Mono<Void> =
             cassandra
                     .update(Query.query(where("msg_id").`is`(key.id)),
                             Update.empty().set("visible", false),
@@ -41,18 +40,9 @@ class ChatMessageRepositoryCustomImpl(val cassandra: ReactiveCassandraTemplate)
                     )
                     .then()
 
-    override fun add(msg: TextMessage): Mono<Void> =
+    override fun add(msg: TextMessage<K>): Mono<Void> =
             cassandra
-                    .insert(ChatMessageById(
-                            ChatMessageByIdKey(
-                                    msg.key.id,
-                                    msg.key.userId,
-                                    msg.key.topicId,
-                                    msg.key.timestamp
-                            ),
-                            msg.data,
-                            msg.visible
-                    ))
+                    .insert(msg)
                     .then()
 
 }

@@ -118,6 +118,7 @@ interface Message<K, V> : KeyDataPair<K, V> {
     }
 }
 
+// TODO :  Relax requirements (TextMessage to Message) on the Persistence layer so we can identify any Message Key and Payload.
 @JsonTypeName("TextMessage")
 interface TextMessage<K> : Message<K, String> {
     companion object Factory {
