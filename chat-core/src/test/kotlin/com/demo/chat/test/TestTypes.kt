@@ -10,7 +10,7 @@ import java.util.*
 
 
 @JsonTypeName("AlertKey")
-data class TestAlertKey(override val dest: UUID) : MessageKey<UUID, UUID> {
+data class TestAlertKey(override val dest: UUID) : MessageKey<UUID> {
     override val id: UUID = UUID(0, 0)
     override val timestamp = Instant.now()
 }
@@ -21,7 +21,7 @@ data class TestAlert(override val key: TestAlertKey, override val data: Int) : M
 }
 
 @JsonTypeName("TextKey")
-data class TestMessageKey(override val id: UUID, override val dest: UUID, override val userId: UUID) : UserMessageKey<UUID, UUID, UUID> {
+data class TestMessageKey(override val id: UUID, override val dest: UUID, override val userId: UUID) : UserMessageKey<UUID> {
     override val timestamp = Instant.now()
 }
 

@@ -37,10 +37,10 @@ import java.util.*
 @CassandraDataSet("simple-user.cql")
 class ChatUserRepositoryTests {
     @Autowired
-    lateinit var repo: ChatUserRepository
+    lateinit var repo: ChatUserRepository<UUID>
 
     @Autowired
-    lateinit var handleRepo: ChatUserHandleRepository
+    lateinit var handleRepo: ChatUserHandleRepository<UUID>
 
     @Autowired
     lateinit var template: ReactiveCassandraTemplate
@@ -190,7 +190,7 @@ class ChatUserRepositoryTests {
                 .verifyComplete()
     }
 
-    fun userAssertions(user: User) {
+    fun userAssertions(user: User<UUID>) {
         MatcherAssert
                 .assertThat("A User has key and properties", user,
                         Matchers.allOf(
@@ -209,7 +209,7 @@ class ChatUserRepositoryTests {
 
 
     // helper function to verify user state
-    fun userStateAssertions(user: User, handle: String?, name: String?) {
+    fun userStateAssertions(user: User<UUID>, handle: String?, name: String?) {
         assertAll("User Assertion",
                 { Assertions.assertNotNull(user) },
                 { Assertions.assertNotNull(user.key.id) },

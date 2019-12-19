@@ -3,10 +3,10 @@ package com.demo.chat.test.repository
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.cassandra.ChatMessageTopic
-import com.demo.chat.domain.cassandra.ChatMessageTopicName
-import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicKey
+import com.demo.chat.domain.cassandra.ChatTopicName
+import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.test.TestConfiguration
@@ -23,7 +23,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
 import java.util.*
@@ -38,10 +37,10 @@ class MessageTopicRepositoryTests {
     private val ROOMNAME = "XYZ"
 
     @Autowired
-    lateinit var repo: TopicRepository
+    lateinit var repo: TopicRepository<UUID>
 
     @Autowired
-    lateinit var byNameRepo: TopicByNameRepository
+    lateinit var byNameRepo: TopicByNameRepository<UUID>
 
     @Test
     fun `inactive rooms dont appear`() {
@@ -73,7 +72,7 @@ class MessageTopicRepositoryTests {
     fun `should fail to find room`() {
         val queryFlux = repo
                 .findByKeyId(UUID.randomUUID())
-                .switchIfEmpty { Mono.error(Exception("No Such Room")) }
+                .switchIfEmpty { throw (Exception("No Such Room")) }
 
         StepVerifier
                 .create(queryFlux)
@@ -91,7 +90,7 @@ class MessageTopicRepositoryTests {
                                 ChatTopicKey(UUIDs.timeBased())
                         )
                                 .map {
-                                    ChatMessageTopic(it, randomAlphaNumeric(6), true)
+                                    ChatTopic(it, randomAlphaNumeric(6), true)
                                 }
                                 .flatMap {
                                     repo.add(it)
@@ -108,7 +107,7 @@ class MessageTopicRepositoryTests {
     fun `should save and find by name`() {
         val saveFlux = Flux.just(Key.eventKey(UUIDs.timeBased()))
                 .flatMap {
-                    byNameRepo.save(ChatMessageTopicName(ChatRoomNameKey(it.id, "XYZ"), true))
+                    byNameRepo.save(ChatTopicName(ChatTopicNameKey(it.id, "XYZ"), true))
                 }
 
         val findFlux = byNameRepo
@@ -120,11 +119,13 @@ class MessageTopicRepositoryTests {
 
         StepVerifier
                 .create(composed)
-                .assertNext { roomAssertions(it as MessageTopic) }
+                .assertNext {
+                    roomAssertions(it)
+                }
                 .verifyComplete()
     }
 
-    fun <R : MessageTopic> roomAssertions(room: R) {
+    fun roomAssertions(room: MessageTopic<UUID>) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(room) },
                 { Assertions.assertNotNull(room.key.id) },

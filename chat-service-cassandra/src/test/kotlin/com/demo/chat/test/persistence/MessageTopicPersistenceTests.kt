@@ -2,12 +2,13 @@ package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.*
-import com.demo.chat.domain.cassandra.ChatMessageTopic
-import com.demo.chat.domain.cassandra.ChatMessageTopicName
-import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopic
+import com.demo.chat.domain.cassandra.ChatTopicName
+import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
 import com.demo.chat.test.TestKeyService
@@ -29,15 +30,15 @@ class MessageTopicPersistenceTests {
 
     val ROOMNAME = "test-room"
 
-    lateinit var roomSvc: TopicPersistenceCassandra
+    lateinit var roomSvc: TopicPersistenceCassandra<UUID>
 
     @MockBean
-    lateinit var roomByNameRepo: TopicByNameRepository
+    lateinit var roomByNameRepo: TopicByNameRepository<UUID>
 
     @MockBean
-    lateinit var roomRepo: TopicRepository
+    lateinit var roomRepo: TopicRepository<UUID>
 
-    private val keyService: UUIDKeyService = TestKeyService
+    private val keyService: IKeyService<UUID> = TestKeyService
 
     private val rid: UUID = UUID.randomUUID()
 
@@ -45,9 +46,9 @@ class MessageTopicPersistenceTests {
 
     @BeforeEach
     fun setUp() {
-        val newRoom = ChatMessageTopic(ChatTopicKey(rid), ROOMNAME, true)
-        val roomNameRoom = ChatMessageTopicName(ChatRoomNameKey(rid, ROOMNAME), true)
-        val roomTwo = ChatMessageTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
+        val newRoom = ChatTopic(ChatTopicKey(rid), ROOMNAME, true)
+        val roomNameRoom = ChatTopicName(ChatTopicNameKey(rid, ROOMNAME), true)
+        val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
 
         BDDMockito.given(roomRepo.add(anyObject()))
                 .willReturn(Mono.empty())
@@ -85,7 +86,7 @@ class MessageTopicPersistenceTests {
                 .verifyComplete()
     }
 
-    fun roomAssertions(messageTopic: MessageTopic<Any>) {
+    fun roomAssertions(messageTopic: MessageTopic<UUID>) {
         assertAll("room state test",
                 { Assertions.assertNotNull(messageTopic) },
                 { Assertions.assertNotNull(messageTopic.key.id) },

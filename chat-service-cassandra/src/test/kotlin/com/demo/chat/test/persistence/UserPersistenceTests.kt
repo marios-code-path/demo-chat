@@ -4,6 +4,7 @@ import com.demo.chat.domain.cassandra.ChatUser
 import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.domain.Key
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
 import com.demo.chat.test.TestKeyService
@@ -26,12 +27,12 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 class UserPersistenceTests {
 
-    lateinit var userSvc: UserPersistenceCassandra
+    lateinit var userSvc: UserPersistenceCassandra<UUID>
 
     @MockBean
-    lateinit var userRepo: ChatUserRepository
+    lateinit var userRepo: ChatUserRepository<UUID>
 
-    private val keyService: UUIDKeyService = TestKeyService
+    private val keyService: IKeyService<UUID> = TestKeyService
 
     val uid: UUID = UUID.randomUUID()
 
@@ -48,7 +49,7 @@ class UserPersistenceTests {
                 .willReturn(Mono.just(newUser))
 
         BDDMockito
-                .given(userRepo.add(anyObject<ChatUser>()))
+                .given(userRepo.add(anyObject<ChatUser<UUID>>()))
                 .willReturn(Mono.empty())
 
         BDDMockito

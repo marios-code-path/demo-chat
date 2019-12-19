@@ -2,9 +2,9 @@ package com.demo.chat.test.index
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
-import com.demo.chat.domain.cassandra.ChatMessageTopic
-import com.demo.chat.domain.cassandra.ChatMessageTopicName
-import com.demo.chat.domain.cassandra.ChatRoomNameKey
+import com.demo.chat.domain.cassandra.ChatTopic
+import com.demo.chat.domain.cassandra.ChatTopicName
+import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
@@ -44,24 +44,24 @@ fun <T> uninitialized(): T = null as T
 class MessageTopicIndexTests {
 
     @MockBean
-    lateinit var roomRepo: TopicRepository
+    lateinit var roomRepo: TopicRepository<UUID>
 
     @MockBean
-    lateinit var nameRepo: TopicByNameRepository
+    lateinit var nameRepo: TopicByNameRepository<UUID>
 
-    lateinit var topicIndex: TopicIndexService
+    lateinit var topicIndex: TopicIndexService<UUID>
 
     @BeforeEach
     fun setUp() {
-        val idRoom = ChatMessageTopic(ChatTopicKey(rid.id), ROOMNAME, true)
-        val nameRoom = ChatMessageTopicName(ChatRoomNameKey(rid.id, ROOMNAME), true)
+        val idRoom = ChatTopic(ChatTopicKey(rid.id), ROOMNAME, true)
+        val nameRoom = ChatTopicName(ChatTopicNameKey(rid.id, ROOMNAME), true)
 
         BDDMockito
                 .given(roomRepo.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(nameRepo.save(Mockito.any(ChatMessageTopicName::class.java)))
+                .given(nameRepo.save(anyObject()))
                 .willReturn(Mono.just(nameRoom))
 
         BDDMockito

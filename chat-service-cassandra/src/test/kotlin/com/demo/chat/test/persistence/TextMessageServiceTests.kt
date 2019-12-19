@@ -7,6 +7,7 @@ import com.demo.chat.domain.cassandra.ChatMessageByTopic
 import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import com.demo.chat.test.TestKeyService
@@ -38,15 +39,15 @@ class TextMessageServiceTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private val MSGTEXT = "SUP TEST"
-    lateinit var msgSvc: TextMessagePersistenceCassandra
+    lateinit var msgSvc: TextMessagePersistenceCassandra<UUID>
 
     @MockBean
-    lateinit var msgRepo: ChatMessageRepository
+    lateinit var msgRepo: ChatMessageRepository<UUID>
 
     @MockBean
-    lateinit var msgByTopicRepo: ChatMessageByTopicRepository
+    lateinit var msgByTopicRepo: ChatMessageByTopicRepository<UUID>
 
-    private val keyService: UUIDKeyService = TestKeyService
+    private val keyService: IKeyService<UUID> = TestKeyService
 
     private val rid: UUID = UUID.randomUUID()
 
@@ -93,9 +94,11 @@ class TextMessageServiceTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val messageKey = keyService.key(UserMessageKey::class.java) { i ->
-            UserMessageKey.create(i.id, roomId, userId)
-        }
+        val messageKey = keyService.key(TextMessage::class.java)
+                .map {
+                    UserMessageKey.create(it, roomId, userId)
+                }
+
         val messages = messageKey
                 .flatMap {
                     msgSvc.add(

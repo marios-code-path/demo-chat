@@ -2,6 +2,7 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TextMessage
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import io.rsocket.RSocket
 import io.rsocket.RSocketFactory
@@ -50,13 +51,13 @@ open class ControllerTestBase {
     lateinit var requestor: RSocketRequester
 
     @Autowired
-    private lateinit var keyService: UUIDKeyService
+    private lateinit var keyService: IKeyService<UUID>
 
     private lateinit var server: CloseableChannel
 
     private var counter = Random().nextInt()
 
-    fun randomMessage(): TextMessage {
+    fun randomMessage(): TextMessage<UUID> {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
@@ -88,7 +89,7 @@ open class ControllerTestBase {
         socket = requestor.rsocket()
 
         BDDMockito
-                .given(keyService.id(String::class.java))
+                .given(keyService.key(String::class.java))
                 .willReturn(Mono.just(Key.eventKey(UUID.randomUUID())))
 
         Hooks.onOperatorDebug()

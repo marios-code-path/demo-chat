@@ -41,7 +41,8 @@ class KeyServiceXStream<T>(private val keyConfiguration: KeyConfiguration,
                             .create(keyConfiguration.keyStreamKey, mapOf(Pair("kind", kind.simpleName), Pair("exists", true)))
                             .withId(RecordId.autoGenerate()))
                     .map {
-                        XStreamKey(intervalPairToId(Pair(it.timestamp!!, it.sequence!!)), kind.simpleName)
+                        val id: T = intervalPairToId(Pair(it.timestamp!!, it.sequence!!))
+                        XStreamKey(id, kind.simpleName)
                     }
 
     override fun rem(key: Key<T>): Mono<Void> =

@@ -1,10 +1,12 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
+import com.demo.chat.domain.Membership
 import com.demo.chat.domain.cassandra.CassandraUUIDKeyType
 import com.demo.chat.domain.cassandra.ChatMembership
 import com.demo.chat.domain.cassandra.ChatMembershipKey
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
@@ -27,12 +29,12 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class MembershipPersistenceTests {
-    lateinit var membershipPersistence: MembershipPersistence
+    lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     @MockBean
-    lateinit var repo: ChatMembershipRepository
+    lateinit var repo: ChatMembershipRepository<UUID>
 
-    private val keyService: UUIDKeyService = TestKeyService
+    private val keyService: IKeyService<UUID> = TestKeyService
 
     private val keyId = UUIDs.timeBased()
     private val memberId = UUIDs.timeBased()
@@ -59,7 +61,7 @@ class MembershipPersistenceTests {
                 .willReturn(Flux.just(testChatMembership))
 
         BDDMockito
-                .given(repo.save(Mockito.any(ChatMembership::class.java)))
+                .given(repo.save( Mockito.any()))
                 .willReturn(Mono.empty())
 
         BDDMockito

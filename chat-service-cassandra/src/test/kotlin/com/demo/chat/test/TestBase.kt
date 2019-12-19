@@ -2,6 +2,7 @@ package com.demo.chat.test
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDKey
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UUIDKeyService
 import org.mockito.Mockito
 import reactor.core.publisher.Mono
@@ -9,15 +10,12 @@ import java.util.*
 
 object TestBase
 
-object TestKeyService : UUIDKeyService {
-    override fun exists(key: UUIDKey): Mono<Boolean> = Mono.just(true)
+object TestKeyService : IKeyService<UUID> {
+    override fun exists(key: Key<UUID>): Mono<Boolean> = Mono.just(true)
 
-    override fun <T> id(kind: Class<T>): Mono<UUIDKey> = Mono.just(Key.eventKey(UUID.randomUUID()))
+    override fun <T> key(kind: Class<T>): Mono<out Key<UUID>> = Mono.just(Key.eventKey(UUID.randomUUID()))
 
-    override fun <T> key(kind: Class<T>, create: (key: UUIDKey) -> T): Mono<out T> =
-            id(kind).map { create(it) }
-
-    override fun rem(key: UUIDKey): Mono<Void> = Mono.never()
+    override fun rem(key: Key<UUID>): Mono<Void> = Mono.never()
 }
 
 fun <T> anyObject(): T {

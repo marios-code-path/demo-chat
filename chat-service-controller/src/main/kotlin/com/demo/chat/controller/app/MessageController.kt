@@ -4,6 +4,7 @@ import com.demo.chat.MessageRequest
 import com.demo.chat.MessageSendRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.TextMessageSend
+import com.demo.chat.codec.Codec
 import com.demo.chat.domain.*
 import com.demo.chat.service.TextMessageIndexService
 import com.demo.chat.service.ChatTopicService
@@ -15,14 +16,15 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-open class MessageController(
-        val textMessageIndex: TextMessageIndexService,
-        val messagePersistence: TextMessagePersistence<UUID>,
-        val topicService: ChatTopicService) {
+open class MessageController<T>(
+        val textMessageIndex: TextMessageIndexService<T>,
+        val messagePersistence: TextMessagePersistence<T>,
+        val topicService: ChatTopicService,
+        val keyCodec: Codec<UUID,T>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
-    fun byTopic(req: MessagesRequest): Flux<out Message<UUID, Any>> =
+    fun byTopic(req: MessagesRequest): Flux<out TextMessage<T>> =
             Flux.concat(textMessageIndex
                     .findBy(mapOf(Pair(TextMessageIndexService.TOPIC, req.topicId.toString())))
                     .collectList()
@@ -32,9 +34,9 @@ open class MessageController(
                     topicService.receiveOn(req.topicId))
 
     @MessageMapping("message-by-id")
-    fun getOne(req: MessageRequest): Mono<out Message<UUID, Any>> =
+    fun getOne(req: MessageRequest): Mono<out TextMessage<T>> =
             messagePersistence
-                    .get(Key.eventKey(req.messageId))
+                    .get(Key.anyKey(keyCodec.decode(req.messageId)))
 
     @MessageMapping("text-message-send")
     fun putTextMessage(req: TextMessageSend): Mono<out MessageKey<UUID, UUID>> =

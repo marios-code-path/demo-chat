@@ -1,8 +1,9 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.UserKey
+import com.datastax.driver.core.utils.UUIDs
+import com.demo.chat.domain.User
+
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.TestConfiguration
 import org.assertj.core.api.Assertions
@@ -40,13 +41,13 @@ class KeyServiceTests {
     @BeforeEach
     fun setUp() {
         logger.info("Setup persistence cassandra")
-        this.svc = KeyServiceCassandra(template)
+        this.svc = KeyServiceCassandra(template) { UUIDs.timeBased() }
     }
 
     @Test
     fun `created key should Exist`() {
         val keyStream = svc
-                .key(UserKey::class.java)
+                .key(User::class.java)
                 .flatMap(svc::exists)
 
         StepVerifier
@@ -62,7 +63,7 @@ class KeyServiceTests {
 
     @Test
     fun `should create an key`() {
-        val key = svc.key(UserKey::class.java)
+        val key = svc.key(User::class.java)
 
         StepVerifier
                 .create(key)
@@ -78,7 +79,7 @@ class KeyServiceTests {
 
     @Test
     fun `should delete a key`() {
-        val key = svc.key(UserKey::class.java)
+        val key = svc.key(User::class.java)
         val deleteStream = Flux
                 .from(key)
                 .flatMap(svc::rem)
@@ -91,7 +92,7 @@ class KeyServiceTests {
 
     @Test
     fun `should create new UserKey`() {
-        val userKey = svc.key(UserKey::class.java)
+        val userKey = svc.key(User::class.java)
 
         StepVerifier
                 .create(userKey)

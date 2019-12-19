@@ -5,6 +5,7 @@ import com.demo.chat.TestChatUserKey
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequestId
 import com.demo.chat.controller.app.UserController
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -32,10 +33,10 @@ import java.util.*
 @Import(ConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
 class RSocketUserTests : ControllerTestBase() {
     @Autowired
-    private lateinit var userIndex: UserIndexService
+    private lateinit var userIndex: UserIndexService<UUID>
 
     @Autowired
-    private lateinit var userPersistence: UserPersistence
+    private lateinit var userPersistence: UserPersistence<UUID>
 
     private val defaultImgUri = "http://"
     private val randomHandle = randomAlphaNumeric(4)
@@ -46,7 +47,7 @@ class RSocketUserTests : ControllerTestBase() {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.key())
-                .willReturn(Mono.just(UserKey.create(UUID.randomUUID())))
+                .willReturn(Mono.just(Key.anyKey(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
@@ -118,7 +119,7 @@ class RSocketUserTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestUserController(persistence: UserPersistence,
-                               index: UserIndexService) : UserController(persistence, index)
+        class TestUserController(persistence: UserPersistence<UUID>,
+                               index: UserIndexService<UUID>) : UserController(persistence, index)
     }
 }

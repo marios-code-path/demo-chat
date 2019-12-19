@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
+import java.util.*
 
 @TestConfiguration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
@@ -18,34 +19,34 @@ class ConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
-    private lateinit var topicIndex: TopicIndexService
+    private lateinit var topicIndex: TopicIndexService<UUID>
 
     @MockBean
-    private lateinit var userIndex: UserIndexService
+    private lateinit var userIndex: UserIndexService<UUID>
 
     @MockBean
-    private lateinit var textMessageIndex: TextMessageIndexService
+    private lateinit var textMessageIndex: TextMessageIndexService<UUID>
 
     @MockBean
-    private lateinit var topicPersistence: TopicPersistence
+    private lateinit var topicPersistence: TopicPersistence<UUID>
 
     @MockBean
-    private lateinit var userPersistence: UserPersistence
+    private lateinit var userPersistence: UserPersistence<UUID>
 
     @MockBean
-    private lateinit var topicMessagePersistence: TextMessagePersistence
+    private lateinit var topicMessagePersistence: TextMessagePersistence<UUID>
 
     @MockBean
     private lateinit var topicService: ChatTopicService
 
     @MockBean
-    private lateinit var keyService: UUIDKeyService
+    private lateinit var keyService: IKeyService<UUID>
 
     @MockBean
-    private lateinit var membershipPersistence: MembershipPersistence
+    private lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     @MockBean
-    private lateinit var membershipIndex: MembershipIndexService
+    private lateinit var membershipIndex: MembershipIndexService<UUID>
 
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies

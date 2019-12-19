@@ -50,30 +50,33 @@ import java.time.Instant
 // in order for user subscribes to stat for user 'james'
 //    user accesses Users.getby("handle=james"), or uses Map given from 'chat' stat
 //        user receives User[id=1234-4567..., name, handle, uri...]
-// user subscribes to id="1234-4567..."
-//    user receives Map object
-//        contains [topic:id] pairs
-//        contains banner text
+// user subscribes to 'james'
+//    subscribe user="0000-000", id="1234-4567..."
+//    user receives Stat object
+//        contains [TOPIC_NAME, id] pairs
+//        contains banner
 //        etc
-// user subscribes to message topic
-//    user subscribes to id="1234-4589..."
-// user sends "TEXT" to message
+// user subscribes to MESSAGE topic
+//    subscribe  user="0000-000" id="1234-4589..."
+// user sends "TEXT" to MESSAGE
 //    access denied, user not a member
 // user joins channel
-//    user sends message "<my_user_id>" to join
-// user sends "TEXT" to message
-//     user receives "TEXT" from message [user_id = mario]
-//     user receives "HELLO" from message [user_id = james]
-//     user receives "HOLA" from message [user_id = lucas]
-//     user receives "BROADCAST" from message [user_id=james]
-// user sends id to join
-//    user sends message "<my_user_id>" to join
-interface MessageKey<K, TK> : Key<K> {
-    val dest: TK
+//    user sends "<my_user_id>" to MEMBERSHIP
+// user sends "TEXT" to MESSAGE
+//     user receives "TEXT" from MESSAGE [user_id = mario]
+//     user receives "HELLO" from MESSAGE [user_id = james]
+//     user receives "HOLA" from MESSAGE [user_id = lucas]
+//     user receives "BROADCAST" from MESSAGE [user_id=james]
+// user sends id to MEMBERSHIP
+//    user sends message "<my_user_id>" to MEMBERSHIP
+// user sends "TEXT" to MESSAGE
+//    access denied, user not a member
+interface MessageKey<T> : Key<T> {
+    val dest: T
     val timestamp: Instant
 }
 
-interface UserMessageKey<T> : MessageKey<T, T> {
+interface UserMessageKey<T> : MessageKey<T> {
     val userId: T
 
     companion object Factory {
@@ -100,7 +103,6 @@ interface UserMessageKey<T> : MessageKey<T, T> {
         }
     }
 }
-
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 interface Message<T, E> : KeyDataPair<T, E> {

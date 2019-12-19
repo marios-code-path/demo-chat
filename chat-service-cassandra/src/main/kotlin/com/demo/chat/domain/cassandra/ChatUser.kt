@@ -2,12 +2,10 @@ package com.demo.chat.domain.cassandra
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.domain.UserKey
 import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
-import java.util.*
 
 @Table("chat_user")
 data class ChatUser<K>(

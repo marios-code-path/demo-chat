@@ -1,7 +1,6 @@
 package com.demo.chat.service.auth
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UserKey
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
 import com.demo.chat.service.*
 import reactor.core.publisher.Flux
@@ -40,5 +39,5 @@ class ChatUserAuthCassandra<T>(private val userIndex: UserIndexService<T>,
 
     override fun authorize(uid: T, target: T, action: String): Mono<Void> = Mono.empty()
 
-    override fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T, T>> = Flux.empty()
+    override fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T>> = Flux.empty()
 }

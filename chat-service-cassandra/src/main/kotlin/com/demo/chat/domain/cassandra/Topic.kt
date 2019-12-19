@@ -10,7 +10,7 @@ import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
 import org.springframework.data.cassandra.core.mapping.Table
 
 @Table("chat_room")
-data class ChatMessageTopic<K>(
+data class ChatTopic<K>(
         @PrimaryKey
         override val key: ChatTopicKey<K>,
         override val data: String,
@@ -18,9 +18,9 @@ data class ChatMessageTopic<K>(
 ) : MessageTopic<K>
 
 @Table("chat_room_name")
-data class ChatMessageTopicName<K>(
+data class ChatTopicName<K>(
         @PrimaryKey
-        override val key: ChatRoomNameKey<K>,
+        override val key: ChatTopicNameKey<K>,
         val active: Boolean
 ) : MessageTopic<K> {
     @Transient
@@ -34,7 +34,7 @@ data class ChatTopicKey<K>(
 ) : Key<K>
 
 @PrimaryKeyClass
-data class ChatRoomNameKey<K>(
+data class ChatTopicNameKey<K>(
         @PrimaryKeyColumn(name = "room_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
         override val id: K,
         @PrimaryKeyColumn(name = "name", type = PrimaryKeyType.PARTITIONED, ordinal = 0)

@@ -7,8 +7,8 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("User")
-interface User<K> {
-    val key: Key<K>
+interface User<T> {
+    val key: Key<T>
     val name: String
     val handle: String
     val imageUri: String
@@ -16,8 +16,8 @@ interface User<K> {
 
     companion object Factory {
         @JvmStatic
-        fun<K> create(key: Key<K>, name: String, handle: String, imageUri: String): User<K> = object : User<K> {
-            override val key: Key<K>
+        fun<T> create(key: Key<T>, name: String, handle: String, imageUri: String): User<T> = object : User<T> {
+            override val key: Key<T>
                 get() = key
             override val name: String
                 get() = name
@@ -27,17 +27,6 @@ interface User<K> {
                 get() = imageUri
             override val timestamp: Instant
                 get() = Instant.now()
-        }
-    }
-}
-
-interface UserKey : Key<UUID> {
-
-    companion object Factory {
-        @JvmStatic
-        fun create(id: UUID): UserKey = object : UserKey {
-            override val id: UUID
-                get() = id
         }
     }
 }

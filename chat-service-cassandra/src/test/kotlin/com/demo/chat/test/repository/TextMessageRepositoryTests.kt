@@ -44,13 +44,13 @@ class TextMessageRepositoryTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var repo: ChatMessageRepository
+    lateinit var repo: ChatMessageRepository<UUID>
 
     @Autowired
-    lateinit var byTopicRepo: ChatMessageByTopicRepository
+    lateinit var byTopicRepo: ChatMessageByTopicRepository<UUID>
 
     @Autowired
-    lateinit var byUserRepo: ChatMessageByUserRepository
+    lateinit var byUserRepo: ChatMessageByUserRepository<UUID>
 
     @Test
     fun `should save single message find by message id`() {
@@ -132,7 +132,7 @@ class TextMessageRepositoryTests {
         val getMsg = Supplier { UUIDs.timeBased() }
 
         val messages = Flux
-                .generate<ChatMessageByTopic> {
+                .generate<ChatMessageByTopic<UUID>> {
                     it.next(ChatMessageByTopic(
                             ChatMessageByTopicKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
                             MSGTEXT, true))
@@ -167,7 +167,7 @@ class TextMessageRepositoryTests {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
 
-        val testPublisher = TestPublisher.create<ChatMessageById>()
+        val testPublisher = TestPublisher.create<ChatMessageById<UUID>>()
 
         val testPublisherSupplier = Supplier {
             testPublisher.flux()
@@ -246,31 +246,31 @@ class TextMessageRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: TextMessage) = assertAll("message state test",
+    fun chatMessageAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
-            { assertNotNull(msg.key.topicId) },
+            { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageUserAssertion(msg: TextMessage) = assertAll("message state test",
+    fun chatMessageUserAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
-            { assertNotNull(msg.key.topicId) },
+            { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
     )
 
-    fun chatMessageRoomAssertion(msg: TextMessage) = assertAll("message state test",
+    fun chatMessageRoomAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.userId) },
-            { assertNotNull(msg.key.topicId) },
+            { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.visible) }
