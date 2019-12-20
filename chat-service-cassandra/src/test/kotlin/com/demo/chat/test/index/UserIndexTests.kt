@@ -10,7 +10,7 @@ class UserIndexTests {
 //
 //    @Test
 //    fun `should get a user by handle`() {
-//        BDDMockito.given(userPersistence.getByHandle(com.demo.chat.test.anyObject()))
+//        BDDMockito.given(userPersistence.getByHandle(com.demo.chat.test.domain.anyObject()))
 //                .willReturn(Mono.just(randomUser))
 //
 //        StepVerifier

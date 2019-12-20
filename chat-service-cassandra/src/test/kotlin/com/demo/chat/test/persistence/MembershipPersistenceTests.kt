@@ -1,17 +1,15 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.Membership
 import com.demo.chat.domain.cassandra.CassandraUUIDKeyType
 import com.demo.chat.domain.cassandra.ChatMembership
 import com.demo.chat.domain.cassandra.ChatMembershipKey
 import com.demo.chat.repository.cassandra.ChatMembershipRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
-import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.anyObject
+import com.demo.chat.test.domain.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

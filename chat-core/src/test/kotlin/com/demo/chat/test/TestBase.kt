@@ -1,9 +1,5 @@
 package com.demo.chat.test
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.serializers.KeyDeserializer
-import com.demo.chat.domain.serializers.TopicDeserializer
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -11,31 +7,35 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.module.SimpleAbstractTypeResolver
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import org.mockito.Mockito
 import java.util.*
 
 open class TestBase {
-
     var counter = Random().nextInt()
 
     val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule()).apply {
         propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
         findAndRegisterModules()
-        registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-            addDeserializer(MessageTopic::class.java, TopicDeserializer())
-            addDeserializer(Key::class.java, KeyDeserializer())
-        })
+//        addDeserializer(MessageKey::class.java, MessageKeyDeserializer(
+//                object : Codec<JsonNode, String> {
+//                    override fun decode(record: JsonNode): String =
+//                            record.asText()
+//                }
+//        ))
+//        addDeserializer(MessageKey::class.java, MessageKeyDeserializer(
+//                object : Codec<JsonNode, Int> {
+//                    override fun decode(record: JsonNode): Int =
+//                            record.asInt()
+//                }
+//        ))
+//        addDeserializer(TextMessage::class.java, TextMessageDeserializer(
+//                object : Codec<JsonNode, UUID> {
+//                    override fun decode(record: JsonNode): UUID =
+//                            UUID.fromString(record.asText())
+//                }
+//        ))
     }!!
-
 }
-
-fun <T> anyObject(): T {
-    Mockito.anyObject<T>()
-    return uninitialized()
-}
-
-fun <T> uninitialized(): T = null as T
 
 private val ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 fun randomAlphaNumeric(size: Int): String {

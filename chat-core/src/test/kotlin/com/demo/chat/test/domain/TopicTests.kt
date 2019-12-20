@@ -1,7 +1,10 @@
-package com.demo.chat.test
+package com.demo.chat.test.domain
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.test.TestBase
+import com.demo.chat.test.TestTopic
+import com.demo.chat.test.randomAlphaNumeric
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -35,12 +38,12 @@ class TopicTests : TestBase() {
         topicJsons
                 .forEach { json ->
                     val tree = mapper.readTree(json)
-                    println(json)
+
                     if (tree.fieldNames().hasNext()) {
                         when (tree.fieldNames().next()) {
                             "Topic" -> {
                                 topics.apply {
-                                    val topic: MessageTopic<Any> = mapper.readValue(json)
+                                    val topic = mapper.readValue<TestTopic<out Any>>(json)
                                     add(topic)
                                 }
                             }
@@ -48,7 +51,6 @@ class TopicTests : TestBase() {
                             }
                         }
                     }
-
                 }
 
         Assertions.assertThat(topics)

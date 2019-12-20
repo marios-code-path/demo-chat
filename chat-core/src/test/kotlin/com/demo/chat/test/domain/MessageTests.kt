@@ -1,7 +1,8 @@
-package com.demo.chat.test
+package com.demo.chat.test.domain
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
+import com.demo.chat.test.*
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -14,9 +15,9 @@ import java.util.stream.Stream
 class MessageTests : TestBase() {
 
     @Test
-    fun `Should serialize deserialize JSON from  Any Message`() {
+    fun `Should serialize deserialize JSON from Any Message`() {
         val messageJsons = ArrayList<String>()
-        val messages = ArrayList<Message<UUID, out Any>>()
+        val messages = ArrayList<Message<out Any, out Any>>()
 
         Stream.generate { randomMessage() }.limit(5)
                 .forEach { msg ->
@@ -29,8 +30,8 @@ class MessageTests : TestBase() {
 
                     if (tree.fieldNames().hasNext()) {
                         when (tree.fieldNames().next()) {
-                            "Text" -> messages.add(mapper.readValue<TestTextMessage>(json))
-                            "Alert" -> messages.add(mapper.readValue<TestAlert>(json))
+                            "Text" -> messages.add(mapper.readValue<TestTextMessage<out Any>>(json))
+                            "Alert" -> messages.add(mapper.readValue<TestAlert<out Any>>(json))
                         }
                     }
                 }
@@ -100,7 +101,7 @@ class MessageTests : TestBase() {
         counter++
 
         return if (counter % 2 == 0)
-            TestAlert(TestAlertKey(roomId), counter)
+            TestAlert(TestAlertKey(messageId, roomId), counter)
         else
             TestTextMessage(TestMessageKey(messageId, roomId, userId), "Count: $counter")
     }

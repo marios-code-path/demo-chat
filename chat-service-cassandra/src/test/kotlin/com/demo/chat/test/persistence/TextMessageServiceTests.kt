@@ -8,10 +8,9 @@ import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.anyObject
+import com.demo.chat.test.domain.anyObject
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals

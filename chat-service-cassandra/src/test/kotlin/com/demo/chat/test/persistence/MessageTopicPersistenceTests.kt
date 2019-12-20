@@ -9,10 +9,9 @@ import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.anyObject
+import com.demo.chat.test.domain.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith

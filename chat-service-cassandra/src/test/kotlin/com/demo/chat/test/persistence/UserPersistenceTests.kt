@@ -5,10 +5,9 @@ import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.domain.Key
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.anyObject
+import com.demo.chat.test.domain.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

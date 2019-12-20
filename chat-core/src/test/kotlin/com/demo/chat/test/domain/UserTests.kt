@@ -1,8 +1,10 @@
-package com.demo.chat.test
+package com.demo.chat.test.domain
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
+import com.demo.chat.test.TestBase
+import com.demo.chat.test.TestUser
+import com.demo.chat.test.randomAlphaNumeric
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -13,19 +15,19 @@ import kotlin.random.Random
 class UserTests : TestBase() {
 
     @Test
-    fun `Should serialize deserialize JSON from to Any User`() {
+    fun `Any User should serialize deserialize`() {
         val topicJsons = ArrayList<String>()
-        val topics = ArrayList<MessageTopic<out Any>>()
+        val topics = ArrayList<User<out Any>>()
 
-        Stream.generate { MessageTopic.create(Key.anyKey(Random.nextInt()), "Test-Topic-R") }.limit(5)
+        Stream.generate { User.create(Key.anyKey(Random.nextInt()), "name1", "handle1", "uri1") }.limit(1)
                 .forEach { msg ->
                     topicJsons.add(mapper.writeValueAsString(msg))
                 }
-        Stream.generate { MessageTopic.create(Key.anyKey(randomAlphaNumeric(10)), "Test-Topic-Z") }.limit(5)
+        Stream.generate { User.create(Key.anyKey(randomAlphaNumeric(10)), "name2", "handle2", "uri2") }.limit(1)
                 .forEach { msg ->
                     topicJsons.add(mapper.writeValueAsString(msg))
                 }
-        Stream.generate { MessageTopic.create(Key.anyKey(UUID.randomUUID()), "Test-Topic-U") }.limit(5)
+        Stream.generate { User.create(Key.anyKey(UUID.randomUUID()), "name3", "handle3", "uri3") }.limit(1)
                 .forEach { msg ->
                     topicJsons.add(mapper.writeValueAsString(msg))
                 }
@@ -33,12 +35,12 @@ class UserTests : TestBase() {
         topicJsons
                 .forEach { json ->
                     val tree = mapper.readTree(json)
-                    println(json)
+
                     if (tree.fieldNames().hasNext()) {
                         when (tree.fieldNames().next()) {
-                            "Topic" -> {
+                            "User" -> {
                                 topics.apply {
-                                    val topic: MessageTopic<Any> = mapper.readValue(json)
+                                    val topic = mapper.readValue<TestUser<out Any>>(json)
                                     add(topic)
                                 }
                             }
@@ -55,13 +57,14 @@ class UserTests : TestBase() {
                 .isNotEmpty
 
         topics
-                .forEach { topic ->
+                .forEach { user ->
                     Assertions
-                            .assertThat(topic)
-                            .`as`("Is a Topic")
+                            .assertThat(user)
+                            .`as`("Is a User")
                             .isNotNull
                             .hasFieldOrProperty("key")
-                            .hasFieldOrProperty("data")
+                            .hasFieldOrProperty("handle")
+                            .hasFieldOrProperty("name")
                 }
     }
 }

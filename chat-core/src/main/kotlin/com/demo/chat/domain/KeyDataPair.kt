@@ -1,11 +1,14 @@
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Key")
+@JsonSubTypes(JsonSubTypes.Type(MessageKey::class)
+)
 interface Key<T> {
     val id: T
 

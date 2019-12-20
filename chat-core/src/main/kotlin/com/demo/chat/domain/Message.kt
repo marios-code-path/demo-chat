@@ -71,9 +71,23 @@ import java.time.Instant
 //    user sends message "<my_user_id>" to MEMBERSHIP
 // user sends "TEXT" to MESSAGE
 //    access denied, user not a member
+@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+@JsonTypeName("MessageKey")
 interface MessageKey<T> : Key<T> {
     val dest: T
     val timestamp: Instant
+
+    companion object Factory {
+        @JvmStatic
+        fun <T> create(messageId: T, dest: T): MessageKey<T> = object : MessageKey<T> {
+            override val id: T
+                get() = messageId
+            override val dest: T
+                get() = dest
+            override val timestamp: Instant
+                get() = Instant.now()
+        }
+    }
 }
 
 interface UserMessageKey<T> : MessageKey<T> {
