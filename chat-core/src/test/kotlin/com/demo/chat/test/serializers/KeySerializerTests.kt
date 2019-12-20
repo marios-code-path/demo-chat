@@ -3,6 +3,7 @@ package com.demo.chat.test.serializers
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.serializers.JsonNodeCodec
 import com.demo.chat.domain.serializers.KeyDeserializer
 import com.demo.chat.domain.serializers.MessageKeyDeserializer
 import com.demo.chat.test.TestBase
@@ -24,22 +25,7 @@ class KeySerializerTests : TestBase() {
     fun `Subclass Key deserialize`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(MessageKey::class.java, MessageKeyDeserializer(
-                        object : Codec<JsonNode, Any> {
-                            override fun decode(record: JsonNode): Any {
-                                return when (record.nodeType) {
-                                    JsonNodeType.NUMBER -> record.asLong()
-                                    JsonNodeType.STRING -> {
-                                        try {
-                                            UUID.fromString(record.asText())
-                                        } catch (e: Exception) {
-                                            record.asText()
-                                        }
-                                    }
-                                    else -> record.asText()
-                                }
-                            }
-                        }))
+                addDeserializer(MessageKey::class.java, MessageKeyDeserializer(JsonNodeCodec))
                 addDeserializer(Key::class.java, KeyDeserializer())
             })
         }
@@ -52,15 +38,12 @@ class KeySerializerTests : TestBase() {
                 MessageKey.create("a", "1")
         ).map(mapper::writeValueAsString)
 
-
         StepVerifier
                 .create(keyJsons)
                 .expectSubscription()
                 .then {
-                    val k = mapper.readValue<Key<out Any>>(messages.first())
-                    publisher.next(k)
-                    val l = mapper.readValue<Key<out Any>>(messages.last())
-                    publisher.next(l)
+                    publisher.next(mapper.readValue(messages.first()))
+                    publisher.next(mapper.readValue(messages.last()))
                 }
                 .assertNext { key ->
                     Assertions

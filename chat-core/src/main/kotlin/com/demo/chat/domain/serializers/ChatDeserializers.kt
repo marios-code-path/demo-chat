@@ -10,17 +10,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.JsonNodeType
 import java.util.*
 
-// TODO: the wrapper logic makes our data look like this: {"Topic":{"key":{"Key":{"id":"9f27ce44-9413-4180-ba57-2482337d6617"}},"data":"Test-Topic-U"}}
-//{
-//  "Topic": {
-//    "key": {
-//      "Key": {
-//        "id": "9f27ce44-9413-4180-ba57-2482337d6617"
-//      }
-//    },
-//    "data": "Test-Topic-U"
-//  }
-//}
 class MessageKeyDeserializer(val keyCodec: Codec<JsonNode, out Any>) : JsonDeserializer<MessageKey<out Any>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): MessageKey<out Any> {
         val oc: ObjectCodec = jp?.codec!!
@@ -29,15 +18,6 @@ class MessageKeyDeserializer(val keyCodec: Codec<JsonNode, out Any>) : JsonDeser
         val destNode = node.get("dest")
 
         return MessageKey.create(keyCodec.decode(idNode), keyCodec.decode(destNode))
-    }
-}
-
-class KeyHintDeserializer<T>(val codec: Codec<JsonNode, Any>) : JsonDeserializer<Key<out Any>>() {
-    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<out Any> {
-        val oc: ObjectCodec = jp?.codec!!
-        val node: JsonNode = oc.readTree(jp)
-
-        return Key.anyKey(codec.decode(node.get("id")))
     }
 }
 
@@ -61,16 +41,28 @@ class KeyDeserializer : JsonDeserializer<Key<out Any>>() {
     }
 }
 
-class TopicDeserializer : JsonDeserializer<MessageTopic<out Any>>() {
-    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): MessageTopic<out Any> {
+class MessageDeserializer(val keyCodec: Codec<JsonNode, out Any>): JsonDeserializer<Message<out Any, out Any>>() {
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Message<out Any, out Any> {
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val keyNode = node.get("key").get("Key")
-        val key: Key<out Any> = KeyDeserializer().deserialize(keyNode.traverse(oc), ctxt)
+        val text = node.get("data").asText()
+        val visible = node.get("visible").asBoolean()
 
-        return MessageTopic.create(key, node.get("data").asText())
+        val keyNode = node.get("key")
 
+        var key: Key<out Any>
+        when {
+            keyNode.has("Key") -> key = KeyDeserializer().deserialize(keyNode.get("Key").traverse(oc), ctxt)
+            keyNode.has("MessageKey") -> key = MessageKeyDeserializer(keyCodec).deserialize(keyNode.get("MessageKey").traverse(oc), ctxt)
+            else -> throw ChatException("Invalid Message Key")
+        }
+
+        return Message.create(
+                key,
+                text,
+                visible
+        )
     }
 }
 
@@ -84,10 +76,7 @@ class TextMessageDeserializer<T>(val keyCodec: Codec<JsonNode, T>) : JsonDeseria
         val text = node.get("data").asText()
         val visible = node.get("visible").asBoolean()
 
-//        val keyNode = node.get("key").get("Key")
-//        val key: Key<Any> = KeyDeserializer().deserialize(keyNode.traverse(oc), ctxt)
-
-        val keyNode = node.get("key").get("TextKey")
+        val keyNode = node.get("key").get("MessageKey")
         val keyId = keyCodec.decode(keyNode.get("id"))
         val topicId = keyCodec.decode(keyNode.get("dest"))
         val userId = keyCodec.decode(keyNode.get("userId"))
@@ -101,5 +90,18 @@ class TextMessageDeserializer<T>(val keyCodec: Codec<JsonNode, T>) : JsonDeseria
                 text,
                 visible
         )
+    }
+}
+
+class TopicDeserializer : JsonDeserializer<MessageTopic<out Any>>() {
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): MessageTopic<out Any> {
+        val oc: ObjectCodec = jp?.codec!!
+        val node: JsonNode = oc.readTree(jp)
+
+        val keyNode = node.get("key").get("Key")
+        val key: Key<out Any> = KeyDeserializer().deserialize(keyNode.traverse(oc), ctxt)
+
+        return MessageTopic.create(key, node.get("data").asText())
+
     }
 }

@@ -1,5 +1,6 @@
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
@@ -73,6 +74,7 @@ import java.time.Instant
 //    access denied, user not a member
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("MessageKey")
+@JsonSubTypes(JsonSubTypes.Type(UserMessageKey::class))
 interface MessageKey<T> : Key<T> {
     val dest: T
     val timestamp: Instant
@@ -119,6 +121,7 @@ interface UserMessageKey<T> : MessageKey<T> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
+@JsonSubTypes(JsonSubTypes.Type(TextMessage::class))
 interface Message<T, E> : KeyDataPair<T, E> {
     val visible: Boolean
 
