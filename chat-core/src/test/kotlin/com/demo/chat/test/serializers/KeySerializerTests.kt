@@ -1,16 +1,13 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.serializers.JsonNodeCodec
+import com.demo.chat.domain.serializers.JsonNodeAnyCodec
 import com.demo.chat.domain.serializers.KeyDeserializer
 import com.demo.chat.domain.serializers.MessageKeyDeserializer
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
-import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -25,8 +22,8 @@ class KeySerializerTests : TestBase() {
     fun `Subclass Key deserialize`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(MessageKey::class.java, MessageKeyDeserializer(JsonNodeCodec))
-                addDeserializer(Key::class.java, KeyDeserializer())
+                addDeserializer(MessageKey::class.java, MessageKeyDeserializer(JsonNodeAnyCodec))
+                addDeserializer(Key::class.java, KeyDeserializer(JsonNodeAnyCodec))
             })
         }
 
@@ -74,7 +71,7 @@ class KeySerializerTests : TestBase() {
     fun `Any Key deserialize`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(Key::class.java, KeyDeserializer())
+                addDeserializer(Key::class.java, KeyDeserializer(JsonNodeAnyCodec))
             })
         }
 

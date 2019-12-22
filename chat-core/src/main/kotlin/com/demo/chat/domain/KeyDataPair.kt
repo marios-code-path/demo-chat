@@ -7,18 +7,16 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Key")
-@JsonSubTypes(JsonSubTypes.Type(MessageKey::class)
-)
+@JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
 interface Key<T> {
     val id: T
 
     companion object Factory {
         @JvmStatic
-        fun eventKey(id: UUID): UUIDKey = object : UUIDKey {
-            override val id: UUID
+        fun <T> funKey(id: T): Key<T> = object : Key<T> {
+            override val id: T
                 get() = id
         }
-
         @JvmStatic
         fun <T : Any> anyKey(id: T): Key<T> = object : Key<T> {
             override val id: T

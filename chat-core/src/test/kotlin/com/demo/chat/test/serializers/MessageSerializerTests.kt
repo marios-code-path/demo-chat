@@ -1,19 +1,15 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.Codec
 import com.demo.chat.domain.*
-import com.demo.chat.domain.serializers.JsonNodeCodec
-import com.demo.chat.domain.serializers.KeyDeserializer
-import com.demo.chat.domain.serializers.MessageDeserializer
-import com.demo.chat.domain.serializers.TextMessageDeserializer
+import com.demo.chat.domain.serializers.*
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
-import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
@@ -21,11 +17,11 @@ import java.util.*
 class MessageSerializerTests : TestBase() {
 
     @Test
-    fun `Any Message deserialize`() {
+    fun `Any Message deserialize`() { Hooks.onOperatorDebug()
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(Message::class.java, MessageDeserializer(JsonNodeCodec))
-                addDeserializer(TextMessage::class.java, TextMessageDeserializer(JsonNodeCodec))
+                addDeserializer(Message::class.java, MessageDeserializer(JsonNodeAnyCodec, JsonNodeStringCodec))
+                addDeserializer(TextMessage::class.java, TextMessageDeserializer(JsonNodeAnyCodec))
             })
         }
 
