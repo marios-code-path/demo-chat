@@ -1,8 +1,9 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.domain.JoinAlert
+import com.demo.chat.codec.Codec
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
@@ -14,14 +15,33 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 
+data class JoinAlert<T>(override val key: MessageKey<T>) : Message<T, String> {
+    override val visible: Boolean
+        get() = false
+    override val data: String
+        get() = "FOO"
+}
+
+class StringKeyDecoder<T>: Codec<String, T> {
+    override inline fun decode(record: String): T {
+        return UUID.fromString(record) as T
+    }
+}
+
+class KeyStringEncoder<T>: Codec<T, String> {
+    override fun decode(record: T): String {
+        return record.toString()
+    }
+}
+
 
 open class MessageTopicServiceTestBase {
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    lateinit var topicService: ChatTopicService
+    lateinit var topicService: ChatTopicService<Any, Any>
 
-    lateinit var topicAdmin : ChatTopicServiceAdmin
+    lateinit var topicAdmin : ChatTopicService<Any, Any>
 
     object configProps : ConfigurationPropertiesTopicRedis  {
         override val port: Int = 6374
@@ -50,7 +70,6 @@ open class MessageTopicServiceTestBase {
                 .then(topicService.subscribe(userId, testRoom))
                 .then(topicService.unSubscribe(userId, testRoom))
                 .thenMany(topicService.getUsersBy(testRoom))
-                .map(UUID::toString)
 
         StepVerifier
                 .create(steps)
@@ -68,7 +87,9 @@ open class MessageTopicServiceTestBase {
                 .add(testRoom)
                 .then(topicService.subscribe(userId, testRoom))
                 .thenMany(topicService.getUsersBy(testRoom))
-                .map(UUID::toString)
+                .map {
+                    KeyStringEncoder<Any>().decode(it)
+                }
 
         StepVerifier
                 .create(steps)
@@ -83,7 +104,7 @@ open class MessageTopicServiceTestBase {
         val testRoom = testRoomId()
 
         val steps = topicService
-                .sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
+                .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), testRoom)))
 
         StepVerifier
                 .create(steps)
@@ -102,7 +123,7 @@ open class MessageTopicServiceTestBase {
                 .create(steps)
                 .then {
                     topicService
-                            .sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId))
+                            .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), testRoom)))
                 }
                 .verifyError()
     }
@@ -116,7 +137,9 @@ open class MessageTopicServiceTestBase {
         val steps = topicService.add(testRoom)
                 .then(topicService.subscribe(userId, testRoom))
                 .thenMany(topicService.getUsersBy(testRoom))
-                .map(UUID::toString)
+                .map {
+                    KeyStringEncoder<Any>().decode(it)
+                }
 
         StepVerifier
                 .create(steps)
@@ -189,12 +212,13 @@ open class MessageTopicServiceTestBase {
                 .verify(Duration.ofSeconds(1))
 
         StepVerifier
-                .create(topicService.sendMessage(JoinAlert.create(UUID.randomUUID(), testRoom, userId)))
+                .create(topicService.sendMessage(JoinAlert(
+                        MessageKey.create(UUID.randomUUID(), testRoom))))
                 .expectSubscription()
                 .expectComplete()
                 .verify(Duration.ofSeconds(1))
 
-        val uFlux = topicService.receiveOn(userId).doOnNext { logger.info("GOT: ${it.key.topicId}") }
+        val uFlux = topicService.receiveOn(userId).doOnNext { logger.info("GOT: ${it.key.dest}") }
 
         StepVerifier
                 .create(uFlux)

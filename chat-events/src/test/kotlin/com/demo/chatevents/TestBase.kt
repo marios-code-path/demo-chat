@@ -1,6 +1,5 @@
 package com.demo.chatevents
 
-import com.demo.chat.domain.TextMessage
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -11,7 +10,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
 import java.util.*
 
-fun textMessageAssertion(msg: TextMessage) {
+fun textMessageAssertion(msg: com.demo.chat.domain.Message<Any, Any>) {
     MatcherAssert
             .assertThat("A Text Message should have property state", msg,
                     Matchers.allOf(
@@ -21,7 +20,7 @@ fun textMessageAssertion(msg: TextMessage) {
                                     Matchers
                                             .allOf(Matchers.notNullValue(),
                                                     Matchers.hasProperty("id"),
-                                                    Matchers.hasProperty("topicId"))
+                                                    Matchers.hasProperty("dest"))
                             ))
             )
 }

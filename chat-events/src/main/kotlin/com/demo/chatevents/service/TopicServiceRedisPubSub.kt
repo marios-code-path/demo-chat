@@ -1,11 +1,10 @@
 package com.demo.chatevents.service
 
+import com.demo.chat.codec.Codec
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.topic.TopicData
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -17,7 +16,6 @@ import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 data class KeyConfigurationPubSub(
@@ -27,11 +25,13 @@ data class KeyConfigurationPubSub(
         val prefixTopicToUserSubs: String
 )
 
-class TopicServiceRedisPubSub(
+class TopicServiceRedisPubSub<T>(
         keyConfig: KeyConfigurationPubSub,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
-        private val messageTemplate: ReactiveRedisTemplate<String, TopicData>
-) : ChatTopicService, ChatTopicServiceAdmin {
+        private val messageTemplate: ReactiveRedisTemplate<String, TopicData<T, Any>>,
+        val stringKeyDecoder: Codec<String, T>,
+        val keyStringEncoder: Codec<T, String>
+) : ChatTopicService<T, Any> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
@@ -39,22 +39,22 @@ class TopicServiceRedisPubSub(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
-    private val topicManager = TopicManager()
-    private val topicXSource: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val topicManager = TopicManager<T, Any>()
+    private val topicXSource: MutableMap<T, Flux<out Message<T, out Any>>> = ConcurrentHashMap()
 
-    private fun topicExistsOrError(topic: UUID): Mono<Void> = exists(topic)
+    private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
             .filter {
                 it == true
             }
             .switchIfEmpty(Mono.error(TopicNotFoundException))
             .then()
 
-    override fun exists(id: UUID): Mono<Boolean> = stringTemplate
+    override fun exists(id: T): Mono<Boolean> = stringTemplate
             .opsForSet()
             .isMember(topicSetKey, id.toString())
 
     // Idempotent
-    override fun add(id: UUID): Mono<Void> =
+    override fun add(id: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .add(topicSetKey, id.toString())
@@ -63,7 +63,7 @@ class TopicServiceRedisPubSub(
                         it.onComplete()
                     }
 
-    override fun subscribe(member: UUID, id: UUID): Mono<Void> =
+    override fun subscribe(member: T, id: T): Mono<Void> =
             topicExistsOrError(id)
                     .then(
                             stringTemplate
@@ -92,7 +92,7 @@ class TopicServiceRedisPubSub(
                         it.onComplete()
                     }
 
-    override fun unSubscribe(member: UUID, id: UUID): Mono<Void> =
+    override fun unSubscribe(member: T, id: T): Mono<Void> =
             topicExistsOrError(id)
                     .then(
                             stringTemplate
@@ -122,7 +122,7 @@ class TopicServiceRedisPubSub(
                         it.onComplete()
                     }
 
-    override fun unSubscribeAll(member: UUID): Mono<Void> =
+    override fun unSubscribeAll(member: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .members(prefixUserToTopicSubs + member.toString())
@@ -131,13 +131,13 @@ class TopicServiceRedisPubSub(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribe(member, UUID.fromString(topicId))
+                                    unSubscribe(member, stringKeyDecoder.decode(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun unSubscribeAllIn(id: UUID): Mono<Void> =
+    override fun unSubscribeAllIn(id: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .members(prefixTopicToUserSubs + id.toString())
@@ -146,55 +146,59 @@ class TopicServiceRedisPubSub(
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribe(UUID.fromString(member), id)
+                                    unSubscribe(stringKeyDecoder.decode(member), id)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> {
-        val topic = topicMessage.key.topicId
+    override fun sendMessage(topicMessage: Message<T, out Any>): Mono<Void> {
+        val topic = topicMessage.key.dest
 
         return Mono.from(topicExistsOrError(topic))
                 .then(messageTemplate.convertAndSend(topic.toString(), TopicData(topicMessage)))
                 .then()
     }
 
-    override fun receiveOn(streamId: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveOn(streamId: T): Flux<out Message<T, out Any>> =
             topicManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: T): Flux<out Message<T, out Any>> =
             topicXSource.getOrPut(id, {
                 val listen = getPubSubFluxFor(id)
-                val processor = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(5)
+                val processor = ReplayProcessor.create<Message<T, out Any>>(5)
                 topicManager.setTopicProcessor(id, processor)
                 topicManager.subscribeTopicProcessor(id, listen)
 
                 listen
             })
 
-    override fun getTopicsByUser(uid: UUID): Flux<UUID> =
+    override fun getByUser(uid: T): Flux<T> =
             stringTemplate
                     .opsForSet()
                     .members(
-                            prefixUserToTopicSubs + uid.toString()
+                            prefixUserToTopicSubs + keyStringEncoder.decode(uid)
                     )
-                    .map(UUID::fromString)
+                    .map {
+                        stringKeyDecoder.decode(it)
+                    }
 
-    override fun getUsersBy(id: UUID): Flux<UUID> =
+    override fun getUsersBy(id: T): Flux<T> =
             topicExistsOrError(id)
                     .thenMany(
                             stringTemplate
                                     .opsForSet()
                                     .members(
-                                            prefixTopicToUserSubs + id.toString()
+                                            prefixTopicToUserSubs + keyStringEncoder.decode(id)
                                     )
-                                    .map(UUID::fromString)
+                                    .map {
+                                        stringKeyDecoder.decode(it)
+                                    }
                     )
 
-    override fun rem(id: UUID): Mono<Void> = messageTemplate
+    override fun rem(id: T): Mono<Void> = messageTemplate
             .connectionFactory
             .reactiveConnection
             .keyCommands()
@@ -205,17 +209,17 @@ class TopicServiceRedisPubSub(
                         .closeTopic(id)
             }.then()
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
+    override fun getProcessor(id: T): FluxProcessor<out Message<T, out Any>, out Message<T, out Any>> =
             topicManager.getTopicProcessor(id)
 
-    private fun getPubSubFluxFor(topic: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    private fun getPubSubFluxFor(topic: T): Flux<out Message<T, out Any>> =
             messageTemplate
                     .listenTo(ChannelTopic(topic.toString()))
                     .map {
                         it.message.state!!
                     }
                     .doOnNext {
-                        logger.info("PUBSUB: ${it.key.topicId}")
+                        logger.info("PUBSUB: ${it.key.dest}")
                     }.doOnComplete {
                         topicXSource.remove(topic)
                     }

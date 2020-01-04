@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.JsonNodeStringCodec
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.*
 import com.demo.chat.test.TestBase
@@ -26,7 +28,7 @@ class MessageSerializerTests : TestBase() {
         }
 
         val messageJsons = Flux.just(
-                Message.create(Key.anyKey(1L), "foo", true),
+                Message.create(MessageKey.create(1L, 2L), "foo", true),
                 Message.create(MessageKey.create("a", "b"), "Foo", true),
                 TextMessage.create(UserMessageKey.create(
                         UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()

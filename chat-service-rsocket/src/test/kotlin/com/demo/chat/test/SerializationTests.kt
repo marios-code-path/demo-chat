@@ -18,7 +18,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.text.SimpleDateFormat
 import java.util.*
 
-
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TestKey")
 interface TestKey : Key<UUID> {
@@ -26,7 +25,7 @@ interface TestKey : Key<UUID> {
 
     companion object Factory {
         @JvmStatic
-        fun create(eid: UUID): UUIDKey = object : UUIDKey {
+        fun create(eid: UUID): Key<UUID> = object : Key<UUID> {
             override val id: UUID
                 @JsonProperty("eid") get() = eid
         }
@@ -40,7 +39,6 @@ data class ETestKey(@JsonProperty("eid") override val id: UUID) : TestKey
 // interface class
 //data class ETestKey @JsonCreator constructor
 //(@JsonProperty("eid") override val id: UUID) : TestKey
-
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -56,12 +54,11 @@ class SerializationTests {
             System.out.println("MODULE: $it")
         }
 
-        val randomEventKey = Key.eventKey(UUID.randomUUID())
+        val randomEventKey = Key.anyKey(UUID.randomUUID())
 
         val data = mapper.writeValueAsString(randomEventKey)
 
-        val obj = mapper.readValue(data, UUIDKey::class.java)
-
+        val obj = mapper.readValue(data, TestUUIDKey::class.java)
     }
 
     class SerializationConfiguration {
@@ -80,7 +77,7 @@ class SerializationTests {
         }
 
         @Bean
-        fun eventKeyModule() = module("EVENTKEY", UUIDKey::class.java, TestUUIDKey::class.java)
+        fun eventKeyModule() = module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
 
         @Bean
         fun testKeyModule() = module("TESTKEY", TestKey::class.java, ETestKey::class.java)
@@ -92,7 +89,7 @@ class SerializationTests {
             b.indentOutput(true).dateFormat(SimpleDateFormat("yyyy-MM-dd"))
             b.modules(
                     module("TESTKEY", TestKey::class.java, ETestKey::class.java),
-                    module("EVENTKEY", UUIDKey::class.java, TestUUIDKey::class.java)
+                    module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
             )
             return b
         }

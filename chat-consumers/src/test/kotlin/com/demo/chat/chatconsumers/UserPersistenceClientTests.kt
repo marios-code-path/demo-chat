@@ -1,6 +1,6 @@
 package com.demo.chat.chatconsumers
 
-import com.demo.chat.domain.UUIDKey
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -12,23 +12,24 @@ import java.time.Duration
 class UserPersistenceClientTests {
 
 
-    private interface UserClientHandler : UserPersistence {
+    private interface UserClientHandler : UserPersistence<Any> {
         @MessageMapping("key")
-        override fun key(): Mono<out UUIDKey>
+        override fun key(): Mono<out Key<Any>>
 
         @MessageMapping("add")
-        override fun add(ent: User): Mono<Void>
+        override fun add(ent: User<Any>): Mono<Void>
 
         @MessageMapping("rem")
-        override fun rem(key: UUIDKey): Mono<Void>
+        override fun rem(key: Key<Any>): Mono<Void>
 
         @MessageMapping("get")
-        override fun get(key: UUIDKey): Mono<out User>
+        override fun get(key: Key<Any>): Mono<out User<Any>>
 
         @MessageMapping("all")
-        override fun all(): Flux<out User>
+        override fun all(): Flux<out User<Any>>
 
     }
+
     private class ClientHandler {
 
         internal val fireForgetPayloads = ReplayProcessor.create<String>()

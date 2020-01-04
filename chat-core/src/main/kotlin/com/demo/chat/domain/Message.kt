@@ -57,12 +57,14 @@ interface UserMessageKey<T> : MessageKey<T> {
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes(JsonSubTypes.Type(TextMessage::class))
 @JsonTypeName("Message")
-interface Message<T, E> : KeyDataPair<T, E> {
+interface Message<T, E> {
     val visible: Boolean
+    val key: MessageKey<T>
+    val data: E
 
     companion object Factory {
-        fun <T, E> create(key: Key<T>, value: E, visible: Boolean): Message<T, E> = object : Message<T, E> {
-            override val key: Key<T>
+        fun <T, E> create(key: MessageKey<T>, value: E, visible: Boolean): Message<T, E> = object : Message<T, E> {
+            override val key: MessageKey<T>
                 get() = key
             override val data: E
                 get() = value
@@ -73,6 +75,7 @@ interface Message<T, E> : KeyDataPair<T, E> {
 }
 
 // TODO :  Relax requirements (TextMessage to Message) on the Persistence layer so we can identify any Message Key and Payload.
+@Deprecated("Maybe doing away with TextMessage Subtype")
 @JsonTypeName("TextMessage")
 interface TextMessage<T> : Message<T, String> {
     override val key: UserMessageKey<T>

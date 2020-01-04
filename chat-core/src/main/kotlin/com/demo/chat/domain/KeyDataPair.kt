@@ -39,15 +39,7 @@ interface KeyDataPair<T, E> {
 
     companion object Factory {
         @JvmStatic
-        fun <T> uuidKeyDataPair(key: Key<UUID>, data :T): KeyDataPair<UUID, T> = object : KeyDataPair<UUID, T> {
-            override val key: Key<UUID>
-                get() = key
-            override val data: T
-                get() = data
-        }
-
-        @JvmStatic
-        fun <T, E> keyDataPair(key: Key<T>, data :E): KeyDataPair<T, E> = object : KeyDataPair<T, E> {
+        fun <T, E> create(key: Key<T>, data :E): KeyDataPair<T, E> = object : KeyDataPair<T, E> {
             override val key: Key<T>
                 get() = key
             override val data: E

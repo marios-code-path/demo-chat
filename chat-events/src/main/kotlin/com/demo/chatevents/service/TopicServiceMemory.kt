@@ -2,9 +2,7 @@ package com.demo.chatevents.service
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatTopicServiceAdmin
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -24,41 +22,41 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * For now, this service is restricted to single-node bound chat-rooms, no-persistence
  */
-class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
-    private val topicManager: TopicManager = TopicManager()
+class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
+    private val topicManager: TopicManager<T, V> = TopicManager()
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
     // map of <topic : [msgInbox]s>
-    private val topicMembers: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
+    private val topicMembers: MutableMap<T, HashSet<T>> = mutableMapOf()
 
     // map of <msgInbox : [topic]s>
-    private val memberTopics: MutableMap<UUID, HashSet<UUID>> = mutableMapOf()
+    private val memberTopics: MutableMap<T, HashSet<T>> = mutableMapOf()
 
-    private val topicXSource: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val topicXSource: MutableMap<T, Flux<out Message<T, out V>>> = ConcurrentHashMap()
 
-    override fun add(id: UUID): Mono<Void> = Mono
+    override fun add(id: T): Mono<Void> = Mono
             .fromCallable {
                 topicToMembers(id)
                 receiveSourcedEvents(id)
             }
             .then()
 
-    fun topicExistsOrError(topic: UUID): Mono<Boolean> =
+    fun topicExistsOrError(topic: T): Mono<Boolean> =
             exists(topic)
                     .filter { it == true }
                     .switchIfEmpty(Mono.error(TopicNotFoundException))
 
-    override fun exists(id: UUID): Mono<Boolean> = Mono
+    override fun exists(id: T): Mono<Boolean> = Mono
             .fromCallable { topicXSource.containsKey(id) }
 
   //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
+    override fun getProcessor(id: T): FluxProcessor<out Message<T, out V>, out Message<T, out V>> =
             topicManager
                     .getTopicProcessor(id)
 
-    override fun receiveOn(stream: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveOn(stream: T): Flux<out Message<T, out V>> =
             topicManager
                     .getTopicFlux(stream)
 
@@ -66,10 +64,10 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: T): Flux<out Message<T, out V>> =
             topicXSource
                     .getOrPut(id, {
-                        val proc = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(1)
+                        val proc = ReplayProcessor.create<Message<T, out V>>(1)
                         topicManager.setTopicProcessor(id, proc)
 
                         val reader = topicManager.getTopicFlux(id)
@@ -79,18 +77,20 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     })
 
     // how to join multiple streams to have fan-out without iterating through Fluxs
-    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> =
-            topicExistsOrError(topicMessage.key.topicId)
-                    .map {
-                        topicManager
-                                .getTopicProcessor(topicMessage.key.topicId)
-                                .onNext(topicMessage)
-                    }
-                    .switchIfEmpty(Mono.error(TopicNotFoundException))
-                    .then()
+    override fun sendMessage(topicMessage: Message<T, out V>): Mono<Void>  {
+        val dest = topicMessage.key.dest
 
+        return topicExistsOrError(dest)
+                .map {
+                    topicManager
+                            .getTopicProcessor(dest)
+                            .onNext(topicMessage)
+                }
+                .switchIfEmpty(Mono.error(TopicNotFoundException))
+                .then()
+    }
 
-    override fun subscribe(uid: UUID, topicId: UUID): Mono<Void> =
+    override fun subscribe(uid: T, topicId: T): Mono<Void> =
             topicExistsOrError(topicId)
                     .map {
                         topicToMembers(topicId).add(uid)
@@ -99,7 +99,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     }
                     .then()
 
-    override fun unSubscribe(uid: UUID, id: UUID): Mono<Void> = Mono
+    override fun unSubscribe(uid: T, id: T): Mono<Void> = Mono
             .fromCallable {
                 topicToMembers(id).remove(uid)
                 memberToTopics(uid).remove(id)
@@ -107,7 +107,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                         .quitTopic(id, uid)
             }.then()
 
-    override fun unSubscribeAll(uid: UUID): Mono<Void> =
+    override fun unSubscribeAll(uid: T): Mono<Void> =
             Flux.fromIterable(memberToTopics(uid))
                     .flatMap { topic ->
                         unSubscribe(uid, topic)
@@ -115,7 +115,7 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
                     .subscribeOn(Schedulers.parallel())
                     .then()
 
-    override fun unSubscribeAllIn(id: UUID): Mono<Void> = Flux
+    override fun unSubscribeAllIn(id: T): Mono<Void> = Flux
             .fromIterable(topicToMembers(id))
             .flatMap { member ->
                 unSubscribe(member, id)
@@ -123,21 +123,21 @@ class TopicServiceMemory : ChatTopicService, ChatTopicServiceAdmin {
             .subscribeOn(Schedulers.parallel())
             .then()
 
-    override fun rem(id: UUID): Mono<Void> = Mono
+    override fun rem(id: T): Mono<Void> = Mono
             .fromCallable {
                 topicManager.closeTopic(id)
             }.then()
 
-    override fun getTopicsByUser(uid: UUID): Flux<UUID> = Flux.fromIterable(memberToTopics(uid))
+    override fun getByUser(uid: T): Flux<T> = Flux.fromIterable(memberToTopics(uid))
 
-    override fun getUsersBy(id: UUID): Flux<UUID> = Flux.fromIterable(topicToMembers(id))
+    override fun getUsersBy(id: T): Flux<T> = Flux.fromIterable(topicToMembers(id))
 
-    private fun memberToTopics(memberId: UUID): MutableSet<UUID> =
+    private fun memberToTopics(memberId: T): MutableSet<T> =
             memberTopics.getOrPut(memberId) {
                 HashSet()
             }
 
-    private fun topicToMembers(topicId: UUID): MutableSet<UUID> =
+    private fun topicToMembers(topicId: T): MutableSet<T> =
             topicMembers.getOrPut(topicId) {
                 HashSet()
             }

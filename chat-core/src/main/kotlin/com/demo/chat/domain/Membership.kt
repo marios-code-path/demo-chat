@@ -12,17 +12,17 @@ import java.util.*
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Membership")
 interface Membership<S> {
-    val key: Key<S>
-    val memberOf: Key<S>
-    val member: Key<S>
+    val key: Key<out S>
+    val memberOf: Key<out S>
+    val member: Key<out S>
 
     companion object Factory {
-        fun <KT> create(k: Key<KT>, mof: Key<KT>, m: Key<KT>): Membership<KT> = object : Membership<KT> {
-            override val key: Key<KT>
+        fun <KT> create(k: Key<out KT>, m: Key<out KT>, mof: Key<out KT>): Membership<KT> = object : Membership<KT> {
+            override val key: Key<out KT>
                 get() = k
-            override val member: Key<KT>
+            override val member: Key<out KT>
                 get() = m
-            override val memberOf: Key<KT>
+            override val memberOf: Key<out KT>
                 get() = mof
         }
     }

@@ -1,6 +1,6 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.service.ChatTopicServiceAdmin
+import com.demo.chat.codec.Codec
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfiguration
 import com.demo.chatevents.service.TopicServiceRedisStream
@@ -11,11 +11,21 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
+import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import redis.embedded.RedisServer
 import java.io.File
+import java.util.*
+
+class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
+    override fun decode(record: T): RecordId =
+            when (record) {
+                is UUID -> RecordId.of(record.mostSignificantBits, record.leastSignificantBits)
+                else -> RecordId.autoGenerate()
+            }
+}
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -45,10 +55,11 @@ class MessageTopicServiceRedisStreamTests : MessageTopicServiceTestBase() {
                         "l_user_topics_",
                         "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce)
+                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce),
+                StringKeyDecoder(),
+                KeyStringEncoder(),
+                KeyRecordIdEncoder()
         )
-
-        topicAdmin = topicService as ChatTopicServiceAdmin
 
         Hooks.onOperatorDebug()
     }

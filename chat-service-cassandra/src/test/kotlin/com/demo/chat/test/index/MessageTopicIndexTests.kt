@@ -1,11 +1,10 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.cassandra.ChatTopic
+import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicNameKey
-import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.TopicIndexService
@@ -44,12 +43,12 @@ fun <T> uninitialized(): T = null as T
 class MessageTopicIndexTests {
 
     @MockBean
-    lateinit var roomRepo: TopicRepository<UUID>
+    lateinit var roomRepo: TopicRepository<Any>
 
     @MockBean
-    lateinit var nameRepo: TopicByNameRepository<UUID>
+    lateinit var nameRepo: TopicByNameRepository<Any>
 
-    lateinit var topicIndex: TopicIndexService<UUID>
+    lateinit var topicIndex: TopicIndexService<Any>
 
     @BeforeEach
     fun setUp() {
@@ -62,7 +61,7 @@ class MessageTopicIndexTests {
 
         BDDMockito
                 .given(nameRepo.save(anyObject()))
-                .willReturn(Mono.just(nameRoom))
+                .willReturn(Mono.empty())
 
         BDDMockito
                 .given(roomRepo.rem(anyObject()))
@@ -77,9 +76,9 @@ class MessageTopicIndexTests {
         topicIndex = TopicIndexCassandra(roomRepo, nameRepo)
     }
 
-    private val rid: UUIDKey = Key.eventKey(UUID.randomUUID())
+    private val rid: Key<out Any> = Key.anyKey(UUID.randomUUID())
 
-    private val uid: UUIDKey = Key.eventKey(UUID.randomUUID())
+    private val uid: Key<out Any> = Key.anyKey(UUID.randomUUID())
 
     private val ROOMNAME = "ROOM_TEST"
 
@@ -94,7 +93,7 @@ class MessageTopicIndexTests {
                 .verifyComplete()
     }
 
-    private fun roomKeyAssertions(key: Key<UUID>) {
+    private fun roomKeyAssertions(key: Key<out Any>) {
         assertAll("room contents in tact",
                 { Assertions.assertNotNull(key) },
                 { Assertions.assertNotNull(key.id) }

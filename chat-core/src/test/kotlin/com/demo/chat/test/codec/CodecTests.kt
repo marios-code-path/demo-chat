@@ -11,8 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
 
-class UUIDCodec : Codec<String, UUID> {
+class StringUUIDCodec : Codec<String, UUID> {
     override fun decode(record: String): UUID = UUID.fromString(record)
+}
+
+class UUIDStringCodec: Codec<UUID, String> {
+    override fun decode(record: UUID): String = record.toString()
 }
 
 @ExtendWith(SpringExtension::class)
@@ -34,7 +38,7 @@ class CodecTests : TestBase() {
     @Test
     fun `should encode UUID methods`() {
         Assertions
-                .assertThat(UUIDCodec().decode(UUID.randomUUID().toString()))
+                .assertThat(StringUUIDCodec().decode(UUID.randomUUID().toString()))
                 .isNotNull()
     }
 }

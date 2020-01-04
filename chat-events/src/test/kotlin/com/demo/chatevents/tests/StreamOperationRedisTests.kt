@@ -2,7 +2,6 @@ package com.demo.chatevents.tests
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chatevents.*
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
@@ -53,7 +52,7 @@ class StreamOperationRedisTests {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    private val streamManager = TopicManager()
+    private val streamManager = TopicManager<Any, Any>()
 
     private lateinit var redisServer: RedisServer
 
@@ -63,7 +62,7 @@ class StreamOperationRedisTests {
 
     private lateinit var template: ReactiveRedisTemplate<String, String>
 
-    private lateinit var msgTemplate: ReactiveRedisTemplate<String, TopicData>
+    private lateinit var msgTemplate: ReactiveRedisTemplate<String, TopicData<Any, Any>>
 
     private lateinit var objTemplate: ReactiveRedisTemplate<String, Object>
 
@@ -169,7 +168,7 @@ class StreamOperationRedisTests {
 
         val notMessages = Supplier {
 
-            val messages = Flux.generate<TestTextMessage> {
+            val messages = Flux.generate<TestTextMessage<Any>> {
                 val testRoomId = UUID.randomUUID()
                 val testEventId = UUID.randomUUID()
                 val testUserId = UUID.randomUUID()
@@ -197,7 +196,7 @@ class StreamOperationRedisTests {
                     }
 
             val receiver = msgTemplate
-                    .opsForStream<String, TopicData>()
+                    .opsForStream<String, TopicData<Any, Any>>()
                     .read(StreamOffset.fromStart(testStreamKey))
                     .map {
                         it.value
@@ -255,7 +254,7 @@ class StreamOperationRedisTests {
                 .withId(recordId)
 
         val sendStream = msgTemplate
-                .opsForStream<String, TopicData>(Jackson2HashMapper(true))
+                .opsForStream<String, TopicData<Any, Any>>(Jackson2HashMapper(true))
                 .add(objRecord)
                 .checkpoint("send")
 
@@ -263,7 +262,7 @@ class StreamOperationRedisTests {
                 .opsForStream<String, Any>(Jackson2HashMapper(true))
                 .read(StreamOffset.fromStart(testStreamKey))
                 .map {
-                    //it.toObjectRecord<TopicData>(Jackson2HashMapper(true))
+                    //it.toObjectRecord<TopicData<Any, Any>>(Jackson2HashMapper(true))
                     Jackson2HashMapper(true).fromHash(it.value)
                 }
                 .checkpoint("receive")
@@ -281,7 +280,7 @@ class StreamOperationRedisTests {
                 .expectSubscription()
                 .assertNext {
 
-                    val data: TopicData = it as TopicData
+                    val data: TopicData<Any, Any> = it as TopicData<Any, Any>
 
                     Assertions
                             .assertThat(data)
@@ -384,7 +383,7 @@ class StreamOperationRedisTests {
                 .serverCommands().flushAll().block()
 
         val xread = msgTemplate
-                .opsForStream<String, TopicData>()
+                .opsForStream<String, TopicData<Any, Any>>()
                 .read(StreamOffset.fromStart(room.toString()))
                 .map {
                     it.value["data"]?.state!!
@@ -393,7 +392,7 @@ class StreamOperationRedisTests {
 
         val xsend = { x: String ->
             msgTemplate
-                    .opsForStream<String, TopicData>()
+                    .opsForStream<String, TopicData<Any, Any>>()
                     .add(MapRecord
                             .create(room.toString(), mapOf(Pair("data", TopicData(
                                     TextMessage.create(UUID.randomUUID(), room, user, x)
@@ -437,7 +436,7 @@ class StreamOperationRedisTests {
         val user = testUserId()
 
         val xread = msgTemplate
-                .opsForStream<String, TopicData>()
+                .opsForStream<String, TopicData<Any, Any>>()
                 .read(StreamOffset.fromStart(room.toString()))
                 .map {
                     it.value["data"]?.state!!
@@ -445,7 +444,7 @@ class StreamOperationRedisTests {
 
         val xsend = { x: String ->
             msgTemplate
-                    .opsForStream<String, TopicData>()
+                    .opsForStream<String, TopicData<Any, Any>>()
                     .add(MapRecord
                             .create(room.toString(), mapOf(Pair("data", TopicData(
                                     TextMessage.create(UUID.randomUUID(), room, user, x)
@@ -464,7 +463,7 @@ class StreamOperationRedisTests {
                 .expectSubscription()
                 .verifyComplete()
 
-        val testProcessor: TestPublisher<Message<UUIDTopicMessageKey, Any>> =
+        val testProcessor: TestPublisher<Message<Any, out Any>> =
                 TestPublisher.create()
 
         val tpDisposable = xread

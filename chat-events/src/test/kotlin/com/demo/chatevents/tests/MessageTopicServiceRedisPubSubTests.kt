@@ -1,6 +1,5 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicServiceRedisPubSub
@@ -42,10 +41,10 @@ class MessageTopicServiceRedisPubSubTests : MessageTopicServiceTestBase() {
                         "t_l_user_topics_",
                         "t_l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce)
+                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce),
+                StringKeyDecoder(),
+                KeyStringEncoder()
         )
-
-        topicAdmin = topicService as ChatTopicServiceAdmin
 
         Hooks.onOperatorDebug()
     }

@@ -1,6 +1,8 @@
 package com.demo.chatevents.tests
 
-import com.demo.chat.domain.JoinAlert
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.UserMessageKey
 import com.demo.chatevents.service.TopicManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -14,7 +16,7 @@ import java.util.*
 
 class MessageTopicManagerTests {
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
-    private val streamMan = TopicManager()
+    private val streamMan = TopicManager<UUID, String>()
 
     @BeforeEach
     fun setUp() {
@@ -46,7 +48,10 @@ class MessageTopicManagerTests {
     @Test
     fun `should subscribe to and send data`() {
         val streamId = UUID.randomUUID()
-        val dataSource = Flux.just(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
+        val dataSource = Flux
+                .just(Message
+                        .create(UserMessageKey.create(UUID.randomUUID(), streamId, UUID.randomUUID()),
+                                "TEST", true))
 
         StepVerifier
                 .create(streamMan.getTopicFlux(streamId))
@@ -90,7 +95,10 @@ class MessageTopicManagerTests {
                 .then {
                     streamMan.subscribeTopic(streamId, consumerId)
                     streamMan.getTopicProcessor(streamId)
-                            .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
+                            .onNext(Message.create(
+                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    "TEST",
+                                    false))
                 }
                 .assertNext {
                     Assertions
@@ -118,7 +126,10 @@ class MessageTopicManagerTests {
                     streamMan.subscribeTopic(streamId, consumerId)
                     streamMan.subscribeTopic(streamId, otherConsumerId)
                     streamMan.getTopicProcessor(streamId)
-                            .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
+                            .onNext(Message.create(
+                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    "TEST",
+                                    false))
                 }
                 .expectNextCount(2)
                 .then {
@@ -142,13 +153,19 @@ class MessageTopicManagerTests {
                     streamMan.subscribeTopic(streamId, consumerId)
                     streamMan.subscribeTopic(streamId, otherConsumerId)
                     streamMan.getTopicProcessor(streamId)
-                            .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
+                            .onNext(Message.create(
+                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    "TEST",
+                                    false))
                 }
                 .expectNextCount(2)
                 .then {
                     streamMan.closeTopic(consumerId)
                     streamMan.getTopicProcessor(streamId)
-                            .onNext(JoinAlert.create(UUID.randomUUID(), streamId, UUID.randomUUID()))
+                            .onNext(Message.create(
+                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    "TEST",
+                                    false))
                 }
                 .expectNextCount(1)
                 .then {

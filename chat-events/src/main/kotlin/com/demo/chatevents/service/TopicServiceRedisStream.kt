@@ -1,11 +1,10 @@
 package com.demo.chatevents.service
 
+import com.demo.chat.codec.Codec
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.domain.UUIDTopicMessageKey
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.ChatTopicServiceAdmin
 import com.demo.chatevents.topic.TopicData
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
@@ -19,7 +18,6 @@ import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 data class KeyConfiguration(
@@ -29,11 +27,14 @@ data class KeyConfiguration(
         val prefixTopicToUserSubs: String
 )
 
-class TopicServiceRedisStream(
+class TopicServiceRedisStream<T, V>(
         keyConfig: KeyConfiguration,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
-        private val messageTemplate: ReactiveRedisTemplate<String, TopicData>
-) : ChatTopicService, ChatTopicServiceAdmin {
+        private val messageTemplate: ReactiveRedisTemplate<String, TopicData<T, V>>,
+        val stringKeyEncoder: Codec<String, T>,
+        val keyStringEncoder: Codec<T, String>,
+        val keyRecordIdCodec: Codec<T, RecordId>
+) : ChatTopicService<T, V> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
@@ -41,22 +42,22 @@ class TopicServiceRedisStream(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamManager = TopicManager()
-    private val topicXReads: MutableMap<UUID, Flux<out Message<UUIDTopicMessageKey, Any>>> = ConcurrentHashMap()
+    private val streamManager = TopicManager<T, V>()
+    private val topicXReads: MutableMap<T, Flux<out Message<T, out V>>> = ConcurrentHashMap()
 
-    private fun topicExistsOrError(topic: UUID): Mono<Void> = exists(topic)
+    private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
             .filter {
                 it == true
             }
             .switchIfEmpty(Mono.error(TopicNotFoundException))
             .then()
 
-    override fun exists(id: UUID): Mono<Boolean> = stringTemplate
+    override fun exists(id: T): Mono<Boolean> = stringTemplate
             .opsForSet()
             .isMember(topicSetKey, id.toString())
 
     // Idempotent
-    override fun add(id: UUID): Mono<Void> =
+    override fun add(id: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .add(topicSetKey, id.toString())
@@ -65,7 +66,7 @@ class TopicServiceRedisStream(
                         it.onComplete()
                     }
 
-    override fun subscribe(member: UUID, id: UUID): Mono<Void> =
+    override fun subscribe(member: T, id: T): Mono<Void> =
             topicExistsOrError(id)
                     .then(
                             stringTemplate
@@ -94,7 +95,7 @@ class TopicServiceRedisStream(
                         it.onComplete()
                     }
 
-    override fun unSubscribe(member: UUID, id: UUID): Mono<Void> =
+    override fun unSubscribe(member: T, id: T): Mono<Void> =
             topicExistsOrError(id)
                     .then(
                             stringTemplate    // todo Streams entries too!
@@ -124,7 +125,7 @@ class TopicServiceRedisStream(
                         it.onComplete()
                     }
 
-    override fun unSubscribeAll(member: UUID): Mono<Void> =
+    override fun unSubscribeAll(member: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .members(prefixUserToTopicSubs + member.toString())
@@ -133,13 +134,13 @@ class TopicServiceRedisStream(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribe(member, UUID.fromString(topicId))
+                                    unSubscribe(member, stringKeyEncoder.decode(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun unSubscribeAllIn(id: UUID): Mono<Void> =
+    override fun unSubscribeAllIn(id: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
                     .members(prefixTopicToUserSubs + id.toString())
@@ -148,69 +149,70 @@ class TopicServiceRedisStream(
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribe(UUID.fromString(member), id)
+                                    unSubscribe(stringKeyEncoder.decode(member), id)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
-    override fun sendMessage(topicMessage: Message<UUIDTopicMessageKey, Any>): Mono<Void> {
+    override fun sendMessage(topicMessage: Message<T, out V>): Mono<Void> {
         val map = mapOf(Pair("data", TopicData(topicMessage)))
         /*
-            * <li>1    Time-based UUID
-            * <li>2    DCE security UUID
-            * <li>3    Name-based UUID
-            * <li>4    Randomly generated UUID
+            * <li>1    Time-based T
+            * <li>2    DCE security T
+            * <li>3    Name-based T
+            * <li>4    Randomly generated T
          */
-        val recordId = when (topicMessage.key.id.version()) {
-            1 -> RecordId.of(topicMessage.key.id.timestamp(), topicMessage.key.id.clockSequence().toLong())
-            else -> RecordId.autoGenerate()
-        }
+        val recordId = keyRecordIdCodec.decode(topicMessage.key.id)
 
-        return Mono.from(topicExistsOrError(topicMessage.key.topicId))
+        return Mono.from(topicExistsOrError(topicMessage.key.dest))
                 .thenMany(messageTemplate
-                        .opsForStream<String, TopicData>()
+                        .opsForStream<String, TopicData<T, V>>()
                         .add(MapRecord
-                                .create(prefixTopicStream + topicMessage.key.topicId.toString(), map)
+                                .create(prefixTopicStream + topicMessage.key.dest.toString(), map)
                                 .withId(recordId)))
                 .then()
     }
 
-    override fun receiveOn(streamId: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveOn(streamId: T): Flux<out Message<T, out V>> =
             streamManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(id: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    override fun receiveSourcedEvents(id: T): Flux<out Message<T, out V>> =
             topicXReads.getOrPut(id, {
                 val xread = getXReadFlux(id)
-                val reProc = ReplayProcessor.create<Message<UUIDTopicMessageKey, Any>>(5)
+                val reProc = ReplayProcessor.create<Message<T, out V>>(5)
                 streamManager.setTopicProcessor(id, reProc)
                 streamManager.subscribeTopicProcessor(id, xread)
 
                 xread
             })
 
-    override fun getTopicsByUser(uid: UUID): Flux<UUID> =
+    override fun getByUser(uid: T): Flux<T> =
             stringTemplate
                     .opsForSet()
                     .members(
-                            prefixUserToTopicSubs + uid.toString()
+                            prefixUserToTopicSubs + keyStringEncoder.decode(uid)
                     )
-                    .map(UUID::fromString)
+                    .map {
+                        stringKeyEncoder.decode(it)
+                    }
 
-    override fun getUsersBy(id: UUID): Flux<UUID> =
+    override fun getUsersBy(id: T): Flux<T> =
             topicExistsOrError(id)
                     .thenMany(
                             stringTemplate
                                     .opsForSet()
                                     .members(
-                                            prefixTopicToUserSubs + id.toString()
+                                            prefixTopicToUserSubs + keyStringEncoder.decode(id)
                                     )
-                                    .map(UUID::fromString)
+                                    .map {
+                                        stringKeyEncoder.decode(it)
+                                    }
                     )
 
-    override fun rem(id: UUID): Mono<Void> = messageTemplate
+    override fun rem(id: T): Mono<Void> = messageTemplate
             .connectionFactory
             .reactiveConnection
             .keyCommands()
@@ -221,7 +223,7 @@ class TopicServiceRedisStream(
                         .closeTopic(id)
             }.then()
 
-    override fun getProcessor(id: UUID): FluxProcessor<out Message<UUIDTopicMessageKey, Any>, out Message<UUIDTopicMessageKey, Any>> =
+    override fun getProcessor(id: T): FluxProcessor<out Message<T, out V>, out Message<T, out V>> =
             streamManager.getTopicProcessor(id)
 
     private fun keyExists(key: String, errorThrow: Throwable): Mono<Boolean> = stringTemplate
@@ -235,14 +237,14 @@ class TopicServiceRedisStream(
             }
             .switchIfEmpty(Mono.error(errorThrow))
 
-    private fun getXReadFlux(topic: UUID): Flux<out Message<UUIDTopicMessageKey, Any>> =
+    private fun getXReadFlux(topic: T): Flux<out Message<T, out V>> =
             messageTemplate
-                    .opsForStream<String, TopicData>()
+                    .opsForStream<String, TopicData<T, V>>()
                     .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
                     .map {
                         it.value["data"]?.state!!
                     }.doOnNext {
-                        logger.info("XREAD: ${it.key.topicId}")
+                        logger.info("XREAD: ${keyStringEncoder.decode(it.key.dest)}")
                     }.doOnComplete {
                         topicXReads.remove(topic)
                     }
