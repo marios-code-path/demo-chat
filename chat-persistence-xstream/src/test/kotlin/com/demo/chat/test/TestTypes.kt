@@ -64,26 +64,26 @@ data class TestAlertMessageKey(
 data class TestInfoAlert(
         override val key: TestAlertMessageKey,
         override val data: TopicMetaData,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class TestLeaveAlert(
         override val key: TestAlertMessageKey,
         override val data: UUID,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, UUID>
 
 @JsonTypeName("JoinAlert")
 data class TestJoinAlert(
         override val key: TestAlertMessageKey,
         override val data: UUID,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, UUID>
 
 @JsonTypeName("ChatMessage")
 data class TestTextMessage(
         override val key: TestUserMessageKey,
         override val data: String,
-        override val visible: Boolean
+        override val record: Boolean
 ) : TextMessage<UUID>

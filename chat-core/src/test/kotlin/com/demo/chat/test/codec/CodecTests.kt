@@ -24,7 +24,7 @@ class CodecTests : TestBase() {
 
     @Test
     fun `should encode Generic`() {
-        val codec: Codec<String,Int> = mock()
+        val codec: Codec<String, Int> = mock()
 
         whenever(codec.decode(any()))
                 .thenReturn(4)

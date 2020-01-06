@@ -15,7 +15,7 @@ data class TestAlertKey<T>(override val id: T, override val dest: T) : MessageKe
 
 @JsonTypeName("Alert")
 data class TestAlert<T>(override val key: TestAlertKey<T>, override val data: Int) : Message<T, Int> {
-    override val visible = false
+    override val record = false
 }
 
 @JsonTypeName("MessageKey")
@@ -25,7 +25,7 @@ data class TestMessageKey<T>(override val id: T, override val dest: T, override 
 
 @JsonTypeName("Text")
 data class TestTextMessage<T>(override val key: TestMessageKey<T>, override val data: String) : TextMessage<T> {
-    override val visible = true
+    override val record = true
 }
 
 @JsonTypeName("User")

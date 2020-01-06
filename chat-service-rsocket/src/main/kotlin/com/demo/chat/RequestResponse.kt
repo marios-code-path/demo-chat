@@ -30,7 +30,7 @@ data class TextMessageSend(val uid: UUID, val topic: UUID, val text: String)
 data class ChatMessage(
         override val key: ChatMessageKey,
         override val data: String,
-        override val visible: Boolean
+        val record: Boolean
 ) : TextMessage
 
 data class ChatMessageKey(

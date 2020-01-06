@@ -253,7 +253,7 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
-            { assertTrue(msg.visible) }
+            { assertTrue(msg.record) }
     )
 
     fun chatMessageUserAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
@@ -263,7 +263,7 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
-            { assertTrue(msg.visible) }
+            { assertTrue(msg.record) }
     )
 
     fun chatMessageRoomAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
@@ -273,6 +273,6 @@ class TextMessageRepositoryTests {
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
-            { assertTrue(msg.visible) }
+            { assertTrue(msg.record) }
     )
 }

@@ -3,6 +3,7 @@ package com.demo.chat.test.serializers
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Membership
 import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.domain.serializers.ChatModules
 import com.demo.chat.domain.serializers.MembershipDeserializer
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
@@ -20,9 +21,7 @@ class MembershipSerializerTests : TestBase() {
     @Test
     fun `Any Membership deserialize`() {
         mapper.apply {
-            registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(Membership::class.java, MembershipDeserializer(JsonNodeAnyCodec))
-            })
+            registerModules(ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).membershipModule())
         }
 
         val membershipJsons = Flux.just(

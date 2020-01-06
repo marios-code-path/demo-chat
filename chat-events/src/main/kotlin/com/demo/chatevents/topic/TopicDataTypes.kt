@@ -16,7 +16,7 @@ class TopicData<T, V>(var state: Message<T, out V>)
 open class ChatMessage<T>(
         override val key: ChatMessageKey<T>,
         override val data: String,
-        override val visible: Boolean
+        override val record: Boolean
 ) : TextMessage<T>
 
 data class ChatMessageKey<T>(

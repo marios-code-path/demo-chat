@@ -61,7 +61,7 @@ data class AlertMessageKey(
 data class ChatMessage(
         override val key: ChatMessageKey,
         override val data: String,
-        override val visible: Boolean
+        override val record: Boolean
 ) : TextMessage<UUID>
 
 
@@ -69,19 +69,19 @@ data class ChatMessage(
 data class ChatInfoAlert(
         override val key: AlertMessageKey,
         override val data: TopicMetaData,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, TopicMetaData>
 
 @JsonTypeName("LeaveAlert")
 data class ChatLeaveAlert(
         override val key: AlertMessageKey,
         override val data: UUID,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, UUID>
 
 @JsonTypeName("JoinAlert")
 data class ChatJoinAlert(
         override val key: AlertMessageKey,
         override val data: UUID,
-        override val visible: Boolean
+        override val record: Boolean
 ) : Message<UUID, UUID>

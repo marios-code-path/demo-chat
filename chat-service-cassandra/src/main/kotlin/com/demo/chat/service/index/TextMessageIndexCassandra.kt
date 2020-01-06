@@ -17,7 +17,6 @@ import org.springframework.data.cassandra.core.query.where
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
-import java.util.*
 
 class TextMessageIndexCassandra<T>(val cassandra: ReactiveCassandraTemplate,
                                    val byUserRepo: ChatMessageByUserRepository<T>,
@@ -33,7 +32,7 @@ class TextMessageIndexCassandra<T>(val cassandra: ReactiveCassandraTemplate,
                                     Instant.now()
                             ),
                             ent.data,
-                            ent.visible
+                            ent.record
                     ))
                     .insert(ChatMessageByTopic(
                             ChatMessageByTopicKey(
@@ -43,7 +42,7 @@ class TextMessageIndexCassandra<T>(val cassandra: ReactiveCassandraTemplate,
                                     Instant.now()
                             ),
                             ent.data,
-                            ent.visible
+                            ent.record
                     ))
                     .execute()
                     .map {

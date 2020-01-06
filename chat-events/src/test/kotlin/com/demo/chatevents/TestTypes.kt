@@ -57,5 +57,5 @@ data class TestUserMessageKey<T>(
 data class TestTextMessage<T>(
         override val key: TestUserMessageKey<T>,
         override val data: String,
-        override val visible: Boolean
+        override val record: Boolean
 ) : TextMessage<T>

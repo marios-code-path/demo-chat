@@ -2,8 +2,11 @@ package com.demo.chat.test.serializers
 
 import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.codec.JsonNodeStringCodec
-import com.demo.chat.domain.*
-import com.demo.chat.domain.serializers.*
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.TextMessage
+import com.demo.chat.domain.UserMessageKey
+import com.demo.chat.domain.serializers.ChatModules
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -19,20 +22,18 @@ import java.util.*
 class MessageSerializerTests : TestBase() {
 
     @Test
-    fun `Any Message deserialize`() { Hooks.onOperatorDebug()
+    fun `Any Message deserialize`() {
+        Hooks.onOperatorDebug()
         mapper.apply {
-            registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(Message::class.java, MessageDeserializer(JsonNodeAnyCodec, JsonNodeStringCodec))
-                addDeserializer(TextMessage::class.java, TextMessageDeserializer(JsonNodeAnyCodec))
-            })
+            registerModules(
+                ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).messageModule()
+            )
         }
 
         val messageJsons = Flux.just(
                 Message.create(MessageKey.create(1L, 2L), "foo", true),
                 Message.create(MessageKey.create("a", "b"), "Foo", true),
-                TextMessage.create(UserMessageKey.create(
-                        UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()
-                ), "foo", true)
+                Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID()), 2345, false)
         )
                 .map(mapper::writeValueAsString).doOnNext(System.out::println)
                 .map<Message<out Any, out Any>>(mapper::readValue)
@@ -62,6 +63,13 @@ class MessageSerializerTests : TestBase() {
                             .isNotNull
                             .extracting("id")
                             .isInstanceOf(UUID::class.java)
+
+                    Assertions
+                            .assertThat(message)
+                            .isNotNull
+                            .extracting("data")
+                            .isInstanceOf(Number::class.java)
+
                 }
                 .expectComplete()
                 .verify(Duration.ofMillis(500))

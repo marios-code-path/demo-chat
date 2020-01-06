@@ -16,7 +16,7 @@ import java.time.Duration
 import java.util.*
 
 data class JoinAlert<T>(override val key: MessageKey<T>) : Message<T, String> {
-    override val visible: Boolean
+    override val record: Boolean
         get() = false
     override val data: String
         get() = "FOO"

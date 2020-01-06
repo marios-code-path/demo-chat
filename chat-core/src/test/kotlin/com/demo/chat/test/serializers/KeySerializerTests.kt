@@ -3,8 +3,9 @@ package com.demo.chat.test.serializers
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.JsonNodeStringCodec
+import com.demo.chat.domain.serializers.ChatModules
 import com.demo.chat.domain.serializers.KeyDeserializer
-import com.demo.chat.domain.serializers.MessageKeyDeserializer
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -18,13 +19,13 @@ import java.time.Duration
 import java.util.*
 
 class KeySerializerTests : TestBase() {
+
     @Test
     fun `Subclass Key deserialize`() {
         mapper.apply {
-            registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(MessageKey::class.java, MessageKeyDeserializer(JsonNodeAnyCodec))
-                addDeserializer(Key::class.java, KeyDeserializer(JsonNodeAnyCodec))
-            })
+            registerModules(
+                ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).keyModule()
+            )
         }
 
         val publisher = TestPublisher.create<Key<out Any>>()

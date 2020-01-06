@@ -15,55 +15,6 @@ import java.util.stream.Stream
 class MessageTests : TestBase() {
 
     @Test
-    fun `Should serialize deserialize JSON from Any Message`() {
-        val messageJsons = ArrayList<String>()
-        val messages = ArrayList<Message<out Any, out Any>>()
-
-        Stream.generate { randomMessage() }.limit(5)
-                .forEach { msg ->
-                    messageJsons.add(mapper.writeValueAsString(msg))
-                }
-
-        messageJsons
-                .forEach { json ->
-                    val tree = mapper.readTree(json)
-
-                    if (tree.fieldNames().hasNext()) {
-                        when (tree.fieldNames().next()) {
-                            "Text" -> messages.add(mapper.readValue<TestTextMessage<out Any>>(json))
-                            "Alert" -> messages.add(mapper.readValue<TestAlert<out Any>>(json))
-                        }
-                    }
-                }
-
-        Assertions.assertThat(messages)
-                .`as`("A collection of messages is present")
-                .isNotNull
-                .isNotEmpty
-
-        messages
-                .forEach { msg ->
-                    when (msg) {
-                        is TextMessage -> Assertions.assertThat(msg.key).`as`("Has expected message state")
-                                .isNotNull
-                                .hasFieldOrProperty("id")
-                        is TestAlert -> Assertions.assertThat(msg.key).`as`("Has expected alert state")
-                                .isNotNull
-                                .hasFieldOrProperty("dest")
-                        else -> {
-                            Assertions.assertThat(msg).`as`("Is a message")
-                                    .isNotNull
-                                    .hasFieldOrProperty("key")
-                                    .hasFieldOrProperty("value")
-                            Assertions.assertThat(msg).`as`("is a message key too")
-                                    .isNotNull
-                                    .hasFieldOrProperty("id")
-                        }
-                    }
-                }
-    }
-
-    @Test
     fun `should test streaming only through publisher`() {
         val messagePub = TestPublisher.create<Message<out Any, out Any>>()
         val messageFlux = messagePub.flux()
