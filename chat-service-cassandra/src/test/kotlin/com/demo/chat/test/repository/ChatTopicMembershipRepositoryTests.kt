@@ -32,7 +32,7 @@ import kotlin.streams.toList
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-membership.cql")
-class ChatMembershipRepositoryTests {
+class ChatTopicMembershipRepositoryTests {
     @Autowired
     lateinit var repo: ChatMembershipRepository<UUID>
 
@@ -180,7 +180,7 @@ class ChatMembershipRepositoryTests {
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
-            Key.eventKey(UUIDs.timeBased())
+            Key.anyKey(UUIDs.timeBased())
         }.limit(5).toList()
 
         val keyIdsList = keyList.stream().map { it.id }.toList()

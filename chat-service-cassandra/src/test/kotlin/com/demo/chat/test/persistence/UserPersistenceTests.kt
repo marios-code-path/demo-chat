@@ -7,7 +7,7 @@ import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.domain.anyObject
+import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -78,7 +78,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get many by Ids`() {
-        val publisher = userSvc.byIds(listOf(Key.eventKey(UUID.randomUUID())))
+        val publisher = userSvc.byIds(listOf(Key.anyKey(UUID.randomUUID())))
 
         StepVerifier
                 .create(publisher)
@@ -93,7 +93,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get single`() {
-        val publisher = userSvc.get(Key.eventKey(UUID.randomUUID()))
+        val publisher = userSvc.get(Key.anyKey(UUID.randomUUID()))
 
         StepVerifier
                 .create(publisher)

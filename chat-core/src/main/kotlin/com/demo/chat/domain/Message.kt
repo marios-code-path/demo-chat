@@ -8,14 +8,30 @@ import java.time.Instant
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes(JsonSubTypes.Type(UserMessageKey::class))
 interface MessageKey<T> : Key<T> {
+    val from: T
     val dest: T
     val timestamp: Instant
 
     companion object Factory {
         @JvmStatic
+        fun <T> create(messageId: T, from: T, dest: T): MessageKey<T> = object : MessageKey<T> {
+            override val id: T
+                get() = messageId
+            override val from: T
+                get() = from
+            override val dest: T
+                get() = dest
+            override val timestamp: Instant
+                get() = Instant.now()
+        }
+
+        @JvmStatic
+        @Deprecated("key requires 'from' as parameter")
         fun <T> create(messageId: T, dest: T): MessageKey<T> = object : MessageKey<T> {
             override val id: T
                 get() = messageId
+            override val from: T
+                get() = dest
             override val dest: T
                 get() = dest
             override val timestamp: Instant
@@ -73,15 +89,13 @@ interface TextMessage<T> : Message<T, String> {
 
 @Deprecated("Liberate the userId as a specific field for any message")
 interface UserMessageKey<T> : MessageKey<T> {
-    val userId: T
-
     companion object Factory {
         fun <T> create(messageId: T, topic: T, member: T): UserMessageKey<T> = object : UserMessageKey<T> {
             override val id: T
                 get() = messageId
             override val dest: T
                 get() = topic
-            override val userId: T
+            override val from: T
                 get() = member
             override val timestamp: Instant
                 get() = Instant.now()
@@ -92,7 +106,7 @@ interface UserMessageKey<T> : MessageKey<T> {
                 get() = messageKey.id
             override val dest: T
                 get() = topic
-            override val userId: T
+            override val from: T
                 get() = member
             override val timestamp: Instant
                 get() = Instant.now()

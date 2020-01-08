@@ -35,7 +35,7 @@ data class ChatMessage(
 
 data class ChatMessageKey(
         override val id: UUID,
-        override val userId: UUID,
+        val from: UUID,
         val dest: UUID,
         override val timestamp: Instant
 ) : UserMessageKey

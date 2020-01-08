@@ -1,13 +1,10 @@
 package com.demo.chat.test.serializers
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.Membership
+import com.demo.chat.domain.TopicMembership
 import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.serializers.ChatModules
-import com.demo.chat.domain.serializers.MembershipDeserializer
 import com.demo.chat.test.TestBase
-import com.fasterxml.jackson.core.Version
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -16,7 +13,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 
-class MembershipSerializerTests : TestBase() {
+class TopicMembershipSerializerTests : TestBase() {
 
     @Test
     fun `Any Membership deserialize`() {
@@ -25,24 +22,24 @@ class MembershipSerializerTests : TestBase() {
         }
 
         val membershipJsons = Flux.just(
-                Membership.create(
+                TopicMembership.create(
                         Key.anyKey(1L),
                         Key.anyKey(2L),
                         Key.anyKey(3L)
                 ),
-                Membership.create(
+                TopicMembership.create(
                         Key.anyKey("A"),
                         Key.anyKey("B"),
                         Key.anyKey("C")
                 ),
-                Membership.create(
+                TopicMembership.create(
                         Key.anyKey(UUID.randomUUID()),
                         Key.anyKey(UUID.randomUUID()),
                         Key.anyKey(UUID.randomUUID())
                 )
         )
                 .map(mapper::writeValueAsString).doOnNext(System.out::println)
-                .map<Membership<out Any>>(mapper::readValue)
+                .map<TopicMembership<out Any>>(mapper::readValue)
 
         StepVerifier
                 .create(membershipJsons)

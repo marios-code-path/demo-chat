@@ -4,7 +4,7 @@ package com.demo.chat.test.controller.app
 import com.demo.chat.*
 import com.demo.chat.controller.app.RoomController
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.Membership
+import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.TopicMemberships
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.*
@@ -167,7 +167,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
 
         BDDMockito
                 .given(membershipPersistence.byIds(anyObject()))
-                .willReturn(Flux.just(Membership.create(
+                .willReturn(Flux.just(TopicMembership.create(
                         Key.eventKey(membershipId),
                         Key.eventKey(randomRoomId),
                         Key.eventKey(randomUserId))))

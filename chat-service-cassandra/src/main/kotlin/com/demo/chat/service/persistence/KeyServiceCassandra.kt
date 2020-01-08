@@ -1,19 +1,15 @@
 package com.demo.chat.service.persistence
 
-import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.cassandra.CassandraKey
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
+import com.demo.chat.domain.cassandra.CassandraKey
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Mono
 import java.time.Duration
-import java.util.*
 
 
 class KeyServiceCassandra<T>(private val template: ReactiveCassandraTemplate,
-                             private val idFactory: () -> T ) : IKeyService<T> {
+                             private val idFactory: () -> T) : IKeyService<T> {
     override fun rem(key: Key<T>): Mono<Void> = template
             .deleteById(CassandraKey(key.id, ""), CassandraKey::class.java)
             .then()

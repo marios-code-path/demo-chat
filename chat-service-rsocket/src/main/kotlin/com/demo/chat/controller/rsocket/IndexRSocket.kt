@@ -19,4 +19,4 @@ class MessageIndexRSocket(t: TextMessageIndexService) : IndexServiceController<U
 class RoomIndexRSocket(t: TopicIndexService) : IndexServiceController<UUID, MessageTopic, Map<String, String>, Map<String, String>>(t)
 
 @Controller
-class MembershipIndexRSocket(t: MembershipIndexService) : IndexServiceController<UUID, Membership<UUID>, Map<String, String>, Map<String, String>>(t)
+class MembershipIndexRSocket(t: MembershipIndexService) : IndexServiceController<UUID, TopicMembership<UUID>, Map<String, String>, Map<String, String>>(t)

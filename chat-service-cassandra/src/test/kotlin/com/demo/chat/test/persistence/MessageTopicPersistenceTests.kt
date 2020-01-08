@@ -11,7 +11,7 @@ import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
 import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.domain.anyObject
+import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -71,7 +71,7 @@ class MessageTopicPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    MessageTopic.create(Key.eventKey(UUIDs.timeBased()), name)
+                    MessageTopic.create(Key.anyKey(UUIDs.timeBased()), name)
                 }
                 .flatMap(roomSvc::add)
 

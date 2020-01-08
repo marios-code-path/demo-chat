@@ -27,6 +27,6 @@ class ChatModules(val codecKey: Codec<JsonNode, out Any>, val codecData: Codec<J
     }
 
     fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
-        addDeserializer(Membership::class.java, MembershipDeserializer(JsonNodeAnyCodec))
+        addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeAnyCodec))
     }
 }

@@ -21,7 +21,7 @@ open class ChatMessage<T>(
 
 data class ChatMessageKey<T>(
         override val id: T,
-        override val userId: T,
+        override val from: T,
         override val dest: T,
         override val timestamp: Instant
 ) : UserMessageKey<T>

@@ -4,18 +4,33 @@ import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+// needs a codec
+// usage: codec.decode(E) -> W
 /**
- * given [T]ype of key, in [E]ntity, [Q]uery request, [W]rite Query request
+ * given [T]ype of key, [E] entity, [Q]uery
  */
-interface IndexService<T, E, Q, W> {
-    fun add(entity: E, criteria: W): Mono<Void>
-    fun rem(entity: E): Mono<Void>
+interface IndexService<T, E, Q> {
+    fun add(entity: E): Mono<Void>
+    fun rem(entity: Key<T>): Mono<Void>
     fun findBy(query: Q): Flux<out Key<T>>
 }
 
-interface UserIndexService<T> : IndexService<T, User<T>, Map<String, String>, Map<String, String>>
+/**
+ * Defaults, these can be auto-generated, but shouldnt affect
+ * I.E. Dont use these interfaces downstream for any other reason
+ * than directly implementing them ( this is a demo after all )
+ */
+interface UserIndexService<T> : IndexService<T, User<T>, Map<String, String>> {
+    companion object {
+        const val NAME = "name"
+        const val IMAGEURI = "imageUri"
+        const val ACTIVE = "active"
+        const val HANDLE = "handle"
+        const val ID = "userId"
+    }
+}
 
-interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, String>, Map<String, String>> {
+interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, String>> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
@@ -25,10 +40,10 @@ interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, St
     }
 }
 
-interface MembershipIndexService<T> : IndexService<T, Membership<T>, Map<String, T>, Map<T, String>> {
+interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<String, T>> {
     fun size(roomId: Key<T>): Mono<Int>
-    fun addMember(membership: Membership<T>): Mono<Void>
-    fun remMember(membership: Membership<T>): Mono<Void>
+    fun addMember(membership: TopicMembership<T>): Mono<Void>
+    fun remMember(membership: TopicMembership<T>): Mono<Void>
 
     companion object {
         const val ID = "ID"
@@ -37,9 +52,11 @@ interface MembershipIndexService<T> : IndexService<T, Membership<T>, Map<String,
     }
 }
 
-interface TextMessageIndexService<T> : IndexService<T, TextMessage<T>, Map<String, T>, Map<String, String>> {
+interface TextMessageIndexService<T> : IndexService<T, Message<T, Any>, Map<String, T>> {
     companion object {
+        const val ID = "msgId"
         const val TOPIC = "topicId"
         const val USER = "userId"
+        const val DATA = "data"
     }
 }

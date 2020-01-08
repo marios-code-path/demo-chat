@@ -1,7 +1,6 @@
 package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.*
 import com.demo.chat.domain.cassandra.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
@@ -37,7 +36,7 @@ import kotlin.streams.asSequence
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
-class TextMessageRepositoryTests {
+class MessageRepositoryTests {
 
     private val MSGTEXT = "SUP TEST"
 
@@ -73,6 +72,9 @@ class TextMessageRepositoryTests {
 
         StepVerifier
                 .create(composite)
+                .assertNext {
+
+                }
                 .assertNext(this::chatMessageAssertion)
                 .verifyComplete()
     }
@@ -97,7 +99,7 @@ class TextMessageRepositoryTests {
 
         StepVerifier
                 .create(composite)
-                .assertNext(this::chatMessageRoomAssertion)
+                .assertNext(this::chatMessageTopicAssertion)
                 .verifyComplete()
     }
 
@@ -246,30 +248,27 @@ class TextMessageRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
+    fun chatMessageAssertion(msg: ChatMessage<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
-            { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.record) }
     )
 
-    fun chatMessageUserAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
+    fun chatMessageUserAssertion(msg: ChatMessageByUser<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
-            { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },
             { assertTrue(msg.record) }
     )
 
-    fun chatMessageRoomAssertion(msg: TextMessage<UUID>) = assertAll("message state test",
+    fun chatMessageTopicAssertion(msg: ChatMessageByTopic<UUID>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
-            { assertNotNull(msg.key.userId) },
             { assertNotNull(msg.key.dest) },
             { assertNotNull(msg.data) },
             { assertEquals(msg.data, MSGTEXT) },

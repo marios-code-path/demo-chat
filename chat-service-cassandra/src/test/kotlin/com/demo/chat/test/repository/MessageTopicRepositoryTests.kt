@@ -45,11 +45,11 @@ class MessageTopicRepositoryTests {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
-        val room = MessageTopic.create(Key.eventKey(roomId), ROOMNAME)
+        val room = MessageTopic.create(Key.anyKey(roomId), ROOMNAME)
 
         val saveFlux = repo.add(room)
 
-        val deleteMono = repo.rem(Key.eventKey(roomId))
+        val deleteMono = repo.rem(Key.anyKey(roomId))
 
         val findActiveRooms =
                 repo.findAll()
@@ -105,7 +105,7 @@ class MessageTopicRepositoryTests {
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = Flux.just(Key.eventKey(UUIDs.timeBased()))
+        val saveFlux = Flux.just(Key.anyKey(UUIDs.timeBased()))
                 .flatMap {
                     byNameRepo.save(ChatTopicName(ChatTopicNameKey(it.id, "XYZ"), true))
                 }

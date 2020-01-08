@@ -3,7 +3,6 @@ package com.demo.chat.service
 import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 interface PersistenceStore<K, V> {
     fun key(): Mono<out Key<K>>
@@ -18,8 +17,8 @@ interface UserPersistence<K> : PersistenceStore<K, User<K>>
 
 interface TopicPersistence<K> : PersistenceStore<K, MessageTopic<K>>
 
-interface MembershipPersistence<K> : PersistenceStore<K, Membership<K>>
+interface MembershipPersistence<K> : PersistenceStore<K, TopicMembership<K>>
 
-interface TextMessagePersistence<K> : PersistenceStore<K, TextMessage<K>>
+interface TextMessagePersistence<K> : PersistenceStore<K, Message<K, String>>
 
 interface KeyPersistence<K> : PersistenceStore<K, Key<K>>

@@ -18,4 +18,4 @@ class RSocketMessagePersistence(t: TextMessagePersistence) : PersistenceServiceC
 class RSocketRoomPersistence(t: TopicPersistence) : PersistenceServiceController<MessageTopic>(t)
 
 @Controller
-class RSocketMembershipPersistence(t: MembershipPersistence) : PersistenceServiceController<Membership<UUIDKey>>(t)
+class RSocketMembershipPersistence(t: MembershipPersistence) : PersistenceServiceController<TopicMembership<UUIDKey>>(t)

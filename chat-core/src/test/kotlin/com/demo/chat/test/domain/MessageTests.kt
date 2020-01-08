@@ -52,7 +52,7 @@ class MessageTests : TestBase() {
         counter++
 
         return if (counter % 2 == 0)
-            TestAlert(TestAlertKey(messageId, roomId), counter)
+            TestAlert(TestAlertKey(messageId, roomId, roomId), counter)
         else
             TestTextMessage(TestMessageKey(messageId, roomId, userId), "Count: $counter")
     }

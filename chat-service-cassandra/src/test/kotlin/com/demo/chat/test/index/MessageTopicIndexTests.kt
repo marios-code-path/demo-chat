@@ -8,6 +8,7 @@ import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.index.TopicCriteriaCodec
 import com.demo.chat.service.index.TopicIndexCassandra
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
@@ -73,7 +74,7 @@ class MessageTopicIndexTests {
         BDDMockito.given(roomRepo.findByKeyId(anyObject()))
                 .willReturn(Mono.just(idRoom))
 
-        topicIndex = TopicIndexCassandra(roomRepo, nameRepo)
+        topicIndex = TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
     }
 
     private val rid: Key<out Any> = Key.anyKey(UUID.randomUUID())

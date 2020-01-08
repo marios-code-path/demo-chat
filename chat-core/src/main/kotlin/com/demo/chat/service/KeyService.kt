@@ -9,7 +9,7 @@ import java.util.*
  * create underlaying key using some external source, or operations in process
  */
 interface  UUIDKeyService : IKeyService<UUID>{
-    override fun <T> key(kind: Class<T>): Mono<out Key<UUID>>
+    override fun <T> key(kind: Class<T>): Mono<Key<UUID>>
     override fun rem(key: Key<UUID>): Mono<Void>
     override fun exists(key: Key<UUID>): Mono<Boolean>
 }

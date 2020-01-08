@@ -70,7 +70,7 @@ open class RoomController(val topicPersistence: TopicPersistence,
                     .key()
                     .flatMap { eventKey ->
                         membershipPersistence
-                                .add(Membership.create(eventKey, Key.eventKey(req.roomId), Key.eventKey(req.uid)))
+                                .add(TopicMembership.create(eventKey, Key.eventKey(req.roomId), Key.eventKey(req.uid)))
                                 .thenMany(topicService
                                         .sendMessage(JoinAlert.create(eventKey.id, req.roomId, req.uid))
                                         .then(topicService.subscribe(req.uid, req.roomId)))

@@ -2,7 +2,7 @@ package com.demo.chat.domain.cassandra
 
 import com.datastax.driver.core.DataType
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.Membership
+import com.demo.chat.domain.TopicMembership
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 
@@ -36,7 +36,7 @@ open class ChatMembership<S>(
         @Column("memberOf")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
         override val memberOf: CassandraUUIDKeyType<S>
-) : Membership<S>
+) : TopicMembership<S>
 
 // TODO This is incomplete abstraction!
 @Table("chat_membership_by_member")
@@ -47,7 +47,7 @@ open class ChatMembershipByMember<S>(
         override val member: ChatMembershipKeyByMember<S>,
         @Column("memberOf")
         override val memberOf: CassandraUUIDKeyType<S>
-) : Membership<S>
+) : TopicMembership<S>
 
 @Table("chat_membership_by_memberof")
 open class ChatMembershipByMemberOf<S>(
@@ -57,7 +57,7 @@ open class ChatMembershipByMemberOf<S>(
         override val member: CassandraUUIDKeyType<S>,
         @PrimaryKey
         override val memberOf: ChatMembershipKeyByMemberOf<S>
-) : Membership<S>
+) : TopicMembership<S>
 
 @PrimaryKeyClass
 data class ChatMembershipKeyByMember<S>(

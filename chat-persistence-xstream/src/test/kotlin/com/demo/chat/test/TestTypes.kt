@@ -48,7 +48,7 @@ data class TestChatRoomKey(
 
 data class TestUserMessageKey(
         override val id: UUID,
-        override val userId: UUID,
+        val from: UUID,
         override val dest: UUID,
         override val timestamp: Instant
 ) : UserMessageKey<UUID, UUID, UUID>
