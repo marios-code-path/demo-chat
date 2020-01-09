@@ -2,7 +2,7 @@ package com.demo.chat.service.persistence
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.cassandra.ChatMessage
+import com.demo.chat.domain.cassandra.ChatMessageById
 import com.demo.chat.domain.cassandra.ChatMessageByIdKey
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
@@ -28,7 +28,7 @@ open class TextMessagePersistenceCassandra<T>(private val keyService: IKeyServic
     override fun add(message: Message<T, String>): Mono<Void> =
             key()
                     .flatMap {
-                        messageRepo.add(ChatMessage(ChatMessageByIdKey(it.id,
+                        messageRepo.add(ChatMessageById(ChatMessageByIdKey(it.id,
                                 message.key.id, message.key.dest, Instant.now()), message.data, message.record))
                     }
 }

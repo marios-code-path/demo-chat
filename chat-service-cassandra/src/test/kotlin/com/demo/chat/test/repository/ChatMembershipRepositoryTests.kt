@@ -32,7 +32,7 @@ import kotlin.streams.toList
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-membership.cql")
-class ChatTopicMembershipRepositoryTests {
+class ChatMembershipRepositoryTests {
     @Autowired
     lateinit var repo: ChatMembershipRepository<UUID>
 

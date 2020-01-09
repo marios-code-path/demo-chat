@@ -1,6 +1,7 @@
 package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
+import com.demo.chat.domain.Message
 import com.demo.chat.domain.cassandra.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
@@ -72,26 +73,23 @@ class MessageRepositoryTests {
 
         StepVerifier
                 .create(composite)
-                .assertNext {
-
-                }
                 .assertNext(this::chatMessageAssertion)
                 .verifyComplete()
     }
 
     @Test
-    fun `should save single message find in room by room id`() {
+    fun `should save single message find in topic by topic id`() {
         val userId = UUID.randomUUID()
-        val roomId = UUID.randomUUID()
+        val topicId = UUID.randomUUID()
         val msgId = UUIDs.timeBased()
 
         val saveMsg = Flux
-                .just(ChatMessageByTopicKey(msgId, userId, roomId, Instant.now()))
+                .just(ChatMessageByTopicKey(msgId, userId, topicId, Instant.now()))
                 .flatMap { key ->
                     byTopicRepo.save(ChatMessageByTopic(key, MSGTEXT, true))
                 }
 
-        val findMsg = byTopicRepo.findByKeyDest(roomId)
+        val findMsg = byTopicRepo.findByKeyDest(topicId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -248,7 +246,7 @@ class MessageRepositoryTests {
                 .verifyComplete()
     }
 
-    fun chatMessageAssertion(msg: ChatMessage<UUID>) = assertAll("message state test",
+    fun chatMessageAssertion(msg: Message<UUID, String>) = assertAll("message state test",
             { assertNotNull(msg) },
             { assertNotNull(msg.key.id) },
             { assertNotNull(msg.key.dest) },

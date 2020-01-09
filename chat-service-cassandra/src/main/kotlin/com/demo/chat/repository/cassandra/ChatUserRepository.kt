@@ -19,14 +19,14 @@ import reactor.core.publisher.Mono
 import java.time.Instant
 
 
-interface ChatUserRepository<T> : ReactiveCassandraRepository<ChatUser<T>, ChatUserKey<T>>,
+interface ChatUserRepository<T> : ReactiveCassandraRepository<ChatUser<T>, T>,
         ChatUserRepositoryCustom<T> {
     fun findByKeyId(id: T): Mono<ChatUser<T>>
     fun findByKeyIdIn(ids: List<T>): Flux<ChatUser<T>>
 }
 
 interface ChatUserHandleRepository<T>
-    : ReactiveCassandraRepository<ChatUserHandle<T>, ChatUserHandleKey<T>>,
+    : ReactiveCassandraRepository<ChatUserHandle<T>, T>,
         ChatUserHandleRepositoryCustom<T> {
     fun findByKeyHandle(handle: String): Mono<ChatUserHandle<T>>
 }
