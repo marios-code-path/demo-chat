@@ -15,7 +15,7 @@ interface ConfigurationPropertiesCassandra {
     val jmxReporting: Boolean
 }
 
-open class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
+class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
     override fun getKeyspaceName(): String {
         return props.keyspace
     }

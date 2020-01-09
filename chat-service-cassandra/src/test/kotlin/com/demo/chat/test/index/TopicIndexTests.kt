@@ -10,6 +10,7 @@ import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.index.TopicCriteriaCodec
 import com.demo.chat.service.index.TopicIndexCassandra
+import com.demo.chat.test.anyObject
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -32,24 +33,17 @@ fun randomAlphaNumeric(size: Int): String {
     return builder.toString()
 }
 
-fun <T> anyObject(): T {
-    Mockito.anyObject<T>()
-    return uninitialized()
-}
-
-fun <T> uninitialized(): T = null as T
-
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class MessageTopicIndexTests {
+class TopicIndexTests {
 
     @MockBean
-    lateinit var roomRepo: TopicRepository<Any>
+    lateinit var roomRepo: TopicRepository<UUID>
 
     @MockBean
-    lateinit var nameRepo: TopicByNameRepository<Any>
+    lateinit var nameRepo: TopicByNameRepository<UUID>
 
-    lateinit var topicIndex: TopicIndexService<Any>
+    lateinit var topicIndex: TopicIndexService<UUID>
 
     @BeforeEach
     fun setUp() {
@@ -58,10 +52,6 @@ class MessageTopicIndexTests {
 
         BDDMockito
                 .given(roomRepo.add(anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(nameRepo.save(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
@@ -77,9 +67,9 @@ class MessageTopicIndexTests {
         topicIndex = TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
     }
 
-    private val rid: Key<out Any> = Key.anyKey(UUID.randomUUID())
+    private val rid = Key.anyKey(UUID.randomUUID())
 
-    private val uid: Key<out Any> = Key.anyKey(UUID.randomUUID())
+    private val uid= Key.anyKey(UUID.randomUUID())
 
     private val ROOMNAME = "ROOM_TEST"
 

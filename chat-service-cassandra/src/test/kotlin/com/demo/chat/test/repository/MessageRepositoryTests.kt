@@ -91,7 +91,7 @@ class MessageRepositoryTests {
                     byTopicRepo.save(ChatMessageByTopic(key, MSGTEXT, true))
                 }
 
-        val findMsg = byTopicRepo.findByKeyTopicId(roomId)
+        val findMsg = byTopicRepo.findByKeyDest(roomId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -115,7 +115,7 @@ class MessageRepositoryTests {
                     byUserRepo.save(ChatMessageByUser(key, MSGTEXT, true))
                 }
 
-        val findMsg = byUserRepo.findByKeyUserId(userId)
+        val findMsg = byUserRepo.findByKeyFrom(userId)
 
         val composite = Flux
                 .from(saveMsg)
@@ -154,7 +154,7 @@ class MessageRepositoryTests {
                 .flatMap {
                     byTopicRepo.save(it)
                 }
-                .thenMany(byTopicRepo.findByKeyTopicId(roomSelection))
+                .thenMany(byTopicRepo.findByKeyDest(roomSelection))
 
         // Expecting : ${countOfMessagesInSelectedRoom.toLong()} msgs for room ${roomSelection}
         StepVerifier
@@ -239,7 +239,7 @@ class MessageRepositoryTests {
                 }
 
         val saveFindOps = Flux.from(messages)
-                .thenMany(byUserRepo.findByKeyUserId(userId))
+                .thenMany(byUserRepo.findByKeyFrom(userId))
 
         StepVerifier
                 .create(saveFindOps)

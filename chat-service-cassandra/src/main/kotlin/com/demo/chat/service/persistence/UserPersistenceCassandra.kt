@@ -7,6 +7,7 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.UserPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.stream.Collectors
 
 // TODO flexibility on what classes go in and out of repository thru persistence
 open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
@@ -23,5 +24,5 @@ open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
     override fun add(user: User<T>): Mono<Void> = userRepo.add(user)
 
     override fun byIds(keys: List<out Key<T>>): Flux<out User<T>> =
-            userRepo.findByKeyIdIn(Flux.fromStream(keys.stream().map { it.id }))
+            userRepo.findByKeyIdIn(keys.stream().map { it.id }.collect(Collectors.toList()))
 }

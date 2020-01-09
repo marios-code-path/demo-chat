@@ -14,13 +14,13 @@ import reactor.core.publisher.Mono
 
 
 interface TopicByNameRepository<T> : ReactiveCassandraRepository<ChatTopicName<T>, T> {
-    fun findByKeyName(name: String): Mono<out ChatTopicName<T>>
+    fun findByKeyName(name: String): Mono<ChatTopicName<T>>
 }
 
 interface TopicRepository<T> :
         ReactiveCassandraRepository<ChatTopic<T>, T>,
         TopicRepositoryCustom<T> {
-    fun findByKeyId(id: T): Mono<out MessageTopic<T>>
+    fun findByKeyId(id: T): Mono<ChatTopic<T>>
 }
 
 interface TopicRepositoryCustom<T> {

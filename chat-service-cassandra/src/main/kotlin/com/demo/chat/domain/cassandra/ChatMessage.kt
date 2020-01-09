@@ -16,17 +16,17 @@ open class ChatMessage<T>(
 ) : Message<T, String>
 
 @Table("chat_message_user")
-class ChatMessageByUser<T>(key: MessageKey<T>,
+class ChatMessageByUser<T>(key: ChatMessageByUserKey<T>,
                            value: String,
                            visible: Boolean) : ChatMessage<T>(key, value, visible)
 
 @Table("chat_message_id")
-class ChatMessageById<T>(key: MessageKey<T>,
+class ChatMessageById<T>(key: ChatMessageByIdKey<T>,
                          value: String,
                          visible: Boolean) : ChatMessage<T>(key, value, visible)
 
 @Table("chat_message_topic")
-class ChatMessageByTopic<T>(key: MessageKey<T>,
+class ChatMessageByTopic<T>(key: ChatMessageByTopicKey<T>,
                             value: String,
                             visible: Boolean) : ChatMessage<T>(key, value, visible)
 

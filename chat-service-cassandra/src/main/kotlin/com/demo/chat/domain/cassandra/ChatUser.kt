@@ -8,9 +8,9 @@ import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 
 @Table("chat_user")
-data class ChatUser<K>(
+data class ChatUser<T>(
         @PrimaryKey
-        override val key: ChatUserKey<K>,
+        override val key: ChatUserKey<T>,
         @Column("name")
         override val name: String,
         @Column("handle")
@@ -19,33 +19,33 @@ data class ChatUser<K>(
         override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<K>
+) : User<T>
 
 @PrimaryKeyClass
-data class ChatUserKey<K>(
+data class ChatUserKey<T>(
         @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: K
-) : Key<K>
+        override val id: T
+) : Key<T>
 
 @Table("chat_user_handle")
-data class ChatUserHandle<K>(
+data class ChatUserHandle<T>(
         @PrimaryKey
-        override val key: ChatUserHandleKey<K>,
+        override val key: ChatUserHandleKey<T>,
         @Column("name")
         override val name: String,
         @Column("image_uri")
         override val imageUri: String,
         @Column("timestamp")
         override val timestamp: Instant
-) : User<K> {
+) : User<T> {
     @Transient
     override val handle: String = key.handle
 }
 
 @PrimaryKeyClass
-data class ChatUserHandleKey<K>(
+data class ChatUserHandleKey<T>(
         @Column("user_id")
-        override val id: K,
+        override val id: T,
         @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
         val handle: String
-) : Key<K>
+) : Key<T>

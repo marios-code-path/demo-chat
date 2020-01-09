@@ -27,49 +27,49 @@ import org.springframework.data.cassandra.core.mapping.*
 // !! must have a user_membership_topic seperate from user_stat_topic for this to work
 //
 @Table("chat_membership")
-open class ChatMembership<S>(
+open class ChatMembership<T>(
         @PrimaryKey
-        override val key: ChatMembershipKey<S>,
+        override val key: ChatMembershipKey<T>,
         @Column("member")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val member: CassandraUUIDKeyType<S>,
+        override val member: CassandraUUIDKeyType<T>,
         @Column("memberOf")
         @CassandraType(type = DataType.Name.UDT, userTypeName = "event_key_type")
-        override val memberOf: CassandraUUIDKeyType<S>
-) : TopicMembership<S>
+        override val memberOf: CassandraUUIDKeyType<T>
+) : TopicMembership<T>
 
 // TODO This is incomplete abstraction!
 @Table("chat_membership_by_member")
-open class ChatMembershipByMember<S>(
+open class ChatMembershipByMember<T>(
         @Column("id")
-        override val key: CassandraUUIDKeyType<S>,
+        override val key: CassandraUUIDKeyType<T>,
         @PrimaryKey
-        override val member: ChatMembershipKeyByMember<S>,
+        override val member: ChatMembershipKeyByMember<T>,
         @Column("memberOf")
-        override val memberOf: CassandraUUIDKeyType<S>
-) : TopicMembership<S>
+        override val memberOf: CassandraUUIDKeyType<T>
+) : TopicMembership<T>
 
 @Table("chat_membership_by_memberof")
-open class ChatMembershipByMemberOf<S>(
+open class ChatMembershipByMemberOf<T>(
         @Column("id")
-        override val key: CassandraUUIDKeyType<S>,
+        override val key: CassandraUUIDKeyType<T>,
         @Column("member")
-        override val member: CassandraUUIDKeyType<S>,
+        override val member: CassandraUUIDKeyType<T>,
         @PrimaryKey
-        override val memberOf: ChatMembershipKeyByMemberOf<S>
-) : TopicMembership<S>
+        override val memberOf: ChatMembershipKeyByMemberOf<T>
+) : TopicMembership<T>
 
 @PrimaryKeyClass
-data class ChatMembershipKeyByMember<S>(
+data class ChatMembershipKeyByMember<T>(
         @PrimaryKeyColumn(name = "member", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: S) : Key<S>
+        override val id: T) : Key<T>
 
 @PrimaryKeyClass
-data class ChatMembershipKeyByMemberOf<S>(
+data class ChatMembershipKeyByMemberOf<T>(
         @PrimaryKeyColumn(name = "memberOf", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: S) : Key<S>
+        override val id: T) : Key<T>
 
 @PrimaryKeyClass
-data class ChatMembershipKey<S>(
+data class ChatMembershipKey<T>(
         @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-        override val id: S) : Key<S>
+        override val id: T) : Key<T>

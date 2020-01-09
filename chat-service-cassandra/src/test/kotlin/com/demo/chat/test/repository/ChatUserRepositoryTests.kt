@@ -1,7 +1,7 @@
 package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.*
+import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUser
 import com.demo.chat.domain.cassandra.ChatUserHandle
 import com.demo.chat.domain.cassandra.ChatUserHandleKey
@@ -110,7 +110,7 @@ class ChatUserRepositoryTests {
 
         val stream = Flux
                 .from(chatUsers)
-                .thenMany(repo.findByKeyIdIn(Flux.just(id1, id2)))
+                .thenMany(repo.findByKeyIdIn(listOf(id1, id2)))
 
         StepVerifier
                 .create(stream)

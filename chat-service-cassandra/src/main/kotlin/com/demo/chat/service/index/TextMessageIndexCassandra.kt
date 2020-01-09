@@ -13,7 +13,6 @@ import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.service.TextMessageIndexService
 import com.demo.chat.service.TextMessageIndexService.Companion.DATA
-import com.demo.chat.service.TextMessageIndexService.Companion.ID
 import com.demo.chat.service.TextMessageIndexService.Companion.TOPIC
 import com.demo.chat.service.TextMessageIndexService.Companion.USER
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -104,6 +103,6 @@ class TextMessageIndexCassandra<T>(
         }
     }
 
-    fun findByTopic(topic: T) = byTopicRepo.findByKeyTopicId(topic)
-    fun findByUser(uid: T) = byUserRepo.findByKeyUserId(uid)
+    fun findByTopic(topic: T) = byTopicRepo.findByKeyDest(topic)
+    fun findByUser(uid: T) = byUserRepo.findByKeyFrom(uid)
 }

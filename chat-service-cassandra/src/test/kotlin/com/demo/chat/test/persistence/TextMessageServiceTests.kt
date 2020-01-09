@@ -64,7 +64,7 @@ class TextMessageServiceTests {
                 .given(msgRepo.findAll())
                 .willReturn(Flux.just(newMessage))
 
-        Mockito.`when`(msgByTopicRepo.findByKeyTopicId(anyObject()))
+        Mockito.`when`(msgByTopicRepo.findByKeyDest(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
         msgSvc = TextMessagePersistenceCassandra(keyService, msgRepo)

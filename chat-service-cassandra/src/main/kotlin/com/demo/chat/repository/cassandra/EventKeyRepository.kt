@@ -5,4 +5,4 @@ import com.demo.chat.domain.cassandra.CassandraKey
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import java.util.*
 
-interface EventKeyRepository<K> : ReactiveCassandraRepository<Key<K>, K>
+interface EventKeyRepository<K> : ReactiveCassandraRepository<CassandraKey<K>, K>

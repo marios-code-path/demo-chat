@@ -16,12 +16,12 @@ interface TopicMembership<S> {
     val member: Key<S>
 
     companion object Factory {
-        fun <KT> create(k: Key<KT>, m: Key<KT>, mof: Key<KT>): TopicMembership<KT> = object : TopicMembership<KT> {
-            override val key: Key<KT>
+        fun <T> create(k: Key<T>, m: Key<T>, mof: Key<T>): TopicMembership<T> = object : TopicMembership<T> {
+            override val key: Key<T>
                 get() = k
-            override val member: Key<KT>
+            override val member: Key<T>
                 get() = m
-            override val memberOf: Key<KT>
+            override val memberOf: Key<T>
                 get() = mof
         }
     }
