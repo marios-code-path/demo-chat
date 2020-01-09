@@ -9,8 +9,9 @@ import org.springframework.data.cassandra.core.mapping.Table
 import org.springframework.data.cassandra.core.mapping.UserDefinedType
 import java.util.*
 
+// TODO Issue where Key<T> must have lower bounds when applying to Cassandra UDT
 @UserDefinedType("event_key_type")
-data class CassandraUUIDKeyType<T>(
+data class CassandraUUIDKeyType<T: UUID>(
         @CassandraType(type = DataType.Name.UUID)
         override val id: T) : Key<T>
 

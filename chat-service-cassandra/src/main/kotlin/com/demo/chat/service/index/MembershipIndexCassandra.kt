@@ -12,8 +12,9 @@ import com.demo.chat.service.MembershipIndexService.Companion.MEMBER
 import com.demo.chat.service.MembershipIndexService.Companion.MEMBEROF
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 
-class MembershipCriteriaCodec<T> : Codec<TopicMembership<T>, Map<String, T>> {
+class MembershipCriteriaCodec<T: UUID> : Codec<TopicMembership<T>, Map<String, T>> {
     override fun decode(record: TopicMembership<T>): Map<String, T> =
             mapOf(
                     Pair(MEMBER, record.member.id),
@@ -21,7 +22,7 @@ class MembershipCriteriaCodec<T> : Codec<TopicMembership<T>, Map<String, T>> {
             )
 }
 
-class MembershipIndexCassandra<T>(
+class MembershipIndexCassandra<T: UUID>(
         val criteriaCodec: Codec<TopicMembership<T>, Map<String, T>>,
         val byMemberRepo: ChatMembershipByMemberRepository<T>,
         val byMemberOfRepo: ChatMembershipByMemberOfRepository<T>)

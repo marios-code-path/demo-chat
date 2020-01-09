@@ -8,9 +8,10 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.*
 import java.util.stream.Collectors
 
-class MembershipPersistenceCassandra<T>(
+class MembershipPersistenceCassandra<T: UUID>(
         private val keyService: IKeyService<T>,
         private val membershipRepo: ChatMembershipRepository<T>
 ) : MembershipPersistence<T> {
