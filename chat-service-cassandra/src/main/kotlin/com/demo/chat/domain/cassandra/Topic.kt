@@ -4,15 +4,13 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
-import org.springframework.data.cassandra.core.mapping.PrimaryKey
-import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass
-import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
-import org.springframework.data.cassandra.core.mapping.Table
+import org.springframework.data.cassandra.core.mapping.*
 
 @Table("chat_room")
 data class ChatTopic<K>(
         @PrimaryKey
         override val key: ChatTopicKey<K>,
+        @Column("name")
         override val data: String,
         val active: Boolean
 ) : MessageTopic<K>
