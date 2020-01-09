@@ -52,6 +52,10 @@ class MembershipPersistenceTests {
                 .willReturn(Mono.just(testChatMembership))
 
         BDDMockito
+                .given(repo.save(Mockito.any<ChatMembership<UUID>>()))
+                .willReturn(Mono.empty<ChatMembership<UUID>>())
+
+        BDDMockito
                 .given(repo.findAll())
                 .willReturn(Flux.just(testChatMembership))
 
