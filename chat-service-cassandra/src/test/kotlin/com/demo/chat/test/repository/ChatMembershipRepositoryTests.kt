@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
@@ -41,6 +42,9 @@ class ChatMembershipRepositoryTests {
     @Autowired
     lateinit var byMemberOfRepo: ChatMembershipByMemberOfRepository<UUID>
 
+    @Autowired
+    lateinit var template: ReactiveCassandraTemplate
+
     @Test
     fun `membershipOf should not return all`() {
         val membership = ChatMembership(
@@ -56,35 +60,6 @@ class ChatMembershipRepositoryTests {
         StepVerifier
                 .create(membershipSave)
                 .expectSubscription()
-                .verifyComplete()
-    }
-
-    @Test
-    fun `membershipOf should save but repo should not return all`() {
-        val keyId = ChatMembershipKeyByMemberOf(UUIDs.random())
-        val membership = ChatMembershipByMemberOf(
-                CassandraUUIDKeyType(UUIDs.random()),
-                CassandraUUIDKeyType(UUIDs.random()),
-                keyId
-        )
-        val e = ChatMembership(
-                ChatMembershipKey(UUIDs.timeBased()),
-                CassandraUUIDKeyType(UUIDs.timeBased()),
-                CassandraUUIDKeyType(UUIDs.timeBased())
-        )
-
-        val membershipSave = byMemberOfRepo
-                .save(membership)
-                .thenMany(repo.findAll())
-                .then(repo.save(e))
-                .thenMany(byMemberOfRepo.save(membership))
-
-        StepVerifier
-                .create(membershipSave)
-                .expectSubscription()
-                .assertNext {
-
-                }
                 .verifyComplete()
     }
 
