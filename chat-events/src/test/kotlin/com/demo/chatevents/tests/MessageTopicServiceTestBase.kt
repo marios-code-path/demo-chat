@@ -22,14 +22,20 @@ data class JoinAlert<T>(override val key: MessageKey<T>) : Message<T, String> {
         get() = "FOO"
 }
 
-class StringKeyDecoder<T>: Codec<String, T> {
-    override inline fun decode(record: String): T {
-        return UUID.fromString(record) as T
+class KeyStringEncoder<T> : Codec<T, String> {
+    override fun decode(record: T): String {
+        return record.toString()
     }
 }
 
-class KeyStringEncoder<T>: Codec<T, String> {
-    override fun decode(record: T): String {
+class StringUUIDKeyDecoder : Codec<String, UUID> {
+    override inline fun decode(record: String): UUID {
+        return UUID.fromString(record)
+    }
+}
+
+class UUIDKeyStringEncoder : Codec<UUID, String> {
+    override fun decode(record: UUID): String {
         return record.toString()
     }
 }
@@ -39,11 +45,9 @@ open class MessageTopicServiceTestBase {
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    lateinit var topicService: ChatTopicService<Any, Any>
+    lateinit var topicService: ChatTopicService<UUID, String>
 
-    lateinit var topicAdmin : ChatTopicService<Any, Any>
-
-    object configProps : ConfigurationPropertiesTopicRedis  {
+    object configProps : ConfigurationPropertiesTopicRedis {
         override val port: Int = 6374
         override val host: String = "127.0.0.1"
     }
@@ -104,7 +108,7 @@ open class MessageTopicServiceTestBase {
         val testRoom = testRoomId()
 
         val steps = topicService
-                .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), testRoom)))
+                .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), userId, testRoom)))
 
         StepVerifier
                 .create(steps)
@@ -213,7 +217,7 @@ open class MessageTopicServiceTestBase {
 
         StepVerifier
                 .create(topicService.sendMessage(JoinAlert(
-                        MessageKey.create(UUID.randomUUID(), testRoom))))
+                        MessageKey.create(UUID.randomUUID(), testRoom, userId))))
                 .expectSubscription()
                 .expectComplete()
                 .verify(Duration.ofSeconds(1))
@@ -225,7 +229,7 @@ open class MessageTopicServiceTestBase {
                 .expectSubscription()
                 .then {
                     Assertions
-                            .assertThat(topicAdmin.getProcessor(userId).downstreamCount())
+                            .assertThat(topicService.getProcessor(userId).downstreamCount())
                             .isGreaterThanOrEqualTo(1)
                 }
 

@@ -18,14 +18,14 @@ class TopicManager<T, E> {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     // TODO seek the Disposable Swap, and Composite to manage the disposable
-    private val streamProcessors: MutableMap<T, FluxProcessor<Message<T, out E>, Message<T, out E>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, out E>>> = ConcurrentHashMap()
+    private val streamProcessors: MutableMap<T, FluxProcessor<Message<T, E>, Message<T, E>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, E>>> = ConcurrentHashMap()
 
-    private val streamFluxes: MutableMap<T, Flux<Message<T, out E>>> = ConcurrentHashMap()
+    private val streamFluxes: MutableMap<T, Flux<Message<T, E>>> = ConcurrentHashMap()
 
     private val streamConsumers: MutableMap<T, MutableMap<T, Disposable>> = ConcurrentHashMap()
 
     // Does not replace existing stream! - call rem(T) then subscribeTopicProcessor
-    fun subscribeTopicProcessor(stream: T, source: Flux<out Message<T, out E>>): Disposable =
+    fun subscribeTopicProcessor(stream: T, source: Flux<out Message<T, E>>): Disposable =
             source.subscribe {
                 getTopicProcessor(stream).onNext(it)
             }
@@ -73,10 +73,10 @@ class TopicManager<T, E> {
                         ConcurrentHashMap()
                     }
 
-    fun setTopicProcessor(stream: T, proc: FluxProcessor<Message<T, out E>, Message<T, out E>>) =
+    fun setTopicProcessor(stream: T, proc: FluxProcessor<Message<T, E>, Message<T, E>>) =
             streamProcessors.put(stream, proc)
 
-    fun getTopicFlux(stream: T): Flux<Message<T, out E>> =
+    fun getTopicFlux(stream: T): Flux<Message<T, E>> =
             streamFluxes
                     .getOrPut(stream) {
                         getTopicProcessor(stream)
@@ -85,10 +85,10 @@ class TopicManager<T, E> {
                                 .autoConnect()
                     }
 
-    fun getTopicProcessor(stream: T): FluxProcessor<Message<T, out E>, Message<T, out E>> =
+    fun getTopicProcessor(stream: T): FluxProcessor<Message<T, E>, Message<T, E>> =
             streamProcessors
                     .getOrPut(stream) {
-                        val processor = DirectProcessor.create<Message<T, out E>>()
+                        val processor = DirectProcessor.create<Message<T, E>>()
 
                         processor
                     }

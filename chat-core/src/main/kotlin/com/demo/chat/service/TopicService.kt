@@ -32,13 +32,13 @@ interface TopicService<T, V> {
     fun unSubscribe(member: T, topic: T): Mono<Void>
     fun unSubscribeAll(member: T): Mono<Void> // then closes
     fun unSubscribeAllIn(topic: T): Mono<Void>
-    fun sendMessage(message: Message<T, out V>): Mono<Void>
-    fun receiveOn(topic: T): Flux<out Message<T, out V>>
+    fun sendMessage(message: Message<T, V>): Mono<Void>
+    fun receiveOn(topic: T): Flux<out Message<T, V>>
     // receive externally bound resources by attaching a processor to that resources flux
     // 1.  attach to some external source (like a redis pubsub channel)
     // 2.  create FluxProcessor that will handle fanout from our source to any subscriber fluxes
     // 3.  subscribe our processor to the source
-    fun receiveSourcedEvents(topic: T): Flux<out Message<T, out V>>
+    fun receiveSourcedEvents(topic: T): Flux<out Message<T, V>>
 
     fun exists(topic: T): Mono<Boolean>
     //fun keyExists(topic: T, key: T): Mono<Boolean>
@@ -53,7 +53,7 @@ interface BooleanTopicService<T, V> : TopicService<T, V> {
 interface CountingTopicService<T : Key<T>, V> : TopicService<T, V> {
     fun add(topic: T, message: V): Mono<Key<T>>
     fun rem(topic: T, message: V): Mono<Key<T>>
-    fun compute(topic: T): Mono<Set<out V>>
+    fun compute(topic: T): Mono<Set<V>>
     fun reset(topic: T, startKey: T): Mono<Key<T>>
 
 }
@@ -63,5 +63,5 @@ interface ChatTopicService<T, V> : TopicService<T, V> {
     fun rem(id: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>
     fun getUsersBy(id: T): Flux<T>
-    fun getProcessor(id: T): FluxProcessor<out Message<T, out V>, out Message<T, out V>>
+    fun getProcessor(id: T): FluxProcessor<out Message<T, V>, out Message<T, V>>
 }

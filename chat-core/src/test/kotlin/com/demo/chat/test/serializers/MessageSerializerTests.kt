@@ -1,15 +1,10 @@
 package com.demo.chat.test.serializers
 
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.codec.JsonNodeStringCodec
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.UserMessageKey
-import com.demo.chat.domain.serializers.ChatModules
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.test.TestBase
-import com.fasterxml.jackson.core.Version
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -26,7 +21,7 @@ class MessageSerializerTests : TestBase() {
         Hooks.onOperatorDebug()
         mapper.apply {
             registerModules(
-                ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).messageModule()
+                JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec).messageModule()
             )
         }
 

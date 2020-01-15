@@ -33,7 +33,7 @@ class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
     // map of <msgInbox : [topic]s>
     private val memberTopics: MutableMap<T, HashSet<T>> = mutableMapOf()
 
-    private val topicXSource: MutableMap<T, Flux<out Message<T, out V>>> = ConcurrentHashMap()
+    private val topicXSource: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
 
     override fun add(id: T): Mono<Void> = Mono
             .fromCallable {
@@ -50,13 +50,13 @@ class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
     override fun exists(id: T): Mono<Boolean> = Mono
             .fromCallable { topicXSource.containsKey(id) }
 
-  //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
+    //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
-    override fun getProcessor(id: T): FluxProcessor<out Message<T, out V>, out Message<T, out V>> =
+    override fun getProcessor(id: T): FluxProcessor<out Message<T, V>, out Message<T, V>> =
             topicManager
                     .getTopicProcessor(id)
 
-    override fun receiveOn(stream: T): Flux<out Message<T, out V>> =
+    override fun receiveOn(stream: T): Flux<out Message<T, V>> =
             topicManager
                     .getTopicFlux(stream)
 
@@ -64,10 +64,10 @@ class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    override fun receiveSourcedEvents(id: T): Flux<out Message<T, out V>> =
+    override fun receiveSourcedEvents(id: T): Flux<out Message<T, V>> =
             topicXSource
                     .getOrPut(id, {
-                        val proc = ReplayProcessor.create<Message<T, out V>>(1)
+                        val proc = ReplayProcessor.create<Message<T, V>>(1)
                         topicManager.setTopicProcessor(id, proc)
 
                         val reader = topicManager.getTopicFlux(id)
@@ -77,7 +77,7 @@ class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
                     })
 
     // how to join multiple streams to have fan-out without iterating through Fluxs
-    override fun sendMessage(topicMessage: Message<T, out V>): Mono<Void>  {
+    override fun sendMessage(topicMessage: Message<T, V>): Mono<Void> {
         val dest = topicMessage.key.dest
 
         return topicExistsOrError(dest)

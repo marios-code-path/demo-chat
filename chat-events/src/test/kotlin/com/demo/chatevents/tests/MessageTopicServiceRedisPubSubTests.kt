@@ -41,9 +41,9 @@ class MessageTopicServiceRedisPubSubTests : MessageTopicServiceTestBase() {
                         "t_l_user_topics_",
                         "t_l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce),
-                StringKeyDecoder(),
-                KeyStringEncoder()
+                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(lettuce),
+                StringUUIDKeyDecoder(),
+                UUIDKeyStringEncoder()
         )
 
         Hooks.onOperatorDebug()

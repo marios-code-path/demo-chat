@@ -3,7 +3,7 @@ package com.demo.chat.test.serializers
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.domain.serializers.ChatModules
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
@@ -18,7 +18,7 @@ class TopicMembershipSerializerTests : TestBase() {
     @Test
     fun `Any Membership deserialize`() {
         mapper.apply {
-            registerModules(ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).membershipModule())
+            registerModules(JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec).membershipModule())
         }
 
         val membershipJsons = Flux.just(

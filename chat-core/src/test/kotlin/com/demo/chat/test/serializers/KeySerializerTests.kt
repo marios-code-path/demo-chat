@@ -3,8 +3,7 @@ package com.demo.chat.test.serializers
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.codec.JsonNodeStringCodec
-import com.demo.chat.domain.serializers.ChatModules
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.domain.serializers.KeyDeserializer
 import com.demo.chat.test.TestBase
 import com.fasterxml.jackson.core.Version
@@ -24,7 +23,7 @@ class KeySerializerTests : TestBase() {
     fun `Subclass Key deserialize`() {
         mapper.apply {
             registerModules(
-                ChatModules(JsonNodeAnyCodec, JsonNodeAnyCodec).keyModule()
+                JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec).keyModule()
             )
         }
 

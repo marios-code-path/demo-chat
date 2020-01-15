@@ -55,9 +55,9 @@ class MessageTopicServiceRedisStreamTests : MessageTopicServiceTestBase() {
                         "l_user_topics_",
                         "l_topic_users_"),
                 ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.topicTemplate(lettuce),
-                StringKeyDecoder(),
-                KeyStringEncoder(),
+                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(lettuce),
+                StringUUIDKeyDecoder(),
+                UUIDKeyStringEncoder(),
                 KeyRecordIdEncoder()
         )
 

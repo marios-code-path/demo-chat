@@ -145,6 +145,7 @@ class ChatMembershipRepositoryTests {
                 .verifyComplete()
     }
 
+    // TODO Fix this testing bug (cassandraUnit based)
     //@Test
     fun `should save, find by memberId`() {
         val keyId = ChatMembershipKeyByMember(UUIDs.timeBased())
@@ -169,6 +170,7 @@ class ChatMembershipRepositoryTests {
                 .verifyComplete()
     }
 
+    // TODO Fix this testing bug (cassandraUnit based)
     //@Test
     fun `should save, find by memberOf`() {
         val keyId = ChatMembershipKeyByMemberOf(UUIDs.timeBased())

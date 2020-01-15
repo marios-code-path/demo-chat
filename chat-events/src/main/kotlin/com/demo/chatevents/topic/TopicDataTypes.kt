@@ -10,7 +10,7 @@ import java.util.*
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("TopicData")
 @Deprecated("NOT A REAL VALUE ANYMORE")
-class TopicData<T, V>(var state: Message<T, out V>)
+class TopicData(var state: Message<out Any, out Any>)
 
 @JsonTypeName("ChatMessage")
 open class ChatMessage<T>(

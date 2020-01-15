@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 
 
-class ChatModules(val codecKey: Codec<JsonNode, out Any>, val codecData: Codec<JsonNode, out Any>) {
+class JacksonModules(val codecKey: Codec<JsonNode, out Any>, val codecData: Codec<JsonNode, out Any>) {
 
     fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
         addDeserializer(Key::class.java, KeyDeserializer(codecKey))

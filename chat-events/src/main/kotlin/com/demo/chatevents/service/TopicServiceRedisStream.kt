@@ -5,7 +5,6 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.ChatTopicService
-import com.demo.chatevents.topic.TopicData
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
@@ -27,14 +26,14 @@ data class KeyConfiguration(
         val prefixTopicToUserSubs: String
 )
 
-class TopicServiceRedisStream<T, V>(
+class TopicServiceRedisStream<T, E>(
         keyConfig: KeyConfiguration,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
-        private val messageTemplate: ReactiveRedisTemplate<String, TopicData<T, V>>,
-        val stringKeyEncoder: Codec<String, T>,
+        private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
+        val stringKeyEncoder: Codec<String, out T>,
         val keyStringEncoder: Codec<T, String>,
         val keyRecordIdCodec: Codec<T, RecordId>
-) : ChatTopicService<T, V> {
+) : ChatTopicService<T, E> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
@@ -42,8 +41,8 @@ class TopicServiceRedisStream<T, V>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamManager = TopicManager<T, V>()
-    private val topicXReads: MutableMap<T, Flux<out Message<T, out V>>> = ConcurrentHashMap()
+    private val streamManager = TopicManager<T, E>()
+    private val topicXReads: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
             .filter {
@@ -155,8 +154,8 @@ class TopicServiceRedisStream<T, V>(
                                 .then()
                     }
 
-    override fun sendMessage(topicMessage: Message<T, out V>): Mono<Void> {
-        val map = mapOf(Pair("data", TopicData(topicMessage)))
+    override fun sendMessage(topicMessage: Message<T, E>): Mono<Void> {
+        val map = mapOf(Pair("data", topicMessage))
         /*
             * <li>1    Time-based T
             * <li>2    DCE security T
@@ -167,22 +166,22 @@ class TopicServiceRedisStream<T, V>(
 
         return Mono.from(topicExistsOrError(topicMessage.key.dest))
                 .thenMany(messageTemplate
-                        .opsForStream<String, TopicData<T, V>>()
+                        .opsForStream<String, Message<T, E>>()
                         .add(MapRecord
                                 .create(prefixTopicStream + topicMessage.key.dest.toString(), map)
                                 .withId(recordId)))
                 .then()
     }
 
-    override fun receiveOn(streamId: T): Flux<out Message<T, out V>> =
+    override fun receiveOn(streamId: T): Flux<out Message<T, E>> =
             streamManager.getTopicFlux(streamId)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(id: T): Flux<out Message<T, out V>> =
+    override fun receiveSourcedEvents(id: T): Flux<out Message<T, E>> =
             topicXReads.getOrPut(id, {
                 val xread = getXReadFlux(id)
-                val reProc = ReplayProcessor.create<Message<T, out V>>(5)
+                val reProc = ReplayProcessor.create<Message<T, E>>(5)
                 streamManager.setTopicProcessor(id, reProc)
                 streamManager.subscribeTopicProcessor(id, xread)
 
@@ -223,7 +222,7 @@ class TopicServiceRedisStream<T, V>(
                         .closeTopic(id)
             }.then()
 
-    override fun getProcessor(id: T): FluxProcessor<out Message<T, out V>, out Message<T, out V>> =
+    override fun getProcessor(id: T): FluxProcessor<out Message<T, E>, out Message<T, E>> =
             streamManager.getTopicProcessor(id)
 
     private fun keyExists(key: String, errorThrow: Throwable): Mono<Boolean> = stringTemplate
@@ -237,12 +236,12 @@ class TopicServiceRedisStream<T, V>(
             }
             .switchIfEmpty(Mono.error(errorThrow))
 
-    private fun getXReadFlux(topic: T): Flux<out Message<T, out V>> =
+    private fun getXReadFlux(topic: T): Flux<Message<T, E>> =
             messageTemplate
-                    .opsForStream<String, TopicData<T, V>>()
+                    .opsForStream<String, Message<T, E>>()
                     .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
                     .map {
-                        it.value["data"]?.state!!
+                        it.value["data"]!!
                     }.doOnNext {
                         logger.info("XREAD: ${keyStringEncoder.decode(it.key.dest)}")
                     }.doOnComplete {
