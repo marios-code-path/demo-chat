@@ -89,8 +89,6 @@ class ConfigurationTopicRedis(val props: ConfigurationPropertiesTopicRedis) {
 }
 
 class CustomRedisSerializer<T>(private val om: ObjectMapper) : RedisSerializer<Message<T, String>> {
-
-
     override fun serialize(t: Message<T, String>?): ByteArray {
         return om.writeValueAsBytes(t)
     }

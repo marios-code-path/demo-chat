@@ -22,7 +22,10 @@ import java.util.*
 class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
     override fun decode(record: T): RecordId =
             when (record) {
-                is UUID -> RecordId.of(record.mostSignificantBits, record.leastSignificantBits)
+                is UUID -> if ((record.mostSignificantBits) == 0L)
+                    RecordId.autoGenerate()
+                else
+                    RecordId.of(record.mostSignificantBits, record.leastSignificantBits)
                 else -> RecordId.autoGenerate()
             }
 }

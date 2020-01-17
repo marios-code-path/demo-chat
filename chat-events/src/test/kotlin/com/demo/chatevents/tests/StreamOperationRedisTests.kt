@@ -182,9 +182,9 @@ class StreamOperationRedisTests {
 
             val sender = Flux
                     .from(messages)
-                    .flatMap {
+                    .flatMap { message ->
                         val recordId = RecordId.autoGenerate()
-                        val dataMap = mapOf(Pair("msg", it))
+                        val dataMap = mapOf(Pair("msg", message))
 
                         msgTemplate
                                 .opsForStream<String, Message<UUID, String>>()
@@ -213,27 +213,30 @@ class StreamOperationRedisTests {
                 .expectSubscription()
                 .thenAwait(Duration.ofSeconds(1))
                 .assertNext {
+                    println("KEYS COMING:")
+                    it.keys.forEach(System.out::println)
                     Assertions
-                            .assertThat(it["data"])
+                            .assertThat(it["msg"])
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
 
-                    val data = it["data"]!!
+                    val data = it["msg"]!!
 
                     Assertions
                             .assertThat(data)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
-                            .hasFieldOrProperty("value")
-                            .hasFieldOrPropertyWithValue("visible", true)
+                            .hasFieldOrProperty("data")
+                            .hasFieldOrPropertyWithValue("record", true)
                 }
                 .verifyComplete()
 
     }
 
-    fun `should publish and receive ObjectRecord of TopicData`() {
+    // Doesnt appear to work rn
+    fun `should publish and receive ObjectRecord of Message`() {
         val testStreamKey = "TEST_STREAM_" + UUID.randomUUID().toString()
         val testRoomId = UUID.randomUUID()
         val testEventId = UUID.randomUUID()
@@ -249,20 +252,17 @@ class StreamOperationRedisTests {
 
         val objRecord = StreamRecords.newRecord()
                 .`in`(testStreamKey)
-                .ofObject(TopicData(message))
+                .ofObject(message)
                 .withId(recordId)
 
         val sendStream = msgTemplate
-                .opsForStream<String, Message<UUID, String>>(Jackson2HashMapper(true))
+                .opsForStream<String, Message<UUID, String>>()
                 .add(objRecord)
                 .checkpoint("send")
 
         val receiveStream = msgTemplate
-                .opsForStream<String, Message<UUID, String>>(Jackson2HashMapper(true))
-                .read(StreamOffset.fromStart(testStreamKey))
-                .map {
-                    Jackson2HashMapper(true).fromHash(it.value as Map<String, Any>)
-                }
+                .opsForStream<String, Message<UUID, String>>()
+                .read(Message::class.java, StreamOffset.fromStart(testStreamKey))
                 .checkpoint("receive")
 /*
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -279,15 +279,15 @@ class StreamOperationRedisTests {
                 .expectSubscription()
                 .assertNext {
 
-                    val data: Message<UUID, String> = it as Message<UUID, String>
+                    val data: Message<*,*> = it.value
 
                     Assertions
                             .assertThat(data)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
-                            .hasFieldOrPropertyWithValue("value", "TEST MESSAGE")
-                            .hasFieldOrPropertyWithValue("visible", true)
+                            .hasFieldOrPropertyWithValue("data", "TEST MESSAGE")
+                            .hasFieldOrPropertyWithValue("record", true)
                 }
                 .verifyComplete()
     }

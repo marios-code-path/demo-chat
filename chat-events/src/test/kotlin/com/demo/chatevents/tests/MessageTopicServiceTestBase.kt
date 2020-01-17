@@ -48,7 +48,7 @@ open class MessageTopicServiceTestBase {
     lateinit var topicService: ChatTopicService<UUID, String>
 
     object configProps : ConfigurationPropertiesTopicRedis {
-        override val port: Int = 6374
+        override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }
 
@@ -216,34 +216,39 @@ open class MessageTopicServiceTestBase {
                 .verify(Duration.ofSeconds(1))
 
         StepVerifier
-                .create(topicService.sendMessage(JoinAlert(
-                        MessageKey.create(UUID.randomUUID(), testRoom, userId))))
+                .create(topicService
+                        .sendMessage(Message.create(
+                        MessageKey.create(UUID(0L, 0L), userId, testRoom),
+                                "ALERT",
+                                false)))
                 .expectSubscription()
                 .expectComplete()
                 .verify(Duration.ofSeconds(1))
-
-        val uFlux = topicService.receiveOn(userId).doOnNext { logger.info("GOT: ${it.key.dest}") }
-
-        StepVerifier
-                .create(uFlux)
-                .expectSubscription()
-                .then {
-                    Assertions
-                            .assertThat(topicService.getProcessor(userId).downstreamCount())
-                            .isGreaterThanOrEqualTo(1)
-                }
-
-                .then {
-                    StepVerifier
-                            .create(Flux.merge(
-                                    topicService.unSubscribe(userId, testRoom),
-                                    topicService.rem(userId),
-                                    topicService.rem(testRoom)
-                            ))
-                            .expectSubscription()
-                            .verifyComplete()
-                }
-                .expectComplete()
-                .verify(Duration.ofSeconds(3))
+//
+//        val uFlux = topicService
+//                .receiveOn(userId)
+//                .doOnNext { logger.info("GOT: ${it.key.dest}") }
+//
+//        StepVerifier
+//                .create(uFlux)
+//                .expectSubscription()
+//                .then {
+//                    Assertions
+//                            .assertThat(topicService.getProcessor(userId).downstreamCount())
+//                            .isGreaterThanOrEqualTo(1)
+//                }
+//
+//                .then {
+//                    StepVerifier
+//                            .create(Flux.merge(
+//                                    topicService.unSubscribe(userId, testRoom),
+//                                    topicService.rem(userId),
+//                                    topicService.rem(testRoom)
+//                            ))
+//                            .expectSubscription()
+//                            .verifyComplete()
+//                }
+//                .expectComplete()
+//                .verify(Duration.ofSeconds(3))
     }
 }
