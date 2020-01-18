@@ -3,30 +3,28 @@ package com.demo.chat.controller.app
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessageSendRequest
 import com.demo.chat.MessagesRequest
-import com.demo.chat.TextMessageSend
-import com.demo.chat.codec.Codec
-import com.demo.chat.domain.*
-import com.demo.chat.service.TextMessageIndexService
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.Message
 import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.TextMessagePersistence
+import com.demo.chat.service.IndexService
+import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.TextMessageIndexService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
-open class MessageController<T>(
-        val textMessageIndex: TextMessageIndexService<T>,
-        val messagePersistence: TextMessagePersistence<T>,
-        val topicService: ChatTopicService,
-        val keyCodec: Codec<UUID,T>) {
+open class MessageController<T, V>(
+        val textMessageIndex: IndexService<T, Message<T, V>, Map<String, T>>,
+        val messagePersistence: PersistenceStore<T, Message<T, V>>,
+        val topicService: ChatTopicService<T, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
-    fun byTopic(req: MessagesRequest): Flux<out TextMessage<T>> =
+    fun byTopic(req: MessagesRequest<T>): Flux<out Message<T, V>> =
             Flux.concat(textMessageIndex
-                    .findBy(mapOf(Pair(TextMessageIndexService.TOPIC, req.topicId.toString())))
+                    .findBy(mapOf(Pair(TextMessageIndexService.TOPIC, req.topicId)))
                     .collectList()
                     .flatMapMany { messageKeys ->
                         messagePersistence.byIds(messageKeys)
@@ -34,35 +32,34 @@ open class MessageController<T>(
                     topicService.receiveOn(req.topicId))
 
     @MessageMapping("message-by-id")
-    fun getOne(req: MessageRequest): Mono<out TextMessage<T>> =
+    fun getOne(req: MessageRequest<T>): Mono<out Message<T, V>> =
             messagePersistence
-                    .get(Key.anyKey(keyCodec.decode(req.messageId)))
+                    .get(Key.funKey(req.messageId))
 
-    @MessageMapping("text-message-send")
-    fun putTextMessage(req: TextMessageSend): Mono<out MessageKey<UUID, UUID>> =
-            messagePersistence
-                    .key()
-                    .map { key ->
-                        MessageSendRequest(TextMessage.create(
-                                UserMessageKey.create(key, req.topic, req.uid), req.text, true))
-                    }
-                    .flatMap { put -> add(put).map { put.msg.key } }
+// TODO : Generic form should  enable this to be unnecessary
+//    @MessageMapping("text-message-send")
+//    fun putTextMessage(req: TextMessageSend<T>): Mono<out MessageKey<T>> =
+//            messagePersistence
+//                    .key()
+//                    .map { key ->
+//                        MessageSendRequest(Message.create(
+//                                MessageKey.create(key.id, req.topic, req.uid), req.text, true))
+//                    }
+//                    .flatMap { put ->
+//                        add(put).map { put.msg.key } }
 
     // TODO currently we need to add more persistence support for non-text (whose sending non text messages by rsocket ?? )
     // TODO Needs to ensure KEY ID is set
     @MessageMapping("message-send")
-    fun add(req: MessageSendRequest): Mono<Void> {
-        val publisher = when (req.msg) {
-            is TextMessage -> messagePersistence
-                    .add(req.msg)
-                    .thenMany(textMessageIndex.add(req.msg, mapOf()))
-                    .then()
-            else -> Mono.empty()
-        }
+    fun add(req: MessageSendRequest<T, V>): Mono<Void> {
+        val publisher = messagePersistence
+                .add(req.msg)
+                .thenMany(textMessageIndex.add(req.msg))
+                .then()
 
-        return Flux.from(publisher)
+        return Flux
+                .from(publisher)
                 .then(topicService.sendMessage(req.msg))
                 .then()
     }
-
 }

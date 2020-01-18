@@ -49,13 +49,13 @@ interface Message<T, E> {
     val data: E
 
     companion object Factory {
-        fun <T, E> create(key: MessageKey<T>, value: E, visible: Boolean): Message<T, E> = object : Message<T, E> {
+        fun <T, E> create(key: MessageKey<T>, value: E, record: Boolean): Message<T, E> = object : Message<T, E> {
             override val key: MessageKey<T>
                 get() = key
             override val data: E
                 get() = value
             override val record: Boolean
-                get() = visible
+                get() = record
         }
     }
 }

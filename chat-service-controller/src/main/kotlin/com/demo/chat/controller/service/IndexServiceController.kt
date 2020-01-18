@@ -8,13 +8,13 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-open class IndexServiceController<K, in T, Q, WQ>(val that: IndexService<K, T, Q, WQ>) : IndexService<K, T, Q, WQ> {
+open class IndexServiceController<T, E, Q>(val that: IndexService<T, E, Q>) : IndexService<T, E, Q> {
     @MessageMapping("add")
-    override fun add(entity: T, criteria: WQ): Mono<Void> = that.add(entity, criteria)
+    override fun add(entity: E): Mono<Void> = that.add(entity)
 
     @MessageMapping("rem")
-    override fun rem(entity: T): Mono<Void> = that.rem(entity)
+    override fun rem(entity: Key<T>): Mono<Void> = that.rem(entity)
 
     @MessageMapping("query")
-    override fun findBy(query: Q): Flux<out Key<K>> = that.findBy(query)
+    override fun findBy(query: Q): Flux<out Key<T>> = that.findBy(query)
 }
