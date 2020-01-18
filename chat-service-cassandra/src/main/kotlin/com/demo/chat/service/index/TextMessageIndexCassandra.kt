@@ -38,7 +38,7 @@ class MessageCriteriaCodec<T> : Codec<Message<T, out Any>, Map<String, String>> 
 }
 
 class TextMessageIndexCassandra<T>(
-        val criteriaCodec: Codec<Message<T, Any>, Map<String, String>>,
+        val criteriaCodec: Codec<Message<T, out Any>, Map<String, String>>,
         val cassandra: ReactiveCassandraTemplate,
         val byUserRepo: ChatMessageByUserRepository<T>,
         val byTopicRepo: ChatMessageByTopicRepository<T>) : TextMessageIndexService<T> {

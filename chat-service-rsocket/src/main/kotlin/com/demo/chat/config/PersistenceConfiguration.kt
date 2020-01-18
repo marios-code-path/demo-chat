@@ -1,12 +1,10 @@
 package com.demo.chat.config
 
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
-import com.demo.chat.service.index.MembershipIndexCassandra
-import com.demo.chat.service.index.TextMessageIndexCassandra
-import com.demo.chat.service.index.TopicIndexCassandra
-import com.demo.chat.service.index.UserIndexCassandra
+import com.demo.chat.service.index.*
 import com.demo.chat.service.persistence.*
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -14,6 +12,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import java.util.*
 
 @ConstructorBinding
 @ConfigurationProperties("cassandra-repo")
@@ -24,58 +23,34 @@ data class CassandraProperties(override val contactPoints: String,
                                override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
 
 @ExcludeFromTests
-@Profile("cassandra-index")
-@Configuration
-class IndexConfiguration {
-    @Bean
-    fun userIndex(userHandleRepo: ChatUserHandleRepository,
-                  cassandra: ReactiveCassandraTemplate): UserIndexService = UserIndexCassandra(userHandleRepo, cassandra)
-
-    @Bean
-    fun roomIndex(roomRepo: TopicRepository,
-                  nameRepo: TopicByNameRepository): TopicIndexService = TopicIndexCassandra(roomRepo, nameRepo)
-
-    @Bean
-    fun membershipIndex(byMemberRepo: ChatMembershipByMemberRepository,
-                        byMemberOfRepo: ChatMembershipByMemberOfRepository): MembershipIndexService =
-            MembershipIndexCassandra(byMemberRepo, byMemberOfRepo)
-
-    @Bean
-    fun messageIndex(cassandra: ReactiveCassandraTemplate,
-                     byUserRepo: ChatMessageByUserRepository,
-                     byTopicRepo: ChatMessageByTopicRepository): TextMessageIndexService =
-            TextMessageIndexCassandra(cassandra, byUserRepo, byTopicRepo)
-}
-
-@ExcludeFromTests
 @Profile("cassandra-persistence")
 @Configuration
-class PersistenceConfiguration {
+class PersistenceConfiguration<T : UUID> {
 
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
-    fun keyService(template: ReactiveCassandraTemplate): UUIDKeyService = KeyServiceCassandra(template)
+    fun keyService(template: ReactiveCassandraTemplate): IKeyService<T> = KeyServiceCassandra(template) { UUIDs.timeBased() as T }
 
     @Bean
-    fun userPersistence(keyService: UUIDKeyService,
-                        userRepo: ChatUserRepository): UserPersistence =
+    fun userPersistence(keyService: IKeyService<T>,
+                        userRepo: ChatUserRepository<T>): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)
 
     @Bean
-    fun roomPersistence(keyService: UUIDKeyService,
-                        roomRepo: TopicRepository,
-                        roomNameRepo: TopicByNameRepository): TopicPersistence =
+    fun roomPersistence(keyService: IKeyService<T>,
+                        roomRepo: TopicRepository<T>,
+                        roomNameRepo: TopicByNameRepository<T>): TopicPersistence<T> =
             TopicPersistenceCassandra(keyService, roomRepo)
 
     @Bean
-    fun messagePersistence(keyService: UUIDKeyService,
-                           messageRepo: ChatMessageRepository): TextMessagePersistence =
+    fun messagePersistence(keyService: IKeyService<T>,
+                           messageRepo: ChatMessageRepository<T>): TextMessagePersistence<T> =
             TextMessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
-    fun membershipPersistence(keyService: UUIDKeyService,
-                              membershipRepo: ChatMembershipRepository): MembershipPersistence =
+    fun membershipPersistence(keyService: IKeyService<T>,
+                              membershipRepo: ChatMembershipRepository<T>): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }

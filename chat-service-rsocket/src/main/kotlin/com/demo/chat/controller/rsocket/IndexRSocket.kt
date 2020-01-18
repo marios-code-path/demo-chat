@@ -10,13 +10,13 @@ import org.springframework.stereotype.Controller
 import java.util.*
 
 @Controller
-class UserIndexRSocket(t: UserIndexService) : IndexServiceController<UUID, User, Map<String, String>, Map<String, String>>(t)
+class UserIndexRSocket(t: UserIndexService<UUID>) : IndexServiceController<UUID, User<UUID>, Map<String, String>>(t)
 
 @Controller
-class MessageIndexRSocket(t: TextMessageIndexService) : IndexServiceController<UUID, TextMessage, Map<String, String>, Map<String, String>>(t)
+class MessageIndexRSocket(t: TextMessageIndexService<UUID>) : IndexServiceController<UUID, Message<UUID,out Any>, Map<String, UUID>>(t)
 
 @Controller
-class RoomIndexRSocket(t: TopicIndexService) : IndexServiceController<UUID, MessageTopic, Map<String, String>, Map<String, String>>(t)
+class RoomIndexRSocket(t: TopicIndexService<UUID>) : IndexServiceController<UUID, MessageTopic<UUID>, Map<String, String>>(t)
 
 @Controller
-class MembershipIndexRSocket(t: MembershipIndexService) : IndexServiceController<UUID, TopicMembership<UUID>, Map<String, String>, Map<String, String>>(t)
+class MembershipIndexRSocket(t: MembershipIndexService<UUID>) : IndexServiceController<UUID, TopicMembership<UUID>, Map<String, UUID>>(t)

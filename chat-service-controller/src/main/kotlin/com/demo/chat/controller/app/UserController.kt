@@ -4,9 +4,7 @@ import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequest
 import com.demo.chat.UserRequestId
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
 import com.demo.chat.domain.User
-import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import org.slf4j.Logger
@@ -15,8 +13,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class UserController(val userPersistence: UserPersistence,
-                          val userIndex: UserIndexService) {
+open class UserController<T>(val userPersistence: UserPersistence<T>,
+                             val userIndex: UserIndexService<T>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-add")
@@ -25,26 +23,26 @@ open class UserController(val userPersistence: UserPersistence,
                     .key()
                     .flatMap {
                         val user = User.create(
-                                UserKey.create(it.id),
+                                Key.funKey(it.id),
                                 userReq.name,
                                 userReq.userHandle,
                                 userReq.imgUri
                         )
                         Flux.concat(
                                 userPersistence.add(user),
-                                userIndex.add(user, mapOf())
+                                userIndex.add(user)
                         )
                                 .then()
                     }
 
     @MessageMapping("user-by-handle")
-    fun findByHandle(userReq: UserRequest): Flux<out User> = userIndex
+    fun findByHandle(userReq: UserRequest): Flux<out User<T>> = userIndex
             .findBy(mapOf(Pair("handle", userReq.userHandle)))
             .flatMap(userPersistence::get)
 
     @MessageMapping("user-by-id")
-    fun findByUserId(userReq: UserRequestId): Mono<out User> = userPersistence
-            .get(Key.eventKey(userReq.userId))
+    fun findByUserId(userReq: UserRequestId<T>): Mono<out User<T>> = userPersistence
+            .get(Key.funKey(userReq.userId))
 
 //    @MessageMapping("user-by-ids")
 //    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User> =

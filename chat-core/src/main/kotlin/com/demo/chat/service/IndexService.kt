@@ -52,7 +52,7 @@ interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<St
     }
 }
 
-interface TextMessageIndexService<T> : IndexService<T, Message<T, Any>, Map<String, T>> {
+interface TextMessageIndexService<T> : IndexService<T, Message<T, out Any>, Map<String, T>> {
     companion object {
         const val ID = "msgId"
         const val TOPIC = "topicId"
