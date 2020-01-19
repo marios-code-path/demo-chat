@@ -3,7 +3,7 @@ package com.demo.chatevents.tests
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
@@ -41,11 +41,11 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
 }
 
 
-open class MessageTopicServiceTestBase {
+open class MessageTopicMessagingServiceTestBase {
 
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    lateinit var topicService: ChatTopicService<UUID, String>
+    lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
     object configProps : ConfigurationPropertiesTopicRedis {
         override val port: Int = 6474

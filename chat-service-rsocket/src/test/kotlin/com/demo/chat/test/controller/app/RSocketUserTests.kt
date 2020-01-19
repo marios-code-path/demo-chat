@@ -6,7 +6,6 @@ import com.demo.chat.UserCreateRequest
 import com.demo.chat.UserRequestId
 import com.demo.chat.controller.app.UserController
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UserKey
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import org.assertj.core.api.Assertions
@@ -15,9 +14,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -30,7 +27,7 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
+@Import(TestConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
 class RSocketUserTests : ControllerTestBase() {
     @Autowired
     private lateinit var userIndex: UserIndexService<UUID>
@@ -55,7 +52,7 @@ class RSocketUserTests : ControllerTestBase() {
         BDDMockito.given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
-        BDDMockito.given(userIndex.add(anyObject(), anyObject()))
+        BDDMockito.given(userIndex.add(anyObject()))
                 .willReturn(Mono.empty())
 
         StepVerifier
@@ -120,6 +117,6 @@ class RSocketUserTests : ControllerTestBase() {
     class TestConfiguration {
         @Controller
         class TestUserController(persistence: UserPersistence<UUID>,
-                               index: UserIndexService<UUID>) : UserController(persistence, index)
+                               index: UserIndexService<UUID>) : UserController<UUID>(persistence, index)
     }
 }

@@ -8,7 +8,7 @@ import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.persistence.TextMessagePersistenceCassandra
+import com.demo.chat.service.persistence.MessagePersistenceCassandra
 import com.demo.chat.test.TestKeyService
 import com.demo.chat.test.anyObject
 import org.hamcrest.MatcherAssert
@@ -38,7 +38,7 @@ class TextMessageServiceTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private val MSGTEXT = "SUP TEST"
-    lateinit var msgSvc: TextMessagePersistenceCassandra<UUID>
+    lateinit var msgSvc: MessagePersistenceCassandra<UUID>
 
     @MockBean
     lateinit var msgRepo: ChatMessageRepository<UUID>
@@ -67,7 +67,7 @@ class TextMessageServiceTests {
         Mockito.`when`(msgByTopicRepo.findByKeyDest(anyObject()))
                 .thenReturn(Flux.just(byRoomMessage))
 
-        msgSvc = TextMessagePersistenceCassandra(keyService, msgRepo)
+        msgSvc = MessagePersistenceCassandra(keyService, msgRepo)
     }
 
     @Test

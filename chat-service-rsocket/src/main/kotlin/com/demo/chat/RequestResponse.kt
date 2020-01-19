@@ -1,9 +1,7 @@
 package com.demo.chat
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TextMessage
-import com.demo.chat.domain.UserMessageKey
-import com.demo.chat.domain.UUIDTopicMessageKey
+import com.demo.chat.domain.MessageKey
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
@@ -23,19 +21,19 @@ data class RoomLeaveRequest(val uid: UUID, val roomId: UUID)
 
 data class MessagesRequest(val topicId: UUID)
 data class MessageRequest(val messageId: UUID)
-data class MessageSendRequest(val msg: Message<out UUIDTopicMessageKey, Any>)
+data class MessageSendRequest(val msg: Message<out MessageKey<UUID>, Any>)
 data class TextMessageSend(val uid: UUID, val topic: UUID, val text: String)
 
 @JsonTypeName("ChatMessage")
 data class ChatMessage(
         override val key: ChatMessageKey,
         override val data: String,
-        val record: Boolean
-) : TextMessage
+        override val record: Boolean
+) : Message<UUID, String>
 
 data class ChatMessageKey(
         override val id: UUID,
-        val from: UUID,
-        val dest: UUID,
+        override val from: UUID,
+        override val dest: UUID,
         override val timestamp: Instant
-) : UserMessageKey
+) : MessageKey<UUID>

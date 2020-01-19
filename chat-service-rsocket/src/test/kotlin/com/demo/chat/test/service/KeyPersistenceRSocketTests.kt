@@ -24,7 +24,7 @@ import java.util.*
 class KeyPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired
-    lateinit var keyPersistence: KeyPersistence
+    lateinit var keyPersistence: KeyPersistence<UUID>
 
     @Test
     fun `should get a key`() {
@@ -68,7 +68,7 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
 
     class KeyPersistenceTestConfiguration {
         @MockBean
-        lateinit var keyPersistence: KeyPersistence
+        lateinit var keyPersistence: KeyPersistence<UUID>
 
         @Bean
         fun keyPersistenceRSocket() = RSocketKeyPersistence(keyPersistence)

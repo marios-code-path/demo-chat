@@ -1,10 +1,14 @@
 package com.demo.chat.test
 
 import com.demo.chat.TestUUIDKey
+import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.UUIDKey
+import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.annotation.*
+import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.module.SimpleAbstractTypeResolver
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -19,7 +23,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("TestKey")
 interface TestKey : Key<UUID> {
     override val id: UUID
 
@@ -68,6 +71,11 @@ class SerializationTests {
             return ObjectMapper().apply {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 registerModule(KotlinModule())
+                val module = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+                registerModules(
+                        module.keyModule(),
+                        module("TESTKEY", TestKey::class.java, ETestKey::class.java)
+                )
                 setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
                 setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.NONE)
                 setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.NONE)
@@ -76,11 +84,10 @@ class SerializationTests {
             }
         }
 
-        @Bean
-        fun eventKeyModule() = module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
-
-        @Bean
-        fun testKeyModule() = module("TESTKEY", TestKey::class.java, ETestKey::class.java)
+        // Register this abstract module to let the app know when it sees a Interface type, which
+        // concrete type to use on the way out.
+        fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) = SimpleModule("CustomModel$name", Version.unknownVersion())
+                .apply { setAbstractTypes(SimpleAbstractTypeResolver().apply { addMapping(iface, concrete) }) }
 
         // old but useful to explain where this could potentially happen where autoscanning is not
         // used.

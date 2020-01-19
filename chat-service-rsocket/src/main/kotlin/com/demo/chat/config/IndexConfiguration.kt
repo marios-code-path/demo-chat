@@ -3,7 +3,7 @@ package com.demo.chat.config
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.TextMessageIndexService
+import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.index.*
@@ -17,7 +17,7 @@ import java.util.*
 @ExcludeFromTests
 @Profile("cassandra-index")
 @Configuration
-class IndexConfiguration<T : UUID> {
+class IndexConfiguration {
     @Bean
     fun userIndex(userHandleRepo: ChatUserHandleRepository<UUID>,
                   cassandra: ReactiveCassandraTemplate): UserIndexService<UUID> =
@@ -36,6 +36,6 @@ class IndexConfiguration<T : UUID> {
     @Bean
     fun messageIndex(cassandra: ReactiveCassandraTemplate,
                      byUserRepo: ChatMessageByUserRepository<UUID>,
-                     byTopicRepo: ChatMessageByTopicRepository<UUID>): TextMessageIndexService<UUID> =
-            TextMessageIndexCassandra(MessageCriteriaCodec(), cassandra, byUserRepo, byTopicRepo)
+                     byTopicRepo: ChatMessageByTopicRepository<UUID>): MessageIndexService<UUID> =
+            MessageIndexCassandra(MessageCriteriaCodec(), cassandra, byUserRepo, byTopicRepo)
 }

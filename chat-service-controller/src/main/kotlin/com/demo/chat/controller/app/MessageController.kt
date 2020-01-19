@@ -5,10 +5,10 @@ import com.demo.chat.MessageSendRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
-import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.TextMessageIndexService
+import com.demo.chat.service.MessageIndexService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -16,15 +16,15 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 open class MessageController<T, V>(
-        val textMessageIndex: IndexService<T, Message<T, V>, Map<String, T>>,
+        val messageIndex: IndexService<T, Message<T, V>, Map<String, T>>,
         val messagePersistence: PersistenceStore<T, Message<T, V>>,
-        val topicService: ChatTopicService<T, V>) {
+        val topicService: ChatTopicMessagingService<T, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
     fun byTopic(req: MessagesRequest<T>): Flux<out Message<T, V>> =
-            Flux.concat(textMessageIndex
-                    .findBy(mapOf(Pair(TextMessageIndexService.TOPIC, req.topicId)))
+            Flux.concat(messageIndex
+                    .findBy(mapOf(Pair(MessageIndexService.TOPIC, req.topicId)))
                     .collectList()
                     .flatMapMany { messageKeys ->
                         messagePersistence.byIds(messageKeys)
@@ -54,7 +54,7 @@ open class MessageController<T, V>(
     fun add(req: MessageSendRequest<T, V>): Mono<Void> {
         val publisher = messagePersistence
                 .add(req.msg)
-                .thenMany(textMessageIndex.add(req.msg))
+                .thenMany(messageIndex.add(req.msg))
                 .then()
 
         return Flux

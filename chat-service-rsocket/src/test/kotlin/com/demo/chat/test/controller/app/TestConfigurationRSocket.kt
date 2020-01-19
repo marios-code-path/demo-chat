@@ -1,5 +1,6 @@
 package com.demo.chat.test.controller.app
 
+import com.demo.chat.domain.Message
 import com.demo.chat.service.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,7 +16,7 @@ import java.util.*
 
 @TestConfiguration
 @Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
-class ConfigurationRSocket {
+class TestConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @MockBean
@@ -25,7 +26,7 @@ class ConfigurationRSocket {
     private lateinit var userIndex: UserIndexService<UUID>
 
     @MockBean
-    private lateinit var textMessageIndex: TextMessageIndexService<UUID>
+    private lateinit var messageIndex: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>//MessageIndexService<UUID>
 
     @MockBean
     private lateinit var topicPersistence: TopicPersistence<UUID>
@@ -34,10 +35,10 @@ class ConfigurationRSocket {
     private lateinit var userPersistence: UserPersistence<UUID>
 
     @MockBean
-    private lateinit var topicMessagePersistence: TextMessagePersistence<UUID>
+    private lateinit var topicMessagePersistence: MessagePersistence<UUID, out Any>
 
     @MockBean
-    private lateinit var topicService: ChatTopicService
+    private lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

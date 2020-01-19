@@ -3,7 +3,6 @@ package com.demo.chat.test.controller.app
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UUIDKeyService
 import io.rsocket.RSocket
 import io.rsocket.RSocketFactory
 import io.rsocket.frame.decoder.PayloadDecoder
@@ -90,13 +89,13 @@ open class ControllerTestBase {
 
         BDDMockito
                 .given(keyService.key(String::class.java))
-                .willReturn(Mono.just(Key.eventKey(UUID.randomUUID())))
+                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
         Hooks.onOperatorDebug()
     }
 
     @AfterEach
-    fun tearDown(@Autowired config: ConfigurationRSocket) {
+    fun tearDown(@Autowired config: TestConfigurationRSocket) {
         requestor.rsocket().dispose()
         server.dispose()
     }

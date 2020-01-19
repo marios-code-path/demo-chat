@@ -27,7 +27,7 @@ import java.util.*
 class UserPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired
-    lateinit var userPersistence: UserPersistence
+    lateinit var userPersistence: UserPersistence<UUID>
 
     private val defaultImgUri = "http://cdn.test.com/image.jpg"
     private val randomHandle = randomAlphaNumeric(4)
@@ -118,7 +118,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
 
     class UserPersistenceTestConfiguration {
         @MockBean
-        lateinit var userPersistence: UserPersistence
+        lateinit var userPersistence: UserPersistence<UUID>
 
         @Bean
         fun persistenceController() = RSocketUserPersistence(userPersistence)

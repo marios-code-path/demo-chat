@@ -19,6 +19,6 @@ interface TopicPersistence<T> : PersistenceStore<T, MessageTopic<T>>
 
 interface MembershipPersistence<T> : PersistenceStore<T, TopicMembership<T>>
 
-interface TextMessagePersistence<T> : PersistenceStore<T, Message<T, String>>
+interface MessagePersistence<T, V> : PersistenceStore<T, Message<T, V>>
 
 interface KeyPersistence<T> : PersistenceStore<T, Key<T>>

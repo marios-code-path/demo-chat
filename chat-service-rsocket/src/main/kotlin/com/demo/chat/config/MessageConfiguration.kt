@@ -2,19 +2,17 @@ package com.demo.chat.config
 
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.codec.Codec
-import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfigurationPubSub
-import com.demo.chatevents.service.TopicServiceMemory
-import com.demo.chatevents.service.TopicServiceRedisPubSub
+import com.demo.chatevents.service.TopicMessagingServiceMemory
+import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import java.util.*
 
@@ -26,7 +24,7 @@ class KeyStringEncoder<T> : Codec<T, String> {
 }
 
 class StringUUIDKeyDecoder : Codec<String, UUID> {
-    override inline fun decode(record: String): UUID {
+    override fun decode(record: String): UUID {
         return UUID.fromString(record)
     }
 }
@@ -39,9 +37,9 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
 
 @Profile("memory-topics")
 @Configuration
-class TopicConfigurationMemory<T: UUID, V> {
+class TopicConfigurationMemory<T, V> {
     @Bean
-    fun topicServiceInMemory(): ChatTopicService<T, V> = TopicServiceMemory()
+    fun topicServiceInMemory(): ChatTopicMessagingService<T, V> = TopicMessagingServiceMemory()
 }
 
 @Profile("redis-topics")
@@ -58,10 +56,10 @@ class TopicConfigurationRedis {
     fun configurationTopicRedis(props: ConfigurationPropertiesTopicRedis): ConfigurationTopicRedis = ConfigurationTopicRedis(props)
 
     @Bean
-    fun topicServiceRedis(config: ConfigurationTopicRedis): ChatTopicService<*, *> {
+    fun topicServiceRedis(config: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> {
         val factory = config.redisConnection()
 
-        return TopicServiceRedisPubSub(
+        return TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("all_topics",
                         "st_topic_",
                         "l_user_topics_",

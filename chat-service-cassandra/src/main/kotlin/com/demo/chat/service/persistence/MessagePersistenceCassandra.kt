@@ -6,14 +6,14 @@ import com.demo.chat.domain.cassandra.ChatMessageById
 import com.demo.chat.domain.cassandra.ChatMessageByIdKey
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.TextMessagePersistence
+import com.demo.chat.service.MessagePersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
-open class TextMessagePersistenceCassandra<T>(private val keyService: IKeyService<T>,
-                                              private val messageRepo: ChatMessageRepository<T>)
-    : TextMessagePersistence<T> {
+open class MessagePersistenceCassandra<T>(private val keyService: IKeyService<T>,
+                                          private val messageRepo: ChatMessageRepository<T>)
+    : MessagePersistence<T, String> {
 
     override fun key(): Mono<out Key<T>> =
             keyService.key(Message::class.java)

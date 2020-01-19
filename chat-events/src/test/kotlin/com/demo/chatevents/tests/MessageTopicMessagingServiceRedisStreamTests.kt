@@ -3,7 +3,7 @@ package com.demo.chatevents.tests
 import com.demo.chat.codec.Codec
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfiguration
-import com.demo.chatevents.service.TopicServiceRedisStream
+import com.demo.chatevents.service.TopicMessagingServiceRedisStream
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -32,7 +32,7 @@ class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MessageTopicServiceRedisStreamTests : MessageTopicServiceTestBase() {
+class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServiceTestBase() {
 
     private lateinit var redisServer: RedisServer
 
@@ -52,7 +52,7 @@ class MessageTopicServiceRedisStreamTests : MessageTopicServiceTestBase() {
 
         redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
 
-        topicService = TopicServiceRedisStream(
+        topicService = TopicMessagingServiceRedisStream(
                 KeyConfiguration("all_topics",
                         "st_topic_",
                         "l_user_topics_",

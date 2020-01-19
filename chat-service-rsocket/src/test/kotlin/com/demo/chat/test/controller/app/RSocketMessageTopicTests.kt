@@ -2,6 +2,7 @@ package com.demo.chat.test.controller.app
 
 
 import com.demo.chat.*
+import com.demo.chat.codec.Codec
 import com.demo.chat.controller.app.RoomController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
@@ -28,27 +29,27 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(ConfigurationRSocket::class, RSocketMessageTopicTests.TestConfiguration::class)
+@Import(TestConfigurationRSocket::class, RSocketMessageTopicTests.TestConfiguration::class)
 class RSocketMessageTopicTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var topicIndex: TopicIndexService
+    lateinit var topicIndex: TopicIndexService<UUID>
 
     @Autowired
-    lateinit var topicPersistence: TopicPersistence
+    lateinit var topicPersistence: TopicPersistence<UUID>
 
     @Autowired
-    lateinit var userPersistence: UserPersistence
+    lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicService: ChatTopicService
+    lateinit var topicService: ChatTopicMessagingService<UUID, out Any>
 
     @Autowired
-    lateinit var membershipIndex: MembershipIndexService
+    lateinit var membershipIndex: MembershipIndexService<UUID>
 
     @Autowired
-    lateinit var membershipPersistence: MembershipPersistence
+    lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     private val randomUserHandle = randomAlphaNumeric(4) + "User"
     private val randomUserId: UUID = UUID.randomUUID()
@@ -76,7 +77,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
 
         BDDMockito
                 .given(topicPersistence.key())
-                .willReturn(Mono.just(Key.eventKey(UUID.randomUUID())))
+                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
         StepVerifier.create(
                 requestor.route("room-add")
@@ -120,7 +121,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     @Test
     fun `should not join a non existent Room`() {
         BDDMockito
-                .given(topicIndex.add(anyObject(), anyObject()))
+                .given(topicIndex.add(anyObject()))
                 .willReturn(Mono.error(TopicNotFoundException))
 
         StepVerifier
@@ -139,7 +140,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     fun `joins a room and appears in member list`() {
         val membershipId = UUID.randomUUID()
 
-        BDDMockito.given(topicIndex.add(anyObject(), anyObject()))
+        BDDMockito.given(topicIndex.add(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(topicPersistence.get(anyObject()))
@@ -168,13 +169,13 @@ class RSocketMessageTopicTests : ControllerTestBase() {
         BDDMockito
                 .given(membershipPersistence.byIds(anyObject()))
                 .willReturn(Flux.just(TopicMembership.create(
-                        Key.eventKey(membershipId),
-                        Key.eventKey(randomRoomId),
-                        Key.eventKey(randomUserId))))
+                        Key.funKey(membershipId),
+                        Key.funKey(randomRoomId),
+                        Key.funKey(randomUserId))))
 
         BDDMockito
                 .given(membershipIndex.findBy(anyObject()))
-                .willReturn(Flux.just(Key.eventKey(membershipId)))
+                .willReturn(Flux.just(Key.funKey(membershipId)))
 
         BDDMockito
                 .given(topicService.add(anyObject()))
@@ -209,15 +210,21 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .verifyComplete()
     }
 
+    class EmptyDecoder: Codec<String, Any> {
+        override fun decode(record: String): Any {
+            return record as Any
+        }
+
+    }
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestRoomController(topicP: TopicPersistence,
-                                 topicInd: TopicIndexService,
-                                 topicSvc: ChatTopicService,
-                                 userP: UserPersistence,
-                                 membershipP: MembershipPersistence,
-                                 membershipInd: MembershipIndexService) :
-                RoomController(topicP, topicInd, topicSvc, userP, membershipP, membershipInd)
+        class TestRoomController(topicP: TopicPersistence<UUID>,
+                                 topicInd: TopicIndexService<UUID>,
+                                 topicSvc: ChatTopicMessagingService<UUID, Any>,
+                                 userP: UserPersistence<UUID>,
+                                 membershipP: MembershipPersistence<UUID>,
+                                 membershipInd: MembershipIndexService<UUID>) :
+                RoomController<UUID, Any>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
     }
 }

@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono
  * svc.send to ROOM[MEMBERSHIP] with PRINCIPLE[MEMBERSHIP]
  * svc.send ( message ) to ROOM[MESSAGES]
  */
-interface TopicService<T, V> {
+interface TopicMessagingService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
     fun unSubscribe(member: T, topic: T): Mono<Void>
     fun unSubscribeAll(member: T): Mono<Void> // then closes
@@ -44,21 +44,7 @@ interface TopicService<T, V> {
     //fun keyExists(topic: T, key: T): Mono<Boolean>
 }
 
-interface BooleanTopicService<T, V> : TopicService<T, V> {
-    fun add(topic: T, message: V): Mono<Key<T>>
-    fun compute(topic: T): Mono<Set<V>>
-    fun reset(topic: T, startKey: T): Mono<Key<T>>
-}
-
-interface CountingTopicService<T : Key<T>, V> : TopicService<T, V> {
-    fun add(topic: T, message: V): Mono<Key<T>>
-    fun rem(topic: T, message: V): Mono<Key<T>>
-    fun compute(topic: T): Mono<Set<V>>
-    fun reset(topic: T, startKey: T): Mono<Key<T>>
-
-}
-
-interface ChatTopicService<T, V> : TopicService<T, V> {
+interface ChatTopicMessagingService<T, V> : TopicMessagingService<T, V> {
     fun add(id: T): Mono<Void>
     fun rem(id: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>

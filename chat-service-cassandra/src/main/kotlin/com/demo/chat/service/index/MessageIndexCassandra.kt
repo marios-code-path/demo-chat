@@ -11,10 +11,10 @@ import com.demo.chat.domain.cassandra.ChatMessageByUser
 import com.demo.chat.domain.cassandra.ChatMessageByUserKey
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
-import com.demo.chat.service.TextMessageIndexService
-import com.demo.chat.service.TextMessageIndexService.Companion.DATA
-import com.demo.chat.service.TextMessageIndexService.Companion.TOPIC
-import com.demo.chat.service.TextMessageIndexService.Companion.USER
+import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.MessageIndexService.Companion.DATA
+import com.demo.chat.service.MessageIndexService.Companion.TOPIC
+import com.demo.chat.service.MessageIndexService.Companion.USER
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -37,12 +37,12 @@ class MessageCriteriaCodec<T> : Codec<Message<T, out Any>, Map<String, String>> 
     }
 }
 
-class TextMessageIndexCassandra<T>(
+class MessageIndexCassandra<T>(
         val criteriaCodec: Codec<Message<T, out Any>, Map<String, String>>,
         val cassandra: ReactiveCassandraTemplate,
         val byUserRepo: ChatMessageByUserRepository<T>,
-        val byTopicRepo: ChatMessageByTopicRepository<T>) : TextMessageIndexService<T> {
-    override fun add(ent: Message<T, Any>): Mono<Void> =
+        val byTopicRepo: ChatMessageByTopicRepository<T>) : MessageIndexService<T> {
+    override fun add(ent: Message<T, out Any>): Mono<Void> =
             with(criteriaCodec.decode(ent)) {
                 cassandra
                         .batchOps()

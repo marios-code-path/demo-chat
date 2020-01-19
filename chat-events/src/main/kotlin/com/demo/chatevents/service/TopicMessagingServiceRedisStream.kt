@@ -4,7 +4,7 @@ import com.demo.chat.codec.Codec
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.ChatTopicMessagingService
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
@@ -26,14 +26,14 @@ data class KeyConfiguration(
         val prefixTopicToUserSubs: String
 )
 
-class TopicServiceRedisStream<T, E>(
+class TopicMessagingServiceRedisStream<T, E>(
         keyConfig: KeyConfiguration,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
         val stringKeyEncoder: Codec<String, out T>,
         val keyStringEncoder: Codec<T, String>,
         val keyRecordIdCodec: Codec<T, RecordId>
-) : ChatTopicService<T, E> {
+) : ChatTopicMessagingService<T, E> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs

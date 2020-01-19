@@ -2,7 +2,7 @@ package com.demo.chatevents.tests
 
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfigurationPubSub
-import com.demo.chatevents.service.TopicServiceRedisPubSub
+import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
@@ -15,7 +15,7 @@ import java.io.File
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MessageTopicServiceRedisPubSubTests : MessageTopicServiceTestBase() {
+class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServiceTestBase() {
 
     private lateinit var redisServer: RedisServer
 
@@ -35,7 +35,7 @@ class MessageTopicServiceRedisPubSubTests : MessageTopicServiceTestBase() {
 
         redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
 
-        topicService = TopicServiceRedisPubSub(
+        topicService = TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",
                         "t_st_topic_",
                         "t_l_user_topics_",

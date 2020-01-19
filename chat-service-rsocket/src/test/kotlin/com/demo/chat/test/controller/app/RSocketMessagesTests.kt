@@ -4,9 +4,8 @@ import com.demo.chat.ChatMessage
 import com.demo.chat.MessageRequest
 import com.demo.chat.MessagesRequest
 import com.demo.chat.controller.app.MessageController
-import com.demo.chat.service.ChatTopicService
-import com.demo.chat.service.TextMessageIndexService
-import com.demo.chat.service.TextMessagePersistence
+import com.demo.chat.domain.Message
+import com.demo.chat.service.*
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -28,18 +27,18 @@ import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-@Import(ConfigurationRSocket::class, RSocketMessagesTests.TestConfiguration::class)
+@Import(TestConfigurationRSocket::class, RSocketMessagesTests.TestConfiguration::class)
 class RSocketMessagesTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var messagePersistence: TextMessagePersistence
+    private lateinit var messagePersistence: MessagePersistence<UUID, out Any>
 
     @Autowired
-    private lateinit var topicService: ChatTopicService
+    private lateinit var topicMessaging: ChatTopicMessagingService<UUID, out Any>
 
     @Autowired
-    private lateinit var textMessageIndex: TextMessageIndexService
+    private lateinit var messageIndex: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>//MessageIndexService<UUID>
 
     @Test
     fun `should fetch a single message`() {
@@ -73,11 +72,11 @@ class RSocketMessagesTests : ControllerTestBase() {
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(topicService.receiveOn(anyObject()))
+                .given(topicMessaging.receiveOn(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(textMessageIndex.findBy(anyObject()))
+                .given(messageIndex.findBy(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requestor
@@ -110,8 +109,8 @@ class RSocketMessagesTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestMessageController(textMessageIdx: TextMessageIndexService,
-                                    messagePst: TextMessagePersistence,
-                                    topicSvc: ChatTopicService) : MessageController(textMessageIdx, messagePst, topicSvc)
+        class TestMessageController(messageIdx: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>,
+                                    messagePst: MessagePersistence<UUID, Any>,
+                                    topicSvc: ChatTopicMessagingService<UUID, Any>) : MessageController<UUID, Any>(messageIdx, messagePst, topicSvc)
     }
 }

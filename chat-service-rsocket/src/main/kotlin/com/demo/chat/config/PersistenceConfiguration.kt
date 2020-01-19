@@ -4,7 +4,6 @@ import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.ExcludeFromTests
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
-import com.demo.chat.service.index.*
 import com.demo.chat.service.persistence.*
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -25,13 +24,13 @@ data class CassandraProperties(override val contactPoints: String,
 @ExcludeFromTests
 @Profile("cassandra-persistence")
 @Configuration
-class PersistenceConfiguration<T : UUID> {
+class PersistenceConfiguration<T: UUID> {
 
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
-    fun keyService(template: ReactiveCassandraTemplate): IKeyService<T> = KeyServiceCassandra(template) { UUIDs.timeBased() as T }
+    fun keyPersistence(template: ReactiveCassandraTemplate): IKeyService<T> = KeyServiceCassandra(template) { UUIDs.timeBased() as T }
 
     @Bean
     fun userPersistence(keyService: IKeyService<T>,
@@ -46,8 +45,8 @@ class PersistenceConfiguration<T : UUID> {
 
     @Bean
     fun messagePersistence(keyService: IKeyService<T>,
-                           messageRepo: ChatMessageRepository<T>): TextMessagePersistence<T> =
-            TextMessagePersistenceCassandra(keyService, messageRepo)
+                           messageRepo: ChatMessageRepository<T>): MessagePersistence<T, out Any> =
+            MessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
     fun membershipPersistence(keyService: IKeyService<T>,

@@ -1,6 +1,6 @@
 package com.demo.chatgateway
 
-import com.demo.chatevents.service.TopicServiceMemory
+import com.demo.chatevents.service.TopicMessagingServiceMemory
 import org.springframework.boot.web.embedded.netty.NettyReactiveWebServerFactory
 import org.springframework.boot.web.reactive.server.ReactiveWebServerFactory
 import org.springframework.context.annotation.Bean
@@ -30,5 +30,5 @@ class WebSocketConfiguration() {
 @Configuration
 class TopicConfiguration {
     @Bean
-    fun topicPublisher() = TopicServiceMemory()
+    fun topicPublisher() = TopicMessagingServiceMemory()
 }

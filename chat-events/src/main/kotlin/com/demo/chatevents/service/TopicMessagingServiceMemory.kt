@@ -2,7 +2,7 @@ package com.demo.chatevents.service
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.ChatTopicService
+import com.demo.chat.service.ChatTopicMessagingService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * For now, this service is restricted to single-node bound chat-rooms, no-persistence
  */
-class TopicServiceMemory<T, V> : ChatTopicService<T, V> {
+class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
     private val topicManager: TopicManager<T, V> = TopicManager()
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
