@@ -1,7 +1,6 @@
 package com.demo.chat.test.domain
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.test.TestBase
 import org.assertj.core.api.Assertions

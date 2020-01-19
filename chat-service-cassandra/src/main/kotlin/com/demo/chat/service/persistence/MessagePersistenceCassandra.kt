@@ -28,7 +28,10 @@ open class MessagePersistenceCassandra<T>(private val keyService: IKeyService<T>
     override fun add(message: Message<T, String>): Mono<Void> =
             key()
                     .flatMap {
+                        // TODO: We will probably need to creep here
+                        // so our repos can send data<Any> as data<String>, etc..
+                        val data = message.data as String
                         messageRepo.add(ChatMessageById(ChatMessageByIdKey(it.id,
-                                message.key.id, message.key.dest, Instant.now()), message.data, message.record))
+                                message.key.id, message.key.dest, Instant.now()), data, message.record))
                     }
 }

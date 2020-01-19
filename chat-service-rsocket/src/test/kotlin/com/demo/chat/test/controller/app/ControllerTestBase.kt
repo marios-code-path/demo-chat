@@ -58,7 +58,7 @@ open class ControllerTestBase {
 
     private var counter = Random().nextInt()
 
-    fun randomMessage(): Message<UUID, out Any> {
+    fun randomMessage(): Message<UUID, String> {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()

@@ -1,6 +1,8 @@
 package com.demo.chat.test.controller.app
 
+import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,28 +16,31 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import java.util.*
 
+class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+
 @TestConfiguration
-@Import(JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
+@Import(TestModules::class,
+        JacksonAutoConfiguration::class,
+        RSocketStrategiesAutoConfiguration::class)
 class TestConfigurationRSocket {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
+
     @MockBean
     private lateinit var topicIndex: TopicIndexService<UUID>
+    @MockBean
+    private lateinit var topicPersistence: TopicPersistence<UUID>
 
+
+    @MockBean
+    private lateinit var userPersistence: UserPersistence<UUID>
     @MockBean
     private lateinit var userIndex: UserIndexService<UUID>
 
     @MockBean
-    private lateinit var messageIndex: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>//MessageIndexService<UUID>
-
+    private lateinit var topicMessagePersistence: MessagePersistence<UUID, String>
     @MockBean
-    private lateinit var topicPersistence: TopicPersistence<UUID>
-
-    @MockBean
-    private lateinit var userPersistence: UserPersistence<UUID>
-
-    @MockBean
-    private lateinit var topicMessagePersistence: MessagePersistence<UUID, out Any>
+    private lateinit var messageIndex:  MessageIndexService<UUID>
 
     @MockBean
     private lateinit var topicService: ChatTopicMessagingService<UUID, String>
@@ -45,7 +50,6 @@ class TestConfigurationRSocket {
 
     @MockBean
     private lateinit var membershipPersistence: MembershipPersistence<UUID>
-
     @MockBean
     private lateinit var membershipIndex: MembershipIndexService<UUID>
 

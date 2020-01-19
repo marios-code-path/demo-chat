@@ -29,8 +29,8 @@ class IndexConfiguration {
             TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
 
     @Bean
-    fun membershipIndex(byMemberRepo: ChatMembershipByMemberRepository<UUID>,
-                        byMemberOfRepo: ChatMembershipByMemberOfRepository<UUID>): MembershipIndexService<UUID> =
+    fun membershipIndex(byMemberRepo: TopicMembershipByMemberRepository<UUID>,
+                        byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>): MembershipIndexService<UUID> =
             MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepo, byMemberOfRepo)
 
     @Bean

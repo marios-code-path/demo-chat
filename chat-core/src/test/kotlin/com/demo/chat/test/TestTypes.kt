@@ -27,9 +27,3 @@ data class TestMessageKey<T>(override val id: T, override val dest: T, override 
 data class TestTextMessage<T>(override val key: TestMessageKey<T>, override val data: String) : TextMessage<T> {
     override val record = true
 }
-
-@JsonTypeName("User")
-data class TestUser<T>(override val key: TestKey<T>, override val name: String, override val handle: String, override val imageUri: String, override val timestamp: Instant) : User<T>
-
-@JsonTypeName("Topic")
-data class TestTopic<T>(override val key: TestKey<T>, override val data: String) : MessageTopic<T>

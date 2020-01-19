@@ -1,8 +1,8 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.domain.serializers.KeyDeserializer
 import com.demo.chat.test.TestBase

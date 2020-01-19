@@ -1,11 +1,10 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.cassandra.CassandraUUIDKeyType
-import com.demo.chat.domain.cassandra.ChatMembership
-import com.demo.chat.domain.cassandra.ChatMembershipKey
-import com.demo.chat.repository.cassandra.ChatMembershipRepository
+import com.demo.chat.domain.cassandra.TopicMembership
+import com.demo.chat.domain.cassandra.TopicMembershipKey
+import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
@@ -27,11 +26,11 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class MembershipPersistenceTests {
+class TopicMembershipPersistenceTests {
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     @MockBean
-    lateinit var repo: ChatMembershipRepository<UUID>
+    lateinit var repo: TopicMembershipRepository<UUID>
 
     private val keyService: IKeyService<UUID> = TestKeyService
 
@@ -39,8 +38,8 @@ class MembershipPersistenceTests {
     private val memberId = UUIDs.timeBased()
     private val topicId = UUIDs.timeBased()
 
-    private val testChatMembership = ChatMembership(
-            ChatMembershipKey(keyId),
+    private val testChatMembership = TopicMembership(
+            TopicMembershipKey(keyId),
             CassandraUUIDKeyType(memberId),
             CassandraUUIDKeyType(topicId)
     )
@@ -52,8 +51,8 @@ class MembershipPersistenceTests {
                 .willReturn(Mono.just(testChatMembership))
 
         BDDMockito
-                .given(repo.save(Mockito.any<ChatMembership<UUID>>()))
-                .willReturn(Mono.empty<ChatMembership<UUID>>())
+                .given(repo.save(Mockito.any<TopicMembership<UUID>>()))
+                .willReturn(Mono.empty<TopicMembership<UUID>>())
 
         BDDMockito
                 .given(repo.findAll())

@@ -68,24 +68,21 @@ class UserDeserializer<T>(keyCodec: Codec<JsonNode, T>) : JsonDeserializer<User<
     }
 }
 
-class MembershipDeserializer<T>(keyCodec: Codec<JsonNode, T>) : JsonDeserializer<TopicMembership<T>>() {
-    private val kd = KeyDeserializer(keyCodec)
+class MembershipDeserializer<T>(val keyCodec: Codec<JsonNode, T>) : JsonDeserializer<TopicMembership<T>>() {
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): TopicMembership<T> {
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val keyNode = node.get("key").get("Key")
-        val memberOfNode = node.get("memberOf").get("Key")
-        val memberNode = node.get("member").get("Key")
+        val keyNode = node.get("key")
+        val memberOfNode = node.get("memberOf")
+        val memberNode = node.get("member")
 
-        val key: Key<T> = kd.deserialize(keyNode.traverse(oc), ctxt)
-        val mem: Key<T> = kd.deserialize(memberNode.traverse(oc), ctxt)
-        val mof: Key<T> = kd.deserialize(memberOfNode.traverse(oc), ctxt)
+        val key: T = keyCodec.decode(keyNode)
+        val mem: T = keyCodec.decode(memberNode)
+        val mof: T = keyCodec.decode(memberOfNode)
 
-        return TopicMembership.create(key,
-                mem,
-                mof)
+        return TopicMembership.create(key, mem, mof)
     }
 }
 

@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import java.util.*
 
 @ConstructorBinding
 @ConfigurationProperties("cassandra-repo")
@@ -24,7 +23,7 @@ data class CassandraProperties(override val contactPoints: String,
 @ExcludeFromTests
 @Profile("cassandra-persistence")
 @Configuration
-class PersistenceConfiguration<T: UUID> {
+class PersistenceConfiguration<T> {
 
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
@@ -45,11 +44,11 @@ class PersistenceConfiguration<T: UUID> {
 
     @Bean
     fun messagePersistence(keyService: IKeyService<T>,
-                           messageRepo: ChatMessageRepository<T>): MessagePersistence<T, out Any> =
+                           messageRepo: ChatMessageRepository<T>): MessagePersistence<T, String> =
             MessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
     fun membershipPersistence(keyService: IKeyService<T>,
-                              membershipRepo: ChatMembershipRepository<T>): MembershipPersistence<T> =
+                              membershipRepo: TopicMembershipRepository<T>): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }

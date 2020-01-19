@@ -3,9 +3,10 @@ package com.demo.chat.service.index
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.cassandra.*
-import com.demo.chat.repository.cassandra.ChatMembershipByMemberOfRepository
-import com.demo.chat.repository.cassandra.ChatMembershipByMemberRepository
+import com.demo.chat.domain.cassandra.TopicMembershipByMember
+import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
+import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
+import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.MembershipIndexService.Companion.ID
 import com.demo.chat.service.MembershipIndexService.Companion.MEMBER
@@ -14,34 +15,34 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.*
 
-class MembershipCriteriaCodec<T: UUID> : Codec<TopicMembership<T>, Map<String, T>> {
-    override fun decode(record: TopicMembership<T>): Map<String, T> =
+class MembershipCriteriaCodec<T: UUID> : Codec<com.demo.chat.domain.cassandra.TopicMembership<T>, Map<String, T>> {
+    override fun decode(record: com.demo.chat.domain.cassandra.TopicMembership<T>): Map<String, T> =
             mapOf(
-                    Pair(MEMBER, record.member.id),
-                    Pair(MEMBEROF, record.memberOf.id)
+                    Pair(MEMBER, record.member),
+                    Pair(MEMBEROF, record.memberOf)
             )
 }
 
-class MembershipIndexCassandra<T: UUID>(
+class MembershipIndexCassandra<T>(
         val criteriaCodec: Codec<TopicMembership<T>, Map<String, T>>,
-        val byMemberRepo: ChatMembershipByMemberRepository<T>,
-        val byMemberOfRepo: ChatMembershipByMemberOfRepository<T>)
+        val byMemberRepo: TopicMembershipByMemberRepository<T>,
+        val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>)
     : MembershipIndexService<T> {
 
     override fun add(ent: TopicMembership<T>): Mono<Void> {
         val criteria = criteriaCodec.decode(ent)
 
         return byMemberRepo
-                .save(ChatMembershipByMember(
-                        CassandraUUIDKeyType(criteria[ID]!!),
-                        ChatMembershipKeyByMember(criteria[MEMBER]!!),
-                        CassandraUUIDKeyType(criteria[MEMBEROF]!!)
+                .save(TopicMembershipByMember(
+                        criteria[ID]!!,
+                        criteria[MEMBER]!!,
+                        criteria[MEMBEROF]!!
                 ))
                 .thenMany(byMemberOfRepo
-                        .save(ChatMembershipByMemberOf(
-                                CassandraUUIDKeyType(criteria[ID]!!),
-                                CassandraUUIDKeyType(criteria[MEMBER]!!),
-                                ChatMembershipKeyByMemberOf(criteria[MEMBEROF]!!)
+                        .save(TopicMembershipByMemberOf(
+                                criteria[ID]!!,
+                                criteria[MEMBER]!!,
+                                criteria[MEMBEROF]!!
                         ))).then()
     }
 
@@ -61,9 +62,9 @@ class MembershipIndexCassandra<T: UUID>(
                         c + 1
                     }
 
-    override fun addMember(membership: TopicMembership<T>): Mono<Void> = add(membership)
+    override fun addMember(topicMembership: TopicMembership<T>): Mono<Void> = add(topicMembership)
 
-    override fun remMember(membership: TopicMembership<T>): Mono<Void> = rem(membership.key)
+    override fun remMember(topicMembership: TopicMembership<T>): Mono<Void> = rem(Key.funKey(topicMembership.key))
 
     override fun findBy(query: Map<String, T>): Flux<Key<T>> {
         return when (val queryBy = query.keys.first()) {
@@ -78,7 +79,7 @@ class MembershipIndexCassandra<T: UUID>(
             }
         }
                 .map {
-                    it.key
+                    Key.funKey(it.key)
                 }
     }
 }

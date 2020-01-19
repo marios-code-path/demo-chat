@@ -23,7 +23,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestConfigurationRSocket::class, UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
+@Import(TestConfigurationRSocket::class,
+        UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
 class UserPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired

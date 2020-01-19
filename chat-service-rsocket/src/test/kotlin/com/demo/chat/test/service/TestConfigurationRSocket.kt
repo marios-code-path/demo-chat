@@ -19,7 +19,12 @@ import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 
-@Import(TestModules::class, SerializationConfiguration::class, JacksonAutoConfiguration::class, RSocketStrategiesAutoConfiguration::class)
+
+class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+
+@Import(TestModules::class,
+        JacksonAutoConfiguration::class,
+        RSocketStrategiesAutoConfiguration::class)
 class TestConfigurationRSocket {
 
     @ConditionalOnMissingBean
@@ -30,29 +35,4 @@ class TestConfigurationRSocket {
         handler.afterPropertiesSet()
         return handler
     }
-}
-
-class TestModules() : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
-
-class SerializationConfiguration {
-
-    @Bean
-    fun mapper(): ObjectMapper =
-            ObjectMapper().apply {
-                setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
-                registerModules(KotlinModule())
-                findAndRegisterModules()
-                setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
-                setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.NONE)
-                setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.NONE)
-                setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.NONE)
-                setVisibility(PropertyAccessor.IS_GETTER, JsonAutoDetect.Visibility.NONE)
-            }
-
-    // Register this abstract module to let the app know when it sees a Interface type, which
-    // concrete type to use on the way out.
-    fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) = SimpleModule("CustomModel$name", Version.unknownVersion())
-            .apply { setAbstractTypes(SimpleAbstractTypeResolver().apply { addMapping(iface, concrete) }) }
-
 }

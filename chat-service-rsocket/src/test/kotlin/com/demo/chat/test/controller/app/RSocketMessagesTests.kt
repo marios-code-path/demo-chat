@@ -27,18 +27,19 @@ import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-@Import(TestConfigurationRSocket::class, RSocketMessagesTests.TestConfiguration::class)
+@Import(TestConfigurationRSocket::class,
+        RSocketMessagesTests.TestConfiguration::class)
 class RSocketMessagesTests : ControllerTestBase() {
     val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    private lateinit var messagePersistence: MessagePersistence<UUID, out Any>
+    private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
     @Autowired
-    private lateinit var topicMessaging: ChatTopicMessagingService<UUID, out Any>
+    private lateinit var topicMessaging: ChatTopicMessagingService<UUID, String>
 
     @Autowired
-    private lateinit var messageIndex: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>//MessageIndexService<UUID>
+    private lateinit var messageIndex: MessageIndexService<UUID>
 
     @Test
     fun `should fetch a single message`() {
@@ -109,8 +110,8 @@ class RSocketMessagesTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestMessageController(messageIdx: IndexService<UUID, Message<UUID, Any>, Map<String, UUID>>,
-                                    messagePst: MessagePersistence<UUID, Any>,
-                                    topicSvc: ChatTopicMessagingService<UUID, Any>) : MessageController<UUID, Any>(messageIdx, messagePst, topicSvc)
+        class TestMessageController(messageIdx: MessageIndexService<UUID>,
+                                    messagePst: MessagePersistence<UUID, String>,
+                                    topicSvc: ChatTopicMessagingService<UUID, String>) : MessageController<UUID, String>(messageIdx, messagePst, topicSvc)
     }
 }

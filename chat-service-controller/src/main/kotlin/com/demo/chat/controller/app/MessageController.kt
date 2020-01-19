@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono
 open class MessageController<T, V>(
         val messageIndex: IndexService<T, Message<T, V>, Map<String, T>>,
         val messagePersistence: PersistenceStore<T, Message<T, V>>,
-        val topicService: ChatTopicMessagingService<T, V>) {
+        val topicMessaging: ChatTopicMessagingService<T, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
@@ -29,7 +29,7 @@ open class MessageController<T, V>(
                     .flatMapMany { messageKeys ->
                         messagePersistence.byIds(messageKeys)
                     },
-                    topicService.receiveOn(req.topicId))
+                    topicMessaging.receiveOn(req.topicId))
 
     @MessageMapping("message-by-id")
     fun getOne(req: MessageRequest<T>): Mono<out Message<T, V>> =
@@ -59,7 +59,7 @@ open class MessageController<T, V>(
 
         return Flux
                 .from(publisher)
-                .then(topicService.sendMessage(req.msg))
+                .then(topicMessaging.sendMessage(req.msg))
                 .then()
     }
 }

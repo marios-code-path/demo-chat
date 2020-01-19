@@ -26,9 +26,6 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
     @Autowired
     lateinit var keyPersistence: KeyPersistence<UUID>
 
-    @Autowired
-    lateinit var mapper: ObjectMapper
-
     @Test
     fun `Controller Should Save Key`() {
         val randomEventKey = Key.funKey(UUID.randomUUID())
@@ -54,6 +51,4 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
         @Bean
         fun keyPersistenceRSocket() = RSocketKeyPersistence(keyPersistence)
     }
-
-
 }

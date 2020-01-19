@@ -15,10 +15,6 @@ class StringUUIDCodec : Codec<String, UUID> {
     override fun decode(record: String): UUID = UUID.fromString(record)
 }
 
-class UUIDStringCodec: Codec<UUID, String> {
-    override fun decode(record: UUID): String = record.toString()
-}
-
 @ExtendWith(SpringExtension::class)
 class CodecTests : TestBase() {
 

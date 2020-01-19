@@ -42,8 +42,8 @@ interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, St
 
 interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<String, T>> {
     fun size(roomId: Key<T>): Mono<Int>
-    fun addMember(membership: TopicMembership<T>): Mono<Void>
-    fun remMember(membership: TopicMembership<T>): Mono<Void>
+    fun addMember(topicMembership: TopicMembership<T>): Mono<Void>
+    fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
 
     companion object {
         const val ID = "ID"
@@ -52,7 +52,7 @@ interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<St
     }
 }
 
-interface MessageIndexService<T> : IndexService<T, Message<T, out Any>, Map<String, T>> {
+interface MessageIndexService<T> : IndexService<T, Message<T, String>, Map<String, T>> {
     companion object {
         const val ID = "msgId"
         const val TOPIC = "topicId"

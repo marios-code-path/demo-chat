@@ -23,13 +23,13 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
-class MessageCriteriaCodec<T> : Codec<Message<T, out Any>, Map<String, String>> {
-    override fun decode(record: Message<T, out Any>): Map<String, String> {
+class MessageCriteriaCodec<T> : Codec<Message<T, String>, Map<String, String>> {
+    override fun decode(record: Message<T, String>): Map<String, String> {
         return when (record.key) {
             is MessageKey<T> -> mapOf(
                     Pair(USER, record.key.from.toString()),
                     Pair(TOPIC, record.key.dest.toString()),
-                    Pair(DATA, record.data.toString())
+                    Pair(DATA, record.data)
             )
             else -> mapOf(
             )
@@ -38,11 +38,11 @@ class MessageCriteriaCodec<T> : Codec<Message<T, out Any>, Map<String, String>> 
 }
 
 class MessageIndexCassandra<T>(
-        val criteriaCodec: Codec<Message<T, out Any>, Map<String, String>>,
+        val criteriaCodec: Codec<Message<T, String>, Map<String, String>>,
         val cassandra: ReactiveCassandraTemplate,
         val byUserRepo: ChatMessageByUserRepository<T>,
         val byTopicRepo: ChatMessageByTopicRepository<T>) : MessageIndexService<T> {
-    override fun add(ent: Message<T, out Any>): Mono<Void> =
+    override fun add(ent: Message<T, String>): Mono<Void> =
             with(criteriaCodec.decode(ent)) {
                 cassandra
                         .batchOps()

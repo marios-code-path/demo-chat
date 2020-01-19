@@ -13,7 +13,7 @@ import java.util.*
 class UserIndexRSocket(t: UserIndexService<UUID>) : IndexServiceController<UUID, User<UUID>, Map<String, String>>(t)
 
 @Controller
-class MessageIndexRSocket(t: MessageIndexService<UUID>) : IndexServiceController<UUID, Message<UUID,out Any>, Map<String, UUID>>(t)
+class MessageIndexRSocket(t: MessageIndexService<UUID>) : IndexServiceController<UUID, Message<UUID, String>, Map<String, UUID>>(t)
 
 @Controller
 class RoomIndexRSocket(t: TopicIndexService<UUID>) : IndexServiceController<UUID, MessageTopic<UUID>, Map<String, String>>(t)
