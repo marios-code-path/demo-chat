@@ -1,6 +1,8 @@
 package com.demo.chat.test.controller.app
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TextMessage
 import com.demo.chat.service.IKeyService
 import io.rsocket.RSocket
@@ -56,14 +58,13 @@ open class ControllerTestBase {
 
     private var counter = Random().nextInt()
 
-    fun randomMessage(): TextMessage<UUID> {
+    fun randomMessage(): Message<UUID, out Any> {
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()
         val messageId = UUID.randomUUID()
         counter++
 
-        val msg = TextMessage.create(messageId, roomId, userId, "Hello $counter !")
-        return msg
+        return Message.create(MessageKey.create(messageId, roomId, userId), "Hello $counter !", true)
     }
 
     @BeforeEach

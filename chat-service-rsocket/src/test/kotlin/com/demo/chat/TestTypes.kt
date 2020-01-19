@@ -1,6 +1,8 @@
 package com.demo.chat
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.User
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
@@ -20,6 +22,7 @@ data class TestChatUserKey(
         val handle: String
 ) : Key<UUID>
 
+@JsonTypeName("Key")
 data class TestUUIDKey(
         override val id: UUID
 ) : Key<UUID>

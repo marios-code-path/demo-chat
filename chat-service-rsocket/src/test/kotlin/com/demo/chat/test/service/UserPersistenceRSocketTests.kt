@@ -2,8 +2,8 @@ package com.demo.chat.test.service
 
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
-import com.demo.chat.TestUUIDKey
 import com.demo.chat.controller.rsocket.RSocketUserPersistence
+import com.demo.chat.domain.Key
 import com.demo.chat.service.UserPersistence
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -96,7 +96,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                 .create(
                         requestor
                                 .route("get")
-                                .data(Mono.just(TestUUIDKey(userKey.id)))
+                                .data(Mono.just(Key.funKey(userKey.id)))
                                 .retrieveMono(TestChatUser::class.java)
                 )
                 .assertNext {

@@ -1,10 +1,9 @@
 package com.demo.chat.test.service
 
-import com.demo.chat.TestUUIDKey
 import com.demo.chat.controller.rsocket.RSocketKeyPersistence
-import com.demo.chat.domain.UUIDKey
+import com.demo.chat.domain.Key
 import com.demo.chat.service.KeyPersistence
-import org.assertj.core.api.Assertions
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -20,37 +19,19 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestConfigurationRSocket::class, KeyPersistenceRSocketTests.KeyPersistenceTestConfiguration::class)
+@Import(TestConfigurationRSocket::class,
+        KeyPersistenceRSocketTests.KeyPersistenceTestConfiguration::class)
 class KeyPersistenceRSocketTests : ServiceTestBase() {
 
     @Autowired
     lateinit var keyPersistence: KeyPersistence<UUID>
 
-    @Test
-    fun `should get a key`() {
-        BDDMockito.given(keyPersistence.key())
-                .willReturn(Mono.just(
-                        TestUUIDKey(UUID.randomUUID())
-                ))
-
-        StepVerifier
-                .create(
-                        requestor
-                                .route("key")
-                                .retrieveMono(TestUUIDKey::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                }
-                .verifyComplete()
-    }
+    @Autowired
+    lateinit var mapper: ObjectMapper
 
     @Test
-    fun `should save one`() {
-        val randomEventKey = TestUUIDKey(UUID.randomUUID())
+    fun `Controller Should Save Key`() {
+        val randomEventKey = Key.funKey(UUID.randomUUID())
 
         BDDMockito
                 .given(keyPersistence.add(anyObject()))
@@ -60,7 +41,7 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
                 .create(
                         requestor
                                 .route("add")
-                                .data(Mono.just(randomEventKey), UUIDKey::class.java)
+                                .data(Mono.just(randomEventKey), Key::class.java)
                                 .retrieveMono(Void::class.java)
                 )
                 .verifyComplete()

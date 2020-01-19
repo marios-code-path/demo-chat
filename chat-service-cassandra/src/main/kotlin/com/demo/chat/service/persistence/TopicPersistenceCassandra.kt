@@ -4,10 +4,8 @@ import com.demo.chat.domain.*
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.TopicPersistence
-import com.demo.chat.service.UUIDKeyService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 open class TopicPersistenceCassandra<T>(private val keyService: IKeyService<T>,
                                      private val roomRepo: TopicRepository<T>)

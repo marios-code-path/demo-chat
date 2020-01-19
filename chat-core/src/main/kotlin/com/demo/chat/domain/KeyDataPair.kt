@@ -26,12 +26,6 @@ interface Key<T> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("UUIDKey")
-interface UUIDKey : Key<UUID>{
-    override val id: UUID
-}
-
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("KeyData")
 interface KeyDataPair<T, E> {
     val key: Key<T>
