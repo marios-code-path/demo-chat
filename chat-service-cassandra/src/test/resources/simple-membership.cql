@@ -7,26 +7,26 @@ CREATE TYPE event_key_type(
     id UUID
 );
 
-CREATE TABLE chat_membership
+CREATE TABLE topic_membership
 (
     id       UUID,
-    member   frozen<event_key_type>,
-    memberOf frozen<event_key_type>,
+    member   UUID,
+    memberOf UUID,
     PRIMARY KEY (id)
 );
 
-CREATE TABLE chat_membership_by_member
+CREATE TABLE topic_membership_by_member
 (
-    id       frozen<event_key_type>,
+    id       UUID,
     member   UUID,
-    memberOf frozen<event_key_type>,
+    memberOf UUID,
     PRIMARY KEY (member)
 );
 
-CREATE TABLE chat_membership_by_memberof
+CREATE TABLE topic_membership_by_member_of
 (
-    id       frozen<event_key_type>,
-    member   frozen<event_key_type>,
+    id       UUID,
+    member   UUID,
     memberOf UUID,
     PRIMARY KEY (memberOf)
 );

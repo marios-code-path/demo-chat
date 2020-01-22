@@ -14,7 +14,7 @@ import com.demo.chat.service.TopicIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class TopicCriteriaCodec<T>() : Codec<MessageTopic<T>, Map<String, String>> {
+class TopicCriteriaCodec<T> : Codec<MessageTopic<T>, Map<String, String>> {
     override fun decode(record: MessageTopic<T>): Map<String, String> {
         return mapOf(
                 Pair(ID, record.key.id.toString()),
@@ -24,26 +24,27 @@ class TopicCriteriaCodec<T>() : Codec<MessageTopic<T>, Map<String, String>> {
 
 }
 
+// TODO need a more idiomatic way of obtaining ALL
 class TopicIndexCassandra<T>(
         private val criteriaCodec: Codec<MessageTopic<T>, Map<String, String>>,
         private val roomRepo: TopicRepository<T>,
         private val nameRepo: TopicByNameRepository<T>) : TopicIndexService<T> {
-    override fun add(ent: MessageTopic<T>): Mono<Void> =
-            with(criteriaCodec.decode(ent)) {
+    override fun add(entity: MessageTopic<T>): Mono<Void> =
+            with(criteriaCodec.decode(entity)) {
                 nameRepo.save(
                         ChatTopicName(
                                 ChatTopicNameKey(
-                                        ent.key.id,
-                                        this[NAME] ?: ""),
+                                        entity.key.id,
+                                        this[NAME] ?: "Topic Name not found"),
                                 true
                         )
                 )
                         .then()
             }
 
-    override fun rem(ent: Key<T>): Mono<Void> = nameRepo
+    override fun rem(key: Key<T>): Mono<Void> = nameRepo
             .delete(ChatTopicName(
-                    ChatTopicNameKey(ent.id, ""), false
+                    ChatTopicNameKey(key.id, ""), false
             ))
 
     override fun findBy(query: Map<String, String>): Flux<out Key<T>> {
@@ -51,7 +52,7 @@ class TopicIndexCassandra<T>(
         return when (queryBy) {
             NAME -> {
                 nameRepo
-                        .findByKeyName(query[NAME] ?: error("Name not valid"))
+                        .findByKeyName(query[NAME] ?: error("Topic Name not found"))
                         .map { it.key }
                         .flux()
             }

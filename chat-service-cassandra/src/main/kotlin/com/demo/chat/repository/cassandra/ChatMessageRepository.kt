@@ -15,14 +15,17 @@ import reactor.core.publisher.Mono
 
 interface ChatMessageByUserRepository<T> : ReactiveCassandraRepository<ChatMessageByUser<T>, T> {
     fun findByKeyFrom(userId: T): Flux<ChatMessageByUser<T>>
+    fun deleteByKeyId(msgId: T): Mono<Void>
 }
 
 interface ChatMessageByTopicRepository<T> : ReactiveCassandraRepository<ChatMessageByTopic<T>, T> {
     fun findByKeyDest(topicId: T): Flux<ChatMessageByTopic<T>>
+    fun deleteByKeyId(msgId: T): Mono<Void>
 }
 
 interface ChatMessageRepository<T> : ChatMessageRepositoryCustom<T>, ReactiveCassandraRepository<ChatMessageById<T>, T> {
     fun findByKeyId(id: T): Mono<ChatMessageById<T>>
+    fun deleteByKeyId(msgId: T): Mono<Void>
 }
 
 interface ChatMessageRepositoryCustom<T> {

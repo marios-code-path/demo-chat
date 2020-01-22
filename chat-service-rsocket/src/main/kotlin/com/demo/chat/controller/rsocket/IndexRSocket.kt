@@ -16,7 +16,7 @@ class UserIndexRSocket(t: UserIndexService<UUID>) : IndexServiceController<UUID,
 class MessageIndexRSocket(t: MessageIndexService<UUID>) : IndexServiceController<UUID, Message<UUID, String>, Map<String, UUID>>(t)
 
 @Controller
-class RoomIndexRSocket(t: TopicIndexService<UUID>) : IndexServiceController<UUID, MessageTopic<UUID>, Map<String, String>>(t)
+class TopicIndexRSocket(t: TopicIndexService<UUID>) : IndexServiceController<UUID, MessageTopic<UUID>, Map<String, String>>(t)
 
 @Controller
 class MembershipIndexRSocket(t: MembershipIndexService<UUID>) : IndexServiceController<UUID, TopicMembership<UUID>, Map<String, UUID>>(t)

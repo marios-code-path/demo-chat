@@ -6,17 +6,17 @@ import java.time.Instant
 
 data class UserRequest(val userHandle: String)
 data class UserRequestId<T>(val userId: T)
-data class RoomRequestId<T>(val roomId: T)
+data class TopicRequestId<T>(val roomId: T)
 
 data class UserCreateRequest(val name: String, val userHandle: String, val imgUri: String)
 
 
-data class RoomCreateRequest(val roomName: String)
+data class TopicCreateRequest(val roomName: String)
 
-data class RoomRequestName(val name: String)
+data class TopicRequestName(val name: String)
 
-data class RoomJoinRequest<T>(val uid: T, val roomId: T)
-data class RoomLeaveRequest<T>(val uid: T, val roomId: T)
+data class TopicJoinRequest<T>(val uid: T, val roomId: T)
+data class TopicLeaveRequest<T>(val uid: T, val roomId: T)
 data class MessagesRequest<T>(val topicId: T)
 data class MessageRequest<T>(val messageId: T)
 data class MessageSendRequest<T, V>(val msg: Message<T, V>)

@@ -1,9 +1,8 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.domain.cassandra.CassandraUUIDKeyType
-import com.demo.chat.domain.cassandra.TopicMembership
-import com.demo.chat.domain.cassandra.TopicMembershipKey
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.cassandra.TopicMembershipByKey
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
@@ -38,28 +37,24 @@ class TopicMembershipPersistenceTests {
     private val memberId = UUIDs.timeBased()
     private val topicId = UUIDs.timeBased()
 
-    private val testChatMembership = TopicMembership(
-            TopicMembershipKey(keyId),
-            CassandraUUIDKeyType(memberId),
-            CassandraUUIDKeyType(topicId)
-    )
+    private val testChatMembership = TopicMembershipByKey(keyId, memberId, topicId)
 
     @BeforeEach
     fun setUp() {
         BDDMockito
-                .given(repo.findByKeyId(anyObject()))
+                .given(repo.findByKey(anyObject()))
                 .willReturn(Mono.just(testChatMembership))
 
         BDDMockito
-                .given(repo.save(Mockito.any<TopicMembership<UUID>>()))
-                .willReturn(Mono.empty<TopicMembership<UUID>>())
+                .given(repo.save(Mockito.any<TopicMembershipByKey<UUID>>()))
+                .willReturn(Mono.empty<TopicMembershipByKey<UUID>>())
 
         BDDMockito
                 .given(repo.findAll())
                 .willReturn(Flux.just(testChatMembership))
 
         BDDMockito
-                .given(repo.findByKeyIdIn(anyObject()))
+                .given(repo.findByKeyIn(anyObject()))
                 .willReturn(Flux.just(testChatMembership))
 
         BDDMockito
@@ -85,7 +80,7 @@ class TopicMembershipPersistenceTests {
     }
 
     @Test
-    fun `add the membership, finds all` () {
+    fun `add the membership, finds all`() {
         val saveNFind = membershipPersistence
                 .add(testChatMembership)
                 .thenMany(membershipPersistence.all())
@@ -104,14 +99,14 @@ class TopicMembershipPersistenceTests {
     @Test
     fun `deletes a membership`() {
         StepVerifier
-                .create(membershipPersistence.rem(testChatMembership.key))
+                .create(membershipPersistence.rem(Key.funKey(testChatMembership.key)))
                 .verifyComplete()
     }
 
     @Test
     fun `gets a single membership`() {
         StepVerifier
-                .create(membershipPersistence.get(testChatMembership.key))
+                .create(membershipPersistence.get(Key.funKey(testChatMembership.key)))
                 .assertNext {
                     Assertions
                             .assertThat(it)

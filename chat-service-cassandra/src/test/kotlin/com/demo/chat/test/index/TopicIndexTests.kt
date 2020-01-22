@@ -1,6 +1,5 @@
 package com.demo.chat.test.index
 
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.domain.cassandra.ChatTopicName
@@ -8,15 +7,18 @@ import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.TopicIndexService.Companion.ALL
+import com.demo.chat.service.TopicIndexService.Companion.NAME
 import com.demo.chat.service.index.TopicCriteriaCodec
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.test.anyObject
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.mockito.Mockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
@@ -45,49 +47,70 @@ class TopicIndexTests {
 
     lateinit var topicIndex: TopicIndexService<UUID>
 
+    private val testTopicId = UUID.randomUUID()
+    private val testTopicName = "ROOM_TEST"
+    private val topicByKey = ChatTopic(ChatTopicKey(testTopicId), testTopicName, true)
+    private val topicByName = ChatTopicName(ChatTopicNameKey(testTopicId, testTopicName), true)
+
     @BeforeEach
     fun setUp() {
-        val idRoom = ChatTopic(ChatTopicKey(rid.id), ROOMNAME, true)
-        val nameRoom = ChatTopicName(ChatTopicNameKey(rid.id, ROOMNAME), true)
-
-        BDDMockito
-                .given(roomRepo.add(anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(roomRepo.rem(anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito.given(nameRepo.findByKeyName(anyObject()))
-                .willReturn(Mono.just(nameRoom))
-
-        BDDMockito.given(roomRepo.findByKeyId(anyObject()))
-                .willReturn(Mono.just(idRoom))
-
         topicIndex = TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
     }
 
-    private val rid = Key.anyKey(UUID.randomUUID())
-
-    private val uid= Key.anyKey(UUID.randomUUID())
-
-    private val ROOMNAME = "ROOM_TEST"
-
     @Test
-    fun `should create 2 rooms, fetch by random name`() {
+    fun `should save one`() {
+        BDDMockito
+                .given(roomRepo.save(anyObject<ChatTopic<UUID>>()))
+                .willReturn(Mono.empty())
+
+        BDDMockito.given(nameRepo.save(anyObject<ChatTopicName<UUID>>()))
+                .willReturn(Mono.just(topicByName))
+
         StepVerifier
-                .create(
-                        topicIndex.findBy(mapOf(Pair("name", randomAlphaNumeric(5))))
-                )
-                .expectSubscription()
-                .assertNext(this::roomKeyAssertions)
+                .create(topicIndex.add(ChatTopic(ChatTopicKey(testTopicId), testTopicName, true)))
                 .verifyComplete()
     }
 
-    private fun roomKeyAssertions(key: Key<out Any>) {
-        assertAll("room contents in tact",
-                { Assertions.assertNotNull(key) },
-                { Assertions.assertNotNull(key.id) }
-        )
+    @Test
+    fun `should search by topic name`() {
+        BDDMockito.given(nameRepo.findByKeyName(anyObject()))
+                .willReturn(Mono.just(topicByName))
+
+        StepVerifier
+                .create(
+                        topicIndex.findBy(mapOf(Pair(NAME, randomAlphaNumeric(5))))
+                )
+                .expectSubscription()
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                            .extracting("id")
+                            .isInstanceOf(UUID::class.java)
+                }
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should search all`() {
+        BDDMockito.given(roomRepo.findAll())
+                .willReturn(Flux.just(topicByKey, topicByKey))
+
+        StepVerifier
+                .create(
+                        topicIndex.findBy(mapOf(Pair(ALL, "")))
+                )
+                .expectSubscription()
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
+                            .extracting("id")
+                            .isInstanceOf(UUID::class.java)
+                }
+                .assertNext {} // We know you're the same
+                .verifyComplete()
     }
 }

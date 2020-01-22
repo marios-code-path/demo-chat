@@ -2,7 +2,9 @@ package com.demo.chat.test.repository
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.cassandra.*
+import com.demo.chat.domain.cassandra.TopicMembershipByKey
+import com.demo.chat.domain.cassandra.TopicMembershipByMember
+import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
@@ -31,7 +33,7 @@ import kotlin.streams.toList
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-membership.cql")
-class TopicTopicMembershipRepositoryTests {
+class TopicMembershipRepositoryTests {
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>
 
@@ -46,7 +48,7 @@ class TopicTopicMembershipRepositoryTests {
 
     @Test
     fun `membershipOf should not return all`() {
-        val membership = TopicMembership(UUIDs.timeBased(), UUIDs.timeBased(), UUIDs.timeBased())
+        val membership = TopicMembershipByKey(UUIDs.timeBased(), UUIDs.timeBased(), UUIDs.timeBased())
 
         val membershipSave = repo
                 .save(membership)
@@ -60,7 +62,7 @@ class TopicTopicMembershipRepositoryTests {
 
     @Test
     fun `should save, find all`() {
-        val membership = TopicMembership(UUIDs.timeBased(), UUIDs.timeBased(), UUIDs.timeBased())
+        val membership = TopicMembershipByKey(UUIDs.timeBased(), UUIDs.timeBased(), UUIDs.timeBased())
 
         val membershipSave = repo
                 .save(membership)
@@ -80,11 +82,11 @@ class TopicTopicMembershipRepositoryTests {
     @Test
     fun `should save, find by key id`() {
         val keyId = Key.funKey(UUIDs.timeBased())
-        val membership = TopicMembership(keyId.id, UUIDs.timeBased(), UUIDs.timeBased())
+        val membership = TopicMembershipByKey(keyId.id, UUIDs.timeBased(), UUIDs.timeBased())
 
         val membershipSave = repo
                 .save(membership)
-                .thenMany(repo.findByKeyId(keyId.id))
+                .thenMany(repo.findByKey(keyId.id))
 
         StepVerifier
                 .create(membershipSave)
@@ -99,12 +101,12 @@ class TopicTopicMembershipRepositoryTests {
 
     @Test
     fun `should save, delete one, find remaining one by all`() {
-        val memberships = mutableSetOf<TopicMembership<UUID>>()
-        val streamOfMemberships = Flux.generate<TopicMembershipKey<UUID>> { s -> s.next(TopicMembershipKey(UUIDs.timeBased())) }
+        val memberships = mutableSetOf<TopicMembershipByKey<UUID>>()
+        val streamOfMemberships = Flux.generate<UUID> { s -> s.next(UUIDs.timeBased()) }
                 .take(2)
                 .map { key ->
-                    val i = TopicMembership(
-                            key.id,
+                    val i = TopicMembershipByKey(
+                            key,
                             UUIDs.timeBased(),
                             UUIDs.timeBased())
 
@@ -135,16 +137,16 @@ class TopicTopicMembershipRepositoryTests {
     // TODO Fix this testing bug (cassandraUnit based)
     //@Test
     fun `should save, find by memberId`() {
-        val keyId = ChatMembershipKeyByMember(UUIDs.timeBased())
+        val keyId = UUIDs.timeBased()
         val membership = TopicMembershipByMember(
                 UUIDs.timeBased(),
-                keyId.id,
+                keyId,
                 UUIDs.timeBased())
 
 
         val membershipSave = byMemberRepo
                 .save(membership)
-                .thenMany(byMemberRepo.findByMemberId(keyId.id))
+                .thenMany(byMemberRepo.findByMember(keyId))
 
         StepVerifier
                 .create(membershipSave)
@@ -160,16 +162,16 @@ class TopicTopicMembershipRepositoryTests {
     // TODO Fix this testing bug (cassandraUnit based)
     //@Test
     fun `should save, find by memberOf`() {
-        val keyId = TopicMembershipKeyByMemberOf(UUIDs.timeBased())
+        val keyId = UUIDs.timeBased()
         val membership = TopicMembershipByMemberOf(
                 UUIDs.timeBased(),
                 UUIDs.timeBased(),
-                keyId.id
+                keyId
         )
 
         val membershipSave = byMemberOfRepo
                 .save(membership)
-                .thenMany(byMemberOfRepo.findByMemberOfId(keyId.id))
+                .thenMany(byMemberOfRepo.findByMemberOf(keyId))
 
         StepVerifier
                 .create(membershipSave)
@@ -191,14 +193,14 @@ class TopicTopicMembershipRepositoryTests {
         val keyIdsList = keyList.stream().map { it.id }.toList()
         val memberships = Flux.fromIterable(keyList
                 .map {
-                    TopicMembership(it.id,
+                    TopicMembershipByKey(it.id,
                             UUIDs.timeBased(),
                             UUIDs.timeBased())
                 })
 
         val repoStream = repo
                 .saveAll(memberships)
-                .thenMany(repo.findByKeyIdIn(keyIdsList))
+                .thenMany(repo.findByKeyIn(keyIdsList))
 
         StepVerifier
                 .create(repoStream)

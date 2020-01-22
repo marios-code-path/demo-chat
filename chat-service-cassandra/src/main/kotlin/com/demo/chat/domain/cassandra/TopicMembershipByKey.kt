@@ -24,7 +24,7 @@ import org.springframework.data.cassandra.core.mapping.*
 // !! must have a user_membership_topic seperate from user_stat_topic for this to work
 //
 @Table("topic_membership")
-data class TopicMembership<T>(
+data class TopicMembershipByKey<T>(
         @PrimaryKey("id")
         override val key: T,
         @Column("member")

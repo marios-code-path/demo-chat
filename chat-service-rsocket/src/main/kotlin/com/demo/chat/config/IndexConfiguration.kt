@@ -37,5 +37,5 @@ class IndexConfiguration {
     fun messageIndex(cassandra: ReactiveCassandraTemplate,
                      byUserRepo: ChatMessageByUserRepository<UUID>,
                      byTopicRepo: ChatMessageByTopicRepository<UUID>): MessageIndexService<UUID> =
-            MessageIndexCassandra(MessageCriteriaCodec(), cassandra, byUserRepo, byTopicRepo)
+            MessageIndexCassandra(MessageCriteriaCodec(), byUserRepo, byTopicRepo)
 }

@@ -7,7 +7,6 @@ import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.randomText
 import com.demo.chatevents.service.TopicManager
-import com.demo.chatevents.topic.TopicData
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*

@@ -25,13 +25,13 @@ data class TopicMetaData(
 )
 
 @JsonTypeName("TopicMember")
-data class TopicMember<T>(
-        val uid: T,
+data class TopicMember(
+        val uid: String,
         val handle: String,
         val imgUri: String
 )
 
 @JsonTypeName("TopicMemberships")
-data class TopicMemberships<T>(
-        val members: Set<TopicMember<T>>
+data class TopicMemberships(
+        val members: Set<TopicMember>
 )

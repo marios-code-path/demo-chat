@@ -10,7 +10,7 @@ interface PersistenceStore<T, V> {
     fun rem(key: Key<T>): Mono<Void>
     fun get(key: Key<T>): Mono<out V>
     fun all(): Flux<out V>
-    fun byIds(keys: List<out Key<T>>): Flux<out V> = Flux.empty()
+    fun byIds(keys: List<Key<T>>): Flux<out V> = Flux.empty()
 }
 
 interface UserPersistence<T> : PersistenceStore<T, User<T>>

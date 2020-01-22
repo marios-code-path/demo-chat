@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono
  */
 interface IndexService<T, E, Q> {
     fun add(entity: E): Mono<Void>
-    fun rem(entity: Key<T>): Mono<Void>
+    fun rem(key: Key<T>): Mono<Void>
     fun findBy(query: Q): Flux<out Key<T>>
 }
 
@@ -41,7 +41,7 @@ interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, St
 }
 
 interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<String, T>> {
-    fun size(roomId: Key<T>): Mono<Int>
+    fun size(key: Key<T>): Mono<Int>
     fun addMember(topicMembership: TopicMembership<T>): Mono<Void>
     fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
 

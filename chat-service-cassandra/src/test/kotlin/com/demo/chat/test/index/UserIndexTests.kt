@@ -1,35 +1,32 @@
 package com.demo.chat.test.index
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
+import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.index.UserCriteriaCodec
+import com.demo.chat.service.index.UserIndexCassandra
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import org.springframework.test.context.junit.jupiter.SpringExtension
+import java.util.*
 
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(SpringExtension::class)
 class UserIndexTests {
-//
-//    @Test
-//    fun `should get a user by handle`() {
-//        BDDMockito.given(userPersistence.getByHandle(com.demo.chat.test.domain.anyObject()))
-//                .willReturn(Mono.just(randomUser))
-//
-//        StepVerifier
-//                .create(
-//                        requestor
-//                                .route("user-by-handle")
-//                                .data(UserRequest(randomHandle))
-//                                .retrieveMono(TestChatUser::class.java)
-//                )
-//                .expectSubscription()
-//                .assertNext {
-//                    Assertions
-//                            .assertThat(it.key)
-//                            .isNotNull
-//                            .hasNoNullFieldsOrProperties()
-//                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-//                            .hasFieldOrPropertyWithValue("id", randomUserId)
-//                }
-//                .verifyComplete()
-//    }
 
+    @MockBean
+    private lateinit var byHandleRepo: ChatUserHandleRepository<UUID>
+
+    @MockBean
+    private lateinit var cassandra: ReactiveCassandraTemplate
+
+    lateinit var userIndex: UserIndexService<UUID>
+
+    @BeforeEach
+    fun setUp() {
+        userIndex = UserIndexCassandra(UserCriteriaCodec(), byHandleRepo, cassandra)
+    }
 }

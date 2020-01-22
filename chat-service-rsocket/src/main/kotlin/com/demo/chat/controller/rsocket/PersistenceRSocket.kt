@@ -10,13 +10,13 @@ import java.util.*
 class RSocketUserPersistence(t: UserPersistence<UUID>) : PersistenceServiceController<UUID, User<UUID>>(t)
 
 @Controller
-class RSocketKeyPersistence(t: KeyPersistence<UUID>) : PersistenceServiceController<UUID, Key<UUID>>(t)
+class KeyPersistenceRSocket(t: KeyPersistence<UUID>) : PersistenceServiceController<UUID, Key<UUID>>(t)
 
 @Controller
-class RSocketMessagePersistence(t: PersistenceStore<UUID, Message<UUID, out Any>>) : PersistenceServiceController<UUID, Message<UUID, out Any>>(t)
+class RSocketMessagePersistence(t: PersistenceStore<UUID, Message<UUID, Any>>) : PersistenceServiceController<UUID, Message<UUID, Any>>(t)
 
 @Controller
-class RSocketRoomPersistence(t: TopicPersistence<UUID>) : PersistenceServiceController<UUID, MessageTopic<UUID>>(t)
+class TopicPersistenceRSocket(t: TopicPersistence<UUID>) : PersistenceServiceController<UUID, MessageTopic<UUID>>(t)
 
 @Controller
 class RSocketMembershipPersistence(t: MembershipPersistence<UUID>) : PersistenceServiceController<UUID, TopicMembership<UUID>>(t)

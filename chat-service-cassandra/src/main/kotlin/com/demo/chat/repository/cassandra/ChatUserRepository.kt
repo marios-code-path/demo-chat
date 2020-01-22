@@ -23,12 +23,14 @@ interface ChatUserRepository<T> : ReactiveCassandraRepository<ChatUser<T>, T>,
         ChatUserRepositoryCustom<T> {
     fun findByKeyId(id: T): Mono<ChatUser<T>>
     fun findByKeyIdIn(ids: List<T>): Flux<ChatUser<T>>
+    fun deleteByKeyId(id: T): Mono<Void>
 }
 
 interface ChatUserHandleRepository<T>
     : ReactiveCassandraRepository<ChatUserHandle<T>, T>,
         ChatUserHandleRepositoryCustom<T> {
     fun findByKeyHandle(handle: String): Mono<ChatUserHandle<T>>
+    fun deleteByKeyId(id: T): Mono<Void>
 }
 
 interface ChatUserRepositoryCustom<T> {

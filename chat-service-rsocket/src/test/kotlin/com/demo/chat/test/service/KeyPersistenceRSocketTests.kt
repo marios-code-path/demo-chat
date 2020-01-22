@@ -1,9 +1,8 @@
 package com.demo.chat.test.service
 
-import com.demo.chat.controller.rsocket.RSocketKeyPersistence
+import com.demo.chat.controller.rsocket.KeyPersistenceRSocket
 import com.demo.chat.domain.Key
 import com.demo.chat.service.KeyPersistence
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -49,6 +48,6 @@ class KeyPersistenceRSocketTests : ServiceTestBase() {
         lateinit var keyPersistence: KeyPersistence<UUID>
 
         @Bean
-        fun keyPersistenceRSocket() = RSocketKeyPersistence(keyPersistence)
+        fun keyPersistenceRSocket() = KeyPersistenceRSocket(keyPersistence)
     }
 }

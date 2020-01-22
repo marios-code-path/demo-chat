@@ -19,7 +19,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
-class UserCriteriaCodec<T>() : Codec<User<T>, Map<String, String>> {
+class UserCriteriaCodec<T> : Codec<User<T>, Map<String, String>> {
     override fun decode(record: User<T>): Map<String, String> {
         return mapOf(
                 Pair(ID, record.key.id.toString()),
@@ -30,14 +30,16 @@ class UserCriteriaCodec<T>() : Codec<User<T>, Map<String, String>> {
     }
 }
 
+@Suppress("ReactorUnusedPublisher")
 class UserIndexCassandra<T>(
-        val criteriaCodec: Codec<User<T>, Map<String, String>>,
-        val userHandleRepo: ChatUserHandleRepository<T>,
+        private val criteriaCodec: Codec<User<T>, Map<String, String>>,
+        private val userHandleRepo: ChatUserHandleRepository<T>,
         val cassandra: ReactiveCassandraTemplate) : UserIndexService<T> {
-    override fun add(ent: User<T>): Mono<Void> =
-            with(criteriaCodec.decode(ent)) {
+    override fun add(entity: User<T>): Mono<Void> =
+            with(criteriaCodec.decode(entity)) {
+
                 cassandra.insert(ChatUserHandle(
-                        ChatUserHandleKey(ent.key.id, this[HANDLE]!!),
+                        ChatUserHandleKey(entity.key.id, this[HANDLE]!!),
                         this[NAME]!!,
                         this[IMAGEURI]!!,
                         Instant.now()),
@@ -45,7 +47,7 @@ class UserIndexCassandra<T>(
                                 .retryPolicy(DefaultRetryPolicy.INSTANCE)
                                 .build()
                 )
-                        .handle<Void> { write, sink ->
+                        .handle { write, sink ->
                             when (write.wasApplied()) {
                                 false -> sink.error(DuplicateUserException)
                                 else -> sink.complete()
@@ -53,7 +55,7 @@ class UserIndexCassandra<T>(
                         }
             }
 
-    override fun rem(ent: Key<T>): Mono<Void> = userHandleRepo.rem(ent)
+    override fun rem(key: Key<T>): Mono<Void> = userHandleRepo.rem(key)
 
     override fun findBy(query: Map<String, String>): Flux<out Key<T>> =
             userHandleRepo.findByKeyHandle(query[HANDLE] ?: error(""))

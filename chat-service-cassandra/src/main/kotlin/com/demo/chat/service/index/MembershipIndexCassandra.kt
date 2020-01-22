@@ -13,37 +13,32 @@ import com.demo.chat.service.MembershipIndexService.Companion.MEMBER
 import com.demo.chat.service.MembershipIndexService.Companion.MEMBEROF
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
-class MembershipCriteriaCodec<T: UUID> : Codec<com.demo.chat.domain.cassandra.TopicMembership<T>, Map<String, T>> {
-    override fun decode(record: com.demo.chat.domain.cassandra.TopicMembership<T>): Map<String, T> =
+class MembershipCriteriaCodec<T> : Codec<TopicMembership<T>, Map<String, T>> {
+    override fun decode(record: TopicMembership<T>): Map<String, T> =
             mapOf(
+                    Pair(ID, record.key),
                     Pair(MEMBER, record.member),
                     Pair(MEMBEROF, record.memberOf)
             )
 }
 
 class MembershipIndexCassandra<T>(
-        val criteriaCodec: Codec<TopicMembership<T>, Map<String, T>>,
-        val byMemberRepo: TopicMembershipByMemberRepository<T>,
-        val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>)
+        private val criteriaCodec: MembershipCriteriaCodec<T>,
+        private val byMemberRepo: TopicMembershipByMemberRepository<T>,
+        private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>)
     : MembershipIndexService<T> {
 
-    override fun add(ent: TopicMembership<T>): Mono<Void> {
-        val criteria = criteriaCodec.decode(ent)
-
+    override fun add(entity: TopicMembership<T>): Mono<Void> {
+        val criteria = criteriaCodec.decode(entity)
+        val id = criteria[ID] ?: error("Key not found")
+        val member = criteria[MEMBER] ?: error("Member not found")
+        val memberOf = criteria[MEMBEROF] ?: error("MemberOf not found")
         return byMemberRepo
-                .save(TopicMembershipByMember(
-                        criteria[ID]!!,
-                        criteria[MEMBER]!!,
-                        criteria[MEMBEROF]!!
-                ))
+                .save(TopicMembershipByMember(id, member, memberOf))
                 .thenMany(byMemberOfRepo
-                        .save(TopicMembershipByMemberOf(
-                                criteria[ID]!!,
-                                criteria[MEMBER]!!,
-                                criteria[MEMBEROF]!!
-                        ))).then()
+                        .save(TopicMembershipByMemberOf(id, member, memberOf)))
+                .then()
     }
 
     override fun rem(key: Key<T>): Mono<Void> =
@@ -57,7 +52,7 @@ class MembershipIndexCassandra<T>(
                     .then()
 
     override fun size(key: Key<T>): Mono<Int> =
-            byMemberOfRepo.findByMemberOfId(key.id)
+            byMemberOfRepo.findByMemberOf(key.id)
                     .reduce(0) { c, _ ->
                         c + 1
                     }
@@ -66,20 +61,18 @@ class MembershipIndexCassandra<T>(
 
     override fun remMember(topicMembership: TopicMembership<T>): Mono<Void> = rem(Key.funKey(topicMembership.key))
 
-    override fun findBy(query: Map<String, T>): Flux<Key<T>> {
-        return when (val queryBy = query.keys.first()) {
-            MEMBER -> {
-                byMemberRepo.findByMemberId(query[queryBy] ?: error("missing Member"))
-            }
-            MEMBEROF -> {
-                byMemberOfRepo.findByMemberOfId(query[queryBy] ?: error("missing memberOf"))
-            }
-            else -> {
-                Flux.empty()
-            }
-        }
-                .map {
-                    Key.funKey(it.key)
+    override fun findBy(query: Map<String, T>): Flux<Key<T>> =
+            when (val queryBy = query.keys.first()) {
+                MEMBER -> {
+                    byMemberRepo.findByMember(query[queryBy] ?: error("missing Member"))
                 }
-    }
+                MEMBEROF -> {
+                    byMemberOfRepo.findByMemberOf(query[queryBy] ?: error("missing memberOf"))
+                }
+                else -> Flux.empty()
+
+            }
+                    .map {
+                        Key.funKey(it.key)
+                    }
 }

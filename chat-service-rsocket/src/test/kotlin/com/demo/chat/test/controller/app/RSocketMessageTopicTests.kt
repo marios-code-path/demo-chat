@@ -3,11 +3,8 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.*
 import com.demo.chat.codec.Codec
-import com.demo.chat.controller.app.RoomController
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.TopicMemberships
-import com.demo.chat.domain.TopicNotFoundException
+import com.demo.chat.controller.app.TopicController
+import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
@@ -24,7 +21,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
-import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
@@ -43,7 +39,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicService: ChatTopicMessagingService<UUID, out Any>
+    lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
     @Autowired
     lateinit var membershipIndex: MembershipIndexService<UUID>
@@ -52,17 +48,17 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     private val randomUserHandle = randomAlphaNumeric(4) + "User"
-    private val randomUserId: UUID = UUID.randomUUID()
+    private val randomUserId: UUID = UUID.fromString("4455814b-9886-499a-8547-55968e3183c6")
 
     private val randomRoomName = randomAlphaNumeric(6) + "Room"
-    private val randomRoomId: UUID = UUID.randomUUID()
+    private val randomTopicId: UUID = UUID.randomUUID()
 
     private val room = TestChatMessageTopic(
-            TestChatRoomKey(randomRoomId, randomRoomName),
+            TestChatRoomKey(randomTopicId, randomRoomName),
             true)
 
     private val roomWithMembers = TestChatMessageTopic(
-            TestChatRoomKey(randomRoomId, randomRoomName),
+            TestChatRoomKey(randomTopicId, randomRoomName),
             true)
 
     @Test
@@ -81,7 +77,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
 
         StepVerifier.create(
                 requestor.route("room-add")
-                        .data(RoomCreateRequest(randomRoomName))
+                        .data(TopicCreateRequest(randomRoomName))
                         .retrieveMono(Void::class.java)
         )
                 .expectSubscription()
@@ -98,7 +94,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("room-list")
-                                .data(RoomRequestId(UUID.randomUUID()))
+                                .data(TopicRequestId(UUID.randomUUID()))
                                 .retrieveFlux(TestChatMessageTopic::class.java)
                 )
                 .expectSubscription()
@@ -108,12 +104,9 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
+                            .extracting("key")
                             .hasFieldOrPropertyWithValue("name", randomRoomName)
-
-                    Assertions
-                            .assertThat(it.key)
-                            .isNotNull
-                            .hasFieldOrPropertyWithValue("id", randomRoomId)
+                            .hasFieldOrPropertyWithValue("id", randomTopicId)
                 }
                 .verifyComplete()
     }
@@ -128,7 +121,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("room-join")
-                                .data(RoomJoinRequest(randomUserId, randomRoomId))
+                                .data(TopicJoinRequest(randomUserId, randomTopicId))
                                 .retrieveMono(Void::class.java)
                 )
                 .expectSubscription()
@@ -136,56 +129,32 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .verify()
     }
 
-    @Test
-    fun `joins a room and appears in member list`() {
+    @Test // TODO TopicMembership<T> does not decode/encode - I switched to a String return
+    fun `should fetch topic member list`() {
         val membershipId = UUID.randomUUID()
-
-        BDDMockito.given(topicIndex.add(anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito.given(topicPersistence.get(anyObject()))
-                .willReturn(Mono.just(roomWithMembers))
-
-        BDDMockito.given(topicIndex.findBy(anyObject()))
-                .willReturn(Flux.just(roomWithMembers.key))
-
-        BDDMockito.given(topicPersistence.add(anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(userPersistence.byIds(anyObject()))
-                .willReturn(Flux.just(TestChatUser(
-                        TestChatUserKey(randomUserId, randomUserHandle),
-                        "NAME", "http://imageURI", Instant.now()
-                )))
 
         BDDMockito
                 .given(userPersistence.get(anyObject()))
-                .willReturn(Mono.just(TestChatUser(
-                        TestChatUserKey(randomUserId, randomUserHandle),
-                        "NAME", "http://imageURI", Instant.now()
+                .willReturn(Mono.just(User.create(
+                        Key.funKey(randomUserId), "NAME", randomUserHandle,"http://imageURI"
                 )))
 
         BDDMockito
                 .given(membershipPersistence.byIds(anyObject()))
                 .willReturn(Flux.just(TopicMembership.create(
-                        Key.funKey(membershipId),
-                        Key.funKey(randomRoomId),
-                        Key.funKey(randomUserId))))
+                        membershipId,
+                        randomTopicId,
+                        randomUserId)))
 
         BDDMockito
                 .given(membershipIndex.findBy(anyObject()))
                 .willReturn(Flux.just(Key.funKey(membershipId)))
 
-        BDDMockito
-                .given(topicService.add(anyObject()))
-                .willReturn(Mono.empty())
-
         StepVerifier
                 .create(
                         requestor
                                 .route("room-members")
-                                .data(RoomRequestId(randomRoomId))
+                                .data(TopicRequestId(randomTopicId))
                                 .retrieveMono(TopicMemberships::class.java)
                 )
                 .expectSubscription()
@@ -200,31 +169,37 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                             .isNotNull
                             .isNotEmpty
 
+                    val member = it.members.first()
+                    println("UID :" + member.uid)
+                    println("HANDLE :" + member.handle)
                     Assertions
-                            .assertThat(it.members.first())
+                            .assertThat(member)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("uid", randomUserId)
+                            .hasFieldOrPropertyWithValue("uid", randomUserId.toString())
                             .hasFieldOrPropertyWithValue("handle", randomUserHandle)
+                            .extracting("uid")
+                            .isInstanceOf(String::class.java)
+
                 }
                 .verifyComplete()
     }
 
-    class EmptyDecoder: Codec<String, Any> {
-        override fun decode(record: String): Any {
-            return record as Any
+    class EmptyDecoder: Codec<String, String> {
+        override fun decode(record: String): String {
+            return record
         }
 
     }
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestRoomController(topicP: TopicPersistence<UUID>,
-                                 topicInd: TopicIndexService<UUID>,
-                                 topicSvc: ChatTopicMessagingService<UUID, Any>,
-                                 userP: UserPersistence<UUID>,
-                                 membershipP: MembershipPersistence<UUID>,
-                                 membershipInd: MembershipIndexService<UUID>) :
-                RoomController<UUID, Any>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
+        class TestTopicController(topicP: TopicPersistence<UUID>,
+                                  topicInd: TopicIndexService<UUID>,
+                                  topicSvc: ChatTopicMessagingService<UUID, String>,
+                                  userP: UserPersistence<UUID>,
+                                  membershipP: MembershipPersistence<UUID>,
+                                  membershipInd: MembershipIndexService<UUID>) :
+                TopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
     }
 }

@@ -11,17 +11,3 @@ import java.util.*
 @JsonTypeName("TopicData")
 @Deprecated("NOT A REAL VALUE ANYMORE")
 class TopicData(var state: Message<out Any, out Any>)
-
-@JsonTypeName("ChatMessage")
-open class ChatMessage<T>(
-        override val key: ChatMessageKey<T>,
-        override val data: String,
-        override val record: Boolean
-) : TextMessage<T>
-
-data class ChatMessageKey<T>(
-        override val id: T,
-        override val from: T,
-        override val dest: T,
-        override val timestamp: Instant
-) : UserMessageKey<T>
