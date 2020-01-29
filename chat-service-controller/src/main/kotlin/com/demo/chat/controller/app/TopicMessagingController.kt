@@ -1,6 +1,6 @@
 package com.demo.chat.controller.app
 
-import com.demo.chat.MessageRequest
+import com.demo.chat.ByIdRequest
 import com.demo.chat.MessageSendRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
@@ -21,7 +21,7 @@ open class TopicMessagingController<T, V>(
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
-    fun byTopic(req: MessageRequest<T>): Flux<out Message<T, V>> =
+    fun byTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
             Flux.concat(messageIndex
                     .findBy(mapOf(Pair(MessageIndexService.TOPIC, req.id)))
                     .collectList()
@@ -31,7 +31,7 @@ open class TopicMessagingController<T, V>(
                     topicMessaging.receiveOn(req.id))
 
     @MessageMapping("message-by-id")
-    fun messageById(req: MessageRequest<T>): Mono<out Message<T, V>> =
+    fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
             messagePersistence
                     .get(Key.funKey(req.id))
 

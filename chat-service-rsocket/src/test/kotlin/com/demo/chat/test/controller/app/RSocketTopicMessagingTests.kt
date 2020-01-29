@@ -1,7 +1,7 @@
 package com.demo.chat.test.controller.app
 
+import com.demo.chat.ByIdRequest
 import com.demo.chat.ChatMessage
-import com.demo.chat.MessageRequest
 import com.demo.chat.controller.app.TopicMessagingController
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chat.service.MessageIndexService
@@ -50,7 +50,7 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("message-by-id")
-                                .data(MessageRequest(UUID.randomUUID()))
+                                .data(ByIdRequest(UUID.randomUUID()))
                                 .retrieveMono(ChatMessage::class.java)
                 )
                 .expectSubscription()
@@ -81,7 +81,7 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
 
         val receiverFlux = requestor
                 .route("message-listen-topic")
-                .data(MessageRequest(UUID.randomUUID()))
+                .data(ByIdRequest(UUID.randomUUID()))
                 .retrieveFlux<ChatMessage<UUID, String>>()
 
         StepVerifier

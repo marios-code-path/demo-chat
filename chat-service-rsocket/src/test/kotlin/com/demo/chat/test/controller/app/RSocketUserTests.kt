@@ -1,9 +1,9 @@
 package com.demo.chat.test.controller.app
 
+import com.demo.chat.ByIdRequest
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.UserRequestId
 import com.demo.chat.controller.app.UserController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
@@ -17,6 +17,8 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.rsocket.retrieveFlux
+import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -60,7 +62,7 @@ class RSocketUserTests : ControllerTestBase() {
                         requestor
                                 .route("user-add")
                                 .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
-                                .retrieveMono(Void::class.java)
+                                .retrieveMono<Void>()
                 )
                 .verifyComplete()
 
@@ -68,8 +70,8 @@ class RSocketUserTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("user-by-id")
-                                .data(UserRequestId(randomUserId))
-                                .retrieveMono(TestChatUser::class.java)
+                                .data(ByIdRequest(randomUserId))
+                                .retrieveMono<TestChatUser>()
                 )
                 .expectSubscription()
                 .assertNext {
@@ -93,8 +95,8 @@ class RSocketUserTests : ControllerTestBase() {
 
         StepVerifier.create(requestor
                 .route("user-by-ids")
-                .data(Flux.just(UserRequestId(randomUserId)), UserRequestId::class.java)
-                .retrieveFlux(TestChatUser::class.java)
+                .data(ByIdRequest(randomUserId))
+                .retrieveFlux<TestChatUser>()
         )
                 .expectSubscription()
                 .assertNext {
@@ -115,8 +117,9 @@ class RSocketUserTests : ControllerTestBase() {
 
     @Configuration
     class TestConfiguration {
+
         @Controller
         class TestUserController(persistence: UserPersistence<UUID>,
-                               index: UserIndexService<UUID>) : UserController<UUID>(persistence, index)
+                                 index: UserIndexService<UUID>) : UserController<UUID>(persistence, index)
     }
 }

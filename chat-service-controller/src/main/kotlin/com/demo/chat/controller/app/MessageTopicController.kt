@@ -1,6 +1,8 @@
 package com.demo.chat.controller.app
 
-import com.demo.chat.*
+import com.demo.chat.ByIdRequest
+import com.demo.chat.MembershipRequest
+import com.demo.chat.ByNameRequest
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
@@ -34,11 +36,11 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
-    fun addRoom(req: TopicCreateRequest): Mono<out Key<T>> =
+    fun addRoom(req: ByNameRequest): Mono<out Key<T>> =
             topicPersistence
                     .key()
                     .flatMap { key ->
-                        val room = MessageTopic.create(Key.funKey(key.id), req.roomName)
+                        val room = MessageTopic.create(Key.funKey(key.id), req.name)
                         topicPersistence
                                 .add(room)
                                 .flatMap {
@@ -49,7 +51,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                     }
 
     @MessageMapping("room-rem")
-    fun deleteRoom(req: TopicRequestId<T>): Mono<Void> =
+    fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
             topicPersistence
                     .get(Key.funKey(req.id))
                     .flatMap {
@@ -61,17 +63,17 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                     .then()
 
     @MessageMapping("room-list")
-    fun listRooms(req: TopicRequestId<T>): Flux<out MessageTopic<T>> =
+    fun listRooms(req: ByIdRequest<T>): Flux<out MessageTopic<T>> =
             topicPersistence
                     .all()
 
     @MessageMapping("room-by-id")
-    fun getRoom(req: TopicRequestId<T>): Mono<out MessageTopic<T>> =
+    fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>> =
             topicPersistence
                     .get(Key.funKey(req.id))
 
     @MessageMapping("room-by-name")
-    fun getRoomByName(req: TopicRequestName): Mono<out MessageTopic<T>> =
+    fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>> =
             topicIndex
                     .findBy(mapOf(Pair(TopicIndexService.NAME, req.name)))
                     .single()
@@ -80,7 +82,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                     }
 
     @MessageMapping("room-join")
-    fun joinRoom(req: TopicJoinRequest<T>): Mono<Void> =
+    fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
             membershipPersistence
                     .key()
                     .flatMap { key ->
@@ -95,7 +97,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
 
 
     @MessageMapping("room-leave")
-    fun leaveRoom(req: TopicLeaveRequest<T>): Mono<Void> =
+    fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
             membershipPersistence
                     .get(Key.funKey(req.roomId))
                     .flatMap { m ->
@@ -109,7 +111,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                     }
 
     @MessageMapping("room-members")
-    fun roomMembers(req: TopicRequestId<T>): Mono<TopicMemberships> =
+    fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships> =
             membershipIndex.findBy(mapOf(Pair(MEMBEROF1, req.id)))
                     .collectList()
                     .flatMapMany { membershipList ->

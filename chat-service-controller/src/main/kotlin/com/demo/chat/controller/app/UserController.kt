@@ -1,8 +1,8 @@
 package com.demo.chat.controller.app
 
+import com.demo.chat.ByHandleRequest
+import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.UserRequest
-import com.demo.chat.UserRequestId
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserIndexService
@@ -37,13 +37,13 @@ open class UserController<T>(val userPersistence: UserPersistence<T>,
                     }
 
     @MessageMapping("user-by-handle")
-    fun findByHandle(userReq: UserRequest): Flux<out User<T>> = userIndex
-            .findBy(mapOf(Pair(HANDLE, userReq.handle)))
+    fun findByHandle(byHandleReq: ByHandleRequest): Flux<out User<T>> = userIndex
+            .findBy(mapOf(Pair(HANDLE, byHandleReq.handle)))
             .flatMap(userPersistence::get)
 
     @MessageMapping("user-by-id")
-    fun findByUserId(userReq: UserRequestId<T>): Mono<out User<T>> = userPersistence
-            .get(Key.funKey(userReq.id))
+    fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = userPersistence
+            .get(Key.funKey(req.id))
 
 //    @MessageMapping("user-by-ids")
 //    fun findByUserIdList(userReq: Flux<UserRequestId>): Flux<out User> =

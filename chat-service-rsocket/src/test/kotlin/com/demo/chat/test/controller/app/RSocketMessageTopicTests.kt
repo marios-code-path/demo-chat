@@ -77,7 +77,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
 
         StepVerifier.create(
                 requestor.route("room-add")
-                        .data(TopicCreateRequest(randomRoomName))
+                        .data(ByNameRequest(randomRoomName))
                         .retrieveMono(Void::class.java)
         )
                 .expectSubscription()
@@ -94,7 +94,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("room-list")
-                                .data(TopicRequestId(UUID.randomUUID()))
+                                .data(ByIdRequest(UUID.randomUUID()))
                                 .retrieveFlux(TestChatMessageTopic::class.java)
                 )
                 .expectSubscription()
@@ -121,7 +121,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("room-join")
-                                .data(TopicJoinRequest(randomUserId, randomTopicId))
+                                .data(MembershipRequest(randomUserId, randomTopicId))
                                 .retrieveMono(Void::class.java)
                 )
                 .expectSubscription()
@@ -154,7 +154,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .create(
                         requestor
                                 .route("room-members")
-                                .data(TopicRequestId(randomTopicId))
+                                .data(ByIdRequest(randomTopicId))
                                 .retrieveMono(TopicMemberships::class.java)
                 )
                 .expectSubscription()
