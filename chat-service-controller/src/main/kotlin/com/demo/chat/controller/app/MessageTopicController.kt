@@ -24,13 +24,13 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
         get() = false
 }
 
-open class TopicController<T, V>(val topicPersistence: PersistenceStore<T, MessageTopic<T>>,
-                                 val topicIndex: TopicIndexService<T>,
-                                 val messaging: ChatTopicMessagingService<T, V>,
-                                 val userPersistence: UserPersistence<T>,
-                                 val membershipPersistence: MembershipPersistence<T>,
-                                 val membershipIndex: MembershipIndexService<T>,
-                                 val emptyToDataEncoder: Codec<String, V>) {
+open class MessageTopicController<T, V>(private val topicPersistence: TopicPersistence<T>,
+                                        private val topicIndex: TopicIndexService<T>,
+                                        private val messaging: ChatTopicMessagingService<T, V>,
+                                        private val userPersistence: UserPersistence<T>,
+                                        private val membershipPersistence: MembershipPersistence<T>,
+                                        private val membershipIndex: MembershipIndexService<T>,
+                                        private val emptyToDataEncoder: Codec<String, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
@@ -51,7 +51,7 @@ open class TopicController<T, V>(val topicPersistence: PersistenceStore<T, Messa
     @MessageMapping("room-rem")
     fun deleteRoom(req: TopicRequestId<T>): Mono<Void> =
             topicPersistence
-                    .get(Key.funKey(req.roomId))
+                    .get(Key.funKey(req.id))
                     .flatMap {
                         topicPersistence.rem(it.key)
                                 .then(topicIndex.rem(it.key))
@@ -68,7 +68,7 @@ open class TopicController<T, V>(val topicPersistence: PersistenceStore<T, Messa
     @MessageMapping("room-by-id")
     fun getRoom(req: TopicRequestId<T>): Mono<out MessageTopic<T>> =
             topicPersistence
-                    .get(Key.funKey(req.roomId))
+                    .get(Key.funKey(req.id))
 
     @MessageMapping("room-by-name")
     fun getRoomByName(req: TopicRequestName): Mono<out MessageTopic<T>> =
@@ -110,7 +110,7 @@ open class TopicController<T, V>(val topicPersistence: PersistenceStore<T, Messa
 
     @MessageMapping("room-members")
     fun roomMembers(req: TopicRequestId<T>): Mono<TopicMemberships> =
-            membershipIndex.findBy(mapOf(Pair(MEMBEROF1, req.roomId)))
+            membershipIndex.findBy(mapOf(Pair(MEMBEROF1, req.id)))
                     .collectList()
                     .flatMapMany { membershipList ->
                         membershipPersistence.byIds(membershipList)

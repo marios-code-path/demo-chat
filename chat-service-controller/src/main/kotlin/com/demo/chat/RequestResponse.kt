@@ -4,11 +4,11 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import java.time.Instant
 
-data class UserRequest(val userHandle: String)
-data class UserRequestId<T>(val userId: T)
-data class TopicRequestId<T>(val roomId: T)
+data class UserRequest(val handle: String)
+data class UserRequestId<T>(val id: T)
+data class TopicRequestId<T>(val id: T)
 
-data class UserCreateRequest(val name: String, val userHandle: String, val imgUri: String)
+data class UserCreateRequest(val name: String, val handle: String, val imgUri: String)
 
 
 data class TopicCreateRequest(val roomName: String)
@@ -17,9 +17,9 @@ data class TopicRequestName(val name: String)
 
 data class TopicJoinRequest<T>(val uid: T, val roomId: T)
 data class TopicLeaveRequest<T>(val uid: T, val roomId: T)
-data class MessagesRequest<T>(val topicId: T)
-data class MessageRequest<T>(val messageId: T)
-data class MessageSendRequest<T, V>(val msg: Message<T, V>)
+data class MessageRequest<T>(val id: T)
+data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T)
+
 
 data class ChatMessage<T, V>(
         override val key: ChatMessageKey<T>,

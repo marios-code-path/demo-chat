@@ -3,7 +3,7 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.*
 import com.demo.chat.codec.Codec
-import com.demo.chat.controller.app.TopicController
+import com.demo.chat.controller.app.MessageTopicController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
@@ -194,12 +194,12 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestTopicController(topicP: TopicPersistence<UUID>,
-                                  topicInd: TopicIndexService<UUID>,
-                                  topicSvc: ChatTopicMessagingService<UUID, String>,
-                                  userP: UserPersistence<UUID>,
-                                  membershipP: MembershipPersistence<UUID>,
-                                  membershipInd: MembershipIndexService<UUID>) :
-                TopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
+        class TestMessageTopicController(topicP: TopicPersistence<UUID>,
+                                         topicInd: TopicIndexService<UUID>,
+                                         topicSvc: ChatTopicMessagingService<UUID, String>,
+                                         userP: UserPersistence<UUID>,
+                                         membershipP: MembershipPersistence<UUID>,
+                                         membershipInd: MembershipIndexService<UUID>) :
+                MessageTopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
     }
 }

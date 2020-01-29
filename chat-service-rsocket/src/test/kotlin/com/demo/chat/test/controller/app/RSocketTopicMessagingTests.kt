@@ -2,10 +2,10 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.ChatMessage
 import com.demo.chat.MessageRequest
-import com.demo.chat.MessagesRequest
-import com.demo.chat.controller.app.MessageController
-import com.demo.chat.domain.Message
-import com.demo.chat.service.*
+import com.demo.chat.controller.app.TopicMessagingController
+import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.MessagePersistence
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -13,10 +13,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -28,10 +29,8 @@ import java.util.stream.Stream
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 @Import(TestConfigurationRSocket::class,
-        RSocketMessagesTests.TestConfiguration::class)
-class RSocketMessagesTests : ControllerTestBase() {
-    val log = LoggerFactory.getLogger(this::class.simpleName)
-
+        RSocketTopicMessagingTests.TestConfiguration::class)
+class RSocketTopicMessagingTests : ControllerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
@@ -39,7 +38,7 @@ class RSocketMessagesTests : ControllerTestBase() {
     private lateinit var topicMessaging: ChatTopicMessagingService<UUID, String>
 
     @Autowired
-    private lateinit var messageIndex: MessageIndexService<UUID>
+    private lateinit var messageIndex: MessageIndexService<UUID, String>
 
     @Test
     fun `should fetch a single message`() {
@@ -60,7 +59,7 @@ class RSocketMessagesTests : ControllerTestBase() {
                             .assertThat(it)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("visible", true)
+                            .hasFieldOrPropertyWithValue("record", true)
                             .hasFieldOrProperty("key")
                 }
                 .verifyComplete()
@@ -82,8 +81,8 @@ class RSocketMessagesTests : ControllerTestBase() {
 
         val receiverFlux = requestor
                 .route("message-listen-topic")
-                .data(MessagesRequest(UUID.randomUUID()))
-                .retrieveFlux(ChatMessage::class.java)
+                .data(MessageRequest(UUID.randomUUID()))
+                .retrieveFlux<ChatMessage<UUID, String>>()
 
         StepVerifier
                 .create(receiverFlux)
@@ -96,7 +95,7 @@ class RSocketMessagesTests : ControllerTestBase() {
                             .assertThat(it)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("visible", true)
+                            .hasFieldOrPropertyWithValue("record", true)
                             .hasFieldOrProperty("key")
 
                     MatcherAssert
@@ -109,9 +108,19 @@ class RSocketMessagesTests : ControllerTestBase() {
 
     @Configuration
     class TestConfiguration {
+        @Bean
+        fun msgIdx(t: MessageIndexService<UUID, String>): MessageIndexService<UUID, String> = t
+
+        @Bean
+        fun msgPersist(t: MessagePersistence<UUID, String>): MessagePersistence<UUID, String> = t
+
+        @Bean
+        fun msging(t: ChatTopicMessagingService<UUID, String>): ChatTopicMessagingService<UUID, String> = t
+
         @Controller
-        class TestMessageController(messageIdx: MessageIndexService<UUID>,
-                                    messagePst: MessagePersistence<UUID, String>,
-                                    topicSvc: ChatTopicMessagingService<UUID, String>) : MessageController<UUID, String>(messageIdx, messagePst, topicSvc)
+        class TestTopicMessagingController(messageIdx: MessageIndexService<UUID, String>,
+                                           msgPersist: MessagePersistence<UUID, String>,
+                                           messaging: ChatTopicMessagingService<UUID, String>) :
+                TopicMessagingController<UUID, String>(messageIdx, msgPersist, messaging)
     }
 }

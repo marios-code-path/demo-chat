@@ -23,14 +23,10 @@ class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
         JacksonAutoConfiguration::class,
         RSocketStrategiesAutoConfiguration::class)
 class TestConfigurationRSocket {
-    val log = LoggerFactory.getLogger(this::class.simpleName)
-
-
     @MockBean
     private lateinit var topicIndex: TopicIndexService<UUID>
     @MockBean
     private lateinit var topicPersistence: TopicPersistence<UUID>
-
 
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
@@ -40,7 +36,7 @@ class TestConfigurationRSocket {
     @MockBean
     private lateinit var topicMessagePersistence: MessagePersistence<UUID, String>
     @MockBean
-    private lateinit var messageIndex:  MessageIndexService<UUID>
+    private lateinit var messageIndex:  MessageIndexService<UUID, String>
 
     @MockBean
     private lateinit var topicService: ChatTopicMessagingService<UUID, String>

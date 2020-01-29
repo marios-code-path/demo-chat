@@ -32,7 +32,7 @@ class MessageCriteriaCodec<T> : Codec<Message<T, String>, Map<String, String>> {
 class MessageIndexCassandra<T>(
         private val criteriaCodec: Codec<Message<T, String>, Map<String, String>>,
         private val byUserRepo: ChatMessageByUserRepository<T>,
-        private val byTopicRepo: ChatMessageByTopicRepository<T>) : MessageIndexService<T> {
+        private val byTopicRepo: ChatMessageByTopicRepository<T>) : MessageIndexService<T, String> {
     override fun add(entity: Message<T, String>): Mono<Void> =
             with(criteriaCodec.decode(entity)) {
                 val instant = Instant.now()
