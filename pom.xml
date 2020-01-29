@@ -25,11 +25,11 @@
 
     <modules>
         <module>chat-core</module>
+        <module>chat-events</module>
         <module>chat-service-controller</module>
         <module>chat-service-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-service-rsocket</module>
-        <module>chat-events</module>
     </modules>
     <repositories>
         <repository>
