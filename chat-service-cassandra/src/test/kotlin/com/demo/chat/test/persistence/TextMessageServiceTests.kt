@@ -1,6 +1,7 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.cassandra.ChatMessageById
 import com.demo.chat.domain.cassandra.ChatMessageByIdKey
 import com.demo.chat.domain.cassandra.ChatMessageByTopic
@@ -93,16 +94,11 @@ class TextMessageServiceTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val messageKey = keyService.key(TextMessage::class.java)
-                .map {
-                    UserMessageKey.create(it, roomId, userId)
-                }
-
-        val messages = messageKey
+        val messages = keyService.key(Message::class.java)
                 .flatMap {
                     msgSvc.add(
-                            TextMessage.create(
-                                    it,
+                            Message.create(
+                                    MessageKey.create(it.id, roomId, userId),
                                     MSGTEXT,
                                     true
                             )

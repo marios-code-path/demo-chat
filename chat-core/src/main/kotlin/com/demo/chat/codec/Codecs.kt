@@ -8,15 +8,6 @@ interface Codec<F, E> {
     fun decode(record: F): E
 }
 
-object JsonNodeStringCodec : Codec<JsonNode, String> {
-    override fun decode(record: JsonNode): String {
-        return when (record.nodeType) {
-            JsonNodeType.NUMBER -> record.asLong().toString()
-            else -> record.asText()
-        }
-    }
-}
-
 object JsonNodeAnyCodec : Codec<JsonNode, Any> {
     override fun decode(record: JsonNode): Any {
         return when (record.nodeType) {

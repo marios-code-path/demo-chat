@@ -2,7 +2,6 @@ package com.demo.chatevents.tests
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.UserMessageKey
 import com.demo.chatevents.service.TopicManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -50,7 +49,7 @@ class MessageTopicManagerTests {
         val streamId = UUID.randomUUID()
         val dataSource = Flux
                 .just(Message
-                        .create(UserMessageKey.create(UUID.randomUUID(), streamId, UUID.randomUUID()),
+                        .create(MessageKey.create(UUID.randomUUID(), streamId, UUID.randomUUID()),
                                 "TEST", true))
 
         StepVerifier

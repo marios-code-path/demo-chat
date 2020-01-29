@@ -1,6 +1,8 @@
 package com.demo.chat.test
 
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 
@@ -19,11 +21,11 @@ data class TestAlert<T>(override val key: TestAlertKey<T>, override val data: In
 }
 
 @JsonTypeName("MessageKey")
-data class TestMessageKey<T>(override val id: T, override val dest: T, override val from: T) : UserMessageKey<T> {
+data class TestMessageKey<T>(override val id: T, override val dest: T, override val from: T) : MessageKey<T> {
     override val timestamp = Instant.now()
 }
 
 @JsonTypeName("Text")
-data class TestTextMessage<T>(override val key: TestMessageKey<T>, override val data: String) : TextMessage<T> {
+data class TestTextMessage<T>(override val key: TestMessageKey<T>, override val data: String) : Message<T, String> {
     override val record = true
 }
