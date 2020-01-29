@@ -13,7 +13,7 @@ class MessageTests : TestBase() {
 
     @Test
     fun `should test streaming only through publisher`() {
-        val messagePub = TestPublisher.create<Message<out Any, out Any>>()
+        val messagePub = TestPublisher.create<Message<out Any, Any>>()
         val messageFlux = messagePub.flux()
 
         StepVerifier
@@ -41,7 +41,7 @@ class MessageTests : TestBase() {
 
     }
 
-    private fun randomMessage(): Message<UUID, out Any> {
+    private fun randomMessage(): Message<UUID, Any> {
 
         val userId = UUID.randomUUID()
         val roomId = UUID.randomUUID()

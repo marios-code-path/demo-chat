@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
 open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
-                                       val userRepo: ChatUserRepository<T>)
+                                       private val userRepo: ChatUserRepository<T>)
     : UserPersistence<T> {
     override fun all(): Flux<out User<T>> = userRepo.findAll()
 

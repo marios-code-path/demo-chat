@@ -32,7 +32,7 @@ class KeySerializerTests : TestBase() {
 
         val messages = listOf(
                 Key.anyKey(1L),
-                MessageKey.create("a", "1")
+                MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
         StepVerifier
