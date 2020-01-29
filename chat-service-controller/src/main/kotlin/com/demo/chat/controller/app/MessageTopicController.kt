@@ -32,7 +32,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                                         private val userPersistence: UserPersistence<T>,
                                         private val membershipPersistence: MembershipPersistence<T>,
                                         private val membershipIndex: MembershipIndexService<T>,
-                                        private val emptyToDataEncoder: Codec<String, V>) {
+                                        private val emptyDataCodec: Codec<Unit, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
@@ -63,7 +63,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                     .then()
 
     @MessageMapping("room-list")
-    fun listRooms(req: ByIdRequest<T>): Flux<out MessageTopic<T>> =
+    fun listRooms(): Flux<out MessageTopic<T>> =
             topicPersistence
                     .all()
 
@@ -90,7 +90,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                                 .add(TopicMembership.create(key.id, req.roomId, req.uid))
                                 .thenMany(messaging
                                         .sendMessage(JoinAlert(MessageKey.create(key.id, req.roomId, req.uid),
-                                                emptyToDataEncoder.decode("")))
+                                                emptyDataCodec.decode(Unit)))
                                         .then(messaging.subscribe(req.uid, req.roomId)))
                                 .then()
                     }
@@ -104,7 +104,7 @@ open class MessageTopicController<T, V>(private val topicPersistence: TopicPersi
                         membershipPersistence.rem(Key.funKey(m.key))
                                 .thenMany(messaging
                                         .sendMessage(LeaveAlert(MessageKey.create(m.key, m.member, m.memberOf),
-                                                emptyToDataEncoder.decode("")))
+                                                emptyDataCodec.decode(Unit)))
                                         .then(messaging.unSubscribe(m.member, m.memberOf)))
                                 .then()
 

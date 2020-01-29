@@ -25,13 +25,13 @@ open class MessagePersistenceCassandra<T>(private val keyService: IKeyService<T>
 
     override fun all(): Flux<out Message<T, String>> = messageRepo.findAll()
 
-    override fun add(message: Message<T, String>): Mono<Void> =
+    override fun add(ent: Message<T, String>): Mono<Void> =
             key()
                     .flatMap {
                         // TODO: We will probably need to creep here
                         // so our repos can send data<Any> as data<String>, etc..
-                        val data = message.data as String
                         messageRepo.add(ChatMessageById(ChatMessageByIdKey(it.id,
-                                message.key.id, message.key.dest, Instant.now()), data, message.record))
+                                ent.key.id, ent.key.dest, Instant.now()),
+                                ent.data, ent.record))
                     }
 }

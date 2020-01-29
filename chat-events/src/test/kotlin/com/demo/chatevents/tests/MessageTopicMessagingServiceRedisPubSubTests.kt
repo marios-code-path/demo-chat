@@ -25,15 +25,15 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     @BeforeAll
     fun setUp() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), configProps.port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigProps.port)
 
         redisServer.start()
 
-        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(configProps.host, configProps.port))
+        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigProps.host, TestConfigProps.port))
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(configProps)
+        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(TestConfigProps)
 
         topicService = TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",

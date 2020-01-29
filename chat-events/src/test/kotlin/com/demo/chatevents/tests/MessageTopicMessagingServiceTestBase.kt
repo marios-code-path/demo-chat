@@ -9,7 +9,6 @@ import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.time.Duration
@@ -29,7 +28,7 @@ class KeyStringEncoder<T> : Codec<T, String> {
 }
 
 class StringUUIDKeyDecoder : Codec<String, UUID> {
-    override inline fun decode(record: String): UUID {
+    override fun decode(record: String): UUID {
         return UUID.fromString(record)
     }
 }
@@ -43,11 +42,9 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
 
 open class MessageTopicMessagingServiceTestBase {
 
-    val logger = LoggerFactory.getLogger(this::class.java)
-
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
-    object configProps : ConfigurationPropertiesTopicRedis {
+    object TestConfigProps : ConfigurationPropertiesTopicRedis {
         override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }
@@ -127,7 +124,7 @@ open class MessageTopicMessagingServiceTestBase {
                 .create(steps)
                 .then {
                     topicService
-                            .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), testRoom)))
+                            .sendMessage(JoinAlert(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), testRoom)))
                 }
                 .verifyError()
     }

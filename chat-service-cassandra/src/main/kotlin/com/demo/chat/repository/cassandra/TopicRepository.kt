@@ -28,11 +28,12 @@ interface TopicRepositoryCustom<T> {
     fun rem(roomKey: Key<T>): Mono<Void>
 }
 
+@Suppress("unused")
 class TopicRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate) :
         TopicRepositoryCustom<T> {
-    override fun rem(key: Key<T>): Mono<Void> =
+    override fun rem(roomKey: Key<T>): Mono<Void> =
             cassandra
-                    .update(Query.query(where("room_id").`is`(key.id)),
+                    .update(Query.query(where("room_id").`is`(roomKey.id)),
                             Update.empty().set("active", false),
                             ChatTopic::class.java
                     )

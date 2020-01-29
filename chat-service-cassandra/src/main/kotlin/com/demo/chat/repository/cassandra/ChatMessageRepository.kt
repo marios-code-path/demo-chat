@@ -25,6 +25,7 @@ interface ChatMessageByTopicRepository<T> : ReactiveCassandraRepository<ChatMess
 
 interface ChatMessageRepository<T> : ChatMessageRepositoryCustom<T>, ReactiveCassandraRepository<ChatMessageById<T>, T> {
     fun findByKeyId(id: T): Mono<ChatMessageById<T>>
+    @Suppress("unused")
     fun deleteByKeyId(msgId: T): Mono<Void>
 }
 
@@ -33,6 +34,7 @@ interface ChatMessageRepositoryCustom<T> {
     fun add(msg: Message<T, String>): Mono<Void>
 }
 
+@Suppress("unused")
 class ChatMessageRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom<T> {
     override fun rem(key: Key<T>): Mono<Void> =

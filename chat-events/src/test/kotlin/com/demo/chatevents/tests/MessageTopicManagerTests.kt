@@ -6,7 +6,6 @@ import com.demo.chatevents.service.TopicManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
@@ -14,7 +13,6 @@ import java.time.Duration
 import java.util.*
 
 class MessageTopicManagerTests {
-    private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val streamMan = TopicManager<UUID, String>()
 
     @BeforeEach
@@ -95,7 +93,7 @@ class MessageTopicManagerTests {
                     streamMan.subscribeTopic(streamId, consumerId)
                     streamMan.getTopicProcessor(streamId)
                             .onNext(Message.create(
-                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
                                     false))
                 }
@@ -126,7 +124,7 @@ class MessageTopicManagerTests {
                     streamMan.subscribeTopic(streamId, otherConsumerId)
                     streamMan.getTopicProcessor(streamId)
                             .onNext(Message.create(
-                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
                                     false))
                 }
@@ -153,7 +151,7 @@ class MessageTopicManagerTests {
                     streamMan.subscribeTopic(streamId, otherConsumerId)
                     streamMan.getTopicProcessor(streamId)
                             .onNext(Message.create(
-                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
                                     false))
                 }
@@ -162,7 +160,7 @@ class MessageTopicManagerTests {
                     streamMan.closeTopic(consumerId)
                     streamMan.getTopicProcessor(streamId)
                             .onNext(Message.create(
-                                    MessageKey.create(UUID.randomUUID(), streamId),
+                                    MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
                                     false))
                 }

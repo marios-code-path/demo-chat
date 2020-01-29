@@ -15,11 +15,11 @@ class MembershipPersistenceCassandra<T>(
 ) : MembershipPersistence<T> {
     override fun key(): Mono<out Key<T>> = keyService.key(TopicMembershipByKey::class.java)
 
-    override fun add(entity: com.demo.chat.domain.TopicMembership<T>): Mono<Void> = membershipRepo
-            .save(com.demo.chat.domain.cassandra.TopicMembershipByKey(
-                    entity.key,
-                    entity.member,
-                    entity.memberOf))
+    override fun add(ent: com.demo.chat.domain.TopicMembership<T>): Mono<Void> = membershipRepo
+            .save(TopicMembershipByKey(
+                    ent.key,
+                    ent.member,
+                    ent.memberOf))
             .then()
 
     override fun rem(key: Key<T>): Mono<Void> = membershipRepo.deleteById(key.id)
@@ -29,6 +29,6 @@ class MembershipPersistenceCassandra<T>(
 
     override fun all(): Flux<out com.demo.chat.domain.TopicMembership<T>> = membershipRepo.findAll()
 
-    override fun byIds(keys: List<out Key<T>>): Flux<out com.demo.chat.domain.TopicMembership<T>> = membershipRepo
+    override fun byIds(keys: List<Key<T>>): Flux<out com.demo.chat.domain.TopicMembership<T>> = membershipRepo
             .findByKeyIn(keys.stream().map { it.id }.collect(Collectors.toList()))
 }

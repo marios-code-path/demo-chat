@@ -2,7 +2,7 @@ package com.demo.chat.test.controller.app
 
 
 import com.demo.chat.*
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.EmptyStringCodec
 import com.demo.chat.controller.app.MessageTopicController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
@@ -136,7 +136,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
         BDDMockito
                 .given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(User.create(
-                        Key.funKey(randomUserId), "NAME", randomUserHandle,"http://imageURI"
+                        Key.funKey(randomUserId), "NAME", randomUserHandle, "http://imageURI"
                 )))
 
         BDDMockito
@@ -185,12 +185,6 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .verifyComplete()
     }
 
-    class EmptyDecoder: Codec<String, String> {
-        override fun decode(record: String): String {
-            return record
-        }
-
-    }
     @Configuration
     class TestConfiguration {
         @Controller
@@ -200,6 +194,6 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                                          userP: UserPersistence<UUID>,
                                          membershipP: MembershipPersistence<UUID>,
                                          membershipInd: MembershipIndexService<UUID>) :
-                MessageTopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyDecoder())
+                MessageTopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyStringCodec())
     }
 }

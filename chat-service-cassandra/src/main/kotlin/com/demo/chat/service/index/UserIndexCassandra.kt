@@ -58,7 +58,7 @@ class UserIndexCassandra<T>(
     override fun rem(key: Key<T>): Mono<Void> = userHandleRepo.rem(key)
 
     override fun findBy(query: Map<String, String>): Flux<out Key<T>> =
-            userHandleRepo.findByKeyHandle(query[HANDLE] ?: error(""))
+            userHandleRepo.findByKeyHandle(query[HANDLE] ?: error("User Handle not given."))
                     .map {
                         it.key
                     }

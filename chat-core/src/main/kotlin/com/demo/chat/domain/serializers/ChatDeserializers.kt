@@ -46,7 +46,6 @@ class MessageDeserializer<T, E>(keyCodec: Codec<JsonNode, T>,
 
         return when (key) {
             is MessageKey<T> -> Message.create(key, decoded, visible)
-            is Key<T> -> throw ChatException("Invalid Destination")
             else -> throw ChatException("Invalid Message Key")
         }
     }

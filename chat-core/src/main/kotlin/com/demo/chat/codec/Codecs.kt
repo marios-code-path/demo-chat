@@ -23,3 +23,21 @@ object JsonNodeAnyCodec : Codec<JsonNode, Any> {
         }
     }
 }
+
+class EmptyStringCodec: Codec<Unit, String> {
+    override fun decode(record: Unit): String {
+        return ""
+    }
+}
+
+class EmptyNumberCodec: Codec<Unit, Number> {
+    override fun decode(record: Unit): Number {
+        return 0
+    }
+}
+
+class EmptyUUIDCodec: Codec<Unit, UUID> {
+    override fun decode(record: Unit): UUID {
+        return UUID(0L, 0L)
+    }
+}
