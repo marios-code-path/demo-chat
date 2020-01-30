@@ -1,12 +1,17 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.codec.Codec
+import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
@@ -48,6 +53,17 @@ open class MessageTopicMessagingServiceTestBase {
         override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }
+
+    val mapper: ObjectMapper =
+            jacksonObjectMapper().registerModule(KotlinModule()).apply {
+                with(JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)) {
+                    registerModules(messageModule(),
+                            keyModule(),
+                            topicModule(),
+                            membershipModule(),
+                            userModule())
+                }
+            }!!
 
     @Test
     fun `cannot subscribe to non existent topic`() {

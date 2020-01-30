@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.connection.stream.RecordId
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import redis.embedded.RedisServer
@@ -38,7 +37,7 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     private lateinit var lettuce: LettuceConnectionFactory
 
-    private lateinit var redisTemplateServiceConfigTopicRedis: ConfigurationTopicRedis
+    private lateinit var configTopicRedis: ConfigurationTopicRedis
 
     @BeforeAll
     fun setUp() {
@@ -50,15 +49,15 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(TestConfigProps)
+        configTopicRedis = ConfigurationTopicRedis(lettuce, mapper)
 
         topicService = TopicMessagingServiceRedisStream(
                 KeyConfiguration("all_topics",
                         "st_topic_",
                         "l_user_topics_",
                         "l_topic_users_"),
-                ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(lettuce),
+                configTopicRedis.stringTemplate(),
+                configTopicRedis.stringMessageTemplate(),
                 StringUUIDKeyDecoder(),
                 UUIDKeyStringEncoder(),
                 KeyRecordIdEncoder()
@@ -69,7 +68,7 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     @BeforeEach
     fun tearUp() {
-        redisTemplateServiceConfigTopicRedis.objectTemplate(lettuce)
+        configTopicRedis.objectTemplate()
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }

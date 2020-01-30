@@ -2,13 +2,14 @@ package com.demo.chat
 
 import com.demo.chat.config.*
 import com.demo.chat.repository.cassandra.*
+import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chat.service.IKeyService
+import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
+import com.demo.chatevents.service.TopicMessagingServiceMemory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.ComponentScan
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.FilterType
+import org.springframework.context.annotation.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.*
 
@@ -41,6 +42,15 @@ class ChatServiceRsocketApplication {
             byUserRepo: ChatMessageByUserRepository<UUID>,
             byTopicRepo: ChatMessageByTopicRepository<UUID>
     ) : IndexConfigurationCassandra<UUID>(cassandra, userHandleRepo, roomRepo, nameRepo, byMemberRepo, byMemberOfRepo, byUserRepo, byTopicRepo)
+
+    @Bean
+    @Profile("memory-topics")
+    fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> =
+            TopicMessagingServiceMemory()
+
+    @Configuration
+    @Profile("redis-topics")
+    class TopicMessagingRedisConfiguration(props: ConfigurationPropertiesTopicRedis): TopicMessagingConfigurationRedis(props)
 }
 
 @EnableConfigurationProperties(CassandraProperties::class, ConfigurationPropertiesRedisTopics::class)

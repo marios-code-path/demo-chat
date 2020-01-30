@@ -1,8 +1,16 @@
 package com.demo.chatevents.tests
 
+import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
+import com.fasterxml.jackson.annotation.JsonInclude
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.module.kotlin.KotlinModule
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
@@ -33,15 +41,15 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(TestConfigProps)
+        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(lettuce, mapper)
 
         topicService = TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",
                         "t_st_topic_",
                         "t_l_user_topics_",
                         "t_l_topic_users_"),
-                ReactiveStringRedisTemplate(lettuce),
-                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(lettuce),
+                redisTemplateServiceConfigTopicRedis.stringTemplate(),
+                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(),
                 StringUUIDKeyDecoder(),
                 UUIDKeyStringEncoder()
         )
@@ -51,7 +59,7 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     @BeforeEach
     fun tearUp() {
-        redisTemplateServiceConfigTopicRedis.objectTemplate(lettuce)
+        redisTemplateServiceConfigTopicRedis.objectTemplate()
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }
