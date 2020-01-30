@@ -13,10 +13,10 @@ import org.springframework.context.annotation.Bean
 open class SerializationConfigurationJackson {
 
     @Bean
-    fun modules(): JacksonModules = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+    open fun modules(): JacksonModules = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
 
     @Bean
-    fun objectMapper(modules: JacksonModules): ObjectMapper =
+    open fun objectMapper(modules: JacksonModules): ObjectMapper =
             jacksonObjectMapper().registerModule(KotlinModule()).apply {
                 propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
@@ -31,5 +31,4 @@ open class SerializationConfigurationJackson {
                             userModule())
                 }
             }!!
-
 }

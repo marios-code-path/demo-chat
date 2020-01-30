@@ -1,4 +1,4 @@
-package com.demo.chat
+package com.demo.chat.app
 
 import com.demo.chat.config.*
 import com.demo.chat.config.app.AppIndex
@@ -24,25 +24,29 @@ class ChatServiceRSocketApplication {
     @Configuration
     class AppSerializationConfigurationJackson : SerializationConfigurationJackson()
 
+    @Profile("cassandra-cluster")
     @Configuration
     class AppCassandraConfiguration(cassandraProps: ConfigurationPropertiesCassandra) : CassandraConfiguration(cassandraProps)
 
+    @Profile("redis-topics")
     @Configuration
     class AppRedisConfiguration(props: ConfigurationPropertiesTopicRedis,
                                 mapper: ObjectMapper) : ConnectionConfigurationRedis(props, mapper)
 
+    @Profile("cassandra-key")
     @Configuration
     class AppKeyPersistenceConfiguration(template: ReactiveCassandraTemplate) : KeyPersistenceConfigurationCassandra<UUID>(template, UUIDKeyGeneratorCassandra())
 
-
+    @Profile("cassandra-persistence")
     @Configuration
     class AppPersistenceConfiguration : AppPersistence("cassandra")
 
+    @Profile("cassandra-index")
     @Configuration
     class AppIndexConfiguration : AppIndex("cassandra")
 
     @Configuration
-    class AppTopicMessagingConfiguration : AppTopicMessaging("memory")
+    class AppTopicMessagingConfiguration : AppTopicMessaging("memory-topics")
 
     // TODO implement rsocket exposure from here
 }

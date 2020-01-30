@@ -12,10 +12,10 @@ open class AppTopicMessaging(msg: String) {
 
     @Profile("memory-topics")
     @Bean
-    fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()
+    open fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()
 
     @Profile("redis-topics")
     @Bean
-    fun topicMessagingRedis(props: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> =
+    open fun topicMessagingRedis(props: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedis()
 }

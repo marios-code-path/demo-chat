@@ -22,14 +22,14 @@ class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
 
 open class CassandraConfiguration(private val cassandraProps: ConfigurationPropertiesCassandra) {
     @Bean
-    fun cluster() = ClusterConfigurationCassandra(cassandraProps)
+    open fun cluster() = ClusterConfigurationCassandra(cassandraProps)
 }
 
 open class KeyPersistenceConfigurationCassandra<T>(
         private val template: ReactiveCassandraTemplate,
         private val keyGenerator: Codec<Unit, T>) {
     @Bean
-    fun keyPersistence(): IKeyService<T> =
+    open fun keyPersistence(): IKeyService<T> =
             KeyServiceCassandra(template, keyGenerator)
 }
 
@@ -41,18 +41,18 @@ open class PersistenceConfigurationCassandra<T>(
         private val membershipRepo: TopicMembershipRepository<T>) {
 
     @Bean
-    fun userPersistence(): UserPersistence<T> =
+    open fun userPersistence(): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)
 
     @Bean
-    fun topicPersistence(): TopicPersistence<T> =
+    open fun topicPersistence(): TopicPersistence<T> =
             TopicPersistenceCassandra(keyService, topicRepo)
 
     @Bean
-    fun messagePersistence(): MessagePersistence<T, String> =
+    open fun messagePersistence(): MessagePersistence<T, String> =
             MessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
-    fun membershipPersistence(): MembershipPersistence<T> =
+    open fun membershipPersistence(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }

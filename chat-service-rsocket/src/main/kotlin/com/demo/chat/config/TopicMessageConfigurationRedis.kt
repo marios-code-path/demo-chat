@@ -35,16 +35,16 @@ class UUIDStringDecoder : Codec<UUID, String> {
 open class ConnectionConfigurationRedis(private val props: ConfigurationPropertiesTopicRedis,
                                         private val mapper: ObjectMapper) {
     @Bean
-    fun redisConnection(): ReactiveRedisConnectionFactory =
+    open fun redisConnection(): ReactiveRedisConnectionFactory =
             LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 
     @Bean
-    fun configurationTopicRedis(factory: ReactiveRedisConnectionFactory): ConfigurationTopicRedis =
+    open fun configurationTopicRedis(factory: ReactiveRedisConnectionFactory): ConfigurationTopicRedis =
             ConfigurationTopicRedis(factory, mapper)
 }
 
 class TopicMessagingConfigurationRedis(private val config: ConfigurationTopicRedis) {
-    fun topicMessagingRedis(): ChatTopicMessagingService<*, *> =
+    open fun topicMessagingRedis(): ChatTopicMessagingService<*, *> =
             TopicMessagingServiceRedisPubSub(
                     KeyConfigurationPubSub("all_topics",
                             "st_topic_",
