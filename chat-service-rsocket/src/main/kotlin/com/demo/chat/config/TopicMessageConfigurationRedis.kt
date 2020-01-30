@@ -46,8 +46,8 @@ open class TopicMessagingConfigurationRedis(private val props: ConfigurationProp
             LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 
     @Bean
-    fun configurationTopicRedis(cf: ReactiveRedisConnectionFactory,
-                                mapper: ObjectMapper): ConfigurationTopicRedis = ConfigurationTopicRedis(cf, mapper)
+    fun configurationTopicRedis(factory: ReactiveRedisConnectionFactory,
+                                mapper: ObjectMapper): ConfigurationTopicRedis = ConfigurationTopicRedis(factory, mapper)
 
     @Bean
     fun modules(): JacksonModules = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
@@ -58,8 +58,10 @@ open class TopicMessagingConfigurationRedis(private val props: ConfigurationProp
                 propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
+                findAndRegisterModules()
                 with(modules) {
-                    registerModules(messageModule(),
+                    registerModules(
+                            messageModule(),
                             keyModule(),
                             topicModule(),
                             membershipModule(),
@@ -68,14 +70,13 @@ open class TopicMessagingConfigurationRedis(private val props: ConfigurationProp
             }!!
 
     @Bean
-    fun topicServiceRedis(config: ConfigurationTopicRedis,
-                          factory: ReactiveRedisConnectionFactory): ChatTopicMessagingService<*, *> =
+    fun topicMessagingRedis(config: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> =
             TopicMessagingServiceRedisPubSub(
                     KeyConfigurationPubSub("all_topics",
                             "st_topic_",
                             "l_user_topics_",
                             "l_topic_users_"),
-                    ReactiveStringRedisTemplate(factory),
+                    config.stringTemplate(),
                     config.stringMessageTemplate(),
                     StringUUIDKeyDecoder(),
                     UUIDKeyStringEncoder()

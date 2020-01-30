@@ -44,7 +44,6 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
     }
 }
 
-
 open class MessageTopicMessagingServiceTestBase {
 
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
