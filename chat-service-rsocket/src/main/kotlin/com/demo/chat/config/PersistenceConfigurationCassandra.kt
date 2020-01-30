@@ -28,35 +28,35 @@ class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
     }
 }
 
-open class PersistenceConfigurationCassandra<T>(private val keyGenerator: Codec<Unit, T>) {
+open class KeyPersistenceConfigurationCassandra<T>(private val keyGenerator: Codec<Unit, T>) {
+    @Bean
+    fun keyPersistence(template: ReactiveCassandraTemplate): IKeyService<T> =
+            KeyServiceCassandra(template, keyGenerator)
+}
+
+open class PersistenceConfigurationCassandra<T>(
+        private val keyService: IKeyService<T>,
+        private val userRepo: ChatUserRepository<T>,
+        private val topicRepo: TopicRepository<T>,
+        private val messageRepo: ChatMessageRepository<T>,
+        private val membershipRepo: TopicMembershipRepository<T>) {
+
     @Bean
     fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
-    fun keyPersistence(template: ReactiveCassandraTemplate): IKeyService<T> =
-            KeyServiceCassandra(template, keyGenerator)
-
-    @Bean
-    fun userPersistence(keyService: IKeyService<T>,
-                        userRepo: ChatUserRepository<T>): UserPersistence<T> =
+    fun userPersistence(): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)
 
     @Bean
-    fun topicPersistence(keyService: IKeyService<T>,
-                         topicRepo: TopicRepository<T>): TopicPersistence<T> =
+    fun topicPersistence(): TopicPersistence<T> =
             TopicPersistenceCassandra(keyService, topicRepo)
 
     @Bean
-    fun messagePersistence(keyService: IKeyService<T>,
-                           messageRepo: ChatMessageRepository<T>): MessagePersistence<T, String> =
+    fun messagePersistence(): MessagePersistence<T, String> =
             MessagePersistenceCassandra(keyService, messageRepo)
 
     @Bean
-    fun membershipPersistence(keyService: IKeyService<T>,
-                              membershipRepo: TopicMembershipRepository<T>): MembershipPersistence<T> =
+    fun membershipPersistence(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }
-
-@Suppress("unused")
-class PersistenceCassandraUUIDKey:
-        PersistenceConfigurationCassandra<UUID>(UUIDKeyGeneratorCassandra())
