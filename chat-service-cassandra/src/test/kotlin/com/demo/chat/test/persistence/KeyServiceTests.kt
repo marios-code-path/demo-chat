@@ -1,6 +1,7 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
+import com.demo.chat.codec.Codec
 import com.demo.chat.domain.User
 
 import com.demo.chat.service.IKeyService
@@ -24,6 +25,12 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
 
+class TestUUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
+    override fun decode(record: Unit): UUID {
+        return UUIDs.timeBased()
+    }
+}
+
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @CassandraUnit
@@ -41,7 +48,7 @@ class KeyServiceTests {
     @BeforeEach
     fun setUp() {
         logger.info("Setup persistence cassandra")
-        this.svc = KeyServiceCassandra(template) { UUIDs.timeBased() }
+        this.svc = KeyServiceCassandra(template, TestUUIDKeyGeneratorCassandra())
     }
 
     @Test

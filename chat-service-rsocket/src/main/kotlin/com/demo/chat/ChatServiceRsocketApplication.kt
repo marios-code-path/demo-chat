@@ -1,7 +1,7 @@
 package com.demo.chat
 
 import com.demo.chat.config.CassandraProperties
-import com.demo.chat.config.ConfigurationProperiesRedisTopics
+import com.demo.chat.config.ConfigurationPropertiesRedisTopics
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
@@ -15,7 +15,7 @@ import org.springframework.context.annotation.FilterType
 ])
 class ChatServiceRsocketApplication
 
-@EnableConfigurationProperties(CassandraProperties::class, ConfigurationProperiesRedisTopics::class)
+@EnableConfigurationProperties(CassandraProperties::class, ConfigurationPropertiesRedisTopics::class)
 @Configuration
 class ServiceDiscoveryConfiguration {
     companion object {

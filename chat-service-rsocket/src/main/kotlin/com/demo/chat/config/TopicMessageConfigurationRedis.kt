@@ -45,13 +45,13 @@ class TopicConfigurationMemory<T, V> {
 @Profile("redis-topics")
 @ConstructorBinding
 @ConfigurationProperties("redis-topics")
-data class ConfigurationProperiesRedisTopics(override val host: String = "127.0.0.1",
-                                             override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
+data class ConfigurationPropertiesRedisTopics(override val host: String = "127.0.0.1",
+                                              override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
 
 @ExcludeFromTests
 @Profile("redis-topics")
 @Configuration
-class TopicConfigurationRedis {
+class TopicMessagingConfigurationRedis {
     @Bean
     fun configurationTopicRedis(props: ConfigurationPropertiesTopicRedis): ConfigurationTopicRedis = ConfigurationTopicRedis(props)
 

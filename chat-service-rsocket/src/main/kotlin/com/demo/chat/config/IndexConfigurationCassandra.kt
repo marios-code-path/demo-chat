@@ -17,7 +17,7 @@ import java.util.*
 @ExcludeFromTests
 @Profile("cassandra-index")
 @Configuration
-class IndexConfiguration {
+class IndexConfigurationCassandra {
     @Bean
     fun userIndex(userHandleRepo: ChatUserHandleRepository<UUID>,
                   cassandra: ReactiveCassandraTemplate): UserIndexService<UUID> =
