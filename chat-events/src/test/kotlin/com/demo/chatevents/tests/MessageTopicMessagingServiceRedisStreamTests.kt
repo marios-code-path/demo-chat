@@ -41,11 +41,11 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     @BeforeAll
     fun setUp() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigProps.port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedis.port)
 
         redisServer.start()
 
-        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigProps.host, TestConfigProps.port))
+        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedis.host, TestConfigurationPropertiesRedis.port))
 
         lettuce.afterPropertiesSet()
 

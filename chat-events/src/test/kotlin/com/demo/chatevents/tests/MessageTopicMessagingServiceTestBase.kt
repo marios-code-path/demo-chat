@@ -23,7 +23,7 @@ data class JoinAlert<T>(override val key: MessageKey<T>) : Message<T, String> {
     override val record: Boolean
         get() = false
     override val data: String
-        get() = "FOO"
+        get() = ""
 }
 
 class KeyStringEncoder<T> : Codec<T, String> {
@@ -48,7 +48,7 @@ open class MessageTopicMessagingServiceTestBase {
 
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
-    object TestConfigProps : ConfigurationPropertiesTopicRedis {
+    object TestConfigurationPropertiesRedis : ConfigurationPropertiesTopicRedis {
         override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }

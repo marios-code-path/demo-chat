@@ -14,23 +14,22 @@ import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.*
 
-@ConstructorBinding
-@ConfigurationProperties("cassandra-repo")
-data class CassandraProperties(override val contactPoints: String,
-                               override val port: Int,
-                               override val keyspace: String,
-                               override val basePackages: String,
-                               override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
-
 class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
     override fun decode(record: Unit): UUID {
         return UUIDs.timeBased()
     }
 }
 
-open class KeyPersistenceConfigurationCassandra<T>(private val keyGenerator: Codec<Unit, T>) {
+open class CassandraConfiguration(private val cassandraProps: ConfigurationPropertiesCassandra) {
     @Bean
-    fun keyPersistence(template: ReactiveCassandraTemplate): IKeyService<T> =
+    fun cluster() = ClusterConfigurationCassandra(cassandraProps)
+}
+
+open class KeyPersistenceConfigurationCassandra<T>(
+        private val template: ReactiveCassandraTemplate,
+        private val keyGenerator: Codec<Unit, T>) {
+    @Bean
+    fun keyPersistence(): IKeyService<T> =
             KeyServiceCassandra(template, keyGenerator)
 }
 
@@ -40,9 +39,6 @@ open class PersistenceConfigurationCassandra<T>(
         private val topicRepo: TopicRepository<T>,
         private val messageRepo: ChatMessageRepository<T>,
         private val membershipRepo: TopicMembershipRepository<T>) {
-
-    @Bean
-    fun cluster(props: ConfigurationPropertiesCassandra) = ClusterConfigurationCassandra(props)
 
     @Bean
     fun userPersistence(): UserPersistence<T> =
