@@ -16,14 +16,12 @@ import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHa
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 
-
 fun <T> anyObject(): T {
     Mockito.anyObject<T>()
     return uninitialized()
 }
 
 fun <T> uninitialized(): T = null as T
-
 
 private val ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 fun randomAlphaNumeric(size: Int): String {

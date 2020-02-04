@@ -4,6 +4,8 @@ import com.demo.chat.config.*
 import com.demo.chat.config.app.AppIndex
 import com.demo.chat.config.app.AppPersistence
 import com.demo.chat.config.app.AppTopicMessaging
+import com.demo.chat.controller.service.KeyServiceController
+import com.demo.chat.service.IKeyService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -13,6 +15,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.springframework.stereotype.Controller
 import java.util.*
 
 @SpringBootApplication
@@ -39,16 +43,18 @@ class ChatServiceRSocketApplication {
 
     @Profile("cassandra-persistence")
     @Configuration
-    class AppPersistenceConfiguration : AppPersistence("cassandra")
+    class AppPersistenceConfiguration : AppPersistence("cassandra-persistence")
 
     @Profile("cassandra-index")
     @Configuration
-    class AppIndexConfiguration : AppIndex("cassandra")
+    class AppIndexConfiguration : AppIndex("cassandra-index")
 
     @Configuration
     class AppTopicMessagingConfiguration : AppTopicMessaging("memory-topics")
 
-    // TODO implement rsocket exposure from here
+    @Configuration
+    @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+    class RepositoryConfigurationCassandra
 }
 
 @ConstructorBinding

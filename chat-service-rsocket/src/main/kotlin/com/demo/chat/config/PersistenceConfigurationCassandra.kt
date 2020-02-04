@@ -21,15 +21,16 @@ class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
 }
 
 open class CassandraConfiguration(private val cassandraProps: ConfigurationPropertiesCassandra) {
-    @Bean
-    open fun cluster() = ClusterConfigurationCassandra(cassandraProps)
+    //@Bean
+    //open fun cluster() = ClusterConfigurationCassandra(cassandraProps)
+
 }
 
 open class KeyPersistenceConfigurationCassandra<T>(
         private val template: ReactiveCassandraTemplate,
         private val keyGenerator: Codec<Unit, T>) {
     @Bean
-    open fun keyPersistence(): IKeyService<T> =
+    open fun keyService(): IKeyService<T> =
             KeyServiceCassandra(template, keyGenerator)
 }
 

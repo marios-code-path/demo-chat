@@ -2,18 +2,19 @@ package com.demo.chat.test.service
 
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
-import com.demo.chat.controller.rsocket.RSocketUserPersistence
+import com.demo.chat.controller.service.PersistenceServiceController
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -27,8 +28,8 @@ import java.util.*
         UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
 class UserPersistenceRSocketTests : ServiceTestBase() {
 
-    @Autowired
-    lateinit var userPersistence: UserPersistence<UUID>
+    @MockBean
+    private lateinit var userPersistence: UserPersistence<UUID>
 
     private val defaultImgUri = "http://cdn.test.com/image.jpg"
     private val randomHandle = randomAlphaNumeric(4)
@@ -117,11 +118,9 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
 
     }
 
+    @TestConfiguration
     class UserPersistenceTestConfiguration {
-        @MockBean
-        lateinit var userPersistence: UserPersistence<UUID>
-
-        @Bean
-        fun persistenceController() = RSocketUserPersistence(userPersistence)
+        @Controller
+        class TestPersistenceController<T>(up: UserPersistence<T>): PersistenceServiceController<T, User<T>>(up)
     }
 }
