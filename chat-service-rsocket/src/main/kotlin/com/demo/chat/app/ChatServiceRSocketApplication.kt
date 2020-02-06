@@ -4,6 +4,7 @@ import com.demo.chat.config.*
 import com.demo.chat.config.app.AppIndex
 import com.demo.chat.config.app.AppPersistence
 import com.demo.chat.config.app.AppTopicMessaging
+import com.demo.chat.controller.rsocket.KeyServiceRSocket
 import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.service.IKeyService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
@@ -19,6 +20,15 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 import org.springframework.stereotype.Controller
 import java.util.*
 
+/*
+
+configuration {
+    enable-cassandra-cluster
+    enable-cassandra-persistence
+    enable-redis-topics
+    enable-
+}
+ */
 @SpringBootApplication
 @ComponentScan(excludeFilters = [
     ComponentScan.Filter(type = FilterType.ANNOTATION, value = [ExcludeFromTests::class])
@@ -30,7 +40,7 @@ class ChatServiceRSocketApplication {
 
     @Profile("cassandra-cluster")
     @Configuration
-    class AppCassandraConfiguration(cassandraProps: ConfigurationPropertiesCassandra) : CassandraConfiguration(cassandraProps)
+    class AppCassandraClusterConfiguration(cassandraProps: ConfigurationPropertiesCassandra) : CassandraConfiguration(cassandraProps)
 
     @Profile("redis-topics")
     @Configuration
@@ -39,7 +49,9 @@ class ChatServiceRSocketApplication {
 
     @Profile("cassandra-key")
     @Configuration
-    class AppKeyPersistenceConfiguration(template: ReactiveCassandraTemplate) : KeyPersistenceConfigurationCassandra<UUID>(template, UUIDKeyGeneratorCassandra())
+    @Controller
+    class AppKeyServiceConfiguration(template: ReactiveCassandraTemplate) :
+            KeyServiceController<UUID>(KeyServiceConfigurationCassandra(template, UUIDKeyGeneratorCassandra()).keyService())
 
     @Profile("cassandra-persistence")
     @Configuration

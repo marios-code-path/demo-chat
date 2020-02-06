@@ -8,8 +8,6 @@ import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.*
 import com.demo.chat.service.persistence.*
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.*
@@ -21,15 +19,13 @@ class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
 }
 
 open class CassandraConfiguration(private val cassandraProps: ConfigurationPropertiesCassandra) {
-    //@Bean
-    //open fun cluster() = ClusterConfigurationCassandra(cassandraProps)
-
+    @Bean
+    open fun cluster() = ClusterConfigurationCassandra(cassandraProps)
 }
 
-open class KeyPersistenceConfigurationCassandra<T>(
+open class KeyServiceConfigurationCassandra<T>(
         private val template: ReactiveCassandraTemplate,
         private val keyGenerator: Codec<Unit, T>) {
-    @Bean
     open fun keyService(): IKeyService<T> =
             KeyServiceCassandra(template, keyGenerator)
 }

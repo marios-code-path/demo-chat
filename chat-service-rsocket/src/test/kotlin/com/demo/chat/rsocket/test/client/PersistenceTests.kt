@@ -1,20 +1,21 @@
-package com.demo.chat.test.service
+package com.demo.chat.rsocket.test.client
 
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
-import com.demo.chat.controller.service.PersistenceServiceController
+import com.demo.chat.client.rsocket.PersistenceClient
+import com.demo.chat.client.rsocket.UserClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
+import com.demo.chat.test.service.*
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.stereotype.Controller
+import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -26,10 +27,10 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(TestConfigurationRSocket::class,
         UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
-class UserPersistenceRSocketTests : ServiceTestBase() {
-
+class PersistenceTests : ServiceTestBase() {
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
+
 
     private val defaultImgUri = "http://cdn.test.com/image.jpg"
     private val randomHandle = randomAlphaNumeric(4)
@@ -44,13 +45,10 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                 .given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
+        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+
         StepVerifier
-                .create(
-                        requestor
-                                .route("add")
-                                .data(Mono.just(randomUser), TestChatUser::class.java)
-                                .retrieveMono(Void::class.java)
-                )
+                .create(client.add(randomUser))
                 .verifyComplete()
     }
 
@@ -61,12 +59,10 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                         randomUser, randomUser
                 ))
 
+        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+
         StepVerifier
-                .create(
-                        requestor
-                                .route("all")
-                                .retrieveFlux(TestChatUser::class.java)
-                )
+                .create(client.all())
                 .assertNext {
                     Assertions
                             .assertThat(it)
@@ -74,15 +70,15 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
-                            .assertThat(it.key)
+                            .assertThat(it)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("id", randomUserId)
+                            .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
                 }
                 .assertNext {
                     Assertions
-                            .assertThat(it)
+                            .assertThat(it.key)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                 }
@@ -94,13 +90,10 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         BDDMockito.given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
+        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+
         StepVerifier
-                .create(
-                        requestor
-                                .route("get")
-                                .data(Mono.just(Key.funKey(userKey.id)))
-                                .retrieveMono(TestChatUser::class.java)
-                )
+                .create(client.get(Key.funKey(userKey.id)))
                 .assertNext {
                     Assertions
                             .assertThat(it)
@@ -108,19 +101,13 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
-                            .assertThat(it.key)
+                            .assertThat(it)
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("id", randomUserId)
+                            .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
                 }
                 .verifyComplete()
 
-    }
-
-    @TestConfiguration
-    class UserPersistenceTestConfiguration {
-        @Controller
-        class TestPersistenceController<T>(up: UserPersistence<T>): PersistenceServiceController<T, User<T>>(up)
     }
 }

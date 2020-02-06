@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Profile
 import java.util.*
 
 open class AppTopicMessaging(msg: String) {
-
     @Profile("memory-topics")
     @Bean
     open fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()

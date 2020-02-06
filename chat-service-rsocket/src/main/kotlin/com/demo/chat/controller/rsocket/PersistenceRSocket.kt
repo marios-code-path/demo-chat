@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Controller
 import java.util.*
 
-@Profile("ctrl-persist-key")
+@Profile("ctrl-service-key")
 @Controller
 class KeyServiceRSocket(t: IKeyService<UUID>) : KeyServiceController<UUID>(t)
 
