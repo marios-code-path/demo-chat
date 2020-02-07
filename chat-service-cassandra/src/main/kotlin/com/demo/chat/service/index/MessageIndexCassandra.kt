@@ -66,6 +66,7 @@ class MessageIndexCassandra<T>(
                     byTopicRepo.deleteByKeyId(key.id))
             .then()
 
+    /* TODO: Suppressed empty() because I dont know when empty() .. so maybe this is overboard */
     override fun findBy(query: Map<String, T>): Flux<out MessageKey<T>> {
         val searchFor = query.keys.first()
         return when (searchFor) {

@@ -1,18 +1,25 @@
 package com.demo.chat.client.rsocket
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.service.PersistenceStore
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.data.redis.listener.Topic
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
 
-class UserClient<T>(requestor: RSocketRequester) :
-        PersistenceClient<T, User<T>>(requestor, ParameterizedTypeReference.forType(User::class.java))
+class UserPersistenceClient<T>(requester: RSocketRequester) :
+        PersistenceClient<T, User<T>>(requester, ParameterizedTypeReference.forType(User::class.java))
+
+class TopicPersistenceClient<T>(requester: RSocketRequester) :
+        PersistenceClient<T, MessageTopic<T>>(requester, ParameterizedTypeReference.forType(Topic::class.java))
+
+class MessagePersistenceClient<T, E>(requester: RSocketRequester) :
+        PersistenceClient<T, Message<T, E>>(requester, ParameterizedTypeReference.forType(Message::class.java))
+
+class MembershipPersistenceClient<T>(requester: RSocketRequester) :
+        PersistenceClient<T, TopicMembership<T>>(requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
 
 /**
  *
@@ -26,7 +33,7 @@ open class PersistenceClient<T, V : Any>(val requestor: RSocketRequester,
 
     override fun add(ent: V): Mono<Void> = requestor
             .route("add")
-            .data(ent as Any)
+            .data(ent)
             .retrieveMono()
 
     override fun rem(key: Key<T>): Mono<Void> = requestor
@@ -42,5 +49,4 @@ open class PersistenceClient<T, V : Any>(val requestor: RSocketRequester,
     override fun all(): Flux<out V> = requestor
             .route("all")
             .retrieveFlux(ref)
-
 }

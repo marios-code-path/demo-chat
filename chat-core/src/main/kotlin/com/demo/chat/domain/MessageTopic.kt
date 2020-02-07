@@ -6,10 +6,10 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Topic")
-interface MessageTopic<K> : KeyDataPair<K, String> {
+interface MessageTopic<T> : KeyDataPair<T, String> {
     companion object Factory {
-        fun<K> create(key: Key<K>, name: String) = object : MessageTopic<K> {
-            override val key: Key<K>
+        fun <T> create(key: Key<T>, name: String) = object : MessageTopic<T> {
+            override val key: Key<T>
                 get() = key
             override val data: String
                 get() = name

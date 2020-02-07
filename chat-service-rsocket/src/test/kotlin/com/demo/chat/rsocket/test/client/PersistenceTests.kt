@@ -3,7 +3,7 @@ package com.demo.chat.rsocket.test.client
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
 import com.demo.chat.client.rsocket.PersistenceClient
-import com.demo.chat.client.rsocket.UserClient
+import com.demo.chat.client.rsocket.UserPersistenceClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
@@ -15,7 +15,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -31,7 +30,6 @@ class PersistenceTests : ServiceTestBase() {
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
 
-
     private val defaultImgUri = "http://cdn.test.com/image.jpg"
     private val randomHandle = randomAlphaNumeric(4)
     private val randomName = randomAlphaNumeric(6)
@@ -45,7 +43,7 @@ class PersistenceTests : ServiceTestBase() {
                 .given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requestor)
 
         StepVerifier
                 .create(client.add(randomUser))
@@ -59,7 +57,7 @@ class PersistenceTests : ServiceTestBase() {
                         randomUser, randomUser
                 ))
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requestor)
 
         StepVerifier
                 .create(client.all())
@@ -90,7 +88,7 @@ class PersistenceTests : ServiceTestBase() {
         BDDMockito.given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserClient(requestor)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requestor)
 
         StepVerifier
                 .create(client.get(Key.funKey(userKey.id)))
@@ -108,6 +106,5 @@ class PersistenceTests : ServiceTestBase() {
                             .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
                 }
                 .verifyComplete()
-
     }
 }
