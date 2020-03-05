@@ -12,27 +12,27 @@ import org.springframework.context.annotation.Bean
 open class JacksonModules(val codecKey: Codec<JsonNode, out Any>, val codecData: Codec<JsonNode, out Any>) {
 
     @Bean
-    fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
+    open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
         addDeserializer(Key::class.java, KeyDeserializer(codecKey))
     }
 
     @Bean
-    fun  userModule() = SimpleModule("UserModule", Version.unknownVersion()).apply {
+    open fun  userModule() = SimpleModule("UserModule", Version.unknownVersion()).apply {
         addDeserializer(User::class.java, UserDeserializer(codecKey))
     }
 
     @Bean
-    fun topicModule() = SimpleModule("TopicModule", Version.unknownVersion()).apply {
+    open fun topicModule() = SimpleModule("TopicModule", Version.unknownVersion()).apply {
         addDeserializer(MessageTopic::class.java, TopicDeserializer(codecKey))
     }
 
     @Bean
-    fun messageModule() = SimpleModule("MessageModule", Version.unknownVersion()).apply {
+    open fun messageModule() = SimpleModule("MessageModule", Version.unknownVersion()).apply {
         addDeserializer(Message::class.java, MessageDeserializer(codecKey, codecData))
     }
 
     @Bean
-    fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
+    open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
         addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeAnyCodec))
     }
 }

@@ -1,0 +1,2 @@
+export APP_PRIMARY=user
+mvn spring-boot:run -Dspring-boot.run.profiles=cassandra-cluster,cassandra-persistence,client,client-key,ctrl-persist-user -Drun.arguments="--management.server.port=9011 --spring.rsocket.server.port=0 --server.port=0"

@@ -40,7 +40,7 @@ open class ServiceTestBase {
 
     lateinit var requestor: RSocketRequester
 
-    lateinit var server: CloseableChannel
+    lateinit var server: CloseableChannel       // using.. local.rsocket.server.port ?
 
     @BeforeEach
     fun setUp(context: ApplicationContext) {
