@@ -1,11 +1,13 @@
 package com.demo.chat.app
 
 import com.demo.chat.client.rsocket.KeyClient
+import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.config.*
 import com.demo.chat.config.app.AppIndex
 import com.demo.chat.config.app.AppPersistence
 import com.demo.chat.config.app.AppTopicMessaging
 import com.demo.chat.controller.service.KeyServiceController
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
 import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
 import com.ecwid.consul.v1.ConsulClient
@@ -13,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -25,11 +28,14 @@ import org.springframework.context.annotation.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.messaging.rsocket.RSocketStrategies
+import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
 import java.util.*
 
-/*
+/* TODO USE Command line arguments from spring boot app startup to set runtime
+        behavior instead of profiles!
 configuration {
     enable-cassandra-cluster
     enable-cassandra-persistence
@@ -44,15 +50,22 @@ configuration {
 class ChatServiceRSocketApplication {
     val logger = LoggerFactory.getLogger(this::class.java)
 
-    @Configuration
-    class RSocketRequesterAutoConfig : RSocketRequesterAutoConfiguration()
+   @Configuration
+   class AppJacksonModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
 
-    @Configuration
-    class AppSerializationConfigurationJackson : SerializationConfigurationJackson()
+   @Configuration
+   class AppSerializationConfigurationJackson : SerializationConfigurationJackson()
 
+    @Bean
+    fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
+        val handler = RSocketMessageHandler()
+        handler.rSocketStrategies = strategies
+        handler.afterPropertiesSet()
+        return handler
+    }
     @Profile("cassandra-cluster")
     @Configuration
-    class ClusterConfigurationCassandra(cassandraProps: ConfigurationPropertiesCassandra) :CassandraConfiguration(cassandraProps)
+    class ClusterConfigurationCassandra(cassandraProps: ConfigurationPropertiesCassandra) : CassandraConfiguration(cassandraProps)
 
     @Configuration
     @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
@@ -69,6 +82,9 @@ class ChatServiceRSocketApplication {
     class AppKeyServiceConfiguration(template: ReactiveCassandraTemplate) :
             KeyServiceController<UUID>(KeyServiceConfigurationCassandra(template, UUIDKeyGeneratorCassandra()).keyService())
 
+    @Configuration
+    class RSocketRequesterAutoConfig : RSocketRequesterAutoConfiguration()
+
     @Profile("client")
     @Configuration
     class AppClient(val builder: RSocketRequester.Builder,
@@ -77,8 +93,8 @@ class ChatServiceRSocketApplication {
         val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
         val logger = LoggerFactory.getLogger(this::class.java)
 
-        fun requester(prefix: String): RSocketRequester = discovery
-                .getInstances("${prefix}-service-rsocket")
+        fun requester(servicePrefix: String): RSocketRequester = discovery
+                .getInstances("${servicePrefix}-service-rsocket")
                 .map {
                     val rsocketPort = it.port - 1
 
@@ -93,7 +109,7 @@ class ChatServiceRSocketApplication {
         @Profile("client-key")
         @Bean
         fun run(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
-            svc.key(String::class.java)
+            svc.key(UUID::class.java)
                     .doOnNext {
                         logger.info("KEY FOUND: ${it.id}")
                     }

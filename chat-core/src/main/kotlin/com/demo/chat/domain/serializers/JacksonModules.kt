@@ -9,7 +9,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 
 
-open class JacksonModules(val codecKey: Codec<JsonNode, out Any>, val codecData: Codec<JsonNode, out Any>) {
+open class JacksonModules(private val codecKey: Codec<JsonNode, out Any>,
+                          private val codecData: Codec<JsonNode, out Any>) {
 
     @Bean
     open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {

@@ -11,6 +11,7 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
@@ -65,9 +66,11 @@ class KeyServiceRSocketTests : ServiceTestBase() {
 
     @Test
     fun `Controller Should create Key`() {
+        val randomID = UUID.randomUUID()
+
         BDDMockito
                 .given(keyService.key<Any>(anyObject()))
-                .willReturn(Mono.empty())
+                .willReturn(Mono.just(Key.funKey(randomID)))
 
         StepVerifier
                 .create(
@@ -76,6 +79,12 @@ class KeyServiceRSocketTests : ServiceTestBase() {
                                 .data(Any::class.java)
                                 .retrieveMono(Key::class.java)
                 )
+                .assertNext {
+                    Assertions
+                            .assertThat(it)
+                            .isNotNull
+                            .hasFieldOrPropertyWithValue("id", randomID)
+                }
                 .verifyComplete()
     }
 

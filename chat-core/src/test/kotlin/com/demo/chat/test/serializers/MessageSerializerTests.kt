@@ -25,13 +25,15 @@ class MessageSerializerTests : TestBase() {
             )
         }
 
+        val msgUUID = UUID.randomUUID()
+        val destUUID = UUID.randomUUID()
         val messageJsons = Flux.just(
                 Message.create(MessageKey.create(1L, 2L), "foo", true),
                 Message.create(MessageKey.create("a", "b"), "Foo", true),
-                Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID()), 2345, false)
+                Message.create(MessageKey.create(msgUUID, destUUID), 2345, false)
         )
-                .map(mapper::writeValueAsString).doOnNext(System.out::println)
-                .map<Message<out Any, out Any>>(mapper::readValue)
+                .map(mapper::writeValueAsString)
+                .map<Message<out Any, Any>>(mapper::readValue)
 
         StepVerifier
                 .create(messageJsons)
@@ -58,6 +60,14 @@ class MessageSerializerTests : TestBase() {
                             .isNotNull
                             .extracting("id")
                             .isInstanceOf(UUID::class.java)
+                            .isEqualTo(msgUUID)
+
+                    Assertions
+                            .assertThat(message.key)
+                            .isNotNull
+                            .extracting("dest")
+                            .isInstanceOf(UUID::class.java)
+                            .isEqualTo(destUUID)
 
                     Assertions
                             .assertThat(message)

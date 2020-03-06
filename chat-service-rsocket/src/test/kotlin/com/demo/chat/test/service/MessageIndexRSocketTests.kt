@@ -52,6 +52,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
                             .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("id")
+                            .hasFieldOrPropertyWithValue("id", message.key.id)
                 }
                 .verifyComplete()
     }

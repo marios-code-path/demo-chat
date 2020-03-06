@@ -14,6 +14,7 @@ class KeyDeserializer<T>(val codec: Codec<JsonNode, T>) : JsonDeserializer<Key<T
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
+        println(node)
         val idNode = node.get("id")
 
         if (node.has("dest")) {

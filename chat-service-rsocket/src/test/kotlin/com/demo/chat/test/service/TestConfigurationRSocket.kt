@@ -14,6 +14,7 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
+import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketStrategies

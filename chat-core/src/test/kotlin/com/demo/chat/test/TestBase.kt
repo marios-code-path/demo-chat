@@ -16,24 +16,6 @@ open class TestBase {
         propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
         findAndRegisterModules()
-//        addDeserializer(MessageKey::class.java, MessageKeyDeserializer(
-//                object : Codec<JsonNode, String> {
-//                    override fun decode(record: JsonNode): String =
-//                            record.asText()
-//                }
-//        ))
-//        addDeserializer(MessageKey::class.java, MessageKeyDeserializer(
-//                object : Codec<JsonNode, Int> {
-//                    override fun decode(record: JsonNode): Int =
-//                            record.asInt()
-//                }
-//        ))
-//        addDeserializer(TextMessage::class.java, TextMessageDeserializer(
-//                object : Codec<JsonNode, UUID> {
-//                    override fun decode(record: JsonNode): UUID =
-//                            UUID.fromString(record.asText())
-//                }
-//        ))
     }!!
 }
 

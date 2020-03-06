@@ -1,6 +1,5 @@
 package com.demo.chat.config
 
-import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -9,13 +8,8 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 
 open class SerializationConfigurationJackson {
-
-    @Configuration
-    class AppJacksonModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
-
     @Bean
     open fun objectMapper(modules: JacksonModules): ObjectMapper =
             jacksonObjectMapper().registerModule(KotlinModule()).apply {
