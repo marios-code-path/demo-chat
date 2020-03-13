@@ -1,6 +1,6 @@
-package com.demo.chat.config.app
+package com.demo.deploy.config.app
 
-import com.demo.chat.config.PersistenceConfigurationCassandra
+import com.demo.deploy.config.PersistenceConfigurationCassandra
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository

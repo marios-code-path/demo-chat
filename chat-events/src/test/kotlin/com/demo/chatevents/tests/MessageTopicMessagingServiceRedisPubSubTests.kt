@@ -27,11 +27,11 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     @BeforeAll
     fun setUp() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedis.port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedisCluster.port)
 
         redisServer.start()
 
-        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedis.host, TestConfigurationPropertiesRedis.port))
+        lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedisCluster.host, TestConfigurationPropertiesRedisCluster.port))
 
         lettuce.afterPropertiesSet()
 
@@ -53,7 +53,7 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     @BeforeEach
     fun tearUp() {
-        redisTemplateServiceConfigTopicRedis.objectTemplate()
+        redisTemplateServiceConfigTopicRedis.anyTemplate()
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }

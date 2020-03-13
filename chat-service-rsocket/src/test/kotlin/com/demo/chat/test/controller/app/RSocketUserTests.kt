@@ -4,7 +4,7 @@ import com.demo.chat.ByIdRequest
 import com.demo.chat.TestChatUser
 import com.demo.chat.TestChatUserKey
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.controller.app.UserController
+import com.demo.chat.controller.edge.UserController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -21,7 +21,6 @@ import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant

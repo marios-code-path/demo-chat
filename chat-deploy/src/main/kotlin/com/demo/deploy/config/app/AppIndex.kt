@@ -1,6 +1,6 @@
-package com.demo.chat.config.app
+package com.demo.deploy.config.app
 
-import com.demo.chat.config.IndexConfigurationCassandra
+import com.demo.deploy.config.IndexConfigurationCassandra
 import com.demo.chat.repository.cassandra.*
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate

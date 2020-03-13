@@ -1,4 +1,4 @@
-package com.demo.chat.config
+package com.demo.deploy.config
 
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.MembershipIndexService
@@ -8,7 +8,6 @@ import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.index.*
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import java.util.*
 
 
 open class IndexConfigurationCassandra<T>(

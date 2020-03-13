@@ -13,6 +13,8 @@ interface PersistenceStore<T, V> {
     fun byIds(keys: List<Key<T>>): Flux<out V> = Flux.empty()
 }
 
+// TODO: Try to ignore the fact that only the Cassandra Persistence impl. use these
+//       All Store still are a PersistenceStore<T,V>
 interface UserPersistence<T> : PersistenceStore<T, User<T>>
 
 interface TopicPersistence<T> : PersistenceStore<T, MessageTopic<T>>

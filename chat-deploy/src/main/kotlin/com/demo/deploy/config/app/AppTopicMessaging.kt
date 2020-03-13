@@ -1,6 +1,6 @@
-package com.demo.chat.config.app
+package com.demo.deploy.config.app
 
-import com.demo.chat.config.TopicMessagingConfigurationRedis
+import com.demo.deploy.config.TopicMessagingConfigurationRedis
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationTopicRedis
 import com.demo.chatevents.service.TopicMessagingServiceMemory
@@ -16,5 +16,5 @@ open class AppTopicMessaging(msg: String) {
     @Profile("redis-topics")
     @Bean
     open fun topicMessagingRedis(props: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> =
-            TopicMessagingConfigurationRedis(props).topicMessagingRedis()
+            TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()
 }

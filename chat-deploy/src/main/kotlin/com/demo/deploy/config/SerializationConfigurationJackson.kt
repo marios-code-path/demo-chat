@@ -1,4 +1,4 @@
-package com.demo.chat.config
+package com.demo.deploy.config
 
 import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.annotation.JsonInclude

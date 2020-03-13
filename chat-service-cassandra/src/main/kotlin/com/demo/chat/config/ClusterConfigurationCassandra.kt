@@ -1,6 +1,7 @@
 package com.demo.chat.config
 
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.CassandraClusterFactoryBean
 import org.springframework.data.cassandra.config.SchemaAction
@@ -9,7 +10,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 interface ConfigurationPropertiesCassandra {
     val contactPoints: String
     val port: Int
-    val keyspace: String
+    val keyspacename: String
     val basePackages: String
     val jmxReporting: Boolean
 }
@@ -17,7 +18,7 @@ interface ConfigurationPropertiesCassandra {
 class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
 
     override fun getKeyspaceName(): String {
-        return props.keyspace
+        return props.keyspacename
     }
 
     override fun getContactPoints(): String {

@@ -1,4 +1,4 @@
-package com.demo.chat.controller.app
+package com.demo.chat.controller.edge
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest

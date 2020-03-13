@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono
 class UserPersistenceClient<T>(requester: RSocketRequester) :
         PersistenceClient<T, User<T>>(requester, ParameterizedTypeReference.forType(User::class.java))
 
-class TopicPersistenceClient<T>(requester: RSocketRequester) :
+class MessageTopicPersistenceClient<T>(requester: RSocketRequester) :
         PersistenceClient<T, MessageTopic<T>>(requester, ParameterizedTypeReference.forType(Topic::class.java))
 
 class MessagePersistenceClient<T, E>(requester: RSocketRequester) :

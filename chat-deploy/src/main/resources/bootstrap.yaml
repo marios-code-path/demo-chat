@@ -1,0 +1,6 @@
+spring:
+  cloud:
+    consul:
+      config:
+        format: YAML
+        data-key: data

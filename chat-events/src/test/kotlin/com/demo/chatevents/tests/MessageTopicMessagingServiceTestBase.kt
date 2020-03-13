@@ -6,7 +6,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
+import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
 import com.demo.chatevents.testRoomId
 import com.demo.chatevents.testUserId
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -48,7 +48,7 @@ open class MessageTopicMessagingServiceTestBase {
 
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
-    object TestConfigurationPropertiesRedis : ConfigurationPropertiesTopicRedis {
+    object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedisCluster {
         override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }

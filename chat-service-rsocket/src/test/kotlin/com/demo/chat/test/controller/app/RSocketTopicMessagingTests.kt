@@ -2,7 +2,7 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ChatMessage
-import com.demo.chat.controller.app.TopicMessagingController
+import com.demo.chat.controller.edge.TopicMessagingController
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence

@@ -29,7 +29,8 @@
         <module>chat-service-controller</module>
         <module>chat-service-cassandra</module>
         <module>chat-persistence-xstream</module>
-        <module>chat-service-rsocket</module>
+	<module>chat-service-rsocket</module>
+	<module>chat-deploy</module>
     </modules>
     <repositories>
         <repository>

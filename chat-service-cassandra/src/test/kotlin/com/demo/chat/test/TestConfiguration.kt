@@ -46,6 +46,6 @@ class TestClusterConfiguration(props : ConfigurationPropertiesCassandra) : Clust
 
 data class CassandraProperties(override val contactPoints: String,
                                override val port: Int,
-                               override val keyspace: String,
+                               override val keyspacename: String,
                                override val basePackages: String,
                                override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra

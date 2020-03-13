@@ -1,21 +1,27 @@
-package com.demo.chat.app
+package com.demo.deploy.app
 
-import com.demo.chat.client.rsocket.KeyClient
+import com.demo.chat.client.rsocket.*
 import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.config.*
-import com.demo.chat.config.app.AppIndex
-import com.demo.chat.config.app.AppPersistence
-import com.demo.chat.config.app.AppTopicMessaging
+import com.demo.deploy.config.app.AppIndex
+import com.demo.deploy.config.app.AppPersistence
+import com.demo.deploy.config.app.AppTopicMessaging
 import com.demo.chat.controller.service.KeyServiceController
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
-import com.demo.chatevents.config.ConfigurationPropertiesTopicRedis
+import com.demo.chat.service.PersistenceStore
+import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
+import com.demo.chatevents.config.ConfigurationTopicRedis
+import com.demo.deploy.config.*
 import com.ecwid.consul.v1.ConsulClient
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
@@ -27,12 +33,12 @@ import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscove
 import org.springframework.context.annotation.*
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.messaging.rsocket.RSocketStrategies
-import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
 import java.util.*
+import java.util.function.Supplier
 
 /* TODO USE Command line arguments from spring boot app startup to set runtime
         behavior instead of profiles!
@@ -50,33 +56,34 @@ configuration {
 class ChatServiceRSocketApplication {
     val logger = LoggerFactory.getLogger(this::class.java)
 
-   @Configuration
-   class AppJacksonModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
-
-   @Configuration
-   class AppSerializationConfigurationJackson : SerializationConfigurationJackson()
-
     @Bean
-    fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
-        val handler = RSocketMessageHandler()
-        handler.rSocketStrategies = strategies
-        handler.afterPropertiesSet()
-        return handler
+    fun KickStarter(ctx: AnnotationConfigApplicationContext): ApplicationRunner = ApplicationRunner {args ->
+        ctx.registerBean(JacksonModules::class.java, jacksonSupplier())
+        ctx.registerBean(SerializationConfigurationJackson::class.java, serializationSupplier())
     }
-    @Profile("cassandra-cluster")
-    @Configuration
-    class ClusterConfigurationCassandra(cassandraProps: ConfigurationPropertiesCassandra) : CassandraConfiguration(cassandraProps)
 
-    @Configuration
-    @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
-    class RepositoryConfigurationCassandra
+    fun jacksonSupplier() = Supplier {
+        JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+    }
+
+    fun serializationSupplier() = Supplier {
+        SerializationConfigurationJackson()
+    }
+
+
+
 
     @Profile("redis-topics")
     @Configuration
-    class AppRedisConfiguration(props: ConfigurationPropertiesTopicRedis,
-                                mapper: ObjectMapper) : ConnectionConfigurationRedis(props, mapper)
+    class AppRedisConfiguration(props: ConfigurationPropertiesRedisCluster) : ConnectionConfigurationRedis(props)
 
-    @Profile("cassandra-key")
+    @Profile("redis-cluster")
+    @Bean
+    fun configurationTopicRedis(factory: ReactiveRedisConnectionFactory,
+                                mapper: ObjectMapper): ConfigurationTopicRedis =
+            ConfigurationTopicRedis(factory, mapper)
+
+    @Profile("cassandra-key-uuid")
     @Configuration
     @Controller
     class AppKeyServiceConfiguration(template: ReactiveCassandraTemplate) :
@@ -88,8 +95,8 @@ class ChatServiceRSocketApplication {
     @Profile("client")
     @Configuration
     class AppClient(val builder: RSocketRequester.Builder,
-                       client: ConsulClient,
-                       props: ConsulDiscoveryProperties) {
+                    client: ConsulClient,
+                    props: ConsulDiscoveryProperties) {
         val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
         val logger = LoggerFactory.getLogger(this::class.java)
 
@@ -103,22 +110,28 @@ class ChatServiceRSocketApplication {
                             .log()
                             .block()!!
                 }
-                .switchIfEmpty(Mono.error(RuntimeException("Cannot discover Key Service")))
+                .switchIfEmpty(Mono.error(RuntimeException("Cannot discover $servicePrefix Service")))
                 .blockFirst()!!
 
         @Profile("client-key")
         @Bean
-        fun run(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
-            svc.key(UUID::class.java)
-                    .doOnNext {
-                        logger.info("KEY FOUND: ${it.id}")
-                    }
-                    .block()
-        }
+        fun <T> keyClient(): IKeyService<T> = KeyClient(requester("key"))
 
-        @Profile("client-key")
+        @Profile("client-user")
         @Bean
-        fun keyClient(): IKeyService<UUID> = KeyClient(requester("key"))
+        fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("user"))
+
+        @Profile("client-message")
+        @Bean
+        fun <T, V> messageClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(requester("message"))
+
+        @Profile("client-message-topic")
+        @Bean
+        fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = MessageTopicPersistenceClient(requester("message-topic"))
+
+        @Profile("client-topic-membership")
+        @Bean
+        fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("topic-membership"))
     }
 
     @Profile("cassandra-persistence")
@@ -133,20 +146,25 @@ class ChatServiceRSocketApplication {
     class AppTopicMessagingConfiguration : AppTopicMessaging("topics")
 }
 
+@Profile("redis-cluster")
 @ConstructorBinding
 @ConfigurationProperties("redis-topics")
 data class ConfigurationPropertiesRedisTopics(override val host: String = "127.0.0.1",
-                                              override val port: Int = 6379) : ConfigurationPropertiesTopicRedis
+                                              override val port: Int = 6379) : ConfigurationPropertiesRedisCluster
 
+@Profile("cassandra-cluster")
 @ConstructorBinding
 @ConfigurationProperties("spring.data.cassandra")
 data class CassandraProperties(override val contactPoints: String,
                                override val port: Int,
-                               override val keyspace: String,
+                               override val keyspacename: String,
                                override val basePackages: String,
                                override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
 
 @EnableConfigurationProperties(CassandraProperties::class, ConfigurationPropertiesRedisTopics::class)
+class DiscoveryConfiguration {
+
+}
 @Configuration
 class ServiceDiscoveryConfiguration {
     companion object {

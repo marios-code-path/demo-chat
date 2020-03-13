@@ -3,7 +3,7 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.*
 import com.demo.chat.codec.EmptyStringCodec
-import com.demo.chat.controller.app.MessageTopicController
+import com.demo.chat.controller.edge.MessageTopicController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import io.rsocket.exceptions.ApplicationErrorException
