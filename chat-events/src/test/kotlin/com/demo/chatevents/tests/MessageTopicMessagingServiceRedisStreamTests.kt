@@ -1,7 +1,7 @@
 package com.demo.chatevents.tests
 
 import com.demo.chat.codec.Codec
-import com.demo.chatevents.config.ConfigurationTopicRedis
+import com.demo.chatevents.config.ConfigurationRedisTemplate
 import com.demo.chatevents.service.KeyConfiguration
 import com.demo.chatevents.service.TopicMessagingServiceRedisStream
 import org.junit.jupiter.api.AfterAll
@@ -37,7 +37,7 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     private lateinit var lettuce: LettuceConnectionFactory
 
-    private lateinit var configTopicRedis: ConfigurationTopicRedis
+    private lateinit var configRedisTemplate: ConfigurationRedisTemplate
 
     @BeforeAll
     fun setUp() {
@@ -49,15 +49,15 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
         lettuce.afterPropertiesSet()
 
-        configTopicRedis = ConfigurationTopicRedis(lettuce, mapper)
+        configRedisTemplate = ConfigurationRedisTemplate(lettuce, mapper)
 
         topicService = TopicMessagingServiceRedisStream(
                 KeyConfiguration("all_topics",
                         "st_topic_",
                         "l_user_topics_",
                         "l_topic_users_"),
-                configTopicRedis.stringTemplate(),
-                configTopicRedis.stringMessageTemplate(),
+                configRedisTemplate.stringTemplate(),
+                configRedisTemplate.stringMessageTemplate(),
                 StringUUIDKeyDecoder(),
                 UUIDKeyStringEncoder(),
                 KeyRecordIdEncoder()
@@ -68,7 +68,7 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     @BeforeEach
     fun tearUp() {
-        configTopicRedis.anyTemplate()
+        configRedisTemplate.anyTemplate()
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }

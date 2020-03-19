@@ -3,7 +3,7 @@ package com.demo.deploy.config
 import com.demo.chat.codec.Codec
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
-import com.demo.chatevents.config.ConfigurationTopicRedis
+import com.demo.chatevents.config.ConfigurationRedisTemplate
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
 import org.springframework.context.annotation.Bean
@@ -31,7 +31,7 @@ open class ConnectionConfigurationRedis(private val props: ConfigurationProperti
             LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 }
 
-class TopicMessagingConfigurationRedis(private val config: ConfigurationTopicRedis) {
+class TopicMessagingConfigurationRedis(private val config: ConfigurationRedisTemplate) {
     open fun topicMessagingRedisPubSub(): ChatTopicMessagingService<*, *> =
             TopicMessagingServiceRedisPubSub(
                     KeyConfigurationPubSub("all_topics",

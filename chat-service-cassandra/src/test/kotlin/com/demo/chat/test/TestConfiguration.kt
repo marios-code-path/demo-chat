@@ -1,9 +1,9 @@
 package com.demo.chat.test
 
 import com.demo.chat.config.ClusterConfigurationCassandra
-import com.demo.chat.config.ConfigurationPropertiesCassandra
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
@@ -18,19 +18,19 @@ import org.springframework.data.cassandra.core.mapping.SimpleUserTypeResolver
 @ComponentScan("com.demo.chat")
 class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationContext> {
 
-    private val log : Logger = LoggerFactory.getLogger(this::class.simpleName)
+    private val log: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
         log.error("This is a simple initialize method")
-        applicationContext.environment.setActiveProfiles("cassandra-persistence")
     }
 
     @Bean // TODO find a random port please :)
-    fun cassandraProperties(): ConfigurationPropertiesCassandra = CassandraProperties("127.0.0.1",
-            9142,
-            "chat",
-            "com.demo.chat.repository.cassandra",
-            false)
+    fun cassandraProperties() = CassandraProperties().apply {
+        port = 9142
+        keyspaceName = "chat"
+        isJmxEnabled = false
+        contactPoints.add("127.0.0.1")
+    }
 
     @Bean
     @Throws(Exception::class)
@@ -42,10 +42,4 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
 }
 
 @Configuration
-class TestClusterConfiguration(props : ConfigurationPropertiesCassandra) : ClusterConfigurationCassandra(props)
-
-data class CassandraProperties(override val contactPoints: String,
-                               override val port: Int,
-                               override val keyspacename: String,
-                               override val basePackages: String,
-                               override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
+class TestClusterConfiguration(props: CassandraProperties) : ClusterConfigurationCassandra(props)

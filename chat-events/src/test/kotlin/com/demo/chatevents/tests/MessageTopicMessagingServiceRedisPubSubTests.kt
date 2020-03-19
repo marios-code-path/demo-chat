@@ -1,6 +1,6 @@
 package com.demo.chatevents.tests
 
-import com.demo.chatevents.config.ConfigurationTopicRedis
+import com.demo.chatevents.config.ConfigurationRedisTemplate
 import com.demo.chatevents.service.KeyConfigurationPubSub
 import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
 import org.junit.jupiter.api.AfterAll
@@ -23,7 +23,7 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     private lateinit var lettuce: LettuceConnectionFactory
 
-    private lateinit var redisTemplateServiceConfigTopicRedis: ConfigurationTopicRedis
+    private lateinit var redisTemplateServiceConfigRedisTemplate: ConfigurationRedisTemplate
 
     @BeforeAll
     fun setUp() {
@@ -35,15 +35,15 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfigTopicRedis = ConfigurationTopicRedis(lettuce, mapper)
+        redisTemplateServiceConfigRedisTemplate = ConfigurationRedisTemplate(lettuce, mapper)
 
         topicService = TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",
                         "t_st_topic_",
                         "t_l_user_topics_",
                         "t_l_topic_users_"),
-                redisTemplateServiceConfigTopicRedis.stringTemplate(),
-                redisTemplateServiceConfigTopicRedis.stringMessageTemplate(),
+                redisTemplateServiceConfigRedisTemplate.stringTemplate(),
+                redisTemplateServiceConfigRedisTemplate.stringMessageTemplate(),
                 StringUUIDKeyDecoder(),
                 UUIDKeyStringEncoder()
         )
@@ -53,7 +53,7 @@ class MessageTopicMessagingServiceRedisPubSubTests : MessageTopicMessagingServic
 
     @BeforeEach
     fun tearUp() {
-        redisTemplateServiceConfigTopicRedis.anyTemplate()
+        redisTemplateServiceConfigRedisTemplate.anyTemplate()
                 .connectionFactory.reactiveConnection
                 .serverCommands().flushAll().block()
     }

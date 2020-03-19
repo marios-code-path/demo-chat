@@ -9,8 +9,7 @@ import com.demo.chat.service.index.*
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
-
-open class IndexConfigurationCassandra<T>(
+open class CassandraIndexFactory<T>(
         private val cassandra: ReactiveCassandraTemplate,
         private val userHandleRepo: ChatUserHandleRepository<T>,
         private val roomRepo: TopicRepository<T>,
@@ -20,19 +19,15 @@ open class IndexConfigurationCassandra<T>(
         private val byUserRepo: ChatMessageByUserRepository<T>,
         private val byTopicRepo: ChatMessageByTopicRepository<T>
 ) {
-    @Bean
-    fun userIndex(): UserIndexService<T> =
+    open fun userIndex(): UserIndexService<T> =
             UserIndexCassandra(UserCriteriaCodec(), userHandleRepo, cassandra)
 
-    @Bean
-    fun roomIndex(): TopicIndexService<T> =
+    open fun roomIndex(): TopicIndexService<T> =
             TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
 
-    @Bean
-    fun membershipIndex(): MembershipIndexService<T> =
+    open fun membershipIndex(): MembershipIndexService<T> =
             MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepo, byMemberOfRepo)
 
-    @Bean
-    fun messageIndex(): MessageIndexService<T, String> =
+    open fun messageIndex(): MessageIndexService<T, String> =
             MessageIndexCassandra(MessageCriteriaCodec(), byUserRepo, byTopicRepo)
 }

@@ -1,20 +1,17 @@
 package com.demo.deploy.config.app
 
-import com.demo.deploy.config.TopicMessagingConfigurationRedis
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chatevents.config.ConfigurationTopicRedis
+import com.demo.chatevents.config.ConfigurationRedisTemplate
 import com.demo.chatevents.service.TopicMessagingServiceMemory
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
+import com.demo.deploy.config.TopicMessagingConfigurationRedis
 import java.util.*
 
-open class AppTopicMessaging(msg: String) {
-    @Profile("memory-topics")
-    @Bean
-    open fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()
+open class AppTopicMessagingMemory {
 
-    @Profile("redis-topics")
-    @Bean
-    open fun topicMessagingRedis(props: ConfigurationTopicRedis): ChatTopicMessagingService<*, *> =
+    open fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()
+}
+
+open class AppTopicMessagingRedis {
+    open fun topicMessagingRedis(props: ConfigurationRedisTemplate): ChatTopicMessagingService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()
 }

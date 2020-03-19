@@ -16,8 +16,8 @@ interface ConfigurationPropertiesRedisCluster {
     val port: Int
 }
 
-class ConfigurationTopicRedis(private val connectionFactory: ReactiveRedisConnectionFactory,
-                              private val objectMapper: ObjectMapper) {
+class ConfigurationRedisTemplate(private val connectionFactory: ReactiveRedisConnectionFactory,
+                                 private val objectMapper: ObjectMapper) {
     fun stringTemplate(): ReactiveStringRedisTemplate = ReactiveStringRedisTemplate(connectionFactory)
 
     fun <T> stringMessageTemplate(): ReactiveRedisTemplate<String, Message<T, String>> {

@@ -15,6 +15,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-cassandra</artifactId>
             <version>0.0.1</version>
@@ -77,7 +81,6 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -111,7 +114,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.deploy.app.ServiceDiscoveryConfiguration</mainClass>
+                    <mainClass>com.demo.deploy.app.DeployIt</mainClass>
                 </configuration>
             </plugin>
             <!-- PER Actuator docs -->

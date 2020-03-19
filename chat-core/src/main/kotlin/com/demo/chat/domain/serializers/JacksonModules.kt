@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 
-
 open class JacksonModules(private val codecKey: Codec<JsonNode, out Any>,
                           private val codecData: Codec<JsonNode, out Any>) {
 

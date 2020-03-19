@@ -9,14 +9,13 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.context.annotation.Bean
 
-open class SerializationConfigurationJackson {
+open class JacksonConfiguration {
     @Bean
     open fun objectMapper(modules: JacksonModules): ObjectMapper =
             jacksonObjectMapper().registerModule(KotlinModule()).apply {
                 propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, true)
-                findAndRegisterModules()
                 with(modules) {
                     registerModules(
                             messageModule(),
@@ -25,5 +24,6 @@ open class SerializationConfigurationJackson {
                             membershipModule(),
                             userModule())
                 }
+                findAndRegisterModules()
             }!!
 }
