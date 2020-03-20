@@ -14,7 +14,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class TopicMessagingController<T, V>(
+open class MessagingController<T, V>(
         private val messageIndex: MessageIndexService<T, V>,
         private val messagePersistence: MessagePersistence<T, V>,
         private val topicMessaging: ChatTopicMessagingService<T, V>) {

@@ -7,7 +7,6 @@ import com.demo.deploy.config.TopicMessagingConfigurationRedis
 import java.util.*
 
 open class AppTopicMessagingMemory {
-
     open fun topicMessagingInMemory(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory()
 }
 

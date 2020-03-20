@@ -19,15 +19,19 @@ open class CassandraIndexFactory<T>(
         private val byUserRepo: ChatMessageByUserRepository<T>,
         private val byTopicRepo: ChatMessageByTopicRepository<T>
 ) {
+    @Bean
     open fun userIndex(): UserIndexService<T> =
             UserIndexCassandra(UserCriteriaCodec(), userHandleRepo, cassandra)
 
+    @Bean
     open fun roomIndex(): TopicIndexService<T> =
             TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
 
+    @Bean
     open fun membershipIndex(): MembershipIndexService<T> =
             MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepo, byMemberOfRepo)
 
+    @Bean
     open fun messageIndex(): MessageIndexService<T, String> =
             MessageIndexCassandra(MessageCriteriaCodec(), byUserRepo, byTopicRepo)
 }

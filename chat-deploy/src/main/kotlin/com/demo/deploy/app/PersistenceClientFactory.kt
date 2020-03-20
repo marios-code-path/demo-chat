@@ -22,7 +22,6 @@ import java.util.*
 
 data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
 
-@Profile("client")
 @Configuration
 @Import(RSocketRequesterAutoConfiguration::class)
 class PersistenceClientFactory(val builder: RSocketRequester.Builder,
@@ -49,11 +48,11 @@ class PersistenceClientFactory(val builder: RSocketRequester.Builder,
 
     fun <T> keyClient(): IKeyService<T> = KeyClient(requester("key"))
 
-    fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("user"))
+    fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("persistence"))
 
-    fun <T, V> messageClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(requester("message"))
+    fun <T, V> messageClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(requester("persistence"))
 
-    fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = MessageTopicPersistenceClient(requester("message-topic"))
+    fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = MessageTopicPersistenceClient(requester("persistence"))
 
-    fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("topic-membership"))
+    fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("persistence"))
 }

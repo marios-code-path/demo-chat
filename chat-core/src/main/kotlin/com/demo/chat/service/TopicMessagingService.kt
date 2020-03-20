@@ -48,5 +48,4 @@ interface ChatTopicMessagingService<T, V> : TopicMessagingService<T, V> {
     fun rem(id: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>
     fun getUsersBy(id: T): Flux<T>
-    fun getProcessor(id: T): FluxProcessor<out Message<T, V>, out Message<T, V>>
 }

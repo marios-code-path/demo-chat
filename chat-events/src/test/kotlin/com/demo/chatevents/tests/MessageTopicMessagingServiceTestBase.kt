@@ -129,7 +129,7 @@ open class MessageTopicMessagingServiceTestBase {
 
 
     @Test
-    fun `should send message to created topic`() {
+    fun `cannot subscribe to non existent topic `() {
         val userId = testUserId()
         val testRoom = testRoomId()
 

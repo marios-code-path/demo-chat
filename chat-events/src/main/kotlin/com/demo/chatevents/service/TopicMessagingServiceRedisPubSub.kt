@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
 import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
@@ -64,32 +63,32 @@ class TopicMessagingServiceRedisPubSub<T, E>(
                     }
 
     override fun subscribe(member: T, topic: T): Mono<Void> = topicExistsOrError(topic)
-                    .then(
-                            stringTemplate
-                                    .opsForSet()
-                                    .add(prefixTopicToUserSubs + topic.toString(), member.toString())
-                                    .handle<Long> { a, sink ->
-                                        when (a) {
-                                            null -> sink.error(ChatException("Unable to subscribe to stream"))
-                                            else -> sink.complete()
-                                        }
-                                    }
-                    )
-                    .then(
-                            stringTemplate
-                                    .opsForSet()
-                                    .add(prefixUserToTopicSubs + member.toString(), topic.toString())
-                                    .handle<Long> { a, sink ->
-                                        when (a) {
-                                            null -> sink.error(ChatException("Unable to subscribe to stream"))
-                                            else -> sink.complete()
-                                        }
-                                    }
-                    )
-                    .thenEmpty {
-                        topicManager.subscribeTopic(topic, member)
-                        it.onComplete()
-                    }
+            .then(
+                    stringTemplate
+                            .opsForSet()
+                            .add(prefixTopicToUserSubs + topic.toString(), member.toString())
+                            .handle<Long> { a, sink ->
+                                when (a) {
+                                    null -> sink.error(ChatException("Unable to subscribe to stream"))
+                                    else -> sink.complete()
+                                }
+                            }
+            )
+            .then(
+                    stringTemplate
+                            .opsForSet()
+                            .add(prefixUserToTopicSubs + member.toString(), topic.toString())
+                            .handle<Long> { a, sink ->
+                                when (a) {
+                                    null -> sink.error(ChatException("Unable to subscribe to stream"))
+                                    else -> sink.complete()
+                                }
+                            }
+            )
+            .thenEmpty {
+                topicManager.subscribeTopic(topic, member)
+                it.onComplete()
+            }
 
     override fun unSubscribe(member: T, topic: T): Mono<Void> =
             topicExistsOrError(topic)
@@ -207,9 +206,6 @@ class TopicMessagingServiceRedisPubSub<T, E>(
                 topicManager
                         .closeTopic(id)
             }.then()
-
-    override fun getProcessor(id: T): FluxProcessor<out Message<T, E>, out Message<T, E>> =
-            topicManager.getTopicProcessor(id)
 
     private fun getPubSubFluxFor(topic: T): Flux<out Message<T, E>> =
             messageTemplate

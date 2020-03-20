@@ -2,7 +2,7 @@ package com.demo.chat.test.controller.app
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ChatMessage
-import com.demo.chat.controller.edge.TopicMessagingController
+import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
@@ -118,9 +118,9 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
         fun msging(t: ChatTopicMessagingService<UUID, String>): ChatTopicMessagingService<UUID, String> = t
 
         @Controller
-        class TestTopicMessagingController(messageIdx: MessageIndexService<UUID, String>,
-                                           msgPersist: MessagePersistence<UUID, String>,
-                                           messaging: ChatTopicMessagingService<UUID, String>) :
-                TopicMessagingController<UUID, String>(messageIdx, msgPersist, messaging)
+        class TestMessagingController(messageIdx: MessageIndexService<UUID, String>,
+                                      msgPersist: MessagePersistence<UUID, String>,
+                                      messaging: ChatTopicMessagingService<UUID, String>) :
+                MessagingController<UUID, String>(messageIdx, msgPersist, messaging)
     }
 }

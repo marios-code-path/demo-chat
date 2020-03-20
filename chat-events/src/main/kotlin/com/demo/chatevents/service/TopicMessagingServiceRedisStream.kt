@@ -11,7 +11,6 @@ import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
@@ -222,9 +221,6 @@ class TopicMessagingServiceRedisStream<T, E>(
                 streamManager
                         .closeTopic(id)
             }.then()
-
-    override fun getProcessor(id: T): FluxProcessor<out Message<T, E>, out Message<T, E>> =
-            streamManager.getTopicProcessor(id)
 
     private fun getXReadFlux(topic: T): Flux<Message<T, E>> =
             messageTemplate

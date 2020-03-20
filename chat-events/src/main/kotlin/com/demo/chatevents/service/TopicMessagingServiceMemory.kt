@@ -4,7 +4,6 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.ChatTopicMessagingService
 import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
 import reactor.core.scheduler.Schedulers
@@ -48,10 +47,6 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
 
     //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
-    override fun getProcessor(id: T): FluxProcessor<out Message<T, V>, out Message<T, V>> =
-            topicManager
-                    .getTopicProcessor(id)
-
     override fun receiveOn(topic: T): Flux<out Message<T, V>> =
             topicManager
                     .getTopicFlux(topic)
@@ -72,7 +67,6 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
                         reader
                     })
 
-    // how to join multiple streams to have fan-out without iterating through Fluxs
     override fun sendMessage(message: Message<T, V>): Mono<Void> {
         val dest = message.key.dest
 

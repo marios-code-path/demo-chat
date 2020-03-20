@@ -10,43 +10,46 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 class UserPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, User<T>>(requester, ParameterizedTypeReference.forType(User::class.java))
+        PersistenceClient<T, User<T>>("user.", requester, ParameterizedTypeReference.forType(User::class.java))
+
+class MessagePersistenceClient<T, V>(requester: RSocketRequester) :
+        PersistenceClient<T, Message<T, V>>("message.",requester, ParameterizedTypeReference.forType(Message::class.java))
 
 class MessageTopicPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, MessageTopic<T>>(requester, ParameterizedTypeReference.forType(Topic::class.java))
-
-class MessagePersistenceClient<T, E>(requester: RSocketRequester) :
-        PersistenceClient<T, Message<T, E>>(requester, ParameterizedTypeReference.forType(Message::class.java))
+        PersistenceClient<T, MessageTopic<T>>("topic.", requester, ParameterizedTypeReference.forType(Topic::class.java))
 
 class MembershipPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, TopicMembership<T>>(requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
+        PersistenceClient<T, TopicMembership<T>>("membership.",requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
 
 /**
  *
- * TODO: NOT THE BEST IMPL. PLEASE REVISE ASAP. I BELIEVE WE ARE RACING.
+ * TODO: NOT THE BEST IMPL. PLEASE REVISE ASAP. I BELIEVE
+ * There can be a route-matcher for the prefix? Possibly a handler ?
+ * Basically, some way to augment the route without sending in the prefix
  */
-open class PersistenceClient<T, V : Any>(val requestor: RSocketRequester,
+open class PersistenceClient<T, V : Any>(val prefix: String,
+                                         val requestor: RSocketRequester,
                                          val ref: ParameterizedTypeReference<V>) : PersistenceStore<T, V> {
     override fun key(): Mono<out Key<T>> = requestor
-            .route("key")
+            .route("${prefix}key")
             .retrieveMono()
 
     override fun add(ent: V): Mono<Void> = requestor
-            .route("add")
+            .route("${prefix}add")
             .data(ent)
             .retrieveMono()
 
     override fun rem(key: Key<T>): Mono<Void> = requestor
-            .route("rem")
+            .route("${prefix}rem")
             .data(key)
             .retrieveMono()
 
     override fun get(key: Key<T>): Mono<out V> = requestor
-            .route("get")
+            .route("${prefix}get")
             .data(key)
             .retrieveMono(ref)
 
     override fun all(): Flux<out V> = requestor
-            .route("all")
+            .route("${prefix}all")
             .retrieveFlux(ref)
 }

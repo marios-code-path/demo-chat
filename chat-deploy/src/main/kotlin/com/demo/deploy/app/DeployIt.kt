@@ -2,10 +2,7 @@ package com.demo.deploy.app
 
 import com.datastax.driver.core.Cluster
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.deploy.config.CassandraKeyServiceFactory
-import com.demo.deploy.config.UUIDKeyGeneratorCassandra
 import org.slf4j.LoggerFactory
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration
@@ -42,8 +39,6 @@ import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.annotation.Profile
 import org.springframework.context.support.GenericApplicationContext
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.stereotype.Controller
-import java.util.*
 import java.util.function.Supplier
 
 @Profile("production")
@@ -150,11 +145,6 @@ class DeployIt : ApplicationContextInitializer<GenericApplicationContext> {
             }
         }
 
-        ctx.registerBean(AppKeyServiceConfiguration::class.java, Supplier {
-            val template = ctx.getBean(ReactiveCassandraTemplate::class.java)
-            AppKeyServiceConfiguration(template)
-        })
-
         // APP Configuration for RSocket
         ctx.registerBean(RSocketMessagingAutoConfiguration::class.java, Supplier {
             RSocketMessagingAutoConfiguration()
@@ -169,6 +159,8 @@ class DeployIt : ApplicationContextInitializer<GenericApplicationContext> {
             RSocketStrategiesAutoConfiguration()
         })
 
+        // Add your controllers!!!!
+
     }
 
     companion object {
@@ -180,7 +172,3 @@ class DeployIt : ApplicationContextInitializer<GenericApplicationContext> {
         }
     }
 }
-
-@Controller
-class AppKeyServiceConfiguration(template: ReactiveCassandraTemplate) :
-        KeyServiceController<UUID>(CassandraKeyServiceFactory(template, UUIDKeyGeneratorCassandra()).keyService())

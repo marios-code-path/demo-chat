@@ -8,6 +8,7 @@ import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.*
 import com.demo.chat.service.persistence.*
+import org.springframework.context.annotation.Bean
 import java.util.*
 
 class UUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
@@ -22,16 +23,16 @@ open class CassandraPersistenceFactory<T>(
         private val topicRepo: TopicRepository<T>,
         private val messageRepo: ChatMessageRepository<T>,
         private val membershipRepo: TopicMembershipRepository<T>) {
-
+    @Bean
     open fun userPersistence(): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)
-
+    @Bean
     open fun topicPersistence(): TopicPersistence<T> =
             TopicPersistenceCassandra(keyService, topicRepo)
-
+    @Bean
     open fun messagePersistence(): MessagePersistence<T, String> =
             MessagePersistenceCassandra(keyService, messageRepo)
-
+    @Bean
     open fun membershipPersistence(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }
