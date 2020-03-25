@@ -68,7 +68,6 @@ class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
                         EdgeRun()
                     })
                 }
-
             }
         }
     }
@@ -110,9 +109,7 @@ class EdgeRun {
                     logger.info("User Found ${it.key.id}: ${it.handle} / ${it.name}")
                 }
                 .block()
-
     }
-
 }
 
 class ClientMessageRun {

@@ -33,7 +33,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import java.util.*
 
-// TODO SSo ooooooo  IDont know how to get our rsocket server
+// TODO Ssssoooooooo I dont know how to get our rsocket server
 // to register with Consul, so I'm sending a tag instead
 // using command line to drop in the port.
 @SpringBootApplication(excludeName = ["com.demo.deploy"])

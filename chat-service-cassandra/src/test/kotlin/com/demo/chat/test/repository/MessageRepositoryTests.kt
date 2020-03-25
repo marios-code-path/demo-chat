@@ -34,7 +34,7 @@ import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
 @CassandraUnit
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-message.cql")
 class MessageRepositoryTests {
