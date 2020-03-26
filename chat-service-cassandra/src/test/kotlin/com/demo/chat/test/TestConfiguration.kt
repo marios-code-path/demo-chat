@@ -5,26 +5,24 @@ import com.demo.chat.config.ConfigurationPropertiesCassandra
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
-import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.CassandraClusterFactoryBean
 import org.springframework.data.cassandra.core.mapping.CassandraMappingContext
 import org.springframework.data.cassandra.core.mapping.SimpleUserTypeResolver
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
-data class CassandraConfigProperties(override val contactPoints: String,
-                                     override val port: Int,
-                                     override val keyspace: String,
-                                     override val basePackages: String,
-                                     override val jmxReporting: Boolean) : ConfigurationPropertiesCassandra
 
 @Configuration
-@ComponentScan("com.demo.chat")
+@ComponentScan("com.demo.chat.test")
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+@EnableConfigurationProperties(CassandraProperties::class, CassandraConfigProperties::class)
 class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationContext> {
 
     private val log: Logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -33,19 +31,6 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
         log.error("This is a simple initialize method")
         applicationContext.environment.setActiveProfiles("cassandra-persistence")
     }
-
-//    @Bean
-//    fun clusterCassandra(props: CassandraConfigProperties): AbstractReactiveCassandraConfiguration =
-//            ClusterConfigurationCassandra(props)
-
-    @Bean // TODO find a random port please :)
-    fun cassandraProperties() = CassandraConfigProperties(
-            "127.0.0.1",
-            9142,
-            "chat",
-            "com.demo.chat.repository.cassandra",
-            false)
-
 
     @Bean
     @Throws(Exception::class)
@@ -56,5 +41,9 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
     }
 }
 
+@ConstructorBinding
+@ConfigurationProperties(prefix = "spring.data.cassandra")
+data class CassandraConfigProperties(override val basePackages: String) : ConfigurationPropertiesCassandra
+
 @Configuration
-class TestClusterConfiguration(props: CassandraConfigProperties) : ClusterConfigurationCassandra(props)
+class TestClusterConfiguration(props: CassandraProperties, config: CassandraConfigProperties) : ClusterConfigurationCassandra(props, config)

@@ -8,21 +8,18 @@ import org.springframework.data.cassandra.config.SchemaAction
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 interface ConfigurationPropertiesCassandra {
-    val contactPoints: String
-    val port: Int
-    val keyspace: String
     val basePackages: String
-    val jmxReporting: Boolean
 }
 
-class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
+class ClusterConfigurationCassandra(val props: CassandraProperties,
+                                    val pack: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
 
     override fun getKeyspaceName(): String {
-        return props.keyspace
+        return props.keyspaceName
     }
 
     override fun getContactPoints(): String {
-        return props.contactPoints
+        return props.contactPoints.get(0)
     }
 
     override fun getPort(): Int {
@@ -34,16 +31,12 @@ class ClusterConfigurationCassandra(val props: ConfigurationPropertiesCassandra)
     }
 
     override fun getEntityBasePackages(): Array<String> {
-        return arrayOf("com.demo.chat.domain")
+        return arrayOf(pack.basePackages)
     }
 
     override fun cluster(): CassandraClusterFactoryBean {
         val cluster = super.cluster()
-        cluster.setJmxReportingEnabled(props.jmxReporting)
+        cluster.setJmxReportingEnabled(props.isJmxEnabled)
         return cluster
     }
-
-    @Configuration
-    @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
-    class RepositoryConfigurationCassandra
 }

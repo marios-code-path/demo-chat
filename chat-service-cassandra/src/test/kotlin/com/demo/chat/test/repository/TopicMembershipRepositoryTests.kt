@@ -8,6 +8,7 @@ import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
+import com.demo.chat.test.TestClusterConfiguration
 import com.demo.chat.test.TestConfiguration
 import org.assertj.core.api.Assertions
 import org.cassandraunit.spring.CassandraDataSet
@@ -29,7 +30,7 @@ import kotlin.streams.toList
 
 //https://stackoverflow.com/questions/38862460/user-defined-type-with-spring-data-cassandra/42036202#42036202
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
 @CassandraUnit
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-membership.cql")

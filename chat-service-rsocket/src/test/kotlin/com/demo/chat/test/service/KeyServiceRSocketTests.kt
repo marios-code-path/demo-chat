@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
@@ -36,7 +37,7 @@ class KeyServiceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("exists")
+                                .route("key.exists")
                                 .data(Key.funKey(0))
                                 .retrieveMono(Boolean::class.java)
                 )
@@ -57,7 +58,7 @@ class KeyServiceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("rem")
+                                .route("key.rem")
                                 .data(Key.funKey(0))
                                 .retrieveMono(Void::class.java)
                 )
@@ -75,7 +76,7 @@ class KeyServiceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("key")
+                                .route("key.key")
                                 .data(Any::class.java)
                                 .retrieveMono(Key::class.java)
                 )
@@ -91,6 +92,7 @@ class KeyServiceRSocketTests : ServiceTestBase() {
     @TestConfiguration
     class KeyPersistenceTestConfiguration {
         @Controller
+        @MessageMapping("key")
         class TestKeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)
     }
 }

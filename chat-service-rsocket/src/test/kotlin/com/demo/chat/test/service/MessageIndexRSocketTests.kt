@@ -14,6 +14,7 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -40,7 +41,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("query")
+                                .route("index.message.query")
                                 .data(mapOf(
                                         Pair(TOPIC, UUID.randomUUID())
                                 ))
@@ -66,7 +67,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("rem")
+                                .route("index.message.rem")
                                 .data(message.key)
                                 .retrieveFlux(Void::class.java)
                 )
@@ -82,7 +83,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("add")
+                                .route("index.message.add")
                                 .data(message)
                                 .retrieveFlux(Void::class.java)
                 )
@@ -92,6 +93,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
     @TestConfiguration
     class MessageIndexTestConfiguration {
         @Controller
-        class TestIndexController<T, E>(that: MessageIndexService<T, E>) : IndexServiceController<T, Message<T, E>, Map<String, T>>(that)
+        @MessageMapping("index.message")
+        class TestMessageIndexController<T, E>(that: MessageIndexService<T, E>) : IndexServiceController<T, Message<T, E>, Map<String, T>>(that)
     }
 }

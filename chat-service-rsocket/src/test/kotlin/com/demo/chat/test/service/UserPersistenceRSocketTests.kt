@@ -14,6 +14,7 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -47,7 +48,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("add")
+                                .route("user.add")
                                 .data(Mono.just(randomUser), TestChatUser::class.java)
                                 .retrieveMono(Void::class.java)
                 )
@@ -64,7 +65,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("all")
+                                .route("user.all")
                                 .retrieveFlux(TestChatUser::class.java)
                 )
                 .assertNext {
@@ -97,7 +98,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
         StepVerifier
                 .create(
                         requestor
-                                .route("get")
+                                .route("user.get")
                                 .data(Mono.just(Key.funKey(userKey.id)))
                                 .retrieveMono(TestChatUser::class.java)
                 )
@@ -121,6 +122,7 @@ class UserPersistenceRSocketTests : ServiceTestBase() {
     @TestConfiguration
     class UserPersistenceTestConfiguration {
         @Controller
+        @MessageMapping("user")
         class TestPersistenceController<T>(up: UserPersistence<T>): PersistenceServiceController<T, User<T>>(up)
     }
 }
