@@ -1,4 +1,4 @@
-package com.demo.chat
+package com.demo.chat.deploy.app
 
 import com.demo.chat.codec.EmptyStringCodec
 import com.demo.chat.codec.JsonNodeAnyCodec
@@ -16,8 +16,8 @@ import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chatevents.service.TopicMessagingServiceMemory
-import com.demo.deploy.app.PersistenceClientFactory
-import com.demo.deploy.config.*
+import com.demo.chat.deploy.config.PersistenceClientFactory
+import com.demo.chat.deploy.config.*
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
@@ -36,7 +36,7 @@ import java.util.*
 // TODO Ssssoooooooo I dont know how to get our rsocket server
 // to register with Consul, so I'm sending a tag instead
 // using command line to drop in the port.
-@SpringBootApplication(excludeName = ["com.demo.deploy"])
+@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @EnableConfigurationProperties(CassandraProperties::class)
 @Import(PersistenceClientFactory::class)

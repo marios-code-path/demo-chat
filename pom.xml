@@ -29,9 +29,10 @@
         <module>chat-service-controller</module>
         <module>chat-service-cassandra</module>
         <module>chat-persistence-xstream</module>
-	<module>chat-service-rsocket</module>
-	<module>chat-deploy</module>
+        <module>chat-service-rsocket</module>
+        <module>chat-deploy</module>
     </modules>
+
     <repositories>
         <repository>
             <id>spring-snapshots</id>
@@ -72,6 +73,26 @@
         </pluginRepository>
     </pluginRepositories>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -83,5 +104,4 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
 </project>

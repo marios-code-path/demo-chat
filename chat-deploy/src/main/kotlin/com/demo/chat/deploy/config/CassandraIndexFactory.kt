@@ -1,4 +1,4 @@
-package com.demo.deploy.config
+package com.demo.chat.deploy.config
 
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.MembershipIndexService

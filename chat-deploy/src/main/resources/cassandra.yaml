@@ -6,4 +6,3 @@ spring:
       keyspacename: chat
       basePackages: com.demo.chat
       jmxReporting: false
-     

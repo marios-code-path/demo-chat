@@ -1,4 +1,4 @@
-package com.demo.deploy.config.initializers
+package com.demo.chat.deploy.config.initializers
 
 import com.datastax.driver.core.Cluster
 import org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration

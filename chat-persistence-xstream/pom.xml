@@ -69,6 +69,13 @@
 		<testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
 		<plugins>
 			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>
 				<artifactId>kotlin-maven-plugin</artifactId>
 				<configuration>
@@ -95,7 +102,6 @@
 						</goals>
 						<configuration>
 							<sourceDirs>
-								<source>src/main/java</source>
 								<source>src/main/kotlin</source>
 								<source>src/main/resources</source>
 							</sourceDirs>
@@ -109,7 +115,6 @@
 						</goals>
 						<configuration>
 							<sourceDirs>
-								<source>src/test/java</source>
 								<source>src/test/kotlin</source>
 								<source>src/test/resources</source>
 							</sourceDirs>
@@ -119,5 +124,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>

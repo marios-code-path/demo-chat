@@ -1,4 +1,4 @@
-package com.demo.deploy.config
+package com.demo.chat.deploy.config
 
 import com.demo.chat.codec.Codec
 import com.demo.chat.service.ChatTopicMessagingService

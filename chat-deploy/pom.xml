@@ -7,6 +7,7 @@
         <artifactId>chat-parent</artifactId>
         <version>0.0.1</version>
     </parent>
+
     <groupId>com.demo</groupId>
     <artifactId>chat-deploy</artifactId>
     <version>0.0.1</version>
@@ -95,10 +96,17 @@
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--                <configuration>-->
+<!--                    <mainClass>com.demo.chat.deploy.app.DeployItForLearning</mainClass>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -117,13 +125,34 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.deploy.app.DeployItForLearning</mainClass>
-                </configuration>
+                <executions>
+                    <execution>
+                        <id>compile</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <source>src/main/kotlin</source>
+                                <source>src/main/resources</source>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-compile</id>
+                        <phase>process-test-sources</phase>
+                        <goals>
+                            <goal>test-compile</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <source>src/test/kotlin</source>
+                                <source>src/test/resources</source>
+                            </sourceDirs>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <!-- PER Actuator docs -->
             <plugin>
@@ -141,50 +170,6 @@
                 <groupId>pl.project13.maven</groupId>
                 <artifactId>git-commit-id-plugin</artifactId>
             </plugin>
-            <!--            <plugin>-->
-            <!--                <groupId>org.apache.maven.plugins</groupId>-->
-            <!--                <artifactId>maven-jar-plugin</artifactId>-->
-            <!--                <configuration>-->
-            <!--                    <archive>-->
-            <!--                        <manifest>-->
-            <!--                            <addClasspath>true</addClasspath>-->
-            <!--                            <mainClass>com.demo.chat.</mainClass>-->
-            <!--                        </manifest>-->
-            <!--                    </archive>-->
-            <!--                </configuration>-->
-            <!--            </plugin>-->
         </plugins>
     </build>
-    <!--
-        <repositories>
-            <repository>
-                <msgId>spring-snapshots</msgId>
-                <name>Spring Snapshots</name>
-                <url>https://repo.spring.io/snapshot</url>
-                <snapshots>
-                    <enabled>true</enabled>
-                </snapshots>
-            </repository>
-            <repository>
-                <msgId>spring-milestones</msgId>
-                <name>Spring Milestones</name>
-                <url>https://repo.spring.io/milestone</url>
-            </repository>
-        </repositories>
-        <pluginRepositories>
-            <pluginRepository>
-                <msgId>spring-snapshots</msgId>
-                <name>Spring Snapshots</name>
-                <url>https://repo.spring.io/snapshot</url>
-                <snapshots>
-                    <enabled>true</enabled>
-                </snapshots>
-            </pluginRepository>
-            <pluginRepository>
-                <msgId>spring-milestones</msgId>
-                <name>Spring Milestones</name>
-                <url>https://repo.spring.io/milestone</url>
-            </pluginRepository>
-        </pluginRepositories>
-    -->
 </project>

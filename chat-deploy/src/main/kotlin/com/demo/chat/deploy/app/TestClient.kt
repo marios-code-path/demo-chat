@@ -1,4 +1,4 @@
-package com.demo.deploy.app
+package com.demo.chat.deploy.app
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
@@ -12,7 +12,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.PersistenceStore
-import com.demo.deploy.config.JacksonConfiguration
+import com.demo.chat.deploy.config.JacksonConfiguration
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.SpringBootConfiguration

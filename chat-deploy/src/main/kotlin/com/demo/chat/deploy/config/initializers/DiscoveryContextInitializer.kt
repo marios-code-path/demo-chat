@@ -1,4 +1,4 @@
-package com.demo.deploy.config.initializers
+package com.demo.chat.deploy.config.initializers
 
 import org.springframework.cloud.client.serviceregistry.ServiceRegistryAutoConfiguration
 import org.springframework.cloud.commons.util.InetUtils
@@ -43,5 +43,4 @@ class DiscoveryContextInitializer : ApplicationContextInitializer<GenericApplica
             ConsulHeartbeatAutoConfiguration()
         })
     }
-
 }

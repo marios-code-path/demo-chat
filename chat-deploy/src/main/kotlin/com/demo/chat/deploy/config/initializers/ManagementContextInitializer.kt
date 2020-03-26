@@ -1,4 +1,4 @@
-package com.demo.deploy.config.initializers
+package com.demo.chat.deploy.config.initializers
 
 import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration

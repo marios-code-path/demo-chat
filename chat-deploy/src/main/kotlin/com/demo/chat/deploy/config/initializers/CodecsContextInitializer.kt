@@ -1,4 +1,4 @@
-package com.demo.deploy.config.initializers
+package com.demo.chat.deploy.config.initializers
 
 import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.serializers.JacksonModules

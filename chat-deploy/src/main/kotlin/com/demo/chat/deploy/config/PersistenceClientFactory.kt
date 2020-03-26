@@ -1,4 +1,4 @@
-package com.demo.deploy.app
+package com.demo.chat.deploy.config
 
 import com.demo.chat.client.rsocket.*
 import com.demo.chat.domain.Message
@@ -15,7 +15,6 @@ import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Profile
 import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Mono
 import java.util.*

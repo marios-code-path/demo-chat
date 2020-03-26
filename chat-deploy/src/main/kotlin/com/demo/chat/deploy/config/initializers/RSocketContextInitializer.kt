@@ -1,4 +1,4 @@
-package com.demo.deploy.config.initializers
+package com.demo.chat.deploy.config.initializers
 
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration

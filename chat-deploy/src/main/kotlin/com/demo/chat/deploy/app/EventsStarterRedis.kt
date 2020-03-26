@@ -1,9 +1,9 @@
-package com.demo.deploy.app
+package com.demo.chat.deploy.app
 
  import com.demo.chat.service.ChatTopicMessagingService
 import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
 import com.demo.chatevents.config.ConfigurationRedisTemplate
-import com.demo.deploy.config.TopicMessagingConfigurationRedis
+import com.demo.chat.deploy.config.TopicMessagingConfigurationRedis
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
