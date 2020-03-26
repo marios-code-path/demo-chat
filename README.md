@@ -28,3 +28,17 @@ was the way to get there.
 
 There are several modules to the demo-chat application. Below is what I 
 imagined them to to.  What they actually do might not be complete.
+
+## chat-core
+
+## chat-events
+
+## chat-service-controller
+
+## chat-service-rsocket
+
+## chat-service-cassandra
+
+## chat-persistence-xstream
+
+## chat-deploy
