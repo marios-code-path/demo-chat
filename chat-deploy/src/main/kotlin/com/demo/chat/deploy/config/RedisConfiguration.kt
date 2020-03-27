@@ -32,7 +32,7 @@ open class ConnectionConfigurationRedis(private val props: ConfigurationProperti
 }
 
 class TopicMessagingConfigurationRedis(private val config: ConfigurationRedisTemplate) {
-    open fun topicMessagingRedisPubSub(): ChatTopicMessagingService<*, *> =
+    fun topicMessagingRedisPubSub(): ChatTopicMessagingService<*, *> =
             TopicMessagingServiceRedisPubSub(
                     KeyConfigurationPubSub("all_topics",
                             "st_topic_",

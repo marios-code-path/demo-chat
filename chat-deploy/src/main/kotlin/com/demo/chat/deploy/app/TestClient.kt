@@ -156,7 +156,7 @@ class ClientUserRun {
 class ClientKeyRun {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
     @Bean
-    fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient(
+    fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient("key.", 
             requester
                     .connectTcp("localhost", 6500)
                     .block()!!)

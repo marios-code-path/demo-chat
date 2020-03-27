@@ -9,10 +9,10 @@
 	</parent>
 	
 	<groupId>com.demo</groupId>
-	<artifactId>chat-service-cassandra</artifactId>
+	<artifactId>chat-persistence-cassandra</artifactId>
 	<version>0.0.1</version>
-	<name>chat-service-cassandra</name>
-	<description>Demo-Chat Reactive Cassandra Back-End</description>
+	<name>chat-persistence-cassandra</name>
+	<description>Demo-Chat Reactive Cassandra Persistence</description>
 
 	<properties>
 		<cassandraunit.version>3.5.0.1</cassandraunit.version>

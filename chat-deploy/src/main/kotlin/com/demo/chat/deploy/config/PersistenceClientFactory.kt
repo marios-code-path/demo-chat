@@ -45,7 +45,7 @@ class PersistenceClientFactory(val builder: RSocketRequester.Builder,
             .switchIfEmpty(Mono.error(AppDiscoveryException(servicePrefix)))
             .blockFirst()!!
 
-    fun <T> keyClient(): IKeyService<T> = KeyClient(requester("key"))
+    fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))
 
     fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("persistence"))
 

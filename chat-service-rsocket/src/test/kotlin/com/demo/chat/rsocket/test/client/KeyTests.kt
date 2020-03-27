@@ -27,13 +27,15 @@ class KeyTests : ServiceTestBase() {
     @MockBean
     private lateinit var keyService: IKeyService<UUID>
 
+    private val svcPrefix: String = "key."
+
     @Test
     fun `client should call persistence`() {
         BDDMockito
                 .given(keyService.exists(anyObject()))
                 .willReturn(Mono.just(true))
 
-        val client: IKeyService<UUID> = KeyClient(requestor)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requestor)
 
         StepVerifier
                 .create(client.exists(Key.funKey(UUID.randomUUID())))
@@ -51,7 +53,7 @@ class KeyTests : ServiceTestBase() {
                 .given(keyService.rem(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client: IKeyService<UUID> = KeyClient(requestor)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requestor)
 
         StepVerifier
                 .create(client.rem(Key.funKey(UUID.randomUUID())))
@@ -64,7 +66,7 @@ class KeyTests : ServiceTestBase() {
                 .given(keyService.key<Any>(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client: IKeyService<UUID> = KeyClient(requestor)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requestor)
 
         StepVerifier
                 .create(client.key(String::class.java))
