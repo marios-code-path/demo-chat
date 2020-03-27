@@ -25,7 +25,6 @@
 
     <modules>
         <module>chat-core</module>
-        <module>chat-events</module>
         <module>chat-service-controller</module>
         <module>chat-persistence-cassandra</module>
         <module>chat-persistence-xstream</module>
