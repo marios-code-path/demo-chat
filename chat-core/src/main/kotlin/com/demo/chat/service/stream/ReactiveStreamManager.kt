@@ -1,4 +1,4 @@
-package com.demo.chatevents.service
+package com.demo.chat.service.stream
 
 import com.demo.chat.domain.Message
 import org.slf4j.Logger
@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
     Hopefully this class contains use-case common to the distribution of a many to many stream
     relationship.
  */
-class TopicManager<T, E> {
+class ReactiveStreamManager<T, E> {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     // TODO seek the Disposable Swap, and Composite to manage the disposable
@@ -36,7 +36,7 @@ class TopicManager<T, E> {
                         consumerMap[consumer]
                     }
 
-    // This can leak sas downstream subscription activity can cause
+    // This can leak as downstream subscription activity can cause
     // this disposable to not call the dispose method ( and remove ) in this API.
     // Probably fix that by: making Flux operations commute termination to given
     // disposable.

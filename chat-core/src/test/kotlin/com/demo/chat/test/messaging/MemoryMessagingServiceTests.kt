@@ -1,10 +1,10 @@
-package com.demo.chatevents.tests
+package com.demo.chat.test.messaging
 
-import com.demo.chatevents.service.TopicMessagingServiceMemory
+import com.demo.chat.service.messaging.TopicMessagingServiceMemory
 import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks
 
-class MessageTopicMessagingServiceMemoryTests : MessageTopicMessagingServiceTestBase() {
+class MemoryMessagingServiceTests : MessagingServiceTestBase() {
     @BeforeEach
     fun setUp() {
         Hooks.onOperatorDebug()

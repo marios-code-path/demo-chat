@@ -1,4 +1,4 @@
-package com.demo.chatevents.config
+package com.demo.chat.config
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.serializers.MessageSerializerRedis

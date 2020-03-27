@@ -1,4 +1,4 @@
-package com.demo.chat.xstream
+package com.demo.chat.service.persistence.xstream
 
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
@@ -19,12 +19,12 @@ import java.util.Optional.ofNullable
 // from transmission.
 
 // TODO Cassandra datatype shaping has leaked into upstream application code!!!
-data class KeyConfiguration(
+data class KeyConfigurationXStream(
         val keyStreamKey: String,
         val keyUserStreamKey: String
 )
 
-class UserPersistenceXStream<T>(private val keyConfiguration: KeyConfiguration,
+class UserPersistenceXStream<T>(private val keyConfigurationXStream: KeyConfigurationXStream,
                                 private val keyService: IKeyService<T>,
                                 private val userTemplate: ReactiveRedisTemplate<String, User<T>>,
                                 private val recordCodec: Codec<MapRecord<String, String, String>, User<T>>,
@@ -32,7 +32,7 @@ class UserPersistenceXStream<T>(private val keyConfiguration: KeyConfiguration,
 ) : UserPersistence<T> {
     override fun all(): Flux<out User<T>> = userTemplate
             .opsForStream<String, String>()
-            .read(StreamOffset.fromStart(keyConfiguration.keyUserStreamKey))
+            .read(StreamOffset.fromStart(keyConfigurationXStream.keyUserStreamKey))
             .map { record ->
                 recordCodec.decode(record)
             }
@@ -40,7 +40,7 @@ class UserPersistenceXStream<T>(private val keyConfiguration: KeyConfiguration,
 
     override fun get(key: Key<T>): Mono<out User<T>> = userTemplate
             .opsForStream<String, String>()
-            .range(keyConfiguration.keyUserStreamKey,
+            .range(keyConfigurationXStream.keyUserStreamKey,
                     Range.just(keyRangeCodec.decode(key.id).first.toString()))
             .map { record ->
                 User.create(
@@ -58,7 +58,7 @@ class UserPersistenceXStream<T>(private val keyConfiguration: KeyConfiguration,
             userTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
-                            .create(keyConfiguration.keyUserStreamKey,
+                            .create(keyConfigurationXStream.keyUserStreamKey,
                                     ObjectMapper()
                                             .convertValue(ent, Map::class.java) as MutableMap<Any, Any>))
                     .then()

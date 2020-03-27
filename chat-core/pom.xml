@@ -8,9 +8,9 @@
 		<version>0.0.1</version>
 	</parent>
 	<groupId>com.demo</groupId>
-	<artifactId>chat-service</artifactId>
+	<artifactId>chat-core</artifactId>
 	<version>0.0.1</version>
-	<name>chat-service</name>
+	<name>chat-core</name>
 	<description>Interfaces for Chat Backends</description>
 
 	<dependencies>

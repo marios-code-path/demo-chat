@@ -1,9 +1,9 @@
-package com.demo.chatevents.tests
+package com.demo.chat.test.messaging
 
 import com.demo.chat.codec.Codec
+import com.demo.chat.service.messaging.KeyConfiguration
+import com.demo.chat.service.messaging.TopicMessagingServiceRedisStream
 import com.demo.chatevents.config.ConfigurationRedisTemplate
-import com.demo.chatevents.service.KeyConfiguration
-import com.demo.chatevents.service.TopicMessagingServiceRedisStream
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -15,7 +15,6 @@ import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import redis.embedded.RedisServer
-import java.io.File
 import java.util.*
 
 class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
@@ -31,7 +30,7 @@ class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServiceTestBase() {
+class RedisStreamMessagingTests : MessagingServiceTestBase() {
 
     private lateinit var redisServer: RedisServer
 
@@ -41,7 +40,8 @@ class MessageTopicMessagingServiceRedisStreamTests : MessageTopicMessagingServic
 
     @BeforeAll
     fun setUp() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedisCluster.port)
+        //redisServer = RedisServer(File("/usr/local/bin/redis-server"), com.demo.chatevents.tests.MessageTopicMessagingServiceTestBase.TestConfigurationPropertiesRedisCluster.port)
+        redisServer = RedisServer(TestConfigurationPropertiesRedisCluster.port)
 
         redisServer.start()
 

@@ -1,14 +1,12 @@
-package com.demo.chatevents.tests
+package com.demo.chat.test.messaging
 
 import com.demo.chat.codec.Codec
 import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.config.ConfigurationPropertiesRedisCluster
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
-import com.demo.chatevents.testRoomId
-import com.demo.chatevents.testUserId
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -43,10 +41,14 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
         return record.toString()
     }
 }
-
-open class MessageTopicMessagingServiceTestBase {
+open class MessagingServiceTestBase {
 
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
+
+    fun testRoomId(): UUID = UUID.fromString("ecb2cb88-5dd1-44c3-b818-301000000000")
+    fun testUserId(): UUID = UUID.fromString("ecb2cb88-5dd1-44c3-b818-133730000000")
+
+    fun randomText() = "Text ${Random().nextLong()}"
 
     object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedisCluster {
         override val port: Int = 6474
@@ -236,31 +238,5 @@ open class MessageTopicMessagingServiceTestBase {
                 .expectSubscription()
                 .expectComplete()
                 .verify(Duration.ofSeconds(1))
-//
-//        val uFlux = topicService
-//                .receiveOn(userId)
-//                .doOnNext { logger.info("GOT: ${it.key.dest}") }
-//
-//        StepVerifier
-//                .create(uFlux)
-//                .expectSubscription()
-//                .then {
-//                    Assertions
-//                            .assertThat(topicService.getProcessor(userId).downstreamCount())
-//                            .isGreaterThanOrEqualTo(1)
-//                }
-//
-//                .then {
-//                    StepVerifier
-//                            .create(Flux.merge(
-//                                    topicService.unSubscribe(userId, testRoom),
-//                                    topicService.rem(userId),
-//                                    topicService.rem(testRoom)
-//                            ))
-//                            .expectSubscription()
-//                            .verifyComplete()
-//                }
-//                .expectComplete()
-//                .verify(Duration.ofSeconds(3))
     }
 }

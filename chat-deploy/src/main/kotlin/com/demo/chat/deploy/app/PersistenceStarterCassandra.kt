@@ -15,7 +15,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
-import com.demo.chatevents.service.TopicMessagingServiceMemory
+import com.demo.chat.service.messaging.TopicMessagingServiceMemory
 import com.demo.chat.deploy.config.PersistenceClientFactory
 import com.demo.chat.deploy.config.*
 import org.slf4j.LoggerFactory
@@ -58,7 +58,7 @@ class ChatServiceCassandraApplication {
     fun keyServiceCassandra(t: ReactiveCassandraTemplate) =
             CassandraKeyServiceFactory(t, UUIDKeyGeneratorCassandra()).keyService()
 
-    @Profile("messaging")
+    @Profile("com.demo.chat.test.messaging")
     @Bean
     fun memoryMessaging(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory<UUID, String>()
 
@@ -155,9 +155,9 @@ class EdgeControllerTopicConfig(topicP: TopicPersistence<UUID>,
                                 membershipInd: MembershipIndexService<UUID>) :
         TopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyStringCodec())
 
-@Profile("ctrl-edge-messaging")
+@Profile("ctrl-edge-com.demo.chat.test.messaging")
 @Controller
-@MessageMapping("edge.messaging")
+@MessageMapping("edge.com.demo.chat.test.messaging")
 class EdgeControllerMessagingConfig(messageIdx: MessageIndexService<UUID, String>,
                                     msgPersist: MessagePersistence<UUID, String>,
                                     messaging: ChatTopicMessagingService<UUID, String>) :

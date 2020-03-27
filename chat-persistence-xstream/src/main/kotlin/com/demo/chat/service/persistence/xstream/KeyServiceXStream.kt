@@ -1,4 +1,4 @@
-package com.demo.chat.xstream
+package com.demo.chat.service.persistence.xstream
 
 import com.demo.chat.domain.Key
 import com.demo.chat.service.IKeyService
@@ -23,14 +23,14 @@ data class XStreamKey<T>(
  *
  * seperates id <-> interval to specific functions
  */
-class KeyServiceXStream<T>(private val keyConfiguration: KeyConfiguration,
+class KeyServiceXStream<T>(private val keyConfigurationXStream: KeyConfigurationXStream,
                            private val stringTemplate: ReactiveRedisTemplate<String, String>,
                            private val idTointervalPair: (T) -> Pair<Long, Long>,
                            private val intervalPairToId: (Pair<Long, Long>) -> T) : IKeyService<T> {
     override fun exists(key: Key<T>): Mono<Boolean> =
             stringTemplate
                     .opsForStream<String, String>()
-                    .range(keyConfiguration.keyStreamKey, Range.just(idTointervalPair(key.id).first.toString()))
+                    .range(keyConfigurationXStream.keyStreamKey, Range.just(idTointervalPair(key.id).first.toString()))
                     .singleOrEmpty()
                     .hasElement()
 
@@ -38,7 +38,7 @@ class KeyServiceXStream<T>(private val keyConfiguration: KeyConfiguration,
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
-                            .create(keyConfiguration.keyStreamKey, mapOf(Pair("kind", kind.simpleName), Pair("exists", true)))
+                            .create(keyConfigurationXStream.keyStreamKey, mapOf(Pair("kind", kind.simpleName), Pair("exists", true)))
                             .withId(RecordId.autoGenerate()))
                     .map {
                         val id: T = intervalPairToId(Pair(it.timestamp!!, it.sequence!!))
@@ -49,7 +49,7 @@ class KeyServiceXStream<T>(private val keyConfiguration: KeyConfiguration,
             stringTemplate
                     .opsForStream<String, String>()
                     .add(MapRecord
-                            .create(keyConfiguration.keyStreamKey,
+                            .create(keyConfigurationXStream.keyStreamKey,
                                     mapOf(Pair("keyId", "${idTointervalPair(key.id).first}-${idTointervalPair(key.id).second}"),
                                             Pair("exists", "false")))
                             .withId(RecordId.autoGenerate()))

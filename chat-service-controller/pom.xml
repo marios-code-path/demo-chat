@@ -16,7 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service</artifactId>
+            <artifactId>chat-core</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -26,7 +26,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-messaging</artifactId>
+            <artifactId>spring-com.demo.chat.test.messaging</artifactId>
             <version>5.2.1.RELEASE</version>
             <scope>compile</scope>
         </dependency>

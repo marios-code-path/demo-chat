@@ -31,11 +31,6 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-events</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-service-rsocket</artifactId>
             <version>0.0.1</version>
         </dependency>

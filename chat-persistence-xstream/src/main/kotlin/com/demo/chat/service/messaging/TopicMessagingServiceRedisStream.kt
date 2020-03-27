@@ -1,10 +1,11 @@
-package com.demo.chatevents.service
+package com.demo.chat.service.messaging
 
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.stream.ReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
@@ -41,7 +42,7 @@ class TopicMessagingServiceRedisStream<T, E>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamManager = TopicManager<T, E>()
+    private val streamManager = ReactiveStreamManager<T, E>()
     private val topicXReads: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)

@@ -1,8 +1,9 @@
-package com.demo.chatevents.service
+package com.demo.chat.service.messaging
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.stream.ReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
@@ -20,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  * For now, this service is restricted to single-node bound chat-rooms, no-persistence
  */
 class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
-    private val topicManager: TopicManager<T, V> = TopicManager()
+    private val reactiveStreamManager: ReactiveStreamManager<T, V> = ReactiveStreamManager()
 
     // map of <topic : [msgInbox]s>
     private val topicMembers: MutableMap<T, HashSet<T>> = mutableMapOf()
@@ -48,7 +49,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
     //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
     override fun receiveOn(topic: T): Flux<out Message<T, V>> =
-            topicManager
+            reactiveStreamManager
                     .getTopicFlux(topic)
 
     /**
@@ -59,9 +60,9 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
             topicXSource
                     .getOrPut(topic, {
                         val proc = ReplayProcessor.create<Message<T, V>>(1)
-                        topicManager.setTopicProcessor(topic, proc)
+                        reactiveStreamManager.setTopicProcessor(topic, proc)
 
-                        val reader = topicManager.getTopicFlux(topic)
+                        val reader = reactiveStreamManager.getTopicFlux(topic)
                         topicXSource[topic] = reader
 
                         reader
@@ -72,7 +73,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
 
         return topicExistsOrError(dest)
                 .map {
-                    topicManager
+                    reactiveStreamManager
                             .getTopicProcessor(dest)
                             .onNext(message)
                 }
@@ -85,7 +86,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
                     .map {
                         topicToMembers(topic).add(member)
                         memberToTopics(member).add(topic)
-                        topicManager.subscribeTopic(topic, member)
+                        reactiveStreamManager.subscribeTopic(topic, member)
                     }
                     .then()
 
@@ -93,7 +94,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
             .fromCallable {
                 topicToMembers(topic).remove(member)
                 memberToTopics(member).remove(topic)
-                topicManager
+                reactiveStreamManager
                         .quitTopic(topic, member)
             }.then()
 
@@ -115,7 +116,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
 
     override fun rem(id: T): Mono<Void> = Mono
             .fromCallable {
-                topicManager.closeTopic(id)
+                reactiveStreamManager.closeTopic(id)
             }.then()
 
     override fun getByUser(uid: T): Flux<T> = Flux.fromIterable(memberToTopics(uid))
