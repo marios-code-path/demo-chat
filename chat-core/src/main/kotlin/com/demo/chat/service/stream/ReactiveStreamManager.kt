@@ -13,25 +13,27 @@ import java.util.concurrent.ConcurrentHashMap
 /*
     Hopefully this class contains use-case common to the distribution of a many to many stream
     relationship.
+
+    i.e. each stream can subscribe to one or more other streams and vice-versa.
  */
 class ReactiveStreamManager<T, E> {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     // TODO seek the Disposable Swap, and Composite to manage the disposable
-    private val streamProcessors: MutableMap<T, FluxProcessor<Message<T, E>, Message<T, E>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, E>>> = ConcurrentHashMap()
+    private val sourceStreams: MutableMap<T, FluxProcessor<Message<T, E>, Message<T, E>>> = ConcurrentHashMap() //DirectProcessor<Message<TopicMessageKey, E>>> = ConcurrentHashMap()
 
-    private val streamFluxes: MutableMap<T, Flux<Message<T, E>>> = ConcurrentHashMap()
+    private val sinkStreams: MutableMap<T, Flux<Message<T, E>>> = ConcurrentHashMap()
 
-    private val streamConsumers: MutableMap<T, MutableMap<T, Disposable>> = ConcurrentHashMap()
+    private val consumersByTopicMap: MutableMap<T, MutableMap<T, Disposable>> = ConcurrentHashMap()
 
     // Does not replace existing stream! - call rem(T) then subscribeTopicProcessor
-    fun subscribeTopicProcessor(stream: T, source: Flux<out Message<T, E>>): Disposable =
+    fun subscribeUpstream(stream: T, source: Flux<out Message<T, E>>): Disposable =
             source.subscribe {
-                getTopicProcessor(stream).onNext(it)
+                getSource(stream).onNext(it)
             }
 
     private fun getMaybeConsumer(source: T, consumer: T): Optional<Disposable> =
-            Optional.of(getTopicConsumers(source))
+            Optional.of(getSinkConsumers(source))
                     .map { consumerMap ->
                         consumerMap[consumer]
                     }
@@ -42,51 +44,55 @@ class ReactiveStreamManager<T, E> {
     // disposable.
     //
     // Does not replace. Disconnect, then reconnect when needed
-    fun subscribeTopic(source: T, consumer: T) =
+    fun subscribe(source: T, consumer: T): Disposable =
             getMaybeConsumer(source, consumer)
                     .orElseGet {
-                        val disposable = subscribeTopicProcessor(consumer, getTopicFlux(source))
-                        getTopicConsumers(source)[consumer] = disposable
+                        val disposable = getSink(source).subscribe { msg ->
+                            getSource(consumer).onNext(msg)
+                        }
+                                //subscribeTopicProcessor(consumer, getSink(source))
+                        getSinkConsumers(source)[consumer] = disposable
 
                         disposable
                     }
 
-    fun quitTopic(source: T, consumer: T) {
+    fun unsubscribe(source: T, consumer: T) {
         getMaybeConsumer(source, consumer)
                 .ifPresent { disposable ->
                     disposable.dispose()
-                    getTopicConsumers(source).remove(consumer)
+                    getSinkConsumers(source).remove(consumer)
                 }
     }
 
-    fun closeTopic(stream: T) {
-        if (streamProcessors.containsKey(stream)) {
-            streamProcessors[stream]?.onComplete()
-            streamProcessors.remove(stream)
-            streamFluxes.remove(stream)
+    fun close(stream: T) {
+        if (sourceStreams.containsKey(stream)) {
+            sourceStreams[stream]?.onComplete()
+            sourceStreams.remove(stream)
+            sinkStreams.remove(stream)
+            // all disposables should onDestruct once source.onComplete() finishes.
         }
     }
 
-    private fun getTopicConsumers(stream: T): MutableMap<T, Disposable> =
-            streamConsumers
+    private fun getSinkConsumers(stream: T): MutableMap<T, Disposable> =
+            consumersByTopicMap
                     .getOrPut(stream) {
                         ConcurrentHashMap()
                     }
 
-    fun setTopicProcessor(stream: T, proc: FluxProcessor<Message<T, E>, Message<T, E>>) =
-            streamProcessors.put(stream, proc)
+    fun setSource(stream: T, proc: FluxProcessor<Message<T, E>, Message<T, E>>) =
+            sourceStreams.put(stream, proc)
 
-    fun getTopicFlux(stream: T): Flux<Message<T, E>> =
-            streamFluxes
+    fun getSink(stream: T): Flux<Message<T, E>> =
+            sinkStreams
                     .getOrPut(stream) {
-                        getTopicProcessor(stream)
+                        getSource(stream)
                                 .onBackpressureBuffer()
                                 .publish()
                                 .autoConnect()
                     }
 
-    fun getTopicProcessor(stream: T): FluxProcessor<Message<T, E>, Message<T, E>> =
-            streamProcessors
+    fun getSource(stream: T): FluxProcessor<Message<T, E>, Message<T, E>> =
+            sourceStreams
                     .getOrPut(stream) {
                         val processor = DirectProcessor.create<Message<T, E>>()
 

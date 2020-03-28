@@ -1,8 +1,8 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.messaging.KeyConfigurationPubSub
 import com.demo.chat.service.messaging.TopicMessagingServiceRedisPubSub
-import com.demo.chatevents.config.ConfigurationRedisTemplate
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -13,6 +13,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import redis.embedded.RedisServer
+import java.io.File
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -22,19 +23,19 @@ class RedisPubSubMessagingTests : MessagingServiceTestBase() {
 
     private lateinit var lettuce: LettuceConnectionFactory
 
-    private lateinit var redisTemplateServiceConfigRedisTemplate: ConfigurationRedisTemplate
+    private lateinit var redisTemplateServiceConfigRedisTemplate: RedisTemplateConfiguration
 
     @BeforeAll
     fun setUp() {
-        //redisServer = RedisServer(File("/usr/local/bin/redis-server"), com.demo.chatevents.tests.MessageTopicMessagingServiceTestBase.TestConfigurationPropertiesRedisCluster.port)
-        redisServer = RedisServer(TestConfigurationPropertiesRedisCluster.port)
+        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedisCluster.port)
+        //redisServer = RedisServer(TestConfigurationPropertiesRedisCluster.port)
         redisServer.start()
 
         lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedisCluster.host, TestConfigurationPropertiesRedisCluster.port))
 
         lettuce.afterPropertiesSet()
 
-        redisTemplateServiceConfigRedisTemplate = ConfigurationRedisTemplate(lettuce, mapper)
+        redisTemplateServiceConfigRedisTemplate = RedisTemplateConfiguration(lettuce, mapper)
 
         topicService = TopicMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",

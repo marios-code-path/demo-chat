@@ -2,7 +2,7 @@ package com.demo.chat.test.messaging
 
 import com.demo.chat.codec.Codec
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.config.ConfigurationPropertiesRedisCluster
+import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
@@ -50,7 +50,7 @@ open class MessagingServiceTestBase {
 
     fun randomText() = "Text ${Random().nextLong()}"
 
-    object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedisCluster {
+    object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedis {
         override val port: Int = 6474
         override val host: String = "127.0.0.1"
     }

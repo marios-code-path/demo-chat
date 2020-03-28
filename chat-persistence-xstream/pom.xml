@@ -12,7 +12,7 @@
 	<artifactId>chat-persistence-xstream</artifactId>
 	<version>0.0.1</version>
 	<name>chat-persistence-xstream</name>
-	<description>Redis stream persistence back-end</description>
+	<description>Redis and Redis-Stream persistence back-end</description>
 
 	<dependencies>
 		<dependency>

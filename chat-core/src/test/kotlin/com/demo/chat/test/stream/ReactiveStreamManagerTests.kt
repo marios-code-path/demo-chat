@@ -24,10 +24,10 @@ class ReactiveStreamManagerTests {
     fun `should create a stream and flux`() {
         val streamId = UUID.randomUUID()
 
-        streamMan.getTopicProcessor(streamId)
+        streamMan.getSource(streamId)
 
         Assertions
-                .assertThat(streamMan.getTopicFlux(streamId))
+                .assertThat(streamMan.getSink(streamId))
                 .isNotNull
     }
 
@@ -35,7 +35,7 @@ class ReactiveStreamManagerTests {
     fun `should subscribe to a stream`() {
         val streamId = UUID.randomUUID()
 
-        val subscriber = streamMan.subscribeTopicProcessor(streamId, Flux.empty())
+        val subscriber = streamMan.subscribeUpstream(streamId, Flux.empty())
 
         Assertions
                 .assertThat(subscriber)
@@ -51,9 +51,9 @@ class ReactiveStreamManagerTests {
                                 "TEST", true))
 
         StepVerifier
-                .create(streamMan.getTopicFlux(streamId))
+                .create(streamMan.getSink(streamId))
                 .then {
-                    streamMan.subscribeTopicProcessor(streamId, dataSource)
+                    streamMan.subscribeUpstream(streamId, dataSource)
                 }
                 .assertNext {
                     Assertions
@@ -62,7 +62,7 @@ class ReactiveStreamManagerTests {
                             .isNotNull()
                 }
                 .then {
-                    streamMan.closeTopic(streamId)
+                    streamMan.close(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2))
@@ -73,7 +73,7 @@ class ReactiveStreamManagerTests {
         val streamId = UUID.randomUUID()
         val consumerId = UUID.randomUUID()
 
-        val disposable = streamMan.subscribeTopic(streamId, consumerId)
+        val disposable = streamMan.subscribe(streamId, consumerId)
 
         Assertions
                 .assertThat(disposable)
@@ -88,10 +88,10 @@ class ReactiveStreamManagerTests {
         val consumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(streamMan.getTopicFlux(consumerId))
+                .create(streamMan.getSink(consumerId))
                 .then {
-                    streamMan.subscribeTopic(streamId, consumerId)
-                    streamMan.getTopicProcessor(streamId)
+                    streamMan.subscribe(streamId, consumerId)
+                    streamMan.getSource(streamId)
                             .onNext(Message.create(
                                     MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
@@ -104,8 +104,8 @@ class ReactiveStreamManagerTests {
                             .isNotNull()
                 }
                 .then {
-                    streamMan.closeTopic(consumerId)
-                    streamMan.closeTopic(streamId)
+                    streamMan.close(consumerId)
+                    streamMan.close(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))
@@ -118,11 +118,11 @@ class ReactiveStreamManagerTests {
         val otherConsumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(Flux.merge(streamMan.getTopicFlux(consumerId), streamMan.getTopicFlux(otherConsumerId)))
+                .create(Flux.merge(streamMan.getSink(consumerId), streamMan.getSink(otherConsumerId)))
                 .then {
-                    streamMan.subscribeTopic(streamId, consumerId)
-                    streamMan.subscribeTopic(streamId, otherConsumerId)
-                    streamMan.getTopicProcessor(streamId)
+                    streamMan.subscribe(streamId, consumerId)
+                    streamMan.subscribe(streamId, otherConsumerId)
+                    streamMan.getSource(streamId)
                             .onNext(Message.create(
                                     MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
@@ -130,9 +130,9 @@ class ReactiveStreamManagerTests {
                 }
                 .expectNextCount(2)
                 .then {
-                    streamMan.closeTopic(otherConsumerId)
-                    streamMan.closeTopic(consumerId)
-                    streamMan.closeTopic(streamId)
+                    streamMan.close(otherConsumerId)
+                    streamMan.close(consumerId)
+                    streamMan.close(streamId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))
@@ -145,11 +145,11 @@ class ReactiveStreamManagerTests {
         val otherConsumerId = UUID.randomUUID()
 
         StepVerifier
-                .create(Flux.merge(streamMan.getTopicFlux(consumerId), streamMan.getTopicFlux(otherConsumerId)))
+                .create(Flux.merge(streamMan.getSink(consumerId), streamMan.getSink(otherConsumerId)))
                 .then {
-                    streamMan.subscribeTopic(streamId, consumerId)
-                    streamMan.subscribeTopic(streamId, otherConsumerId)
-                    streamMan.getTopicProcessor(streamId)
+                    streamMan.subscribe(streamId, consumerId)
+                    streamMan.subscribe(streamId, otherConsumerId)
+                    streamMan.getSource(streamId)
                             .onNext(Message.create(
                                     MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
@@ -157,8 +157,8 @@ class ReactiveStreamManagerTests {
                 }
                 .expectNextCount(2)
                 .then {
-                    streamMan.closeTopic(consumerId)
-                    streamMan.getTopicProcessor(streamId)
+                    streamMan.close(consumerId)
+                    streamMan.getSource(streamId)
                             .onNext(Message.create(
                                     MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), streamId),
                                     "TEST",
@@ -166,7 +166,7 @@ class ReactiveStreamManagerTests {
                 }
                 .expectNextCount(1)
                 .then {
-                    streamMan.closeTopic(otherConsumerId)
+                    streamMan.close(otherConsumerId)
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(2L))

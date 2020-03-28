@@ -11,12 +11,12 @@ import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.RedisSerializer
 import org.springframework.data.redis.serializer.StringRedisSerializer
 
-interface ConfigurationPropertiesRedisCluster {
+interface ConfigurationPropertiesRedis {
     val host: String
     val port: Int
 }
 
-class ConfigurationRedisTemplate(private val connectionFactory: ReactiveRedisConnectionFactory,
+class RedisTemplateConfiguration(private val connectionFactory: ReactiveRedisConnectionFactory,
                                  private val objectMapper: ObjectMapper) {
     fun stringTemplate(): ReactiveStringRedisTemplate = ReactiveStringRedisTemplate(connectionFactory)
 

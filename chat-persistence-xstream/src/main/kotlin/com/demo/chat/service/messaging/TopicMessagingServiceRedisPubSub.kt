@@ -33,13 +33,14 @@ class TopicMessagingServiceRedisPubSub<T, E>(
         private val keyStringEncoder: Codec<T, String>
 ) : ChatTopicMessagingService<T, E> {
 
+    private val replayDepth = 50
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
     private val prefixTopicToUserSubs = keyConfig.prefixTopicToUserSubs
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
-    private val topicManager = ReactiveStreamManager<T, E>()
+    private val streamMgr = ReactiveStreamManager<T, E>()
     private val topicXSource: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
@@ -59,7 +60,7 @@ class TopicMessagingServiceRedisPubSub<T, E>(
                     .opsForSet()
                     .add(topicSetKey, id.toString())
                     .thenEmpty {
-                        receiveSourcedEvents(id)
+                        sourceOf(id)
                         it.onComplete()
                     }
 
@@ -87,7 +88,7 @@ class TopicMessagingServiceRedisPubSub<T, E>(
                             }
             )
             .thenEmpty {
-                topicManager.subscribeTopic(topic, member)
+                streamMgr.subscribe(topic, member)
                 it.onComplete()
             }
 
@@ -116,8 +117,8 @@ class TopicMessagingServiceRedisPubSub<T, E>(
                                     }
                     )
                     .thenEmpty {
-                        topicManager
-                                .quitTopic(topic, member)
+                        streamMgr
+                                .unsubscribe(topic, member)
                         it.onComplete()
                     }
 
@@ -160,16 +161,16 @@ class TopicMessagingServiceRedisPubSub<T, E>(
     }
 
     override fun receiveOn(topic: T): Flux<out Message<T, E>> =
-            topicManager.getTopicFlux(topic)
+            streamMgr.getSink(topic)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun receiveSourcedEvents(topic: T): Flux<out Message<T, E>> =
+    override fun sourceOf(topic: T): Flux<out Message<T, E>> =
             topicXSource.getOrPut(topic, {
                 val listen = getPubSubFluxFor(topic)
-                val processor = ReplayProcessor.create<Message<T, E>>(5)
-                topicManager.setTopicProcessor(topic, processor)
-                topicManager.subscribeTopicProcessor(topic, listen)
+                val processor = ReplayProcessor.create<Message<T, E>>(replayDepth)
+                streamMgr.setSource(topic, processor)
+                streamMgr.subscribeUpstream(topic, listen)
 
                 listen
             })
@@ -204,8 +205,8 @@ class TopicMessagingServiceRedisPubSub<T, E>(
             .del(ByteBuffer
                     .wrap((prefixTopicKey + id.toString()).toByteArray(Charset.defaultCharset())))
             .doOnNext {
-                topicManager
-                        .closeTopic(id)
+                streamMgr
+                        .close(id)
             }.then()
 
     private fun getPubSubFluxFor(topic: T): Flux<out Message<T, E>> =

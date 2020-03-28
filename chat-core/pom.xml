@@ -11,7 +11,7 @@
 	<artifactId>chat-core</artifactId>
 	<version>0.0.1</version>
 	<name>chat-core</name>
-	<description>Interfaces for Chat Backends</description>
+	<description>Core Data and Services</description>
 
 	<dependencies>
 		<dependency>
@@ -56,8 +56,10 @@
 			<artifactId>jackson-datatype-jsr310</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>io.rsocket</groupId>
-			<artifactId>rsocket-core</artifactId>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-core</artifactId>
+			<version>3.3.0.RELEASE</version>
+			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

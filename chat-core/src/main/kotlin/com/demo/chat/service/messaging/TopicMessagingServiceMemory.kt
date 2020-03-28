@@ -13,15 +13,12 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  *
- * A topic is a list of members which will receive messages sent to it.
- * A member is a subscriber to a topic.
- * This service handles the behaviour of topic distribution without using an external
- * resource such as Redis, Kafka, Rabbit, etc...
+ * This service handles the behaviour of message distribution, all in memory.
  *
- * For now, this service is restricted to single-node bound chat-rooms, no-persistence
+ * For now, it is bound to single node, no-persistence or multi-node fan-out
  */
 class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
-    private val reactiveStreamManager: ReactiveStreamManager<T, V> = ReactiveStreamManager()
+    private val streamMgr: ReactiveStreamManager<T, V> = ReactiveStreamManager()
 
     // map of <topic : [msgInbox]s>
     private val topicMembers: MutableMap<T, HashSet<T>> = mutableMapOf()
@@ -29,12 +26,12 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
     // map of <msgInbox : [topic]s>
     private val memberTopics: MutableMap<T, HashSet<T>> = mutableMapOf()
 
-    private val topicXSource: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
+    private val sinkByTopic: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
 
     override fun add(id: T): Mono<Void> = Mono
             .fromCallable {
                 topicToMembers(id)
-                receiveSourcedEvents(id)
+                sourceOf(id)
             }
             .then()
 
@@ -44,26 +41,26 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
                     .switchIfEmpty(Mono.error(TopicNotFoundException))
 
     override fun exists(topic: T): Mono<Boolean> = Mono
-            .fromCallable { topicXSource.containsKey(topic) }
+            .fromCallable { sinkByTopic.containsKey(topic) }
 
     //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
     override fun receiveOn(topic: T): Flux<out Message<T, V>> =
-            reactiveStreamManager
-                    .getTopicFlux(topic)
+            streamMgr
+                    .getSink(topic)
 
     /**
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    override fun receiveSourcedEvents(topic: T): Flux<out Message<T, V>> =
-            topicXSource
+    override fun sourceOf(topic: T): Flux<out Message<T, V>> =
+            sinkByTopic
                     .getOrPut(topic, {
                         val proc = ReplayProcessor.create<Message<T, V>>(1)
-                        reactiveStreamManager.setTopicProcessor(topic, proc)
+                        streamMgr.setSource(topic, proc)
 
-                        val reader = reactiveStreamManager.getTopicFlux(topic)
-                        topicXSource[topic] = reader
+                        val reader = streamMgr.getSink(topic)
+                        sinkByTopic[topic] = reader
 
                         reader
                     })
@@ -73,8 +70,8 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
 
         return topicExistsOrError(dest)
                 .map {
-                    reactiveStreamManager
-                            .getTopicProcessor(dest)
+                    streamMgr
+                            .getSource(dest)
                             .onNext(message)
                 }
                 .switchIfEmpty(Mono.error(TopicNotFoundException))
@@ -86,7 +83,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
                     .map {
                         topicToMembers(topic).add(member)
                         memberToTopics(member).add(topic)
-                        reactiveStreamManager.subscribeTopic(topic, member)
+                        streamMgr.subscribe(topic, member)
                     }
                     .then()
 
@@ -94,8 +91,8 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
             .fromCallable {
                 topicToMembers(topic).remove(member)
                 memberToTopics(member).remove(topic)
-                reactiveStreamManager
-                        .quitTopic(topic, member)
+                streamMgr
+                        .unsubscribe(topic, member)
             }.then()
 
     override fun unSubscribeAll(member: T): Mono<Void> =
@@ -116,7 +113,7 @@ class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
 
     override fun rem(id: T): Mono<Void> = Mono
             .fromCallable {
-                reactiveStreamManager.closeTopic(id)
+                streamMgr.close(id)
             }.then()
 
     override fun getByUser(uid: T): Flux<T> = Flux.fromIterable(memberToTopics(uid))

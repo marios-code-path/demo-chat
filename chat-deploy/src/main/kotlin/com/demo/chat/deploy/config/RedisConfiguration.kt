@@ -1,11 +1,11 @@
 package com.demo.chat.deploy.config
 
 import com.demo.chat.codec.Codec
+import com.demo.chat.config.ConfigurationPropertiesRedis
+import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chatevents.config.ConfigurationPropertiesRedisCluster
-import com.demo.chatevents.config.ConfigurationRedisTemplate
-import com.demo.chatevents.service.KeyConfigurationPubSub
-import com.demo.chatevents.service.TopicMessagingServiceRedisPubSub
+import com.demo.chat.service.messaging.KeyConfigurationPubSub
+import com.demo.chat.service.messaging.TopicMessagingServiceRedisPubSub
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
@@ -25,13 +25,13 @@ class UUIDStringDecoder : Codec<UUID, String> {
 }
 
 // TODO derive redis connection propes from standard spring.redis properties (LettuceConnectionConfiguration)
-open class ConnectionConfigurationRedis(private val props: ConfigurationPropertiesRedisCluster) {
+open class ConnectionConfigurationRedis(private val props: ConfigurationPropertiesRedis) {
     @Bean
     open fun redisConnection(): ReactiveRedisConnectionFactory =
             LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 }
 
-class TopicMessagingConfigurationRedis(private val config: ConfigurationRedisTemplate) {
+class TopicMessagingConfigurationRedis(private val config: RedisTemplateConfiguration) {
     fun topicMessagingRedisPubSub(): ChatTopicMessagingService<*, *> =
             TopicMessagingServiceRedisPubSub(
                     KeyConfigurationPubSub("all_topics",
