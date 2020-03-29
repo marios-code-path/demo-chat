@@ -44,12 +44,13 @@ class RedisStreamMessagingTests : MessagingServiceTestBase() {
 
     @BeforeAll
     fun setUp() {
-//        try {
-//            redisServer = RedisServer(File(redisPath), TestConfigurationPropertiesRedisCluster.port)
-//            redisServer.start()
-//        } catch (e: Throwable){
-//            logger.error("Redis Service failed with: ${e.message}")
-//        }
+        try {
+            logger.debug("Starting a Redis Server ${redisPath} on ${TestConfigurationPropertiesRedisCluster.port}")
+            redisServer = RedisServer(File(redisPath), TestConfigurationPropertiesRedisCluster.port)
+            redisServer.start()
+        } catch (e: Throwable){
+            logger.error("Redis Service failed with: ${e.message}")
+        }
 
         lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedisCluster.host, TestConfigurationPropertiesRedisCluster.port))
 

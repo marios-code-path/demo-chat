@@ -33,7 +33,10 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @CassandraUnit()
-@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
+@TestExecutionListeners(
+        listeners = [CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class],
+        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS
+)
 @CassandraDataSet("simple-user.cql")
 class ChatUserRepositoryTests {
     @Autowired

@@ -31,6 +31,7 @@ class RedisPubSubMessagingTests : MessagingServiceTestBase() {
     @BeforeAll
     fun setUp() {
         try {
+            logger.debug("Starting a Redis Server ${redisPath} on ${TestConfigurationPropertiesRedisCluster.port}")
             redisServer = RedisServer(File(redisPath), TestConfigurationPropertiesRedisCluster.port)
             redisServer.start()
         } catch (e: Throwable){
