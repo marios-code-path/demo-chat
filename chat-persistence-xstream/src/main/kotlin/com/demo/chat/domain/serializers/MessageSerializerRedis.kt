@@ -16,5 +16,4 @@ class MessageSerializerRedis<T>(private val om: ObjectMapper) : RedisSerializer<
 
         return om.readValue<Message<T, String>>(bytes)
     }
-
 }

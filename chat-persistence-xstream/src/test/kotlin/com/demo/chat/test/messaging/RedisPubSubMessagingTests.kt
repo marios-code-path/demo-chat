@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
+import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -18,6 +19,7 @@ import java.io.File
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RedisPubSubMessagingTests : MessagingServiceTestBase() {
+    private val logger = LoggerFactory.getLogger(this::class.qualifiedName)
 
     private lateinit var redisServer: RedisServer
 
@@ -25,11 +27,15 @@ class RedisPubSubMessagingTests : MessagingServiceTestBase() {
 
     private lateinit var redisTemplateServiceConfigRedisTemplate: RedisTemplateConfiguration
 
+
     @BeforeAll
     fun setUp() {
-        redisServer = RedisServer(File("/usr/local/bin/redis-server"), TestConfigurationPropertiesRedisCluster.port)
-        //redisServer = RedisServer(TestConfigurationPropertiesRedisCluster.port)
-        redisServer.start()
+        try {
+            redisServer = RedisServer(File(redisPath), TestConfigurationPropertiesRedisCluster.port)
+            redisServer.start()
+        } catch (e: Throwable){
+            logger.error("Redis Service failed with: ${e.message} of ${redisPath} on ${TestConfigurationPropertiesRedisCluster.port}")
+        }
 
         lettuce = LettuceConnectionFactory(RedisStandaloneConfiguration(TestConfigurationPropertiesRedisCluster.host, TestConfigurationPropertiesRedisCluster.port))
 
@@ -59,5 +65,8 @@ class RedisPubSubMessagingTests : MessagingServiceTestBase() {
     }
 
     @AfterAll
-    fun tearDown() = redisServer.stop()
+    fun tearDown() {
+        if (redisServer.isActive)
+            redisServer.stop()
+    }
 }

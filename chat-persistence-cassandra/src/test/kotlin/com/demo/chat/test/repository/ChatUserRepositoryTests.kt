@@ -32,7 +32,7 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
-@CassandraUnit
+@CassandraUnit()
 @TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 @CassandraDataSet("simple-user.cql")
 class ChatUserRepositoryTests {
@@ -207,7 +207,6 @@ class ChatUserRepositoryTests {
                         ))
     }
 
-
     // helper function to verify user state
     fun userStateAssertions(user: User<UUID>, handle: String?, name: String?) {
         assertAll("User Assertion",
@@ -218,6 +217,4 @@ class ChatUserRepositoryTests {
                 { Assertions.assertEquals(name, user.name) }
         )
     }
-
-
 }

@@ -43,11 +43,8 @@ class KeyServiceTests {
 
     lateinit var svc: IKeyService<UUID>
 
-    private val handle = "darkbit"
-
     @BeforeEach
     fun setUp() {
-        logger.info("Setup persistence cassandra")
         this.svc = KeyServiceCassandra(template, TestUUIDKeyGeneratorCassandra())
     }
 

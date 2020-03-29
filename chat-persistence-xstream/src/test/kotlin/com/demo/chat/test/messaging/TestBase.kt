@@ -45,14 +45,14 @@ open class MessagingServiceTestBase {
 
     lateinit var topicService: ChatTopicMessagingService<UUID, String>
 
+    val redisPath = System.getenv("REDIS_TEST_PATH") ?: "/usr/local/bin/redis-server"
+
     fun testRoomId(): UUID = UUID.fromString("ecb2cb88-5dd1-44c3-b818-301000000000")
     fun testUserId(): UUID = UUID.fromString("ecb2cb88-5dd1-44c3-b818-133730000000")
 
-    fun randomText() = "Text ${Random().nextLong()}"
-
     object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedis {
-        override val port: Int = 6474
-        override val host: String = "127.0.0.1"
+        override val port: Int = (System.getenv("REDIS_TEST_PORT") ?: "58088").toInt()
+        override val host: String = System.getenv("REDIS_TEST_HOST") ?: "127.0.0.1"
     }
 
     val mapper: ObjectMapper =

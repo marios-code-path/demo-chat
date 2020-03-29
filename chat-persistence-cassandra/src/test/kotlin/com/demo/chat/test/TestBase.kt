@@ -6,8 +6,6 @@ import org.mockito.Mockito
 import reactor.core.publisher.Mono
 import java.util.*
 
-object TestBase
-
 object TestKeyService : IKeyService<UUID> {
     override fun exists(key: Key<UUID>): Mono<Boolean> = Mono.just(true)
 

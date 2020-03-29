@@ -28,8 +28,7 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
     private val log: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
-        log.error("This is a simple initialize method")
-        applicationContext.environment.setActiveProfiles("cassandra-persistence")
+
     }
 
     @Bean

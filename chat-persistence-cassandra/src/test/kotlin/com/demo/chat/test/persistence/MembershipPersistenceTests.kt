@@ -25,7 +25,7 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
-class TopicMembershipPersistenceTests {
+class MembershipPersistenceTests {
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     @MockBean

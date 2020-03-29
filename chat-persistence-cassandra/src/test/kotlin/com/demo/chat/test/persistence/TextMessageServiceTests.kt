@@ -39,6 +39,7 @@ class TextMessageServiceTests {
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private val MSGTEXT = "SUP TEST"
+
     lateinit var msgSvc: MessagePersistenceCassandra<UUID>
 
     @MockBean

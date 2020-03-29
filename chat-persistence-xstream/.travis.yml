@@ -1,3 +1,6 @@
 language: java
 services:
   - redis-server
+before_script:
+  - sudo redis-server /etc/redis/redis.conf --port 6379 --requirepass 'secret'
+  - export REDIS_TEST_PATH=`which redis-server`
