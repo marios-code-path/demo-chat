@@ -21,6 +21,7 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.3.70</kotlin.version>
         <spring-cloud.version>Hoxton.RC1</spring-cloud.version>
+        <io-reactor.version>3.3.0.RELEASE</io-reactor.version>
     </properties>
 
     <modules>

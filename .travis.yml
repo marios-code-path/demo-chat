@@ -1,1 +1,6 @@
 language: java
+jdk: oraclejdk8
+services:
+  - redis-server
+before_script:
+  - export REDIS_TEST_PATH=`which redis-server`
