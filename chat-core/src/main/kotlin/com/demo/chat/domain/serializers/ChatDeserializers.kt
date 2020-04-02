@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
 
-// Just De-serializer Doodles here...
 // TODO for Deserializers - This must not be the final version
 class KeyDeserializer<T>(val codec: Codec<JsonNode, T>) : JsonDeserializer<Key<T>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
@@ -25,7 +24,6 @@ class KeyDeserializer<T>(val codec: Codec<JsonNode, T>) : JsonDeserializer<Key<T
             else
                 MessageKey.create(codec.decode(idNode), codec.decode(destNode))
         }
-
         return Key.funKey(codec.decode(idNode))
     }
 }

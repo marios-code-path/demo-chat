@@ -11,7 +11,9 @@ interface Codec<F, E> {
     fun decode(record: F): E
 }
 
-// TODO IN PRODUCTION: We are getting Base64-encoded?!?!?
+// TODO IN PRODUCTION: Hrmmm.. CBOR configuration needs to be careful -
+// TODO CBOR encoded messages in a json body is what we are attempting
+// TODO to alleviate.
 object JsonNodeAnyCodec : Codec<JsonNode, Any> {
     override fun decode(record: JsonNode): Any {
         return when (record.nodeType) {

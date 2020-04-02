@@ -1,44 +1,72 @@
-# demo-chat
+# About Demo Chat (Adventures in Cyber Space)
 
-This application is a journey from dev to test to production.
-In it, there is a core of components that make the inner
-architecture for Persistence, Indexing and Messaging. From there 
-we branch out into Controllers, Service Config, Cloud Discovery.
+This Application features a compliment of microservice-y components written mostly in Kotlin, using
+Spring Boot. This project attempts to distill tenets of 12-Factor, TDD and iterative deployment. I want
+to make it known how simple an approach can be had using existing application services on top of
+Spring Boot 2 and Kotlin. 
 
-Finally, we will deploy this thing to a cloud Provider. But
-Currently w
-## But Why?
+This means the examples are quite more detailed but do teach a lot about the underpinnings of the Spring Di,
+Spring Repositories, Spring Service composition and Kotlin interrelation among other things.
 
-There are already quite a few demonstration apps that teach
-us how to do things from developing a simple web server in SpringMVC
-to deploying a reactive message broker client with metrics. What, however
-I always find is that much like the Internet itself, most of the information
-in these examples are in simplified form. 
- 
-What I planned to do with demo-chat is to expand on the simplification in 
-typical demos, and bring out more detail to the developer looking for a means
-to escape 'cargo culting'. This means the examples are quite more detailed
-but do teach a lot about the underpinnings of the Spring Di, Spring Repositories, 
- Spring Service composition and Kotlin's type system among other things.
-
-Also, I really wanted to develop a multi-user experience. A 'chat' program
-was the way to get there.
+Also, I really like communication systems and had the opportunity to develop a multi-user experience that can
+be deployed on a whim, used and be educational at the same time. How we get there is what this demo is about.
 
 # The modules, What are these modules?
 
-There are several modules to the demo-chat application. Below is what I 
-imagined them to to.  What they actually do might not be complete.
+Each module should eventually get it's own README.md, for now here are brief descriptions of each.
 
 ## chat-core
 
-## chat-events
+This module composes most of the underlying object and server-scape for the rest of the
+modules to include. The idea is to provide the underlying foundation to implement domain services and entry-points
+that give rise to a chat application. This module currently has the responsibility to convey:
+
+* Domain Super-Types
+* Domain-Service Composition
+* Super-Type Serialization
+* Super-Type CODECs (or anything CODECy)
+* Tests for the above
+* Base Tests for downstream consumers (??)  
+
+Technically, the chat-core defines 4 service strategies:
+
+* Persistence - store entity V given key T
+* Index - index entity V given key T, with Query Q  
+* Key - generate and store key of type T
+* Messaging - exchange entities of V in a topic T
+
+Additionally, we have coupled compositions for security:
+
+* Authorization - persistence operations for authorization data
+* Password - persistence operations for password data
 
 ## chat-service-controller
 
+A more simple module whose objective is to turn any of the chat-core domain-services into REST/etc controllers. 
+
+Additionally, this module provides an 'edge' package which specifies chat-specific operations that defines
+the chat application as seen by an end user (at the edge).
+
 ## chat-service-rsocket
 
-## chat-service-cassandra
+This module turns the chat-core domain services into R-socket clients. Because this is technology-specific module,
+we have the opportunity to test the client against real R-socket controllers with mocked resources (of course).
 
+## chat-persistence-cassandra
+
+This implementation backs chat-core services with cassandra data binding. It shows how to
+configure and connect to cassandra, and use it's data-type strategies among other things. Inherent to 
+this project is the use of testing specific to cassandra and the domain operations.
+ 
 ## chat-persistence-xstream
 
-## chat-deploy
+Implementation of core services using Redis Streams. This module uses streams to back domain operations. 
+
+What's more it exposes chat-core/Messaging as a redis-backed service.
+
+## chat-deploy - new!
+
+So, this module attempts to production-ize the modules above. We should be able to 
+build and deliver the application to our destination of choice (cloud, local, etc..).
+
+Given this, we will engage cloud-discovery, monitoring, tracing, and execution style (lambda, resource, deploy img).
