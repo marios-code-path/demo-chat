@@ -25,7 +25,7 @@ class TopicMembershipSerializerTests : TestBase() {
                 TopicMembership.create("A", "B", "C"),
                 TopicMembership.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
         )
-                .map(mapper::writeValueAsString).doOnNext(System.out::println)
+                .map(mapper::writeValueAsString)
                 .map<TopicMembership<out Any>>(mapper::readValue)
 
         StepVerifier

@@ -52,16 +52,12 @@ class SerializationTests {
     lateinit var mapper: ObjectMapper
 
     @Test
-    fun `serialization tests`() {
-        mapper.registeredModuleIds.forEach {
-            System.out.println("MODULE: $it")
-        }
-
+    fun `serialization tests dont except`() {
         val randomEventKey = Key.anyKey(UUID.randomUUID())
 
         val data = mapper.writeValueAsString(randomEventKey)
 
-        val obj = mapper.readValue(data, TestUUIDKey::class.java)
+        mapper.readValue(data, TestUUIDKey::class.java)
     }
 
     class SerializationConfiguration {

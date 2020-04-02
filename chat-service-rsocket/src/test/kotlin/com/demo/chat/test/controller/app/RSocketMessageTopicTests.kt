@@ -171,8 +171,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                             .isNotEmpty
 
                     val member = it.members.first()
-                    println("UID :" + member.uid)
-                    println("HANDLE :" + member.handle)
+
                     Assertions
                             .assertThat(member)
                             .isNotNull
