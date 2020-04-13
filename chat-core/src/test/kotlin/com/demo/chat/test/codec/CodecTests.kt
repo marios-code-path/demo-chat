@@ -17,6 +17,36 @@ class StringUUIDCodec : Codec<String, UUID> {
 
 @ExtendWith(SpringExtension::class)
 class CodecTests : TestBase() {
+    @Test
+    fun `even better`() {
+            val i = 0
+            val n = i.let {
+                it + 1
+            }
+            println(i)
+            println(n)
+        }
+
+    @Test
+    fun `way better than javascript`() {
+        val n = 1
+        val v = n.let {
+            val tmp = n + 1
+            println("$this , $tmp")
+            tmp
+        }
+    }
+
+    @Test
+    fun `better than javascript`() {
+        var n: Int? = 1
+        var v = n
+        v.apply {
+            n = n?.plus(1)
+            v = n
+            println("$this , $n")
+        }
+    }
 
     @Test
     fun `should encode Generic`() {
