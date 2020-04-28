@@ -27,7 +27,7 @@ interface Key<T> {
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("KeyData")
-interface KeyDataPair<T, E> {
+interface KeyDataPair<T, out E> {
     val key: Key<T>
     val data: E
 

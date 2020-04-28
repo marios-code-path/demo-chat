@@ -4,71 +4,52 @@ publishDate = 2019-06-18
 title = "Modeling a chat application message structure with Kotlin and Cassandra"
 description = "A little implementation for cassandra backed messages, users, and app metadata"
 toc = true
-categories = ["spring","cassandra","data","spring-data", "kotlin"]
+categories = ["spring","persistence","cassandra","data","spring-data", "kotlin"]
 tags = ["demo","spring","webflux","cassandra","data","kotlin"]
 +++
 
 # This Application Needs Data
  
-This sort of application will provide data seek and storage access by implementing the [chat messages](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/domain/Message.kt) and [chat services](https://github.com/marios-code-path/demo-chat/blob/master/chat-service/src/main/kotlin/com/demo/chat/service/ChatService.kt) interfaces in order to compoase a Cassandra-based data-backend to our application. We will use Reactive extensions to make maximum flexability of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
+This sort of application will provide data seek and storage access by implementing the [chat messages](https://github.com/marios-code-path/demo-chat/blob/master/chat-core/src/main/kotlin/com/demo/chat/domain/Message.kt) and [chat services](https://github.com/marios-code-path/demo-chat/blob/master/chat-core/src/main/kotlin/com/demo/chat/service) interfaces with Cassandra as it's back-end. We will use Reactive extensions to make maximum flexibility of program flow-control and threading behaviour among [other concerns.](http://www.sudoinit5.com/service-fluxes).
 
 
 # Thinking of Data Shape
 
-This part of the tutorial will focus on chat topicMessage data shaping, and access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
+This part of the tutorial will focus on chat Message state composition. After looking at interface basics, I create access/retrieve operations that espouse the Cassandra design techniques. You can find out more about these methodologies at the datastax website [free video](https://academy.datastax.com/resources/ds220-data-modeling?dxt=blogposting).
 
-The first course of action here is to identify the access methods we will need across our data type - in this case, a topicMessage - and how to issue a reliable key across partition nodes.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexibility when used with distributed, multi-server nodes that do not share a counter (such as SQL's auto-increment). UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
+The first course of action here is to identify the access methods we will need across our data type - in this case, a Message - and how to issue a reliable key.  In this demo, have selected to use [UUID](https://en.wikipedia.org/wiki/Universally_unique_identifier) as our ID type. The main reason is it' s flexibility when used with distributed, multi-server nodes that do not share a counter (such as SQL's auto-increment). UUID's advantage as a consistent and unique key can be summarized [in Datastax Docs](https://docs.datastax.com/en/archived/cql/3.3/cql/cql_reference/timeuuid_functions_r.html) and [as discussed in this post on StackOverflow](https://stackoverflow.com/questions/17945677/cassandra-uuid-vs-timeuuid-benefits-and-disadvantages). 
 
 # Data Modeling with Kotlin - Co-variant Types
 
 We want to have a single canonical Message shape for our application, then let individual components decide
-which properties were needed.  In order to facilitate this, I created a `Message` interface that includes a Key, Value, and Timestmap.
+how to implement state.  In order to facilitate this, I created a `Message` interface:
 
 Message.kt:
 
-    interface Message<out K, out V> {
-        val key: K
-        val value: V
-        val visible: Boolean
+    interface MessageKey<T> : Key<T> {
+        val from: T
+        val dest: T
+        val timestamp: Instant
+        ...
     }
-
-The `out` keyword tells the JVM that any type of K or V will be a subtype of the specified generic parameter. This gives some sub-type flexibility
-when implementing downstream components that make use of the same Super-types. See Kotlin's [Generics and Variance documentation](https://kotlinlang.org/docs/reference/generics.html) discussions for 
-more information on this topic.
 
 ## Complex Composite Keys 
 
 Furthermore, because there would be multiple Keying strategies, there is a separate Key support interface that 
-allowed inclusion of data such as Message ID, Topic ID, User ID, etc... The form of keys used in our Cassandra data implementations 
-will make use of each of these Key ID's by giving them specific Key Column annotation ( cluster vs partition ). As the basic message 
-will include just it's ID and a timestamp. Lets review the supertype key.
+allowed inclusion of data such as Message ID, from (ID), dest (ID), timestamp... The form of key used in our Cassandra data implementations 
+will make use of each of these Key ID's by giving them specific Key Column annotation ( cluster vs partition ).
+ 
+Let's review the MessageKey type.
 
 MessageKey.kt:
 
-    interface MessageKey {
-        val msgId: UUID
+    interface MessageKey<T> : Key<T> {
+        val from: T
+        val dest: T
         val timestamp: Instant
-    }
 
-I created the following subtype to cover a application 'topic' message key..
 
-TopicMessageKey.kt:
-
-    interface TopicMessageKey : MessageKey {
-        override val msgId: UUID
-        val topicId: UUID
-        override val timestamp: Instant
-    }
-
-Finally, a key subtype that included the userId - since most messages will be sourced by actual users.
-
-TextMessageKey.kt:
-
-    interface TextMessageKey : TopicMessageKey {
-        val userId: UUID
-    }
-
-For the message data, we can include 2 generics - Key type and Value type. I added the visibility flag to indicate whether clients should display whats in the value.
+For the message data, we can include 2 generics - Key type and Value type. I added the visibility flag to indicate whether clients should do with a value```````````.
 
 Message.kt:
     

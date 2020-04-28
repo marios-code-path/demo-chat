@@ -40,10 +40,10 @@ interface MessageKey<T> : Key<T> {
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("Message")
-interface Message<T, out E> {
+interface Message<T,  E> : KeyDataPair<T, E> {
     val record: Boolean
-    val key: MessageKey<T>
-    val data: E
+    override val key: MessageKey<T>
+    override val data: E
 
     companion object Factory {
         fun <T, E> create(key: MessageKey<T>, value: E, record: Boolean): Message<T, E> = @JsonTypeName("Message")
