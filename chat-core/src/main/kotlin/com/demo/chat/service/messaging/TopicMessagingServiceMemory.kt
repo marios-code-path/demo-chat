@@ -15,8 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * This service handles the behaviour of message distribution, all in memory.
  *
- * For now, it is bound to single node, no-persistence or multi-node fan-out
- */
+ * */
 class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
     private val streamMgr: ReactiveStreamManager<T, V> = ReactiveStreamManager()
 
