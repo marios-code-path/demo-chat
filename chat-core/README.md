@@ -115,7 +115,7 @@ we want a wrapper object with Type name "Key" (Defined with @JsonTypeName) to em
 
     "Key":{"id":"1"}
 
-#### Warning
+#### Warni**ng
 
 Be careful with JsonTypeInfo.Id.CLASS or any type of identifier which leaks class specifics,
 because it has been known as a direct target for malware (aka serializer Gadget).

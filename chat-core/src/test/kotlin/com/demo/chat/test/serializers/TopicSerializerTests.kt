@@ -39,7 +39,7 @@ class TopicSerializerTests : TestBase() {
                         "VENUS"
                 )
         )
-                .map(mapper::writeValueAsString)
+                .map(mapper::writeValueAsString).doOnNext {println(it)}
                 .map<MessageTopic<out Any>>(mapper::readValue)
 
         StepVerifier

@@ -30,17 +30,20 @@ class KeySerializerTests : TestBase() {
         val publisher = TestPublisher.create<Key<out Any>>()
         val keyJsons = publisher.flux()
 
-        val messages = listOf(
+        val keys = listOf(
                 Key.anyKey(1L),
                 MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
+        keys.forEach {
+            println(it)
+        }
         StepVerifier
                 .create(keyJsons)
                 .expectSubscription()
                 .then {
-                    publisher.next(mapper.readValue(messages.first()))
-                    publisher.next(mapper.readValue(messages.last()))
+                    publisher.next(mapper.readValue(keys.first()))
+                    publisher.next(mapper.readValue(keys.last()))
                 }
                 .assertNext { key ->
                     Assertions
