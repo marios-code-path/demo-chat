@@ -19,7 +19,7 @@ class KeyDeserializer<T>(val codec: Codec<JsonNode, T>) : JsonDeserializer<Key<T
             val destNode = node.get("dest")
             val fromNode = node.get("from")
 
-            MessageKey.create(codec.decode(idNode), codec.decode(destNode), codec.decode(fromNode))
+            MessageKey.create(codec.decode(idNode), codec.decode(fromNode), codec.decode(destNode))
         } else
             Key.funKey(codec.decode(idNode))
     }

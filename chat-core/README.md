@@ -2,24 +2,22 @@
 
 This module composes most of the underlying object and server-scape for the rest of the
 modules to include. The idea is to provide the underlying foundation to implement domain services and entry-points
-that give rise to a chat application. This module currently has the responsibility to contain domain-specific 
-operations that will be discussed in the sections below.
+that give rise to a chat application. This module currently has the responsibility to contain domain-specific operations that will be discussed in the sections below.
 
 ## Core Concerns
 
 Core resembles a complex event processing system - SEDA style. As a rule of thumb, I add the following objectives:
-   
- * Immutable Objects
-    * Do away with state changes that make apps less predictable and harder to test.
 
- * Service as Re-usable Operations
+* Immutable Objects
+    * Do away with state changes that make apps less predictable and harder to test.
+* Service as Re-usable Operations
     * Creative Apps with Core Services
-    
- * Endpoint Routing
+
+* Endpoint Routing
     * For Partitioned Services
-    
+
  * Simplicity
- 
+
 ## Core Services
 
 Technically, there are several core strategies:
@@ -41,10 +39,8 @@ Within these types, we can create the Objects that will operate during steady st
 
 ## Types of Hazards
 
-Creating any Type means being careful about representing data objectives with as little 
-overlap as possible. In this project, inheritance takes precedence over composition since this is an OOP language.
-Yet, I try to remain focused on understanding where object state gets directed, and when another engineer
-will use it. 
+Creating any Type means being careful about representing data objectives with as little overlap as possible. In this project, inheritance takes precedence over composition since this is an OOP language.
+Yet, I try to remain focused on understanding where object state gets directed.
 
 Here's an example:
 
@@ -55,22 +51,18 @@ key.kt:
         kind    String
     }
 
-This is for the most part an example of representing what a key T holds. However,
-this also means that everyone exchanging Objects of type Key that 'kind' will need
-to tag along. This isn't horrible, but is generally annoying to know - and if left unchecked
-can lead to others doing the same and then worse - poor performance and bugs will be a result. 
+Everyone exchanging Objects of type Key will need 'kind' to tag along. This isn't horrible, but is generally annoying to know - and if left unchecked can lead to others doing the same and then worse - poor performance and bugs will be a result.
 
 But who actually needs 'kind'? Who would write an application that makes use of a 'kind'
 bit voluntarily and during steady state? In this case 'kind' is just a hazard... Unless
-you dont already know what to expect, then the only way to find out is to ask everyone if
-T exists... or store it only. So this must be a field we only need during analysis... 
+you dont already know what to expect, then the only way to know is to ask everyone if
+T exists... or store it only and perform regressive analysis to figure out what T actually was for.
+So this must be a field we only need during analysis...
 
 ### I decided it's not that bad
 
-Well, each service will not have its own key-store but Key-stores should be used by whoever
-needs a Key of the ID type vended by that service. All you have to do is tell it what's 
-behind it. so. lets see what a revised interface, and s most optimal persistence subclass
-look like.
+Each service will not have its own key-store but Key-stores are discreet and should be used by whoever
+needs a Key of the ID type vended by that service. Lets see what a revised interface, and the additional persistence-specific subclass look like.
 
 key.kt:
 
@@ -91,12 +83,9 @@ have to explain why a property exists.
 
 ## Type Serialization
 
-Serialization is a somewhat straightforward topic. Given an object state A, translate it into some representation
-that can be de-coded to arrive at the same object with state A. Some examples are JVM, ProtoBuf, JSON just to name a few.
+Serialization is a somewhat straightforward topic. Given an object state A, translate it into some representation that can be de-coded to arrive at the same object with the same 'shape'. Some examples are JVM, ProtoBuf, JSON just to name a few.
 
-What matters most is that we can describe our objects within this serialization format. Since I am tied to JSON
-AND I have polymorphic types - interfaces with alternate implementations - its best if I issue some hints to the Serializer
-about how to describe the object state.
+What matters most is that we can describe our objects within this serialization format. Since I am tied to JSON AND I have polymorphic types - interfaces with alternate implementations - its best if I issue some hints to the Serializer about how to describe object state.
 
 key.kt:
 
@@ -105,17 +94,16 @@ key.kt:
     @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
     interface Key<T> {
         val id: T
-        
-        
-Jackson requires @JsonTypeInfo and @JsonSubTypes when expected to have polymorphic objects.
-We then need to supply which types will be subclasses in @JsonSubTypes. 
+
+Jackson requires @JsonTypeInfo and @JsonSubTypes when it's expected to deal with polymorphic objects.
+We then need to supply which types will be subclasses in @JsonSubTypes.
 
 The @JsonTypeInfo annotations lets us tell the ObjectMapper how to represent our object. In this case
 we want a wrapper object with Type name "Key" (Defined with @JsonTypeName) to emit an object looking like:
 
     "Key":{"id":"1"}
 
-#### Warni**ng
+### Warni**ng
 
 Be careful with JsonTypeInfo.Id.CLASS or any type of identifier which leaks class specifics,
 because it has been known as a direct target for malware (aka serializer Gadget).
@@ -125,8 +113,7 @@ because it has been known as a direct target for malware (aka serializer Gadget)
 This process is a bit more detailed in code, but straightforward in process.
 Lets take a type such as 'MessageKey' and attempt to deserialize it:
 
-We need to write a Serializer that will handle the type as described in 
-interface MessageKey.kt:
+We need to write a Serializer that will handle the type as described in interface MessageKey.kt:
 
     @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
     interface MessageKey<T> : Key<T> {
@@ -160,30 +147,23 @@ Deserialize a Key<T>:
 
 Then determine when we have a subtype, or return just the Key:
 
-            if (node.has("dest") && node.has("from")) {
+            return if (node.has("dest") && node.has("from")) {
                 val destNode = node.get("dest")
                 val fromNOde = node.get("from")
                 
-                MessageKey.create(codec.decode(idNode), codec.decode(destNode), codec.decode(fromNode))
+                MessageKey.create(codec.decode(idNode), codec.decode(fromNode), codec.decode(destNode))
             }
-            return Key.funKey(codec.decode(idNode))
+            else Key.funKey(codec.decode(idNode))
         }
     }
-
-
-
 
 ### Jackson Modules
 
 Spring Boot autowires a Jackson2ObjectMapperBuilder, and will scan the classpath for available modules.
 Since this bean is what provides the ObjectMapper, we can conduct normal @Bean methods to provide our modules.
 
-
-
-
-
 ## Super-Type CODECs (or anything CODECy)
 
 ## Tests for the above
 
-## Base Tests for downstream consumers (??)  
+## Base Tests for downstream consumers (??)
