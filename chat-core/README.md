@@ -16,7 +16,8 @@ Core resembles a complex event processing system - SEDA style. As a rule of thum
 * Endpoint Routing
     * For Partitioned Services
 
- * Simplicity
+* Simplicity
+    * If possible, never see or use NULL's
 
 ## Core Services
 
@@ -37,10 +38,26 @@ In all, there have 3 generic types defined by these services:
 
 Within these types, we can create the Objects that will operate during steady state.
 
-## Types of Hazards
+## Encoder - dressed up functions
 
-Creating any Type means being careful about representing data objectives with as little overlap as possible. In this project, inheritance takes precedence over composition since this is an OOP language.
-Yet, I try to remain focused on understanding where object state gets directed.
+Lets take a look at what Encoder accomplishes in code. Hopefully it is apparent why its useful if needed at all.  
+
+encoder.kt:
+
+    interface Encoder<F, E> {
+        fun encode(record: F): E
+    }
+
+Primarliy I need a way to exchange JSON objects for core type [T,V,Q] objects, and possibly (experimentally) abstract EMPTY values.
+
+Observe that an Empty encoder for a string simply returns "" (nothing). Additionally, a more complicated type such as a UUID consisting of 0's.
+
+That said, encoders provide more of a convenience and dont get used often, or it may actually go away altogeher if it's use is super limited later on.
+
+## Metadata of Hazards
+
+Being mindful about data shape with as little overlap as possible. In this project, I try to be mindful
+about data shapes and attempt as little as possible. Inheritance takes precedence over composition since there'll be many service/persistence specific implementations. This really is after all, a core library.
 
 Here's an example:
 
@@ -61,8 +78,8 @@ So this must be a field we only need during analysis...
 
 ### I decided it's not that bad
 
-Each service will not have its own key-store but Key-stores are discreet and should be used by whoever
-needs a Key of the ID type vended by that service. Lets see what a revised interface, and the additional persistence-specific subclass look like.
+Since Key service is discreet, any one service needing Key<T> would need apply. Persistence-specific subclasses of Key must retain whatever composes a T along with Metadata fields.
+Lets see what a revised interface, and the additional persistence-specific subclass look like.
 
 key.kt:
 
@@ -79,11 +96,12 @@ CassandraKey.kt:
 A type to me has a name, and an objective. Everything about the name should be obviated
 in code, while code itself meeting its objective should be detailed and then carefully placed
 into the body of such a class. This means consistent naming, SANE typing, no comments should
-have to explain why a property exists.
+have to explain why a property exists. If a propery is metadata, then defer it's use till as late
+as possible.
 
 ## Type Serialization
 
-Serialization is a somewhat straightforward topic. Given an object state A, translate it into some representation that can be de-coded to arrive at the same object with the same 'shape'. Some examples are JVM, ProtoBuf, JSON just to name a few.
+Serialization says given an object state A, encode it into some representation that can be de-coded to arrive at an object with the same 'shape' or state. Some examples are JVM, ProtoBuf, JSON just to name a few.
 
 What matters most is that we can describe our objects within this serialization format. Since I am tied to JSON AND I have polymorphic types - interfaces with alternate implementations - its best if I issue some hints to the Serializer about how to describe object state.
 
@@ -98,10 +116,11 @@ key.kt:
 Jackson requires @JsonTypeInfo and @JsonSubTypes when it's expected to deal with polymorphic objects.
 We then need to supply which types will be subclasses in @JsonSubTypes.
 
-The @JsonTypeInfo annotations lets us tell the ObjectMapper how to represent our object. In this case
-we want a wrapper object with Type name "Key" (Defined with @JsonTypeName) to emit an object looking like:
+The @JsonTypeInfo annotations configures JSON serialization constraints for an object. In this case we want a wrapper object using Type name "Key" (Defined with @JsonTypeName) to emit an object looking like:
 
-    "Key":{"id":"1"}
+    {"Key":{"id":"1"}}
+
+Thats it for our Serialization concerns...
 
 ### Warni**ng
 
@@ -110,7 +129,6 @@ because it has been known as a direct target for malware (aka serializer Gadget)
 
 ## De-serialization
 
-This process is a bit more detailed in code, but straightforward in process.
 Lets take a type such as 'MessageKey' and attempt to deserialize it:
 
 We need to write a Serializer that will handle the type as described in interface MessageKey.kt:
@@ -121,8 +139,7 @@ We need to write a Serializer that will handle the type as described in interfac
         val dest: T
         val timestamp: Instant
 
-According to the configuration of Serialization in the previous section, a MessageKey will be representated
-as such:
+According to the configuration of Serialization in the previous section, a MessageKey will be serialized to JSON as such:
 
 MessageKey.json:
 
@@ -135,8 +152,9 @@ MessageKey.json:
         }
     }
 
-This can be accomplished writing a custom JsonDeserializer which emits Key<T>.
-Deserialize a Key<T>:
+Since it emitted a 'Key', an ordinary configuration would error at the sight of a different object. Afterall, Key doesnt have the 'dest','from' or 'timestamp' fields. We need to deserialize step by step  until we have enough object state to return.
+
+Deserializers.kt:
 
     class KeyDeserializer<T>(val codec: Codec<JsonNode, T>) : JsonDeserializer<Key<T>>() {
         override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
@@ -157,13 +175,23 @@ Then determine when we have a subtype, or return just the Key:
         }
     }
 
+Next, we have to get these Deserializers loaded into the Spring ApplicationContext's ObjectMapper.
+
 ### Jackson Modules
 
+Jackson modules allow us to register serializers and deserializers. In this case, we have our own deserializers for our polymorphic types. We will compose a modules for each domain-specific deserializer.
+
+Using SimpleModule, we can easily construct our own domain modules and expose them to the application context with @Bean.
+
+JacksonModules.kt:
+
+    open class JacksonModules(private val codecKey: Codec<JsonNode, out Any>,
+                          private val codecData: Codec<JsonNode, out Any>) {
+
+    @Bean
+    open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
+        addDeserializer(Key::class.java, KeyDeserializer(codecKey))
+    }
+    ...
+
 Spring Boot autowires a Jackson2ObjectMapperBuilder, and will scan the classpath for available modules.
-Since this bean is what provides the ObjectMapper, we can conduct normal @Bean methods to provide our modules.
-
-## Super-Type CODECs (or anything CODECy)
-
-## Tests for the above
-
-## Base Tests for downstream consumers (??)

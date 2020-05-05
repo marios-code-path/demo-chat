@@ -35,9 +35,6 @@ class KeySerializerTests : TestBase() {
                 MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
-        keys.forEach {
-            println(it)
-        }
         StepVerifier
                 .create(keyJsons)
                 .expectSubscription()
@@ -67,7 +64,6 @@ class KeySerializerTests : TestBase() {
                 }
                 .expectComplete()
                 .verify(Duration.ofMillis(500))
-
     }
 
     @Test
