@@ -38,6 +38,8 @@ In all, there have 3 generic types defined by these services:
 
 Within these types, we can create the Objects that will operate during steady state.
 
+## Domain concepts
+
 ## Encoder - dressed up functions
 
 Lets take a look at what Encoder accomplishes in code. Hopefully it is apparent why its useful if needed at all.  
@@ -48,16 +50,27 @@ encoder.kt:
         fun encode(record: F): E
     }
 
-Primarliy I need a way to exchange JSON objects for core type [T,V,Q] objects, and possibly (experimentally) abstract EMPTY values.
+Primarliy I need a way to exchange JSON objects for core type [T, V, Q] objects, and possibly (experimentally) abstract EMPTY values for **total null safety**.
 
-Observe that an Empty encoder for a string simply returns "" (nothing). Additionally, a more complicated type such as a UUID consisting of 0's.
+### object state CAN describe nothing
 
-That said, encoders provide more of a convenience and dont get used often, or it may actually go away altogeher if it's use is super limited later on.
+Empty encoder for a string simply returns "" (nothing). Additionally, a more complicated type such as a UUID consisting of 0's and Int might be 0. In any case, the application should not care
+what the non-value is. It should not be looking for a non-value. It is up to the application behaviour to respond when a violation occurs. Null tends to leak. this mean anyone building additional code up stack
+will have to determine when null is occured, then factor in a response to it. For example:
+
+ExampleNull.kt:
+
+  val res = service.getOne()
+
+  if(res.total!=null)
+    return res.total.accumulators
+
+Kotlin does a good job of enforcing null safety. It is described in the [documentation](https://kotlinlang.org/docs/tutorials/kotlin-for-py/null-safety.html).
 
 ## Metadata of Hazards
 
 Being mindful about data shape with as little overlap as possible. In this project, I try to be mindful
-about data shapes and attempt as little as possible. Inheritance takes precedence over composition since there'll be many service/persistence specific implementations. This really is after all, a core library.
+about data shapes and attempt as little as possible. Inheritance takes precedence over composition since there'll be many service/persistence specific implementations. This helps keep things tidy.
 
 Here's an example:
 
@@ -78,7 +91,7 @@ So this must be a field we only need during analysis...
 
 ### I decided it's not that bad
 
-Since Key service is discreet, any one service needing Key<T> would need apply. Persistence-specific subclasses of Key must retain whatever composes a T along with Metadata fields.
+Since Key service is discreet, any one service needing Key<T> would need apply. Persistence-specific subclasses of Key must retain shape of a T but also have its own metadata fields - yay :).
 Lets see what a revised interface, and the additional persistence-specific subclass look like.
 
 key.kt:
@@ -93,11 +106,17 @@ CassandraKey.kt:
             val kind: String
     ) : Key<T>
 
-A type to me has a name, and an objective. Everything about the name should be obviated
-in code, while code itself meeting its objective should be detailed and then carefully placed
-into the body of such a class. This means consistent naming, SANE typing, no comments should
-have to explain why a property exists. If a propery is metadata, then defer it's use till as late
-as possible.
+Key consumers typically need just the ID, but in some issues we also want also to add metadata. Realistically we can implement metadata at site but that means more custom non shareable code. Lets 
+see what the service actually does:
+
+KeySErviceCassandra.kt:
+
+    class KeyServiceCassandra<T>(private val template: ReactiveCassandraTemplate,
+                                 private val keyGen: Encoder<Unit, T>) : IKeyService<T> {
+        override fun <K> key(kind: Class<K>): Mono<out Key<T>> = template
+            .insert(CSKey(keyGen.encode(Unit), kind.simpleName))
+        
+        
 
 ## Type Serialization
 
@@ -194,4 +213,4 @@ JacksonModules.kt:
     }
     ...
 
-Spring Boot autowires a Jackson2ObjectMapperBuilder, and will scan the classpath for available modules.
+Upon app startup, Spring Boot autowires a Jackson2ObjectMapperBuilder, and will scan the classpath for available modules.
