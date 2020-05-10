@@ -9,15 +9,15 @@ that give rise to a chat application. This module currently has the responsibili
 Core resembles a complex event processing system - SEDA style. As a rule of thumb, I add the following objectives:
 
 * Immutable Objects
-    * Do away with state changes that make apps less predictable and harder to test.
+  * Do away with state changes that make apps less predictable and harder to test.
 * Service as Re-usable Operations
-    * Creative Apps with Core Services
+  * Creative Apps with Core Services
 
 * Endpoint Routing
-    * For Partitioned Services
+  * For Partitioned Services
 
 * Simplicity
-    * If possible, never see or use NULL's
+  * If possible, never see or use NULL's
 
 ## Core Services
 
@@ -109,14 +109,12 @@ CassandraKey.kt:
 Key consumers typically need just the ID, but in some issues we also want also to add metadata. Realistically we can implement metadata at site but that means more custom non shareable code. Lets 
 see what the service actually does:
 
-KeySErviceCassandra.kt:
+KeyServiceCassandra.kt:
 
     class KeyServiceCassandra<T>(private val template: ReactiveCassandraTemplate,
                                  private val keyGen: Encoder<Unit, T>) : IKeyService<T> {
         override fun <K> key(kind: Class<K>): Mono<out Key<T>> = template
             .insert(CSKey(keyGen.encode(Unit), kind.simpleName))
-        
-        
 
 ## Type Serialization
 
@@ -171,7 +169,7 @@ MessageKey.json:
         }
     }
 
-Since it emitted a 'Key', an ordinary configuration would error at the sight of a different object. Afterall, Key doesnt have the 'dest','from' or 'timestamp' fields. We need to deserialize step by step  until we have enough object state to return.
+Since it emitted a 'Key', an ordinary configuration would error at the sight of a different object. After all, Key doesn't have the 'dest','from' or 'timestamp' fields. We need to deserialize step by step  until we have enough object state to return.
 
 Deserializers.kt:
 
@@ -198,8 +196,7 @@ Next, we have to get these Deserializers loaded into the Spring ApplicationConte
 
 ### Jackson Modules
 
-Jackson modules allow us to register serializers and deserializers. In this case, we have our own deserializers for our polymorphic types. We will compose a modules for each domain-specific deserializer.
-
+Jackson modules allow us to register serializers and deserializers. In this case, we have our own deserializers for our polymorphic types.
 Using SimpleModule, we can easily construct our own domain modules and expose them to the application context with @Bean.
 
 JacksonModules.kt:
@@ -209,8 +206,7 @@ JacksonModules.kt:
 
     @Bean
     open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
-        addDeserializer(Key::class.java, KeyDeserializer(codecKey))
-    }
+        addDeserializer(Key::class.java, KeyDeserializer(codecKey)) }
     ...
 
 Upon app startup, Spring Boot autowires a Jackson2ObjectMapperBuilder, and will scan the classpath for available modules.
