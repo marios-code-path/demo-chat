@@ -1,4 +1,5 @@
-# Chat service rsocket
+# Chat service rsocket as a client gateway
+
 
 ## Is a Client in disguise
 

@@ -28,19 +28,18 @@ class KeySerializerTests : TestBase() {
         }
 
         val publisher = TestPublisher.create<Key<out Any>>()
-        val keyJsons = publisher.flux()
 
-        val keys = listOf(
+        val keysSerialized = listOf(
                 Key.anyKey(1L),
                 MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
         StepVerifier
-                .create(keyJsons)
+                .create(publisher)
                 .expectSubscription()
                 .then {
-                    publisher.next(mapper.readValue(keys.first()))
-                    publisher.next(mapper.readValue(keys.last()))
+                    publisher.next(mapper.readValue(keysSerialized.first()))
+                    publisher.next(mapper.readValue(keysSerialized.last()))
                 }
                 .assertNext { key ->
                     Assertions
@@ -67,7 +66,7 @@ class KeySerializerTests : TestBase() {
     }
 
     @Test
-    fun `Any Key deserialize`() {
+    fun `Test type safety of Key serializer-deserializer`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
                 addDeserializer(Key::class.java, KeyDeserializer(JsonNodeAnyCodec))

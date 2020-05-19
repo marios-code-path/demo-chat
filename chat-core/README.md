@@ -81,7 +81,7 @@ key.kt:
         kind    String
     }
 
-Everyone exchanging Objects of type Key will need 'kind' to tag along. This isn't horrible, but is generally annoying to know - and if left unchecked can lead to others doing the same and then worse - poor performance and bugs will be a result.
+Services vending 'Key' will need the 'kind' to tag along. This isn't horrible, but is and is generally annoying to know - and if left unchecked can lead to others doing the same and then worse - poor performance and bugs will be a result.
 
 But who actually needs 'kind'? Who would write an application that makes use of a 'kind'
 bit voluntarily and during steady state? In this case 'kind' is just a hazard... Unless
@@ -91,7 +91,7 @@ So this must be a field we only need during analysis...
 
 ### I decided it's not that bad
 
-Since Key service is discreet, any one service needing Key<T> would need apply. Persistence-specific subclasses of Key must retain shape of a T but also have its own metadata fields - yay :).
+Persistence-specific subclasses of Key must retain shape given T but can also have its own metadata fields - yay :).
 Lets see what a revised interface, and the additional persistence-specific subclass look like.
 
 key.kt:
@@ -106,8 +106,7 @@ CassandraKey.kt:
             val kind: String
     ) : Key<T>
 
-Key consumers typically need just the ID, but in some issues we also want also to add metadata. Realistically we can implement metadata at site but that means more custom non shareable code. Lets 
-see what the service actually does:
+Key consumers typically need just the ID, but I also want to add metadata. Realistically we can implement metadata at site by using a template so let's see what the service actually does:
 
 KeyServiceCassandra.kt:
 

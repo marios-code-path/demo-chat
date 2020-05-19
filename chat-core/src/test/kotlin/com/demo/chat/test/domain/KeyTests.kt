@@ -12,11 +12,10 @@ import java.util.*
 class KeyTests : TestBase() {
     @Test
     fun `should test streaming only through publisher`() {
-        val messagePub = TestPublisher.create<Key<out Any>>()
-        val messageFlux = messagePub.flux()
+        val messagePub = TestPublisher.create<Key<*>>()
 
         StepVerifier
-                .create(messageFlux)
+                .create(messagePub)
                 .expectSubscription()
                 .then {
                     messagePub.next(randomAnyKey())
@@ -37,7 +36,6 @@ class KeyTests : TestBase() {
                 }
                 .expectComplete()
                 .verify(Duration.ofSeconds(1))
-
     }
 
     private fun randomAnyKey(): Key<out Any> {
