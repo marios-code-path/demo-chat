@@ -215,5 +215,5 @@ If you noticed, I created a compound Key using `topic_id` and `msg_id` that enfo
 
 # Conclusions
 
-This wraps it up for DDL. We can now concentrate on query operations in the next article - TBA-[Cassandra Repositories, or how not to do them](http://www.sudoinit5.com/post/spring-data-cassandra-data-query/)
+This wraps it up for DDL. We can now concentrate on read/write operations in the next article - TBA-[Cassandra Repositories](https://github.com/marios-code-path/demo-chat/blob/master/chat-persistence-cassandra/QUERY.md)
 

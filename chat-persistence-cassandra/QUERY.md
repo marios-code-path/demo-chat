@@ -96,14 +96,20 @@ CassandraEventKey.kt:
             val kind: String
     ) : Key<T>
 
-Cluster vs Partition key? Without getting too far into the forest. 
+#### Cluster vs Partition key? 
+
+Without getting too far into the forest. 
 Cassandra uses a token(partition_key) function that determines the server/node of said record. This is then a requirement that every column family have a PARTITION key.
 Thus, using partition_key as a sorting concern is an incorrect application of this key type. To apply sorting through column family records on a particular node, we can use a Cluster Key. 
 
+#### User Defined Type in Cassandra
+
+Since Key is shared on every data model in our domain we want to additionally consort to
+our application when type conversion occurs.
 
 ## Custom Query Reasons
 
-limitations are overcommed easily by writing an own implementation in  [Spring Data Custom Repositories](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.custom-implementations).
+Next we can perform non-trivial operations by writing an own implementation in  [Spring Data Custom Repositories](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.custom-implementations).
 
 # Custom Repositories with CQL
 

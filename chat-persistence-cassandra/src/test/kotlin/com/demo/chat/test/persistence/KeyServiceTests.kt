@@ -59,7 +59,6 @@ class KeyServiceTests {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull()
                             .isTrue()
                 }
                 .verifyComplete()
@@ -74,7 +73,6 @@ class KeyServiceTests {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("id")
                 }
@@ -104,12 +102,7 @@ class KeyServiceTests {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
-
-                    Assertions
-                            .assertThat(it.id)
-                            .isNotNull()
                 }
                 .verifyComplete()
     }

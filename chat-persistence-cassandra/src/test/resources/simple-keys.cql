@@ -4,11 +4,11 @@ CREATE KEYSPACE chat WITH replication={'class' : 'SimpleStrategy', 'replication_
 
 USE chat;
 
-CREATE TYPE event_key_type(
-    id UUID
+CREATE TYPE event_key_meta(
+    kind varchar
 );
 
 CREATE TABLE keys(
 id UUID,
-kind varchar,
+kind event_key_meta ,
 PRIMARY KEY(id) )
