@@ -77,11 +77,9 @@ class RSocketUserTests : ControllerTestBase() {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
 
                     Assertions.assertThat(it.key)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
                 }
@@ -102,12 +100,10 @@ class RSocketUserTests : ControllerTestBase() {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
                             .assertThat(it.key)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("handle", randomHandle)
                             .hasFieldOrPropertyWithValue("id", randomUserId)

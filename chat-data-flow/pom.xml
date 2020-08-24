@@ -9,34 +9,34 @@
     </parent>
 
     <groupId>com.demo</groupId>
-    <artifactId>chat-deploy</artifactId>
+    <artifactId>chat-data-flow</artifactId>
     <version>0.0.1</version>
-    <name>chat-deploy</name>
-    <description>Deployment details for a complete app standup</description>
+    <name>chat-data-flow</name>
+    <description>Spring Data-Flow details for a complete app standup</description>
 
     <dependencies>
 	<dependency>
 	    <groupId>org.springframework</groupId>
             <artifactId>spring-context-indexer</artifactId>
     	</dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.demo</groupId>-->
+<!--            <artifactId>chat-persistence-cassandra</artifactId>-->
+<!--            <version>0.0.1</version>-->
+<!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>com.demo</groupId>-->
+<!--            <artifactId>chat-persistence-xstream</artifactId>-->
+<!--            <version>0.0.1</version>-->
+<!--        </dependency>-->
         <dependency>
-            <groupId>org.springframework.experimental</groupId>
-            <artifactId>spring-graalvm-native</artifactId>
-            <version>0.7.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-persistence-cassandra</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-persistence-xstream</artifactId>
-            <version>0.0.1</version>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-dataflow-rest-client</artifactId>
+            <version>2.3.0.RELEASE</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>

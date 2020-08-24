@@ -15,7 +15,7 @@ open class KeyClient<T>(private val prefix: String, private val requester: RSock
     override fun rem(key: Key<T>): Mono<Void> = requester
             .route("${prefix}rem")
             .data(key)
-            .retrieveMono()
+            .send()
 
     override fun exists(key: Key<T>): Mono<Boolean> = requester
             .route("${prefix}exists")

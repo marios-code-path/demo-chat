@@ -31,6 +31,7 @@ interface KeyDataPair<T, out E> {
     val key: Key<T>
     val data: E
 
+
     companion object Factory {
         @JvmStatic
         fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> = @com.fasterxml.jackson.annotation.JsonTypeName("KeyData") object : KeyDataPair<T, E> {
@@ -40,4 +41,5 @@ interface KeyDataPair<T, out E> {
                 get() = data
         }
     }
+
 }

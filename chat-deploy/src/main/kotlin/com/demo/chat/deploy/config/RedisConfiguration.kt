@@ -24,7 +24,7 @@ class UUIDStringDecoder : Codec<UUID, String> {
     }
 }
 
-// TODO derive redis connection propes from standard spring.redis properties (LettuceConnectionConfiguration)
+// TODO derive redis connection props from standard spring.redis properties (LettuceConnectionConfiguration)
 open class ConnectionConfigurationRedis(private val props: ConfigurationPropertiesRedis) {
     @Bean
     open fun redisConnection(): ReactiveRedisConnectionFactory =

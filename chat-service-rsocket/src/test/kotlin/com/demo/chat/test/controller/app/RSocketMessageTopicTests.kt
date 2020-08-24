@@ -102,7 +102,6 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrProperty("key")
                             .extracting("key")
@@ -162,19 +161,16 @@ class RSocketMessageTopicTests : ControllerTestBase() {
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
 
                     Assertions
                             .assertThat(it.members)
-                            .isNotNull
                             .isNotEmpty
 
                     val member = it.members.first()
 
                     Assertions
                             .assertThat(member)
-                            .isNotNull
                             .hasNoNullFieldsOrProperties()
                             .hasFieldOrPropertyWithValue("uid", randomUserId.toString())
                             .hasFieldOrPropertyWithValue("handle", randomUserHandle)

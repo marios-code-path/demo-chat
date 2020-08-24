@@ -111,7 +111,7 @@ our application when type conversion occurs.
 
 Next we can perform non-trivial operations by writing an own implementation in  [Spring Data Custom Repositories](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/#repositories.custom-implementations).
 
-# Custom Repositories with CQL
+# Custom Repositories
 
 
 

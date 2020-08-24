@@ -30,7 +30,8 @@
         <module>chat-persistence-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-service-rsocket</module>
-        <module>chat-deploy</module>
+	<module>chat-deploy</module>
+	<module>chat-data-flow</module>
     </modules>
 
     <repositories>
