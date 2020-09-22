@@ -1,0 +1,6 @@
+embedded:
+  cassandra:
+    enabled: true
+    reuseContainer: true
+    keyspace-name: chat
+    dockerImage: cassandra:3.11.8

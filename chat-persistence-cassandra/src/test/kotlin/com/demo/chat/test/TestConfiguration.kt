@@ -1,10 +1,13 @@
 package com.demo.chat.test
 
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.CqlSessionBuilder
 import com.demo.chat.config.ClusterConfigurationCassandra
 import com.demo.chat.config.ConfigurationPropertiesCassandra
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.autoconfigure.cassandra.CqlSessionBuilderCustomizer
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -13,7 +16,8 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
-import org.springframework.data.cassandra.config.CassandraClusterFactoryBean
+import org.springframework.data.cassandra.core.convert.CassandraConverter
+import org.springframework.data.cassandra.core.convert.MappingCassandraConverter
 import org.springframework.data.cassandra.core.mapping.CassandraMappingContext
 import org.springframework.data.cassandra.core.mapping.SimpleUserTypeResolver
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
@@ -30,14 +34,12 @@ class TestConfiguration : ApplicationContextInitializer<ConfigurableApplicationC
     override fun initialize(applicationContext: ConfigurableApplicationContext) {
 
     }
-
-    @Bean
-    @Throws(Exception::class)
-    fun mappingContext(cluster: CassandraClusterFactoryBean): CassandraMappingContext {
-        val mappingContext = CassandraMappingContext()
-        mappingContext.setUserTypeResolver(SimpleUserTypeResolver(cluster.getObject(), "chat"))
-        return mappingContext
-    }
+//
+//    @Bean
+//    fun converter(mapping: CassandraMappingContext, cql: CqlSession): CassandraConverter {
+//
+//            return MappingCassandraConverter(mapping.apply {setUserTypeResolver(SimpleUserTypeResolver(cql))})
+//    }
 }
 
 @ConstructorBinding

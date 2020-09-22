@@ -155,7 +155,7 @@ class EdgeControllerTopicConfig(topicP: TopicPersistence<UUID>,
                                 membershipInd: MembershipIndexService<UUID>) :
         TopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyStringCodec())
 
-@Profile("ctrl-edge-com.demo.chat.test.messaging")
+@Profile("ctrl-edge-messaging")
 @Controller
 @MessageMapping("edge.com.demo.chat.test.messaging")
 class EdgeControllerMessagingConfig(messageIdx: MessageIndexService<UUID, String>,

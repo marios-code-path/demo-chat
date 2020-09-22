@@ -8,20 +8,18 @@ import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
+import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestClusterConfiguration
 import com.demo.chat.test.TestConfiguration
 import org.assertj.core.api.Assertions
-import org.cassandraunit.spring.CassandraDataSet
-import org.cassandraunit.spring.CassandraUnit
-import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
@@ -31,10 +29,10 @@ import kotlin.streams.toList
 //https://stackoverflow.com/questions/38862460/user-defined-type-with-spring-data-cassandra/42036202#42036202
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
-@CassandraUnit
-@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-@CassandraDataSet("simple-membership.cql")
-class TopicMembershipRepositoryTests {
+//@CassandraUnit
+//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
+//@CassandraDataSet("simple-membership.cql")
+class TopicMembershipRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>
 
@@ -44,8 +42,8 @@ class TopicMembershipRepositoryTests {
     @Autowired
     lateinit var byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>
 
-    @Autowired
-    lateinit var template: ReactiveCassandraTemplate
+    @Value("classpath:simple-membership.cql")
+    override lateinit var cqlFile: Resource
 
     @Test
     fun `membershipOf should not return all`() {

@@ -7,7 +7,7 @@
 
 # The name of the cluster. This is mainly used to prevent machines in
 # one logical cluster from joining another.
-cluster_name: 'Test Cluster'
+cluster_name: 'test'
 
 # You should always specify InitialToken when setting up a production
 # cluster for the first time, and often when adding capacity later.
@@ -266,7 +266,7 @@ listen_address: 127.0.0.1
 
 start_native_transport: true
 # port for the CQL native transport to listen for clients on
-native_transport_port: 9142
+native_transport_port: 9042
 
 # Whether to start the thrift rpc server.
 start_rpc: true

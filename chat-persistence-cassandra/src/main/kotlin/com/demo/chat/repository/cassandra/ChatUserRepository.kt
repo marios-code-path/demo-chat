@@ -1,6 +1,6 @@
 package com.demo.chat.repository.cassandra
 
-import com.datastax.driver.core.policies.DefaultRetryPolicy
+import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.demo.chat.domain.DuplicateUserException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -64,9 +64,7 @@ class ChatUserHandleRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemp
                                     u.name,
                                     u.imageUri,
                                     u.timestamp),
-                            InsertOptions.builder().withIfNotExists()
-                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                    .build()
+                            InsertOptions.builder().withIfNotExists().build()
                     )
                     .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
@@ -97,16 +95,18 @@ class ChatUserRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate)
                                     u.name,
                                     u.handle,
                                     u.imageUri,
-                                    Instant.now()),
-                            InsertOptions.builder().withIfNotExists()
-                                    .retryPolicy(DefaultRetryPolicy.INSTANCE)
-                                    .build()
+                                    Instant.now())
+//                            InsertOptions
+//                                    .builder()
+//                                    .withIfNotExists()
+//                                    .consistencyLevel(ConsistencyLevel.ANY)
+//                                    .build()
                     )
-                    .handle<Void> { write, sink ->
-                        when (write.wasApplied()) {
-                            false -> sink.error(DuplicateUserException)
-                            else -> sink.complete()
-                        }
-                    }
+//                    .handle<Void> { write, sink ->
+//                        when (write.wasApplied()) {
+//                            false -> sink.error(DuplicateUserException)
+//                            else -> sink.complete()
+//                        }
+//                    }
                     .then()
 }

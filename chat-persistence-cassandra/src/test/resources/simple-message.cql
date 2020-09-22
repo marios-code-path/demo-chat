@@ -1,12 +1,3 @@
-DROP KEYSPACE IF EXISTS chat;
-
-CREATE KEYSPACE chat WITH replication={'class' : 'SimpleStrategy', 'replication_factor':1};
-USE chat;
-
-CREATE TYPE event_key_type(
-    id UUID
-);
-
 CREATE TABLE chat_message_id (
     msg_id TIMEUUID,
     user_id UUID,
@@ -36,5 +27,3 @@ CREATE TABLE chat_message_topic (
     visible Boolean,
     PRIMARY KEY (topic_id, msg_time, msg_id))
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
-
-

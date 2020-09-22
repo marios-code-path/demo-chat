@@ -8,10 +8,8 @@ import com.demo.chat.domain.cassandra.ChatUserHandleKey
 import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestConfiguration
-import org.cassandraunit.spring.CassandraDataSet
-import org.cassandraunit.spring.CassandraUnit
-import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions
@@ -19,11 +17,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
-import org.springframework.test.context.TestExecutionListeners
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.time.Duration
@@ -32,23 +30,23 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
-@CassandraUnit()
-@TestExecutionListeners(
-        listeners = [CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class],
-        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS
-)
-@CassandraDataSet("simple-user.cql")
-class ChatUserRepositoryTests {
+//@CassandraUnit()
+//@TestExecutionListeners(
+//        listeners = [CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class],
+//        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS
+//)
+//@CassandraDataSet("simple-user.cql")
+class ChatUserRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var repo: ChatUserRepository<UUID>
 
     @Autowired
     lateinit var handleRepo: ChatUserHandleRepository<UUID>
 
-    @Autowired
-    lateinit var template: ReactiveCassandraTemplate
-
     val defaultImageUri = "http://localhost:7070/s3"
+
+    @Value("classpath:simple-user.cql")
+    override lateinit var cqlFile: Resource
 
     @Test
     fun shouldContextLoad() {
@@ -107,7 +105,7 @@ class ChatUserRepositoryTests {
 
         val chatUsers = Flux.just(
                 ChatUser(ChatUserKey(id1), "eddie", "vedder", defaultImageUri, Instant.now()),
-                ChatUser(ChatUserKey(id2), "Michael", "jackson", defaultImageUri, Instant.now())
+                ChatUser(ChatUserKey(id2), "michael", "jackson", defaultImageUri, Instant.now())
         )
                 .flatMap { repo.add(it) }
 
@@ -152,12 +150,12 @@ class ChatUserRepositoryTests {
     }
 
     @Test
-    fun `should store and find single by ID`() {
+    fun `should save and find single by ID`() {
         val userId = UUIDs.timeBased()
 
         val chatUser = ChatUser(
                 ChatUserKey(userId),
-                "eddie", "vedder", defaultImageUri, Instant.now())
+                "3ddie", "v3dder", defaultImageUri, Instant.now())
 
         val truncateAndSave = template
                 .truncate(ChatUser::class.java)

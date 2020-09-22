@@ -9,6 +9,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.Mockito
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.ApplicationContext
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
@@ -68,7 +69,7 @@ open class ServiceTestBase {
 
     @AfterEach
     fun tearDown() {
-        requestor.rsocket().dispose()
+        socket.dispose()
         server.dispose()
     }
 }

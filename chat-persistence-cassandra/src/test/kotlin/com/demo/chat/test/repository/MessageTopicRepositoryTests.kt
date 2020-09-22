@@ -9,19 +9,15 @@ import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestConfiguration
 import com.demo.chat.test.randomAlphaNumeric
-import org.cassandraunit.spring.CassandraDataSet
-import org.cassandraunit.spring.CassandraUnit
-import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.TestExecutionListeners
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
@@ -29,10 +25,10 @@ import java.util.*
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
 @ImportAutoConfiguration
-@CassandraUnit
-@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-@CassandraDataSet("simple-room.cql")
-class MessageTopicRepositoryTests {
+//@CassandraUnit
+//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
+//@CassandraDataSet("simple-room.cql")
+class MessageTopicRepositoryTests : CassandraSchemaTest(){
 
     private val ROOMNAME = "XYZ"
 

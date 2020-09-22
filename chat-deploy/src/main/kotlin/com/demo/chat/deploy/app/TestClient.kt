@@ -48,7 +48,8 @@ class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
 
         ctx.environment.activeProfiles.forEach { profile ->
             when (profile) {
-                "user" -> {println("USER")
+                "user" -> {
+                    println("USER")
                     ctx.registerBean(ClientUserRun::class.java, Supplier {
                         ClientUserRun()
                     })
@@ -87,7 +88,7 @@ class EdgeRun {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 
     @Bean
-    fun run(builder: RSocketRequester.Builder): ApplicationRunner = ApplicationRunner {
+    fun run(builder: RSocketRequester.Builder): ApplicationRunner = ApplicationRunner { appArgs ->
         val requester = builder
                 .connectTcp("localhost", 6503)
                 .block()!!
@@ -97,7 +98,7 @@ class EdgeRun {
                 .data(UserCreateRequest("MG", "1002", "JPG"))
                 .retrieveMono(UUID::class.java)
                 .doOnNext {
-                    logger.info("UUID FOUND: ${it}")
+                    logger.info("UUID FOUND: $it")
                 }
                 .flatMap {
                     requester
@@ -114,8 +115,9 @@ class EdgeRun {
 
 class ClientMessageRun {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
+
     @Bean
-    fun <T, V> userClient(requester: RSocketRequester.Builder):  PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(
+    fun <T, V> userClient(requester: RSocketRequester.Builder): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(
             requester
                     .connectTcp("localhost", 6501)
                     .block()!!)
@@ -136,6 +138,7 @@ class ClientMessageRun {
 
 class ClientUserRun {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
+
     @Bean
     fun <T> userClient(requester: RSocketRequester.Builder): PersistenceStore<T, User<T>> = UserPersistenceClient(
             requester
@@ -155,8 +158,9 @@ class ClientUserRun {
 
 class ClientKeyRun {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
+
     @Bean
-    fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient("key.", 
+    fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient("key.",
             requester
                     .connectTcp("localhost", 6500)
                     .block()!!)

@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.config.initializers
 
 import com.datastax.driver.core.Cluster
+import com.datastax.oss.driver.api.core.CqlSession
 import org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
@@ -15,8 +16,9 @@ class CassandraContextInitializer: ApplicationContextInitializer<GenericApplicat
             CassandraAutoConfiguration()
         })
         ctx.registerBean(CassandraDataAutoConfiguration::class.java, Supplier {
-            CassandraDataAutoConfiguration(ctx.getBean(CassandraProperties::class.java),
-                    ctx.getBean(Cluster::class.java))
+            CassandraDataAutoConfiguration(ctx.getBean(CqlSession::class.java))
+          //  CassandraDataAutoConfiguration(ctx.getBean(CassandraProperties::class.java),
+          //          ctx.getBean(Cluster::class.java))
         })
         ctx.registerBean(CassandraReactiveDataAutoConfiguration::class.java, Supplier {
             CassandraReactiveDataAutoConfiguration()

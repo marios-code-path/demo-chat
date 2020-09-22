@@ -6,21 +6,18 @@ import com.demo.chat.domain.cassandra.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
-import com.demo.chat.test.TestClusterConfiguration
+import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestConfiguration
-import org.cassandraunit.spring.CassandraDataSet
-import org.cassandraunit.spring.CassandraUnit
-import org.cassandraunit.spring.CassandraUnitDependencyInjectionTestExecutionListener
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.TestExecutionListeners
+import org.springframework.core.io.Resource
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import org.springframework.test.context.support.DependencyInjectionTestExecutionListener
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import reactor.test.publisher.TestPublisher
@@ -33,15 +30,18 @@ import java.util.function.Supplier
 import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
-@CassandraUnit
+//@CassandraUnit
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
-@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-@CassandraDataSet("simple-message.cql")
-class MessageRepositoryTests {
+//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
+//@CassandraDataSet("simple-message.cql")
+class MessageRepositoryTests : CassandraSchemaTest(){
 
     private val MSGTEXT = "SUP TEST"
 
     val logger = LoggerFactory.getLogger(this::class.simpleName)
+
+    @Value("classpath:simple-message.cql")
+    override lateinit var cqlFile: Resource
 
     @Autowired
     lateinit var repo: ChatMessageRepository<UUID>
