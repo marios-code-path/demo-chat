@@ -28,12 +28,7 @@ open class CassandraSchemaTest {
 
     @BeforeAll
     fun cqlSetup() {
-        val cqlKeysp = sqlFile(ClassPathResource("classpath:keyspace.cql").file)
         val cqlCreate = sqlFile(cqlFile.file)
-
-        template.reactiveCqlOperations
-                .execute(Flux.fromArray(cqlKeysp.toTypedArray()))
-                .blockLast()
 
         template.reactiveCqlOperations
                 .execute(Flux.fromArray(cqlCreate.toTypedArray()))

@@ -15,7 +15,6 @@ import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.springframework.core.env.ConfigurableEnvironment
-import org.springframework.data.cassandra.config.SchemaAction
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
@@ -32,25 +31,26 @@ class CassandraTestConfiguration(val properties: CassandraProperties) {
     @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
     fun cassandraContainer(environment: ConfigurableEnvironment): CassandraContainer<*> {
         val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {
-            log.info("Testcontainer Cassandra is on port:  ${properties.port}")
+            log.debug("Testcontainer Cassandra is on port:  ${properties.port}")
             //withConfigurationOverride("another-cassandra.yaml")
             withExposedPorts(properties.port)
             withReuse(false)
             withLogConsumer(containerLogsConsumer(log))
             withNetwork(Network.SHARED)
             withStartupTimeout(Duration.ofSeconds(60))
+            withInitScript("keyspace.cql")
             startAndLogTime(this)
-            log.info("Test Container STARTED")
+            log.debug("Test Container STARTED")
         }
 
         val host = container.containerIpAddress
         val mappedPort = container.getMappedPort(properties.port)
+        log.debug("Container is reachable on port: $mappedPort")
 
         properties.contactPoints.removeAt(0)
         properties.contactPoints.add(host)
         properties.port = mappedPort
 
-        log.info("CONTAINER IS REACHABLE ON PORT: $mappedPort")
         return container
     }
 }
