@@ -9,14 +9,12 @@
 	</parent>
 	
 	<groupId>com.demo</groupId>
-	<artifactId>chat-persistence-cassandra</artifactId>
+	<artifactId>chat-index-elastic</artifactId>
 	<version>0.0.1</version>
-	<name>chat-persistence-cassandra</name>
-	<description>Demo-Chat Reactive Cassandra Persistence</description>
+	<name>chat-index-elastic</name>
+	<description>Demo-Chat Reactive ElasticSearch Index</description>
 
 	<properties>
-<!--		<cassandraunit.version>3.5.0.1</cassandraunit.version>-->
-<!--		<cassandraunit-spring.version>3.5.0.1</cassandraunit-spring.version>-->
 		<datastax.driver.version>3.7.1</datastax.driver.version>
 		<lognet.version>2.1.4</lognet.version>
 	</properties>
@@ -28,14 +26,20 @@
 			<version>0.0.1</version>
 		</dependency>
 		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>elasticsearch</artifactId>
+			<version>1.14.3</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>
-		</dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+    </dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
 			<artifactId>kotlin-reflect</artifactId>
@@ -59,12 +63,6 @@
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter</artifactId>
 			<version>2.2.0.RC1</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.playtika.testcontainers</groupId>
-			<artifactId>embedded-cassandra</artifactId>
-			<version>1.82</version>
 			<scope>test</scope>
 		</dependency>
 <!--		<dependency>-->

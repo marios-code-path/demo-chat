@@ -10,7 +10,7 @@ import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -23,7 +23,7 @@ import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
 import java.util.*
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 @ImportAutoConfiguration
 //@CassandraUnit
 //@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)

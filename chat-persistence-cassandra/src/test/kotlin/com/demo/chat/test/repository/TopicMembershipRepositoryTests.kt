@@ -10,7 +10,7 @@ import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestClusterConfiguration
-import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.CassandraTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -18,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.Resource
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -28,7 +27,7 @@ import kotlin.streams.toList
 
 //https://stackoverflow.com/questions/38862460/user-defined-type-with-spring-data-cassandra/42036202#42036202
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class, TestClusterConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class, TestClusterConfiguration::class])
 //@CassandraUnit
 //@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
 //@CassandraDataSet("simple-membership.cql")

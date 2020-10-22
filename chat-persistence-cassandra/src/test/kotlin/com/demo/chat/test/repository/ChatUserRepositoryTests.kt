@@ -9,18 +9,18 @@ import com.demo.chat.domain.cassandra.ChatUserKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.CassandraTestConfiguration
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.Resource
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -29,13 +29,8 @@ import java.time.Instant
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
-//@CassandraUnit()
-//@TestExecutionListeners(
-//        listeners = [CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class],
-//        mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS
-//)
-//@CassandraDataSet("simple-user.cql")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 class ChatUserRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var repo: ChatUserRepository<UUID>

@@ -8,6 +8,7 @@ interface ConfigurationPropertiesCassandra {
     val basePackages: String
 }
 
+@Deprecated("Use standard configuration properties going forward")
 class ClusterConfigurationCassandra(val props: CassandraProperties,
                                     val pack: ConfigurationPropertiesCassandra) : AbstractReactiveCassandraConfiguration() {
 

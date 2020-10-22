@@ -7,9 +7,10 @@ import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.CassandraTestConfiguration
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
@@ -30,10 +31,8 @@ import java.util.function.Supplier
 import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
-//@CassandraUnit
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
-//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-//@CassandraDataSet("simple-message.cql")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 class MessageRepositoryTests : CassandraSchemaTest(){
 
     private val MSGTEXT = "SUP TEST"

@@ -6,23 +6,17 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestConfiguration
+import com.demo.chat.test.CassandraTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.Resource
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
-import java.nio.file.Files
 import java.util.*
 
 class TestUUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
@@ -32,16 +26,14 @@ class TestUUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
 }
 
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [TestConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 class KeyServiceTests : CassandraSchemaTest() {
-    private val logger = LoggerFactory.getLogger(this::class.simpleName)
-
     lateinit var svc: IKeyService<UUID>
 
     @Value("classpath:simple-keys.cql")
     override lateinit var cqlFile: Resource
 
-    @BeforeEach
+    @BeforeAll
     fun setUp() {
         this.svc = KeyServiceCassandra(template, TestUUIDKeyGeneratorCassandra())
     }

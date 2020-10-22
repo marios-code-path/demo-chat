@@ -1,0 +1,64 @@
+package com.demo.chat.test
+
+import com.demo.chat.config.ClusterConfigurationCassandra
+import com.demo.chat.config.ConfigurationPropertiesCassandra
+import com.playtika.test.common.utils.ContainerUtils.containerLogsConsumer
+import com.playtika.test.common.utils.ContainerUtils.startAndLogTime
+import org.slf4j.LoggerFactory
+import org.springframework.boot.autoconfigure.AutoConfigureOrder
+import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.DependsOn
+import org.springframework.core.env.ConfigurableEnvironment
+import org.springframework.data.cassandra.config.SchemaAction
+import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.testcontainers.containers.CassandraContainer
+import org.testcontainers.containers.Network
+import java.time.Duration
+
+@AutoConfigureOrder
+@Configuration
+@ComponentScan("com.demo.chat.test")
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+@EnableConfigurationProperties(CassandraProperties::class, CassandraConfigProperties::class)
+class CassandraTestConfiguration(val properties: CassandraProperties) {
+    val log = LoggerFactory.getLogger(this::class.qualifiedName)
+
+    @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
+    fun cassandraContainer(environment: ConfigurableEnvironment): CassandraContainer<*> {
+        val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {
+            log.info("Testcontainer Cassandra is on port:  ${properties.port}")
+            //withConfigurationOverride("another-cassandra.yaml")
+            withExposedPorts(properties.port)
+            withReuse(false)
+            withLogConsumer(containerLogsConsumer(log))
+            withNetwork(Network.SHARED)
+            withStartupTimeout(Duration.ofSeconds(60))
+            startAndLogTime(this)
+            log.info("Test Container STARTED")
+        }
+
+        val host = container.containerIpAddress
+        val mappedPort = container.getMappedPort(properties.port)
+
+        properties.contactPoints.removeAt(0)
+        properties.contactPoints.add(host)
+        properties.port = mappedPort
+
+        log.info("CONTAINER IS REACHABLE ON PORT: $mappedPort")
+        return container
+    }
+}
+
+@ConstructorBinding
+@ConfigurationProperties(prefix = "spring.data.cassandra")
+data class CassandraConfigProperties(override val basePackages: String) : ConfigurationPropertiesCassandra
+
+@Configuration
+@DependsOn("embeddedCassandra")
+class TestClusterConfiguration(props: CassandraProperties, config: CassandraConfigProperties) : ClusterConfigurationCassandra(props, config)

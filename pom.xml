@@ -32,6 +32,7 @@
         <module>chat-service-rsocket</module>
 	<module>chat-deploy</module>
 	<module>chat-data-flow</module>
+	<module>chat-index-elastic</module>
     </modules>
 
     <repositories>
