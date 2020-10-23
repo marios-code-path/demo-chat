@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS chat_user;
+DROP TABLE IF EXISTS chat_user_handle;
+
 CREATE TABLE chat.chat_user(
 user_id UUID,
 handle varchar,

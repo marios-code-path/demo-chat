@@ -1,20 +1,17 @@
 package com.demo.chat.test
 
-import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
+import org.reactivestreams.Publisher
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Bean
-import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.testcontainers.containers.CassandraContainer
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.io.File
 import java.nio.file.Files
-import java.time.Duration
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 open class CassandraSchemaTest {
@@ -26,23 +23,43 @@ open class CassandraSchemaTest {
 
     open lateinit var cqlFile: Resource
 
-    @BeforeAll
-    fun cqlSetup() {
-        val cqlCreate = sqlFile(cqlFile.file)
+    val log = LoggerFactory.getLogger("TEST")
 
-        template.reactiveCqlOperations
-                .execute(Flux.fromArray(cqlCreate.toTypedArray()))
+    fun execStatement(statement: Publisher<String>): Flux<Boolean> {
+        return template.reactiveCqlOperations
+                .execute(statement)
+                .doOnNext { bool ->
+                    log.info("Completed[$bool]: $statement")
+                }
+                .doOnError {
+                    log.info("ErrCompleted: $statement")
+                    log.info("THROWN : ${it.message}")
+                }
+    }
+
+    @BeforeEach
+    fun cqlSetup() {
+        val fileData = sqlFile(cqlFile.file)
+        val cqlCreate = fileData.filter {
+            it.contains("CREATE")
+        }
+
+        val cqlDrops = fileData.filter {
+            it.contains("DROP")
+        }
+
+        execStatement(Flux.fromArray(cqlDrops.toTypedArray()))
+                .blockLast()
+
+        execStatement(Flux.fromArray(cqlCreate.toTypedArray()))
                 .blockLast()
     }
 
-    fun sqlFile(file: File)  =
-        String(Files.readAllBytes(file.toPath()))
-                .split(";").filter {
-                    it.trim().length > 1
-                }
-
-    @AfterAll
-    fun shutdownStuff() {
-        container.stop()
-    }
+    fun sqlFile(file: File) =
+            String(Files.readAllBytes(file.toPath()))
+                    .split(";")
+                    .map(String::trim)
+                    .filter {
+                        it.isNotEmpty()
+                    }
 }

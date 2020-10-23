@@ -13,6 +13,7 @@ import com.demo.chat.test.TestClusterConfiguration
 import com.demo.chat.test.CassandraTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -25,12 +26,9 @@ import java.util.*
 import java.util.stream.Stream
 import kotlin.streams.toList
 
-//https://stackoverflow.com/questions/38862460/user-defined-type-with-spring-data-cassandra/42036202#42036202
 @ExtendWith(SpringExtension::class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class, TestClusterConfiguration::class])
-//@CassandraUnit
-//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-//@CassandraDataSet("simple-membership.cql")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 class TopicMembershipRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>

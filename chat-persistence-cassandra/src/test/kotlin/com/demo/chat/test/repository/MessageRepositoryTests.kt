@@ -33,7 +33,7 @@ import kotlin.streams.asSequence
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
-class MessageRepositoryTests : CassandraSchemaTest(){
+class MessageRepositoryTests : CassandraSchemaTest() {
 
     private val MSGTEXT = "SUP TEST"
 

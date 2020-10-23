@@ -14,20 +14,23 @@ import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.core.io.Resource
+import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
 import java.util.*
 
+@ExtendWith(SpringExtension::class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
-@ImportAutoConfiguration
-//@CassandraUnit
-//@TestExecutionListeners(CassandraUnitDependencyInjectionTestExecutionListener::class, DependencyInjectionTestExecutionListener::class)
-//@CassandraDataSet("simple-room.cql")
 class MessageTopicRepositoryTests : CassandraSchemaTest(){
 
     private val ROOMNAME = "XYZ"
@@ -37,6 +40,9 @@ class MessageTopicRepositoryTests : CassandraSchemaTest(){
 
     @Autowired
     lateinit var byNameRepo: TopicByNameRepository<UUID>
+
+    @Value("classpath:simple-room.cql")
+    override lateinit var cqlFile: Resource
 
     @Test
     fun `inactive rooms dont appear`() {

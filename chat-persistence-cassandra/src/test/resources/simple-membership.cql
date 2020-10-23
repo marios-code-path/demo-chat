@@ -1,4 +1,8 @@
-CREATE TABLE topic_membership
+DROP TABLE IF EXISTS chat.topic_membership;
+DROP TABLE IF EXISTS chat.topic_membership_by_member;
+DROP TABLE IF EXISTS chat.topic_membership_by_member_of;
+
+CREATE TABLE chat.topic_membership
 (
     id       UUID,
     member   UUID,
@@ -6,7 +10,7 @@ CREATE TABLE topic_membership
     PRIMARY KEY (id)
 );
 
-CREATE TABLE topic_membership_by_member
+CREATE TABLE chat.topic_membership_by_member
 (
     id       UUID,
     member   UUID,
@@ -14,7 +18,7 @@ CREATE TABLE topic_membership_by_member
     PRIMARY KEY (member)
 );
 
-CREATE TABLE topic_membership_by_member_of
+CREATE TABLE chat.topic_membership_by_member_of
 (
     id       UUID,
     member   UUID,
