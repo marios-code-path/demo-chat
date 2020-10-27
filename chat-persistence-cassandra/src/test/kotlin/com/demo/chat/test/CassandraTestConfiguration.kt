@@ -28,6 +28,8 @@ import java.time.Duration
 class CassandraTestConfiguration(val properties: CassandraProperties) {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
+    // start container, and re-wire cassandraProperties to contain
+    // values (IP, Port, DC...) that contianer provides.
     @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
     fun cassandraContainer(environment: ConfigurableEnvironment): CassandraContainer<*> {
         val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("Key")
+@JsonTypeName("key")
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
 interface Key<T> {
     val id: T

@@ -41,6 +41,10 @@
       <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
     </dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webflux</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.jetbrains.kotlin</groupId>
 			<artifactId>kotlin-reflect</artifactId>
 		</dependency>
@@ -64,36 +68,6 @@
 			<artifactId>spring-cloud-starter</artifactId>
 			<version>2.2.0.RC1</version>
 			<scope>test</scope>
-		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.hectorclient</groupId>-->
-<!--			<artifactId>hector-core</artifactId>-->
-<!--			<version>2.0-0</version>-->
-<!--			<exclusions>-->
-<!--			<exclusion>-->
-<!--			<groupId>org.slf4j</groupId>-->
-<!--			<artifactId>slf4j-log4j12</artifactId>-->
-<!--			</exclusion>-->
-<!--			<exclusion>-->
-<!--			<groupId>commons-lang</groupId>-->
-<!--			<artifactId>commons-lang</artifactId>-->
-<!--			</exclusion>-->
-<!--			<exclusion>-->
-<!--			<groupId>com.google.guava</groupId>-->
-<!--			<artifactId>guava</artifactId>-->
-<!--			</exclusion>-->
-<!--			</exclusions>-->
-<!--		</dependency>-->
-		<dependency>
-			<groupId>com.datastax.cassandra</groupId>
-			<artifactId>cassandra-driver-core</artifactId>
-			<version>${datastax.driver.version}</version>
-			<!--<exclusions>-->
-			<!--<exclusion>-->
-			<!--<groupId>com.google.guava</groupId>-->
-			<!--<artifactId>guava</artifactId>-->
-			<!--</exclusion>-->
-			<!--</exclusions>-->
 		</dependency>
 	</dependencies>
 

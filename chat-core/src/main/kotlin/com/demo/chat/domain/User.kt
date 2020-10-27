@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("User")
+@JsonTypeName("user")
 interface User<T> {
     val key: Key<T>
     val name: String

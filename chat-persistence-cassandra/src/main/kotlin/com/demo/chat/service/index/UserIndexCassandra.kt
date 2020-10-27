@@ -1,6 +1,5 @@
 package com.demo.chat.service.index
 
-import com.datastax.driver.core.policies.DefaultRetryPolicy
 import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.demo.chat.codec.Codec
 import com.demo.chat.domain.DuplicateUserException
