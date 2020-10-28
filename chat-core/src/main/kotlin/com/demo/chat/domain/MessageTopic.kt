@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("Topic")
+@JsonTypeName("topic")
 interface MessageTopic<T> : KeyDataPair<T, String> {
     companion object Factory {
         fun <T> create(key: Key<T>, name: String) = object : MessageTopic<T> {

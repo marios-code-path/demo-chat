@@ -39,7 +39,7 @@ interface MessageKey<T> : Key<T> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("Message")
+@JsonTypeName("message")
 interface Message<T,  out E> : KeyDataPair<T, E> {
     val record: Boolean
     override val key: MessageKey<T>

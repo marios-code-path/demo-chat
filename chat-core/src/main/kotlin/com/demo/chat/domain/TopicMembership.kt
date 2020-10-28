@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 // Member Key = MK
 // topic Key = TK
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("Membership")
+@JsonTypeName("membership")
 interface TopicMembership<T> {
     val key: T
     val memberOf: T

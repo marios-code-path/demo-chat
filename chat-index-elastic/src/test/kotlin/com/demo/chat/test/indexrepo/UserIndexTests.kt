@@ -2,8 +2,6 @@ package com.demo.chat.test.indexrepo
 
 import com.demo.chat.domain.elastic.ChatUser
 import com.demo.chat.domain.elastic.ChatUserKey
-import com.demo.chat.domain.elastic.Foo
-import com.demo.chat.repository.elastic.FooRepository
 import com.demo.chat.repository.elastic.ReactiveUserIndexRepository
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -22,24 +20,8 @@ class UserIndexTests {
     @Autowired
     private lateinit var repo: ReactiveUserIndexRepository<String>
 
-    @Autowired
-    lateinit var fooRepo: FooRepository
-
     @Test
-    fun `should foo`() {
-        StepVerifier.create(fooRepo
-                .save(Foo("1234", "test"))
-        )
-                .assertNext { foo ->
-                    Assertions
-                            .assertThat(foo)
-                            .hasNoNullFieldsOrProperties()
-                }
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should index and report`() {
+    fun `should store to index and success`() {
         val user = ChatUser(ChatUserKey("1234"),
                 "testuser",
                 "testhandle",

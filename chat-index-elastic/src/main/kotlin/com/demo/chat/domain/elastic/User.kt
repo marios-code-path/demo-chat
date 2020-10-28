@@ -10,7 +10,7 @@ import org.springframework.data.elasticsearch.annotations.Document
 import org.springframework.data.elasticsearch.annotations.Field
 import java.time.Instant
 
-@Document(indexName = "user")
+@Document(indexName = "user", type = "user")
 data class ChatUser<T>(
         override val key: ChatUserKey<T>,
         @Field
