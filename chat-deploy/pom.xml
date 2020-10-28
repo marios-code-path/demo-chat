@@ -167,6 +167,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
