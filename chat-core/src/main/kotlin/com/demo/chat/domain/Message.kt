@@ -12,7 +12,7 @@ interface MessageKey<T> : Key<T> {
 
     companion object Factory {
         @JvmStatic
-        fun <T> create(messageId: T, from: T, dest: T): MessageKey<T> = @com.fasterxml.jackson.annotation.JsonTypeName("Key") object : MessageKey<T> {
+        fun <T> create(messageId: T, from: T, dest: T): MessageKey<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : MessageKey<T> {
             override val id: T
                 get() = messageId
             override val from: T
@@ -25,7 +25,7 @@ interface MessageKey<T> : Key<T> {
 
         @JvmStatic
         @Deprecated("key requires 'from' as parameter")
-        fun <T> create(messageId: T, dest: T): MessageKey<T> = object : @com.fasterxml.jackson.annotation.JsonTypeName("Key") MessageKey<T> {
+        fun <T> create(messageId: T, dest: T): MessageKey<T> = object : @com.fasterxml.jackson.annotation.JsonTypeName("key") MessageKey<T> {
             override val id: T
                 get() = messageId
             override val from: T
@@ -46,7 +46,7 @@ interface Message<T,  out E> : KeyDataPair<T, E> {
     override val data: E
 
     companion object Factory {
-        fun <T, E> create(key: MessageKey<T>, value: E, record: Boolean): Message<T, E> = @JsonTypeName("Message")
+        fun <T, E> create(key: MessageKey<T>, value: E, record: Boolean): Message<T, E> = @JsonTypeName("message")
         object : Message<T, E> {
             override val key: MessageKey<T>
                 get() = key

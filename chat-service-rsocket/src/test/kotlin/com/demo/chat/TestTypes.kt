@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
-@JsonTypeName("User")
+@JsonTypeName("user")
 data class TestChatUser(
         override val key: TestChatUserKey,
         override val name: String,
@@ -22,12 +22,12 @@ data class TestChatUserKey(
         val handle: String
 ) : Key<UUID>
 
-@JsonTypeName("Key")
+@JsonTypeName("key")
 data class TestUUIDKey(
         override val id: UUID
 ) : Key<UUID>
 
-@JsonTypeName("ChatRoom")
+@JsonTypeName("chatRoom")
 data class TestChatMessageTopic(
         override val key: TestChatRoomKey,
         val active: Boolean

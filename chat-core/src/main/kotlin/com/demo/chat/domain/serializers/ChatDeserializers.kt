@@ -53,7 +53,7 @@ class UserDeserializer<T>(keyCodec: Codec<JsonNode, T>) : JsonDeserializer<User<
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val keyNode = node.get("key").get("Key")
+        val keyNode = node.get("key").get("key")
         val key: Key<T> = kd.deserialize(keyNode.traverse(oc), ctxt)
 
         return User.create(key,
@@ -88,7 +88,7 @@ class TopicDeserializer<T>(keyCodec: Codec<JsonNode, T>) : JsonDeserializer<Mess
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val keyNode = node.get("key").get("Key")
+        val keyNode = node.get("key").get("key")
         val key: Key<T> = kd.deserialize(keyNode.traverse(oc), ctxt)
 
         return MessageTopic.create(key, node.get("data").asText())

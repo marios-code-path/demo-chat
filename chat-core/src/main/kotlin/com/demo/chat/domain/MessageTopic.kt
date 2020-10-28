@@ -17,21 +17,21 @@ interface MessageTopic<T> : KeyDataPair<T, String> {
     }
 }
 
-@JsonTypeName("TopicMeta")
+@JsonTypeName("topicMeta")
 @Deprecated("Topic Metadata no longer associated at Data-Store level")
 data class TopicMetaData(
         val activeMembers: Int,
         val totalMessages: Int
 )
 
-@JsonTypeName("TopicMember")
+@JsonTypeName("topicMember")
 data class TopicMember(
         val uid: String,
         val handle: String,
         val imgUri: String
 )
 
-@JsonTypeName("TopicMemberships")
+@JsonTypeName("topicMemberships")
 data class TopicMemberships(
         val members: Set<TopicMember>
 )

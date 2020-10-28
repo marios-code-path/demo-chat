@@ -69,7 +69,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
                         requestor
                                 .route("index.message.rem")
                                 .data(message.key)
-                                .retrieveFlux(Void::class.java)
+                                .retrieveMono(Void::class.java)
                 )
                 .verifyComplete()
     }
@@ -85,7 +85,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
                         requestor
                                 .route("index.message.add")
                                 .data(message)
-                                .retrieveFlux(Void::class.java)
+                                .retrieveMono(Void::class.java)
                 )
                 .verifyComplete()
     }

@@ -12,13 +12,13 @@ interface Key<T> {
 
     companion object Factory {
         @JvmStatic
-        fun <T> funKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("Key") object : Key<T> {
+        fun <T> funKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
             override val id: T
                 get() = id
         }
 
         @JvmStatic
-        fun <T : Any> anyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("Key") object : Key<T> {
+        fun <T : Any> anyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
             override val id: T
                 get() = id
         }
@@ -26,7 +26,7 @@ interface Key<T> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("KeyData")
+@JsonTypeName("keyData")
 interface KeyDataPair<T, out E> {
     val key: Key<T>
     val data: E
@@ -34,7 +34,7 @@ interface KeyDataPair<T, out E> {
 
     companion object Factory {
         @JvmStatic
-        fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> = @com.fasterxml.jackson.annotation.JsonTypeName("KeyData") object : KeyDataPair<T, E> {
+        fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> = @com.fasterxml.jackson.annotation.JsonTypeName("keyData") object : KeyDataPair<T, E> {
             override val key: Key<T>
                 get() = key
             override val data: E
