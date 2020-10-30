@@ -4,6 +4,10 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 
+interface KeyBearer<T> {
+    val key: Key<T>
+}
+
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("key")
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
@@ -30,7 +34,6 @@ interface Key<T> {
 interface KeyDataPair<T, out E> {
     val key: Key<T>
     val data: E
-
 
     companion object Factory {
         @JvmStatic
