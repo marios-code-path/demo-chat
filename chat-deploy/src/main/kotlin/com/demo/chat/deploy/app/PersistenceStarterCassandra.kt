@@ -15,7 +15,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
-import com.demo.chat.service.messaging.TopicMessagingServiceMemory
+import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceMemory
 import com.demo.chat.deploy.config.PersistenceClientFactory
 import com.demo.chat.deploy.config.*
 import org.slf4j.LoggerFactory

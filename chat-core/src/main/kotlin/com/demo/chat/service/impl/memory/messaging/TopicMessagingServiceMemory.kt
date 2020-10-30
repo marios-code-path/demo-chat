@@ -1,9 +1,9 @@
-package com.demo.chat.service.messaging
+package com.demo.chat.service.impl.memory.messaging
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chat.service.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor

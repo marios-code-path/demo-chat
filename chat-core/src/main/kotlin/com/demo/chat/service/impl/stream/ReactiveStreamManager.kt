@@ -1,4 +1,4 @@
-package com.demo.chat.service.stream
+package com.demo.chat.service.impl.stream
 
 import com.demo.chat.domain.Message
 import org.slf4j.Logger
@@ -50,10 +50,10 @@ class ReactiveStreamManager<T, E> {
                         val disposable = getSink(source).subscribe { msg ->
                             getSource(consumer).onNext(msg)
                         }
-                                //subscribeTopicProcessor(consumer, getSink(source))
-                        getSinkConsumers(source)[consumer] = disposable
 
-                        disposable
+                        disposable.apply {
+                            getSinkConsumers(source)[consumer] = this
+                        }
                     }
 
     fun unsubscribe(source: T, consumer: T) {

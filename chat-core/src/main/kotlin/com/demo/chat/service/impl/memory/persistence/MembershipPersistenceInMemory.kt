@@ -1,4 +1,4 @@
-package com.demo.chat.service.memory
+package com.demo.chat.service.impl.memory.persistence
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership

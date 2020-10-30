@@ -1,8 +1,8 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.messaging.TopicMessagingServiceRedisPubSub
+import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
+import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceRedisPubSub
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach

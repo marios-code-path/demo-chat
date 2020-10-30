@@ -2,7 +2,7 @@ package com.demo.chat.test.stream
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

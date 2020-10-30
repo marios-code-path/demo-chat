@@ -4,8 +4,8 @@ import com.demo.chat.codec.Codec
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.ChatTopicMessagingService
-import com.demo.chat.service.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.messaging.TopicMessagingServiceRedisPubSub
+import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
+import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceRedisPubSub
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
