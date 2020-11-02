@@ -5,7 +5,9 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.assertj.core.api.Assertions
+import org.junit.Ignore
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
@@ -13,7 +15,8 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 
-open class StreamManagerTests<K, V>(
+@Disabled
+open class StreamManagerTestBase<K, V>(
         val streamMan: ReactiveStreamManager<K, V>,
         val codec: Codec<Unit, K>,
         val valueCodec: Codec<Unit, V>) {

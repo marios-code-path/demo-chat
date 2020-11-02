@@ -13,6 +13,6 @@ object StringValCodec : Codec<Unit, String> {
     override fun decode(record: Unit): String = randomAlphaNumeric(50)
 }
 
-class ReactiveStreamManagerTests : StreamManagerTests<UUID, String>(ReactiveStreamManager<UUID, String>(),
+class ReactiveStreamManagerTestBase : StreamManagerTestBase<UUID, String>(ReactiveStreamManager<UUID, String>(),
         UUIDKeyCodec,
         StringValCodec)

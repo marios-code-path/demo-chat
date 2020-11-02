@@ -1,14 +1,14 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.codec.Codec
-import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
 import com.demo.chat.service.PersistenceStore
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
 
-open class PersistenceTests<K, V>(
+@Disabled
+open class PersistenceTestBase<K, V>(
         val valCodec: Codec<Unit, V>,
         val store: PersistenceStore<K, V>) {
 
