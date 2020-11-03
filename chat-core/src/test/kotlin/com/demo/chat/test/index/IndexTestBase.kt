@@ -2,6 +2,7 @@ package com.demo.chat.test.index
 
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
@@ -27,11 +28,18 @@ open class IndexTestBase<T, E, Q>(val valueSupply: Supplier<E>,
                         keyService
                                 .key(String::class.java)
                                 .flatMap(index::rem))
+                .verifyComplete()
     }
 
     @Test
     fun `should findBy simple`() {
         StepVerifier
                 .create(index.findBy(querySupply.get()))
+                .assertNext {key ->
+                    Assertions
+                            .assertThat(key)
+                            .isNotNull
+                }
+                .verifyComplete()
     }
 }
