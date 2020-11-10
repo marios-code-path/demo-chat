@@ -11,6 +11,14 @@ import reactor.test.publisher.TestPublisher
 class UserTests : TestBase() {
 
     @Test
+    fun `should create`() {
+        Assertions
+                .assertThat(User.create(Key.funKey("KEY"), "TEST", "TEST", "TEST"))
+                .isNotNull
+                .hasNoNullFieldsOrProperties()
+    }
+
+    @Test
     fun `should test streaming only through publisher`() {
         val userPub = TestPublisher.create<User<out Any>>()
         val userFlux = userPub.flux()

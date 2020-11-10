@@ -1,6 +1,7 @@
 package com.demo.chat.test.domain
 
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.test.*
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -10,6 +11,16 @@ import java.time.Duration
 import java.util.*
 
 class MessageTests : TestBase() {
+
+    @Test
+    fun `should create`() {
+        Assertions
+                .assertThat(Message
+                        .create(MessageKey.create("Key1", "Key2", "Key3"),
+                        "TEST", true))
+                .isNotNull
+                .hasNoNullFieldsOrProperties()
+    }
 
     @Test
     fun `should test streaming only through publisher`() {

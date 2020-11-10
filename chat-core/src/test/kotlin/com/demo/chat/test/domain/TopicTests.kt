@@ -10,6 +10,13 @@ import reactor.test.publisher.TestPublisher
 
 
 class TopicTests : TestBase() {
+    @Test
+    fun `should create`() {
+        Assertions
+                .assertThat(MessageTopic.create(Key.funKey("Key1"), "TEST"))
+                .isNotNull
+                .hasNoNullFieldsOrProperties()
+    }
 
     @Test
     fun `should test streaming only through publisher`() {

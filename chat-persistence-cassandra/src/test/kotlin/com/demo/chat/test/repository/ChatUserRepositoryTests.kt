@@ -12,21 +12,88 @@ import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertAll
+import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.Resource
+import org.springframework.data.repository.reactive.ReactiveSortingRepository
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.time.Instant
 import java.util.*
+import java.util.function.Supplier
+
+@Disabled
+abstract class RepositoryTests<T, E>(val valueSupply: Supplier<E>,
+val keySupply: Supplier<T>) {
+    lateinit var repo: ReactiveSortingRepository<E, T>
+    val defaultImageUri = "http://path_to_file"
+
+    abstract fun assertElement(element: E) : Unit
+
+    /**
+     * org.assertj.core.api.Assertions
+    .assertThat(element)
+    .isNotNull
+    .hasFieldOrProperty("key")
+    .hasFieldOrProperty("handle")
+    .hasFieldOrProperty("name")
+    .extracting("key")
+    .hasFieldOrProperty("id")
+     */
+    @Test
+    fun <T> `should save && findById`() {
+        val users = Flux.just(
+                valueSupply.get(),
+                valueSupply.get(),
+                valueSupply.get())
+                .flatMap {
+                    repo.save(it)
+                }
+
+        val find = repo.findById(keySupply.get())
+
+        val saveAndFind = Flux
+                .from(users)
+                .then(find)
+
+        StepVerifier
+                .create(saveAndFind)
+                .expectSubscription()
+                .assertNext (this::assertElement)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `saveall && find all`() {
+        val saveAndFind = repo
+                .saveAll(Flux.just(valueSupply.get(), valueSupply.get()))
+                .thenMany(repo.findAll())
+
+        StepVerifier
+                .create(saveAndFind)
+                .assertNext (this::assertElement)
+                .assertNext (this::assertElement)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save and  findByID`() {
+        val saveAndFindById = repo
+                .save(valueSupply.get())
+                .thenMany(repo.findById(keySupply.get()))
+
+        StepVerifier
+                .create(saveAndFindById)
+                .expectSubscription()
+                .assertNext (this::assertElement)
+                .verifyComplete()
+    }
+}
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -38,7 +105,7 @@ class ChatUserRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var handleRepo: ChatUserHandleRepository<UUID>
 
-    val defaultImageUri = "http://localhost:7070/s3"
+    val defaultImageUri = "http://path_to_file"
 
     @Value("classpath:simple-user.cql")
     override lateinit var cqlFile: Resource

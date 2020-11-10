@@ -10,6 +10,15 @@ import java.time.Duration
 import java.util.*
 
 class KeyTests : TestBase() {
+
+    @Test
+    fun `should create`() {
+        Assertions
+                .assertThat(Key.funKey("TEST"))
+                .isNotNull
+                .hasNoNullFieldsOrProperties()
+    }
+
     @Test
     fun `should test streaming only through publisher`() {
         val messagePub = TestPublisher.create<Key<*>>()
