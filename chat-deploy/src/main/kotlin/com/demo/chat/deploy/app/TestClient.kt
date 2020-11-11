@@ -28,6 +28,7 @@ import org.springframework.messaging.rsocket.RSocketRequester
 import java.util.*
 import java.util.function.Supplier
 
+@Deprecated("Move me to tests; You shouldn't run tests in production!")
 @Profile("test-client")
 @SpringBootConfiguration
 class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
@@ -49,7 +50,6 @@ class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
         ctx.environment.activeProfiles.forEach { profile ->
             when (profile) {
                 "user" -> {
-                    println("USER")
                     ctx.registerBean(ClientUserRun::class.java, Supplier {
                         ClientUserRun()
                     })

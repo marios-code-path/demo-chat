@@ -48,7 +48,7 @@ class EmptyNumberCodec : Codec<Unit, Number> {
     }
 }
 
-class EmptyUUIDCodec : Codec<Unit, UUID> {
+open class EmptyUUIDCodec : Codec<Unit, UUID> {
     override fun decode(record: Unit): UUID {
         return UUID(0L, 0L)
     }

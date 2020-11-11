@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 
 @Profile("redis-events")
-class MessagingStarterRedis {
+class RedisMessagingServices {
     @Bean
     fun topicMessagingRedis(props: RedisTemplateConfiguration): ChatTopicMessagingService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()

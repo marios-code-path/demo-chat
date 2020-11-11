@@ -27,5 +27,4 @@ class KeyServiceInMemory<T>(private val keyGen: Codec<Unit, T>) : IKeyService<T>
     override fun exists(key: Key<T>): Mono<Boolean> = Mono.create {
         it.success(map.contains(key.id))
     }
-
 }

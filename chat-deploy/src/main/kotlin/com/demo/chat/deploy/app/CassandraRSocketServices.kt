@@ -10,7 +10,7 @@ import java.util.function.Supplier
 
 @Profile("production")
 @SpringBootConfiguration
-class DeployItForLearning : ApplicationContextInitializer<GenericApplicationContext> {
+class CassandraRSocketServices : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(ctx: GenericApplicationContext) {
         ctx.registerBean(CodecsContextInitializer::class.java, Supplier {
             CodecsContextInitializer()
@@ -41,8 +41,8 @@ class DeployItForLearning : ApplicationContextInitializer<GenericApplicationCont
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            SpringApplicationBuilder(DeployItForLearning::class.java)
-                    .initializers(DeployItForLearning())
+            SpringApplicationBuilder(CassandraRSocketServices::class.java)
+                    .initializers(CassandraRSocketServices())
                     .run(*args)
         }
     }

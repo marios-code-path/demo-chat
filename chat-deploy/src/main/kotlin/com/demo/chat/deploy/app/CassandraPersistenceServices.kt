@@ -8,6 +8,7 @@ import com.demo.chat.controller.edge.UserController
 import com.demo.chat.controller.service.IndexServiceController
 import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.controller.service.PersistenceServiceController
+import com.demo.chat.deploy.codecs.UUIDKeyGeneratorCassandra
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
@@ -36,18 +37,13 @@ import java.util.*
 // TODO Ssssoooooooo I dont know how to get our rsocket server
 // to register with Consul, so I'm sending a tag instead
 // using command line to drop in the port.
-@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
-@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
-@EnableConfigurationProperties(CassandraProperties::class)
-@Import(PersistenceClientFactory::class)
+//@Profile("cassandra")
+//@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
+//@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+//@EnableConfigurationProperties(CassandraProperties::class)
+//@Import(PersistenceClientFactory::class)
 class ChatServiceCassandraApplication {
     val logger = LoggerFactory.getLogger(this::class.java)
-
-    @Configuration
-    class AppJacksonModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
-
-    @Configuration
-    class SerializationConfiguration : JacksonConfiguration()
 
     @Profile("client-key")
     @Bean
@@ -58,7 +54,7 @@ class ChatServiceCassandraApplication {
     fun keyServiceCassandra(t: ReactiveCassandraTemplate) =
             CassandraKeyServiceFactory(t, UUIDKeyGeneratorCassandra()).keyService()
 
-    @Profile("com.demo.chat.test.messaging")
+    @Profile("memory-messaging")
     @Bean
     fun memoryMessaging(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory<UUID, String>()
 
