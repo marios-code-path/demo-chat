@@ -1,17 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.codec.Codec
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.User
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.impl.memory.persistence.MessagePersistenceInMemory
-import com.demo.chat.service.impl.memory.persistence.TopicPersistenceInMemory
-import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
-import com.demo.chat.test.TestKeyService
-import com.demo.chat.test.TestMessageSupplier
-import com.demo.chat.test.TestMessageTopicSupplier
-import com.demo.chat.test.TestUserSupplier
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
