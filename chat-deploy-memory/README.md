@@ -95,7 +95,7 @@ registrar services. We will use Consul to register and discover our microservice
 
 Visit and follow instructions [here](https://hub.docker.com/_/consul).
 
-## Configure Spring
+## AWK and spring-cloud-consul
 
 Using [AWK](https://www.unix.com/shell-programming-and-scripting/258882-exclude-first-line-when-awk.html), lets grab the IP of the server:
 
@@ -106,7 +106,7 @@ awk 'NR>1{ ADDR=$2; FS=":"; split(ADDR,a); print a[1],a[2]}'
 
 NOTE: There's never a bad time to brush up on AWK.
 
-The output will be used to fill in Spring parameters in our build script: 
+The output will be used to fill in spring-cloud-consul parameters in our build script: 
 
 ```shell script
 export CONSUL_HOST=<host-output>
@@ -117,11 +117,12 @@ export JAVA_TOOL_OPTIONS=" ... -Dspring.cloud.consul.host=${CONSUL_HOST} -Dsprin
 
 # Build the app container
 
-At this point, we have tucked all configuration details within a script, and that justifies 
-our configuration detail for a single service. Furthermore, a practical requirement shifts parameters 
-upstream into the build tool. We will do that at some point in the future - if it solves a problem.
+At this point, we have tucked all runtime details within a script, and that justifies 
+our configuration detail for a service deployment template based on buildpack images. 
+Furthermore, a practical requirement shifts parameters upstream into the build tool. 
+We will do that at some point in the future - if it solves a problem.
 
-A completed script template is next:
+A sufficient script template in whole, should describe where parameters are going:
 
 ```shell script
 export DOCKER_RUN=$1;shift
