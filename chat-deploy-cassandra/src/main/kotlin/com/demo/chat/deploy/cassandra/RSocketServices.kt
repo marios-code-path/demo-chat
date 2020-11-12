@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.app
+package com.demo.chat.deploy.cassandra
 
 import com.demo.chat.deploy.config.initializers.*
 import org.springframework.boot.SpringBootConfiguration
@@ -10,7 +10,7 @@ import java.util.function.Supplier
 
 @Profile("production")
 @SpringBootConfiguration
-class CassandraRSocketServices : ApplicationContextInitializer<GenericApplicationContext> {
+class RSocketServices : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(ctx: GenericApplicationContext) {
         ctx.registerBean(CodecsContextInitializer::class.java, Supplier {
             CodecsContextInitializer()
@@ -41,8 +41,8 @@ class CassandraRSocketServices : ApplicationContextInitializer<GenericApplicatio
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            SpringApplicationBuilder(CassandraRSocketServices::class.java)
-                    .initializers(CassandraRSocketServices())
+            SpringApplicationBuilder(RSocketServices::class.java)
+                    .initializers(RSocketServices())
                     .run(*args)
         }
     }

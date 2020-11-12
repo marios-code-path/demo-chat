@@ -24,8 +24,8 @@ data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("
 @Configuration
 @Import(RSocketRequesterAutoConfiguration::class)
 class PersistenceClientFactory(val builder: RSocketRequester.Builder,
-                               val client: ConsulClient,
-                               val props: ConsulDiscoveryProperties) {
+                               client: ConsulClient,
+                               props: ConsulDiscoveryProperties) {
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
     val logger = LoggerFactory.getLogger(this::class.java)
 

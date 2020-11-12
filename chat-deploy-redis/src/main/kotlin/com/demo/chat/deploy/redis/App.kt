@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.app
+package com.demo.chat.deploy.redis
 
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 
 @Profile("redis-events")
-class RedisMessagingServices {
+class App {
     @Bean
     fun topicMessagingRedis(props: RedisTemplateConfiguration): ChatTopicMessagingService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()

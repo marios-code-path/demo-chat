@@ -1,24 +1,24 @@
-package com.demo.chat.deploy.app
+package com.demo.chat.deploy.cassandra
 
 import com.demo.chat.codec.EmptyStringCodec
-import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.controller.edge.TopicController
 import com.demo.chat.controller.edge.UserController
 import com.demo.chat.controller.service.IndexServiceController
 import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.controller.service.PersistenceServiceController
-import com.demo.chat.deploy.codecs.UUIDKeyGeneratorCassandra
+import com.demo.chat.deploy.codec.UUIDKeyGeneratorCassandra
+import com.demo.chat.deploy.config.CassandraIndexFactory
+import com.demo.chat.deploy.config.CassandraKeyServiceFactory
+import com.demo.chat.deploy.config.CassandraPersistenceFactory
+import com.demo.chat.deploy.config.PersistenceClientFactory
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
-import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceMemory
-import com.demo.chat.deploy.config.PersistenceClientFactory
-import com.demo.chat.deploy.config.*
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
@@ -37,11 +37,10 @@ import java.util.*
 // TODO Ssssoooooooo I dont know how to get our rsocket server
 // to register with Consul, so I'm sending a tag instead
 // using command line to drop in the port.
-//@Profile("cassandra")
-//@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
-//@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
-//@EnableConfigurationProperties(CassandraProperties::class)
-//@Import(PersistenceClientFactory::class)
+@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+@EnableConfigurationProperties(CassandraProperties::class)
+@Import(PersistenceClientFactory::class)
 class ChatServiceCassandraApplication {
     val logger = LoggerFactory.getLogger(this::class.java)
 

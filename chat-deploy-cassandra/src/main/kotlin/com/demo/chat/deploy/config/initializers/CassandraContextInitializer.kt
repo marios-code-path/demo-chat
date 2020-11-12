@@ -1,9 +1,7 @@
 package com.demo.chat.deploy.config.initializers
 
-import com.datastax.driver.core.Cluster
 import com.datastax.oss.driver.api.core.CqlSession
 import org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
-import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
 import org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveDataAutoConfiguration
 import org.springframework.context.ApplicationContextInitializer

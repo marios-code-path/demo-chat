@@ -1,10 +1,8 @@
-package com.demo.chat.deploy.app
+package com.demo.chat.deploy.app.memory
 
 import com.demo.chat.codec.EmptyUUIDCodec
 import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.controller.service.PersistenceServiceController
-import com.demo.chat.deploy.config.AppJacksonModules
-import com.demo.chat.deploy.config.InMemoryPersistenceFactory
 import com.demo.chat.deploy.config.PersistenceClientFactory
 import com.demo.chat.deploy.config.SerializationConfiguration
 import com.demo.chat.domain.Message
@@ -25,11 +23,10 @@ import java.util.*
 
 object UUIDCodec : EmptyUUIDCodec()
 
-@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
+@SpringBootApplication
 @Import(PersistenceClientFactory::class,
-        AppJacksonModules::class,
         SerializationConfiguration::class)
-class InMemoryPersistenceServices {
+class App {
     @Profile("client-key")
     @Bean
     fun keyPersistenceClient(clientFactory: PersistenceClientFactory): IKeyService<UUID> = clientFactory.keyClient()
@@ -37,7 +34,7 @@ class InMemoryPersistenceServices {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            runApplication<InMemoryPersistenceServices>(*args)
+            runApplication<App>(*args)
         }
     }
 }

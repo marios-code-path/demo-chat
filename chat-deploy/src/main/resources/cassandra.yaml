@@ -1,8 +1,0 @@
-spring:
-  data:
-    cassandra:
-      port: 9042
-      contactPoints: 127.0.0.1
-      keyspacename: chat
-      basePackages: com.demo.chat
-      jmxReporting: false

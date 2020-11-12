@@ -9,21 +9,26 @@
     </parent>
 
     <groupId>com.demo</groupId>
-    <artifactId>chat-deploy</artifactId>
+    <artifactId>chat-deploy-cassandra</artifactId>
     <version>0.0.1</version>
-    <name>chat-deploy</name>
-    <description>Deployment Configuration</description>
+    <name>chat-deploy-cassandra</name>
+    <description>Deployment details for cassandra backed services</description>
 
     <dependencies>
-<!--	    <dependency>-->
-<!--	        <groupId>org.springframework</groupId>-->
-<!--            <artifactId>spring-context-indexer</artifactId>-->
-<!--    	</dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.experimental</groupId>-->
-<!--            <artifactId>spring-graalvm-native</artifactId>-->
-<!--            <version>0.7.0</version>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-deploy</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-cassandra</artifactId>
+            <version>0.0.1</version>
+        </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
@@ -47,6 +52,10 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.cloud</groupId>-->
+<!--            <artifactId>spring-cloud-starter-gateway</artifactId>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-consul-discovery</artifactId>
@@ -90,8 +99,12 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <skip>true</skip>
+                    <mainClass>com.demo.chat.deploy.app.memory.InMemoryPersistenceServices</mainClass>
                 </configuration>
             </plugin>
             <plugin>
@@ -112,6 +125,21 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <!-- PER Actuator docs -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>

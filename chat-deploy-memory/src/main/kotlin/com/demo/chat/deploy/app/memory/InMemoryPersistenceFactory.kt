@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.app.memory
 
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.memory.persistence.MembershipPersistenceInMemory

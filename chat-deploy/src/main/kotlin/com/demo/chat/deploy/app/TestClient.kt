@@ -30,7 +30,6 @@ import java.util.function.Supplier
 
 @Deprecated("Move me to tests; You shouldn't run tests in production!")
 @Profile("test-client")
-@SpringBootConfiguration
 class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(ctx: GenericApplicationContext) {
         ctx.registerBean(JacksonModules::class.java, Supplier {

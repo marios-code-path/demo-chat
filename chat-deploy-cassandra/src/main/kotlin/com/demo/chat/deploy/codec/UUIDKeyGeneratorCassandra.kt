@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.codecs
+package com.demo.chat.deploy.codec
 
 import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.codec.Codec
