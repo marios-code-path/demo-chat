@@ -84,17 +84,6 @@
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <configuration>
@@ -112,46 +101,30 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-                <executions>
-                    <execution>
-                        <id>compile</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <source>src/main/kotlin</source>
-                                <source>src/main/resources</source>
-                            </sourceDirs>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>test-compile</id>
-                        <phase>process-test-sources</phase>
-                        <goals>
-                            <goal>test-compile</goal>
-                        </goals>
-                        <configuration>
-                            <sourceDirs>
-                                <source>src/test/kotlin</source>
-                                <source>src/test/resources</source>
-                            </sourceDirs>
-                        </configuration>
-                    </execution>
-                </executions>
             </plugin>
             <!-- PER Actuator docs -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
+                    <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
+                    <image>
+                        <name>${env.CHAT_IMAGE_NAME:chat-deploy-memory}</name>
+                        <cleanCache>true</cleanCache>
+                        <env>
+                            <BPE_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_JAVA_TOOL_OPTIONS>
+                        </env>
+                    </image>
+                    <jvmArguments>${env.JAVA_TOOL_OPTIONS}</jvmArguments>
+                    <profiles>
+                        <profile>key-service</profile>
+                    </profiles>
                 </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>build-info</goal>
+                            <goal>build-image</goal>
                         </goals>
                     </execution>
                 </executions>

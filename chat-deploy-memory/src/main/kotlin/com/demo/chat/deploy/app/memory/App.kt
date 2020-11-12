@@ -27,9 +27,9 @@ object UUIDCodec : EmptyUUIDCodec()
 @Import(PersistenceClientFactory::class,
         SerializationConfiguration::class)
 class App {
-    @Profile("client-key")
+    @Profile("key-client")
     @Bean
-    fun keyPersistenceClient(clientFactory: PersistenceClientFactory): IKeyService<UUID> = clientFactory.keyClient()
+    fun keyClient(clientFactory: PersistenceClientFactory): IKeyService<UUID> = clientFactory.keyClient()
 
     companion object {
         @JvmStatic
@@ -39,14 +39,14 @@ class App {
     }
 }
 
-@Profile("memory-key")
+@Profile("key-service")
 @Controller
 @MessageMapping("key")
-class RSocketMemoryService : KeyServiceController<UUID>(KeyServiceInMemory(UUIDCodec))
+class KeyController : KeyServiceController<UUID>(KeyServiceInMemory(UUIDCodec))
 
-@Profile("memory-persistence")
+@Profile("persistence")
 @Configuration
-class InMemoryPersistenceControllers(keyService: IKeyService<UUID>) : InMemoryPersistenceFactory<UUID>(keyService) {
+class PersistenceController(keyService: IKeyService<UUID>) : InMemoryPersistenceFactory<UUID>(keyService) {
 
     @Profile("user")
     @Controller
