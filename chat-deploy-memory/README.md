@@ -5,88 +5,67 @@ Arguments and Environment commands shall be sent with deployment artifacts.
 
 These modules will ideally deploy without much fuss, and with uniform interaction from the operator.
 
-## How to specify which Main class?
+## Spring-boot Maven Plugin
 
-In pom.xml...
+[Maven](https://maven.apache.org) is great. Above being a great build tool, Maven lets us process supplemental argument details 
+to the deployment artifact ( .jar, container, .tar , etc... ). This is important for issuing essential
+program behaviour as close to runtime as possible.
 
+With the [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/), specifically here we will add Spring and Buildpack specific properties.
+
+
+### Passing Arguments to Image 
+
+According to [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables) docs,
+we should be able to inject arguments into a build-pack specific environment (called `BPE_*`).
+Passing a `BPE_JAVA_TOOL_OPTIONS` env to the plugin lets us pass program arguments to the image. 
+ 
+POM.xml
 ```xml
-<build>
-        <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
-</build>
-```
-
-Easy as that. Let's see how we can launch it with simplicity (lol).
-
-## Launching from maven
-
-We want to expect very specific runtime behaviour. Mainly
-we need a default services port and profile set. The below snippet works when launching the 
-jar from maven only:
-
-POM.xml
-```xml
- <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <jvmArguments>-Dspring.rsocket.server.port=6500 -Dserver.port=6501</jvmArguments>
+                    <image>
+                        <name>${appImageName}</name>
+                        <cleanCache>false</cleanCache>
+                        <env>
+                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+                        </env>
+                    </image>
                     <profiles>
                         <profile>key-service</profile>
                     </profiles>
                 </configuration>
-</plugin>
+        </plugin>
 ```
-Thus, for the time being lets run from command-line. You can ignore this, as it's 
-just illustration for getting to know runtime launch characteristics. 
 
-Start Key service in-memory:
+NOTE: Make `JAVA_TOOL_OPTIONS` environment variable available at build-time.
+
+## Building the image
+
+Again spring-boot-maven-plugin this easy:
 
 ```shell script
-mvn spring-boot:run -Dspring-boot.run.profiles="key-service"
+mvn spring-boot:build-image
 ```
 
-This will keep memory key service running locally on its default ports.
-There is no reason to limit this deployment to a single service. 
+In a minute, there should be an image that you can run. We can explore executing containers in the next 
+section.
 
-Launch persistence against our key-service:
+## Debugging image issues:
 
-```shell script
-mvn spring-boot:run -Dspring-boot.run.profiles="persistence,key-client" -Dspring-boot.run.arguments="--server.port=7501 --spring.rsocket.server.port=7500"
-```
+The docs say much about the buildpacks used to materialize this image:
 
-Such deployment specifics need to get mixed into our build-time, so that the arguments can
-be seen from inside the container launcher. The next section will discuss that.
+``Every buildpack-generated image contains an executable called the launcher which can be used to execute a custom command in an environment containing buildpack-provided environment variables. The launcher will execute any buildpack provided profile scripts before running to provided command, in order to set environment variables with values that should be calculated dynamically at runtime.``
 
-### Launching services in Docker
-
-Convey application properties like the command line variant of argument passing to our program (or JVM):
-
-```shell script
-java -jar my-jar.jar -Dspring.profiles.active=key-service -Dserver.port=6501 -Dspring.rsocket.server.port=6500
-```
-
-Lets see what happens when we attempt to launch our app in Docker, directly:
-
-```shell script
-docker run --rm chat-deploy-memory:0.0.1
-```
-
-Obviously, this won't work, since none of the default properties get sent.  So have a look at [the docs](https://paketo.io/docs/buildpacks/language-family-buildpacks/java/#runtime-jvm-configuration) to see
-what we need to tell our container to pick up arguments externally. The docs say that `JAVA_TOOLS_OPTIONS` must be set 
-for this to work, but let's find out the hard way.
+``To run a custom start command in the buildpack-provided environment set the ENTRYPOINT to launcher and provide the command using the container CMD.``
 
 Pop into an instance of the container with `sh` and mess around for a bit:
 
 ```shell script
-docker run -it --entrypoint sh chat-deploy-memory:0.0.1
+docker run -it --entrypoint sh memory-key-service:0.0.1
 ```
 
 Behold a shell prompt within the cnb container. Neat!
@@ -96,80 +75,75 @@ $ cd /cnb/lifecycle
 $ ls
 total 2200
 -rwxr-xr-x 1 root root 2252800 Jan  1  1980 launcher
-$ export JAVA_TOOL_OPTIONS="-Dspring.profiles.active=key-service -Dserver.port=6501 -Dspring.rsocket.server.port=6500"
-$ ./launcher
- ........... 
-```
+$ export JAVA_TOOL_OPTIONS="-Dspring.profiles.active=0 -Dserver.port=0 -Dspring.rsocket.server.port=0"
+$ #./launcher
+ <Exception Follows> 
+``` 
 
-This should succeed (or not, if consul isn't running! but thats OK!). 
+# Deploy and bind to Consul
 
-``Every buildpack-generated image contains an executable called the launcher which can be used to execute a custom command in an environment containing buildpack-provided environment variables. The launcher will execute any buildpack provided profile scripts before running to provided command, in order to set environment variables with values that should be calculated dynamically at runtime.``
-
-``To run a custom start command in the buildpack-provided environment set the ENTRYPOINT to launcher and provide the command using the container CMD.``
-
-We're not interested in that last part, however knowing a launcher gets executed helps understand what is at hand
-under the hood.  So all we really need to do is pass an environment variable to docker:
-
-```shell script
-export JAVA_TOOL_OPTIONS="-Dspring.profiles.active=key-service -Dserver.port=6501 -Dspring.rsocket.server.port=6500"
-docker run --rm -e JAVA_TOOL_OPTIONS chat-deploy-memory:0.0.1
-# alternately push env into a file, and specify with --env-file
-```
-
-Viola!  Without modifying BuildPack, we can simply take off from the command-line.  *HOWEVER*
-
-### We're in it for the clouds
-
-Our image Can startup without outside effort. According to [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables) docs,
-we should be able to inject arguments into a build-pack specific environment (called `BPE_*`) that 
-expand our `JAVA_TOOL_OPTIONS` into the command-line execution without fail. 
-
-By inserting a `BPE_JAVA_TOOL_OPTIONS` env, and giving it the output of whatever is on our host's environment table.
-
-pom.xml again:
-
-```xml
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                        <env>
-                            <BPE_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_JAVA_TOOL_OPTIONS>
-                        </env>
-                </configuration>
-            </plugin>                    
-```
-
-For this, I have created a separate script just for kicking off the `memory-key-service` image:
-
-```shell script
-export JAVA_TOOL_OPTIONS="-Dspring.profiles.active=key-service -Dserver.port=6501 -Dspring.rsocket.server.port=6500"
-mvn clean install spring-boot:build-image
-```
-
-## No, We're not done!
-
-Because we've been trying to just make the thing work, it looks like we also have to 
-configure our favorite Configuration Service: Consul! :)
-
-### What we need to do
+Here we will learn how and where service-discovery configurations propagate from code to container runtime.
+If you're just starting and are learning to approach service-mesh development, this is a critical component
+with a heap (pun intended) of academic and business theory churn happening pretty much until we develop 
+"completely reliable" computing infrastructure.
  
- * Start a consul dev or cluster
- * Start an agent
- * tell our app how to connect 
- 
-## Starting the dev cluster 
+Technologies such as [CRDT](https://www.infoq.com/presentations/crdt-production/) help solve the reliability problem by applying "failure-resistant service-mesh"
+as a vital component to site operations. [Hashicorp's Consul](https://www.consul.io) does implement CRDT but also several key
+registrar services. We will use Consul to register and discover our microservices in this case. 
+
+## Consul dev server 
 
 Visit and follow instructions [here](https://hub.docker.com/_/consul).
 
-## Start The agent
+## Configure Spring
 
-Same as the instructions above
+Using [AWK](https://www.unix.com/shell-programming-and-scripting/258882-exclude-first-line-when-awk.html), lets grab the IP of the server:
 
-## Tell our app where Consul lives
+```shell script
+docker exec -t dev-consul consul members |\
+awk 'NR>1{ ADDR=$2; FS=":"; split(ADDR,a); print a[1],a[2]}'
+```
 
-The hard part.  
+NOTE: There's never a bad time to brush up on AWK.
 
+The output will be used to fill in Spring parameters in our build script: 
+
+```shell script
+export CONSUL_HOST=<host-output>
+export CONSUL_PORT=<port-output>
+export JAVA_TOOL_OPTIONS=" ... -Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} "
+...
+```
+
+# Build the app container
+
+At this point, we have tucked all configuration details within a script, and that justifies 
+our configuration detail for a single service. Furthermore, a practical requirement shifts parameters 
+upstream into the build tool. We will do that at some point in the future - if it solves a problem.
+
+A completed script template is next:
+
+```shell script
+export DOCKER_RUN=$1;shift
+export CONSUL_HOST=172.17.0.2
+export CONSUL_PORT=8500
+export SERVER_PORT=6500
+export SPRING_PROFILE="key-service"
+export APP_PRIMARY="key"
+export RSOCKET_PORT=6501
+export APP_IMAGE_NAME="memory-key-service"
+export APP_VERSION=0.0.1
+
+export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE}\
+ -Dserver.port=${SERVER_PORT} -Dspring.rsocket.server.port=${RSOCKET_PORT}\
+ -Dapp.primary=${APP_PRIMARY} -Dspring.cloud.consul.host=${CONSUL_HOST}\
+ -Dspring.cloud.consul.port=${CONSUL_PORT} "
+mvn spring-boot:build-image
+
+[ ! -e $DOCKER_RUN ] && docker run --rm -d $APP_IMAGE_NAME:$APP_VERSION
+```
+
+This works for now.
 
 ## Links! 
 
@@ -184,5 +158,7 @@ The hard part.
 [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/config.md)
 
 [Maven Git-Commit-id plugin](https://github.com/git-commit-id/git-commit-id-maven-plugin)
+
+[Spring - Service Registration and Discovery](https://spring.io/guides/gs/service-registration-and-discovery/)
 
 [GraalVM Spring-Boot](https://github.com/spring-projects-experimental/spring-graalvm-native)
