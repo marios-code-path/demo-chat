@@ -116,10 +116,9 @@
                         <name>${chatImageName}</name>
                         <cleanCache>false</cleanCache>
                         <env>
-                            <BPE_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_JAVA_TOOL_OPTIONS>
+                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
                         </env>
                     </image>
-                    <jvmArguments>${env.JAVA_TOOL_OPTIONS}</jvmArguments>
                     <profiles>
                         <profile>key-service</profile>
                     </profiles>

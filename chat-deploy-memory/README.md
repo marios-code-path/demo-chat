@@ -147,6 +147,30 @@ export JAVA_TOOL_OPTIONS="-Dspring.profiles.active=key-service -Dserver.port=650
 mvn clean install spring-boot:build-image
 ```
 
+## No, We're not done!
+
+Because we've been trying to just make the thing work, it looks like we also have to 
+configure our favorite Configuration Service: Consul! :)
+
+### What we need to do
+ 
+ * Start a consul dev or cluster
+ * Start an agent
+ * tell our app how to connect 
+ 
+## Starting the dev cluster 
+
+Visit and follow instructions [here](https://hub.docker.com/_/consul).
+
+## Start The agent
+
+Same as the instructions above
+
+## Tell our app where Consul lives
+
+The hard part.  
+
+
 ## Links! 
 
 [Spring Boot Maven Plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/)
