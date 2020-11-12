@@ -14,6 +14,10 @@
     <name>chat-deploy-memory</name>
     <description>Deployment for in-memory components</description>
 
+    <properties>
+        <chatImageName>docker.io/library/${env.CHAT_IMAGE_NAME}:${project.version}</chatImageName>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -109,8 +113,8 @@
                 <configuration>
                     <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
                     <image>
-                        <name>${env.CHAT_IMAGE_NAME:chat-deploy-memory}</name>
-                        <cleanCache>true</cleanCache>
+                        <name>${chatImageName}</name>
+                        <cleanCache>false</cleanCache>
                         <env>
                             <BPE_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_JAVA_TOOL_OPTIONS>
                         </env>
