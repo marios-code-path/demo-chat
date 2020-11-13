@@ -13,12 +13,15 @@ program behaviour as close to runtime as possible.
 
 With the [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/), specifically here we will add Spring and Buildpack specific properties.
 
-
 ### Passing Arguments to Image 
 
 According to [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables) docs,
-we should be able to inject arguments into a build-pack specific environment (called `BPE_*`).
-Passing a `BPE_JAVA_TOOL_OPTIONS` env to the plugin lets us pass program arguments to the image. 
+we should be able to pass arguments into a build-pack specific environment var with name starting with `BPE_*`.
+
+The `JAVA_TOOL_OPTIONS` variable gets used by the container entrypoint (more later) to feed
+arguments into the executing JVM.
+
+Thus, passing a `BPE_JAVA_TOOL_OPTIONS` env to the plugin lets us pass program arguments to the image. 
  
 POM.xml
 ```xml
@@ -41,7 +44,7 @@ POM.xml
         </plugin>
 ```
 
-NOTE: Make `JAVA_TOOL_OPTIONS` environment variable available at build-time.
+NOTE: Make your `JAVA_TOOL_OPTIONS` environment variable available at build-time.
 
 ## Building the image
 
@@ -80,7 +83,9 @@ $ #./launcher
  <Exception Follows> 
 ``` 
 
-# Deploy and bind to Consul
+Now that we have control over how our JVM gets executed, lets focus on another important topic in the cloud: Discovery.
+
+# Service Mesh is The Cloud
 
 Here we will learn how and where service-discovery configurations propagate from code to container runtime.
 If you're just starting and are learning to approach service-mesh development, this is a critical component
@@ -91,11 +96,15 @@ Technologies such as [CRDT](https://www.infoq.com/presentations/crdt-production/
 as a vital component to site operations. [Hashicorp's Consul](https://www.consul.io) does implement CRDT but also several key
 registrar services. We will use Consul to register and discover our microservices in this case. 
 
-## Consul dev server 
+## Deploying a Consul dev server 
 
 Visit and follow instructions [here](https://hub.docker.com/_/consul).
 
-## AWK and spring-cloud-consul
+## AWK, Docker and spring-cloud-consul walk into a bar...
+
+We need to tell our app where Consul lives. In production cases, there will be automatic DNS discovery, specialized 
+image layers or something else fancy used to track down these details. 
+In our dev case, we just need to sample the container environment to find the specialized TCP/IP address to Consul.
 
 Using [AWK](https://www.unix.com/shell-programming-and-scripting/258882-exclude-first-line-when-awk.html), lets grab the IP of the server:
 
