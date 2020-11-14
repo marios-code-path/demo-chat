@@ -4,13 +4,11 @@ import com.demo.chat.codec.Codec
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.slf4j.LoggerFactory
-import org.springframework.data.redis.connection.stream.MapRecord
-import org.springframework.data.redis.connection.stream.RecordId
-import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.ReactiveRedisTemplate
+import org.springframework.data.redis.listener.ChannelTopic
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
@@ -19,31 +17,31 @@ import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
 
-data class KeyConfiguration(
+data class KeyConfigurationPubSub(
         val topicSetKey: String,
-        val prefixTopicStream: String,
+        val prefixTopicKey: String,
         val prefixUserToTopicSubs: String,
         val prefixTopicToUserSubs: String
 )
 
 @Suppress("DuplicatedCode")
-class TopicMessagingServiceRedisStream<T, E>(
-        keyConfig: KeyConfiguration,
+class PubSubMessagingServiceRedisPubSub<T, E>(
+        keyConfig: KeyConfigurationPubSub,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
-        private val stringKeyEncoder: Codec<String, out T>,
-        private val keyStringEncoder: Codec<T, String>,
-        private val keyRecordIdCodec: Codec<T, RecordId>
-) : ChatTopicMessagingService<T, E> {
+        private val stringKeyDecoder: Codec<String, T>,
+        private val keyStringEncoder: Codec<T, String>
+) : PubSubTopicExchangeService<T, E> {
 
+    private val replayDepth = 50
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
     private val prefixTopicToUserSubs = keyConfig.prefixTopicToUserSubs
     private val topicSetKey = keyConfig.topicSetKey
-    private val prefixTopicStream = keyConfig.prefixTopicStream
+    private val prefixTopicKey = keyConfig.prefixTopicKey
 
-    private val streamManager = ReactiveStreamManager<T, E>()
-    private val topicXReads: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
+    private val streamMgr = ReactiveStreamManager<T, E>()
+    private val topicXSource: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
             .filter {
@@ -66,61 +64,60 @@ class TopicMessagingServiceRedisStream<T, E>(
                         it.onComplete()
                     }
 
-    override fun subscribe(member: T, topic: T): Mono<Void> =
-            topicExistsOrError(topic)
-                    .then(
-                            stringTemplate
-                                    .opsForSet()
-                                    .add(prefixTopicToUserSubs + topic.toString(), member.toString())
-                                    .handle<Long> { a, sink ->
-                                        when (a) {
-                                            null -> sink.error(ChatException("Unable to subscribe to stream"))
-                                            else -> sink.complete()
-                                        }
-                                    }
-                    )
-                    .then(
-                            stringTemplate
-                                    .opsForSet()
-                                    .add(prefixUserToTopicSubs + member.toString(), topic.toString())
-                                    .handle<Long> { a, sink ->
-                                        when (a) {
-                                            null -> sink.error(ChatException("Unable to subscribe to stream"))
-                                            else -> sink.complete()
-                                        }
-                                    }
-                    )
-                    .thenEmpty {
-                        streamManager.subscribe(topic, member)
-                        it.onComplete()
-                    }
+    override fun subscribe(member: T, topic: T): Mono<Void> = topicExistsOrError(topic)
+            .then(
+                    stringTemplate
+                            .opsForSet()
+                            .add(prefixTopicToUserSubs + topic.toString(), member.toString())
+                            .handle<Long> { a, sink ->
+                                when (a) {
+                                    null -> sink.error(ChatException("Unable to subscribe to stream"))
+                                    else -> sink.complete()
+                                }
+                            }
+            )
+            .then(
+                    stringTemplate
+                            .opsForSet()
+                            .add(prefixUserToTopicSubs + member.toString(), topic.toString())
+                            .handle<Long> { a, sink ->
+                                when (a) {
+                                    null -> sink.error(ChatException("Unable to subscribe to stream"))
+                                    else -> sink.complete()
+                                }
+                            }
+            )
+            .thenEmpty {
+                streamMgr.subscribe(topic, member)
+                it.onComplete()
+            }
 
     override fun unSubscribe(member: T, topic: T): Mono<Void> =
             topicExistsOrError(topic)
                     .then(
-                            stringTemplate    // todo Streams entries too!
+                            stringTemplate
                                     .opsForSet()
                                     .remove(prefixUserToTopicSubs + member.toString(), topic.toString())
                                     .handle<Void> { a, sink ->
                                         when (a) {
-                                            null -> sink.error(ChatException("Unable to unsubscribe from stream."))
+                                            null -> sink.error(ChatException("Unable to unsubscribe from id."))
                                             else -> sink.complete()
                                         }
                                     }
                     )
                     .then(
-                            stringTemplate    // todo Streams entries too!
+                            stringTemplate
                                     .opsForSet()
                                     .remove(prefixTopicToUserSubs + topic.toString(), member.toString())
                                     .handle<Void> { a, sink ->
                                         when (a) {
-                                            null -> sink.error(ChatException("Unable to unsubscribe from stream."))
+                                            null -> sink.error(ChatException("Unable to unsubscribe from id."))
                                             else -> sink.complete()
                                         }
                                     }
                     )
                     .thenEmpty {
-                        streamManager
+                        streamMgr
                                 .unsubscribe(topic, member)
                         it.onComplete()
                     }
@@ -134,7 +131,7 @@ class TopicMessagingServiceRedisStream<T, E>(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribe(member, stringKeyEncoder.decode(topicId))
+                                    unSubscribe(member, stringKeyDecoder.decode(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
@@ -149,44 +146,33 @@ class TopicMessagingServiceRedisStream<T, E>(
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribe(stringKeyEncoder.decode(member), topic)
+                                    unSubscribe(stringKeyDecoder.decode(member), topic)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
                     }
 
     override fun sendMessage(message: Message<T, E>): Mono<Void> {
-        val map = mapOf(Pair("data", message))
-        /*
-            * <li>1    Time-based T
-            * <li>2    DCE security T
-            * <li>3    Name-based T
-            * <li>4    Randomly generated T
-         */
-        val recordId = keyRecordIdCodec.decode(message.key.id)
+        val topic = message.key.dest
 
-        return Mono.from(topicExistsOrError(message.key.dest))
-                .thenMany(messageTemplate
-                        .opsForStream<String, Message<T, E>>()
-                        .add(MapRecord
-                                .create(prefixTopicStream + message.key.dest.toString(), map)
-                                .withId(recordId)))
+        return Mono.from(topicExistsOrError(topic))
+                .then(messageTemplate.convertAndSend(topic.toString(), message))
                 .then()
     }
 
     override fun receiveOn(topic: T): Flux<out Message<T, E>> =
-            streamManager.getSink(topic)
+            streamMgr.getSink(topic)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
     override fun sourceOf(topic: T): Flux<out Message<T, E>> =
-            topicXReads.getOrPut(topic, {
-                val xread = getXReadFlux(topic)
-                val reProc = ReplayProcessor.create<Message<T, E>>(5)
-                streamManager.setSource(topic, reProc)
-                streamManager.subscribeUpstream(topic, xread)
+            topicXSource.getOrPut(topic, {
+                val listen = getPubSubFluxFor(topic)
+                val processor = ReplayProcessor.create<Message<T, E>>(replayDepth)
+                streamMgr.setSource(topic, processor)
+                streamMgr.subscribeUpstream(topic, listen)
 
-                xread
+                listen
             })
 
     override fun getByUser(uid: T): Flux<T> =
@@ -196,7 +182,7 @@ class TopicMessagingServiceRedisStream<T, E>(
                             prefixUserToTopicSubs + keyStringEncoder.decode(uid)
                     )
                     .map {
-                        stringKeyEncoder.decode(it)
+                        stringKeyDecoder.decode(it)
                     }
 
     override fun getUsersBy(id: T): Flux<T> =
@@ -208,7 +194,7 @@ class TopicMessagingServiceRedisStream<T, E>(
                                             prefixTopicToUserSubs + keyStringEncoder.decode(id)
                                     )
                                     .map {
-                                        stringKeyEncoder.decode(it)
+                                        stringKeyDecoder.decode(it)
                                     }
                     )
 
@@ -217,24 +203,21 @@ class TopicMessagingServiceRedisStream<T, E>(
             .reactiveConnection
             .keyCommands()
             .del(ByteBuffer
-                    .wrap((prefixTopicStream + id.toString()).toByteArray(Charset.defaultCharset())))
+                    .wrap((prefixTopicKey + id.toString()).toByteArray(Charset.defaultCharset())))
             .doOnNext {
-                streamManager
+                streamMgr
                         .close(id)
             }.then()
 
-    private fun getXReadFlux(topic: T): Flux<Message<T, E>> =
+    private fun getPubSubFluxFor(topic: T): Flux<out Message<T, E>> =
             messageTemplate
-                    .opsForStream<String, Message<T, E>>()
-                    .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
+                    .listenTo(ChannelTopic(topic.toString()))
                     .map {
-                        it.value["data"]!!
-                    }.doOnNext {
-                        logger.info("XREAD: ${keyStringEncoder.decode(it.key.dest)}")
-                    }.doOnComplete {
-                        topicXReads.remove(topic)
+                        it.message
                     }
-    // TODO Strategy needed to manage consumer groups and synchronous looping of Xreads
-
-
+                    .doOnNext {
+                        logger.info("PUBSUB: ${it.key.dest}")
+                    }.doOnComplete {
+                        topicXSource.remove(topic)
+                    }
 }

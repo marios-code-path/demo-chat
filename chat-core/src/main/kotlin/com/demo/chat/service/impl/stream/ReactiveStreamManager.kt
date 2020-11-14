@@ -11,10 +11,7 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /*
-    Hopefully this class contains use-case common to the distribution of a many to many stream
-    relationship.
-
-    i.e. each stream can subscribe to one or more other streams and vice-versa.
+    Layer 4 application Pub-Sub based on Reactive concepts.
  */
 class ReactiveStreamManager<T, E> {
 
@@ -69,7 +66,7 @@ class ReactiveStreamManager<T, E> {
             sourceStreams[stream]?.onComplete()
             sourceStreams.remove(stream)
             sinkStreams.remove(stream)
-            // all disposables should onDestruct once source.onComplete() finishes.
+            // all disposables will onDestruct() on source.onComplete().
         }
     }
 

@@ -2,7 +2,7 @@ package com.demo.chat.service.impl.memory.messaging
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -13,10 +13,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  *
- * This service handles the behaviour of message distribution, all in memory.
+ * This service handles the behaviour of topic record keeping and
+ * message distribution using memory as storage.
  *
  * */
-class TopicMessagingServiceMemory<T, V> : ChatTopicMessagingService<T, V> {
+class MemoryPubSubTopicExchange<T, V> : PubSubTopicExchangeService<T, V> {
     private val streamMgr: ReactiveStreamManager<T, V> = ReactiveStreamManager()
 
     // map of <topic : [msgInbox]s>

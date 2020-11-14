@@ -18,7 +18,7 @@ import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.*
-import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceMemory
+import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
 import org.slf4j.LoggerFactory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
@@ -55,7 +55,7 @@ class ChatServiceCassandraApplication {
 
     @Profile("memory-messaging")
     @Bean
-    fun memoryMessaging(): ChatTopicMessagingService<UUID, String> = TopicMessagingServiceMemory<UUID, String>()
+    fun memoryMessaging(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange<UUID, String>()
 
     companion object {
         @JvmStatic
@@ -144,7 +144,7 @@ class EdgeControllerUserConfig(userPersistence: UserPersistence<UUID>,
 @MessageMapping("edge.topic")
 class EdgeControllerTopicConfig(topicP: TopicPersistence<UUID>,
                                 topicInd: TopicIndexService<UUID>,
-                                topicSvc: ChatTopicMessagingService<UUID, String>,
+                                topicSvc: PubSubTopicExchangeService<UUID, String>,
                                 userP: UserPersistence<UUID>,
                                 membershipP: MembershipPersistence<UUID>,
                                 membershipInd: MembershipIndexService<UUID>) :
@@ -155,5 +155,5 @@ class EdgeControllerTopicConfig(topicP: TopicPersistence<UUID>,
 @MessageMapping("edge.com.demo.chat.test.messaging")
 class EdgeControllerMessagingConfig(messageIdx: MessageIndexService<UUID, String>,
                                     msgPersist: MessagePersistence<UUID, String>,
-                                    messaging: ChatTopicMessagingService<UUID, String>) :
+                                    messaging: PubSubTopicExchangeService<UUID, String>) :
         MessagingController<UUID, String>(messageIdx, msgPersist, messaging)

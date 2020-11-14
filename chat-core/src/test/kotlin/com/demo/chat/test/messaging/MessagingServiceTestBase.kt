@@ -2,7 +2,7 @@ package com.demo.chat.test.messaging
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.IKeyService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -13,7 +13,7 @@ import java.time.Duration
 import java.util.function.Supplier
 
 @Disabled
-open class MessagingServiceTestBase<T, V>(val topicService: ChatTopicMessagingService<T, V>,
+open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeService<T, V>,
                                           val keySvc: IKeyService<T>,
                                           val valueSupply: Supplier<V>) {
 

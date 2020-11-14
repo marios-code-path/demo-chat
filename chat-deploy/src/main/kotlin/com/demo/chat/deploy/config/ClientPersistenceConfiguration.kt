@@ -45,6 +45,8 @@ class PersistenceClientFactory(val builder: RSocketRequester.Builder,
             .switchIfEmpty(Mono.error(AppDiscoveryException(servicePrefix)))
             .blockFirst()!!
 
+    // TODO - add prefix_requestor_<type> at build-time
+
     fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))
 
     fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("persistence"))

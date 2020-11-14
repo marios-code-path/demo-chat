@@ -28,7 +28,7 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
 
 open class TopicController<T, V>(private val topicPersistence: TopicPersistence<T>,
                                  private val topicIndex: TopicIndexService<T>,
-                                 private val messaging: ChatTopicMessagingService<T, V>,
+                                 private val messaging: PubSubTopicExchangeService<T, V>,
                                  private val userPersistence: UserPersistence<T>,
                                  private val membershipPersistence: MembershipPersistence<T>,
                                  private val membershipIndex: MembershipIndexService<T>,

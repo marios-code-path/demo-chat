@@ -2,7 +2,6 @@ package com.demo.chat.service
 
 import com.demo.chat.domain.Message
 import reactor.core.publisher.Flux
-import reactor.core.publisher.FluxProcessor
 import reactor.core.publisher.Mono
 
 /**
@@ -26,7 +25,7 @@ import reactor.core.publisher.Mono
  * svc.send to ROOM[MEMBERSHIP] with PRINCIPLE[MEMBERSHIP]
  * svc.send ( message ) to ROOM[MESSAGES]
  */
-interface TopicMessagingService<T, V> {
+interface PubSubMessagingService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
     fun unSubscribe(member: T, topic: T): Mono<Void>
     fun unSubscribeAll(member: T): Mono<Void> // then closes
@@ -45,9 +44,12 @@ interface TopicMessagingService<T, V> {
     //fun keyExists(topic: T, key: T): Mono<Boolean>
 }
 
-interface ChatTopicMessagingService<T, V> : TopicMessagingService<T, V> {
+interface TopicExchangeService<T> {
     fun add(id: T): Mono<Void>
     fun rem(id: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>
     fun getUsersBy(id: T): Flux<T>
 }
+
+interface PubSubTopicExchangeService<T, V>
+    : PubSubMessagingService<T, V>, TopicExchangeService<T>

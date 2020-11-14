@@ -5,7 +5,7 @@ import com.demo.chat.MessageSendRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
 import org.slf4j.Logger
@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono
 open class MessagingController<T, V>(
         private val messageIndex: MessageIndexService<T, V>,
         private val messagePersistence: MessagePersistence<T, V>,
-        private val topicMessaging: ChatTopicMessagingService<T, V>) {
+        private val topicMessaging: PubSubTopicExchangeService<T, V>) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")

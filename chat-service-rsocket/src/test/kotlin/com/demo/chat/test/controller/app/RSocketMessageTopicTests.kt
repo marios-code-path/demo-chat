@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -40,7 +39,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicService: ChatTopicMessagingService<UUID, String>
+    lateinit var topicService: PubSubTopicExchangeService<UUID, String>
 
     @Autowired
     lateinit var membershipIndex: MembershipIndexService<UUID>
@@ -186,7 +185,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
         @Controller
         class TestTopicController(topicP: TopicPersistence<UUID>,
                                   topicInd: TopicIndexService<UUID>,
-                                  topicSvc: ChatTopicMessagingService<UUID, String>,
+                                  topicSvc: PubSubTopicExchangeService<UUID, String>,
                                   userP: UserPersistence<UUID>,
                                   membershipP: MembershipPersistence<UUID>,
                                   membershipInd: MembershipIndexService<UUID>) :

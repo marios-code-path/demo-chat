@@ -13,7 +13,7 @@ program behaviour as close to runtime as possible.
 
 With the [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/), specifically here we will add Spring and Buildpack specific properties.
 
-### Passing Arguments to Image 
+## Passing Arguments to Image 
 
 According to [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables) docs,
 we should be able to pass arguments into a build-pack specific environment var with name starting with `BPE_*`.
@@ -65,10 +65,16 @@ The docs say much about the buildpacks used to materialize this image:
 
 ``To run a custom start command in the buildpack-provided environment set the ENTRYPOINT to launcher and provide the command using the container CMD.``
 
-Pop into an instance of the container with `sh` and mess around for a bit:
+Pop into a new instance of the container with Bash:
 
 ```shell script
 docker run -it --entrypoint sh memory-key-service:0.0.1
+```
+
+alternately, find the instance you want to attach:
+
+```shell script
+docker exec -it $CONTAINER_ID 
 ```
 
 Behold a shell prompt within the cnb container. Neat!
@@ -155,7 +161,9 @@ mvn spring-boot:build-image
 
 This works for now.
 
-## Links! 
+## Links!
+
+[Spring Boot - Creating Efficient Docker Images](https://spring.io/blog/2020/08/14/creating-efficient-docker-images-with-spring-boot-2-3)
 
 [Spring Boot Maven Plugin](https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/html/)
 

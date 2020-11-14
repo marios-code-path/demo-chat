@@ -2,7 +2,7 @@ package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceRedisPubSub
+import com.demo.chat.service.impl.memory.messaging.PubSubMessagingServiceRedisPubSub
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -44,7 +44,7 @@ class RedisPubSubMessagingTests : MessagingServiceTestBase() {
 
         redisTemplateServiceConfigRedisTemplate = RedisTemplateConfiguration(lettuce, mapper)
 
-        topicService = TopicMessagingServiceRedisPubSub(
+        topicService = PubSubMessagingServiceRedisPubSub(
                 KeyConfigurationPubSub("t_all_topics",
                         "t_st_topic_",
                         "t_l_user_topics_",

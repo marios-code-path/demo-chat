@@ -3,7 +3,7 @@ package com.demo.chat.test.messaging
 import com.demo.chat.codec.Codec
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.impl.memory.messaging.KeyConfiguration
-import com.demo.chat.service.impl.memory.messaging.TopicMessagingServiceRedisStream
+import com.demo.chat.service.impl.memory.messaging.PubSubTopicExchangeRedisStream
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
@@ -58,7 +58,7 @@ class RedisStreamMessagingTests : MessagingServiceTestBase() {
 
         configRedisTemplate = RedisTemplateConfiguration(lettuce, mapper)
 
-        topicService = TopicMessagingServiceRedisStream(
+        topicService = PubSubTopicExchangeRedisStream(
                 KeyConfiguration("all_topics",
                         "st_topic_",
                         "l_user_topics_",

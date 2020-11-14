@@ -1,10 +1,8 @@
 package com.demo.chat.test.controller.app
 
 import com.demo.chat.codec.JsonNodeAnyCodec
-import com.demo.chat.domain.Message
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
@@ -39,7 +37,7 @@ class TestConfigurationRSocket {
     private lateinit var messageIndex:  MessageIndexService<UUID, String>
 
     @MockBean
-    private lateinit var topicService: ChatTopicMessagingService<UUID, String>
+    private lateinit var topicService: PubSubTopicExchangeService<UUID, String>
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

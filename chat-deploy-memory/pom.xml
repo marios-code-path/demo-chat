@@ -8,7 +8,6 @@
         <version>0.0.1</version>
     </parent>
 
-    <groupId>com.demo</groupId>
     <artifactId>chat-deploy-memory</artifactId>
     <version>0.0.1</version>
     <name>chat-deploy-memory</name>

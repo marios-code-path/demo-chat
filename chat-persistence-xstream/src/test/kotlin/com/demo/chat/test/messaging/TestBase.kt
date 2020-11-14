@@ -6,7 +6,7 @@ import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.service.ChatTopicMessagingService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -43,7 +43,7 @@ class UUIDKeyStringEncoder : Codec<UUID, String> {
 }
 open class MessagingServiceTestBase {
 
-    lateinit var topicService: ChatTopicMessagingService<UUID, String>
+    lateinit var topicService: PubSubTopicExchangeService<UUID, String>
 
     val redisPath = System.getenv("REDIS_TEST_PATH") ?: "/usr/local/bin/redis-server"
 

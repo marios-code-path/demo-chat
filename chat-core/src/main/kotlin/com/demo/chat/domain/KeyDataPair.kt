@@ -44,5 +44,4 @@ interface KeyDataPair<T, out E> {
                 get() = data
         }
     }
-
 }
