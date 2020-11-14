@@ -14,7 +14,7 @@ class UserPersistenceClient<T>(requester: RSocketRequester) :
 class MessagePersistenceClient<T, V>(requester: RSocketRequester) :
         PersistenceClient<T, Message<T, V>>("message.",requester, ParameterizedTypeReference.forType(Message::class.java))
 
-class MessageTopicPersistenceClient<T>(requester: RSocketRequester) :
+class TopicPersistenceClient<T>(requester: RSocketRequester) :
         PersistenceClient<T, MessageTopic<T>>("topic.", requester, ParameterizedTypeReference.forType(MessageTopic::class.java))
 
 class MembershipPersistenceClient<T>(requester: RSocketRequester) :

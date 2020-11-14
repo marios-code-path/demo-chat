@@ -11,7 +11,7 @@ import com.demo.chat.deploy.codec.UUIDKeyGeneratorCassandra
 import com.demo.chat.deploy.config.CassandraIndexFactory
 import com.demo.chat.deploy.config.CassandraKeyServiceFactory
 import com.demo.chat.deploy.config.CassandraPersistenceFactory
-import com.demo.chat.deploy.config.PersistenceClientFactory
+import com.demo.chat.deploy.config.client.RSocketClientFactory
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
@@ -40,13 +40,13 @@ import java.util.*
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @EnableConfigurationProperties(CassandraProperties::class)
-@Import(PersistenceClientFactory::class)
+@Import(RSocketClientFactory::class)
 class ChatServiceCassandraApplication {
     val logger = LoggerFactory.getLogger(this::class.java)
 
     @Profile("client-key")
     @Bean
-    fun keyPersistenceClient(clientFactory: PersistenceClientFactory): IKeyService<UUID> = clientFactory.keyClient()
+    fun keyPersistenceClient(clientFactory: RSocketClientFactory): IKeyService<UUID> = clientFactory.keyClient()
 
     @Profile("cassandra-key")
     @Bean

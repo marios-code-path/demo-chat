@@ -4,7 +4,7 @@ import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
 import org.springframework.context.annotation.Bean
 
-open class InMemoryMessagingFactory<T, V> {
+open class InMemoryMessageExchangeFactory<T, V> {
 
     @Bean
     fun inMemoryPubSubTopicExchange(): PubSubTopicExchangeService<T, V> = MemoryPubSubTopicExchange()

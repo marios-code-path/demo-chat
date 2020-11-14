@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.config.client
 
 import com.demo.chat.client.rsocket.*
 import com.demo.chat.domain.Message
@@ -6,6 +6,7 @@ import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
+import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.ecwid.consul.v1.ConsulClient
 import org.slf4j.LoggerFactory
@@ -23,9 +24,9 @@ data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("
 
 @Configuration
 @Import(RSocketRequesterAutoConfiguration::class)
-class PersistenceClientFactory(val builder: RSocketRequester.Builder,
-                               client: ConsulClient,
-                               props: ConsulDiscoveryProperties) {
+class RSocketClientFactory(val builder: RSocketRequester.Builder,
+                           client: ConsulClient,
+                           props: ConsulDiscoveryProperties) {
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
     val logger = LoggerFactory.getLogger(this::class.java)
 
@@ -53,7 +54,15 @@ class PersistenceClientFactory(val builder: RSocketRequester.Builder,
 
     fun <T, V> messageClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(requester("persistence"))
 
-    fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = MessageTopicPersistenceClient(requester("persistence"))
+    fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = TopicPersistenceClient(requester("persistence"))
 
     fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("persistence"))
+
+    fun <T> userIndexClient(): IndexService<T, User<T>, Map<String, String>> = UserIndexClient(requester("index"))
+
+    fun <T> topicIndexClient(): IndexService<T, MessageTopic<T>, Map<String, String>> = TopicIndexClient(requester("index"))
+
+    fun <T> membershipIndexClient(): IndexService<T, TopicMembership<T>, Map<String, T>> = MembershipIndexClient(requester("index"))
+
+    fun <T, V> messageIndexClient(): IndexService<T, Message<T, V>, Map<String, T>> = MessageIndexClient(requester("index"))
 }
