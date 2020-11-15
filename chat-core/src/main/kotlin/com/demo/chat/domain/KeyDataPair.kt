@@ -31,8 +31,7 @@ interface Key<T> {
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("keyData")
-interface KeyDataPair<T, out E> {
-    val key: Key<T>
+interface KeyDataPair<T, out E> : KeyBearer<T> {
     val data: E
 
     companion object Factory {

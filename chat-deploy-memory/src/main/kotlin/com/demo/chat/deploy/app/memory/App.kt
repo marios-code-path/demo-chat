@@ -62,7 +62,7 @@ class MessageExchangeConfiguration : InMemoryMessageExchangeFactory<UUID, String
 @Profile("index")
 @Configuration
 class IndexConfiguration : InMemoryIndexFactory<UUID, String, Map<String, String>>(
-        UserIndexerFn, MessageIndexerFn, TopicIndexerFn
+        UserIndexEntryEncoder, MessageIndexEntryEncoder, TopicIndexEntryEncoder
 ) {
     @Controller
     @MessageMapping("user")

@@ -7,8 +7,7 @@ import java.util.*
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("user")
-interface User<T> {
-    val key: Key<T>
+interface User<T> : KeyBearer<T> {
     val name: String
     val handle: String
     val imageUri: String

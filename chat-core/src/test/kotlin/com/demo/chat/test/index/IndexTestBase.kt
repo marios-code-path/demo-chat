@@ -1,23 +1,26 @@
 package com.demo.chat.test.index
 
-import com.demo.chat.service.IKeyService
+import com.demo.chat.domain.Key
 import com.demo.chat.service.IndexService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
+import java.time.Duration
 import java.util.function.Supplier
 
 @Disabled
-open class IndexTestBase<T, E, Q>(val valueSupply: Supplier<E>,
-                                  val keyService: IKeyService<T>,
-                                  val querySupply: Supplier<Q>,
-                                  val index: IndexService<T, E, Q>) {
+open class IndexTestBase<T, E, Q>(
+        val valueSupply: Supplier<E>,
+        val keySupply: Supplier<Key<T>>,
+        val querySupply: Supplier<Q>,
+        val testIndex: IndexService<T, E, Q>
+) {
 
     @Test
     fun `should save one`() {
         StepVerifier
-                .create(index.add(valueSupply.get()))
+                .create(testIndex.add(valueSupply.get()))
                 .verifyComplete()
     }
 
@@ -25,17 +28,20 @@ open class IndexTestBase<T, E, Q>(val valueSupply: Supplier<E>,
     fun `should remove one`() {
         StepVerifier
                 .create(
-                        keyService
-                                .key(String::class.java)
-                                .flatMap(index::rem))
+                        testIndex.rem(keySupply.get()))
                 .verifyComplete()
     }
 
     @Test
-    fun `should findBy simple`() {
+    fun `should search simple`() {
+
+        val bar = testIndex
+                .add(valueSupply.get())
+                .thenMany(testIndex.findBy(querySupply.get()))
+
         StepVerifier
-                .create(index.findBy(querySupply.get()))
-                .assertNext {key ->
+                .create(bar)
+                .assertNext { key ->
                     Assertions
                             .assertThat(key)
                             .isNotNull
