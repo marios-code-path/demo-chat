@@ -150,7 +150,8 @@
 					<compilerPlugins>
 						<plugin>spring</plugin>
 					</compilerPlugins>
-				</configuration>
+                    <languageVersion>1.4</languageVersion>
+                </configuration>
 				<dependencies>
 					<dependency>
 						<groupId>org.jetbrains.kotlin</groupId>

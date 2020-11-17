@@ -8,11 +8,10 @@ import com.demo.chat.controller.service.PersistenceServiceController
 import com.demo.chat.deploy.config.client.RSocketClientConfiguration
 import com.demo.chat.deploy.config.client.RSocketClientFactory
 import com.demo.chat.deploy.config.SerializationConfiguration
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.service.*
+import com.demo.chat.service.impl.memory.index.IndexEntryEncoder
+import com.demo.chat.service.impl.memory.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -22,6 +21,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import java.util.*
+import java.util.function.Function
 
 object UUIDCodec : EmptyUUIDCodec()
 
@@ -62,7 +62,20 @@ class MessageExchangeConfiguration : InMemoryMessageExchangeFactory<UUID, String
 @Profile("index")
 @Configuration
 class IndexConfiguration : InMemoryIndexFactory<UUID, String, Map<String, String>>(
-        UserIndexEntryEncoder, MessageIndexEntryEncoder, TopicIndexEntryEncoder
+        StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
+        IndexEntryEncoder { t -> listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("handle", t.handle),
+                Pair("name", t.name)
+        )},
+        IndexEntryEncoder { t -> listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("text", t.data)
+        )},
+        IndexEntryEncoder { t -> listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("name", t.data)
+        )}
 ) {
     @Controller
     @MessageMapping("user")

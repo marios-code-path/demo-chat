@@ -21,8 +21,8 @@ import java.util.stream.Collectors
 import kotlin.streams.asStream
 
 data class QueryCommand(val first: String, val second: String, val third: Int)
-interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
-interface StringToKeyEncoder<T> : Function<String, Key<T>>
+fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
+fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
 open class InMemoryIndex<T, E : KeyBearer<T>>(
         private val entryEncoder: Function<E, List<Pair<String, String>>>,
@@ -45,22 +45,23 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
         IndexWriter(directory, IndexWriterConfig(analyzer)).use {
             it.addDocument(doc)
             it.commit()
+            it.close()
         }
 
         //sink.success()
         return Mono.empty()
     }
 
-    override fun rem(key: Key<T>): Mono<Void> = Mono.create { sink ->
+    override fun rem(key: Key<T>): Mono<Void>  {
         val parser = QueryParser("key", analyzer)
-        val query = parser.parse(key.id.toString())
+        val query = parser.parse("+${key.id.toString()}")
 
         IndexWriter(directory, IndexWriterConfig(analyzer)).use {
             it.deleteDocuments(query)
             it.commit()
         }
 
-        sink.success()
+        return Mono.empty()
     }
 
     override fun findBy(query: QueryCommand): Flux<out Key<T>> {

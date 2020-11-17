@@ -34,11 +34,12 @@ class CassandraTestConfiguration(val properties: CassandraProperties) {
     fun cassandraContainer(environment: ConfigurableEnvironment): CassandraContainer<*> {
         val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {
             log.debug("Testcontainer Cassandra is on port:  ${properties.port}")
-            //withConfigurationOverride("another-cassandra.yaml")
+            //withConfigurationOverride("cassandra.yaml")
             withExposedPorts(properties.port)
             withReuse(false)
             withLogConsumer(containerLogsConsumer(log))
             withNetwork(Network.SHARED)
+            withConfigurationOverride("cassandra")
             withStartupTimeout(Duration.ofSeconds(60))
             withInitScript("keyspace.cql")
             startAndLogTime(this)

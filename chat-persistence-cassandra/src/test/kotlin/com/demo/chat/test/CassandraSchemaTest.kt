@@ -12,6 +12,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.io.File
 import java.nio.file.Files
+import java.time.Duration
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 open class CassandraSchemaTest {
@@ -25,14 +26,15 @@ open class CassandraSchemaTest {
 
     val log = LoggerFactory.getLogger("TEST")
 
-    fun execStatement(statement: Publisher<String>): Flux<Boolean> {
+    fun execStatement(statements: Flux<String>): Flux<Boolean> {
+
         return template.reactiveCqlOperations
-                .execute(statement)
-                .doOnNext { bool ->
-                    log.info("Completed[$bool]: $statement")
-                }
+                .execute(statements)
                 .doOnError {
-                    log.info("ErrCompleted: $statement")
+                    statements
+                            .doOnNext { println("exec: $it") }
+                            .blockLast()
+                    log.info("ErrCompleted: $statements.")
                     log.info("THROWN : ${it.message}")
                 }
     }
@@ -40,19 +42,20 @@ open class CassandraSchemaTest {
     @BeforeEach
     fun cqlSetup() {
         val fileData = sqlFile(cqlFile.file)
+        val cqlDrop = fileData.filter {
+            it.contains("DROP")
+        }
         val cqlCreate = fileData.filter {
             it.contains("CREATE")
         }
-
-        val cqlDrops = fileData.filter {
-            it.contains("DROP")
-        }
-
-        execStatement(Flux.fromArray(cqlDrops.toTypedArray()))
-                .blockLast()
+        //TODO: KLUDGE to eliminate PT2S
+        Thread.sleep(2000)
+        // Thread Rip Me
+        execStatement(Flux.fromArray(cqlDrop.toTypedArray()))
+                .blockLast(Duration.ofSeconds(5))
 
         execStatement(Flux.fromArray(cqlCreate.toTypedArray()))
-                .blockLast()
+                .blockLast(Duration.ofSeconds(5))
     }
 
     fun sqlFile(file: File) =

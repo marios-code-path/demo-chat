@@ -23,26 +23,3 @@ open class InMemoryIndexFactory<T, E, Q>(
     @Bean
     open fun topicIndex() = InMemoryIndex(topic, key)
 }
-
-object UserIndexEntryEncoder : IndexEntryEncoder<User<UUID>> {
-    override fun apply(t: User<UUID>) = listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("handle", t.handle),
-            Pair("name", t.name)
-    )
-}
-
-object MessageIndexEntryEncoder : IndexEntryEncoder<Message<UUID, String>> {
-    override fun apply(t: Message<UUID, String>) = listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("text", t.data)
-    )
-}
-
-object TopicIndexEntryEncoder : IndexEntryEncoder<MessageTopic<UUID>> {
-    override fun apply(t: MessageTopic<UUID>)= listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("name", t.data)
-    )
-
-}

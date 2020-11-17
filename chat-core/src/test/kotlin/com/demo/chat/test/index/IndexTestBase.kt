@@ -33,7 +33,18 @@ open class IndexTestBase<T, E, Q>(
     }
 
     @Test
-    fun `should search simple`() {
+    fun `should save and remove and query with no result`() {
+        val cb = testIndex.add(valueSupply.get())
+                .then(testIndex.rem(keySupply.get()))
+                .thenMany(testIndex.findBy(querySupply.get()))
+
+        StepVerifier
+                .create(cb)
+                .verifyComplete()
+    }
+
+    @Test
+    fun `should save and fine one`() {
 
         val bar = testIndex
                 .add(valueSupply.get())

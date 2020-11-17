@@ -15,6 +15,5 @@ class MemoryIndexTests : IndexTestBase<Long, User<Long>, QueryCommand>(
                 Function { t -> listOf(
                         Pair("handle", t.handle),
                         Pair("name", t.name)
-                ) },
-                Function { q -> Key.funKey(q.toLong()) })
+                ) }, Function { q -> Key.funKey(q.toLong()) })
 )
