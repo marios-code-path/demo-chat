@@ -35,16 +35,6 @@ val keySupply: Supplier<T>) {
 
     abstract fun assertElement(element: E) : Unit
 
-    /**
-     * org.assertj.core.api.Assertions
-    .assertThat(element)
-    .isNotNull
-    .hasFieldOrProperty("key")
-    .hasFieldOrProperty("handle")
-    .hasFieldOrProperty("name")
-    .extracting("key")
-    .hasFieldOrProperty("id")
-     */
     @Test
     fun <T> `should save && findById`() {
         val users = Flux.just(
@@ -107,7 +97,7 @@ class ChatUserRepositoryTests : CassandraSchemaTest(){
 
     val defaultImageUri = "http://path_to_file"
 
-    @Value("classpath:simple-user.cql")
+    @Value("classpath:truncate.cql")
     override lateinit var cqlFile: Resource
 
     @Test

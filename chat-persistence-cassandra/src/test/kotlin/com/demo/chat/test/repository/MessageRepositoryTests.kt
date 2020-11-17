@@ -39,7 +39,7 @@ class MessageRepositoryTests : CassandraSchemaTest() {
 
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    @Value("classpath:simple-message.cql")
+    @Value("classpath:truncate.cql")
     override lateinit var cqlFile: Resource
 
     @Autowired

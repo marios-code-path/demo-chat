@@ -41,7 +41,7 @@ class MessageTopicRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var byNameRepo: TopicByNameRepository<UUID>
 
-    @Value("classpath:simple-room.cql")
+    @Value("classpath:truncate.cql")
     override lateinit var cqlFile: Resource
 
     @Test

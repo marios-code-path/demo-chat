@@ -39,7 +39,7 @@ class TopicMembershipRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>
 
-    @Value("classpath:simple-membership.cql")
+    @Value("classpath:truncate.cql")
     override lateinit var cqlFile: Resource
 
     @Test
