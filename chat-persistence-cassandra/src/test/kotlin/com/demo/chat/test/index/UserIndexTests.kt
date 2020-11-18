@@ -1,6 +1,8 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.service.IndexService
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.index.UserCriteriaCodec
 import com.demo.chat.service.index.UserIndexCassandra
@@ -15,6 +17,11 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
+//class UserIndexTests : IndexTestBase<UUID, User<UUID>, Map<String, String>>(
+//        Supplier { User.create(Key.funKey(UUID(10, 10)), "test-name", "test-handle", "localhost/test.jpg") },
+//        Supplier { Key.funKey(UUID(10, 10)) },
+//        Supplier { mapOf(Pair(MembershipIndexService.MEMBEROF, UUID(10, 10).toString())) }
+//)
 class UserIndexTests {
 
     @MockBean
@@ -29,4 +36,6 @@ class UserIndexTests {
     fun setUp() {
         userIndex = UserIndexCassandra(UserCriteriaCodec(), byHandleRepo, cassandra)
     }
+
+    fun getIndex(): IndexService<UUID, User<UUID>, Map<String, String>> = userIndex
 }

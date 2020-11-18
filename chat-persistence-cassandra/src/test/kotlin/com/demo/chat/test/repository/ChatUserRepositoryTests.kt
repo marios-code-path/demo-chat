@@ -97,9 +97,6 @@ class ChatUserRepositoryTests : CassandraSchemaTest(){
 
     val defaultImageUri = "http://path_to_file"
 
-    @Value("classpath:truncate.cql")
-    override lateinit var cqlFile: Resource
-
     @Test
     fun shouldContextLoad() {
         assertAll("Reactive Template Exists",

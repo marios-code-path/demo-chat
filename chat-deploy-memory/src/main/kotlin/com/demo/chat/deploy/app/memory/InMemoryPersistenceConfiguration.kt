@@ -7,7 +7,7 @@ import com.demo.chat.service.impl.memory.persistence.TopicPersistenceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import org.springframework.context.annotation.Bean
 
-open class InMemoryPersistenceFactory<T, V>(private val keyService: IKeyService<T>) {
+open class InMemoryPersistenceConfiguration<T, V>(private val keyService: IKeyService<T>) {
     @Bean
     open fun userPersistence(): UserPersistence<T> = UserPersistenceInMemory(keyService)
 

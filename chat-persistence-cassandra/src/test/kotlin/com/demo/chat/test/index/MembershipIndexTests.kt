@@ -63,7 +63,7 @@ class MembershipIndexTests {
         BDDMockito.given(byMemberOfRepository.findByMemberOf(anyObject()))
                 .willReturn(Flux.just(membershipOf))
 
-        membershipIndex = MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepository, byMemberOfRepository)
+        this.membershipIndex = MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepository, byMemberOfRepository)
     }
 
     @Test

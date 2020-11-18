@@ -10,17 +10,17 @@ import java.time.Duration
 import java.util.function.Supplier
 
 @Disabled
-open class IndexTestBase<T, E, Q>(
+abstract class IndexTestBase<T, E, Q>(
         val valueSupply: Supplier<E>,
         val keySupply: Supplier<Key<T>>,
-        val querySupply: Supplier<Q>,
-        val testIndex: IndexService<T, E, Q>
+        val querySupply: Supplier<Q>
 ) {
+    abstract fun getIndex(): IndexService<T, E, Q>
 
     @Test
     fun `should save one`() {
         StepVerifier
-                .create(testIndex.add(valueSupply.get()))
+                .create(getIndex().add(valueSupply.get()))
                 .verifyComplete()
     }
 
@@ -28,15 +28,15 @@ open class IndexTestBase<T, E, Q>(
     fun `should remove one`() {
         StepVerifier
                 .create(
-                        testIndex.rem(keySupply.get()))
+                        getIndex().rem(keySupply.get()))
                 .verifyComplete()
     }
 
     @Test
     fun `should save and remove and query with no result`() {
-        val cb = testIndex.add(valueSupply.get())
-                .then(testIndex.rem(keySupply.get()))
-                .thenMany(testIndex.findBy(querySupply.get()))
+        val cb = getIndex().add(valueSupply.get())
+                .then(getIndex().rem(keySupply.get()))
+                .thenMany(getIndex().findBy(querySupply.get()))
 
         StepVerifier
                 .create(cb)
@@ -46,9 +46,9 @@ open class IndexTestBase<T, E, Q>(
     @Test
     fun `should save and fine one`() {
 
-        val bar = testIndex
+        val bar = getIndex()
                 .add(valueSupply.get())
-                .thenMany(testIndex.findBy(querySupply.get()))
+                .thenMany(getIndex().findBy(querySupply.get()))
 
         StepVerifier
                 .create(bar)

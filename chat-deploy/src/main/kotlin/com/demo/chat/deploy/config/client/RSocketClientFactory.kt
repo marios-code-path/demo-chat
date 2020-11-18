@@ -9,29 +9,40 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.ecwid.consul.v1.ConsulClient
-import org.slf4j.LoggerFactory
-import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
-import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Mono
 import java.util.*
 
 data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
 
-@Configuration
-@Import(RSocketRequesterAutoConfiguration::class)
-class RSocketClientFactory(val builder: RSocketRequester.Builder,
-                           client: ConsulClient,
-                           props: ConsulDiscoveryProperties) {
-    val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
-    val logger = LoggerFactory.getLogger(this::class.java)
+interface RSocketClientProperties {
+    val key: String
+    val index: String
+    val persistence: String
+    val messaging: String
+}
 
-    fun requester(servicePrefix: String): RSocketRequester = discovery
-            .getInstances("${servicePrefix}-service-rsocket")
+class RSocketClientFactory(
+        private val builder: RSocketRequester.Builder,
+        client: ConsulClient,
+        props: ConsulDiscoveryProperties,
+        private val clientProps: RSocketClientProperties,
+) {
+    val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
+
+    private fun getServicePrefix(prefix: String) = when (prefix) {
+        "key" -> clientProps.key
+        "index" -> clientProps.index
+        "persistence" -> clientProps.persistence
+        "messaging" -> clientProps.messaging
+        else -> throw AppDiscoveryException(prefix)
+    }
+
+    private fun requester(servicePrefix: String): RSocketRequester = discovery
+            .getInstances(getServicePrefix(servicePrefix))
             .map { instance ->
                 Optional
                         .ofNullable(instance.metadata["rsocket.port"])
@@ -45,8 +56,6 @@ class RSocketClientFactory(val builder: RSocketRequester.Builder,
             }
             .switchIfEmpty(Mono.error(AppDiscoveryException(servicePrefix)))
             .blockFirst()!!
-
-    // TODO - add prefix_requestor_<type> at build-time
 
     fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))
 

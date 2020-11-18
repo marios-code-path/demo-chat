@@ -4,6 +4,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.testcontainers.containers.CassandraContainer
@@ -21,6 +22,8 @@ open class CassandraSchemaTest {
     @Autowired
     lateinit var container: CassandraContainer<Nothing>
 
+    @Autowired
+    @Value("classpath:truncate.cql")
     open lateinit var cqlFile: Resource
 
     val log = LoggerFactory.getLogger("TEST")

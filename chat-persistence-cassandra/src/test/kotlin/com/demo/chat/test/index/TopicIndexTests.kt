@@ -1,11 +1,13 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.service.IndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.TopicIndexService.Companion.ALL
 import com.demo.chat.service.TopicIndexService.Companion.NAME
@@ -13,7 +15,9 @@ import com.demo.chat.service.index.TopicCriteriaCodec
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.*
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -38,6 +42,10 @@ fun randomAlphaNumeric(size: Int): String {
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 class TopicIndexTests {
+//class TopicIndexTests : IndexTestBase<UUID, MessageTopic<UUID>, Map<String, String>>
+//(Supplier { MessageTopic.create(Key.funKey(UUID(10L, 10L)), "TEST_TOPIC") },
+//        Supplier { Key.funKey(UUID(10L, 10L)) },
+//        Supplier { mapOf(Pair(ALL, "")) }) {
 
     @MockBean
     lateinit var roomRepo: TopicRepository<UUID>
@@ -48,17 +56,20 @@ class TopicIndexTests {
     lateinit var topicIndex: TopicIndexService<UUID>
 
     private val testTopicId = UUID.randomUUID()
-    private val testTopicName = "ROOM_TEST"
+    private val testTopicName = "TEST_TOPIC"
     private val topicByKey = ChatTopic(ChatTopicKey(testTopicId), testTopicName, true)
     private val topicByName = ChatTopicName(ChatTopicNameKey(testTopicId, testTopicName), true)
+
+    fun getIndex(): IndexService<UUID, MessageTopic<UUID>, Map<String, String>> = topicIndex
 
     @BeforeEach
     fun setUp() {
         topicIndex = TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
     }
 
+
     @Test
-    fun `should save one`() {
+    fun `should search by topic name`() {
         BDDMockito
                 .given(roomRepo.save(anyObject<ChatTopic<UUID>>()))
                 .willReturn(Mono.empty())
@@ -66,13 +77,6 @@ class TopicIndexTests {
         BDDMockito.given(nameRepo.save(anyObject<ChatTopicName<UUID>>()))
                 .willReturn(Mono.just(topicByName))
 
-        StepVerifier
-                .create(topicIndex.add(ChatTopic(ChatTopicKey(testTopicId), testTopicName, true)))
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should search by topic name`() {
         BDDMockito.given(nameRepo.findByKeyName(anyObject()))
                 .willReturn(Mono.just(topicByName))
 

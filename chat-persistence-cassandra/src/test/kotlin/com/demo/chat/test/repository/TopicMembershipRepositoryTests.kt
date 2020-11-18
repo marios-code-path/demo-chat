@@ -39,9 +39,6 @@ class TopicMembershipRepositoryTests : CassandraSchemaTest(){
     @Autowired
     lateinit var byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>
 
-    @Value("classpath:truncate.cql")
-    override lateinit var cqlFile: Resource
-
     @Test
     fun `membershipOf should not return all`() {
         val membership = TopicMembershipByKey(UUIDs.timeBased(), UUIDs.timeBased(), UUIDs.timeBased())

@@ -65,16 +65,18 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
     }
 
     override fun findBy(query: QueryCommand): Flux<out Key<T>> {
-        val indexReader: DirectoryReader = DirectoryReader.open(directory)
+        val indexReader: DirectoryReader = directory.use { DirectoryReader.open(it) }
         val indexSearcher = IndexSearcher(indexReader)
 
-        val doc = indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.third).scoreDocs
-                .map {
-                    indexSearcher
-                            .doc(it.doc)
-                            .get("key")
-                }
-                .map(keyEncoder::apply)
+        val doc = directory.use {
+            indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.third).scoreDocs
+                    .map {
+                        indexSearcher
+                                .doc(it.doc)
+                                .get("key")
+                    }
+                    .map(keyEncoder::apply)
+        }
 
         return Flux.fromIterable(doc)
     }

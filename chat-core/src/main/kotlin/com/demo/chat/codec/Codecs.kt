@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory
 import java.util.*
 
-interface Codec<F, E> {
+fun interface Codec<F, E> {
     fun decode(record: F): E
 }
 
