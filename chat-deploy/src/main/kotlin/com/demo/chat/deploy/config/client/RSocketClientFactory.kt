@@ -33,16 +33,16 @@ class RSocketClientFactory(
 ) {
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
 
-    private fun getServicePrefix(prefix: String) = when (prefix) {
+    private fun getServiceId(serviceType: String) = when (serviceType) {
         "key" -> clientProps.key
         "index" -> clientProps.index
         "persistence" -> clientProps.persistence
         "messaging" -> clientProps.messaging
-        else -> throw AppDiscoveryException(prefix)
+        else -> throw AppDiscoveryException(serviceType)
     }
 
-    private fun requester(servicePrefix: String): RSocketRequester = discovery
-            .getInstances(getServicePrefix(servicePrefix))
+    private fun requester(serviceType: String): RSocketRequester = discovery
+            .getInstances(getServiceId(serviceType))
             .map { instance ->
                 Optional
                         .ofNullable(instance.metadata["rsocket.port"])
@@ -52,9 +52,9 @@ class RSocketClientFactory(
                                     .log()
                                     .block()!!
                         }
-                        .orElseThrow { AppDiscoveryException(servicePrefix) }
+                        .orElseThrow { AppDiscoveryException(serviceType) }
             }
-            .switchIfEmpty(Mono.error(AppDiscoveryException(servicePrefix)))
+            .switchIfEmpty(Mono.error(AppDiscoveryException(serviceType)))
             .blockFirst()!!
 
     fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))

@@ -118,9 +118,6 @@
                             <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
                         </env>
                     </image>
-                    <profiles>
-                        <profile>key-service</profile>
-                    </profiles>
                 </configuration>
                 <executions>
                     <execution>

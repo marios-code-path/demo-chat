@@ -15,11 +15,13 @@ import com.demo.chat.service.impl.memory.index.IndexEntryEncoder
 import com.demo.chat.service.impl.memory.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
@@ -29,21 +31,21 @@ import java.util.*
 
 object UUIDCodec : EmptyUUIDCodec()
 
-@ConfigurationProperties("app.rsocket.client")
+@ConfigurationProperties("app.client.rsocket")
 @ConstructorBinding
-class AppRSocketClientProperties(override val key: String = "r.",
-                              override val index: String = "r.",
-                              override val persistence: String = "r.",
-                              override val messaging: String = "r.") : RSocketClientProperties
+class AppRSocketClientProperties(override val key: String = "",
+                              override val index: String = "",
+                              override val persistence: String = "",
+                              override val messaging: String = "") : RSocketClientProperties
 
+@Configuration
 class AppRSocketClientConfiguration(clients: RSocketClientFactory) : RSocketClientConfiguration<UUID, String>(clients)
 
 @SpringBootApplication
 @EnableConfigurationProperties(AppRSocketClientProperties::class)
 @Import(RSocketRequesterAutoConfiguration::class,
         SerializationConfiguration::class,
-        RSocketClientFactory::class,
-        AppRSocketClientConfiguration::class)
+        RSocketClientFactory::class)
 class App {
     companion object {
         @JvmStatic
@@ -51,20 +53,22 @@ class App {
             runApplication<App>(*args)
         }
     }
+
 }
 
-@Profile("key")
+@ConditionalOnProperty(prefix="app.service", name = ["key"])
 @Controller
 @MessageMapping("key")
 class KeyController : KeyServiceController<UUID>(KeyServiceInMemory(UUIDCodec))
 
+
 @Configuration
-@Profile("message")
+@ConditionalOnProperty(prefix="app.service", name = ["message"])
 class MessageExchangeConfiguration : InMemoryMessageExchangeConfiguration<UUID, String>() {
 
     @Controller
     @MessageMapping("message")
-    @Profile("message")
+    @ConditionalOnProperty(prefix="app.service", name = ["message"])
     class MessageExchangeController(
             i: MessageIndexService<UUID, String>,
             p: MessagePersistence<UUID, String>,
@@ -74,7 +78,7 @@ class MessageExchangeConfiguration : InMemoryMessageExchangeConfiguration<UUID, 
 }
 
 @Configuration
-@Profile("index")
+@ConditionalOnProperty(prefix="app.service", name = ["index"])
 class IndexConfiguration : InMemoryIndexConfiguration<UUID, String, Map<String, String>>(
         StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
         IndexEntryEncoder<User<UUID>> { t ->
@@ -98,42 +102,42 @@ class IndexConfiguration : InMemoryIndexConfiguration<UUID, String, Map<String, 
         }
 ) {
     @Controller
-    @Profile("index")
+    @ConditionalOnProperty(prefix="app.service", name = ["index", "index.user"])
     @MessageMapping("user")
     class UserIndexController(s: IndexService<UUID, User<UUID>, Map<String, String>>) : IndexServiceController<UUID, User<UUID>, Map<String, String>>(s)
 
     @Controller
-    @Profile("index")
+    @ConditionalOnProperty(prefix="app.service", name = ["index", "index.message"])
     @MessageMapping("message")
     class MessageIndexController(s: IndexService<UUID, Message<UUID, String>, Map<String, UUID>>) : IndexServiceController<UUID, Message<UUID, String>, Map<String, UUID>>(s)
 
     @Controller
-    @Profile("index")
+    @ConditionalOnProperty(prefix="app.service", name = ["index", "index.topic"])
     @MessageMapping("topic")
     class TopicIndexController(s: IndexService<UUID, MessageTopic<UUID>, Map<String, String>>) : IndexServiceController<UUID, MessageTopic<UUID>, Map<String, String>>(s)
 }
 
 @Configuration
-@Profile("persistence")
+@ConditionalOnProperty(prefix="app.service", name = ["persistence"])
 class PersistenceConfiguration(keyService: IKeyService<UUID>) : InMemoryPersistenceConfiguration<UUID, String>(keyService) {
 
     @Controller
-    @Profile("persistence")
+    @ConditionalOnProperty(prefix="app.service", name = ["persistence"])
     @MessageMapping("user")
     class UserPersistenceController(t: UserPersistence<UUID>) : PersistenceServiceController<UUID, User<UUID>>(t)
 
     @Controller
-    @Profile("persistence")
+    @ConditionalOnProperty(prefix="app.service", name = ["persistence"])
     @MessageMapping("message")
     class MessagePersistenceController(t: MessagePersistence<UUID, String>) : PersistenceServiceController<UUID, Message<UUID, String>>(t)
 
     @Controller
-    @Profile("persistence")
+    @ConditionalOnProperty(prefix="app.service", name = ["persistence"])
     @MessageMapping("topic")
     class TopicPersistenceController(t: TopicPersistence<UUID>) : PersistenceServiceController<UUID, MessageTopic<UUID>>(t)
 
     @Controller
-    @Profile("persistence")
+    @ConditionalOnProperty(prefix="app.service", name = ["persistence"])
     @MessageMapping("membership")
     class MembershipPersistenceController(t: MembershipPersistence<UUID>) : PersistenceServiceController<UUID, TopicMembership<UUID>>(t)
 }
