@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.codec.Codec
 import com.demo.chat.codec.EmptyUUIDCodec
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.controller.service.IndexServiceController
@@ -101,7 +102,7 @@ class App {
     class KeyConfiguration : KeyControllersConfiguration() {
         @Bean
         @ConditionalOnProperty(prefix = "app.service", name = ["key"])
-        fun keyService(): IKeyService<UUID> = KeyServiceInMemory(UUIDCodec)
+        fun keyService(): IKeyService<UUID> = KeyServiceInMemory(Codec { UUID.randomUUID() })
 
     }
 

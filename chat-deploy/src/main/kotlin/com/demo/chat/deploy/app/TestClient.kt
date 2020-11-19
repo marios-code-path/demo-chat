@@ -13,6 +13,7 @@ import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.deploy.config.JacksonConfiguration
+import com.demo.chat.deploy.config.initializers.DiscoveryContextInitializer
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.SpringBootConfiguration
@@ -32,9 +33,6 @@ import java.util.function.Supplier
 @Profile("test-client")
 class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(ctx: GenericApplicationContext) {
-        ctx.registerBean(JacksonModules::class.java, Supplier {
-            JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
-        })
         ctx.registerBean(JacksonConfiguration::class.java, Supplier {
             JacksonConfiguration()
         }) // Use JacksonAutoconfiguration for CBOR, other encodings.
@@ -44,6 +42,9 @@ class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
         })
         ctx.registerBean(RSocketRequesterAutoConfiguration::class.java, Supplier {
             RSocketRequesterAutoConfiguration()
+        })
+        ctx.registerBean(DiscoveryContextInitializer::class.java, Supplier {
+            DiscoveryContextInitializer()
         })
 
         ctx.environment.activeProfiles.forEach { profile ->
@@ -161,14 +162,14 @@ class ClientKeyRun {
     @Bean
     fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient("key.",
             requester
-                    .connectTcp("localhost", 6500)
+                    .connectTcp("localhost", 6400)
                     .block()!!)
 
     @Bean
     fun run(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
         svc.key(UUID::class.java)
                 .doOnNext {
-                    logger.info("KEY FOUND: ${it.id}")
+                    logger.info("KEY CREATED: ${it.id}")
                 }
                 .flatMap {
                     svc.exists(it)

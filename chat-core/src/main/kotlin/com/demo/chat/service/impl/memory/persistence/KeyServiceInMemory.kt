@@ -7,10 +7,6 @@ import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
 class KeyServiceInMemory<T>(private val keyGen: Codec<Unit, T>) : IKeyService<T> {
-    init {
-        println("KEY SERVICE IN MEMORY")
-    }
-
     val map = ConcurrentHashMap<T, Key<T>>()
 
     override fun <S> key(kind: Class<S>): Mono<out Key<T>> = Mono.just(
@@ -29,6 +25,6 @@ class KeyServiceInMemory<T>(private val keyGen: Codec<Unit, T>) : IKeyService<T>
     }
 
     override fun exists(key: Key<T>): Mono<Boolean> = Mono.create {
-        it.success(map.contains(key.id))
+        it.success(map.containsKey(key.id))
     }
 }

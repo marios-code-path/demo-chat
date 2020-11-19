@@ -13,7 +13,7 @@ import java.time.Duration
 import java.util.function.Supplier
 
 @Disabled
-open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeService<T, V>,
+open class MessagingServiceTestBase<T, V>(val messaging: PubSubTopicExchangeService<T, V>,
                                           val keySvc: IKeyService<T>,
                                           val valueSupply: Supplier<V>) {
 
@@ -27,7 +27,7 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
         val steps = keyFlux()
                 .collectList()
                 .flatMap { keys ->
-                    topicService.subscribe(keys[0].id, keys[1].id)
+                    messaging.subscribe(keys[0].id, keys[1].id)
                 }
 
         StepVerifier
@@ -43,11 +43,11 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                     val userId = keys[0].id
                     val testRoom = keys[1].id
 
-                    topicService.add(testRoom)
-                            .then(topicService.subscribe(userId, testRoom))
-                            .then(topicService.unSubscribe(userId, testRoom))
-                            .then(topicService.subscribe(userId, testRoom))
-                            .thenMany(topicService.getUsersBy(testRoom))
+                    messaging.add(testRoom)
+                            .then(messaging.subscribe(userId, testRoom))
+                            .then(messaging.unSubscribe(userId, testRoom))
+                            .then(messaging.subscribe(userId, testRoom))
+                            .thenMany(messaging.getUsersBy(testRoom))
                 }
 
         StepVerifier
@@ -69,10 +69,10 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                 .flatMapMany { keys ->
                     val userId = keys[0].id
                     val testRoom = keys[1].id
-                    topicService
+                    messaging
                             .add(testRoom)
-                            .then(topicService.subscribe(userId, testRoom))
-                            .thenMany(topicService.getUsersBy(testRoom))
+                            .then(messaging.subscribe(userId, testRoom))
+                            .thenMany(messaging.getUsersBy(testRoom))
                 }
 
         StepVerifier
@@ -95,7 +95,7 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                     val testRoom = keys[1].id
                     val msgId = keys[2].id
 
-                    topicService.sendMessage(Message.create(MessageKey.create(msgId, userId, testRoom), valueSupply.get(), true))
+                    messaging.sendMessage(Message.create(MessageKey.create(msgId, userId, testRoom), valueSupply.get(), true))
                 }
 
         StepVerifier
@@ -112,9 +112,9 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                     val testRoom = keys[1].id
                     val msgId = keys[2].id
 
-                    topicService.subscribe(userId, testRoom)
+                    messaging.subscribe(userId, testRoom)
                             .flatMap {
-                                topicService
+                                messaging
                                         .sendMessage(Message.create(MessageKey.create(msgId, userId, testRoom), valueSupply.get(), true))
                             }
                 }
@@ -131,9 +131,9 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                 .flatMapMany { keys ->
                     val testRoom = keys[1].id
 
-                    topicService
+                    messaging
                             .add(testRoom)
-                            .then(topicService.exists(testRoom))
+                            .then(messaging.exists(testRoom))
                 }
         StepVerifier
                 .create(steps)
@@ -157,11 +157,11 @@ open class MessagingServiceTestBase<T, V>(val topicService: PubSubTopicExchangeS
                     val testRoom = keys[1].id
                     val msgId = keys[2].id
 
-                    val listener = topicService.receiveOn(testRoom)
-                    topicService
+                    val listener = messaging.receiveOn(testRoom)
+                    messaging
                             .add(testRoom)
-                            .then(topicService.subscribe(userId, testRoom))
-                            .then(topicService.sendMessage(Message.create(MessageKey.create(msgId, userId, testRoom), valueSupply.get(), true)))
+                            .then(messaging.subscribe(userId, testRoom))
+                            .then(messaging.sendMessage(Message.create(MessageKey.create(msgId, userId, testRoom), valueSupply.get(), true)))
                             .map {
                                 StepVerifier
                                         .create(listener)
