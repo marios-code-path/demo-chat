@@ -104,7 +104,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.chat.deploy.app.memory.InMemoryPersistenceServices</mainClass>
+                    <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
                 </configuration>
             </plugin>
             <plugin>

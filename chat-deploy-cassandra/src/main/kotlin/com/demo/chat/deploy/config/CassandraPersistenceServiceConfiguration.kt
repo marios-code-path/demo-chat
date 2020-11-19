@@ -8,7 +8,7 @@ import com.demo.chat.service.*
 import com.demo.chat.service.persistence.*
 import org.springframework.context.annotation.Bean
 
-open class CassandraPersistenceFactory<T>(
+open class CassandraPersistenceServiceConfiguration<T>(
         private val keyService: IKeyService<T>,
         private val userRepo: ChatUserRepository<T>,
         private val topicRepo: TopicRepository<T>,

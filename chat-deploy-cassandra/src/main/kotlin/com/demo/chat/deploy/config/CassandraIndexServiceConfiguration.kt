@@ -9,7 +9,7 @@ import com.demo.chat.service.index.*
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
-open class CassandraIndexFactory<T>(
+open class CassandraIndexServiceConfiguration<T>(
         private val cassandra: ReactiveCassandraTemplate,
         private val userHandleRepo: ChatUserHandleRepository<T>,
         private val roomRepo: TopicRepository<T>,

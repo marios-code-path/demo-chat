@@ -15,8 +15,6 @@ class CassandraContextInitializer: ApplicationContextInitializer<GenericApplicat
         })
         ctx.registerBean(CassandraDataAutoConfiguration::class.java, Supplier {
             CassandraDataAutoConfiguration(ctx.getBean(CqlSession::class.java))
-          //  CassandraDataAutoConfiguration(ctx.getBean(CassandraProperties::class.java),
-          //          ctx.getBean(Cluster::class.java))
         })
         ctx.registerBean(CassandraReactiveDataAutoConfiguration::class.java, Supplier {
             CassandraReactiveDataAutoConfiguration()
