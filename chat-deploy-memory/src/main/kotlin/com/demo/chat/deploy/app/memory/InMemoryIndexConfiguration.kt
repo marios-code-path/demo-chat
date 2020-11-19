@@ -11,7 +11,7 @@ import com.demo.chat.service.impl.memory.index.StringToKeyEncoder
 import org.springframework.context.annotation.Bean
 import java.util.*
 
-open class InMemoryIndexConfiguration<T, E, Q>(
+open class InMemoryIndexConfiguration<T, E>(
         private val key: StringToKeyEncoder<T>,
         private val user: IndexEntryEncoder<User<T>>,
         private val message: IndexEntryEncoder<Message<T, E>>,

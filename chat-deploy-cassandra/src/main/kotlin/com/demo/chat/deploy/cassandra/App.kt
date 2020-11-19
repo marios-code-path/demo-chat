@@ -36,7 +36,7 @@ import java.util.*
 
 // TODO Ssssoooooooo I dont know how to get our rsocket server
 // to register with Consul, so I'm sending a tag instead
-// using command line to drop in the port.
+// using spring.rsocket.server.port as the source
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @EnableConfigurationProperties(CassandraProperties::class)
