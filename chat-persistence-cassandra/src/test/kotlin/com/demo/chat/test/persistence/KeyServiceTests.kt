@@ -7,6 +7,7 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.key.KeyServiceTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -32,7 +33,7 @@ class TestUUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
 class KeyServiceTests : CassandraSchemaTest() {
     lateinit var svc: IKeyService<UUID>
 
-    @Value("classpath:simple-keys.cql")
+    @Value("classpath:keyspace.cql")
     override lateinit var cqlFile: Resource
 
     @BeforeAll
@@ -81,21 +82,6 @@ class KeyServiceTests : CassandraSchemaTest() {
         StepVerifier
                 .create(deleteStream)
                 .expectSubscription()
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should create new UserKey`() {
-        val userKey = svc.key(User::class.java)
-
-        StepVerifier
-                .create(userKey)
-                .expectSubscription()
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .hasNoNullFieldsOrProperties()
-                }
                 .verifyComplete()
     }
 }

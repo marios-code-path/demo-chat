@@ -14,6 +14,7 @@ import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
 
+// RULES Here
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 open class CassandraSchemaTest {
     @Autowired
@@ -48,10 +49,8 @@ open class CassandraSchemaTest {
             it.contains("Truncate")
         }
 
-        println("FIRST EXEC: ${Instant.now()}")
         execStatement(Flux.fromArray(cqlDrop.toTypedArray()))
                 .blockLast(Duration.ofSeconds(5))
-        println("EXEC COMPLETE: ${Instant.now()}")
     }
 
     fun sqlFile(file: File) =
