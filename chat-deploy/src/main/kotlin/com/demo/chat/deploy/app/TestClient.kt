@@ -2,171 +2,63 @@ package com.demo.chat.deploy.app
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.client.rsocket.KeyClient
 import com.demo.chat.client.rsocket.MessagePersistenceClient
 import com.demo.chat.client.rsocket.UserPersistenceClient
-import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.User
-import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.PersistenceStore
 import com.demo.chat.deploy.config.JacksonConfiguration
-import com.demo.chat.deploy.config.initializers.DiscoveryContextInitializer
+import com.demo.chat.deploy.config.client.CoreServiceClientBeans
+import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.client.RSocketClientProperties
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.SpringBootConfiguration
-import org.springframework.boot.WebApplicationType
-import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
-import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.context.ApplicationContextInitializer
+import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
-import org.springframework.context.support.GenericApplicationContext
-import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import java.util.*
-import java.util.function.Supplier
 
-@Deprecated("Move me to tests; You shouldn't run tests in production!")
-@Profile("test-client")
-class TestClient : ApplicationContextInitializer<GenericApplicationContext> {
-    override fun initialize(ctx: GenericApplicationContext) {
-        ctx.registerBean(JacksonConfiguration::class.java, Supplier {
-            JacksonConfiguration()
-        }) // Use JacksonAutoconfiguration for CBOR, other encodings.
+@ConfigurationProperties("app.client.rsocket")
+@ConstructorBinding
+class TestClientProperties(
+        override val key: String = "",
+        override val index: String = "",
+        override val persistence: String = "",
+        override val messaging: String = "",
+) : RSocketClientProperties
 
-        ctx.registerBean(RSocketStrategiesAutoConfiguration::class.java, Supplier {
-            RSocketStrategiesAutoConfiguration()
-        })
-        ctx.registerBean(RSocketRequesterAutoConfiguration::class.java, Supplier {
-            RSocketRequesterAutoConfiguration()
-        })
-        ctx.registerBean(DiscoveryContextInitializer::class.java, Supplier {
-            DiscoveryContextInitializer()
-        })
-
-        ctx.environment.activeProfiles.forEach { profile ->
-            when (profile) {
-                "user" -> {
-                    ctx.registerBean(ClientUserRun::class.java, Supplier {
-                        ClientUserRun()
-                    })
-                }
-                "key" -> {
-                    ctx.registerBean(ClientKeyRun::class.java, Supplier {
-                        ClientKeyRun()
-                    })
-                }
-                "message" -> {
-                    ctx.registerBean(ClientMessageRun::class.java, Supplier {
-                        ClientMessageRun()
-                    })
-                }
-                "edge" -> {
-                    ctx.registerBean(EdgeRun::class.java, Supplier {
-                        EdgeRun()
-                    })
-                }
-            }
-        }
-    }
-
+@EnableConfigurationProperties(TestClientProperties::class)
+@SpringBootApplication
+@Import(
+        JacksonConfiguration::class,
+        RSocketStrategiesAutoConfiguration::class,
+        CoreServiceClientFactory::class
+)
+// TODO: This should also embody integration tests
+class TestClient {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            SpringApplicationBuilder(TestClient::class.java)
-                    .web(WebApplicationType.NONE)
-                    .initializers(TestClient())
-                    .run(*args)
+            runApplication<TestClient>(*args)
         }
     }
-}
 
-class EdgeRun {
+    @Configuration
+    class ClientsConfiguration(f: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String>(f)
+
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 
     @Bean
-    fun run(builder: RSocketRequester.Builder): ApplicationRunner = ApplicationRunner { appArgs ->
-        val requester = builder
-                .connectTcp("localhost", 6503)
-                .block()!!
-
-        requester
-                .route("edge.user.user-add")
-                .data(UserCreateRequest("MG", "1002", "JPG"))
-                .retrieveMono(UUID::class.java)
-                .doOnNext {
-                    logger.info("UUID FOUND: $it")
-                }
-                .flatMap {
-                    requester
-                            .route("edge.user.user-by-handle")
-                            .data(ByHandleRequest("1001"))
-                            .retrieveMono(User::class.java)
-                }
-                .doOnNext {
-                    logger.info("User Found ${it.key.id}: ${it.handle} / ${it.name}")
-                }
-                .block()
-    }
-}
-
-class ClientMessageRun {
-    val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
-
-    @Bean
-    fun <T, V> userClient(requester: RSocketRequester.Builder): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(
-            requester
-                    .connectTcp("localhost", 6501)
-                    .block()!!)
-
-    @Bean
-    fun run(svc: MessagePersistenceClient<UUID, String>): ApplicationRunner = ApplicationRunner {
-        svc.key()
-                .flatMap {
-                    logger.info("NEW MESSAGE KEY: ${it.id}")
-                    svc.add(Message.create(
-                            MessageKey.create(it.id, UUID.randomUUID(), UUID.randomUUID()),
-                            "HELLO", true
-                    ))
-                }
-                .block()
-    }
-}
-
-class ClientUserRun {
-    val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
-
-    @Bean
-    fun <T> userClient(requester: RSocketRequester.Builder): PersistenceStore<T, User<T>> = UserPersistenceClient(
-            requester
-                    .connectTcp("localhost", 6501)
-                    .block()!!)
-
-    @Bean
-    fun run(svc: UserPersistenceClient<UUID>): ApplicationRunner = ApplicationRunner {
-        svc.key()
-                .flatMap {
-                    logger.info("NEW USER KEY: ${it.id}")
-                    svc.add(User.create(it, "MARIO", "darkbit1001", "http://localhost:8080/image.jpg"))
-                }
-                .block()
-    }
-}
-
-class ClientKeyRun {
-    val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
-
-    @Bean
-    fun <T> keyClient(requester: RSocketRequester.Builder): IKeyService<T> = KeyClient("key.",
-            requester
-                    .connectTcp("localhost", 6400)
-                    .block()!!)
-
-    @Bean
-    fun run(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
+    @ConditionalOnProperty(prefix = "app.client.run", value = ["key"])
+    fun keyRun(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
         svc.key(UUID::class.java)
                 .doOnNext {
                     logger.info("KEY CREATED: ${it.id}")
@@ -178,7 +70,58 @@ class ClientKeyRun {
                     logger.info("Key Exists: $exists")
                 }
                 .block()
-
     }
 
+    @Bean
+    @ConditionalOnProperty(prefix = "app.client.run", value = ["edge"])
+    fun edgeRun(builder: CoreServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
+        builder
+                .requester("core-service-rsocket")
+                .route("edge.user.user-add")
+                .data(UserCreateRequest("MG", "1002", "JPG"))
+                .retrieveMono(UUID::class.java)
+                .doOnNext {
+                    logger.info("UUID FOUND: $it")
+                }
+                .flatMap {
+                    builder.requester("core-service-rsocket")
+                            .route("edge.user.user-by-handle")
+                            .data(ByHandleRequest("1001"))
+                            .retrieveMono(User::class.java)
+                }
+                .doOnNext {
+                    logger.info("User Found ${it.key.id}: ${it.handle} / ${it.name}")
+                }
+                .block()
+    }
+
+
+    @ConditionalOnProperty(prefix = "app.client.run", value = ["message"])
+    @Bean
+    fun messageRun(svc: MessagePersistenceClient<UUID, String>): ApplicationRunner = ApplicationRunner {
+        svc.key()
+                .flatMap {
+                    logger.info("NEW MESSAGE KEY: ${it.id}")
+                    svc.add(Message.create(
+                            MessageKey.create(it.id, UUID.randomUUID(), UUID.randomUUID()),
+                            "HELLO", true
+                    ))
+                }
+                .block()
+    }
+
+
+    @ConditionalOnProperty(prefix = "app.client.run", value = ["user"])
+    @Bean
+    fun userRun(svc: UserPersistenceClient<UUID>): ApplicationRunner {
+        val applicationRunner = ApplicationRunner {
+            svc.key()
+                    .flatMap {
+                        logger.info("NEW USER KEY: ${it.id}")
+                        svc.add(User.create(it, "MARIO", "A_HANDLE", "http://localhost"))
+                    }
+                    .block()
+        }
+        return applicationRunner
+    }
 }

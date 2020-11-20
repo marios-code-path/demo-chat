@@ -1,6 +1,9 @@
 spring:
   cloud:
+    bus:
+      enabled: false   # Why???????????
     consul:
+      enabled: false
       config:
         format: YAML
         data-key: data

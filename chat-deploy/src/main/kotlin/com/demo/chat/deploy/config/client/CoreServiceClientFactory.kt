@@ -9,6 +9,8 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.ecwid.consul.v1.ConsulClient
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
@@ -25,13 +27,14 @@ interface RSocketClientProperties {
     val messaging: String
 }
 
-class RSocketClientFactory(
+class CoreServiceClientFactory(
         private val builder: RSocketRequester.Builder,
         client: ConsulClient,
         props: ConsulDiscoveryProperties,
         private val clientProps: RSocketClientProperties,
 ) {
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
+    val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private fun getServiceId(serviceType: String) = when (serviceType) {
         "key" -> clientProps.key
@@ -39,23 +42,25 @@ class RSocketClientFactory(
         "persistence" -> clientProps.persistence
         "messaging" -> clientProps.messaging
         else -> throw AppDiscoveryException(serviceType)
-    }
+    }.apply { println("$serviceType = $this") }
 
-    private fun requester(serviceType: String): RSocketRequester = discovery
-            .getInstances(getServiceId(serviceType))
-            .map { instance ->
-                Optional
-                        .ofNullable(instance.metadata["rsocket.port"])
-                        .map {
-                            builder
-                                    .connectTcp(instance.host, it.toInt())
-                                    .log()
-                                    .block()!!
-                        }
-                        .orElseThrow { AppDiscoveryException(serviceType) }
-            }
-            .switchIfEmpty(Mono.error(AppDiscoveryException(serviceType)))
-            .blockFirst()!!
+    fun requester(serviceType: String): RSocketRequester {
+        return discovery
+                .getInstances(getServiceId(serviceType))
+                .map { instance ->
+                    Optional
+                            .ofNullable(instance.metadata["rsocket.port"])
+                            .map {
+                                builder
+                                        .connectTcp(instance.host, it.toInt())
+                                        .log()
+                                        .block()!!
+                            }
+                            .orElseThrow { AppDiscoveryException(serviceType) }
+                }
+                .switchIfEmpty(Mono.error(AppDiscoveryException(serviceType)))
+                .blockFirst()!!
+    }
 
     fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))
 

@@ -4,13 +4,12 @@ import com.demo.chat.deploy.codec.UUIDKeyGeneratorCassandra
 import com.demo.chat.deploy.config.CassandraIndexServiceConfiguration
 import com.demo.chat.deploy.config.CassandraPersistenceServiceConfiguration
 import com.demo.chat.deploy.config.SerializationConfiguration
-import com.demo.chat.deploy.config.client.RSocketClientConfiguration
-import com.demo.chat.deploy.config.client.RSocketClientFactory
+import com.demo.chat.deploy.config.client.CoreServiceClientBeans
+import com.demo.chat.deploy.config.client.CoreServiceClientFactory
 import com.demo.chat.deploy.config.client.RSocketClientProperties
-import com.demo.chat.deploy.config.core.IndexControllersConfiguration
-import com.demo.chat.deploy.config.core.KeyControllersConfiguration
-import com.demo.chat.deploy.config.core.PersistenceControllersConfiguration
-import com.demo.chat.deploy.config.initializers.CassandraContextInitializer
+import com.demo.chat.deploy.config.controllers.IndexControllersConfiguration
+import com.demo.chat.deploy.config.controllers.KeyControllersConfiguration
+import com.demo.chat.deploy.config.controllers.PersistenceControllersConfiguration
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
@@ -39,14 +38,14 @@ class AppRSocketClientProperties(
 ) : RSocketClientProperties
 
 @Configuration
-class AppRSocketClientConfiguration(clients: RSocketClientFactory) : RSocketClientConfiguration<UUID, String>(clients)
+class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String>(clients)
 
 @EnableConfigurationProperties(AppRSocketClientProperties::class, CassandraProperties::class)
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @Import(RSocketRequesterAutoConfiguration::class,
         SerializationConfiguration::class,
-        RSocketClientFactory::class)
+        CoreServiceClientFactory::class)
 class App {
     companion object {
         @JvmStatic

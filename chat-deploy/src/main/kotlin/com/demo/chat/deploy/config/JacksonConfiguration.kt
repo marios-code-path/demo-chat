@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.springframework.boot.jackson.JsonComponentModule
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -16,7 +17,7 @@ class SerializationConfiguration : JacksonConfiguration()
 
 open class JacksonConfiguration {
     @Bean
-    open fun jacksonModules() = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+    open fun jacksonModules() = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec).apply {println("JACKSONMODULES")}
 
     @Bean
     open fun objectMapper(modules: JacksonModules): ObjectMapper =
@@ -33,5 +34,5 @@ open class JacksonConfiguration {
                             userModule())
                 }
                 findAndRegisterModules()
-            }!!
+            }!!.apply{println("OBJECTMAPPER")}
 }

@@ -2,12 +2,9 @@ package com.demo.chat.deploy.config.client
 
 import com.demo.chat.service.IKeyService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
-import java.util.*
 
-open class RSocketClientConfiguration<T, V>(private val clients: RSocketClientFactory) {
+open class CoreServiceClientBeans<T, V>(private val clients: CoreServiceClientFactory) {
 
     @ConditionalOnProperty(prefix="app.client.rsocket", name = ["key"])
     @Bean

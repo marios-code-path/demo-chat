@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.core
+package com.demo.chat.deploy.config.controllers
 
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.MessageIndexService

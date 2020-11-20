@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.core
+package com.demo.chat.deploy.config.controllers
 
 import com.demo.chat.controller.service.KeyServiceController
 import com.demo.chat.service.IKeyService

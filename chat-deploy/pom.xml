@@ -15,15 +15,6 @@
     <description>Deployment Configuration</description>
 
     <dependencies>
-<!--	    <dependency>-->
-<!--	        <groupId>org.springframework</groupId>-->
-<!--            <artifactId>spring-context-indexer</artifactId>-->
-<!--    	</dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.experimental</groupId>-->
-<!--            <artifactId>spring-graalvm-native</artifactId>-->
-<!--            <version>0.7.0</version>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
@@ -36,20 +27,12 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -70,7 +53,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
+            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
