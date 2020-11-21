@@ -9,7 +9,6 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.ecwid.consul.v1.ConsulClient
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties

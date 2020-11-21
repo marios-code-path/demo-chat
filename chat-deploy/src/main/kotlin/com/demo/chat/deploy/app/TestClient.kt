@@ -26,7 +26,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import java.util.*
 
-@ConfigurationProperties("app.client.rsocket")
+@ConfigurationProperties("app.client.rsocket.destination")
 @ConstructorBinding
 class TestClientProperties(
         override val key: String = "",
@@ -57,7 +57,7 @@ class TestClient {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 
     @Bean
-    @ConditionalOnProperty(prefix = "app.client.run", value = ["key"])
+    @ConditionalOnProperty(prefix = "app.client.rsocket", name = ["key"])
     fun keyRun(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
         svc.key(UUID::class.java)
                 .doOnNext {
@@ -73,7 +73,7 @@ class TestClient {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix = "app.client.run", value = ["edge"])
+    @ConditionalOnProperty(prefix = "app.client.rsocket", name = ["edge"])
     fun edgeRun(builder: CoreServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
         builder
                 .requester("core-service-rsocket")
@@ -96,7 +96,7 @@ class TestClient {
     }
 
 
-    @ConditionalOnProperty(prefix = "app.client.run", value = ["message"])
+    @ConditionalOnProperty(prefix = "app.client.rsocket.persistence", name = ["message"])
     @Bean
     fun messageRun(svc: MessagePersistenceClient<UUID, String>): ApplicationRunner = ApplicationRunner {
         svc.key()
@@ -111,7 +111,7 @@ class TestClient {
     }
 
 
-    @ConditionalOnProperty(prefix = "app.client.run", value = ["user"])
+    @ConditionalOnProperty(prefix = "app.client.rsocket.persistence", name = ["user"])
     @Bean
     fun userRun(svc: UserPersistenceClient<UUID>): ApplicationRunner {
         val applicationRunner = ApplicationRunner {
