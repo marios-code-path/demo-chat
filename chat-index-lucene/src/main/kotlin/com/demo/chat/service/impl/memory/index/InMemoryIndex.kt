@@ -13,21 +13,17 @@ import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.queryparser.classic.QueryParser
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.store.ByteBuffersDirectory
-import org.apache.lucene.store.IOContext
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
-import java.util.stream.Collectors
-import kotlin.streams.asStream
 
-data class QueryCommand(val first: String, val second: String, val third: Int)
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
 fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
 open class InMemoryIndex<T, E : KeyBearer<T>>(
         private val entryEncoder: Function<E, List<Pair<String, String>>>,
         private val keyEncoder: Function<String, Key<T>>
-) : IndexService<T, E, QueryCommand> {
+) : IndexService<T, E, IndexSearchRequest> {
 
 
     private val analyzer = StandardAnalyzer()
@@ -64,7 +60,7 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
         return Mono.empty()
     }
 
-    override fun findBy(query: QueryCommand): Flux<out Key<T>> {
+    override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> {
         val indexReader: DirectoryReader = directory.use { DirectoryReader.open(it) }
         val indexSearcher = IndexSearcher(indexReader)
 

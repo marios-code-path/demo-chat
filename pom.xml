@@ -27,11 +27,12 @@
     <modules>
         <module>chat-core</module>
         <module>chat-service-controller</module>
+        <module>chat-index-elastic</module>
+        <module>chat-index-lucene</module>
         <module>chat-persistence-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-service-rsocket</module>
         <module>chat-data-flow</module>
-        <module>chat-index-elastic</module>
         <module>chat-deploy</module>
         <module>chat-deploy-memory</module>
         <module>chat-deploy-redis</module>

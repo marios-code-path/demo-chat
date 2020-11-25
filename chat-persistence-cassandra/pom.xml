@@ -7,7 +7,6 @@
           <artifactId>chat-parent</artifactId>
           <version>0.0.1</version>
 	</parent>
-	
 	<groupId>com.demo</groupId>
 	<artifactId>chat-persistence-cassandra</artifactId>
 	<version>0.0.1</version>

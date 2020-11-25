@@ -1,7 +1,5 @@
 # Configuration
 
-This module accrues cross-cutting concerns of configuration detail like Rsocket and Discovery.
-
 # Configuring Jackson
 
 # Configuring WebFlux
@@ -11,4 +9,3 @@ This module accrues cross-cutting concerns of configuration detail like Rsocket 
 # Configuring Actuator
 
 # Configuring Service Discovery
-

@@ -17,11 +17,11 @@ class TopicIndexClient<T>(requester: RSocketRequester) :
 class MembershipIndexClient<T>(requester: RSocketRequester) :
         IndexClient<T, TopicMembership<T>, Map<String, T>>("index.membership.", requester)
 
-open class IndexClient<T, E : Any, Q : Any>(private val prefix: String,
+open class IndexClient<T, E, Q>(private val prefix: String,
                                             private val requester: RSocketRequester) : IndexService<T, E, Q> {
     override fun add(entity: E): Mono<Void> = requester
             .route("${prefix}add")
-            .data(entity)
+            .data(entity as Any)
             .retrieveMono()
 
     override fun rem(key: Key<T>): Mono<Void> = requester
@@ -31,6 +31,6 @@ open class IndexClient<T, E : Any, Q : Any>(private val prefix: String,
 
     override fun findBy(query: Q): Flux<out Key<T>> = requester
             .route("${prefix}query")
-            .data(query)
+            .data(query as Any)
             .retrieveFlux()
 }

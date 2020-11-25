@@ -5,7 +5,6 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.service.IndexService
-import com.demo.chat.service.impl.memory.index.QueryCommand
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
@@ -14,15 +13,15 @@ open class IndexControllersConfiguration {
     @Controller
     @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.user"])
     @MessageMapping("user")
-    class UserIndexController<T, V>(s: IndexService<T, User<T>, QueryCommand>) : IndexServiceController<T, User<T>, QueryCommand>(s)
+    class UserIndexController<T, Q>(s: IndexService<T, User<T>, Q>) : IndexServiceController<T, User<T>, Q>(s)
 
     @Controller
     @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.message"])
     @MessageMapping("message")
-    class MessageIndexController<T, V>(s: IndexService<T, Message<T, V>, QueryCommand>) : IndexServiceController<T, Message<T, V>, QueryCommand>(s)
+    class MessageIndexController<T, V, Q>(s: IndexService<T, Message<T, V>, Q>) : IndexServiceController<T, Message<T, V>, Q>(s)
 
     @Controller
     @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.topic"])
     @MessageMapping("topic")
-    class TopicIndexController<T, V>(s: IndexService<T, MessageTopic<T>, QueryCommand>) : IndexServiceController<T, MessageTopic<T>, QueryCommand>(s)
+    class TopicIndexController<T, Q>(s: IndexService<T, MessageTopic<T>, Q>) : IndexServiceController<T, MessageTopic<T>, Q>(s)
 }

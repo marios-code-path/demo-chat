@@ -12,13 +12,13 @@ class UserPersistenceClient<T>(requester: RSocketRequester) :
         PersistenceClient<T, User<T>>("user.", requester, ParameterizedTypeReference.forType(User::class.java))
 
 class MessagePersistenceClient<T, V>(requester: RSocketRequester) :
-        PersistenceClient<T, Message<T, V>>("message.",requester, ParameterizedTypeReference.forType(Message::class.java))
+        PersistenceClient<T, Message<T, V>>("message.", requester, ParameterizedTypeReference.forType(Message::class.java))
 
 class TopicPersistenceClient<T>(requester: RSocketRequester) :
         PersistenceClient<T, MessageTopic<T>>("topic.", requester, ParameterizedTypeReference.forType(MessageTopic::class.java))
 
 class MembershipPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, TopicMembership<T>>("membership.",requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
+        PersistenceClient<T, TopicMembership<T>>("membership.", requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
 
 /**
  *
@@ -26,16 +26,18 @@ class MembershipPersistenceClient<T>(requester: RSocketRequester) :
  * There can be a route-matcher for the prefix? Possibly a handler ?
  * Basically, some way to augment the route without sending in the prefix
  */
-open class PersistenceClient<T, V : Any>(private val prefix: String,
-                                         private val requester: RSocketRequester,
-                                         private val ref: ParameterizedTypeReference<V>) : PersistenceStore<T, V> {
+open class PersistenceClient<T, V>(
+        private val prefix: String,
+        private val requester: RSocketRequester,
+        private val ref: ParameterizedTypeReference<V>,
+) : PersistenceStore<T, V> {
     override fun key(): Mono<out Key<T>> = requester
             .route("${prefix}key")
             .retrieveMono()
 
     override fun add(ent: V): Mono<Void> = requester
             .route("${prefix}add")
-            .data(ent)
+            .data(ent as Any)
             .retrieveMono()
 
     override fun rem(key: Key<T>): Mono<Void> = requester
