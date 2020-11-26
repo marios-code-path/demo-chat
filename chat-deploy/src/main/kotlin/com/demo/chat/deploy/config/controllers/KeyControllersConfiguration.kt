@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config.controllers
 
-import com.demo.chat.controller.service.KeyServiceController
+import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.service.IKeyService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping

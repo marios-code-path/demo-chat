@@ -5,6 +5,7 @@ import com.demo.chat.MessageSendRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.service.edge.ChatMessagingService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
 import com.demo.chat.service.PubSubTopicExchangeService
@@ -20,11 +21,11 @@ open class MessagingController<T, V, Q>(
         private val messagePersistence: MessagePersistence<T, V>,
         private val topicMessaging: PubSubTopicExchangeService<T, V>,
         private val messageIdToQuery: Function<ByIdRequest<T>, Q>,
-) {
+) : ChatMessagingService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")
-    fun byTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
+    override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
             Flux.concat(messageIndex
                     .findBy(messageIdToQuery.apply(req))
                     .collectList()
@@ -34,12 +35,12 @@ open class MessagingController<T, V, Q>(
                     topicMessaging.receiveOn(req.id))
 
     @MessageMapping("message-by-id")
-    fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
+    override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
             messagePersistence
                     .get(Key.funKey(req.id))
 
     @MessageMapping("message-send")
-    fun send(req: MessageSendRequest<T, V>): Mono<Void> {
+    override fun send(req: MessageSendRequest<T, V>): Mono<Void> {
         val sending: (T) -> Message<T, V> = {
             Message.create(MessageKey.create(it, req.from, req.dest), req.msg, true)
         }

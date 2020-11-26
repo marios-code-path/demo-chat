@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config.controllers
 
-import com.demo.chat.controller.service.IndexServiceController
+import com.demo.chat.controller.core.IndexServiceController
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User

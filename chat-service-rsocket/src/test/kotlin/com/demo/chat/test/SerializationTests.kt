@@ -1,6 +1,5 @@
 package com.demo.chat.test
 
-import com.demo.chat.TestUUIDKey
 import com.demo.chat.codec.JsonNodeAnyCodec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.serializers.JacksonModules

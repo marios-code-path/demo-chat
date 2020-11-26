@@ -2,8 +2,8 @@ package com.demo.chat.deploy.app
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.client.rsocket.MessagePersistenceClient
-import com.demo.chat.client.rsocket.UserPersistenceClient
+import com.demo.chat.client.rsocket.core.MessagePersistenceClient
+import com.demo.chat.client.rsocket.core.UserPersistenceClient
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.User

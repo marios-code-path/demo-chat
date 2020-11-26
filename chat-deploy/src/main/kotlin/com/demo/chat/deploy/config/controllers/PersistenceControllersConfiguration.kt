@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config.controllers
 
-import com.demo.chat.controller.service.PersistenceServiceController
+import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership

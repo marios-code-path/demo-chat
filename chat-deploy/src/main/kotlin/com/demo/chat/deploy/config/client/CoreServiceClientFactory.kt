@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config.client
 
-import com.demo.chat.client.rsocket.*
+import com.demo.chat.client.rsocket.core.*
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
