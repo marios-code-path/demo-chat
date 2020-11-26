@@ -7,7 +7,6 @@ import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.index.MembershipCriteriaCodec
 import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -28,7 +27,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 class MembershipIndexTests {
 
-    private lateinit var membershipIndex: MembershipIndexService<UUID>
+    private lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
 
     @MockBean
     private lateinit var byMemberOfRepository: TopicMembershipByMemberOfRepository<UUID>
@@ -63,7 +62,7 @@ class MembershipIndexTests {
         BDDMockito.given(byMemberOfRepository.findByMemberOf(anyObject()))
                 .willReturn(Flux.just(membershipOf))
 
-        this.membershipIndex = MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepository, byMemberOfRepository)
+        this.membershipIndex = MembershipIndexCassandra(UUID::fromString, byMemberRepository, byMemberOfRepository)
     }
 
     @Test
@@ -77,7 +76,7 @@ class MembershipIndexTests {
     fun `should fetch by member`() {
         StepVerifier
                 .create(
-                        membershipIndex.findBy(mapOf(Pair(MembershipIndexService.MEMBER, UUID.randomUUID())))
+                        membershipIndex.findBy(mapOf(Pair(MembershipIndexService.MEMBER, UUID.randomUUID().toString())))
                 )
                 .expectSubscription()
                 .assertNext {
@@ -95,7 +94,7 @@ class MembershipIndexTests {
     fun `should fetch by memberOf`() {
         StepVerifier
                 .create(
-                        membershipIndex.findBy(mapOf(Pair(MembershipIndexService.MEMBEROF, UUID.randomUUID())))
+                        membershipIndex.findBy(mapOf(Pair(MembershipIndexService.MEMBEROF, UUID.randomUUID().toString())))
                 )
                 .expectSubscription()
                 .assertNext {

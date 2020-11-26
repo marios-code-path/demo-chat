@@ -28,7 +28,7 @@ import java.util.*
         MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
 class MessageIndexRSocketTests : ServiceTestBase() {
     @MockBean
-    private lateinit var indexService: MessageIndexService<UUID, String>
+    private lateinit var indexService: MessageIndexService<UUID, String, Map<String, String>>
 
     private val message = Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
 
@@ -94,6 +94,7 @@ class MessageIndexRSocketTests : ServiceTestBase() {
     class MessageIndexTestConfiguration {
         @Controller
         @MessageMapping("index.message")
-        class TestMessageIndexController<T, E>(that: MessageIndexService<T, E>) : IndexServiceController<T, Message<T, E>, Map<String, T>>(that)
+        class TestMessageIndexController<T, E>(that: MessageIndexService<T, E, Map<String, String>>)
+            : IndexServiceController<T, Message<T, E>, Map<String, String>>(that)
     }
 }

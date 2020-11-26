@@ -3,9 +3,9 @@ package com.demo.chat.test.controller.app
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ChatMessage
 import com.demo.chat.controller.edge.MessagingController
-import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
+import com.demo.chat.service.PubSubTopicExchangeService
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -24,6 +24,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import java.util.function.Function
 import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -38,7 +39,7 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
     private lateinit var topicMessaging: PubSubTopicExchangeService<UUID, String>
 
     @Autowired
-    private lateinit var messageIndex: MessageIndexService<UUID, String>
+    private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     @Test
     fun `should fetch a single message`() {
@@ -109,7 +110,7 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Bean
-        fun msgIdx(t: MessageIndexService<UUID, String>): MessageIndexService<UUID, String> = t
+        fun msgIdx(t: MessageIndexService<UUID, String, Map<String, String>>) = t
 
         @Bean
         fun msgPersist(t: MessagePersistence<UUID, String>): MessagePersistence<UUID, String> = t
@@ -118,9 +119,15 @@ class RSocketTopicMessagingTests : ControllerTestBase() {
         fun msging(t: PubSubTopicExchangeService<UUID, String>): PubSubTopicExchangeService<UUID, String> = t
 
         @Controller
-        class TestMessagingController(messageIdx: MessageIndexService<UUID, String>,
-                                      msgPersist: MessagePersistence<UUID, String>,
-                                      messaging: PubSubTopicExchangeService<UUID, String>) :
-                MessagingController<UUID, String>(messageIdx, msgPersist, messaging)
+        class TestMessagingController(
+                messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
+                msgPersist: MessagePersistence<UUID, String>,
+                messaging: PubSubTopicExchangeService<UUID, String>,
+        ) : MessagingController<UUID, String, Map<String, String>>(
+                messageIdx,
+                msgPersist,
+                messaging,
+                Function { i -> mapOf(Pair(MessageIndexService.TOPIC, i.id.toString())) }
+        )
     }
 }

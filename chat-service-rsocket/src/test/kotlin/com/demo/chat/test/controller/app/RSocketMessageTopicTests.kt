@@ -2,7 +2,6 @@ package com.demo.chat.test.controller.app
 
 
 import com.demo.chat.*
-import com.demo.chat.codec.EmptyStringCodec
 import com.demo.chat.controller.edge.TopicController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
@@ -22,6 +21,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import java.util.function.Function
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -30,7 +30,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
-    lateinit var topicIndex: TopicIndexService<UUID>
+    lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
 
     @Autowired
     lateinit var topicPersistence: TopicPersistence<UUID>
@@ -42,7 +42,7 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     lateinit var topicService: PubSubTopicExchangeService<UUID, String>
 
     @Autowired
-    lateinit var membershipIndex: MembershipIndexService<UUID>
+    lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
 
     @Autowired
     lateinit var membershipPersistence: MembershipPersistence<UUID>
@@ -183,12 +183,24 @@ class RSocketMessageTopicTests : ControllerTestBase() {
     @Configuration
     class TestConfiguration {
         @Controller
-        class TestTopicController(topicP: TopicPersistence<UUID>,
-                                  topicInd: TopicIndexService<UUID>,
-                                  topicSvc: PubSubTopicExchangeService<UUID, String>,
-                                  userP: UserPersistence<UUID>,
-                                  membershipP: MembershipPersistence<UUID>,
-                                  membershipInd: MembershipIndexService<UUID>) :
-                TopicController<UUID, String>(topicP, topicInd, topicSvc, userP, membershipP, membershipInd, EmptyStringCodec())
+        class TestTopicController(
+                topicP: TopicPersistence<UUID>,
+                topicInd: TopicIndexService<UUID, Map<String, String>>,
+                topicSvc: PubSubTopicExchangeService<UUID, String>,
+                userP: UserPersistence<UUID>,
+                membershipP: MembershipPersistence<UUID>,
+                membershipInd: MembershipIndexService<UUID, Map<String, String>>,
+        ) :
+                TopicController<UUID, String, Map<String, String>>(
+                        topicP,
+                        topicInd,
+                        topicSvc,
+                        userP,
+                        membershipP,
+                        membershipInd,
+                        { "" },
+                        Function { i -> mapOf(Pair(TopicIndexService.NAME, i.name)) },
+                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, i.id.toString())) }
+                )
     }
 }

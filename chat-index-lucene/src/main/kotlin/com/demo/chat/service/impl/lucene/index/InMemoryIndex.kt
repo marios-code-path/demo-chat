@@ -1,5 +1,6 @@
-package com.demo.chat.service.impl.memory.index
+package com.demo.chat.service.impl.lucene.index
 
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyBearer
 import com.demo.chat.service.IndexService

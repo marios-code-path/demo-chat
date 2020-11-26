@@ -13,34 +13,23 @@ import com.demo.chat.service.TopicIndexService.Companion.ID
 import com.demo.chat.service.TopicIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-
-class TopicCriteriaCodec<T> : Codec<MessageTopic<T>, Map<String, String>> {
-    override fun decode(record: MessageTopic<T>): Map<String, String> {
-        return mapOf(
-                Pair(ID, record.key.id.toString()),
-                Pair(NAME, record.data)
-        )
-    }
-
-}
+import java.util.function.Function
 
 // TODO need a more idiomatic way of obtaining ALL
 class TopicIndexCassandra<T>(
-        private val criteriaCodec: Codec<MessageTopic<T>, Map<String, String>>,
         private val roomRepo: TopicRepository<T>,
-        private val nameRepo: TopicByNameRepository<T>) : TopicIndexService<T> {
-    override fun add(entity: MessageTopic<T>): Mono<Void> =
-            with(criteriaCodec.decode(entity)) {
-                nameRepo.save(
-                        ChatTopicName(
-                                ChatTopicNameKey(
-                                        entity.key.id,
-                                        this[NAME] ?: "Topic Name not found"),
-                                true
-                        )
-                )
-                        .then()
-            }
+        private val nameRepo: TopicByNameRepository<T>,
+) : TopicIndexService<T, Map<String, String>> {
+    override fun add(entity: MessageTopic<T>): Mono<Void> = nameRepo.save(
+            ChatTopicName(
+                    ChatTopicNameKey(
+                            entity.key.id,
+                            entity.data),
+                    true
+            )
+    )
+            .then()
+
 
     override fun rem(key: Key<T>): Mono<Void> = nameRepo
             .delete(ChatTopicName(

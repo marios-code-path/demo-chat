@@ -4,7 +4,7 @@ import com.demo.chat.service.IKeyService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 
-open class CoreServiceClientBeans<T, V>(private val clients: CoreServiceClientFactory) {
+open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClientFactory) {
 
     @ConditionalOnProperty(prefix="app.client.rsocket", name = ["key"])
     @Bean
@@ -28,17 +28,17 @@ open class CoreServiceClientBeans<T, V>(private val clients: CoreServiceClientFa
 
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["message"])
     @Bean
-    open fun messageIndexClient() = clients.userIndexClient<T>()
+    open fun messageIndexClient() = clients.userIndexClient<T, Q>()
 
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["topic"])
     @Bean
-    open fun topicIndexClient() = clients.topicIndexClient<T>()
+    open fun topicIndexClient() = clients.topicIndexClient<T, Q>()
 
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["user"])
     @Bean
-    open fun userIndexClient() = clients.userIndexClient<T>()
+    open fun userIndexClient() = clients.userIndexClient<T, Q>()
 
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["membership"])
     @Bean
-    open fun membershipIndexClient() = clients.membershipIndexClient<T>()
+    open fun membershipIndexClient() = clients.membershipIndexClient<T, Q>()
 }

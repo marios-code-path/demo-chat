@@ -22,19 +22,22 @@ class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
         RSocketStrategiesAutoConfiguration::class)
 class TestConfigurationRSocket {
     @MockBean
-    private lateinit var topicIndex: TopicIndexService<UUID>
+    private lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
+
     @MockBean
     private lateinit var topicPersistence: TopicPersistence<UUID>
 
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
+
     @MockBean
-    private lateinit var userIndex: UserIndexService<UUID>
+    private lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 
     @MockBean
     private lateinit var topicMessagePersistence: MessagePersistence<UUID, String>
+
     @MockBean
-    private lateinit var messageIndex:  MessageIndexService<UUID, String>
+    private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     @MockBean
     private lateinit var topicService: PubSubTopicExchangeService<UUID, String>
@@ -44,8 +47,9 @@ class TestConfigurationRSocket {
 
     @MockBean
     private lateinit var membershipPersistence: MembershipPersistence<UUID>
+
     @MockBean
-    private lateinit var membershipIndex: MembershipIndexService<UUID>
+    private lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
 
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies

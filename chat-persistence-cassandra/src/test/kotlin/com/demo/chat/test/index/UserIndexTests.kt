@@ -4,7 +4,6 @@ import com.demo.chat.domain.User
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.index.UserCriteriaCodec
 import com.demo.chat.service.index.UserIndexCassandra
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
@@ -30,11 +29,11 @@ class UserIndexTests {
     @MockBean
     private lateinit var cassandra: ReactiveCassandraTemplate
 
-    lateinit var userIndex: UserIndexService<UUID>
+    lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 
     @BeforeEach
     fun setUp() {
-        userIndex = UserIndexCassandra(UserCriteriaCodec(), byHandleRepo, cassandra)
+        userIndex = UserIndexCassandra(byHandleRepo, cassandra)
     }
 
     fun getIndex(): IndexService<UUID, User<UUID>, Map<String, String>> = userIndex

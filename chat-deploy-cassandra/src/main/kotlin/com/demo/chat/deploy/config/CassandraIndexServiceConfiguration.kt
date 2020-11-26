@@ -8,6 +8,8 @@ import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.index.*
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
+import java.util.function.Function
+
 
 open class CassandraIndexServiceConfiguration<T>(
         private val cassandra: ReactiveCassandraTemplate,
@@ -17,21 +19,22 @@ open class CassandraIndexServiceConfiguration<T>(
         private val byMemberRepo: TopicMembershipByMemberRepository<T>,
         private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
         private val byUserRepo: ChatMessageByUserRepository<T>,
-        private val byTopicRepo: ChatMessageByTopicRepository<T>
+        private val byTopicRepo: ChatMessageByTopicRepository<T>,
+        private val stringToKeyCodec: Function<String, T>
 ) {
     @Bean
-    open fun userIndex(): UserIndexService<T> =
-            UserIndexCassandra(UserCriteriaCodec(), userHandleRepo, cassandra)
+    open fun userIndex(): UserIndexService<T, Map<String, String>> =
+            UserIndexCassandra(userHandleRepo, cassandra)
 
     @Bean
-    open fun roomIndex(): TopicIndexService<T> =
-            TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
+    open fun roomIndex(): TopicIndexService<T, Map<String, String>> =
+            TopicIndexCassandra(roomRepo, nameRepo)
 
     @Bean
-    open fun membershipIndex(): MembershipIndexService<T> =
-            MembershipIndexCassandra(MembershipCriteriaCodec(), byMemberRepo, byMemberOfRepo)
+    open fun membershipIndex(): MembershipIndexService<T, Map<String, String>> =
+            MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)
 
     @Bean
-    open fun messageIndex(): MessageIndexService<T, String> =
-            MessageIndexCassandra(MessageCriteriaCodec(), byUserRepo, byTopicRepo)
+    open fun messageIndex(): MessageIndexService<T, String, Map<String, String>> =
+            MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
 }

@@ -71,11 +71,11 @@ class CoreServiceClientFactory(
 
     fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("persistence"))
 
-    fun <T> userIndexClient(): IndexService<T, User<T>, Map<String, String>> = UserIndexClient(requester("index"))
+    fun <T, Q> userIndexClient(): IndexService<T, User<T>, Q> = UserIndexClient(requester("index"))
 
-    fun <T> topicIndexClient(): IndexService<T, MessageTopic<T>, Map<String, String>> = TopicIndexClient(requester("index"))
+    fun <T, Q> topicIndexClient(): IndexService<T, MessageTopic<T>, Q> = TopicIndexClient(requester("index"))
 
-    fun <T> membershipIndexClient(): IndexService<T, TopicMembership<T>, Map<String, T>> = MembershipIndexClient(requester("index"))
+    fun <T, Q> membershipIndexClient(): IndexService<T, TopicMembership<T>, Q> = MembershipIndexClient(requester("index"))
 
-    fun <T, V> messageIndexClient(): IndexService<T, Message<T, V>, Map<String, T>> = MessageIndexClient(requester("index"))
+    fun <T, V, Q> messageIndexClient(): IndexService<T, Message<T, V>, Q> = MessageIndexClient(requester("index"))
 }

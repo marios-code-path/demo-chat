@@ -17,7 +17,6 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
@@ -26,13 +25,14 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
+import java.util.function.Function
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(TestConfigurationRSocket::class, RSocketUserTests.TestConfiguration::class)
 class RSocketUserTests : ControllerTestBase() {
     @Autowired
-    private lateinit var userIndex: UserIndexService<UUID>
+    private lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 
     @Autowired
     private lateinit var userPersistence: UserPersistence<UUID>
@@ -115,7 +115,11 @@ class RSocketUserTests : ControllerTestBase() {
     class TestConfiguration {
 
         @Controller
-        class TestUserController(persistence: UserPersistence<UUID>,
-                                 index: UserIndexService<UUID>) : UserController<UUID>(persistence, index)
+        class TestUserController(
+                persistence: UserPersistence<UUID>,
+                index: UserIndexService<UUID, Map<String, String>>,
+        ) : UserController<UUID, Map<String, String>>(persistence,
+                index,
+                Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
     }
 }

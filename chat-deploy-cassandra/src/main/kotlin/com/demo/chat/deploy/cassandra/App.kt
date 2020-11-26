@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.cassandra
 
-import com.demo.chat.deploy.codec.UUIDKeyGeneratorCassandra
+import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.deploy.config.CassandraIndexServiceConfiguration
 import com.demo.chat.deploy.config.CassandraPersistenceServiceConfiguration
 import com.demo.chat.deploy.config.SerializationConfiguration
@@ -38,7 +38,7 @@ class AppRSocketClientProperties(
 ) : RSocketClientProperties
 
 @Configuration
-class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String>(clients)
+class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String, Map<String, String>>(clients)
 
 @EnableConfigurationProperties(AppRSocketClientProperties::class, CassandraProperties::class)
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
@@ -67,7 +67,7 @@ class App {
                 byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>,
                 byUserRepo: ChatMessageByUserRepository<UUID>,
                 byTopicRepo: ChatMessageByTopicRepository<UUID>,
-        ) : CassandraIndexServiceConfiguration<UUID>(cassandra, userHandleRepo, roomRepo, nameRepo, byMemberRepo, byMemberOfRepo, byUserRepo, byTopicRepo) {
+        ) : CassandraIndexServiceConfiguration<UUID>(cassandra, userHandleRepo, roomRepo, nameRepo, byMemberRepo, byMemberOfRepo, byUserRepo, byTopicRepo, UUID::fromString) {
 
             @Configuration
             class AppIndexControllers : IndexControllersConfiguration()
@@ -95,7 +95,7 @@ class App {
     class KeyConfiguration {
         @Bean
         fun keyService(t: ReactiveCassandraTemplate): IKeyService<UUID> =
-                KeyServiceCassandra(t, UUIDKeyGeneratorCassandra())
+                KeyServiceCassandra(t, UUIDs::timeBased)
 
         @Configuration
         class KeyControllers : KeyControllersConfiguration()

@@ -1,13 +1,11 @@
 package com.demo.chat.test.persistence
 
 import com.datastax.driver.core.utils.UUIDs
-import com.demo.chat.codec.Codec
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
-import com.demo.chat.test.key.KeyServiceTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -21,12 +19,6 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
 
-class TestUUIDKeyGeneratorCassandra : Codec<Unit, UUID> {
-    override fun decode(record: Unit): UUID {
-        return UUIDs.timeBased()
-    }
-}
-
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
@@ -38,7 +30,7 @@ class KeyServiceTests : CassandraSchemaTest() {
 
     @BeforeAll
     fun setUp() {
-        this.svc = KeyServiceCassandra(template, TestUUIDKeyGeneratorCassandra())
+        this.svc = KeyServiceCassandra(template, UUIDs::timeBased)
     }
 
     @Test

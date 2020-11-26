@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.ByIdRequest
 import com.demo.chat.codec.Codec
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
@@ -9,11 +10,13 @@ import com.demo.chat.deploy.config.controllers.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.MessageControllersConfiguration
 import com.demo.chat.deploy.config.controllers.PersistenceControllersConfiguration
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.PubSubTopicExchangeService
-import com.demo.chat.service.impl.memory.index.IndexEntryEncoder
-import com.demo.chat.service.impl.memory.index.StringToKeyEncoder
+import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
+import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -27,6 +30,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import java.util.*
+import java.util.function.Function
 
 @ConfigurationProperties("app.client.rsocket")
 @ConstructorBinding
@@ -38,12 +42,12 @@ class AppRSocketClientProperties(
 ) : RSocketClientProperties
 
 @Configuration
-class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String>(clients)
+class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
 
 @SpringBootApplication
 @EnableConfigurationProperties(AppRSocketClientProperties::class)
 @Import(RSocketRequesterAutoConfiguration::class,
-        JacksonConfiguration ::class,
+        JacksonConfiguration::class,
         CoreServiceClientFactory::class)
 class App {
     companion object {
@@ -109,6 +113,9 @@ class App {
     class MessageConfiguration {
         @Bean
         fun messageExchange(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
+
+        @Bean
+        fun queryConvert() = Function<ByIdRequest<UUID>, IndexSearchRequest> { i -> IndexSearchRequest(TopicIndexService.ID, i.id.toString(), 100) }
 
         @Configuration
         class MessageControllers : MessageControllersConfiguration()

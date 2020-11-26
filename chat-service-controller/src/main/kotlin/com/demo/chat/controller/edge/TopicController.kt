@@ -1,9 +1,8 @@
 package com.demo.chat.controller.edge
 
 import com.demo.chat.ByIdRequest
-import com.demo.chat.MembershipRequest
 import com.demo.chat.ByNameRequest
-import com.demo.chat.codec.Codec
+import com.demo.chat.MembershipRequest
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import com.fasterxml.jackson.annotation.JsonTypeName
@@ -12,7 +11,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import com.demo.chat.service.MembershipIndexService.Companion.MEMBEROF as MEMBEROF1
+import java.util.function.Function
+import java.util.function.Supplier
 
 @JsonTypeName("JoinAlert")
 data class JoinAlert<T, V>(override val key: MessageKey<T>, override val data: V) : Message<T, V> {
@@ -26,13 +26,17 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
         get() = false
 }
 
-open class TopicController<T, V>(private val topicPersistence: TopicPersistence<T>,
-                                 private val topicIndex: TopicIndexService<T>,
-                                 private val messaging: PubSubTopicExchangeService<T, V>,
-                                 private val userPersistence: UserPersistence<T>,
-                                 private val membershipPersistence: MembershipPersistence<T>,
-                                 private val membershipIndex: MembershipIndexService<T>,
-                                 private val emptyDataCodec: Codec<Unit, V>) {
+open class TopicController<T, V, Q>(
+        private val topicPersistence: TopicPersistence<T>,
+        private val topicIndex: TopicIndexService<T, Q>,
+        private val messaging: PubSubTopicExchangeService<T, V>,
+        private val userPersistence: UserPersistence<T>,
+        private val membershipPersistence: MembershipPersistence<T>,
+        private val membershipIndex: MembershipIndexService<T, Q>,
+        private val emptyDataCodec: Supplier<V>,
+        private val topicNameToQuery: Function<ByNameRequest, Q>,
+        private val membershipIdToQuery: Function<ByIdRequest<T>, Q>
+) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("room-add")
@@ -75,7 +79,7 @@ open class TopicController<T, V>(private val topicPersistence: TopicPersistence<
     @MessageMapping("room-by-name")
     fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>> =
             topicIndex
-                    .findBy(mapOf(Pair(TopicIndexService.NAME, req.name)))
+                    .findBy(topicNameToQuery.apply(req))
                     .single()
                     .flatMap {
                         topicPersistence.get(it)
@@ -90,11 +94,10 @@ open class TopicController<T, V>(private val topicPersistence: TopicPersistence<
                                 .add(TopicMembership.create(key.id, req.roomId, req.uid))
                                 .thenMany(messaging
                                         .sendMessage(JoinAlert(MessageKey.create(key.id, req.roomId, req.uid),
-                                                emptyDataCodec.decode(Unit)))
+                                                emptyDataCodec.get()))
                                         .then(messaging.subscribe(req.uid, req.roomId)))
                                 .then()
                     }
-
 
     @MessageMapping("room-leave")
     fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
@@ -104,7 +107,7 @@ open class TopicController<T, V>(private val topicPersistence: TopicPersistence<
                         membershipPersistence.rem(Key.funKey(m.key))
                                 .thenMany(messaging
                                         .sendMessage(LeaveAlert(MessageKey.create(m.key, m.member, m.memberOf),
-                                                emptyDataCodec.decode(Unit)))
+                                                emptyDataCodec.get()))
                                         .then(messaging.unSubscribe(m.member, m.memberOf)))
                                 .then()
 
@@ -112,7 +115,7 @@ open class TopicController<T, V>(private val topicPersistence: TopicPersistence<
 
     @MessageMapping("room-members")
     fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships> =
-            membershipIndex.findBy(mapOf(Pair(MEMBEROF1, req.id)))
+            membershipIndex.findBy(membershipIdToQuery.apply(req))
                     .collectList()
                     .flatMapMany { membershipList ->
                         membershipPersistence.byIds(membershipList)

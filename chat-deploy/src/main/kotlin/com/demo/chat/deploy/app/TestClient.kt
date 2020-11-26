@@ -12,6 +12,7 @@ import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
 import com.demo.chat.deploy.config.client.RSocketClientProperties
+import com.demo.chat.domain.IndexSearchRequest
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -52,7 +53,7 @@ class TestClient {
     }
 
     @Configuration
-    class ClientsConfiguration(f: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String>(f)
+    class ClientsConfiguration(f: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(f)
 
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 

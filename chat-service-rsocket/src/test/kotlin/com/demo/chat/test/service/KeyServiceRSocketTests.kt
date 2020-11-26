@@ -11,7 +11,6 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension

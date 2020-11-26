@@ -20,7 +20,7 @@ interface IndexService<T, E, Q> {
  * I.E. Dont use these interfaces downstream for any other reason
  * than directly implementing them ( this is a demo after all )
  */
-interface UserIndexService<T> : IndexService<T, User<T>, Map<String, String>> {
+interface UserIndexService<T, Q> : IndexService<T, User<T>, Q> {
     companion object {
         const val NAME = "name"
         const val IMAGEURI = "imageUri"
@@ -30,7 +30,7 @@ interface UserIndexService<T> : IndexService<T, User<T>, Map<String, String>> {
     }
 }
 
-interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, String>> {
+interface TopicIndexService<T, Q> : IndexService<T, MessageTopic<T>, Q> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
@@ -40,7 +40,7 @@ interface TopicIndexService<T> : IndexService<T, MessageTopic<T>, Map<String, St
     }
 }
 
-interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<String, T>> {
+interface MembershipIndexService<T, Q> : IndexService<T, TopicMembership<T>, Q> {
     fun size(key: Key<T>): Mono<Int>
     fun addMember(topicMembership: TopicMembership<T>): Mono<Void>
     fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
@@ -53,7 +53,7 @@ interface MembershipIndexService<T> : IndexService<T, TopicMembership<T>, Map<St
 }
 
 // TODO: that query needs to be Map<String, String> not String, T
-interface MessageIndexService<T, V> : IndexService<T, Message<T, V>, Map<String, T>> {
+interface MessageIndexService<T, V, Q> : IndexService<T, Message<T, V>, Q> {
     companion object {
         const val ID = "msgId"
         const val TOPIC = "topicId"

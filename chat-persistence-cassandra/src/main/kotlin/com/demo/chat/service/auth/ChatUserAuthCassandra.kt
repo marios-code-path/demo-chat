@@ -3,21 +3,24 @@ package com.demo.chat.service.auth
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
 import com.demo.chat.service.*
-import com.demo.chat.service.UserIndexService.Companion.HANDLE
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.function.Function
 
 /**
  * Should do the chore of handling any authentication and authorization operations
  * using Cassandra components as the backing store
  */
 @Suppress("unused")
-class ChatUserAuthCassandra<T>(private val userIndex: UserIndexService<T>,
-                               private val passwordStore: PasswordStore<T>) : ChatAuthService<T> {
+class ChatUserAuthCassandra<T, Q>(
+        private val userIndex: UserIndexService<T, Q>,
+        private val passwordStore: PasswordStore<T>,
+        private val userHandleToQuery: Function<String, Q>,
+) : ChatAuthService<T> {
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
             userIndex
-                    .findBy(mapOf(Pair(HANDLE, n)))
+                    .findBy(userHandleToQuery.apply(n))//mapOf(Pair(HANDLE, n)))
                     .last()
                     .flatMap { key ->
                         passwordStore

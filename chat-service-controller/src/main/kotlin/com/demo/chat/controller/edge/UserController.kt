@@ -6,16 +6,19 @@ import com.demo.chat.UserCreateRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.UserIndexService.Companion.HANDLE
 import com.demo.chat.service.UserPersistence
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.util.function.Function
 
-open class UserController<T>(val userPersistence: UserPersistence<T>,
-                             val userIndex: UserIndexService<T>) {
+open class UserController<T, Q>(
+        val userPersistence: UserPersistence<T>,
+        private val userIndex: UserIndexService<T, Q>,
+        private val userHandleToQuery: Function<ByHandleRequest, Q>,
+) {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-add")
@@ -37,8 +40,8 @@ open class UserController<T>(val userPersistence: UserPersistence<T>,
                     }
 
     @MessageMapping("user-by-handle")
-    fun findByHandle(byHandleReq: ByHandleRequest): Flux<out User<T>> = userIndex
-            .findBy(mapOf(Pair(HANDLE, byHandleReq.handle)))
+    fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = userIndex
+            .findBy(userHandleToQuery.apply(req)) //mapOf(Pair(HANDLE, byHandleReq.handle)))
             .flatMap(userPersistence::get)
 
     @MessageMapping("user-by-id")

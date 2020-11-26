@@ -11,7 +11,6 @@ import com.demo.chat.service.IndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.TopicIndexService.Companion.ALL
 import com.demo.chat.service.TopicIndexService.Companion.NAME
-import com.demo.chat.service.index.TopicCriteriaCodec
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -53,7 +52,7 @@ class TopicIndexTests {
     @MockBean
     lateinit var nameRepo: TopicByNameRepository<UUID>
 
-    lateinit var topicIndex: TopicIndexService<UUID>
+    lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
 
     private val testTopicId = UUID.randomUUID()
     private val testTopicName = "TEST_TOPIC"
@@ -64,7 +63,7 @@ class TopicIndexTests {
 
     @BeforeEach
     fun setUp() {
-        topicIndex = TopicIndexCassandra(TopicCriteriaCodec(), roomRepo, nameRepo)
+        topicIndex = TopicIndexCassandra(roomRepo, nameRepo)
     }
 
 

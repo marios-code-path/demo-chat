@@ -1,10 +1,10 @@
 package com.demo.chat.test
 
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.IndexService
-import com.demo.chat.service.impl.memory.index.InMemoryIndex
-import com.demo.chat.service.impl.memory.index.IndexSearchRequest
+import com.demo.chat.service.impl.lucene.index.InMemoryIndex
 import com.demo.chat.test.index.IndexTestBase
 import java.util.function.Supplier
 
