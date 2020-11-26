@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.stream.Collectors
 
-open class UserController<T, Q>(
+open class UserServiceController<T, Q>(
         val userPersistence: UserPersistence<T>,
         private val userIndex: UserIndexService<T, Q>,
         private val userHandleToQuery: Function<ByHandleRequest, Q>,

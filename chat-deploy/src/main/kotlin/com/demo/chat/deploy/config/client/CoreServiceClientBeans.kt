@@ -1,10 +1,16 @@
 package com.demo.chat.deploy.config.client
 
 import com.demo.chat.service.IKeyService
+import com.demo.chat.service.PubSubTopicExchangeService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.core.ParameterizedTypeReference
+import java.util.*
 
 open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClientFactory) {
+    @ConditionalOnProperty(prefix = "app.client.rsocket", name=["pubsub"])
+    @Bean
+    fun <T, V> pubsubClient() : PubSubTopicExchangeService<T, V> = clients.pubsubClient(ParameterizedTypeReference.forType(UUID::class.java))
 
     @ConditionalOnProperty(prefix="app.client.rsocket", name = ["key"])
     @Bean
@@ -26,19 +32,19 @@ open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClien
     @Bean
     open fun membershipPersistenceClient() = clients.topicMembershipClient<T>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["message"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["user"])
     @Bean
-    open fun messageIndexClient() = clients.userIndexClient<T, Q>()
+    open fun userIndexClient() = clients.userIndexClient<T, Q>()
 
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["topic"])
     @Bean
     open fun topicIndexClient() = clients.topicIndexClient<T, Q>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["user"])
-    @Bean
-    open fun userIndexClient() = clients.userIndexClient<T, Q>()
-
     @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["membership"])
     @Bean
     open fun membershipIndexClient() = clients.membershipIndexClient<T, Q>()
+
+    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["message"])
+    @Bean
+    open fun messageIndexClient() = clients.messageIndexClient<T, V, Q>()
 }

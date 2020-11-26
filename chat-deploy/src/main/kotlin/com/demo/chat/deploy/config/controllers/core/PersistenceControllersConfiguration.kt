@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.controllers
+package com.demo.chat.deploy.config.controllers.core
 
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.Message

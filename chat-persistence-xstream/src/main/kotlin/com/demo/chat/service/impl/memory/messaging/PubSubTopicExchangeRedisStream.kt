@@ -179,7 +179,7 @@ class PubSubTopicExchangeRedisStream<T, E>(
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun sourceOf(topic: T): Flux<out Message<T, E>> =
+    fun sourceOf(topic: T): Flux<out Message<T, E>> =
             topicXReads.getOrPut(topic, {
                 val xread = getXReadFlux(topic)
                 val reProc = ReplayProcessor.create<Message<T, E>>(5)

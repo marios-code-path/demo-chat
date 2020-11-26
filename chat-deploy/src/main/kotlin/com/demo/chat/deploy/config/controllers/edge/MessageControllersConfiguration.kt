@@ -1,7 +1,6 @@
-package com.demo.chat.deploy.config.controllers
+package com.demo.chat.deploy.config.controllers.edge
 
 import com.demo.chat.ByIdRequest
-import com.demo.chat.ByNameRequest
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
@@ -15,7 +14,7 @@ open class MessageControllersConfiguration {
 
     @Controller
     @MessageMapping("message")
-    @ConditionalOnProperty(prefix="app.service", name = ["message"])
+    @ConditionalOnProperty(prefix="app.edge", name = ["messaging"])
     class MessageExchangeController<T, V, Q>(
             i: MessageIndexService<T, V, Q>,
             p: MessagePersistence<T, V>,

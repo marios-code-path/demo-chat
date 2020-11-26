@@ -1,20 +1,24 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
+import com.demo.chat.ByNameRequest
+import com.demo.chat.client.rsocket.core.PubSubClient
 import com.demo.chat.codec.Codec
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
 import com.demo.chat.deploy.config.client.RSocketClientProperties
-import com.demo.chat.deploy.config.controllers.IndexControllersConfiguration
-import com.demo.chat.deploy.config.controllers.KeyControllersConfiguration
-import com.demo.chat.deploy.config.controllers.MessageControllersConfiguration
-import com.demo.chat.deploy.config.controllers.PersistenceControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
+import com.demo.chat.deploy.config.controllers.edge.MessageControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.PubSubControllerConfiguration
+import com.demo.chat.deploy.config.controllers.edge.TopicControllerConfiguration
+import com.demo.chat.deploy.config.controllers.edge.UserControllerConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.PubSubTopicExchangeService
-import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
@@ -29,8 +33,10 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 import java.util.function.Function
+import java.util.function.Supplier
 
 @ConfigurationProperties("app.client.rsocket")
 @ConstructorBinding
@@ -39,10 +45,12 @@ class AppRSocketClientProperties(
         override val index: String = "",
         override val persistence: String = "",
         override val messaging: String = "",
+        override val pubsub: String = ""
 ) : RSocketClientProperties
 
 @Configuration
-class AppRSocketClientConfiguration(clients: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
+class AppRSocketClientConfiguration(clients: CoreServiceClientFactory)
+    : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
 
 @SpringBootApplication
 @EnableConfigurationProperties(AppRSocketClientProperties::class)
@@ -109,15 +117,54 @@ class App {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "app.service", name = ["message"])
-    class MessageConfiguration {
+    @ConditionalOnProperty(prefix = "app.service", name= ["pubsub"])
+    class PubSubConfiguration {
         @Bean
-        fun messageExchange(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
+        fun memoryPubSub(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
 
+        @Configuration
+        class PubSubControllers : PubSubControllerConfiguration()
+    }
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.edge", name = ["messaging"])
+    class MessageConfiguration {
         @Bean
         fun queryConvert() = Function<ByIdRequest<UUID>, IndexSearchRequest> { i -> IndexSearchRequest(TopicIndexService.ID, i.id.toString(), 100) }
 
         @Configuration
         class MessageControllers : MessageControllersConfiguration()
     }
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.edge", name = ["user"])
+    class UserConfiguration {
+        @Bean
+        fun queryConvert():Function<ByHandleRequest, IndexSearchRequest> =
+                Function { i -> IndexSearchRequest(UserIndexService.HANDLE, i.handle, 100) }
+
+        @Configuration
+        class UserController : UserControllerConfiguration()
+    }
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.edge", name = ["topic"])
+    class TopicConfiguration {
+        @Bean
+        fun emptyDataSupplier() = Supplier<String> { "" }
+
+        @Bean
+        fun topicNameToQuery() =
+                Function<ByNameRequest, IndexSearchRequest>
+                { i -> IndexSearchRequest(TopicIndexService.NAME, i.name, 100) }
+
+        @Bean
+        fun membershipIdToQuery() =
+                Function<ByIdRequest<UUID>, IndexSearchRequest>
+                { i -> IndexSearchRequest(MembershipIndexService.MEMBEROF, i.id.toString(), 100) }
+
+        @Configuration
+        class TopicController : TopicControllerConfiguration()
+    }
+
 }

@@ -7,9 +7,9 @@ import com.demo.chat.deploy.config.SerializationConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
 import com.demo.chat.deploy.config.client.RSocketClientProperties
-import com.demo.chat.deploy.config.controllers.IndexControllersConfiguration
-import com.demo.chat.deploy.config.controllers.KeyControllersConfiguration
-import com.demo.chat.deploy.config.controllers.PersistenceControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
+import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra

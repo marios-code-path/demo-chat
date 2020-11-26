@@ -2,7 +2,7 @@ package com.demo.chat.test.rsocket.controller.edge
 
 
 import com.demo.chat.*
-import com.demo.chat.controller.edge.TopicController
+import com.demo.chat.controller.edge.TopicServiceController
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import com.demo.chat.test.TestChatMessageTopic
@@ -189,7 +189,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
                 membershipP: MembershipPersistence<UUID>,
                 membershipInd: MembershipIndexService<UUID, Map<String, String>>,
         ) :
-                TopicController<UUID, String, Map<String, String>>(
+                TopicServiceController<UUID, String, Map<String, String>>(
                         topicP,
                         topicInd,
                         topicSvc,

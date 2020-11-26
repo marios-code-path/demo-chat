@@ -165,7 +165,7 @@ class PubSubMessagingServiceRedisPubSub<T, E>(
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    override fun sourceOf(topic: T): Flux<out Message<T, E>> =
+    fun sourceOf(topic: T): Flux<out Message<T, E>> =
             topicXSource.getOrPut(topic, {
                 val listen = getPubSubFluxFor(topic)
                 val processor = ReplayProcessor.create<Message<T, E>>(replayDepth)

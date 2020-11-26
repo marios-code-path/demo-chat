@@ -53,7 +53,7 @@ class MemoryPubSubTopicExchange<T, V> : PubSubTopicExchangeService<T, V> {
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    override fun sourceOf(topic: T): Flux<out Message<T, V>> =
+    fun sourceOf(topic: T): Flux<out Message<T, V>> =
             sinkByTopic
                     .getOrPut(topic, {
                         val proc = ReplayProcessor.create<Message<T, V>>(1)

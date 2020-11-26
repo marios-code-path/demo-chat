@@ -10,6 +10,7 @@ data class ByIdRequest<T>(val id: T)
 data class MembershipRequest<T>(val uid: T, val roomId: T)
 data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T)
 data class UserCreateRequest(val name: String, val handle: String, val imgUri: String)
+data class MemberTopicRequest<T>(val member: T, val topic: T)
 
 data class ChatMessage<T, V>(
         override val key: ChatMessageKey<T>,

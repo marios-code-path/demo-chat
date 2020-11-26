@@ -8,11 +8,13 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.ecwid.consul.v1.ConsulClient
 import org.slf4j.LoggerFactory
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Mono
 import java.util.*
@@ -24,6 +26,7 @@ interface RSocketClientProperties {
     val index: String
     val persistence: String
     val messaging: String
+    val pubsub: String
 }
 
 class CoreServiceClientFactory(
@@ -40,6 +43,7 @@ class CoreServiceClientFactory(
         "index" -> clientProps.index
         "persistence" -> clientProps.persistence
         "messaging" -> clientProps.messaging
+        "pubsub" -> clientProps.pubsub
         else -> throw AppDiscoveryException(serviceType)
     }.apply { println("$serviceType = $this") }
 
@@ -78,4 +82,6 @@ class CoreServiceClientFactory(
     fun <T, Q> membershipIndexClient(): IndexService<T, TopicMembership<T>, Q> = MembershipIndexClient(requester("index"))
 
     fun <T, V, Q> messageIndexClient(): IndexService<T, Message<T, V>, Q> = MessageIndexClient(requester("index"))
+
+    fun <T, V> pubsubClient(t: ParameterizedTypeReference<T>): PubSubTopicExchangeService<T, V> = PubSubClient<T, V>("pubsub", requester("pubsub"), t)
 }

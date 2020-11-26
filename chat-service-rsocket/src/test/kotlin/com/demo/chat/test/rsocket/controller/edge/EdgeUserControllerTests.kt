@@ -4,7 +4,7 @@ import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
-import com.demo.chat.controller.edge.UserController
+import com.demo.chat.controller.edge.UserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -126,7 +126,7 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
         class TestUserController(
                 persistence: UserPersistence<UUID>,
                 index: UserIndexService<UUID, Map<String, String>>,
-        ) : UserController<UUID, Map<String, String>>(persistence,
+        ) : UserServiceController<UUID, Map<String, String>>(persistence,
                 index,
                 Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
     }
