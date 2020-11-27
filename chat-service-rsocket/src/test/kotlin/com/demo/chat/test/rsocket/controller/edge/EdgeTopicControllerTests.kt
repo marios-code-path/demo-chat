@@ -78,7 +78,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
                 .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
         StepVerifier.create(
-                requester.route("room-add")
+                requester.route("topic-add")
                         .data(ByNameRequest(randomRoomName))
                         .retrieveMono(Void::class.java)
         )
@@ -95,7 +95,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("room-list")
+                                .route("topic-list")
                                 .data(ByIdRequest(UUID.randomUUID()))
                                 .retrieveFlux(TestChatMessageTopic::class.java)
                 )
@@ -117,7 +117,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("room-join")
+                                .route("topic-join")
                                 .data(MembershipRequest(randomUserId, randomTopicId))
                                 .retrieveMono(Void::class.java)
                 )
@@ -150,7 +150,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("room-members")
+                                .route("topic-members")
                                 .data(ByIdRequest(randomTopicId))
                                 .retrieveMono(TopicMemberships::class.java)
                 )

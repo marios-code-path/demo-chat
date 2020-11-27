@@ -35,6 +35,7 @@ class AppRSocketClientProperties(
         override val index: String = "",
         override val persistence: String = "",
         override val messaging: String = "",
+        override val pubsub: String = ""
 ) : RSocketClientProperties
 
 @Configuration

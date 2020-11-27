@@ -29,14 +29,15 @@ import java.util.*
 
 @ConfigurationProperties("app.client.rsocket.destination")
 @ConstructorBinding
-class TestClientProperties(
+class TestRSocketClientProperties(
         override val key: String = "",
         override val index: String = "",
         override val persistence: String = "",
         override val messaging: String = "",
+        override val pubsub: String = ""
 ) : RSocketClientProperties
 
-@EnableConfigurationProperties(TestClientProperties::class)
+@EnableConfigurationProperties(TestRSocketClientProperties::class)
 @SpringBootApplication
 @Import(
         JacksonConfiguration::class,
