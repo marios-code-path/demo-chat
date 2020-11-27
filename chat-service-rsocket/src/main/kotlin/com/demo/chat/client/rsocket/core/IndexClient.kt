@@ -8,17 +8,22 @@ import org.springframework.messaging.rsocket.retrieveMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class UserIndexClient<T, Q>(requester: RSocketRequester) :
-        IndexClient<T, User<T>, Q>("index.user.", requester)
-class MessageIndexClient<T, V, Q>(requester: RSocketRequester) :
-        IndexClient<T, Message<T, V>, Q>("index.message.", requester)
-class TopicIndexClient<T, Q>(requester: RSocketRequester) :
-        IndexClient<T, MessageTopic<T>, Q>("index.topic.", requester)
-class MembershipIndexClient<T, Q>(requester: RSocketRequester) :
-        IndexClient<T, TopicMembership<T>, Q>("index.membership.", requester)
+class UserIndexClient<T, Q>(prefix: String, requester: RSocketRequester) :
+        IndexClient<T, User<T>, Q>(prefix, requester)
 
-open class IndexClient<T, E, Q>(private val prefix: String,
-                                            private val requester: RSocketRequester) : IndexService<T, E, Q> {
+class MessageIndexClient<T, V, Q>(prefix: String, requester: RSocketRequester) :
+        IndexClient<T, Message<T, V>, Q>(prefix, requester)
+
+class TopicIndexClient<T, Q>(prefix: String, requester: RSocketRequester) :
+        IndexClient<T, MessageTopic<T>, Q>(prefix, requester)
+
+class MembershipIndexClient<T, Q>(prefix: String, requester: RSocketRequester) :
+        IndexClient<T, TopicMembership<T>, Q>(prefix, requester)
+
+open class IndexClient<T, E, Q>(
+        private val prefix: String,
+        private val requester: RSocketRequester,
+) : IndexService<T, E, Q> {
     override fun add(entity: E): Mono<Void> = requester
             .route("${prefix}add")
             .data(entity as Any)

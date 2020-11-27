@@ -28,10 +28,11 @@ import java.util.*
 @Import(MockCoreServicesConfiguration::class, EdgeUserControllerTests.TestConfiguration::class)
 class UserClientTests : EdgeUserControllerTests() {
     private lateinit var client: UserClient<UUID>
+    private val svcPrefix = ""
 
     @BeforeEach
     fun setUp() {
-        client = UserClient("", requester, ParameterizedTypeReference.forType(UUID::class.java))
+        client = UserClient(svcPrefix, requester, ParameterizedTypeReference.forType(UUID::class.java))
     }
 
     @Test

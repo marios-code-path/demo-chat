@@ -17,22 +17,18 @@ import org.springframework.stereotype.Controller
 open class PersistenceControllersConfiguration {
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["persistence"])
-    @MessageMapping("user")
+    @MessageMapping("persist.user")
     class UserPersistenceController<T>(t: UserPersistence<T>) : PersistenceServiceController<T, User<T>>(t)
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["persistence"])
-    @MessageMapping("message")
+    @MessageMapping("persist.message")
     class MessagePersistenceController<T, E>(t: MessagePersistence<T, E>) : PersistenceServiceController<T, Message<T, E>>(t)
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["persistence"])
-    @MessageMapping("topic")
+    @MessageMapping("persist.topic")
     class TopicPersistenceController<T>(t: TopicPersistence<T>) : PersistenceServiceController<T, MessageTopic<T>>(t)
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["persistence"])
-    @MessageMapping("membership")
+    @MessageMapping("persist.membership")
     class MembershipPersistenceController<T>(t: MembershipPersistence<T>) : PersistenceServiceController<T, TopicMembership<T>>(t)
 }

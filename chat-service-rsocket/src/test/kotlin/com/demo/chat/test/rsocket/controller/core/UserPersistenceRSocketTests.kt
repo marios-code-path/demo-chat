@@ -48,7 +48,7 @@ class UserPersistenceRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("user.add")
+                                .route("add")
                                 .data(Mono.just(randomUser), TestChatUser::class.java)
                                 .retrieveMono(Void::class.java)
                 )
@@ -65,7 +65,7 @@ class UserPersistenceRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("user.all")
+                                .route("all")
                                 .retrieveFlux(TestChatUser::class.java)
                 )
                 .assertNext {
@@ -98,7 +98,7 @@ class UserPersistenceRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("user.get")
+                                .route("get")
                                 .data(Mono.just(Key.funKey(userKey.id)))
                                 .retrieveMono(TestChatUser::class.java)
                 )
@@ -122,7 +122,6 @@ class UserPersistenceRSocketTests : RSocketTestBase() {
     @TestConfiguration
     class UserPersistenceTestConfiguration {
         @Controller
-        @MessageMapping("user")
         class TestPersistenceController<T>(up: UserPersistence<T>): PersistenceServiceController<T, User<T>>(up)
     }
 }

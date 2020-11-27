@@ -1,6 +1,9 @@
 package com.demo.chat.deploy.config.client
 
 import com.demo.chat.client.rsocket.core.*
+import com.demo.chat.deploy.config.properties.AppConfigurationProperties
+import com.demo.chat.deploy.config.properties.RSocketCoreProperties
+import com.demo.chat.deploy.config.properties.RSocketEdgeProperties
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
@@ -21,31 +24,28 @@ import java.util.*
 
 data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
 
-interface RSocketClientProperties {
-    val key: String
-    val index: String
-    val persistence: String
-    val messaging: String
-    val pubsub: String
-}
-
 class CoreServiceClientFactory(
         private val builder: RSocketRequester.Builder,
         client: ConsulClient,
         props: ConsulDiscoveryProperties,
-        private val clientProps: RSocketClientProperties,
+        configProps: AppConfigurationProperties
 ) {
+    private val coreProps: RSocketCoreProperties = configProps.core
+    private val edgeProps: RSocketEdgeProperties = configProps.edge
+
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
     val logger = LoggerFactory.getLogger(this::class.simpleName)
 
     private fun getServiceId(serviceType: String) = when (serviceType) {
-        "key" -> clientProps.key
-        "index" -> clientProps.index
-        "persistence" -> clientProps.persistence
-        "messaging" -> clientProps.messaging
-        "pubsub" -> clientProps.pubsub
+        "key" -> coreProps.key.dest
+        "index" -> coreProps.index.dest
+        "persistence" -> coreProps.persistence.dest
+        "pubsub" -> coreProps.pubsub.dest
+        "topic" -> edgeProps.topic.dest
+        "user" -> edgeProps.user.dest
+        "message" -> edgeProps.message.dest
         else -> throw AppDiscoveryException(serviceType)
-    }.apply { println("$serviceType = $this") }
+    }
 
     fun requester(serviceType: String): RSocketRequester {
         return discovery
@@ -65,23 +65,23 @@ class CoreServiceClientFactory(
                 .blockFirst()!!
     }
 
-    fun <T> keyClient(): IKeyService<T> = KeyClient("key.", requester("key"))
+    fun <T> keyClient(): IKeyService<T> = KeyClient("${coreProps.key.prefix}", requester("key"))
 
-    fun <T> userClient(): PersistenceStore<T, User<T>> = UserPersistenceClient(requester("persistence"))
+    fun <T, V> pubsubClient(t: ParameterizedTypeReference<T>): PubSubTopicExchangeService<T, V> = PubSubClient<T, V>("${coreProps.pubsub.prefix}", requester("pubsub"), t)
 
-    fun <T, V> messageClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient(requester("persistence"))
+    fun <T> userPersistenceClient(): PersistenceStore<T, User<T>> = UserPersistenceClient("${coreProps.persistence.prefix}user", requester("persistence"))
 
-    fun <T> messageTopicClient(): PersistenceStore<T, MessageTopic<T>> = TopicPersistenceClient(requester("persistence"))
+    fun <T, V> messagePersistenceClient(): PersistenceStore<T, Message<T, V>> = MessagePersistenceClient("${coreProps.persistence.prefix}message", requester("persistence"))
 
-    fun <T> topicMembershipClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(requester("persistence"))
+    fun <T> topicPersistenceClient(): PersistenceStore<T, MessageTopic<T>> = TopicPersistenceClient("${coreProps.persistence.prefix}topic", requester("persistence"))
 
-    fun <T, Q> userIndexClient(): IndexService<T, User<T>, Q> = UserIndexClient(requester("index"))
+    fun <T> membershipPersistenceClient(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient("${coreProps.persistence.prefix}membership", requester("persistence"))
 
-    fun <T, Q> topicIndexClient(): IndexService<T, MessageTopic<T>, Q> = TopicIndexClient(requester("index"))
+    fun <T, Q> userIndexClient(): IndexService<T, User<T>, Q> = UserIndexClient("${coreProps.index.prefix}user", requester("index"))
 
-    fun <T, Q> membershipIndexClient(): IndexService<T, TopicMembership<T>, Q> = MembershipIndexClient(requester("index"))
+    fun <T, Q> topicIndexClient(): IndexService<T, MessageTopic<T>, Q> = TopicIndexClient("${coreProps.index.prefix}topic", requester("index"))
 
-    fun <T, V, Q> messageIndexClient(): IndexService<T, Message<T, V>, Q> = MessageIndexClient(requester("index"))
+    fun <T, Q> membershipIndexClient(): IndexService<T, TopicMembership<T>, Q> = MembershipIndexClient("${coreProps.index.prefix}membership", requester("index"))
 
-    fun <T, V> pubsubClient(t: ParameterizedTypeReference<T>): PubSubTopicExchangeService<T, V> = PubSubClient<T, V>("pubsub", requester("pubsub"), t)
+    fun <T, V, Q> messageIndexClient(): IndexService<T, Message<T, V>, Q> = MessageIndexClient("${coreProps.index.prefix}message", requester("index"))
 }

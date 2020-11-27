@@ -1,29 +1,30 @@
 package com.demo.chat.deploy.config.controllers.edge
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.ByNameRequest
 import com.demo.chat.controller.edge.TopicServiceController
-import com.demo.chat.service.*
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import com.demo.chat.deploy.config.factory.ValueCodecFactory
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.User
+import com.demo.chat.service.IndexService
+import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.PubSubTopicExchangeService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import java.util.function.Supplier
 
 open class TopicControllerConfiguration {
 
-    @ConditionalOnProperty(prefix = "app.edge", name = ["topic"])
     @Controller
-    @MessageMapping("topic")
+    @MessageMapping("edge.topic")
     class TestTopicController<T, V, Q>(
-            topicP: TopicPersistence<T>,
-            topicInd: TopicIndexService<T, Q>,
+            topicP: PersistenceStore<T, MessageTopic<T>>,
+            topicInd: IndexService<T, MessageTopic<T>, Q>,
             pubsub: PubSubTopicExchangeService<T, V>,
-            userP: UserPersistence<T>,
-            membershipP: MembershipPersistence<T>,
-            membershipInd: MembershipIndexService<T, Q>,
-            emptyDataCodec: Supplier<V>,
-            topicNameToQuery: java.util.function.Function<ByNameRequest, Q>,
-            membershipIdToQuery: java.util.function.Function<ByIdRequest<T>, Q>,
+            userP: PersistenceStore<T, User<T>>,
+            membershipP: PersistenceStore<T, TopicMembership<T>>,
+            membershipInd: IndexService<T, TopicMembership<T>, Q>,
+            valueCodecs: ValueCodecFactory<V>,
+            reqs: RequestToQueryConverter<T, Q>
     ) :
             TopicServiceController<T, V, Q>(
                     topicP,
@@ -32,8 +33,8 @@ open class TopicControllerConfiguration {
                     userP,
                     membershipP,
                     membershipInd,
-                    emptyDataCodec,
-                    topicNameToQuery,
-                    membershipIdToQuery
+                    valueCodecs::emptyValue,
+                    reqs::topicNameToQuery,
+                    reqs::membershipIdToQuery
             )
 }

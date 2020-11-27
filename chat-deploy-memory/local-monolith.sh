@@ -1,3 +1,8 @@
+source ./deploy-ports.sh
 mvn spring-boot:run -Dspring-boot.run.arguments=\
-"--server.port=6401 --spring.rsocket.server.port=6400 \
---app.service.key --app.service.persistence --app.service.index --spp.service.message --app.primary=core"
+"--server.port=$((CORE_PORT+1)) --spring.rsocket.server.port=${CORE_PORT} \
+--app.service.core.key \
+--app.service.core.pubsub \
+--app.service.core.index \
+--app.service.core.persistence \
+--app.primary=core"

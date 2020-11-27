@@ -8,8 +8,6 @@ import org.springframework.stereotype.Controller
 
 
 open class KeyControllersConfiguration {
-
-    @ConditionalOnProperty(prefix = "app.service", name = ["key"])
     @Controller
     @MessageMapping("key")
     class KeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)

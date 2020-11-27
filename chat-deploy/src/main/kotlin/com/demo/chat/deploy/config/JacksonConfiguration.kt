@@ -17,7 +17,7 @@ class SerializationConfiguration : JacksonConfiguration()
 
 open class JacksonConfiguration {
     @Bean
-    open fun jacksonModules() = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec).apply {println("JACKSONMODULES")}
+    open fun jacksonModules() = JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
 
     @Bean
     open fun objectMapper(modules: JacksonModules): ObjectMapper =
@@ -34,5 +34,5 @@ open class JacksonConfiguration {
                             userModule())
                 }
                 findAndRegisterModules()
-            }!!.apply{println("OBJECTMAPPER")}
+            }!!
 }

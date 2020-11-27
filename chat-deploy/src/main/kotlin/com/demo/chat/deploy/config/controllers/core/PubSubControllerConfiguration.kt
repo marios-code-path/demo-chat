@@ -7,10 +7,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
 open class PubSubControllerConfiguration {
-
-    @ConditionalOnProperty(prefix = "app.service", name = ["pubsub"])
     @Controller
     @MessageMapping("pubsub")
     class PubSubController<T, V>(that: PubSubTopicExchangeService<T, V>) : PubSubServiceController<T, V>(that)
-
 }

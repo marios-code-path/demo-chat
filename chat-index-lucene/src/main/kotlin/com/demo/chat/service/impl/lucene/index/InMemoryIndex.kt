@@ -22,7 +22,7 @@ fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
 fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
 open class InMemoryIndex<T, E : KeyBearer<T>>(
-        private val entryEncoder: Function<E, List<Pair<String, String>>>,
+        private val entityEncoder: Function<E, List<Pair<String, String>>>,
         private val keyEncoder: Function<String, Key<T>>
 ) : IndexService<T, E, IndexSearchRequest> {
 
@@ -33,7 +33,7 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
     override fun add(entity: E): Mono<Void> //Mono.create { sink ->
     {
         val doc = Document().apply {
-            entryEncoder.apply(entity).forEach { kv ->
+            entityEncoder.apply(entity).forEach { kv ->
                 add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
             }
             add(Field("key", entity.key.id.toString(), TextField.TYPE_STORED))

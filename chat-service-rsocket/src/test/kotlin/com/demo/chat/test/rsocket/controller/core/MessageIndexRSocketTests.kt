@@ -41,7 +41,7 @@ class MessageIndexRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("index.message.query")
+                                .route("query")
                                 .data(mapOf(
                                         Pair(TOPIC, UUID.randomUUID())
                                 ))
@@ -67,7 +67,7 @@ class MessageIndexRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("index.message.rem")
+                                .route("rem")
                                 .data(message.key)
                                 .retrieveMono(Void::class.java)
                 )
@@ -83,7 +83,7 @@ class MessageIndexRSocketTests : RSocketTestBase() {
         StepVerifier
                 .create(
                         requester
-                                .route("index.message.add")
+                                .route("add")
                                 .data(message)
                                 .retrieveMono(Void::class.java)
                 )
@@ -93,7 +93,6 @@ class MessageIndexRSocketTests : RSocketTestBase() {
     @TestConfiguration
     class MessageIndexTestConfiguration {
         @Controller
-        @MessageMapping("index.message")
         class TestMessageIndexController<T, E>(that: MessageIndexService<T, E, Map<String, String>>)
             : IndexServiceController<T, Message<T, E>, Map<String, String>>(that)
     }

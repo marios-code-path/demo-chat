@@ -1,16 +1,17 @@
 package com.demo.chat.service.impl.memory.persistence
 
-import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
 import com.demo.chat.service.IKeyService
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
+import java.util.function.Function
+import java.util.function.Supplier
 
-class KeyServiceInMemory<T>(private val keyGen: Codec<Unit, T>) : IKeyService<T> {
+class KeyServiceInMemory<T>(private val keyGen: Supplier<T>) : IKeyService<T> {
     val map = ConcurrentHashMap<T, Key<T>>()
 
     override fun <S> key(kind: Class<S>): Mono<out Key<T>> = Mono.just(
-            Key.funKey(keyGen.decode(Unit)).apply {
+            Key.funKey(keyGen.get()).apply {
                 map[this.id] = this
             }
     )

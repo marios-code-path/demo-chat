@@ -1,3 +1,29 @@
+app:
+  rsocket:
+    config:
+      core:
+        pubsub:
+          dest: core-service-rsocket
+          prefix: pubsub.
+        index:
+          dest: core-service-rsocket
+          prefix: index.
+        persistence:
+          dest:
+          prefix: persist.
+        key:
+          dest: core-service-rsocket
+          prefix: key.
+      edge:
+        message:
+          dest: edge-service-rsocket
+          prefix: message.
+        topic:
+          dest: edge-service-rsocket
+          prefix: topic.
+        user:
+          dest: edge-service-rsocket
+          prefix: user.
 spring:
   cloud:
     consul:

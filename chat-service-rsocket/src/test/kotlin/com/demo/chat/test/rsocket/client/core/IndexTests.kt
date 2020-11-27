@@ -29,6 +29,8 @@ class IndexTests : RSocketTestBase() {
     @MockBean
     private lateinit var indexService: MessageIndexService<UUID, String, Map<String, String>>
 
+    private val svcPrefix = ""
+
     private val message = Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
 
     @Test
@@ -37,7 +39,7 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.findBy(anyObject()))
                 .willReturn(Flux.just(message.key))
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(requester)
+        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.findBy(mapOf(Pair(MessageIndexService.TOPIC, UUID.randomUUID().toString()))))
@@ -57,7 +59,7 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.rem(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(requester)
+        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.rem(message.key))
@@ -70,7 +72,7 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.add(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(requester)
+        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.add(message))

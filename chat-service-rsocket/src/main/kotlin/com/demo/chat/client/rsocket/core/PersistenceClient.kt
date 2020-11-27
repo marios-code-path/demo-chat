@@ -8,17 +8,17 @@ import org.springframework.messaging.rsocket.retrieveMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class UserPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, User<T>>("user.", requester, ParameterizedTypeReference.forType(User::class.java))
+class UserPersistenceClient<T>(prefix: String, requester: RSocketRequester) :
+        PersistenceClient<T, User<T>>(prefix, requester, ParameterizedTypeReference.forType(User::class.java))
 
-class MessagePersistenceClient<T, V>(requester: RSocketRequester) :
-        PersistenceClient<T, Message<T, V>>("message.", requester, ParameterizedTypeReference.forType(Message::class.java))
+class MessagePersistenceClient<T, V>(prefix: String, requester: RSocketRequester) :
+        PersistenceClient<T, Message<T, V>>(prefix, requester, ParameterizedTypeReference.forType(Message::class.java))
 
-class TopicPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, MessageTopic<T>>("topic.", requester, ParameterizedTypeReference.forType(MessageTopic::class.java))
+class TopicPersistenceClient<T>(prefix: String, requester: RSocketRequester) :
+        PersistenceClient<T, MessageTopic<T>>(prefix, requester, ParameterizedTypeReference.forType(MessageTopic::class.java))
 
-class MembershipPersistenceClient<T>(requester: RSocketRequester) :
-        PersistenceClient<T, TopicMembership<T>>("membership.", requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
+class MembershipPersistenceClient<T>(prefix: String, requester: RSocketRequester) :
+        PersistenceClient<T, TopicMembership<T>>(prefix, requester, ParameterizedTypeReference.forType(TopicMembership::class.java))
 
 /**
  *

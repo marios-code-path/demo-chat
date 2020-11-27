@@ -31,10 +31,11 @@ import java.util.*
 )
 class TopicClientTests : EdgeTopicControllerTests() {
     lateinit var client: TopicClient<UUID, String>
+    private val svcPrefix = ""
 
     @BeforeEach
     fun setUp() {
-        client = TopicClient<UUID, String>("", requester)
+        client = TopicClient<UUID, String>(svcPrefix, requester)
     }
 
     @Test

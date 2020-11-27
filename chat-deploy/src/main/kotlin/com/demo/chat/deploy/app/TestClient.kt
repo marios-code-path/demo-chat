@@ -4,22 +4,20 @@ import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.client.rsocket.core.MessagePersistenceClient
 import com.demo.chat.client.rsocket.core.UserPersistenceClient
+import com.demo.chat.deploy.config.JacksonConfiguration
+import com.demo.chat.deploy.config.client.CoreServiceClientBeans
+import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.properties.AppConfigurationProperties
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
-import com.demo.chat.deploy.config.JacksonConfiguration
-import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClientFactory
-import com.demo.chat.deploy.config.client.RSocketClientProperties
-import com.demo.chat.domain.IndexSearchRequest
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -27,17 +25,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import java.util.*
 
-@ConfigurationProperties("app.client.rsocket.destination")
-@ConstructorBinding
-class TestRSocketClientProperties(
-        override val key: String = "",
-        override val index: String = "",
-        override val persistence: String = "",
-        override val messaging: String = "",
-        override val pubsub: String = ""
-) : RSocketClientProperties
-
-@EnableConfigurationProperties(TestRSocketClientProperties::class)
+@EnableConfigurationProperties(AppConfigurationProperties::class)
 @SpringBootApplication
 @Import(
         JacksonConfiguration::class,
@@ -59,7 +47,7 @@ class TestClient {
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 
     @Bean
-    @ConditionalOnProperty(prefix = "app.client.rsocket", name = ["key"])
+    @ConditionalOnProperty(prefix = "test", name = ["key"])
     fun keyRun(svc: IKeyService<UUID>): ApplicationRunner = ApplicationRunner {
         svc.key(UUID::class.java)
                 .doOnNext {
@@ -75,7 +63,7 @@ class TestClient {
     }
 
     @Bean
-    @ConditionalOnProperty(prefix = "app.client.rsocket", name = ["edge"])
+    @ConditionalOnProperty(prefix = "test", name = ["edge"])
     fun edgeRun(builder: CoreServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
         builder
                 .requester("core-service-rsocket")
@@ -98,7 +86,7 @@ class TestClient {
     }
 
 
-    @ConditionalOnProperty(prefix = "app.client.rsocket.persistence", name = ["message"])
+    @ConditionalOnProperty(prefix = "test", name = ["message"])
     @Bean
     fun messageRun(svc: MessagePersistenceClient<UUID, String>): ApplicationRunner = ApplicationRunner {
         svc.key()
@@ -113,7 +101,7 @@ class TestClient {
     }
 
 
-    @ConditionalOnProperty(prefix = "app.client.rsocket.persistence", name = ["user"])
+    @ConditionalOnProperty(prefix = "test", name = ["user"])
     @Bean
     fun userRun(svc: UserPersistenceClient<UUID>): ApplicationRunner {
         val applicationRunner = ApplicationRunner {

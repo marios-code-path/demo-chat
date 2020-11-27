@@ -11,17 +11,14 @@ import org.springframework.stereotype.Controller
 
 open class IndexControllersConfiguration {
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.user"])
-    @MessageMapping("user")
+    @MessageMapping("index.user")
     class UserIndexController<T, Q>(s: IndexService<T, User<T>, Q>) : IndexServiceController<T, User<T>, Q>(s)
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.message"])
-    @MessageMapping("message")
+    @MessageMapping("index.message")
     class MessageIndexController<T, V, Q>(s: IndexService<T, Message<T, V>, Q>) : IndexServiceController<T, Message<T, V>, Q>(s)
 
     @Controller
-    @ConditionalOnProperty(prefix = "app.service", name = ["index", "index.topic"])
-    @MessageMapping("topic")
+    @MessageMapping("index.topic")
     class TopicIndexController<T, Q>(s: IndexService<T, MessageTopic<T>, Q>) : IndexServiceController<T, MessageTopic<T>, Q>(s)
 }

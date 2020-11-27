@@ -8,43 +8,43 @@ import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 
 open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClientFactory) {
-    @ConditionalOnProperty(prefix = "app.client.rsocket", name=["pubsub"])
+    @ConditionalOnProperty(prefix = "app.client.rsocket.core", name=["pubsub"])
     @Bean
-    fun <T, V> pubsubClient() : PubSubTopicExchangeService<T, V> = clients.pubsubClient(ParameterizedTypeReference.forType(UUID::class.java))
+    open fun pubsubClient() : PubSubTopicExchangeService<T, V> = clients.pubsubClient(ParameterizedTypeReference.forType(UUID::class.java))
 
-    @ConditionalOnProperty(prefix="app.client.rsocket", name = ["key"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["key"])
     @Bean
     open fun keyClient(): IKeyService<T> = clients.keyClient()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.persistence", name = ["message"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun messagePersistenceClient() = clients.messageClient<T, V>()
+    open fun messagePersistenceClient() = clients.messagePersistenceClient<T, V>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.persistence", name = ["user"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun userPersistenceClient() = clients.userClient<T>()
+    open fun userPersistenceClient() = clients.userPersistenceClient<T>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.persistence", name = ["topic"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun topicPersistenceClient() = clients.messageTopicClient<T>()
+    open fun topicPersistenceClient() = clients.topicPersistenceClient<T>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.persistence", name = ["membership"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun membershipPersistenceClient() = clients.topicMembershipClient<T>()
+    open fun membershipPersistenceClient() = clients.membershipPersistenceClient<T>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["user"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["index"])
     @Bean
     open fun userIndexClient() = clients.userIndexClient<T, Q>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["topic"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["index"])
     @Bean
     open fun topicIndexClient() = clients.topicIndexClient<T, Q>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["membership"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["index"])
     @Bean
     open fun membershipIndexClient() = clients.membershipIndexClient<T, Q>()
 
-    @ConditionalOnProperty(prefix="app.client.rsocket.index", name = ["message"])
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name = ["index"])
     @Bean
     open fun messageIndexClient() = clients.messageIndexClient<T, V, Q>()
 }

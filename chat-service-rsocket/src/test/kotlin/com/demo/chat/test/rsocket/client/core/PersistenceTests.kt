@@ -37,13 +37,14 @@ class PersistenceTests : RSocketTestBase() {
     private val userKey = TestChatUserKey(randomUserId, randomHandle)
     private val randomUser = TestChatUser(userKey, randomName, defaultImgUri, Instant.now())
 
+    private val svcPrefix = ""
     @Test
     fun `should add one`() {
         BDDMockito
                 .given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requester)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
                 .create(client.add(randomUser))
@@ -57,7 +58,7 @@ class PersistenceTests : RSocketTestBase() {
                         randomUser, randomUser
                 ))
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requester)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
                 .create(client.all())
@@ -88,7 +89,7 @@ class PersistenceTests : RSocketTestBase() {
         BDDMockito.given(userPersistence.get(anyObject()))
                 .willReturn(Mono.just(randomUser))
 
-        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(requester)
+        val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
                 .create(client.get(Key.funKey(userKey.id)))

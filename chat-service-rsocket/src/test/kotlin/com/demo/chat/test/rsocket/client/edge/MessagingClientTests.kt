@@ -42,13 +42,15 @@ class MessagingClientTests : RSocketTestBase() {
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
+    private val svcPrefix = ""
+
     @Test
     fun `should fetch a single message`() {
         BDDMockito
                 .given(messagePersistence.get(anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
-        val client = MessagingClient<UUID, String>("", requester)
+        val client = MessagingClient<UUID, String>(svcPrefix, requester)
 
         StepVerifier
                 .create(
@@ -81,7 +83,7 @@ class MessagingClientTests : RSocketTestBase() {
                 .given(messageIndex.findBy(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
-        val client = MessagingClient<UUID, String>("", requester)
+        val client = MessagingClient<UUID, String>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.listenTopic(ByIdRequest(UUID.randomUUID())))

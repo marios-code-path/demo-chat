@@ -28,12 +28,12 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
 }
 
 open class TopicServiceController<T, V, Q>(
-        private val topicPersistence: TopicPersistence<T>,
-        private val topicIndex: TopicIndexService<T, Q>,
+        private val topicPersistence: PersistenceStore<T, MessageTopic<T>>,
+        private val topicIndex: IndexService<T, MessageTopic<T>, Q>,
         private val messaging: PubSubTopicExchangeService<T, V>,
-        private val userPersistence: UserPersistence<T>,
-        private val membershipPersistence: MembershipPersistence<T>,
-        private val membershipIndex: MembershipIndexService<T, Q>,
+        private val userPersistence: PersistenceStore<T, User<T>>,
+        private val membershipPersistence: PersistenceStore<T, TopicMembership<T>>,
+        private val membershipIndex: IndexService<T, TopicMembership<T>, Q>,
         private val emptyDataCodec: Supplier<V>,
         private val topicNameToQuery: Function<ByNameRequest, Q>,
         private val membershipIdToQuery: Function<ByIdRequest<T>, Q>,
