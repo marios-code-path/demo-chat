@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.config.controllers.core
 
 import com.demo.chat.controller.core.IndexServiceController
+import com.demo.chat.deploy.config.core.IndexServiceFactory
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
@@ -12,13 +13,13 @@ import org.springframework.stereotype.Controller
 open class IndexControllersConfiguration {
     @Controller
     @MessageMapping("index.user")
-    class UserIndexController<T, Q>(s: IndexService<T, User<T>, Q>) : IndexServiceController<T, User<T>, Q>(s)
+    class UserIndexController<T, V, Q>(s: IndexServiceFactory<T, V, Q>) : IndexServiceController<T, User<T>, Q>(s.userIndex())
 
     @Controller
     @MessageMapping("index.message")
-    class MessageIndexController<T, V, Q>(s: IndexService<T, Message<T, V>, Q>) : IndexServiceController<T, Message<T, V>, Q>(s)
+    class MessageIndexController<T, V, Q>(s: IndexServiceFactory<T, V, Q>) : IndexServiceController<T, Message<T, V>, Q>(s.messageIndex())
 
     @Controller
     @MessageMapping("index.topic")
-    class TopicIndexController<T, Q>(s: IndexService<T, MessageTopic<T>, Q>) : IndexServiceController<T, MessageTopic<T>, Q>(s)
+    class TopicIndexController<T, V, Q>(s: IndexServiceFactory<T, V, Q>) : IndexServiceController<T, MessageTopic<T>, Q>(s.topicIndex())
 }

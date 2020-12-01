@@ -7,6 +7,8 @@ import com.demo.chat.client.rsocket.core.UserPersistenceClient
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
+import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
@@ -30,7 +32,9 @@ import java.util.*
 @Import(
         JacksonConfiguration::class,
         RSocketStrategiesAutoConfiguration::class,
-        CoreServiceClientFactory::class
+        ConsulRequesterFactory::class,
+        CoreServiceClientFactory::class,
+        EdgeServiceClientFactory::class,
 )
 // TODO: This should also embody integration tests
 class TestClient {
@@ -64,25 +68,21 @@ class TestClient {
 
     @Bean
     @ConditionalOnProperty(prefix = "test", name = ["edge"])
-    fun edgeRun(builder: CoreServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
-        builder
-                .requester("core-service-rsocket")
-                .route("edge.user.user-add")
-                .data(UserCreateRequest("MG", "1002", "JPG"))
-                .retrieveMono(UUID::class.java)
+    fun edgeRun(factory: EdgeServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
+        val client = factory.userClient<UUID>()
+
+                client
+                        .addUser(UserCreateRequest("MG", "1002", "JPG"))
                 .doOnNext {
-                    logger.info("UUID FOUND: $it")
+                    logger.info("UUID FOUND: $it.id")
                 }
-                .flatMap {
-                    builder.requester("core-service-rsocket")
-                            .route("edge.user.user-by-handle")
-                            .data(ByHandleRequest("1001"))
-                            .retrieveMono(User::class.java)
+                .flatMapMany {
+                    client.findByHandle(ByHandleRequest("1001"))
                 }
                 .doOnNext {
                     logger.info("User Found ${it.key.id}: ${it.handle} / ${it.name}")
                 }
-                .block()
+                .blockLast()
     }
 
 

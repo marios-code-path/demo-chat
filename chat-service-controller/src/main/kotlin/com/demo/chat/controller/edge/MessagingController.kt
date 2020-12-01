@@ -8,7 +8,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.PubSubTopicExchangeService
-import com.demo.chat.service.edge.ChatMessagingService
+import com.demo.chat.service.edge.ChatMessageService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -21,7 +21,7 @@ open class MessagingController<T, V, Q>(
         private val messagePersistence: PersistenceStore<T, Message<T, V>>,
         private val topicMessaging: PubSubTopicExchangeService<T, V>,
         private val messageIdToQuery: Function<ByIdRequest<T>, Q>,
-) : ChatMessagingService<T, V> {
+) : ChatMessageService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("message-listen-topic")

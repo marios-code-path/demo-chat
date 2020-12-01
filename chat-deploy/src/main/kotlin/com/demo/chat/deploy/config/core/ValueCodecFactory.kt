@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.factory
+package com.demo.chat.deploy.config.core
 
 interface ValueCodecFactory<V> {
     fun emptyValue(): V

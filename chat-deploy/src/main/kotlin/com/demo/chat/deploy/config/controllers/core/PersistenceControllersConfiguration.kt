@@ -1,6 +1,8 @@
 package com.demo.chat.deploy.config.controllers.core
 
 import com.demo.chat.controller.core.PersistenceServiceController
+import com.demo.chat.deploy.config.core.IndexServiceFactory
+import com.demo.chat.deploy.config.core.PersistenceServiceFactory
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
@@ -18,17 +20,17 @@ open class PersistenceControllersConfiguration {
 
     @Controller
     @MessageMapping("persist.user")
-    class UserPersistenceController<T>(t: UserPersistence<T>) : PersistenceServiceController<T, User<T>>(t)
+    class UserPersistenceController<T, V>(s: PersistenceServiceFactory<T, V>) : PersistenceServiceController<T, User<T>>(s.user())
 
     @Controller
     @MessageMapping("persist.message")
-    class MessagePersistenceController<T, E>(t: MessagePersistence<T, E>) : PersistenceServiceController<T, Message<T, E>>(t)
+    class MessagePersistenceController<T, V>(s: PersistenceServiceFactory<T, V>) : PersistenceServiceController<T, Message<T, V>>(s.message())
 
     @Controller
     @MessageMapping("persist.topic")
-    class TopicPersistenceController<T>(t: TopicPersistence<T>) : PersistenceServiceController<T, MessageTopic<T>>(t)
+    class TopicPersistenceController<T, V>(s: PersistenceServiceFactory<T, V>) : PersistenceServiceController<T, MessageTopic<T>>(s.topic())
 
     @Controller
     @MessageMapping("persist.membership")
-    class MembershipPersistenceController<T>(t: MembershipPersistence<T>) : PersistenceServiceController<T, TopicMembership<T>>(t)
+    class MembershipPersistenceController<T, V>(s: PersistenceServiceFactory<T, V>) : PersistenceServiceController<T, TopicMembership<T>>(s.membership())
 }

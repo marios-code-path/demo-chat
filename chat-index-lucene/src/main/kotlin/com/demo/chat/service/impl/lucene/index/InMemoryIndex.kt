@@ -2,7 +2,6 @@ package com.demo.chat.service.impl.lucene.index
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyBearer
 import com.demo.chat.service.IndexService
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.document.Document
@@ -21,11 +20,11 @@ import java.util.function.Function
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
 fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
-open class InMemoryIndex<T, E : KeyBearer<T>>(
+open class InMemoryIndex<T, E>(
         private val entityEncoder: Function<E, List<Pair<String, String>>>,
-        private val keyEncoder: Function<String, Key<T>>
+        private val keyEncoder: Function<String, Key<T>>,
+        private val keyReceiver: Function<E, Key<T>>,
 ) : IndexService<T, E, IndexSearchRequest> {
-
 
     private val analyzer = StandardAnalyzer()
     private val directory = ByteBuffersDirectory()
@@ -36,7 +35,7 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
             entityEncoder.apply(entity).forEach { kv ->
                 add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
             }
-            add(Field("key", entity.key.id.toString(), TextField.TYPE_STORED))
+            add(Field("key", keyReceiver.apply(entity).id.toString(), TextField.TYPE_STORED))
         }
 
         IndexWriter(directory, IndexWriterConfig(analyzer)).use {
@@ -49,7 +48,7 @@ open class InMemoryIndex<T, E : KeyBearer<T>>(
         return Mono.empty()
     }
 
-    override fun rem(key: Key<T>): Mono<Void>  {
+    override fun rem(key: Key<T>): Mono<Void> {
         val parser = QueryParser("key", analyzer)
         val query = parser.parse("+${key.id.toString()}")
 

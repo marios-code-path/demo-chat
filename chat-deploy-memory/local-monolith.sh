@@ -5,4 +5,7 @@ mvn spring-boot:run -Dspring-boot.run.arguments=\
 --app.service.core.pubsub \
 --app.service.core.index \
 --app.service.core.persistence \
+--app.service.edge.topic \
+--app.service.edge.user \
+--app.service.edge.messaging \
 --app.primary=core"

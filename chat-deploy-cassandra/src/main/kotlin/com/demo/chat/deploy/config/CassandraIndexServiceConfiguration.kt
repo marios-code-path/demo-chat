@@ -1,11 +1,11 @@
 package com.demo.chat.deploy.config
 
+import com.demo.chat.deploy.config.core.IndexServiceFactory
 import com.demo.chat.repository.cassandra.*
-import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.TopicIndexService
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.index.*
+import com.demo.chat.service.index.MembershipIndexCassandra
+import com.demo.chat.service.index.MessageIndexCassandra
+import com.demo.chat.service.index.TopicIndexCassandra
+import com.demo.chat.service.index.UserIndexCassandra
 import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.function.Function
@@ -20,21 +20,21 @@ open class CassandraIndexServiceConfiguration<T>(
         private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
         private val byUserRepo: ChatMessageByUserRepository<T>,
         private val byTopicRepo: ChatMessageByTopicRepository<T>,
-        private val stringToKeyCodec: Function<String, T>
-) {
+        private val stringToKeyCodec: Function<String, T>,
+) : IndexServiceFactory<T, String, Map<String, String>> {
     @Bean
-    open fun userIndex(): UserIndexService<T, Map<String, String>> =
+    override fun userIndex() =
             UserIndexCassandra(userHandleRepo, cassandra)
 
     @Bean
-    open fun roomIndex(): TopicIndexService<T, Map<String, String>> =
+    override fun topicIndex() =
             TopicIndexCassandra(roomRepo, nameRepo)
 
     @Bean
-    open fun membershipIndex(): MembershipIndexService<T, Map<String, String>> =
+    override fun membershipIndex() =
             MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)
 
     @Bean
-    open fun messageIndex(): MessageIndexService<T, String, Map<String, String>> =
+    override fun messageIndex() =
             MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
 }

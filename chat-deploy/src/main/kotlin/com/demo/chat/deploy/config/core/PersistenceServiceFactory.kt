@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.factory
+package com.demo.chat.deploy.config.core
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic

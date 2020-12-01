@@ -2,7 +2,7 @@ package com.demo.chat.client.rsocket.edge
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.MessageSendRequest
-import com.demo.chat.service.edge.ChatMessagingService
+import com.demo.chat.service.edge.ChatMessageService
 import com.demo.chat.domain.Message
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux
@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono
 open class MessagingClient<T, V>(
         private val prefix: String,
         private val requester: RSocketRequester
-) : ChatMessagingService<T, V> {
+) : ChatMessageService<T, V> {
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
             requester
                     .route("${prefix}message-listen-topic")

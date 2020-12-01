@@ -19,7 +19,7 @@ class MemoryIndexTests : IndexTestBase<Long, User<Long>, IndexSearchRequest>(
                         Pair("handle", t.handle),
                         Pair("name", t.name)
                 )
-            }, { q -> Key.funKey(q.toLong()) })
+            }, { q -> Key.funKey(q.toLong()) }, { t -> t.key} )
 
     override fun getIndex(): IndexService<Long, User<Long>, IndexSearchRequest> = index
 }

@@ -60,12 +60,13 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
                         requester
                                 .route("user-add")
                                 .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
-                                .retrieveMono(UUID::class.java)
+                                .retrieveMono(Key::class.java)
                 )
                 .assertNext {
                     Assertions
                             .assertThat(it)
-                            .isNotNull()
+                            .isNotNull
+                            .hasNoNullFieldsOrProperties()
                 }
                 .verifyComplete()
     }

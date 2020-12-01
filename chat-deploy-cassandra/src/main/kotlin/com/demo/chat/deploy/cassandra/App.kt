@@ -9,6 +9,7 @@ import com.demo.chat.deploy.config.client.CoreServiceClientFactory
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
+import com.demo.chat.deploy.config.core.KeyServiceFactory
 import com.demo.chat.deploy.config.properties.CoreConfigProperties
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
@@ -19,7 +20,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -44,7 +44,7 @@ class App {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "app.service", name = ["index"])
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
     class IndexConfiguration {
         @Configuration
         class IndexServiceConfiguration(
@@ -64,7 +64,7 @@ class App {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "app.service", name = ["persistence"])
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
     class PersistenceConfiguration {
         @Configuration
         class PersistenceServiceConfiguration(
@@ -80,11 +80,12 @@ class App {
     }
 
     @Configuration
-    @ConditionalOnProperty(prefix = "app.service", name = ["key"])
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
     class KeyConfiguration {
-        @Bean
-        fun keyService(t: ReactiveCassandraTemplate): IKeyService<UUID> =
-                KeyServiceCassandra(t, UUIDs::timeBased)
+        @Configuration
+        class CassandraKeyServiceFactory(val t: ReactiveCassandraTemplate) : KeyServiceFactory<UUID> {
+            override fun keyService(): IKeyService<UUID> = KeyServiceCassandra(t, UUIDs::timeBased)
+        }
 
         @Configuration
         class KeyControllers : KeyControllersConfiguration()

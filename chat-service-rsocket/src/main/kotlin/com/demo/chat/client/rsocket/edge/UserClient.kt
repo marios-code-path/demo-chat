@@ -3,6 +3,7 @@ package com.demo.chat.client.rsocket.edge
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.service.edge.ChatUserService
 import com.demo.chat.domain.User
 import org.springframework.core.ParameterizedTypeReference
@@ -14,13 +15,12 @@ import reactor.core.publisher.Mono
 
 class UserClient<T>(
         private val prefix: String,
-        private val requester: RSocketRequester,
-        private val keyClass: ParameterizedTypeReference<T>,
+        private val requester: RSocketRequester
 ) : ChatUserService<T> {
-    override fun addUser(userReq: UserCreateRequest): Mono<T> = requester
+    override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> = requester
             .route("${prefix}user-add")
             .data(userReq)
-            .retrieveMono(keyClass)
+            .retrieveMono()
 
     override fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = requester
             .route("${prefix}user-by-handle")

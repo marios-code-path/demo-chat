@@ -24,7 +24,7 @@ open class UserServiceController<T, Q>(
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     @MessageMapping("user-add")
-    override fun addUser(userReq: UserCreateRequest): Mono<T> =
+    override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =
             userPersistence
                     .key()
                     .flatMap {
@@ -38,12 +38,12 @@ open class UserServiceController<T, Q>(
                                 userPersistence.add(user),
                                 userIndex.add(user)
                         )
-                                .then(Mono.just(it.id))
+                                .then(Mono.just(it))
                     }
 
     @MessageMapping("user-by-handle")
     override fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = userIndex
-            .findBy(userHandleToQuery.apply(req)) //mapOf(Pair(HANDLE, byHandleReq.handle)))
+            .findBy(userHandleToQuery.apply(req))
             .flatMap(userPersistence::get)
 
     @MessageMapping("user-by-id")

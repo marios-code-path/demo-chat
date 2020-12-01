@@ -10,11 +10,11 @@ import java.util.function.Function
 
 open class MessageControllersConfiguration {
 
-    @Controller
-    @MessageMapping("edge.message")
+//    @Controller
+//    @MessageMapping("edge.message")
     class MessageExchangeController<T, V, Q>(
-            i: IndexService<T, Message<T, V>, Q>,
-            p: PersistenceStore<T, Message<T, V>>,
+            i: MessageIndexService<T, V, Q>,
+            p: MessagePersistence<T, V>,
             x: PubSubTopicExchangeService<T, V>,
             reqs: RequestToQueryConverter<T, Q>
     )

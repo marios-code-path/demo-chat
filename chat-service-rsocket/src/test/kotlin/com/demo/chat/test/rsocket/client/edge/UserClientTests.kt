@@ -2,9 +2,9 @@ package com.demo.chat.test.rsocket.client.edge
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.test.TestChatUser
 import com.demo.chat.client.rsocket.edge.UserClient
 import com.demo.chat.domain.Key
+import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.rsocket.controller.edge.EdgeUserControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
 import com.demo.chat.test.rsocket.controller.edge.anyObject
@@ -16,7 +16,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.context.annotation.Import
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
@@ -32,7 +31,7 @@ class UserClientTests : EdgeUserControllerTests() {
 
     @BeforeEach
     fun setUp() {
-        client = UserClient(svcPrefix, requester, ParameterizedTypeReference.forType(UUID::class.java))
+        client = UserClient(svcPrefix, requester)
     }
 
     @Test
