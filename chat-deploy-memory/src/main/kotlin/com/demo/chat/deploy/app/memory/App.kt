@@ -6,6 +6,8 @@ import com.demo.chat.controller.edge.UserServiceController
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
+import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
@@ -39,7 +41,10 @@ import java.util.*
 @EnableConfigurationProperties(AppConfigurationProperties::class)
 @Import(RSocketRequesterAutoConfiguration::class,
         JacksonConfiguration::class,
-        CoreServiceClientFactory::class)
+        ConsulRequesterFactory::class,
+        CoreServiceClientFactory::class,
+        EdgeServiceClientFactory::class,
+)
 class App {
     companion object {
         @JvmStatic

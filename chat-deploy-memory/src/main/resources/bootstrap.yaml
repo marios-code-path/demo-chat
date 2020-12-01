@@ -17,13 +17,13 @@ app:
       edge:
         message:
           dest: edge-service-rsocket
-          prefix: message
+          prefix: message.
         topic:
           dest: edge-service-rsocket
-          prefix: topic
+          prefix: topic.
         user:
           dest: edge-service-rsocket
-          prefix: user
+          prefix: user.
 spring:
   cloud:
     consul:

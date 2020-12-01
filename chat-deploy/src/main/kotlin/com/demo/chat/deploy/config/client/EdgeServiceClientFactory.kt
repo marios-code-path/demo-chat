@@ -15,9 +15,9 @@ class EdgeServiceClientFactory(
 ) {
     private val edgeProps: RSocketEdgeProperties = configProps.edge
 
-    fun <T> userClient(): ChatUserService<T> = UserClient("$edgeProps.user.prefix", requesterFactory.requester("user"))
+    fun <T> userClient(): ChatUserService<T> = UserClient("${edgeProps.user.prefix}", requesterFactory.requester("user"))
 
-    fun <T, V> messageClient(): ChatMessageService<T, V> = MessagingClient("$edgeProps.message.prefix", requesterFactory.requester("message"))
+    fun <T, V> messageClient(): ChatMessageService<T, V> = MessagingClient("${edgeProps.message.prefix}", requesterFactory.requester("message"))
 
-    fun <T, V> topicClient(): ChatTopicService<T, V> = TopicClient("$edgeProps.topic.prefix", requesterFactory.requester("topic"))
+    fun <T, V> topicClient(): ChatTopicService<T, V> = TopicClient("${edgeProps.topic.prefix}", requesterFactory.requester("topic"))
 }
