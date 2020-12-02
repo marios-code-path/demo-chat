@@ -4,16 +4,16 @@ app:
       core:
         pubsub:
           dest: core-service-rsocket
-          prefix: pubsub
+          prefix: pubsub.
         index:
           dest: core-service-rsocket
-          prefix: index
+          prefix: index.
         persistence:
           dest: core-service-rsocket
-          prefix: persist
+          prefix: persist.
         key:
           dest: core-service-rsocket
-          prefix: key
+          prefix: key.
       edge:
         message:
           dest: edge-service-rsocket

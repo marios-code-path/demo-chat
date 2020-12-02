@@ -6,14 +6,14 @@ import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory
 import java.util.*
 
-fun interface Codec<F, E> {
+fun interface Decoder<F, E> {
     fun decode(record: F): E
 }
 
 // TODO IN PRODUCTION: Hrmmm.. CBOR configuration needs to be careful -
 // TODO CBOR encoded messages in a json body is what we are attempting
 // TODO to alleviate.
-object JsonNodeAnyCodec : Codec<JsonNode, Any> {
+object JsonNodeAnyDecoder : Decoder<JsonNode, Any> {
     override fun decode(record: JsonNode): Any {
         return when (record.nodeType) {
             JsonNodeType.BINARY -> {
@@ -33,23 +33,5 @@ object JsonNodeAnyCodec : Codec<JsonNode, Any> {
                 }
             }
         }
-    }
-}
-
-class EmptyStringCodec : Codec<Unit, String> {
-    override fun decode(record: Unit): String {
-        return ""
-    }
-}
-
-class EmptyNumberCodec : Codec<Unit, Number> {
-    override fun decode(record: Unit): Number {
-        return 0
-    }
-}
-
-open class EmptyUUIDCodec : Codec<Unit, UUID> {
-    override fun decode(record: Unit): UUID {
-        return UUID(0L, 0L)
     }
 }

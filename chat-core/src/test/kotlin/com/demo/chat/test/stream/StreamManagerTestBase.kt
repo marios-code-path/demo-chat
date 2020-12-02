@@ -1,11 +1,10 @@
 package com.demo.chat.test.stream
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.assertj.core.api.Assertions
-import org.junit.Ignore
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -13,13 +12,12 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 import java.time.Duration
-import java.util.*
 
 @Disabled
 open class StreamManagerTestBase<K, V>(
         val streamMan: ReactiveStreamManager<K, V>,
-        val codec: Codec<Unit, K>,
-        val valueCodec: Codec<Unit, V>) {
+        val codec: Decoder<Unit, K>,
+        val valueCodec: Decoder<Unit, V>) {
 
     @BeforeEach
     fun setUp() {

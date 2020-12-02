@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.core
 
-import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.serializers.JacksonModules
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -11,7 +11,7 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 
 
-class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+class TestModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
 
 @Import(TestModules::class,
         JacksonAutoConfiguration::class,

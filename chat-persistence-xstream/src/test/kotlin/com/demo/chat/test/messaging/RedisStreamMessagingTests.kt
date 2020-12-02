@@ -1,6 +1,6 @@
 package com.demo.chat.test.messaging
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.service.impl.memory.messaging.PubSubTopicExchangeRedisStream
@@ -19,7 +19,7 @@ import redis.embedded.RedisServer
 import java.io.File
 import java.util.*
 
-class KeyRecordIdEncoder<T> : Codec<T, RecordId> {
+class KeyRecordIdEncoder<T> : Decoder<T, RecordId> {
     override fun decode(record: T): RecordId =
             when (record) {
                 is UUID -> if ((record.mostSignificantBits) == 0L)

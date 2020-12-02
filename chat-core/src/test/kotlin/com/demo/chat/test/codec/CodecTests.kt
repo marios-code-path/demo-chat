@@ -1,6 +1,6 @@
 package com.demo.chat.test.codec
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.test.TestBase
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.mock
@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
 
-class StringUUIDCodec : Codec<String, UUID> {
+class StringUUIDCodec : Decoder<String, UUID> {
     override fun decode(record: String): UUID = UUID.fromString(record)
 }
 
@@ -50,7 +50,7 @@ class CodecTests : TestBase() {
 
     @Test
     fun `should encode Generic`() {
-        val codec: Codec<String, Int> = mock()
+        val codec: Decoder<String, Int> = mock()
 
         whenever(codec.decode(any()))
                 .thenReturn(4)

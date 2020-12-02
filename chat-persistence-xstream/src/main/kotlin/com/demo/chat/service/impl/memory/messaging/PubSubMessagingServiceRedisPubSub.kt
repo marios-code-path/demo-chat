@@ -1,6 +1,6 @@
 package com.demo.chat.service.impl.memory.messaging
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
@@ -29,8 +29,8 @@ class PubSubMessagingServiceRedisPubSub<T, E>(
         keyConfig: KeyConfigurationPubSub,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
-        private val stringKeyDecoder: Codec<String, T>,
-        private val keyStringEncoder: Codec<T, String>
+        private val stringKeyDecoder: Decoder<String, T>,
+        private val keyStringEncoder: Decoder<T, String>
 ) : PubSubTopicExchangeService<T, E> {
 
     private val replayDepth = 50

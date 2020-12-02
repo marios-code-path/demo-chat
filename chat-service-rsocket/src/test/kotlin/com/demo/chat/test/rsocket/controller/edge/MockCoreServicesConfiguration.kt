@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.edge
 
-import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +14,7 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import java.util.*
 
-class TestModules : JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+class TestModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
 
 @TestConfiguration
 @Import(TestModules::class,

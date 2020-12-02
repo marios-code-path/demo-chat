@@ -1,7 +1,7 @@
 package com.demo.chat.test.messaging
 
-import com.demo.chat.codec.Codec
-import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.Decoder
+import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -24,19 +24,19 @@ data class JoinAlert<T>(override val key: MessageKey<T>) : Message<T, String> {
         get() = ""
 }
 
-class KeyStringEncoder<T> : Codec<T, String> {
+class KeyStringEncoder<T> : Decoder<T, String> {
     override fun decode(record: T): String {
         return record.toString()
     }
 }
 
-class StringUUIDKeyDecoder : Codec<String, UUID> {
+class StringUUIDKeyDecoder : Decoder<String, UUID> {
     override fun decode(record: String): UUID {
         return UUID.fromString(record)
     }
 }
 
-class UUIDKeyStringEncoder : Codec<UUID, String> {
+class UUIDKeyStringEncoder : Decoder<UUID, String> {
     override fun decode(record: UUID): String {
         return record.toString()
     }
@@ -57,7 +57,7 @@ open class MessagingServiceTestBase {
 
     val mapper: ObjectMapper =
             jacksonObjectMapper().registerModule(KotlinModule()).apply {
-                with(JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)) {
+                with(JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)) {
                     registerModules(messageModule(),
                             keyModule(),
                             topicModule(),

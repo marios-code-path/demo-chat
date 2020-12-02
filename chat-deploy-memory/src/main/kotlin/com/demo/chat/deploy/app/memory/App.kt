@@ -1,8 +1,5 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.controller.edge.MessagingController
-import com.demo.chat.controller.edge.TopicServiceController
-import com.demo.chat.controller.edge.UserServiceController
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
 import com.demo.chat.deploy.config.client.CoreServiceClientFactory
@@ -16,11 +13,12 @@ import com.demo.chat.deploy.config.controllers.edge.*
 import com.demo.chat.deploy.config.core.IndexServiceFactory
 import com.demo.chat.deploy.config.core.KeyServiceFactory
 import com.demo.chat.deploy.config.core.PersistenceServiceFactory
-import com.demo.chat.deploy.config.core.ValueCodecFactory
+import com.demo.chat.deploy.config.core.ValueLiterals
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.*
+import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.PubSubTopicExchangeService
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
@@ -39,7 +37,8 @@ import java.util.*
 
 @SpringBootApplication
 @EnableConfigurationProperties(AppConfigurationProperties::class)
-@Import(RSocketRequesterAutoConfiguration::class,
+@Import(
+        RSocketRequesterAutoConfiguration::class,
         JacksonConfiguration::class,
         ConsulRequesterFactory::class,
         CoreServiceClientFactory::class,
@@ -54,7 +53,7 @@ class App {
     }
 
     @Configuration
-    class BaseAppState {
+    class ResourceConfiguration {
         @Configuration
         class AppRSocketClientConfiguration(clients: CoreServiceClientFactory)
             : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
@@ -63,6 +62,9 @@ class App {
         class MemoryKeyServiceFactory : KeyServiceFactory<UUID> {
             override fun keyService() = KeyServiceInMemory { UUID.randomUUID() }
         }
+
+        @Bean
+        fun memoryPubSub(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
 
         @Configuration
         class PersistenceServicesFactory(keyFactory: KeyServiceFactory<UUID>)
@@ -105,14 +107,12 @@ class App {
         fun requestToIndexSearchRequest(): RequestToQueryConverter<UUID, IndexSearchRequest> = IndexSearchRequestConverters()
 
         @Bean
-        fun stringCodecFactory(): ValueCodecFactory<String> =
-                object : ValueCodecFactory<String> {
+        fun stringCodecFactory(): ValueLiterals<String> =
+                object : ValueLiterals<String> {
                     override fun emptyValue() = ""
+                    override fun fromString(t: String) = t
                 }
     }
-
-    @Bean
-    fun memoryPubSub(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
 }
 
 @Configuration
@@ -140,9 +140,9 @@ class ExchangeController(
         pubsub: PubSubTopicExchangeService<UUID, String>,
         reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
 ) :
-        MessagingController<UUID, String, IndexSearchRequest>(
-                indexFactory.messageIndex(),
-                persistenceFactory.message(), pubsub, reqs::topicIdToQuery)
+        ExchangeControllerConfig<UUID, String, IndexSearchRequest>(
+                indexFactory,
+                persistenceFactory, pubsub, reqs)
 
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
 @Controller
@@ -151,10 +151,7 @@ class UserController(
         persistenceFactory: PersistenceServiceFactory<UUID, String>,
         indexFactory: IndexServiceFactory<UUID, String, IndexSearchRequest>,
         reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
-) : UserServiceController<UUID, IndexSearchRequest>(persistenceFactory.user(),
-        indexFactory.userIndex(),
-        reqs::userHandleToQuery)
-
+) : UserControllerConfiguration<UUID, String, IndexSearchRequest>(persistenceFactory, indexFactory, reqs)
 
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
 @Controller
@@ -163,17 +160,13 @@ class TopicController(
         persistenceFactory: PersistenceServiceFactory<UUID, String>,
         indexFactory: IndexServiceFactory<UUID, String, IndexSearchRequest>,
         pubsub: PubSubTopicExchangeService<UUID, String>,
-        valueCodecs: ValueCodecFactory<String>,
-        reqs: RequestToQueryConverter<UUID, IndexSearchRequest>
+        valueCodecs: ValueLiterals<String>,
+        reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
 ) :
-        TopicServiceController<UUID, String, IndexSearchRequest>(
-                persistenceFactory.topic(),
-                indexFactory.topicIndex(),
+        TopicControllerConfiguration<UUID, String, IndexSearchRequest>(
+                persistenceFactory,
+                indexFactory,
                 pubsub,
-                persistenceFactory.user(),
-                persistenceFactory.membership(),
-                indexFactory.membershipIndex(),
-                valueCodecs::emptyValue,
-                reqs::topicNameToQuery,
-                reqs::membershipIdToQuery
+                valueCodecs,
+                reqs
         )

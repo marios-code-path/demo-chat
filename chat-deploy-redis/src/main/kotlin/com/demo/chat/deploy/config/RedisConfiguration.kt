@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.PubSubTopicExchangeService
@@ -12,13 +12,13 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import java.util.*
 
-class StringUUIDDecoder : Codec<String, UUID> {
+class StringUUIDDecoder : Decoder<String, UUID> {
     override fun decode(record: String): UUID {
         return UUID.fromString(record)
     }
 }
 
-class UUIDStringDecoder : Codec<UUID, String> {
+class UUIDStringDecoder : Decoder<UUID, String> {
     override fun decode(record: UUID): String {
         return record.toString()
     }

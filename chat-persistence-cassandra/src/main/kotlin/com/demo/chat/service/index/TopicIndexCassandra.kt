@@ -1,6 +1,5 @@
 package com.demo.chat.service.index
 
-import com.demo.chat.codec.Codec
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopicName
@@ -9,11 +8,9 @@ import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.TopicIndexService.Companion.ALL
-import com.demo.chat.service.TopicIndexService.Companion.ID
 import com.demo.chat.service.TopicIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.function.Function
 
 // TODO need a more idiomatic way of obtaining ALL
 class TopicIndexCassandra<T>(

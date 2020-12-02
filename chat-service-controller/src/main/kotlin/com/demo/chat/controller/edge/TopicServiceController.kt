@@ -15,6 +15,9 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.function.Supplier
 
+// TODO: Just listen to the membership stream rather than
+// bundling extra data types.
+// TODO: Extract pubsub into interface for wrapping classes
 @JsonTypeName("JoinAlert")
 data class JoinAlert<T, V>(override val key: MessageKey<T>, override val data: V) : Message<T, V> {
     override val record: Boolean

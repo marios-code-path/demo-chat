@@ -1,6 +1,6 @@
 package com.demo.chat.service.impl.memory.messaging
 
-import com.demo.chat.codec.Codec
+import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
@@ -31,9 +31,9 @@ class PubSubTopicExchangeRedisStream<T, E>(
         keyConfig: KeyConfiguration,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
-        private val stringKeyEncoder: Codec<String, out T>,
-        private val keyStringEncoder: Codec<T, String>,
-        private val keyRecordIdCodec: Codec<T, RecordId>
+        private val stringKeyEncoder: Decoder<String, out T>,
+        private val keyStringEncoder: Decoder<T, String>,
+        private val keyRecordIdCodec: Decoder<T, RecordId>
 ) : PubSubTopicExchangeService<T, E> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)

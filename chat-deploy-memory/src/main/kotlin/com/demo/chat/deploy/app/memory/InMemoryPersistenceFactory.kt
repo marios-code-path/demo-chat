@@ -10,15 +10,8 @@ import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import org.springframework.context.annotation.Bean
 
 open class InMemoryPersistenceFactory<T, V>(private val keyService: IKeyService<T>) : PersistenceServiceFactory<T, V> {
-    @Bean
     override fun user() = UserPersistenceInMemory(keyService, User::class.java) { t -> t.key }
-
-    @Bean
     override fun topic() = TopicPersistenceInMemory(keyService, MessageTopic::class.java) { t -> t.key }
-
-    @Bean
     override fun message() = MessagePersistenceInMemory<T, V>(keyService, Message::class.java ) { t -> t.key }
-
-    @Bean
     override fun membership() = MembershipPersistenceInMemory(keyService, TopicMembership::class.java) { t -> Key.funKey(t.key) }
 }

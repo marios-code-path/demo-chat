@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config.initializers
 
-import com.demo.chat.codec.JsonNodeAnyCodec
+import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.serializers.JacksonModules
 import org.springframework.boot.autoconfigure.http.codec.CodecsAutoConfiguration
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -12,7 +12,7 @@ import java.util.function.Supplier
 class CodecsContextInitializer : ApplicationContextInitializer<GenericApplicationContext> {
     override fun initialize(ctx: GenericApplicationContext) {
         ctx.registerBean(JacksonModules::class.java, Supplier {
-            JacksonModules(JsonNodeAnyCodec, JsonNodeAnyCodec)
+            JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
         })
         ctx.registerBean(JacksonAutoConfiguration::class.java, Supplier {
             JacksonAutoConfiguration()
