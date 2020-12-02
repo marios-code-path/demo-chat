@@ -15,6 +15,7 @@
 
     <properties>
         <appImageName>docker.io/library/${env.APP_IMAGE_NAME}:${project.version}</appImageName>
+        <appMainClass>com.demo.chat.deploy.app.memory.App</appMainClass>
     </properties>
 
     <dependencies>
@@ -115,7 +116,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
+                    <mainClass>${appMainClass}</mainClass>
                     <image>
                         <name>${appImageName}</name>
                         <cleanCache>false</cleanCache>

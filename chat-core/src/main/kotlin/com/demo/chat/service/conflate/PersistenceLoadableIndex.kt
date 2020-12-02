@@ -7,7 +7,7 @@ import com.demo.chat.service.PersistenceStore
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class PersistenceBackedIndex<T, E, Q>(
+class PersistenceLoadableIndex<T, E, Q>(
         val persistence: PersistenceStore<T, E>,
         val index: IndexService<T, E, Q>,
 ) : IndexService<T, E, Q>, LoadableService {

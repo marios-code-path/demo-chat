@@ -115,6 +115,9 @@ class App {
     }
 }
 
+//TODO: I want to expose controllers as groups of controllers.
+//TODO: Skeptic in me says @configuration and @conditionalonproperty dont even matter.
+//TODO: declare an 'onRegistered' callback on controller components.
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
 class IndexControllers : IndexControllersConfiguration()

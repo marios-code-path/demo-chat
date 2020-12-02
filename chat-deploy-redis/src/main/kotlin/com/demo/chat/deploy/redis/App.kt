@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 
-@Profile("redis-events")
 class App {
     @Bean
     fun topicMessagingRedis(props: RedisTemplateConfiguration): PubSubTopicExchangeService<*, *> =
@@ -24,7 +23,6 @@ class App {
             RedisTemplateConfiguration(factory, mapper)
 
 
-    @Profile("redis-cluster")
     @ConstructorBinding
     @ConfigurationProperties("redis-topics")
     data class ConfigurationPropertiesRedisTopics(override val host: String = "127.0.0.1",

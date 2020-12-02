@@ -16,13 +16,13 @@ app:
           prefix: key.
       edge:
         message:
-          dest: edge-service-rsocket
+          dest: core-service-rsocket
           prefix: message.
         topic:
-          dest: edge-service-rsocket
+          dest: core-service-rsocket
           prefix: topic.
         user:
-          dest: edge-service-rsocket
+          dest: core-service-rsocket
           prefix: user.
 spring:
   cloud:

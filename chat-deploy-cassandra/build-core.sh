@@ -16,6 +16,10 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.core.persistence -Dapp.service.edge.topic \
 -Dapp.service.edge.user -Dapp.service.edge.messaging \
 -Dapp.primary=core -Dspring.cloud.consul.host=${CONSUL_HOST} \
+-Dspring.data.cassandra.keyspace-name=chat \
+-Dspring.data.cassandra.contact-points=localhost \
+-Dspring.data.cassandra.port=9042 \
+-Dspring.data.cassandra.local-datacenter=datacenter1 \
 -Dspring.cloud.consul.port=${CONSUL_PORT} "
 
 mvn spring-boot:build-image
