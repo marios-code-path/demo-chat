@@ -1,6 +1,5 @@
 package com.demo.chat.test.repository
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUser
 import com.demo.chat.domain.cassandra.ChatUserHandle
@@ -15,10 +14,9 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.core.io.Resource
 import org.springframework.data.repository.reactive.ReactiveSortingRepository
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -26,6 +24,7 @@ import java.time.Duration
 import java.time.Instant
 import java.util.*
 import java.util.function.Supplier
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 
 @Disabled
 abstract class RepositoryTests<T, E>(val valueSupply: Supplier<E>,

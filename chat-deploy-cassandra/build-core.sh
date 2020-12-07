@@ -1,11 +1,12 @@
-source ./deploy-ports.sh
+source ../chat-deloy/deploy-ports.sh
+source ./cassandra-options.sh
 export DOCKER_RUN=$1;shift
 # how to auto-discover consul using dns alone!
 export CONSUL_HOST=172.17.0.2
 export CONSUL_PORT=8500
-export SPRING_PROFILE="default"
+export SPRING_PROFILE="cassandra-astra"
 export APP_PRIMARY="core"
-export APP_IMAGE_NAME="core-services-monolith"
+export APP_IMAGE_NAME="core-service-cassandra"
 export APP_VERSION=0.0.1
 
 # makes no use of cloud configuration or config-maps
@@ -16,11 +17,8 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.core.persistence -Dapp.service.edge.topic \
 -Dapp.service.edge.user -Dapp.service.edge.messaging \
 -Dapp.primary=core -Dspring.cloud.consul.host=${CONSUL_HOST} \
--Dspring.data.cassandra.keyspace-name=chat \
--Dspring.data.cassandra.contact-points=localhost \
--Dspring.data.cassandra.port=9042 \
--Dspring.data.cassandra.local-datacenter=datacenter1 \
--Dspring.cloud.consul.port=${CONSUL_PORT} "
+-Dspring.cloud.consul.port=${CONSUL_PORT} \
+${CASSANDRA_OPTIONS}"
 
 mvn spring-boot:build-image
 

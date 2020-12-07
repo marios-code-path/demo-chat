@@ -1,6 +1,6 @@
 package com.demo.chat.test.repository
 
-import com.datastax.driver.core.utils.UUIDs
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.cassandra.*
 import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository

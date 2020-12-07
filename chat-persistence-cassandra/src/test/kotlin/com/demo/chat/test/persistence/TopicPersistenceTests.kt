@@ -1,6 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.datastax.driver.core.utils.UUIDs
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.*
 import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicName

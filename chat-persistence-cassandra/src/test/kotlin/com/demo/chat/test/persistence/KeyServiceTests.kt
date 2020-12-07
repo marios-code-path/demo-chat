@@ -1,6 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.datastax.driver.core.utils.UUIDs
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra

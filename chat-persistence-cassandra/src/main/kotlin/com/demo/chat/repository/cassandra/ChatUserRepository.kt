@@ -1,6 +1,5 @@
 package com.demo.chat.repository.cassandra
 
-import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.demo.chat.domain.DuplicateUserException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User

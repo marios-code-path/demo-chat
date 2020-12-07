@@ -14,19 +14,19 @@ open class CassandraPersistenceServiceConfiguration<T>(
         private val userRepo: ChatUserRepository<T>,
         private val topicRepo: TopicRepository<T>,
         private val messageRepo: ChatMessageRepository<T>,
-        private val membershipRepo: TopicMembershipRepository<T>)
+        private val membershipRepo: TopicMembershipRepository<T>,
+)
     : PersistenceServiceFactory<T, String> {
 
-    @Bean
     override fun user(): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)
-    @Bean
+
     override fun topic(): TopicPersistence<T> =
             TopicPersistenceCassandra(keyService, topicRepo)
-    @Bean
+
     override fun message(): MessagePersistence<T, String> =
             MessagePersistenceCassandra(keyService, messageRepo)
-    @Bean
+
     override fun membership(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 }

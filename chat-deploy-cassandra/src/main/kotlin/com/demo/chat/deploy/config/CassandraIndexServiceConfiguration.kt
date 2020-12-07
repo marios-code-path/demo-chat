@@ -22,19 +22,15 @@ open class CassandraIndexServiceConfiguration<T>(
         private val byTopicRepo: ChatMessageByTopicRepository<T>,
         private val stringToKeyCodec: Function<String, T>,
 ) : IndexServiceFactory<T, String, Map<String, String>> {
-    @Bean
     override fun userIndex() =
             UserIndexCassandra(userHandleRepo, cassandra)
 
-    @Bean
     override fun topicIndex() =
             TopicIndexCassandra(roomRepo, nameRepo)
 
-    @Bean
     override fun membershipIndex() =
             MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)
 
-    @Bean
     override fun messageIndex() =
             MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
 }

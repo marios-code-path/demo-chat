@@ -1,6 +1,5 @@
 package com.demo.chat.test.index
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.cassandra.TopicMembershipByMember
 import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
@@ -21,6 +20,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -1,6 +1,6 @@
 package com.demo.chat.test.repository
 
-import com.datastax.driver.core.utils.UUIDs
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.cassandra.TopicMembershipByKey
 import com.demo.chat.domain.cassandra.TopicMembershipByMember
@@ -9,7 +9,6 @@ import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestClusterConfiguration
 import com.demo.chat.test.CassandraTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -28,8 +27,9 @@ import kotlin.streams.toList
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
-class TopicMembershipRepositoryTests : CassandraSchemaTest(){
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
+        classes = [CassandraTestConfiguration::class])
+class TopicMembershipRepositoryTests : CassandraSchemaTest() {
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>
 
@@ -128,7 +128,7 @@ class TopicMembershipRepositoryTests : CassandraSchemaTest(){
     }
 
     // TODO Fix this testing bug (cassandraUnit based)
-    //@Test
+    @Test
     fun `should save, find by memberId`() {
         val keyId = UUIDs.timeBased()
         val membership = TopicMembershipByMember(

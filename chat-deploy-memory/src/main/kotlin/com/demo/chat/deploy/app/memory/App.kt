@@ -23,7 +23,9 @@ import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -112,6 +114,11 @@ class App {
                     override fun emptyValue() = ""
                     override fun fromString(t: String) = t
                 }
+    }
+    @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
+    @Bean
+    fun commandRunner() : ApplicationRunner = ApplicationRunner {
+        println("THE Persistence/Controllers was present")
     }
 }
 
