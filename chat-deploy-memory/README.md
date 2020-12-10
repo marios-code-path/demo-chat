@@ -1,4 +1,4 @@
-# Up and Running
+# Up and Running (In Memory)
 
 We have several modules to deploy. Each module specifies one microservice.
 Arguments and Environment commands will be sent with deployment artifacts.
@@ -89,9 +89,9 @@ $ #./launcher
 
 Now we have a bit more control over how our JVM gets executed, lets focus on another important topic in the cloud: Discovery.
 
-# Service Mesh is The Cloud
+# Service Mesh In The Cloud
 
-Here we will learn how and where service-discovery configurations propagate from code to container runtime.
+Service-discovery configurations propagate from code to container runtime.
 If you're just starting and are learning to approach service-mesh development, this is a critical component
 with a heap (pun intended) of academic and business theory churn happening pretty much until we develop 
 "completely reliable" computing infrastructure.

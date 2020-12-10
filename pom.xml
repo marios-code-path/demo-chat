@@ -28,7 +28,7 @@
 
         <jackson.version>2.9.7</jackson.version>
         <io-reactor.version>3.3.0.RELEASE</io-reactor.version>
-        <cassandra-driver.version>4.8.0</cassandra-driver.version>
+        <cassandra-driver.version>4.9.0</cassandra-driver.version>
         <lognet.version>2.1.4</lognet.version>
     </properties>
 

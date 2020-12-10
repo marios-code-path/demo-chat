@@ -85,7 +85,6 @@ class TestClient {
                 .blockLast()
     }
 
-
     @ConditionalOnProperty(prefix = "test", name = ["message"])
     @Bean
     fun messageRun(svc: MessagePersistenceClient<UUID, String>): ApplicationRunner = ApplicationRunner {
