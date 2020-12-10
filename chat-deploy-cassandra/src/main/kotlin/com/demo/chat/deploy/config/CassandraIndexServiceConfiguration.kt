@@ -1,12 +1,11 @@
 package com.demo.chat.deploy.config
 
-import com.demo.chat.deploy.config.core.IndexServiceFactory
+import com.demo.chat.deploy.config.core.IndexServiceConfiguration
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.index.MessageIndexCassandra
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.service.index.UserIndexCassandra
-import org.springframework.context.annotation.Bean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.function.Function
 
@@ -21,7 +20,7 @@ open class CassandraIndexServiceConfiguration<T>(
         private val byUserRepo: ChatMessageByUserRepository<T>,
         private val byTopicRepo: ChatMessageByTopicRepository<T>,
         private val stringToKeyCodec: Function<String, T>,
-) : IndexServiceFactory<T, String, Map<String, String>> {
+) : IndexServiceConfiguration<T, String, Map<String, String>> {
     override fun userIndex() =
             UserIndexCassandra(userHandleRepo, cassandra)
 

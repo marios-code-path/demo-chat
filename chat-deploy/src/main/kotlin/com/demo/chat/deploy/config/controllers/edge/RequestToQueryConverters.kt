@@ -7,18 +7,15 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.UserIndexService
-import org.springframework.context.annotation.Bean
-import java.util.*
-import java.util.function.Function
 
-interface RequestToQueryConverter<T, Q> {
+interface RequestToQueryConverters<T, Q> {
     fun topicNameToQuery(req: ByNameRequest): Q
     fun topicIdToQuery(req: ByIdRequest<T>): Q
     fun userHandleToQuery(req: ByHandleRequest): Q
     fun membershipIdToQuery(req: ByIdRequest<T>): Q
 }
 
-class IndexSearchRequestConverters<T> : RequestToQueryConverter<T, IndexSearchRequest> {
+class IndexSearchRequestConverters<T> : RequestToQueryConverters<T, IndexSearchRequest> {
     override fun topicNameToQuery(req: ByNameRequest) =
             IndexSearchRequest(TopicIndexService.NAME, req.name, 100)
 

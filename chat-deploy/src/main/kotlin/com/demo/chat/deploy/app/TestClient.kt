@@ -6,7 +6,7 @@ import com.demo.chat.client.rsocket.core.MessagePersistenceClient
 import com.demo.chat.client.rsocket.core.UserPersistenceClient
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.client.CoreServiceClients
 import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
@@ -33,7 +33,7 @@ import java.util.*
         JacksonConfiguration::class,
         RSocketStrategiesAutoConfiguration::class,
         ConsulRequesterFactory::class,
-        CoreServiceClientFactory::class,
+        CoreServiceClients::class,
         EdgeServiceClientFactory::class,
 )
 // TODO: This should also embody integration tests
@@ -46,7 +46,7 @@ class TestClient {
     }
 
     @Configuration
-    class ClientsConfiguration(f: CoreServiceClientFactory) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(f)
+    class ClientsConfiguration(f: CoreServiceClients) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(f)
 
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 

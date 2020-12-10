@@ -6,7 +6,7 @@ import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.service.*
 
-interface PersistenceServiceFactory<T, V> {
+interface PersistenceServiceConfiguration<T, V> {
     fun user(): PersistenceStore<T, User<T>>
     fun topic(): PersistenceStore<T, MessageTopic<T>>
     fun message(): PersistenceStore<T, Message<T, V>>

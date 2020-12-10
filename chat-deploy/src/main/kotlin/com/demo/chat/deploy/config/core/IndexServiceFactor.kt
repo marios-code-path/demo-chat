@@ -6,7 +6,7 @@ import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.service.*
 
-interface IndexServiceFactory<T, V, Q> {
+interface IndexServiceConfiguration<T, V, Q> {
     fun userIndex(): IndexService<T, User<T>, Q>
     fun messageIndex(): IndexService<T, Message<T, V>, Q>
     fun topicIndex(): IndexService<T, MessageTopic<T>, Q>

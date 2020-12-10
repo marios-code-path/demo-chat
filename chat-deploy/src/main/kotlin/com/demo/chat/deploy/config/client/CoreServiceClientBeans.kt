@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 
-open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClientFactory) {
+open class CoreServiceClientBeans<T, V, Q>(private val clients: CoreServiceClients) {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name=["pubsub"])
     @Bean
     open fun pubsubClient() : PubSubTopicExchangeService<T, V> = clients.pubsubClient(ParameterizedTypeReference.forType(UUID::class.java))

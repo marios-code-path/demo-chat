@@ -2,7 +2,7 @@ package com.demo.chat.deploy.app.memory
 
 import com.demo.chat.deploy.config.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClientFactory
+import com.demo.chat.deploy.config.client.CoreServiceClients
 import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
@@ -10,9 +10,9 @@ import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PubSubControllerConfiguration
 import com.demo.chat.deploy.config.controllers.edge.*
-import com.demo.chat.deploy.config.core.IndexServiceFactory
-import com.demo.chat.deploy.config.core.KeyServiceFactory
-import com.demo.chat.deploy.config.core.PersistenceServiceFactory
+import com.demo.chat.deploy.config.core.IndexServiceConfiguration
+import com.demo.chat.deploy.config.core.KeyServiceConfiguration
+import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
 import com.demo.chat.deploy.config.core.ValueLiterals
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
@@ -43,7 +43,7 @@ import java.util.*
         RSocketRequesterAutoConfiguration::class,
         JacksonConfiguration::class,
         ConsulRequesterFactory::class,
-        CoreServiceClientFactory::class,
+        CoreServiceClients::class,
         EdgeServiceClientFactory::class,
 )
 class App {
@@ -57,11 +57,11 @@ class App {
     @Configuration
     class ResourceConfiguration {
         @Configuration
-        class AppRSocketClientConfiguration(clients: CoreServiceClientFactory)
+        class AppRSocketClientConfiguration(clients: CoreServiceClients)
             : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
 
         @Configuration
-        class MemoryKeyServiceFactory : KeyServiceFactory<UUID> {
+        class MemoryKeyServiceFactory : KeyServiceConfiguration<UUID> {
             override fun keyService() = KeyServiceInMemory { UUID.randomUUID() }
         }
 
@@ -69,11 +69,11 @@ class App {
         fun memoryPubSub(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
 
         @Configuration
-        class PersistenceServicesFactory(keyFactory: KeyServiceFactory<UUID>)
-            : InMemoryPersistenceFactory<UUID, String>(keyFactory.keyService())
+        class PersistenceConfiguration(keyFactory: KeyServiceConfiguration<UUID>)
+            : InMemoryPersistenceConfiguration<UUID, String>(keyFactory.keyService())
 
         @Configuration
-        class IndexServicesFactory : InMemoryIndexFactory<UUID, String>(
+        class IndexConfiguration : InMemoryIndexConfiguration<UUID, String>(
                 StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
                 IndexEntryEncoder { t ->
                     listOf(
@@ -106,7 +106,7 @@ class App {
     @Configuration
     class FunctionConfiguration {
         @Bean
-        fun requestToIndexSearchRequest(): RequestToQueryConverter<UUID, IndexSearchRequest> = IndexSearchRequestConverters()
+        fun requestToIndexSearchRequest(): RequestToQueryConverters<UUID, IndexSearchRequest> = IndexSearchRequestConverters()
 
         @Bean
         fun stringCodecFactory(): ValueLiterals<String> =
@@ -145,37 +145,37 @@ class PubSubControllers : PubSubControllerConfiguration()
 @Controller
 @MessageMapping("edge.message")
 class ExchangeController(
-        indexFactory: IndexServiceFactory<UUID, String, IndexSearchRequest>,
-        persistenceFactory: PersistenceServiceFactory<UUID, String>,
+        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
+        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
         pubsub: PubSubTopicExchangeService<UUID, String>,
-        reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
+        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
 ) :
         ExchangeControllerConfig<UUID, String, IndexSearchRequest>(
-                indexFactory,
-                persistenceFactory, pubsub, reqs)
+                indexConfig,
+                persistenceConfig, pubsub, reqs)
 
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
 @Controller
 @MessageMapping("edge.user")
 class UserController(
-        persistenceFactory: PersistenceServiceFactory<UUID, String>,
-        indexFactory: IndexServiceFactory<UUID, String, IndexSearchRequest>,
-        reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
-) : UserControllerConfiguration<UUID, String, IndexSearchRequest>(persistenceFactory, indexFactory, reqs)
+        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
+        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
+        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
+) : UserControllerConfiguration<UUID, String, IndexSearchRequest>(persistenceConfig, indexConfig, reqs)
 
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
 @Controller
 @MessageMapping("edge.topic")
 class TopicController(
-        persistenceFactory: PersistenceServiceFactory<UUID, String>,
-        indexFactory: IndexServiceFactory<UUID, String, IndexSearchRequest>,
+        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
+        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
         pubsub: PubSubTopicExchangeService<UUID, String>,
         valueCodecs: ValueLiterals<String>,
-        reqs: RequestToQueryConverter<UUID, IndexSearchRequest>,
+        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
 ) :
         TopicControllerConfiguration<UUID, String, IndexSearchRequest>(
-                persistenceFactory,
-                indexFactory,
+                persistenceConfig,
+                indexConfig,
                 pubsub,
                 valueCodecs,
                 reqs

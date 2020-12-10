@@ -16,7 +16,7 @@ import org.springframework.core.ParameterizedTypeReference
 
 data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
 
-class CoreServiceClientFactory(
+class CoreServiceClients(
         private val requesterFactory: RequesterFactory,
         val configProps: AppConfigurationProperties,
 ) {

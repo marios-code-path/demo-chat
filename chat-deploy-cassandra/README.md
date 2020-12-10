@@ -52,17 +52,16 @@ Showing Maven dependencies for Cassandra Persistence:
     </depenencies>
 </project>
 ```
+
 # Configuring Cassandra with Spring
 
-## CassandraProperties
-
-Take a quick peek at the [Cassandra Properties]() to indicate our server connection.
+Take a quick peek at the [Cassandra Properties](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/cassandra/CassandraProperties.html) to indicate our server connection.
 Note that contact points are the 'gateway' into your cassandra cluster and are not 
 the ONLY server on the cluster that are connected - but it is the first.
 
-In this application, we have simple application properties, and I even choose to send network related ones
-during execution sequences with application arguments. Alternatively, we can consume cassandra connection details
-from Consul or ConfigMaps, but that is a topic of later discourse.
+In this application, we have simple application properties, and I even choose to send network-related args
+during execution sequence. Alternatively, we can consume cassandra connection details from Consul or ConfigMaps, but 
+that is a topic of later discourse.
 
 Showing default cassandra properties:
 ```properties
@@ -76,7 +75,7 @@ spring.data.cassandra.base-packages=com.demo.chat.repository.cassandra
 
 ## Using Datastax Astra Secure Connect Bundle
 
-You can skip this section if the following is not applicable.
+You can skip this section if you're not using Astra.
 
 In this application, using a local datacenter for cassandra is nuts - it takes a lot to manage
 and deploy. In that case I use DataStax's Cassandra-as-a-service [Astra](https://www.datastax.com/products/datastax-astra) as
@@ -114,19 +113,55 @@ class AstraConfiguration(
 }
 ```
 
-OK, so first things first - declare your [AbstractCassandraConfiguration]() then override a few key methods.
+OK, so first things first - declare your [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) then override a few key methods.
 The method that lets us declare our secure bundle is 'getSessionBuilderConfigurer'. This gives us
-a way to alter the existing [SessionBuilder]() and provide it additional cluster discovery details
+a way to alter the existing [SessionBuilder](https://docs.datastax.com/en/drivers/java/4.0/com/datastax/oss/driver/api/core/session/SessionBuilder.html) and provide it additional cluster discovery details
 for accessing the secure-connect-bundle and providing the username and password to connect to the cluster.
 
-Next, we need to define a bean that customizes [DriverConfigLoader]() to not use any 'contact-points' since
+Next, we need to define a bean that customizes [DriverConfigLoader](https://docs.datastax.com/en/drivers/java/4.0/com/datastax/oss/driver/api/core/config/DriverConfigLoader.html) to not use any 'contact-points' since
 the secure-connect-bundle will get activated. Otherwise, the driver has no idea which to use, or at worst
 (as in the 4.6 driver series) the application won't work at all.
 
-## Where config properties can get loaded
+# Running DSE local via Docker
 
-Discuss: ConfigMap, Consul key-service in Spring Cloud
+So you want to run cassandra locally but not compile and execute it by hand, eh?  Good thing you're using 
+all the marbles in that amazing brain of yous.  Here are a few tips on getting the DSE (DataStax Enterprise) 
+edition of Cassandra up and running in just a few minutes:
 
+## Configure the DSE instance
+
+First, you must do something about overriding some defaults that will give us 
+better flexibility when making changes to the datasets and roles.
+
+Likely, you'll want to add users and do some basic administrivia. We can allow this by telling DSE 
+to enable it's internal authentication scheme:
+
+Check out the [datastax/docker-images](https://github.com/datastax/docker-images) repository for easy access to
+default configuration templates.
+
+```shell script
+~$ cd workspace ; git clone https://github.com/datastax/docker-images.git dse-docker-images
+```
+ 
+Create a directory to mount the volume. I used workspace:
+
+```shell script
+~$ mkdir workspace/dse-volume
+```
+
+Now, to modify `dse.yaml`. The instructions are reproducible, but check out the docs for up-to-date mentions.
+For that, just follow the instructions in the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secEnableDseAuthenticator.html).
+
+At this point, you should have made any customizations to DSE operation.
+
+## Deploy DSE 
+
+```shell script
+$ docker run -p 9042:9042 -e DS_LICENSE=accept --memory 1g --name my-dse -v PATH_TO_CONFIG:/config -d datastax/dse-server:6.8.6
+```
+
+At this point we can now follow the instructions over at the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secCreateRootAccount.html) 
+for creating superuser /otheruser accounts. This demo uses a 'chatroot' super-user account similar ( just for conformity to the Astra configuration)
 
 # Next Objectives
 
@@ -142,14 +177,12 @@ Strategy for Persistence, Key, and Index ( if we choose Index )
 
 [Datastax 4.9 Driver](https://docs.datastax.com/en/developer/java-driver/4.9/manual/mapper/)
 
+[DSE Configuration Templates](https://github.com/datastax/docker-images/tree/master/config-templates)
+
+[This DataStax Blog!](https://www.datastax.com/blog/docker-tutorial)
+
 [Bellsoft Liberica Buildpack for JVM](https://github.com/paketo-buildpacks/bellsoft-liberica)
 
 [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables)
 
 [OCI Image Spec](https://github.com/opencontainers/image-spec/blob/master/config.md)
-
-[Maven Git-Commit-id plugin](https://github.com/git-commit-id/git-commit-id-maven-plugin)
-
-[Spring - Service Registration and Discovery](https://spring.io/guides/gs/service-registration-and-discovery/)
-
-[GraalVM Spring-Boot](https://github.com/spring-projects-experimental/spring-graalvm-native)
