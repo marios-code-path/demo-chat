@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.config.core
 
 import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.serializers.JacksonModules
@@ -11,7 +11,6 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-@Configuration
 class SerializationConfiguration : JacksonConfiguration()
 
 open class JacksonConfiguration {

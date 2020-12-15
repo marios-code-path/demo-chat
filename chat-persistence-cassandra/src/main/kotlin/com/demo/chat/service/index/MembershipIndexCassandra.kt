@@ -56,7 +56,6 @@ class MembershipIndexCassandra<T>(
                 MEMBER -> byMemberRepo.findByMember(stringToKey.apply(query[queryBy] ?: error("missing Member")))
                 MEMBEROF -> byMemberOfRepo.findByMemberOf(stringToKey.apply(query[queryBy] ?: error("missing memberOf")))
                 else -> Flux.empty()
-
             }
                     .map {
                         Key.funKey(it.key)

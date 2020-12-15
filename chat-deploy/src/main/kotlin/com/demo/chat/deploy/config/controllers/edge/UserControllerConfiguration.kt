@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.config.controllers.edge
 
 import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.deploy.config.codec.RequestToQueryConverters
 import com.demo.chat.deploy.config.core.IndexServiceConfiguration
 import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
 

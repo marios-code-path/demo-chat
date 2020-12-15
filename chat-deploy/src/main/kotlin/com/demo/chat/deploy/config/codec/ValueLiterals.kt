@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.core
+package com.demo.chat.deploy.config.codec
 
 interface ValueLiterals<V> {
     fun emptyValue(): V

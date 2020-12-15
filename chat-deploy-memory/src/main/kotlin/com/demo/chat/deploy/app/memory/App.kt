@@ -1,10 +1,12 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.deploy.config.JacksonConfiguration
-import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClients
-import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
+import com.demo.chat.deploy.config.core.JacksonConfiguration
+import com.demo.chat.deploy.config.client.CoreClientConfiguration
+import com.demo.chat.deploy.config.client.CoreClients
+import com.demo.chat.deploy.config.client.EdgeClients
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
+import com.demo.chat.deploy.config.codec.IndexSearchRequestConverters
+import com.demo.chat.deploy.config.codec.RequestToQueryConverters
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
@@ -13,7 +15,7 @@ import com.demo.chat.deploy.config.controllers.edge.*
 import com.demo.chat.deploy.config.core.IndexServiceConfiguration
 import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
-import com.demo.chat.deploy.config.core.ValueLiterals
+import com.demo.chat.deploy.config.codec.ValueLiterals
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -43,8 +45,8 @@ import java.util.*
         RSocketRequesterAutoConfiguration::class,
         JacksonConfiguration::class,
         ConsulRequesterFactory::class,
-        CoreServiceClients::class,
-        EdgeServiceClientFactory::class,
+        CoreClients::class,
+        EdgeClients::class,
 )
 class App {
     companion object {
@@ -57,8 +59,8 @@ class App {
     @Configuration
     class ResourceConfiguration {
         @Configuration
-        class AppRSocketClientConfiguration(clients: CoreServiceClients)
-            : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(clients)
+        class AppRSocketClientConfiguration(clients: CoreClients)
+            : CoreClientConfiguration<UUID, String, IndexSearchRequest>(clients)
 
         @Configuration
         class MemoryKeyServiceFactory : KeyServiceConfiguration<UUID> {

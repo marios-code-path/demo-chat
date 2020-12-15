@@ -1,16 +1,66 @@
 # Up and Running (With Cassandra)
 
-This module performs Key, Persistence and maybe Index operations backed by Apache Cassandra.
+This module performs Key, Persistence and Index operations backed by Apache Cassandra.
+We'll explain how to start a Cassandra Instance with [DataStax Enterprise](https://www.datastax.com/products/datastax-enterprise), and how to 
+connect to both an [Astra](https://astra.datastax.com/register) Instance in the Cloud or your `DSE` instance locally.
 
-# Spring-Boot and Maven deps
+# Running DataStax Enterprise in Docker
 
-We are including the [service-persistence-cassandra](http://www.google.com) module which holds transitive dependencies on
-[datastax-oss](https://docs.datastax.com/en/developer/java-driver/4.9/manual/mapper/) drivers as well as [spring-data-cassandra]().
+So you want to run cassandra locally but not compile and execute it by hand, eh?  Good thing you're using 
+all the marbles in that amazing brain of yous.  Here are a few tips on getting the DSE (DataStax Enterprise) 
+edition of Cassandra up and running in just a few minutes:
 
-Specific to spring-data-cassandra deps is the 'cassandra-driver.version' property which we will
-set to a newer version of datastax 4.x series drivers. I'm using '4.9' since it's the latest
-as of this writing. Switching versions may cause instability or break the app - be careful
-which version you choose!
+## Configuration Overrides for the DSE Instance
+
+First, you must do something about overriding some defaults that will give us 
+better flexibility when making changes to the datasets and roles.
+
+Likely, you'll want to add users and do some basic administrivia. We can allow this by overriding 
+settings on `dse.yaml` thus telling DSE to enable authorization/euthentaction/RBAC
+
+Check out the [datastax/docker-images](https://github.com/datastax/docker-images) repository for easy access to
+default configuration templates.
+
+```shell script
+~$ cd workspace ; git clone https://github.com/datastax/docker-images.git dse-docker-images
+```
+
+The simplest way to perform configuration alteration is to use a [Docker Mount](https://docs.docker.com/storage/bind-mounts/) that the `dse` container 
+will look for when pushing configuration updates. In this case, DSE looks for overrides in `/config`.
+
+Create a local (host-machine) directory to mount the volume.
+
+```shell script
+~$ mkdir workspace/dse-volume
+```
+
+Modify a vanilla `dse.yaml`. The instructions are reproducible, but check out the docs for up-to-date mentions.
+Please follow the instructions in the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secEnableDseAuthenticator.html).
+
+At this point, you should have made any customizations to DSE configuration and placed them in your mount directory.
+
+## Deploy DSE 
+
+```shell script
+$ docker run -p 9042:9042 -e DS_LICENSE=accept --memory 1g --name my-dse -v PATH_TO_CONFIG:/config -d datastax/dse-server:6.8.6
+```
+
+At this point we can now follow the instructions over at the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secCreateRootAccount.html) 
+for creating superuser /otheruser accounts. This demo uses a 'chatroot' super-user account similar ( just for conformity to the Astra configuration)
+
+# App Dependencies (POM.xml)
+
+Lets move on to the Apoplication at hand now. We are including the [service-persistence-cassandra](https://github.com/marios-code-path/demo-chat/tree/master/chat-persistence-cassandra)
+module which holds transitive dependencies on [datastax-oss](https://docs.datastax.com/en/developer/java-driver/4.9/manual/mapper/) drivers as well as [spring-data-cassandra](https://spring.io/projects/spring-data-cassandra).
+
+Specific to spring-data-cassandra deps is the `cassandra-driver.version` property which we will
+set to a newer version of datastax 4.x series drivers. It is mentioned also because `spring-data-cassandra` uses this property 
+to find it's own driver version.
+
+I'm using `4.9` since it's the latest as of this writing. Switching versions may cause instability or break the app,
+
+  NOTE: version `4.6` causes an error when using secure-connect in this configuration. 
+
 
 Showing Maven dependencies for Cassandra Persistence:
 
@@ -53,15 +103,17 @@ Showing Maven dependencies for Cassandra Persistence:
 </project>
 ```
 
-# Configuring Cassandra with Spring
+# Connecting Cassandra with Spring
 
 Take a quick peek at the [Cassandra Properties](https://docs.spring.io/spring-boot/docs/current/api/org/springframework/boot/autoconfigure/cassandra/CassandraProperties.html) to indicate our server connection.
 Note that contact points are the 'gateway' into your cassandra cluster and are not 
 the ONLY server on the cluster that are connected - but it is the first.
 
-In this application, we have simple application properties, and I even choose to send network-related args
-during execution sequence. Alternatively, we can consume cassandra connection details from Consul or ConfigMaps, but 
-that is a topic of later discourse.
+In this application, we have simple application properties that can also be sent in as application arguments - a good
+strategy when assigning network IPs and passwords at run-time.
+
+  Alternatively, we can consume cassandra connection details from Consul or ConfigMaps, but 
+  that is a topic of later discourse.
 
 Showing default cassandra properties:
 ```properties
@@ -70,8 +122,36 @@ spring.data.cassandra.request.consistency=one
 spring.data.cassandra.request.serial-consistency=any
 spring.data.cassandra.keyspace-name=chat
 spring.data.cassandra.base-packages=com.demo.chat.repository.cassandra
-#spring.data.cassandra.contact-points=some-host
+spring.data.cassandra.contact-points=some-host-ip
 ```
+
+## Username Passwords and Contact Points
+ 
+There is an [issue](https://github.com/spring-projects/spring-boot/issues/21487) in Boot 2.3.0, which prevents `cassandra-properties` configured
+instances not to pass in the username and password per usual.
+
+To fix this, we can simply configure `SessionBuilder` with [SessionBuilderConfigurer](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/SessionBuilderConfigurer.html) and tell it the details it's going
+to need to connect to the contact point.
+                                        
+```kotlin
+class ContactPointConfiguration(
+        val props: CassandraProperties,
+) : AbstractCassandraConfiguration() {
+    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
+            SessionBuilderConfigurer { sessionBuilder ->
+                sessionBuilder 
+                        .withAuthCredentials(props.username, props.password)
+                        .withLocalDatacenter(props.localDatacenter)
+            }
+
+    override fun getKeyspaceName(): String {
+        return props.keyspaceName
+    }
+}
+```
+
+Doing this will allow our application to work per usual - just send in cassandra properties through application.* or 
+as [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/1.1.4.RELEASE/reference/html/build-tool-plugins-maven-plugin.html) command line arguments (e.g. `--spring.data.cassandra.request.serial-consistency=any`).
 
 ## Using Datastax Astra Secure Connect Bundle
 
@@ -80,14 +160,14 @@ You can skip this section if you're not using Astra.
 In this application, using a local datacenter for cassandra is nuts - it takes a lot to manage
 and deploy. In that case I use DataStax's Cassandra-as-a-service [Astra](https://www.datastax.com/products/datastax-astra) as
 it offers a great wealth of flexibility and scales - we won't get to discuss here. One thing
-to note is that connection is slightly ( ok a lot) different from a known contact-point. So let's
+to note is that its driver connection setup is slightly different from a known contact-point. So let's
 take a look.
 
-Download secure-connect.zip archive and store it in a known location that is readable
+Download your secure-connect.zip archive and store it in a known location that is readable
 by the process running the app. Next, lets take a look at code configuration to enable 
 our datastax driver to consume this bundle:
 
-Not all configurations get created equal:
+This Block of Code Configures our app for secure-connect-bundle:
 
 ```kotlin
 class AstraConfiguration(
@@ -114,7 +194,7 @@ class AstraConfiguration(
 ```
 
 OK, so first things first - declare your [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) then override a few key methods.
-The method that lets us declare our secure bundle is 'getSessionBuilderConfigurer'. This gives us
+The method that lets us declare our secure bundle is `getSessionBuilderConfigurer`. This gives us
 a way to alter the existing [SessionBuilder](https://docs.datastax.com/en/drivers/java/4.0/com/datastax/oss/driver/api/core/session/SessionBuilder.html) and provide it additional cluster discovery details
 for accessing the secure-connect-bundle and providing the username and password to connect to the cluster.
 
@@ -122,46 +202,11 @@ Next, we need to define a bean that customizes [DriverConfigLoader](https://docs
 the secure-connect-bundle will get activated. Otherwise, the driver has no idea which to use, or at worst
 (as in the 4.6 driver series) the application won't work at all.
 
-# Running DSE local via Docker
+# Launch the App
 
-So you want to run cassandra locally but not compile and execute it by hand, eh?  Good thing you're using 
-all the marbles in that amazing brain of yous.  Here are a few tips on getting the DSE (DataStax Enterprise) 
-edition of Cassandra up and running in just a few minutes:
+This part is simple. just find a script and execute it.
 
-## Configure the DSE instance
-
-First, you must do something about overriding some defaults that will give us 
-better flexibility when making changes to the datasets and roles.
-
-Likely, you'll want to add users and do some basic administrivia. We can allow this by telling DSE 
-to enable it's internal authentication scheme:
-
-Check out the [datastax/docker-images](https://github.com/datastax/docker-images) repository for easy access to
-default configuration templates.
-
-```shell script
-~$ cd workspace ; git clone https://github.com/datastax/docker-images.git dse-docker-images
-```
- 
-Create a directory to mount the volume. I used workspace:
-
-```shell script
-~$ mkdir workspace/dse-volume
-```
-
-Now, to modify `dse.yaml`. The instructions are reproducible, but check out the docs for up-to-date mentions.
-For that, just follow the instructions in the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secEnableDseAuthenticator.html).
-
-At this point, you should have made any customizations to DSE operation.
-
-## Deploy DSE 
-
-```shell script
-$ docker run -p 9042:9042 -e DS_LICENSE=accept --memory 1g --name my-dse -v PATH_TO_CONFIG:/config -d datastax/dse-server:6.8.6
-```
-
-At this point we can now follow the instructions over at the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secCreateRootAccount.html) 
-for creating superuser /otheruser accounts. This demo uses a 'chatroot' super-user account similar ( just for conformity to the Astra configuration)
+Thanks for reading.
 
 # Next Objectives
 

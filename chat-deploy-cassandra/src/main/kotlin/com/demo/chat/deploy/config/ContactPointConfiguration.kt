@@ -3,7 +3,6 @@ package com.demo.chat.deploy.config
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.data.cassandra.config.AbstractCassandraConfiguration
 import org.springframework.data.cassandra.config.SessionBuilderConfigurer
-import java.nio.file.Paths
 
 
 class ContactPointConfiguration(

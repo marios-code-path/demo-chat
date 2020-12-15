@@ -9,7 +9,7 @@ import com.demo.chat.service.edge.ChatMessageService
 import com.demo.chat.service.edge.ChatTopicService
 import com.demo.chat.service.edge.ChatUserService
 
-class EdgeServiceClientFactory(
+class EdgeClients(
         private val requesterFactory: RequesterFactory,
         val configProps: AppConfigurationProperties,
 ) {

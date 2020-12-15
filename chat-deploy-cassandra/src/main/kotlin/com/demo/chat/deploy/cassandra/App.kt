@@ -2,12 +2,13 @@ package com.demo.chat.deploy.cassandra
 
 import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.deploy.config.*
-import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClients
+import com.demo.chat.deploy.config.client.CoreClientConfiguration
+import com.demo.chat.deploy.config.client.CoreClients
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
+import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.repository.cassandra.*
@@ -26,7 +27,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 import java.util.*
 
 @Configuration
-class AppRSocketClientConfiguration(clients: CoreServiceClients) : CoreServiceClientBeans<UUID, String, Map<String, String>>(clients)
+class AppRSocketClientConfiguration(clients: CoreClients) : CoreClientConfiguration<UUID, String, Map<String, String>>(clients)
 
 @EnableConfigurationProperties(AppConfigurationProperties::class)
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
@@ -34,7 +35,7 @@ class AppRSocketClientConfiguration(clients: CoreServiceClients) : CoreServiceCl
 @Import(RSocketRequesterAutoConfiguration::class,
         JacksonConfiguration::class,
         ConsulRequesterFactory::class,
-        CoreServiceClients::class)
+        CoreClients::class)
 class App {
     companion object {
         @JvmStatic

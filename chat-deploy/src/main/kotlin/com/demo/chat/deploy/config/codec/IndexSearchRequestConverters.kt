@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config.controllers.edge
+package com.demo.chat.deploy.config.codec
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
@@ -8,19 +8,12 @@ import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.UserIndexService
 
-interface RequestToQueryConverters<T, Q> {
-    fun topicNameToQuery(req: ByNameRequest): Q
-    fun topicIdToQuery(req: ByIdRequest<T>): Q
-    fun userHandleToQuery(req: ByHandleRequest): Q
-    fun membershipIdToQuery(req: ByIdRequest<T>): Q
-}
-
 class IndexSearchRequestConverters<T> : RequestToQueryConverters<T, IndexSearchRequest> {
     override fun topicNameToQuery(req: ByNameRequest) =
             IndexSearchRequest(TopicIndexService.NAME, req.name, 100)
 
     override fun topicIdToQuery(req: ByIdRequest<T>) =
-             IndexSearchRequest(TopicIndexService.ID, req.id.toString(), 100)
+            IndexSearchRequest(TopicIndexService.ID, req.id.toString(), 100)
 
     override fun userHandleToQuery(req: ByHandleRequest) =
             IndexSearchRequest(UserIndexService.HANDLE, req.handle, 100)

@@ -4,10 +4,10 @@ import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.client.rsocket.core.MessagePersistenceClient
 import com.demo.chat.client.rsocket.core.UserPersistenceClient
-import com.demo.chat.deploy.config.JacksonConfiguration
-import com.demo.chat.deploy.config.client.CoreServiceClientBeans
-import com.demo.chat.deploy.config.client.CoreServiceClients
-import com.demo.chat.deploy.config.client.EdgeServiceClientFactory
+import com.demo.chat.deploy.config.core.JacksonConfiguration
+import com.demo.chat.deploy.config.client.CoreClientConfiguration
+import com.demo.chat.deploy.config.client.CoreClients
+import com.demo.chat.deploy.config.client.EdgeClients
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
@@ -33,8 +33,8 @@ import java.util.*
         JacksonConfiguration::class,
         RSocketStrategiesAutoConfiguration::class,
         ConsulRequesterFactory::class,
-        CoreServiceClients::class,
-        EdgeServiceClientFactory::class,
+        CoreClients::class,
+        EdgeClients::class,
 )
 // TODO: This should also embody integration tests
 class TestClient {
@@ -46,7 +46,7 @@ class TestClient {
     }
 
     @Configuration
-    class ClientsConfiguration(f: CoreServiceClients) : CoreServiceClientBeans<UUID, String, IndexSearchRequest>(f)
+    class ClientsConfiguration(f: CoreClients) : CoreClientConfiguration<UUID, String, IndexSearchRequest>(f)
 
     val logger = LoggerFactory.getLogger(this::class.java.canonicalName)
 
@@ -68,7 +68,7 @@ class TestClient {
 
     @Bean
     @ConditionalOnProperty(prefix = "test", name = ["edge"])
-    fun edgeRun(factory: EdgeServiceClientFactory): ApplicationRunner = ApplicationRunner { appArgs ->
+    fun edgeRun(factory: EdgeClients): ApplicationRunner = ApplicationRunner { appArgs ->
         val client = factory.userClient<UUID>()
 
                 client

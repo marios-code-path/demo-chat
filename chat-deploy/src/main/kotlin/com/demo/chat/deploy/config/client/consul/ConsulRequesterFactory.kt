@@ -40,6 +40,9 @@ class ConsulRequesterFactory(private val builder: RSocketRequester.Builder,
                 .blockFirst()!!
     }
 
+    /**
+     * TODO: Index these properties to eliminate static decision tree.
+     */
     private fun serviceDestination(serviceKey: String) = when (serviceKey) {
         "key" -> coreProps.key.dest
         "index" -> coreProps.index.dest
