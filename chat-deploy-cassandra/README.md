@@ -202,15 +202,23 @@ Next, we need to define a bean that customizes [DriverConfigLoader](https://docs
 the secure-connect-bundle will get activated. Otherwise, the driver has no idea which to use, or at worst
 (as in the 4.6 driver series) the application won't work at all.
 
+## Distributing the Secure Connect Bundle
+
+WEll, we could either build the image WITH the secure-connect bundle (not recommended) or provide way to fetch
+it remotely. I feel the later choice will work better because we also have an option for configuring
+authentication against the remote resource.
+
+Lets build an nginx server, deploy it and wire in the address to our application for consumption.
+
+### OPTION: Serve it with NGINX
+
+In this section we will build an NGINX image that includes the secure-connect-bundle for remote distribution.
+
+ 
 # Launch the App
 
-This part is simple. just find a script and execute it.
-
-Thanks for reading.
-
-# Next Objectives
-
-Strategy for Persistence, Key, and Index ( if we choose Index )
+This part is simple. just find a script and execute it. Soon, I will add a section for deploying to
+K8s environment (probably just a deploy.yaml).  Until then...
 
 ## Links!
 
@@ -227,6 +235,8 @@ Strategy for Persistence, Key, and Index ( if we choose Index )
 [This DataStax Blog!](https://www.datastax.com/blog/docker-tutorial)
 
 [Bellsoft Liberica Buildpack for JVM](https://github.com/paketo-buildpacks/bellsoft-liberica)
+
+[Paketo Buildpack Bindings](https://paketo.io/docs/buildpacks/configuration/#bindings)
 
 [Environment BuildPack](https://github.com/paketo-buildpacks/environment-variables)
 

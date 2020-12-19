@@ -1,16 +1,16 @@
 package com.demo.chat.test.persistence
 
-import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopic
+import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicNameKey
-import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
-import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.*
@@ -22,6 +22,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
@@ -37,7 +38,7 @@ class TopicPersistenceTests {
     @MockBean
     lateinit var roomRepo: TopicRepository<UUID>
 
-    private val keyService: IKeyService<UUID> = TestKeyService
+    private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
     private val rid: UUID = UUID.randomUUID()
 

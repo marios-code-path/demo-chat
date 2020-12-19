@@ -1,5 +1,6 @@
 package com.demo.chat.service.impl.memory.messaging
 
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.PubSubTopicExchangeService

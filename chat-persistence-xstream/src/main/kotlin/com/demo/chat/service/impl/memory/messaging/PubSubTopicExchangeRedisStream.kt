@@ -32,8 +32,7 @@ class PubSubTopicExchangeRedisStream<T, E>(
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
         private val stringKeyEncoder: Decoder<String, out T>,
-        private val keyStringEncoder: Decoder<T, String>,
-        private val keyRecordIdCodec: Decoder<T, RecordId>
+        private val keyStringEncoder: Decoder<T, String>
 ) : PubSubTopicExchangeService<T, E> {
 
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -163,8 +162,10 @@ class PubSubTopicExchangeRedisStream<T, E>(
             * <li>3    Name-based T
             * <li>4    Randomly generated T
          */
-        val recordId = keyRecordIdCodec.decode(message.key.id)
-
+        val recordId = RecordId.autoGenerate()
+println("Message Issue to: " + (prefixTopicStream + message.key.dest.toString()) )
+println("Message has recordId: [$recordId]")
+println("Message Body: ${message.data}")
         return Mono.from(topicExistsOrError(message.key.dest))
                 .thenMany(messageTemplate
                         .opsForStream<String, Message<T, E>>()

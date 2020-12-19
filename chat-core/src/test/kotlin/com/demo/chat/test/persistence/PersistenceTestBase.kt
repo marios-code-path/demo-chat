@@ -10,7 +10,8 @@ import java.util.function.Supplier
 @Disabled
 open class PersistenceTestBase<K, V>(
         val valCodec: Supplier<V>,
-        val store: PersistenceStore<K, V>) {
+        val store: PersistenceStore<K, V>,
+) {
 
     @Test
     fun `key gen`() {

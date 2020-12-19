@@ -9,13 +9,13 @@ import com.demo.chat.test.*
 
 
 class PersistenceUserTests : PersistenceTestBase<String, User<String>>
-(TestUserSupplier, UserPersistenceInMemory(TestKeyService(), User::class.java) { t -> t.key })
+(TestUserSupplier, UserPersistenceInMemory(TestStringKeyService(), User::class.java) { t -> t.key })
 
 class PersistenceMessageTests : PersistenceTestBase<String, Message<String, String>>
-(TestMessageSupplier, MessagePersistenceInMemory(TestKeyService(), Message::class.java) { t -> t.key })
+(TestMessageSupplier, MessagePersistenceInMemory(TestStringKeyService(), Message::class.java) { t -> t.key })
 
 class PersistenceTopicTests : PersistenceTestBase<String, MessageTopic<String>>
-(TestMessageTopicSupplier, TopicPersistenceInMemory(TestKeyService(), MessageTopic::class.java) { t -> t.key })
+(TestMessageTopicSupplier, TopicPersistenceInMemory(TestStringKeyService(), MessageTopic::class.java) { t -> t.key })
 
 class PersistenceMembershipTests : PersistenceTestBase<String, TopicMembership<String>>
-(TestTopicMembershipSupplier, MembershipPersistenceInMemory(TestKeyService(), TopicMembership::class.java) { t -> Key.funKey(t.key) })
+(TestTopicMembershipSupplier, MembershipPersistenceInMemory(TestStringKeyService(), TopicMembership::class.java) { t -> Key.funKey(t.key) })

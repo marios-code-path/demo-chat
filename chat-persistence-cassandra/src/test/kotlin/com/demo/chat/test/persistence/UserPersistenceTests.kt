@@ -6,7 +6,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
-import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.TestStringKeyService
+import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -31,7 +32,7 @@ class UserPersistenceTests {
     @MockBean
     lateinit var userRepo: ChatUserRepository<UUID>
 
-    private val keyService: IKeyService<UUID> = TestKeyService
+    private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
     val uid: UUID = UUID.randomUUID()
 

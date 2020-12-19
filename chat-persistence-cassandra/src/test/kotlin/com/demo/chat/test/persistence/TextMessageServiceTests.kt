@@ -10,7 +10,7 @@ import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.MessagePersistenceCassandra
-import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.anyObject
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -48,7 +48,7 @@ class TextMessageServiceTests {
     @MockBean
     lateinit var msgByTopicRepo: ChatMessageByTopicRepository<UUID>
 
-    private val keyService: IKeyService<UUID> = TestKeyService
+    private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
     private val rid: UUID = UUID.randomUUID()
 

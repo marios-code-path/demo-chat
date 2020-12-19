@@ -7,7 +7,8 @@ import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
-import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.TestStringKeyService
+import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -31,7 +32,7 @@ class MembershipPersistenceTests {
     @MockBean
     lateinit var repo: TopicMembershipRepository<UUID>
 
-    private val keyService: IKeyService<UUID> = TestKeyService
+    private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
     private val keyId = UUIDs.timeBased()
     private val memberId = UUIDs.timeBased()

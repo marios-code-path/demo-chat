@@ -1,14 +1,14 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
-import com.demo.chat.test.TestKeyService
+import com.demo.chat.test.TestStringKeyService
 import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks
 import java.util.function.Supplier
 
-class MemoryMessagingServiceTest : MessagingServiceTestBase<String, String>(
+class MemoryPubSubTests : PubSubTests<String, String>(
         MemoryPubSubTopicExchange(),
-        TestKeyService(),
+        TestStringKeyService(),
         Supplier { "TEST" }) {
 
     @BeforeEach
