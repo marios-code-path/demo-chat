@@ -9,7 +9,7 @@ import com.demo.chat.service.*
 open class ExchangeControllerConfig<T, V, Q>(
         indexFactory: IndexServiceConfiguration<T, V, Q>,
         persistenceFactory: PersistenceServiceConfiguration<T, V>,
-        pubsub: PubSubTopicExchangeService<T, V>,
+        pubsub: PubSubService<T, V>,
         reqs: RequestToQueryConverters<T, Q>,
 ) :
         MessagingController<T, V, Q>(

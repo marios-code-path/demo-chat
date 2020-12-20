@@ -3,9 +3,9 @@ package com.demo.chat.deploy.config
 import com.demo.chat.codec.Decoder
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.PubSubMessagingServiceRedisPubSub
+import com.demo.chat.service.impl.memory.messaging.PubSubServiceRedis
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
@@ -32,8 +32,8 @@ open class ConnectionConfigurationRedis(private val props: ConfigurationProperti
 }
 
 class TopicMessagingConfigurationRedis(private val config: RedisTemplateConfiguration) {
-    fun topicMessagingRedisPubSub(): PubSubTopicExchangeService<*, *> =
-            PubSubMessagingServiceRedisPubSub(
+    fun topicMessagingRedisPubSub(): PubSubService<*, *> =
+            PubSubServiceRedis(
                     KeyConfigurationPubSub("all_topics",
                             "st_topic_",
                             "l_user_topics_",

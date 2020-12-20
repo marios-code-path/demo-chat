@@ -10,7 +10,8 @@ import java.time.Duration
 import java.util.function.Supplier
 
 @Disabled
-abstract class IndexTestBase<T, E, Q>(
+abstract class IndexTests<T, E, Q>(
+        val myIndex: IndexService<T, E, Q>,
         val valueSupply: Supplier<E>,
         val keySupply: Supplier<Key<T>>,
         val querySupply: Supplier<Q>

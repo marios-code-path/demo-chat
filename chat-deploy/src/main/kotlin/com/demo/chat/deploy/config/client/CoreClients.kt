@@ -10,7 +10,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import org.slf4j.LoggerFactory
 import org.springframework.core.ParameterizedTypeReference
 
@@ -26,7 +26,7 @@ class CoreClients(
 
     fun <T> keyClient(): IKeyService<T> = KeyClient("${coreProps.key.prefix}", requesterFactory.requester("key"))
 
-    fun <T, V> pubsubClient(t: ParameterizedTypeReference<T>): PubSubTopicExchangeService<T, V> = PubSubClient<T, V>("${coreProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), t)
+    fun <T, V> pubsubClient(t: ParameterizedTypeReference<T>): PubSubService<T, V> = PubSubClient<T, V>("${coreProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), t)
 
     fun <T> userPersistenceClient(): PersistenceStore<T, User<T>> = UserPersistenceClient("${coreProps.persistence.prefix}user.", requesterFactory.requester("persistence"))
 

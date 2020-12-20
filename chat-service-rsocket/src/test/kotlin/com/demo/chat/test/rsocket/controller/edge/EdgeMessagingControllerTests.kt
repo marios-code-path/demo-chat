@@ -5,7 +5,7 @@ import com.demo.chat.ChatMessage
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -17,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -37,7 +36,7 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
     @Autowired
-    private lateinit var topicMessaging: PubSubTopicExchangeService<UUID, String>
+    private lateinit var topicMessaging: PubSubService<UUID, String>
 
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
@@ -117,13 +116,13 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
         fun msgPersist(t: MessagePersistence<UUID, String>): MessagePersistence<UUID, String> = t
 
         @Bean
-        fun msging(t: PubSubTopicExchangeService<UUID, String>): PubSubTopicExchangeService<UUID, String> = t
+        fun msging(t: PubSubService<UUID, String>): PubSubService<UUID, String> = t
 
         @Controller
         class TestMessagingController(
                 messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
                 msgPersist: MessagePersistence<UUID, String>,
-                messaging: PubSubTopicExchangeService<UUID, String>,
+                messaging: PubSubService<UUID, String>,
         ) : MessagingController<UUID, String, Map<String, String>>(
                 messageIdx,
                 msgPersist,

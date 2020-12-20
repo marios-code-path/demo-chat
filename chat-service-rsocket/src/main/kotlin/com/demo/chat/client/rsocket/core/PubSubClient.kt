@@ -2,7 +2,7 @@ package com.demo.chat.client.rsocket.core
 
 import com.demo.chat.MemberTopicRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux
@@ -14,7 +14,7 @@ class PubSubClient<T, V>(
         private val prefix: String,
         private val requester: RSocketRequester,
         private val ref: ParameterizedTypeReference<T>,
-) : PubSubTopicExchangeService<T, V> {
+) : PubSubService<T, V> {
 
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> =
             requester.route("${prefix}subscribe")

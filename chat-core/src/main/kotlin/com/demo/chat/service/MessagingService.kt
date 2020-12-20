@@ -50,5 +50,5 @@ interface TopicExchangeService<T> {
     fun getUsersBy(id: T): Flux<T>
 }
 
-interface PubSubTopicExchangeService<T, V>
+interface PubSubService<T, V>
     : PubSubMessagingService<T, V>, TopicExchangeService<T>

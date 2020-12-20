@@ -1,9 +1,9 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.PubSubMessagingServiceRedisPubSub
+import com.demo.chat.service.impl.memory.messaging.PubSubServiceRedis
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.EmbeddedRedisExtension
 import com.demo.chat.test.redis.TestContextConfiguration
@@ -24,14 +24,14 @@ import java.util.function.Supplier
 @Import(TestContextConfiguration::class, PubSubBeanConfiguration::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RedisPubSubMessagingTests(
-        @Autowired pubsub: PubSubTopicExchangeService<UUID, String>,
+        @Autowired pubsub: PubSubService<UUID, String>,
 )
     : PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " })
 
 class PubSubBeanConfiguration {
     @Bean
     fun pubsubTests(configRedisTemplate: RedisTemplateConfiguration) =
-            PubSubMessagingServiceRedisPubSub(
+            PubSubServiceRedis(
                     KeyConfigurationPubSub("t_all_topics",
                             "t_st_topic_",
                             "t_l_user_topics_",

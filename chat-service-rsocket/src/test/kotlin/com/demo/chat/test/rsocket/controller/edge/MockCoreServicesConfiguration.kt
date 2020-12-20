@@ -40,7 +40,7 @@ class MockCoreServicesConfiguration {
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     @MockBean
-    private lateinit var topicService: PubSubTopicExchangeService<UUID, String>
+    private lateinit var topicService: PubSubService<UUID, String>
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

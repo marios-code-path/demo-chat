@@ -1,7 +1,7 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.service.impl.memory.messaging.PubSubTopicExchangeRedisStream
 import com.demo.chat.test.TestUUIDKeyService
@@ -25,7 +25,7 @@ import java.util.function.Supplier
 )
 @Import(TestContextConfiguration::class, XStreamBeanConfiguration::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class XStreamPubSubTests(@Autowired pubsub: PubSubTopicExchangeService<UUID, String>)
+class XStreamPubSubTests(@Autowired pubsub: PubSubService<UUID, String>)
     : PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " }) {
     @BeforeAll
     fun hooks() {

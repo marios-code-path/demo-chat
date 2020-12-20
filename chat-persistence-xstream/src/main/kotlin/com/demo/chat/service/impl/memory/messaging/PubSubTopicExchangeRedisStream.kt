@@ -4,7 +4,7 @@ import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
@@ -33,8 +33,9 @@ class PubSubTopicExchangeRedisStream<T, E>(
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
         private val stringKeyEncoder: Decoder<String, out T>,
         private val keyStringEncoder: Decoder<T, String>
-) : PubSubTopicExchangeService<T, E> {
+) : PubSubService<T, E> {
 
+    private val replayDepth = 50
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
     private val prefixUserToTopicSubs = keyConfig.prefixUserToTopicSubs
     private val prefixTopicToUserSubs = keyConfig.prefixTopicToUserSubs
@@ -163,9 +164,6 @@ class PubSubTopicExchangeRedisStream<T, E>(
             * <li>4    Randomly generated T
          */
         val recordId = RecordId.autoGenerate()
-println("Message Issue to: " + (prefixTopicStream + message.key.dest.toString()) )
-println("Message has recordId: [$recordId]")
-println("Message Body: ${message.data}")
         return Mono.from(topicExistsOrError(message.key.dest))
                 .thenMany(messageTemplate
                         .opsForStream<String, Message<T, E>>()
@@ -183,7 +181,7 @@ println("Message Body: ${message.data}")
     fun sourceOf(topic: T): Flux<out Message<T, E>> =
             topicXReads.getOrPut(topic, {
                 val xread = getXReadFlux(topic)
-                val reProc = ReplayProcessor.create<Message<T, E>>(5)
+                val reProc = ReplayProcessor.create<Message<T, E>>(replayDepth)
                 streamManager.setSource(topic, reProc)
                 streamManager.subscribeUpstream(topic, xread)
 
@@ -230,12 +228,8 @@ println("Message Body: ${message.data}")
                     .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
                     .map {
                         it.value["data"]!!
-                    }.doOnNext {
-                        logger.info("XREAD: ${keyStringEncoder.decode(it.key.dest)}")
                     }.doOnComplete {
                         topicXReads.remove(topic)
                     }
     // TODO Strategy needed to manage consumer groups and synchronous looping of Xreads
-
-
 }

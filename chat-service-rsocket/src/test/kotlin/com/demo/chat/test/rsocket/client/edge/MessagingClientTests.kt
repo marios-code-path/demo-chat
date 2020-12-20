@@ -6,7 +6,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.test.rsocket.controller.edge.EdgeMessagingControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
 import com.demo.chat.test.rsocket.controller.edge.anyObject
@@ -37,7 +37,7 @@ class MessagingClientTests : RSocketTestBase() {
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
     @Autowired
-    private lateinit var topicMessaging: PubSubTopicExchangeService<UUID, String>
+    private lateinit var topicMessaging: PubSubService<UUID, String>
 
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>

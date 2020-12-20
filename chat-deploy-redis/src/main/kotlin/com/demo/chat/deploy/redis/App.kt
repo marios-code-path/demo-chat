@@ -2,19 +2,18 @@ package com.demo.chat.deploy.redis
 
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.deploy.config.TopicMessagingConfigurationRedis
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Profile
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 
 class App {
     @Bean
-    fun topicMessagingRedis(props: RedisTemplateConfiguration): PubSubTopicExchangeService<*, *> =
+    fun topicMessagingRedis(props: RedisTemplateConfiguration): PubSubService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()
 
     @Bean

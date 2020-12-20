@@ -7,7 +7,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.edge.ChatMessageService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -19,7 +19,7 @@ import java.util.function.Function
 open class MessagingController<T, V, Q>(
         private val messageIndex: IndexService<T, Message<T, V>, Q>,
         private val messagePersistence: PersistenceStore<T, Message<T, V>>,
-        private val topicMessaging: PubSubTopicExchangeService<T, V>,
+        private val topicMessaging: PubSubService<T, V>,
         private val messageIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatMessageService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)

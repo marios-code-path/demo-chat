@@ -5,12 +5,12 @@ import com.demo.chat.deploy.config.codec.RequestToQueryConverters
 import com.demo.chat.deploy.config.core.IndexServiceConfiguration
 import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
 import com.demo.chat.deploy.config.codec.ValueLiterals
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 
 open class TopicControllerConfiguration<T, V, Q>(
         persistenceFactory: PersistenceServiceConfiguration<T, V>,
         indexFactory: IndexServiceConfiguration<T, V, Q>,
-        pubsub: PubSubTopicExchangeService<T, V>,
+        pubsub: PubSubService<T, V>,
         valueCodecs: ValueLiterals<V>,
         reqs: RequestToQueryConverters<T, Q>,
 ) :

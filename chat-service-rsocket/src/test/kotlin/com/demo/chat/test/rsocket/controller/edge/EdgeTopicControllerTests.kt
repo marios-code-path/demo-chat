@@ -41,7 +41,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicService: PubSubTopicExchangeService<UUID, String>
+    lateinit var topicService: PubSubService<UUID, String>
 
     @Autowired
     lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
@@ -184,7 +184,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
         class TestTopicController(
                 topicP: TopicPersistence<UUID>,
                 topicInd: TopicIndexService<UUID, Map<String, String>>,
-                topicSvc: PubSubTopicExchangeService<UUID, String>,
+                topicSvc: PubSubService<UUID, String>,
                 userP: UserPersistence<UUID>,
                 membershipP: MembershipPersistence<UUID>,
                 membershipInd: MembershipIndexService<UUID, Map<String, String>>,

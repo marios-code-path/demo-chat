@@ -71,8 +71,8 @@ class TestClient {
     fun edgeRun(factory: EdgeClients): ApplicationRunner = ApplicationRunner { appArgs ->
         val client = factory.userClient<UUID>()
 
-                client
-                        .addUser(UserCreateRequest("MG", "1002", "JPG"))
+        client
+                .addUser(UserCreateRequest("MG", "1002", "JPG"))
                 .doOnNext {
                     logger.info("UUID FOUND: $it.id")
                 }
@@ -99,18 +99,14 @@ class TestClient {
                 .block()
     }
 
-
     @ConditionalOnProperty(prefix = "test", name = ["user"])
     @Bean
-    fun userRun(svc: UserPersistenceClient<UUID>): ApplicationRunner {
-        val applicationRunner = ApplicationRunner {
-            svc.key()
-                    .flatMap {
-                        logger.info("NEW USER KEY: ${it.id}")
-                        svc.add(User.create(it, "MARIO", "A_HANDLE", "http://localhost"))
-                    }
-                    .block()
-        }
-        return applicationRunner
+    fun userRun(svc: UserPersistenceClient<UUID>): ApplicationRunner = ApplicationRunner {
+        svc.key()
+                .flatMap {
+                    svc.add(User.create(it, "MARIO", "A_HANDLE", "http://localhost"))
+                }
+                .block()
     }
+
 }

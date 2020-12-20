@@ -2,12 +2,12 @@ package com.demo.chat.controller.core
 
 import com.demo.chat.MemberTopicRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class PubSubServiceController<T, V>(private val that: PubSubTopicExchangeService<T, V>) : PubSubTopicExchangeService<T, V> {
+open class PubSubServiceController<T, V>(private val that: PubSubService<T, V>) : PubSubService<T, V> {
     @MessageMapping("subscribe")
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
 

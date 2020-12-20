@@ -4,7 +4,7 @@ import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
 import com.demo.chat.service.impl.stream.ReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -25,13 +25,13 @@ data class KeyConfigurationPubSub(
 )
 
 @Suppress("DuplicatedCode")
-class PubSubMessagingServiceRedisPubSub<T, E>(
+class PubSubServiceRedis<T, E>(
         keyConfig: KeyConfigurationPubSub,
         private val stringTemplate: ReactiveRedisTemplate<String, String>,
         private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
         private val stringKeyDecoder: Decoder<String, T>,
         private val keyStringEncoder: Decoder<T, String>
-) : PubSubTopicExchangeService<T, E> {
+) : PubSubService<T, E> {
 
     private val replayDepth = 50
     private val logger = LoggerFactory.getLogger(this::class.simpleName)

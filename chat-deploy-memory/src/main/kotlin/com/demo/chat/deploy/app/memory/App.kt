@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreClientConfiguration
 import com.demo.chat.deploy.config.client.CoreClients
@@ -17,10 +18,12 @@ import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
 import com.demo.chat.deploy.config.codec.ValueLiterals
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
+import com.demo.chat.domain.*
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.PubSubTopicExchangeService
+import com.demo.chat.service.PubSubService
+import com.demo.chat.service.conflate.IndexedPersistence
+import com.demo.chat.service.conflate.PubSubbedPersistence
+import com.demo.chat.service.conflate.PublishConfiguration
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
@@ -68,7 +71,7 @@ class App {
         }
 
         @Bean
-        fun memoryPubSub(): PubSubTopicExchangeService<UUID, String> = MemoryPubSubTopicExchange()
+        fun memoryPubSub(): PubSubService<UUID, String> = MemoryPubSubTopicExchange()
 
         @Configuration
         class PersistenceConfiguration(keyFactory: KeyServiceConfiguration<UUID>)
@@ -117,9 +120,10 @@ class App {
                     override fun fromString(t: String) = t
                 }
     }
+
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean
-    fun commandRunner() : ApplicationRunner = ApplicationRunner {
+    fun commandRunner(): ApplicationRunner = ApplicationRunner {
         println("THE Persistence/Controllers was present")
     }
 }
@@ -149,12 +153,34 @@ class PubSubControllers : PubSubControllerConfiguration()
 class ExchangeController(
         indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
         persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
-        pubsub: PubSubTopicExchangeService<UUID, String>,
+        pubsub: PubSubService<UUID, String>,
         reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
 ) :
         ExchangeControllerConfig<UUID, String, IndexSearchRequest>(
                 indexConfig,
                 persistenceConfig, pubsub, reqs)
+
+class MembershipConflation(
+        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
+        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
+        pubsub: PubSubService<UUID, TopicMembership<UUID>>,
+) : PersistenceServiceController<UUID, TopicMembership<UUID>>(
+        PubSubbedPersistence(
+                IndexedPersistence(persistenceConfig.membership(), indexConfig.membershipIndex()),
+                pubsub,
+                PublishConfiguration.create(add = true, rem = true)
+        ) {
+            Message.create(
+                    MessageKey.create(
+                            it.key,
+                            it.member,
+                            it.memberOf
+                    ),
+                    it,
+                    false
+            )
+        }
+)
 
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
 @Controller
@@ -171,7 +197,7 @@ class UserController(
 class TopicController(
         persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
         indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
-        pubsub: PubSubTopicExchangeService<UUID, String>,
+        pubsub: PubSubService<UUID, String>,
         valueCodecs: ValueLiterals<String>,
         reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
 ) :
