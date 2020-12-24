@@ -1,6 +1,9 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.controller.core.IndexServiceController
 import com.demo.chat.controller.core.PersistenceServiceController
+import com.demo.chat.controller.edge.JoinAlert
+import com.demo.chat.controller.edge.LeaveAlert
 import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreClientConfiguration
 import com.demo.chat.deploy.config.client.CoreClients
@@ -21,9 +24,7 @@ import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.*
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.conflate.IndexedPersistence
-import com.demo.chat.service.conflate.PubSubbedPersistence
-import com.demo.chat.service.conflate.PublishConfiguration
+import com.demo.chat.service.conflate.*
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
@@ -71,6 +72,7 @@ class App {
         }
 
         @Bean
+        @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
         fun memoryPubSub(): PubSubService<UUID, String> = MemoryPubSubTopicExchange()
 
         @Configuration
@@ -128,9 +130,6 @@ class App {
     }
 }
 
-//TODO: I want to expose controllers as groups of controllers.
-//TODO: Skeptic in me says @configuration and @conditionalonproperty dont even matter.
-//TODO: declare an 'onRegistered' callback on controller components.
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
 class IndexControllers : IndexControllersConfiguration()
@@ -146,65 +145,3 @@ class KeyControllers : KeyControllersConfiguration()
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
 class PubSubControllers : PubSubControllerConfiguration()
-
-@ConditionalOnProperty(prefix = "app.service.edge", name = ["messaging"])
-@Controller
-@MessageMapping("edge.message")
-class ExchangeController(
-        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
-        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
-        pubsub: PubSubService<UUID, String>,
-        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
-) :
-        ExchangeControllerConfig<UUID, String, IndexSearchRequest>(
-                indexConfig,
-                persistenceConfig, pubsub, reqs)
-
-class MembershipConflation(
-        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
-        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
-        pubsub: PubSubService<UUID, TopicMembership<UUID>>,
-) : PersistenceServiceController<UUID, TopicMembership<UUID>>(
-        PubSubbedPersistence(
-                IndexedPersistence(persistenceConfig.membership(), indexConfig.membershipIndex()),
-                pubsub,
-                PublishConfiguration.create(add = true, rem = true)
-        ) {
-            Message.create(
-                    MessageKey.create(
-                            it.key,
-                            it.member,
-                            it.memberOf
-                    ),
-                    it,
-                    false
-            )
-        }
-)
-
-@ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
-@Controller
-@MessageMapping("edge.user")
-class UserController(
-        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
-        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
-        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
-) : UserControllerConfiguration<UUID, String, IndexSearchRequest>(persistenceConfig, indexConfig, reqs)
-
-@ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
-@Controller
-@MessageMapping("edge.topic")
-class TopicController(
-        persistenceConfig: PersistenceServiceConfiguration<UUID, String>,
-        indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
-        pubsub: PubSubService<UUID, String>,
-        valueCodecs: ValueLiterals<String>,
-        reqs: RequestToQueryConverters<UUID, IndexSearchRequest>,
-) :
-        TopicControllerConfiguration<UUID, String, IndexSearchRequest>(
-                persistenceConfig,
-                indexConfig,
-                pubsub,
-                valueCodecs,
-                reqs
-        )

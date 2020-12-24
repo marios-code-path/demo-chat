@@ -24,3 +24,6 @@ object TestTopicMembershipSupplier : Supplier<TopicMembership<String>> {
     )
 }
 
+object TestAnySupplier : Supplier<Any> {
+    override fun get() = "TEST"
+}

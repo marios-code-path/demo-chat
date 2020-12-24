@@ -1,9 +1,13 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.service.PersistenceStore
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.given
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
@@ -28,6 +32,9 @@ open class PersistenceTestBase<K, V>(
 
     @Test
     fun `gets all empty`() {
+        given(store.all())
+                .willReturn(Flux.empty())
+
         val all = store.all()
 
         StepVerifier
@@ -62,6 +69,8 @@ open class PersistenceTestBase<K, V>(
 
     @Test
     fun `does not exist`() {
+        given(store.get(any()))
+                .willReturn(Mono.empty())
         StepVerifier
                 .create(store.key().flatMap(store::get))
                 .verifyComplete()

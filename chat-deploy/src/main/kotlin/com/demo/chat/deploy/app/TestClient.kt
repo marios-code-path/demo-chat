@@ -108,5 +108,4 @@ class TestClient {
                 }
                 .block()
     }
-
 }

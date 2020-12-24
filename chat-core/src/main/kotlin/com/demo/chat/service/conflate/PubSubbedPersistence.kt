@@ -6,48 +6,42 @@ import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.PubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.function.Function
+import java.util.*
 
-interface PublishConfiguration {
-    fun publishAdd(): Boolean
-    fun publishRem(): Boolean
+interface PublishConfiguration<T, E, V> {
+    fun entityAdd(ent: E): Optional<Message<T, V>>
+    fun entityDel(ent: E): Optional<Message<T, V>>
+
     companion object Factory {
-        fun create(add: Boolean, rem: Boolean): PublishConfiguration  = object : PublishConfiguration {
-            override fun publishAdd(): Boolean = add
-
-            override fun publishRem(): Boolean  = rem
+        fun <T, E, V> create(
+                adder: (E) -> Optional<Message<T, V>>,
+                remy: (E) -> Optional<Message<T, V>>,
+        ): PublishConfiguration<T, E, V> = object : PublishConfiguration<T, E, V> {
+            override fun entityAdd(ent: E) = adder(ent)
+            override fun entityDel(ent: E) = remy(ent)
         }
     }
 }
 
-class PubSubbedPersistence<T, E>(
+class PubSubbedPersistence<T, E, V>(
+        val config: PublishConfiguration<T, E, V>,
         val persistence: PersistenceStore<T, E>,
-        val pubsub: PubSubService<T, E>,
-        val config: PublishConfiguration,
-        val entityToMessage: Function<E, Message<T, E>>,
-) : PersistenceStore<T, E> {
-    override fun key(): Mono<out Key<T>> = persistence.key()
+        val pubsub: PubSubService<T, V>,
+) : PersistenceStore<T, E> by persistence {
+    override fun add(ent: E): Mono<Void> = persistence.add(ent)
+            .flatMap {
+                config.entityAdd(ent)
+                        .map(pubsub::sendMessage)
+                        .orElse(Mono.empty())
+            }
 
-    override fun add(ent: E): Mono<Void> = when (config.publishAdd()) {
-        true -> persistence
-                .add(ent)
-                .flatMap { pubsub.sendMessage(entityToMessage.apply(ent)) }
-        else -> Mono.empty()
-    }
-
-    override fun rem(key: Key<T>): Mono<Void> = when (config.publishRem()) {
-        true -> persistence
-                .get(key)
-                .map(entityToMessage)
-                .flatMap(pubsub::sendMessage)
-                .flatMap {
-                    persistence.rem(key)
-                }
-
-        else -> Mono.empty()
-    }
-
-    override fun get(key: Key<T>): Mono<out E> = persistence.get(key)
-
-    override fun all(): Flux<out E> = persistence.all()
+    override fun rem(key: Key<T>): Mono<Void> =
+            persistence
+                    .get(key)
+                    .flatMapMany {
+                        config.entityDel(it)
+                                .map(pubsub::sendMessage)
+                                .orElse(Mono.empty())
+                    }
+                    .then(persistence.rem(key))
 }

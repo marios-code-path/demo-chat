@@ -10,15 +10,9 @@ import reactor.core.publisher.Mono
 class LoadablePersistedIndex<T, E, Q>(
         val persistence: PersistenceStore<T, E>,
         val index: IndexService<T, E, Q>,
-) : IndexService<T, E, Q>, LoadableService {
+) : IndexService<T, E, Q> by index, LoadableService {
     override fun load() = persistence
                     .all()
                     .flatMap(::add)
                     .then()
-
-    override fun add(entity: E): Mono<Void> = index.add(entity)
-
-    override fun rem(key: Key<T>): Mono<Void> = index.rem(key)
-
-    override fun findBy(query: Q): Flux<out Key<T>> = index.findBy(query)
 }

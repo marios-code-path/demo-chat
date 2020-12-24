@@ -6,7 +6,10 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class PersistenceServiceController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceStore<T, E> {
+open class PersistenceServiceController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceStore<T, E> by that{
+    @MessageMapping("assemble")
+    override fun assemble(ent: E): Mono<E> = that.assemble(ent)
+
     @MessageMapping("key")
     override fun key(): Mono<out Key<T>> = that.key()
 

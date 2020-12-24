@@ -9,8 +9,14 @@ import reactor.core.publisher.Mono
 open class IndexedPersistence<T, E, Q>(
         val persistence: PersistenceStore<T, E>,
         val index: IndexService<T, E, Q>,
-) : PersistenceStore<T, E> {
-    override fun key(): Mono<out Key<T>> = persistence.key()
+) : PersistenceStore<T, E> by persistence {
+    override fun assemble(ent: E): Mono<E> = persistence
+            .assemble(ent)
+            .flatMap { entity ->
+                index
+                        .add(entity)
+                        .map { entity }
+            }
 
     override fun add(ent: E): Mono<Void> = Flux.concat(
             persistence.add(ent),
@@ -21,8 +27,4 @@ open class IndexedPersistence<T, E, Q>(
             persistence.rem(key),
             index.rem(key)
     ).last()
-
-    override fun get(key: Key<T>): Mono<out E> = persistence.get(key)
-
-    override fun all(): Flux<out E> = persistence.all()
 }
