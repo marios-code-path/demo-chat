@@ -16,17 +16,17 @@ import java.util.concurrent.atomic.AtomicLong
 
 class MockKeyServiceResolver : ParameterResolver {
     override fun supportsParameter(param: ParameterContext?, ext: ExtensionContext?): Boolean =
-            with(param?.parameter?.parameterizedType!!, {
+            with(param?.parameter?.parameterizedType!!) {
                 val pt = this as ParameterizedType
 
                 when (pt.rawType) {
                     IKeyService::class.java -> true
                     else -> false
                 }
-            })
+            }
 
     override fun resolveParameter(param: ParameterContext?, ext: ExtensionContext?): Any =
-            with(param?.parameter?.parameterizedType!!, {
+            with(param?.parameter?.parameterizedType!!) {
                 val pt = this as ParameterizedType
                 println(pt.actualTypeArguments[0])
                 when (pt.actualTypeArguments[0]) {
@@ -35,13 +35,13 @@ class MockKeyServiceResolver : ParameterResolver {
                     String::class.java -> testKey<String>()
                     else -> Exception("No Provider for KeyService Parameter")
                 }
-            })
+            }
 
     val counter = AtomicLong(0)
 
     inline fun <reified T : Any> mock(): T = Mockito.mock(T::class.java)!!
 
-    inline fun <reified T> testKey(): IKeyService<T> = mock<IKeyService<T>>()
+    private inline fun <reified T> testKey(): IKeyService<T> = mock<IKeyService<T>>()
             .apply {
                 given(this.exists(any()))
                         .willReturn(Mono.just(true))

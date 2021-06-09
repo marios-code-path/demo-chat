@@ -13,6 +13,7 @@ import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 import java.time.Duration
 
+// TODO Test for resource cleanup!
 @Disabled
 open class StreamManagerTestBase<K, V>(
         val streamMan: ReactiveStreamManager<K, V>,

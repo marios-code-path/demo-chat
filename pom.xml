@@ -35,6 +35,7 @@
     <modules>
         <module>chat-core</module>
         <module>chat-service-controller</module>
+        <module>chat-security</module>
         <module>chat-index-elastic</module>
         <module>chat-index-lucene</module>
         <module>chat-persistence-cassandra</module>
