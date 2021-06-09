@@ -22,6 +22,6 @@ class PersistenceTopicTests : PersistenceTestBase<String, MessageTopic<String>>
 class PersistenceMembershipTests : PersistenceTestBase<String, TopicMembership<String>>
 (TestTopicMembershipSupplier, MembershipPersistenceInMemory(TestStringKeyService(), TopicMembership::class.java) { t -> Key.funKey(t.key) })
 
-@ExtendWith(MockPersistenceResolver::class)
-class MockPersistenceTests(persistence: PersistenceStore<Number, Any>):
-        PersistenceTestBase<Number, Any>(TestAnySupplier, persistence)
+//@ExtendWith(MockPersistenceResolver::class)
+//class MockPersistenceTests(persistence: PersistenceStore<Number, Any>):
+//        PersistenceTestBase<Number, Any>(TestAnySupplier, persistence)

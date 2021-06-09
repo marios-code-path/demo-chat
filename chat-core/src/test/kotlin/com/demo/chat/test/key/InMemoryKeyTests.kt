@@ -8,6 +8,6 @@ import java.util.*
 class InMemoryKeyTests
     : KeyServiceTestBase<Number>(KeyServiceInMemory { Random(1024).nextInt() })
 
-@ExtendWith(MockKeyServiceResolver::class)
-class MockKeyTests(keyService : IKeyService<Number>)
-    : KeyServiceTestBase<Number>(keyService)
+//@ExtendWith(MockKeyServiceResolver::class)
+//class MockKeyTests(keyService : IKeyService<Number>)
+//    : KeyServiceTestBase<Number>(keyService)

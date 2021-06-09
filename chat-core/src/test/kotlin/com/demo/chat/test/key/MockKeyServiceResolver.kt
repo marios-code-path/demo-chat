@@ -44,7 +44,7 @@ class MockKeyServiceResolver : ParameterResolver {
     private inline fun <reified T> testKey(): IKeyService<T> = mock<IKeyService<T>>()
             .apply {
                 given(this.exists(any()))
-                        .willReturn(Mono.just(true))
+                        .willReturn(Mono.just(false))
                 given(this.rem(any()))
                         .willReturn(Mono.empty())
 

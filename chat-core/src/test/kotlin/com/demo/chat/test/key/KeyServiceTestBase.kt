@@ -1,5 +1,6 @@
 package com.demo.chat.test.key
 
+import com.demo.chat.domain.Key
 import com.demo.chat.service.IKeyService
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.anyOrNull
@@ -17,63 +18,46 @@ open class KeyServiceTestBase<T>(private val keyService: IKeyService<T>) {
     @Test
     fun `should create key`() {
         StepVerifier
-                .create(
-                        keyService
-                                .key(Int::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                }
-                .verifyComplete()
+            .create(
+                keyService
+                    .key(Int::class.java)
+            )
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+            }
+            .verifyComplete()
     }
 
     @Test
-    fun `created key should Exist`() {
+    fun `should delete`() {
+        val key = keyService.key(Int::class.java)
+        val deleteStream = Mono
+            .from(key)
+            .flatMap(keyService::rem)
+
+        StepVerifier
+            .create(deleteStream)
+            .verifyComplete()
+    }
+
+    @Test
+    fun `create delete and not Exist`() {
         val keyStream = keyService
-                .key(Int::class.java)
-                .flatMap(keyService::exists)
+            .key(Int::class.java)
+            .flatMap { k ->
+                keyService
+                    .rem(k)
+                    .then(keyService.exists(k))
+            }
 
         StepVerifier
-                .create(keyStream)
-                .assertNext {
-                    assertThat(it).isTrue
-                }
-                .verifyComplete()
+            .create(keyStream)
+            .assertNext {
+                assertThat(it).isFalse()
+            }
+            .verifyComplete()
     }
-
-    @Test
-    fun `should delete a key`() {
-        val key = keyService.key(Int::class.java)
-        val deleteStream = Mono
-                .from(key)
-                .flatMap(keyService::rem)
-
-        StepVerifier
-                .create(deleteStream)
-                .verifyComplete()
-    }
-
-    @Test
-    fun `should delete a key and NOT exist`() {
-        val key = keyService.key(Int::class.java)
-
-        val deleteStream = Mono
-                .from(key)
-                .flatMap {
-                    keyService
-                            .rem(it)
-                            .then(keyService.exists(it))
-                }
-
-        StepVerifier
-                .create(deleteStream)
-                .assertNext {
-                    assertThat(it).isTrue
-                }
-                .verifyComplete()
-    }
-
 }
