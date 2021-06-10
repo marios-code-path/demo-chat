@@ -11,6 +11,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 class ServiceTests {
     private lateinit var testClient: WebTestClient
 
+
     @Test(expected = Exception::class)
     @WithMockUser(username = "chatadmin", roles = ["chat_admin"])
     fun addUser() {

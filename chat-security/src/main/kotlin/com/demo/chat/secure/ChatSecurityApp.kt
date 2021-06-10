@@ -1,4 +1,4 @@
-package com.demo.chat.test
+package com.demo.chat.secure
 
 import org.springframework.boot.runApplication
 
