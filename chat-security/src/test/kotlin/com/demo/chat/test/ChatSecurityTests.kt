@@ -21,6 +21,5 @@ class ServiceTests {
             .exchange()
             .expectStatus()
             .isOk
-
     }
 }

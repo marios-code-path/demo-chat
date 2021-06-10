@@ -6,5 +6,5 @@ interface Role<T>: KeyBearer<T> {
 
 interface RoleBinding<T> : KeyBearer<T> {
     val principal: Key<T>
-    val role: Key<T>
+    val role: Role<T>
 }
