@@ -16,6 +16,8 @@ interface IndexService<T, E, Q> {
 }
 
 /**
+ * TODO: refactor to bootstrapped properties
+ *
  * Defaults, these can be auto-generated, but shouldnt affect
  * I.E. Dont use these interfaces downstream for any other reason
  * than directly implementing them ( this is a demo after all )

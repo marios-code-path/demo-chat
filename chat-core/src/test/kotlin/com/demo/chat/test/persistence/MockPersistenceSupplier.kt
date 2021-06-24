@@ -1,6 +1,5 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.Key
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.test.key.MockKeyServiceSupplier
 import com.nhaarman.mockitokotlin2.any

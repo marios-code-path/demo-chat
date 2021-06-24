@@ -5,18 +5,23 @@ import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.ChatUserDetailsService
 import com.demo.chat.service.AuthorizationMeta
+import com.demo.chat.service.UserIndexService
+import com.demo.chat.test.auth.MockAuthServiceResolver
+import com.demo.chat.test.auth.MockAuthServiceSupplier
 import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.index.MockIndexSupplier
 import com.demo.chat.test.persistence.MockPersistenceResolver
 import com.demo.chat.test.persistence.MockPersistenceSupplier
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
+
+
+@Disabled
 @ExtendWith(
-    SpringExtension::class,
-    MockPersistenceResolver::class,
-    MockIndexResolver::class
+    SpringExtension::class
 )
 class UserDetailsTests {
 
@@ -25,9 +30,9 @@ class UserDetailsTests {
         listOf(AuthorizationMeta(11, 11, "EXEC"))
     )
 
-
     @Test
     fun `should find`() {
+
     }
 
     @Test
@@ -40,7 +45,8 @@ class UserDetailsTests {
         class TestUserDetailService : ChatUserDetailsService<Int, Map<String, String>>(
             MockPersistenceSupplier().get(),
             MockIndexSupplier().get(),
-            
+            MockAuthServiceSupplier().get(),
+            { s -> mapOf(Pair(UserIndexService.HANDLE, s)) }
         )
     }
 }

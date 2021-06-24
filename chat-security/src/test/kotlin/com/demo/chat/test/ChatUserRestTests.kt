@@ -7,6 +7,7 @@ import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.index.MockIndexSupplier
 import com.demo.chat.test.persistence.MockPersistenceResolver
 import com.demo.chat.test.persistence.MockPersistenceSupplier
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -19,6 +20,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import java.util.*
 import java.util.function.Function
 
+@Disabled
 @ExtendWith(
     SpringExtension::class,
     MockPersistenceResolver::class,

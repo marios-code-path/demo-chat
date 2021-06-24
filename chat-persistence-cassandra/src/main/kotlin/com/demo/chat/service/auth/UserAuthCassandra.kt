@@ -12,11 +12,11 @@ import java.util.function.Function
  * using Cassandra components as the backing store
  */
 @Suppress("unused")
-class ChatUserAuthCassandra<T, Q>(
+class UserAuthCassandra<T, Q>(
         private val userIndex: UserIndexService<T, Q>,
         private val passwordStore: PasswordStore<T>,
         private val userHandleToQuery: Function<String, Q>,
-) : ChatAuthService<T> {
+) : AuthService<T> {
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
             userIndex
@@ -41,7 +41,7 @@ class ChatUserAuthCassandra<T, Q>(
             passwordStore.addCredential(ChatCredential(uid, pw))
 
 
-    override fun authorize(uid: T, target: T, action: String): Mono<Void> = Mono.empty()
+    override fun authorize(uid: T, target: T, action: String, exists: Boolean): Mono<Void> = Mono.empty()
 
     override fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T>> = Flux.empty()
 }

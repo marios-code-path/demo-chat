@@ -3,11 +3,13 @@ package com.demo.chat.test
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.controller.edge.UserRestController
 import org.junit.Test
+import org.junit.jupiter.api.Disabled
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.web.reactive.server.WebTestClient
 
-@WebFluxTest(controllers = [UserRestController::class])
+//@WebFluxTest(controllers = [UserRestController::class])
+@Disabled
 class ServiceTests {
     private lateinit var testClient: WebTestClient
 

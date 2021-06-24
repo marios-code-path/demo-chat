@@ -15,8 +15,3 @@ class UUIDKeyStringEncoder : Decoder<UUID, String> {
         return record.toString()
     }
 }
-
-object TestConfigurationPropertiesRedisCluster : ConfigurationPropertiesRedis {
-    override val port: Int = (System.getenv("REDIS_TEST_PORT") ?: "58088").toInt()
-    override val host: String = System.getenv("REDIS_TEST_HOST") ?: "127.0.0.1"
-}
