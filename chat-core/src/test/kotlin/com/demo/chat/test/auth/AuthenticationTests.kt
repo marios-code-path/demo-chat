@@ -7,21 +7,23 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class AuthenticationServiceTests<T>(
-    private val svc: AuthenticationService<T>,
-    private val uidSupply: Supplier<T>
+open class AuthenticationServiceTests<T, E, V>(
+    private val svc: AuthenticationService<T, E, V>,
+    private val uidSupply: Supplier<T>,
+    private val uNameSupply: Supplier<E>,
+    private val pwSupply: Supplier<V>
 ) {
     @Test
     fun `creates authentication`() {
         StepVerifier
-            .create(svc.createAuthentication(uidSupply.get(), ""))
-            .expectComplete()
+            .create(svc.createAuthentication(uidSupply.get(), pwSupply.get()))
+            .verifyComplete()
     }
 
     @Test
     fun `should authenticate`() {
         StepVerifier
-            .create(svc.authenticate("", ""))
-            .expectComplete()
+            .create(svc.authenticate(uNameSupply.get(), pwSupply.get()))
+            .verifyComplete()
     }
 }

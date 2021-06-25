@@ -1,52 +1,43 @@
 package com.demo.chat.test
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
-import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.ChatUserDetailsService
-import com.demo.chat.service.AuthorizationMeta
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.test.auth.MockAuthServiceResolver
-import com.demo.chat.test.auth.MockAuthServiceSupplier
-import com.demo.chat.test.index.MockIndexResolver
-import com.demo.chat.test.index.MockIndexSupplier
-import com.demo.chat.test.persistence.MockPersistenceResolver
-import com.demo.chat.test.persistence.MockPersistenceSupplier
-import org.junit.jupiter.api.Disabled
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import reactor.test.StepVerifier
+import java.util.function.Supplier
 
 
-@Disabled
-@ExtendWith(
-    SpringExtension::class
-)
-class UserDetailsTests {
-
-    val details = ChatUserDetails(
-        User.create(Key.funKey(11), "NAME", "HANDLE", "HTTP://TEST"),
-        listOf(AuthorizationMeta(11, 11, "EXEC"))
-    )
-
+@ExtendWith(SpringExtension::class)
+open class UserDetailsTests<T, E, Q>(
+    private val svc: ChatUserDetailsService<T, E, Q>,
+    private val uNameSupplier: Supplier<String>,
+    private val userSupplier: Supplier<UserDetails>,
+    private val pwSupplier: Supplier<String>
+) {
     @Test
-    fun `should find`() {
-
+    fun `should findByUsername`() {
+        StepVerifier
+            .create(svc.findByUsername(uNameSupplier.get()))
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `should update password`() {
-
-    }
-
-    @TestConfiguration
-    class Configuration {
-        class TestUserDetailService : ChatUserDetailsService<Int, Map<String, String>>(
-            MockPersistenceSupplier().get(),
-            MockIndexSupplier().get(),
-            MockAuthServiceSupplier().get(),
-            { s -> mapOf(Pair(UserIndexService.HANDLE, s)) }
-        )
+        StepVerifier
+            .create(svc.updatePassword(userSupplier.get(), pwSupplier.get()))
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+            }
+            .verifyComplete()
     }
 }

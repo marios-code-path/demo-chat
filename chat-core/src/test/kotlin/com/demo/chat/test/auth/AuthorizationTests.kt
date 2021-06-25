@@ -1,7 +1,6 @@
 package com.demo.chat.test.auth
 
-import com.demo.chat.service.AuthService
-import com.demo.chat.service.AuthorizationMeta
+import com.demo.chat.service.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -9,25 +8,22 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class AuthorizationTests<T>(
-    private val authSvc: AuthService<T>,
-    private val authMetaSupplier: Supplier<AuthorizationMeta<T>>
+open class AuthorizationTests<M, T>(
+    private val authSvc: AuthorizationService<T, M>,
+    private val authMetaSupplier: Supplier<M>,
+    private val uidSupply: Supplier<T>
 ) {
     @Test
-    fun `authorize a user`() {
-        val metadata = authMetaSupplier.get()
-
+    fun `should test method authorize doesnt error`() {
         StepVerifier
-            .create(authSvc.authorize(metadata.uid, metadata.target, metadata.permission, true))
+            .create(authSvc.authorize(authMetaSupplier.get(), true))
             .verifyComplete()
     }
 
     @Test
-    fun `find authorizationMetadata for a key`() {
-        val metadata = authMetaSupplier.get()
-
+    fun `should test method findAuthorizationsFor doesnt error`() {
         StepVerifier
-            .create(authSvc.findAuthorizationsFor(metadata.target))
+            .create(authSvc.findAuthorizationsFor(uidSupply.get()))
             .assertNext { meta ->
                 Assertions
                     .assertThat(meta)

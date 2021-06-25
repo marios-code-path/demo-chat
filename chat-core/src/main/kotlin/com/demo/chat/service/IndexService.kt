@@ -13,6 +13,7 @@ interface IndexService<T, E, Q> {
     fun add(entity: E): Mono<Void>
     fun rem(key: Key<T>): Mono<Void>
     fun findBy(query: Q): Flux<out Key<T>>
+    fun findOneBy(query: Q): Mono<out Key<T>>
 }
 
 /**

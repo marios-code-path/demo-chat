@@ -1,18 +1,19 @@
 package com.demo.chat.secure
 
 import com.demo.chat.domain.User
+import com.demo.chat.service.AuthMetadata
 import com.demo.chat.service.AuthorizationMeta
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import java.util.stream.Collectors
 
-data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<AuthorizationMeta<T>>) : UserDetails {
+data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
     val key = user.key
 
     override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
         roles.stream()
-            .map { rb -> SimpleGrantedAuthority(rb.permission) }
+            .map { rb -> SimpleGrantedAuthority(rb) }
             .collect(Collectors.toList())
 
     override fun getPassword(): String = "" // LOL
@@ -27,4 +28,3 @@ data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<Authoriza
 
     override fun isEnabled(): Boolean = true
 }
-

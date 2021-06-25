@@ -4,14 +4,23 @@ import com.demo.chat.domain.Key
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-data class AuthorizationMeta<T>(val uid: T, val target: T, val permission: String)
+data class AuthorizationMeta<T>(override val uid: T,
+                                override val target: T,
+                                override val permission: String) : AuthMetadata<T, String>
 
-interface AuthenticationService<T> {
-    fun createAuthentication(uid: T, pw: String): Mono<Void>
-    fun authenticate(n: String, pw: String): Mono<out Key<T>>
+interface AuthenticationService<T, E, V> {
+    fun createAuthentication(uid: T, pw: V): Mono<Void>
+    fun authenticate(n: E, pw: V): Mono<out Key<T>>
 }
 
-interface AuthService<T> : AuthenticationService<T> {
-    fun authorize(principal: T, target: T, role: String, exist: Boolean): Mono<Void>
-    fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T>>
+interface AuthorizationService<T, M> {
+    fun authorize(authorization: M, exist: Boolean): Mono<Void>
+    fun findAuthorizationsFor(uid: T): Flux<M>
 }
+interface AuthMetadata<T, P> {
+    val uid: T
+    val target: T
+    val permission: P
+}
+
+interface AuthService<M, T, E, V> : AuthenticationService<T, E, V>, AuthorizationService<T, M>
