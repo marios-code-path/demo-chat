@@ -9,8 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails
 import java.util.stream.Collectors
 
 data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
-    val key = user.key
-
     override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
         roles.stream()
             .map { rb -> SimpleGrantedAuthority(rb) }

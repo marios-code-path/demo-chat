@@ -18,7 +18,7 @@ open class ChatUserDetailsService<T, E, Q>(
     val usernameQuery: (String) -> Q
 ) : ReactiveUserDetailsService, ReactiveUserDetailsPasswordService {
     override fun findByUsername(username: String): Mono<UserDetails> =
-        index.findOneBy(usernameQuery(username))
+        index.findUnique(usernameQuery(username))
             .flatMap(persist::get)
             .flatMap { user ->
                 authZ.findAuthorizationsFor(user.key.id)
@@ -27,7 +27,7 @@ open class ChatUserDetailsService<T, E, Q>(
             }
 
     override fun updatePassword(userDetails: UserDetails, newPassword: String): Mono<UserDetails> =
-        index.findOneBy(usernameQuery(userDetails.username))
+        index.findUnique(usernameQuery(userDetails.username))
             .flatMap(persist::get)
             .flatMap { user ->
                 auth.createAuthentication(user.key.id, newPassword)

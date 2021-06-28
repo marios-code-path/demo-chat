@@ -4,9 +4,11 @@ import com.demo.chat.domain.Key
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-data class AuthorizationMeta<T>(override val uid: T,
-                                override val target: T,
-                                override val permission: String) : AuthMetadata<T, String>
+data class AuthorizationMeta<T>(
+    override val uid: T,
+    override val target: T,
+    override val permission: String
+) : AuthMetadata<T, String>
 
 interface AuthenticationService<T, E, V> {
     fun createAuthentication(uid: T, pw: V): Mono<Void>
@@ -17,6 +19,7 @@ interface AuthorizationService<T, M> {
     fun authorize(authorization: M, exist: Boolean): Mono<Void>
     fun findAuthorizationsFor(uid: T): Flux<M>
 }
+
 interface AuthMetadata<T, P> {
     val uid: T
     val target: T

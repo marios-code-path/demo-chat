@@ -5,11 +5,10 @@ import com.demo.chat.ByNameRequest
 import com.demo.chat.MembershipRequest
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
-import com.demo.chat.service.edge.ChatTopicService
+import com.demo.chat.controller.edge.mapping.ChatTopicServiceMapping
 import com.fasterxml.jackson.annotation.JsonTypeName
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
@@ -40,10 +39,9 @@ open class TopicServiceController<T, V, Q>(
         private val emptyDataCodec: Supplier<V>,
         private val topicNameToQuery: Function<ByNameRequest, Q>,
         private val membershipIdToQuery: Function<ByIdRequest<T>, Q>,
-) : ChatTopicService<T, V> {
+) : ChatTopicServiceMapping<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    @MessageMapping("topic-add")
     override fun addRoom(req: ByNameRequest): Mono<out Key<T>> =
             topicPersistence
                     .key()
@@ -58,7 +56,6 @@ open class TopicServiceController<T, V, Q>(
                                 .map { key }
                     }
 
-    @MessageMapping("topic-rem")
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
             topicPersistence
                     .get(Key.funKey(req.id))
@@ -70,17 +67,14 @@ open class TopicServiceController<T, V, Q>(
                     }
                     .then()
 
-    @MessageMapping("topic-list")
     override fun listRooms(): Flux<out MessageTopic<T>> =
             topicPersistence
                     .all()
 
-    @MessageMapping("topic-by-id")
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>> =
             topicPersistence
                     .get(Key.funKey(req.id))
 
-    @MessageMapping("topic-by-name")
     override fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>> =
             topicIndex
                     .findBy(topicNameToQuery.apply(req))
@@ -89,7 +83,6 @@ open class TopicServiceController<T, V, Q>(
                         topicPersistence.get(it)
                     }
 
-    @MessageMapping("topic-join")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
             topicPersistence
                     .get(Key.funKey(req.roomId))
@@ -109,7 +102,6 @@ open class TopicServiceController<T, V, Q>(
                     )
 
 
-    @MessageMapping("topic-leave")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
             membershipPersistence
                     .get(Key.funKey(req.roomId))
@@ -123,7 +115,6 @@ open class TopicServiceController<T, V, Q>(
 
                     }
 
-    @MessageMapping("topic-members")
     override fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships> =
             membershipIndex.findBy(membershipIdToQuery.apply(req))
                     .collectList()

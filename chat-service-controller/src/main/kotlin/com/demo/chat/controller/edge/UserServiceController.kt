@@ -7,7 +7,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.controller.edge.mapping.ChatUserServiceMapping
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -20,10 +20,9 @@ open class UserServiceController<T, Q>(
         val userPersistence: PersistenceStore<T, User<T>>,
         private val userIndex: IndexService<T, User<T>, Q>,
         private val userHandleToQuery: Function<ByHandleRequest, Q>,
-) : ChatUserService<T> {
+) : ChatUserServiceMapping<T> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    @MessageMapping("user-add")
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =
             userPersistence
                     .key()
@@ -41,12 +40,10 @@ open class UserServiceController<T, Q>(
                                 .then(Mono.just(it))
                     }
 
-    @MessageMapping("user-by-handle")
     override fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = userIndex
             .findBy(userHandleToQuery.apply(req))
             .flatMap(userPersistence::get)
 
-    @MessageMapping("user-by-id")
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = userPersistence
             .get(Key.funKey(req.id))
 
