@@ -7,13 +7,14 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
 import java.time.Duration
+import java.util.function.Function
 import java.util.function.Supplier
 
 @Disabled
 abstract class IndexTests<T, E, Q>(
         val myIndex: IndexService<T, E, Q>,
         val valueSupply: Supplier<E>,
-        val keySupply: Supplier<Key<T>>,
+        val keyExtract: Function<E, Key<T>>,
         val querySupply: Supplier<Q>
 ) {
     abstract fun getIndex(): IndexService<T, E, Q>
@@ -29,14 +30,17 @@ abstract class IndexTests<T, E, Q>(
     fun `should remove one`() {
         StepVerifier
                 .create(
-                        getIndex().rem(keySupply.get()))
+                        getIndex().rem(keyExtract.apply(valueSupply.get())))
                 .verifyComplete()
     }
 
     @Test
     fun `should save and remove and query with no result`() {
-        val cb = getIndex().add(valueSupply.get())
-                .then(getIndex().rem(keySupply.get()))
+        val doc = valueSupply.get()
+        val key = keyExtract.apply(doc)
+
+        val cb = getIndex().add(doc)
+                .then(getIndex().rem(key))
                 .thenMany(getIndex().findBy(querySupply.get()))
 
         StepVerifier
@@ -45,11 +49,32 @@ abstract class IndexTests<T, E, Q>(
     }
 
     @Test
-    fun `should save and fine one`() {
+    fun `should save and find many`() {
+        val bar = getIndex()
+            .add(valueSupply.get())
+            .and(getIndex().add(valueSupply.get()))
+            .thenMany(getIndex().findBy(querySupply.get()))
 
+        StepVerifier
+            .create(bar)
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+            }
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `should save and fine one`() {
         val bar = getIndex()
                 .add(valueSupply.get())
-                .thenMany(getIndex().findBy(querySupply.get()))
+                .thenMany(getIndex().findUnique(querySupply.get()))
 
         StepVerifier
                 .create(bar)

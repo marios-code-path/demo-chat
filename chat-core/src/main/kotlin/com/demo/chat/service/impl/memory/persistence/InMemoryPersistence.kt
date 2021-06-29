@@ -29,7 +29,7 @@ open class InMemoryPersistence<T, E>(
     }
 
     override fun get(key: Key<T>): Mono<out E> = Mono.create {
-        when (map.contains(key.id)) {
+        when (map.containsKey(key.id)) {
             true -> it.success(map[key.id])
             else -> it.success()
         }

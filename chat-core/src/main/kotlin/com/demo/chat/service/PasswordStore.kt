@@ -4,7 +4,7 @@ import com.demo.chat.domain.Key
 import reactor.core.publisher.Mono
 import java.util.*
 
-data class ChatCredential(val password: String)
+data class ChatCredential(val secure: String)
 
 /**
  * This lets me store a credential (password) for any UUID associated with it

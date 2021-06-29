@@ -12,7 +12,7 @@ import java.util.function.Function
  * using Cassandra components as the backing store
  */
 @Suppress("unused")
-class UserAuthCassandra<T, Q>(
+class UserAuthCassandra<T, V, Q>(
         private val userIndex: UserIndexService<T, Q>,
         private val passwordStore: PasswordStore<T>,
         private val userHandleToQuery: Function<String, Q>,

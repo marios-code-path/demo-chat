@@ -20,17 +20,24 @@ import java.util.function.Function
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
 fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
-open class InMemoryIndex<T, E>(
-        private val entityEncoder: Function<E, List<Pair<String, String>>>,
-        private val keyEncoder: Function<String, Key<T>>,
-        private val keyReceiver: Function<E, Key<T>>,
+open class LuceneIndex<T, E>(
+    private val entityEncoder: Function<E, List<Pair<String, String>>>,
+    private val keyEncoder: Function<String, Key<T>>,
+    private val keyReceiver: Function<E, Key<T>>,
 ) : IndexService<T, E, IndexSearchRequest> {
 
     private val analyzer = StandardAnalyzer()
     private val directory = ByteBuffersDirectory()
+    private val writer = IndexWriter(directory, IndexWriterConfig(analyzer))
 
-    override fun add(entity: E): Mono<Void> //Mono.create { sink ->
-    {
+    fun onClose() {
+        writer.use {
+            it.close()
+        }
+    }
+
+    override fun add(entity: E): Mono<Void> = Mono.create { sink ->
+
         val doc = Document().apply {
             entityEncoder.apply(entity).forEach { kv ->
                 add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
@@ -38,42 +45,42 @@ open class InMemoryIndex<T, E>(
             add(Field("key", keyReceiver.apply(entity).id.toString(), TextField.TYPE_STORED))
         }
 
-        IndexWriter(directory, IndexWriterConfig(analyzer)).use {
-            it.addDocument(doc)
-            it.commit()
-            it.close()
-        }
+        writer.addDocument(doc)
+        writer.commit()
 
-        //sink.success()
-        return Mono.empty()
+        sink.success()
     }
 
-    override fun rem(key: Key<T>): Mono<Void> {
+    override fun rem(key: Key<T>): Mono<Void> = Mono.create { sink ->
         val parser = QueryParser("key", analyzer)
         val query = parser.parse("+${key.id.toString()}")
 
-        IndexWriter(directory, IndexWriterConfig(analyzer)).use {
-            it.deleteDocuments(query)
-            it.commit()
-        }
+        writer.deleteDocuments(query)
+        writer.commit()
 
-        return Mono.empty()
+        sink.success()
     }
 
-    override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> {
-        val indexReader: DirectoryReader = directory.use { DirectoryReader.open(it) }
+
+    override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> = Flux.create { sink ->
+        val indexReader: DirectoryReader = DirectoryReader.open(directory)//directory.use { DirectoryReader.open(it) }
         val indexSearcher = IndexSearcher(indexReader)
 
-        val doc = directory.use {
+        val doc =
             indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.third).scoreDocs
-                    .map {
-                        indexSearcher
-                                .doc(it.doc)
-                                .get("key")
-                    }
-                    .map(keyEncoder::apply)
-        }
+                .map {
+                    indexSearcher
+                        .doc(it.doc)
+                        .get("key")
+                }
+                .map(keyEncoder::apply)
 
-        return Flux.fromIterable(doc)
+        doc.forEach { d -> sink.next(d) }
+
+        sink.complete()
     }
+
+    override fun findUnique(query: IndexSearchRequest): Mono<out Key<T>> =
+        findBy(query)
+            .singleOrEmpty()
 }

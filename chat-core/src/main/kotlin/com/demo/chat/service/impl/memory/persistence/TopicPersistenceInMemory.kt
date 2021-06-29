@@ -6,7 +6,6 @@ import com.demo.chat.service.IKeyService
 import java.util.function.Function
 
 class TopicPersistenceInMemory<T>(
-        keyService: IKeyService<T>,
-        classId: Class<*>,
-        keyReceiver: Function<MessageTopic<T>, Key<T>>,
-) : InMemoryPersistence<T, MessageTopic<T>>(keyService, classId, keyReceiver)
+    keyService: IKeyService<T>,
+    keyReceiver: Function<MessageTopic<T>, Key<T>>,
+) : InMemoryPersistence<T, MessageTopic<T>>(keyService, MessageTopic::class.java, keyReceiver)

@@ -20,10 +20,13 @@ interface AuthorizationService<T, M> {
     fun findAuthorizationsFor(uid: T): Flux<M>
 }
 
+interface AppAuthorizationService<T>: AuthorizationService<T, String>
+
 interface AuthMetadata<T, P> {
     val uid: T
     val target: T
     val permission: P
 }
 
-interface AuthService<M, T, E, V> : AuthenticationService<T, E, V>, AuthorizationService<T, M>
+// TODO: NO
+interface AuthService<M, T, E, V> : AuthenticationService<T, E, V>, AuthorizationService<T, AuthMetadata<T, String>>

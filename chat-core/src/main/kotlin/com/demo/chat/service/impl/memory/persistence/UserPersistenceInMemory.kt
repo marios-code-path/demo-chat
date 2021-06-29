@@ -5,9 +5,8 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import java.util.function.Function
 
-class UserPersistenceInMemory<T>(
+open class UserPersistenceInMemory<T>(
         keyService: IKeyService<T>,
-        classId: Class<*>,
         keyReceiver: Function<User<T>, Key<T>>
 )
-    : InMemoryPersistence<T, User<T>>(keyService, classId, keyReceiver)
+    : InMemoryPersistence<T, User<T>>(keyService, User::class.java, keyReceiver)
