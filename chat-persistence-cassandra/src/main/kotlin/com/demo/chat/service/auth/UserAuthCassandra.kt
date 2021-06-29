@@ -20,13 +20,12 @@ class UserAuthCassandra<T, Q>(
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
             userIndex
-                    .findBy(userHandleToQuery.apply(n))//mapOf(Pair(HANDLE, n)))
-                    .last()
+                    .findUnique(userHandleToQuery.apply(n))//mapOf(Pair(HANDLE, n)))
                     .flatMap { key ->
                         passwordStore
                                 .getStoredCredentials(key)
-                                .map {
-                                    if (it.password == pw) key
+                                .map { secure ->
+                                    if ( secure.password == pw) key
                                     else null
                                 }
                     }
