@@ -1,12 +1,11 @@
 package com.demo.chat.secure
 
 import com.demo.chat.domain.User
-import com.demo.chat.service.AuthMetadata
-import com.demo.chat.service.AuthorizationMeta
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import java.util.stream.Collectors
+
 
 data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
     override fun getAuthorities(): MutableCollection<out GrantedAuthority> =

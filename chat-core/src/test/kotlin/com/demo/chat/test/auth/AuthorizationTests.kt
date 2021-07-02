@@ -23,7 +23,7 @@ open class AuthorizationTests<M, T>(
     @Test
     fun `should test method findAuthorizationsFor doesnt error`() {
         StepVerifier
-            .create(authSvc.findAuthorizationsFor(uidSupply.get()))
+            .create(authSvc.getAuthorizationsFor(uidSupply.get()))
             .assertNext { meta ->
                 Assertions
                     .assertThat(meta)

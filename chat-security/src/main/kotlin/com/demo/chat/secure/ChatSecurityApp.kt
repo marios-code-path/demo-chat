@@ -20,8 +20,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.function.Function
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.random.Random
@@ -29,6 +29,8 @@ import kotlin.random.Random
 
 class ChatSecurityApp {
     companion object {
+        const val ANONYMOUS_UID:Long = 0L
+
         @JvmStatic
         fun main(args: Array<String>) {
             runApplication<ChatSecurityApp>(*args)
@@ -41,17 +43,24 @@ class ChatSecurityApp {
         passwdStore: PasswordStore<Long, String>,
         authenticationManager: SampleAuthenticationManager,
         userPersistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, String>
+        authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
 
     ): CommandLineRunner = CommandLineRunner { args ->
-        val user = User.create(Key.funKey(1L), "mario", "mario", "http://foo")
+        val user = User.create(Key.funKey(2L), "mario", "mario", "http://foo")
 
         userPersistence
             .add(user)
             .doFinally { println("Added a user to persistence.") }
             .block()
-        authorizationService
-            .authorize("ROLE_USER", true)
+
+        Flux.just(
+            StringRoleAuthorizationMetadata(ANONYMOUS_UID, 2L, "ROLE_REQUEST"),
+            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE")
+        )
+            .flatMap { meta ->
+                authorizationService.authorize(meta, true)
+            }
+
         index
             .add(user)
             .doFinally { println("Added a user to index.") }
@@ -65,9 +74,11 @@ class ChatSecurityApp {
         val username = readLine()
         println("password: ")
         val password = readLine()
+        println("target: (number 1 - 10)")
+        val targetObject = readLine()
 
         try {
-            val request = UsernamePasswordAuthenticationToken(username, password)
+            val request = UsernamePasswordAuthenticationToken(username, password).apply { details = targetObject!!.toLong() }
             val result = authenticationManager.authenticate(request)
             SecurityContextHolder.getContext().authentication = result
 
@@ -77,12 +88,17 @@ class ChatSecurityApp {
         }
     }
 
+
+    fun doSomethingNeedingAuth() {
+        println("HERE!")
+    }
+
     @Bean
     fun authenticationManager(
         index: IndexService<Long, User<Long>, IndexSearchRequest>,
         pass: PasswordStore<Long, String>,
         persistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, String>
+        authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
     ) =
         SampleAuthenticationManager(authenticationService(index, pass), persistence, authorizationService)
 
@@ -93,7 +109,10 @@ class ChatSecurityApp {
     fun userPersistence(keySvc: IKeyService<Long>) = UserPersistenceInMemory(keySvc) { u -> u.key }
 
     @Bean
-    fun authorizationService() = AuthorizationInMemory<Long, AuthorizationMeta<Long>>(Function { m -> m.uid })
+    fun authorizationService() = AuthorizationInMemory<Long, StringRoleAuthorizationMetadata<Long>>(
+        { m -> m.uid },
+        { m -> m.target },
+        { ANONYMOUS_UID })
 
     @Bean
     fun index(): IndexService<Long, User<Long>, IndexSearchRequest> = LuceneIndex(
@@ -117,30 +136,36 @@ class ChatSecurityApp {
         index,
         passwordStore,
         { input, secure -> input == secure },
-        { user: String ->
-            IndexSearchRequest(UserIndexService.HANDLE, user, 1)
-        })
+        { user: String -> IndexSearchRequest(UserIndexService.HANDLE, user, 1) })
 
     class SampleAuthenticationManager(
         private val authInMemory: AuthenticationService<Long, String, String>,
         private val userPersistence: PersistenceStore<Long, User<Long>>,
-        private val authorizationService: AuthorizationService<Long, String>
+        private val authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
     ) :
         AuthenticationManager {
-        override fun authenticate(auth: Authentication): Authentication {
-            val credential = auth.credentials.toString()
+        override fun authenticate(authen: Authentication): Authentication {
+            val credential = authen.credentials.toString()
+            val targetId: Long = if(authen.details is Long)  authen.details as Long  else 0L
 
             return authInMemory
-                .authenticate(auth.name, credential)
+                .authenticate(authen.name, credential)
                 .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }
                 .flatMap(userPersistence::get)
                 .flatMap { user ->
                     authorizationService
-                        .findAuthorizationsFor(user.key.id)
+                        .getAuthorizationsAgainst(user.key.id, targetId)
+                        .map { authMeta -> authMeta.permission }
                         .collect(Collectors.toList())
                         .map { authorizations ->
                             val userDetails = ChatUserDetails(user, authorizations)
-                            UsernamePasswordAuthenticationToken(auth.name, auth.credentials, userDetails.authorities)
+                            UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                authen.credentials,
+                                userDetails.authorities
+                            ).apply {
+                                details = authen.details
+                            }
                         }
                 }
                 .switchIfEmpty(Mono.error(BadCredentialsException("Invalid Credentials")))

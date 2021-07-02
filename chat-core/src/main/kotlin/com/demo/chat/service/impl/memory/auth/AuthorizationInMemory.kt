@@ -5,16 +5,19 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
+import java.util.function.Supplier
 
 class AuthorizationInMemory<T, M>(
-    private val authForUser: Function<M, T>
+    private val idForUser: Function<M, T>,
+    private val idForTarget: Function<M, T>,
+    private val anonUid: Supplier<T>
 ) : AuthorizationService<T, M> {
     private val authorizations = ConcurrentHashMap<T, ArrayList<M>>()
 
     override fun authorize(authorization: M, exist: Boolean): Mono<Void> = Mono.create { sink ->
-        val uid = authForUser.apply(authorization)
+        val uid = idForUser.apply(authorization)
 
-        if (authorizations.contains(uid)) {
+        if (authorizations.containsKey(uid)) {
             val auths = authorizations[uid]!!
             if (exist)
                 auths.add(authorization)
@@ -24,11 +27,19 @@ class AuthorizationInMemory<T, M>(
         sink.success()
     }
 
-    override fun findAuthorizationsFor(uid: T): Flux<M> = Flux.create { sink ->
-        if (authorizations.contains(uid)) {
+    override fun getAuthorizationsFor(uid: T): Flux<M> = Flux.create { sink ->
+        if (authorizations.containsKey(uid)) {
             val auths = authorizations[uid]!!
             auths.forEach { m -> sink.next(m) }
         }
         sink.complete()
     }
+
+    override fun getAuthorizationsAgainst(uid: T, target: T): Flux<M> =
+        Flux.concat(getAuthorizationsFor(anonUid.get()), getAuthorizationsFor(uid), getAuthorizationsFor(target))
+            .filter {
+                val sid = idForUser.apply(it)
+                val tid = idForTarget.apply(it)
+                (sid == anonUid.get() || sid == uid || tid == target || tid == sid == uid)
+            }
 }

@@ -42,5 +42,7 @@ class UserAuthCassandra<T, V, Q>(
 
     override fun authorize(uid: T, target: T, action: String, exists: Boolean): Mono<Void> = Mono.empty()
 
-    override fun findAuthorizationsFor(uid: T): Flux<AuthorizationMeta<T>> = Flux.empty()
+    override fun getAuthorizationsAgainst(uid: T, target: T): Flux<StringRoleAuthorizationMetadata<T>> = Flux.empty()
+
+    override fun findAuthorizationsFor(uid: T): Flux<StringRoleAuthorizationMetadata<T>> = Flux.empty()
 }

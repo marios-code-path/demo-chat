@@ -21,7 +21,7 @@ open class ChatUserDetailsService<T, E, Q>(
         index.findUnique(usernameQuery(username))
             .flatMap(persist::get)
             .flatMap { user ->
-                authZ.findAuthorizationsFor(user.key.id)
+                authZ.getAuthorizationsFor(user.key.id)
                     .collectList()
                     .map { authorizations -> ChatUserDetails(user, authorizations) }
             }

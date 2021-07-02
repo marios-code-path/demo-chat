@@ -14,7 +14,7 @@ class MockAuthorizationServiceSupplier() {
                     .willReturn(Mono.create {
                         it.success()
                     })
-                given(findAuthorizationsFor(any()))
+                given(getAuthorizationsFor(any()))
                     .willReturn(Flux.empty())
             }
 }
