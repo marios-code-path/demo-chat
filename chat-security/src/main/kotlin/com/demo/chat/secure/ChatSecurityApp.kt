@@ -13,10 +13,12 @@ import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.InternalAuthenticationServiceException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
@@ -27,6 +29,7 @@ import java.util.stream.Collectors
 import kotlin.random.Random
 
 
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 class ChatSecurityApp {
     companion object {
         const val ANONYMOUS_UID:Long = 0L
@@ -46,27 +49,31 @@ class ChatSecurityApp {
         authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
 
     ): CommandLineRunner = CommandLineRunner { args ->
-        val user = User.create(Key.funKey(2L), "mario", "mario", "http://foo")
+        val users = listOf(
+            User.create(Key.funKey(2L), "mario", "mario", "http://foo"),
+            User.create(Key.funKey(ANONYMOUS_UID), "ANON", "anonymous", "null")
+        )
 
-        userPersistence
-            .add(user)
-            .doFinally { println("Added a user to persistence.") }
-            .block()
+        Flux.fromIterable(users)
+            .flatMap(userPersistence::add)
+            .doFinally { println("Added users to persistence.") }
+            .blockLast()
+
+        Flux.fromIterable(users)
+            .flatMap(index::add)
+            .doFinally { println("Added users to index.") }
+            .blockLast()
 
         Flux.just(
             StringRoleAuthorizationMetadata(ANONYMOUS_UID, 2L, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE")
-        )
-            .flatMap { meta ->
-                authorizationService.authorize(meta, true)
-            }
+            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE"))
+            .flatMap { meta -> authorizationService.authorize(meta, true) }
+            .doFinally { println("Added Authorizations to users.")}
+            .blockLast()
 
-        index
-            .add(user)
-            .doFinally { println("Added a user to index.") }
-            .block()
+
         passwdStore
-            .addCredential(user.key, "password")
+            .addCredential(users[0].key, "password")
             .doFinally { println("Added a password.") }
             .block()
 
@@ -83,12 +90,13 @@ class ChatSecurityApp {
             SecurityContextHolder.getContext().authentication = result
 
             println("Success : ${SecurityContextHolder.getContext().authentication}")
+            doSomethingNeedingAuth()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         }
     }
 
-
+    @Secured("ROLE_OPTIONAL")
     fun doSomethingNeedingAuth() {
         println("HERE!")
     }
@@ -139,22 +147,23 @@ class ChatSecurityApp {
         { user: String -> IndexSearchRequest(UserIndexService.HANDLE, user, 1) })
 
     class SampleAuthenticationManager(
-        private val authInMemory: AuthenticationService<Long, String, String>,
+        private val authenticationS: AuthenticationService<Long, String, String>,
         private val userPersistence: PersistenceStore<Long, User<Long>>,
-        private val authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
+        private val authorizationS: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
     ) :
         AuthenticationManager {
         override fun authenticate(authen: Authentication): Authentication {
             val credential = authen.credentials.toString()
             val targetId: Long = if(authen.details is Long)  authen.details as Long  else 0L
-
-            return authInMemory
+            println("The Target Id is: $targetId")
+            return authenticationS
                 .authenticate(authen.name, credential)
                 .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }
                 .flatMap(userPersistence::get)
                 .flatMap { user ->
-                    authorizationService
+                    authorizationS
                         .getAuthorizationsAgainst(user.key.id, targetId)
+                        .doOnNext(System.out::println)
                         .map { authMeta -> authMeta.permission }
                         .collect(Collectors.toList())
                         .map { authorizations ->

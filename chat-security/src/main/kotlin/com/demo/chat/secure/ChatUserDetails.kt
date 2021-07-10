@@ -13,7 +13,7 @@ data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) 
             .map { rb -> SimpleGrantedAuthority(rb) }
             .collect(Collectors.toList())
 
-    override fun getPassword(): String = "" // LOL
+    override fun getPassword(): String = ""
 
     override fun getUsername(): String = user.handle
 

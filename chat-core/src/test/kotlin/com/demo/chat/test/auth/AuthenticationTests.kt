@@ -14,14 +14,14 @@ open class AuthenticationServiceTests<T, E, V>(
     private val pwSupply: Supplier<V>
 ) {
     @Test
-    fun `creates authentication`() {
+    fun `should call createAuthentication doesnt error`() {
         StepVerifier
             .create(svc.createAuthentication(uidSupply.get(), pwSupply.get()))
             .verifyComplete()
     }
 
     @Test
-    fun `should authenticate`() {
+    fun `should call authenticate doesnt error`() {
         StepVerifier
             .create(svc.authenticate(uNameSupply.get(), pwSupply.get()))
             .verifyComplete()

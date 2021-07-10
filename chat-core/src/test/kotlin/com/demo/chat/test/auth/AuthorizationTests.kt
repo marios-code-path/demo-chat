@@ -4,6 +4,7 @@ import com.demo.chat.service.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
@@ -14,21 +15,53 @@ open class AuthorizationTests<M, T>(
     private val uidSupply: Supplier<T>
 ) {
     @Test
-    fun `should test method authorize doesnt error`() {
+    fun `calling method authorize doesnt error`() {
         StepVerifier
             .create(authSvc.authorize(authMetaSupplier.get(), true))
             .verifyComplete()
     }
 
     @Test
-    fun `should test method findAuthorizationsFor doesnt error`() {
+    fun `calling method findAuthorizationsFor doesnt error`() {
         StepVerifier
             .create(authSvc.getAuthorizationsFor(uidSupply.get()))
-            .assertNext { meta ->
+            .verifyComplete()
+    }
+
+    @Test
+    fun `calling method findAuthorizationsAgainst doesnt error`() {
+        StepVerifier
+            .create(authSvc.getAuthorizationsFor(uidSupply.get()))
+            .verifyComplete()
+    }
+
+    @Test
+    fun `saved authorization should return with getAuthorizationsFor(uid)`() {
+        val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
+        val auths = authSvc.getAuthorizationsFor(uidSupply.get())
+
+        val composed = Flux.from(saveAuth).thenMany(auths)
+
+        StepVerifier
+            .create(composed)
+            .assertNext {
                 Assertions
-                    .assertThat(meta)
+                    .assertThat(it)
                     .isNotNull
             }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `saved authorization should return with getAuthorizationsAgainst(uid, tid)`() {
+        val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
+        val auths = authSvc.getAuthorizationsAgainst(uidSupply.get(), uidSupply.get())
+
+        val composed = Flux.from(saveAuth).thenMany(auths)
+
+        StepVerifier
+            .create(composed)
+            .expectNextCount(1)  // ANON && USER
             .verifyComplete()
     }
 }
