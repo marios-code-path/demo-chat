@@ -43,7 +43,7 @@ class AuthorizationInMemory<T, M, G>(
     }
 
     override fun getAuthorizationsAgainst(userKey: T, targetKey: T): Flux<M> =
-        Flux.concat(
+        Flux.merge(
             getAuthorizationsFor(anonUid.get()),
             getAuthorizationsFor(userKey),
             getAuthorizationsFor(targetKey)
@@ -51,7 +51,10 @@ class AuthorizationInMemory<T, M, G>(
             .filter {
                 val uid = idForUser.apply(it)
                 val tid = idForTarget.apply(it)
-                (uid == tid && tid != anonUid.get())
+                (userKey == uid && targetKey == tid) ||
+                        (uid == anonUid.get() && tid == anonUid.get() ) ||
+                        (uid == anonUid.get() && tid == userKey) ||
+                        (uid == userKey && tid == userKey)
             }
             .groupBy(grouper)
             .flatMap { g -> g.reduce(reducer) }

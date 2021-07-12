@@ -10,6 +10,7 @@ import com.demo.chat.service.impl.memory.auth.AuthorizationInMemory
 import com.demo.chat.service.impl.memory.auth.PasswordStoreInMemory
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -66,7 +67,9 @@ class ChatSecurityApp {
 
         Flux.just(
             StringRoleAuthorizationMetadata(ANONYMOUS_UID, 2L, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE"))
+            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE"),
+            StringRoleAuthorizationMetadata(ANONYMOUS_UID, ANONYMOUS_UID, "ROLE_OPTIONAL"),
+            StringRoleAuthorizationMetadata(2L, 13L, "ROLE_SUPER"))
             .flatMap { meta -> authorizationService.authorize(meta, true) }
             .doFinally { println("Added Authorizations to users.")}
             .blockLast()
@@ -90,13 +93,16 @@ class ChatSecurityApp {
             SecurityContextHolder.getContext().authentication = result
 
             println("Success : ${SecurityContextHolder.getContext().authentication}")
-            doSomethingNeedingAuth()
+            app.doSomethingNeedingAuth()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         }
     }
 
-    @Secured("ROLE_OPTIONAL")
+    @Autowired
+    private lateinit var app: ChatSecurityApp
+
+    @Secured("ROLE_SUPERUSER")
     fun doSomethingNeedingAuth() {
         println("HERE!")
     }
@@ -117,10 +123,12 @@ class ChatSecurityApp {
     fun userPersistence(keySvc: IKeyService<Long>) = UserPersistenceInMemory(keySvc) { u -> u.key }
 
     @Bean
-    fun authorizationService() = AuthorizationInMemory<Long, StringRoleAuthorizationMetadata<Long>>(
+    fun authorizationService() = AuthorizationInMemory<Long, StringRoleAuthorizationMetadata<Long>, String>(
         { m -> m.uid },
         { m -> m.target },
-        { ANONYMOUS_UID })
+        { ANONYMOUS_UID },
+        { m -> m.uid.toString() + m.target.toString() },
+        { a, _ -> a })
 
     @Bean
     fun index(): IndexService<Long, User<Long>, IndexSearchRequest> = LuceneIndex(
