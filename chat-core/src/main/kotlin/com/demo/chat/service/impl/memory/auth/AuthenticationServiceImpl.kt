@@ -14,7 +14,7 @@ import java.util.function.Function
 // U == UserObject type(???)
 // V == password type
 // Q == searchQuery Type(???)
-class AuthenticationServiceImpl<E, T, U, V, Q>(
+open class AuthenticationServiceImpl<E, T, U, V, Q>(
     private val userIndex: IndexService<T, U, Q>,
     private val passwordStore: PasswordStore<T, V>,
     private val passwordValidator: BiFunction<V, V, Boolean>,
