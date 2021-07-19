@@ -30,7 +30,7 @@ open class ChatUserDetailsService<T, E, Q>(
         index.findUnique(usernameQuery(userDetails.username))
             .flatMap(persist::get)
             .flatMap { user ->
-                auth.createAuthentication(user.key.id, newPassword)
+                auth.setAuthentication(user.key.id, newPassword)
                     .map { userDetails }
             }
 }

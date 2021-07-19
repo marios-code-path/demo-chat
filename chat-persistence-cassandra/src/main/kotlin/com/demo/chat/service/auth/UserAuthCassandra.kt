@@ -13,4 +13,4 @@ import java.util.function.Function
  * Should do the chore of handling any authentication and authorization operations
  * using Cassandra components as the backing store
  */
-class AuthorizationServiceCassandra<T, M>() : AuthorizationService<T, M>()
+class AuthorizationServiceCassandra<T, M>()

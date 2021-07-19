@@ -1,5 +1,6 @@
 package com.demo.chat.test.auth
 
+import com.demo.chat.domain.Key
 import com.demo.chat.service.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -12,7 +13,7 @@ import java.util.function.Supplier
 open class AuthorizationTests<M, T>(
     private val authSvc: AuthorizationService<T, M>,
     private val authMetaSupplier: Supplier<M>,
-    private val uidSupply: Supplier<T>
+    private val uidSupply: Supplier<Key<T>>
 ) {
     @Test
     fun `calling method authorize doesnt error`() {

@@ -5,6 +5,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
+import com.demo.chat.service.impl.memory.auth.AuthMetaPersistenceInMemory
 import com.demo.chat.service.impl.memory.auth.AuthenticationServiceImpl
 import com.demo.chat.service.impl.memory.auth.AuthorizationInMemory
 import com.demo.chat.service.impl.memory.auth.PasswordStoreInMemory
@@ -30,10 +31,18 @@ import java.util.stream.Collectors
 import kotlin.random.Random
 
 
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+class AuthIndex {
+    companion object {
+        const val PRINCIPAL = "p"
+        const val TARGET = "t"
+        const val ID = "id"
+    }
+}
+
+@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class ChatSecurityApp {
     companion object {
-        const val ANONYMOUS_UID:Long = 0L
+        val ANONYMOUS_KEY: Key<Long> = Key.funKey(0L)
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -43,16 +52,20 @@ class ChatSecurityApp {
 
     @Bean
     fun appReady(
-        index: IndexService<Long, User<Long>, IndexSearchRequest>,
+        userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         passwdStore: PasswordStore<Long, String>,
         authenticationManager: SampleAuthenticationManager,
         userPersistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
+        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>>
 
     ): CommandLineRunner = CommandLineRunner { args ->
+        val keyGenerator = Supplier { Key.funKey(Random(3894329L).nextLong()) }
+        val princpialKey = Key.funKey(2L)
+        val anotherUserKey = Key.funKey(Random(1384).nextInt(2580).toLong())
+
         val users = listOf(
-            User.create(Key.funKey(2L), "mario", "mario", "http://foo"),
-            User.create(Key.funKey(ANONYMOUS_UID), "ANON", "anonymous", "null")
+            User.create(princpialKey, "mario", "mario", "http://foo"),
+            User.create(ANONYMOUS_KEY, "ANON", "anonymous", "null")
         )
 
         Flux.fromIterable(users)
@@ -61,17 +74,18 @@ class ChatSecurityApp {
             .blockLast()
 
         Flux.fromIterable(users)
-            .flatMap(index::add)
+            .flatMap(userIndex::add)
             .doFinally { println("Added users to index.") }
             .blockLast()
 
         Flux.just(
-            StringRoleAuthorizationMetadata(ANONYMOUS_UID, 2L, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(2L, 2L, "ROLE_WRITE"),
-            StringRoleAuthorizationMetadata(ANONYMOUS_UID, ANONYMOUS_UID, "ROLE_OPTIONAL"),
-            StringRoleAuthorizationMetadata(2L, 13L, "ROLE_SUPER"))
+            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST"),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, princpialKey, "ROLE_WRITE"),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_OPTIONAL"),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, anotherUserKey, "ROLE_SUPER")
+        )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
-            .doFinally { println("Added Authorizations to users.")}
+            .doFinally { println("Added Authorizations to users.") }
             .blockLast()
 
 
@@ -88,7 +102,8 @@ class ChatSecurityApp {
         val targetObject = readLine()
 
         try {
-            val request = UsernamePasswordAuthenticationToken(username, password).apply { details = targetObject!!.toLong() }
+            val request = UsernamePasswordAuthenticationToken(username, password)
+                .apply { details = targetObject!!.toLong() }
             val result = authenticationManager.authenticate(request)
             SecurityContextHolder.getContext().authentication = result
 
@@ -109,12 +124,12 @@ class ChatSecurityApp {
 
     @Bean
     fun authenticationManager(
-        index: IndexService<Long, User<Long>, IndexSearchRequest>,
-        pass: PasswordStore<Long, String>,
-        persistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
+        userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
+        passStore: PasswordStore<Long, String>,
+        userPersistence: PersistenceStore<Long, User<Long>>,
+        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>>
     ) =
-        SampleAuthenticationManager(authenticationService(index, pass), persistence, authorizationService)
+        SampleAuthenticationManager(authenticationService(userIndex, passStore), userPersistence, authorizationService)
 
     @Bean
     fun keyService(): IKeyService<Long> = KeyServiceInMemory(Supplier { Random.nextLong() })
@@ -123,15 +138,7 @@ class ChatSecurityApp {
     fun userPersistence(keySvc: IKeyService<Long>) = UserPersistenceInMemory(keySvc) { u -> u.key }
 
     @Bean
-    fun authorizationService() = AuthorizationInMemory<Long, StringRoleAuthorizationMetadata<Long>, String>(
-        { m -> m.uid },
-        { m -> m.target },
-        { ANONYMOUS_UID },
-        { m -> m.uid.toString() + m.target.toString() },
-        { a, _ -> a })
-
-    @Bean
-    fun index(): IndexService<Long, User<Long>, IndexSearchRequest> = LuceneIndex(
+    fun userIndex(): IndexService<Long, User<Long>, IndexSearchRequest> = LuceneIndex(
         { t ->
             listOf(
                 Pair("handle", t.handle),
@@ -142,14 +149,46 @@ class ChatSecurityApp {
         { t -> t.key })
 
     @Bean
+    fun authMetaPersistence(keySvc: IKeyService<Long>) =
+        AuthMetaPersistenceInMemory<Long, String>(keySvc) { a -> a.key }
+
+    @Bean
+    fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> = LuceneIndex(
+        { t ->
+            listOf(
+                Pair("permission", t.permission),
+                Pair("principal", t.principal.id.toString()),
+                Pair("target", t.target.id.toString())
+            )
+        },
+        { q -> Key.funKey(q.toLong()) },
+        { t -> t.key }
+    )
+
+    @Bean
+    fun authorizationService(
+        authPersist: PersistenceStore<Long, AuthMetadata<Long, String>>,
+        authIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>,
+    ) = AuthorizationInMemory(
+        authPersist,
+        authIndex,
+        { m -> IndexSearchRequest(AuthIndex.PRINCIPAL, m.toString(), 1) },
+        { m -> m.principal },
+        { m -> m.target },
+        { ANONYMOUS_KEY },
+        { m -> m.key },
+        { m -> m.principal.toString() + m.target.toString() },
+        { a, _ -> a })
+
+    @Bean
     fun passwordStore(): PasswordStore<Long, String> = PasswordStoreInMemory()
 
     @Bean
     fun authenticationService(
-        index: IndexService<Long, User<Long>, IndexSearchRequest>,
+        userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         passwordStore: PasswordStore<Long, String>
     ) = AuthenticationServiceImpl(
-        index,
+        userIndex,
         passwordStore,
         { input, secure -> input == secure },
         { user: String -> IndexSearchRequest(UserIndexService.HANDLE, user, 1) })
@@ -157,12 +196,12 @@ class ChatSecurityApp {
     class SampleAuthenticationManager(
         private val authenticationS: AuthenticationService<Long, String, String>,
         private val userPersistence: PersistenceStore<Long, User<Long>>,
-        private val authorizationS: AuthorizationService<Long, StringRoleAuthorizationMetadata<Long>>
+        private val authorizationS: AuthorizationService<Long, out AuthMetadata<Long, String>>
     ) :
         AuthenticationManager {
         override fun authenticate(authen: Authentication): Authentication {
             val credential = authen.credentials.toString()
-            val targetId: Long = if(authen.details is Long)  authen.details as Long  else 0L
+            val targetId: Key<Long> = Key.funKey(if (authen.details is Long) authen.details as Long else 0L)
             println("The Target Id is: $targetId")
             return authenticationS
                 .authenticate(authen.name, credential)
@@ -170,7 +209,7 @@ class ChatSecurityApp {
                 .flatMap(userPersistence::get)
                 .flatMap { user ->
                     authorizationS
-                        .getAuthorizationsAgainst(user.key.id, targetId)
+                        .getAuthorizationsAgainst(user.key, targetId)
                         .doOnNext(System.out::println)
                         .map { authMeta -> authMeta.permission }
                         .collect(Collectors.toList())

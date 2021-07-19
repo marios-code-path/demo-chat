@@ -20,7 +20,7 @@ open class AuthenticationServiceImpl<E, T, U, V, Q>(
     private val passwordValidator: BiFunction<V, V, Boolean>,
     private val userHandleToQuery: Function<E, Q>
 ) : AuthenticationService<T, E, V> {
-    override fun createAuthentication(uid: T, pw: V): Mono<Void> = passwordStore.addCredential(Key.funKey(uid), pw)
+    override fun setAuthentication(pKey: Key<T>, pw: V): Mono<Void> = passwordStore.addCredential(pKey, pw)
 
     override fun authenticate(n: E, pw: V): Mono<out Key<T>> =
         userIndex

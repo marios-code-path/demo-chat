@@ -8,7 +8,7 @@ class InMemoryAuthorizationTests : AuthorizationTests<StringRoleAuthorizationMet
         { m -> m.uid },
         { m -> m.target },
         { 0L },
-        { m -> m.uid.toString() + m.target.toString() },
+        { m -> m.principal.toString() + m.target.toString() },
         { a, _ -> a }
     ),
     { StringRoleAuthorizationMetadata(1L, 1L, "TEST") },
