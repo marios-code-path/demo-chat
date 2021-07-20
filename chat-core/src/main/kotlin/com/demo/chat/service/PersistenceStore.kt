@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
 interface PersistenceStore<T, E> {
     fun key(): Mono<out Key<T>>
     fun add(ent: E): Mono<Void>
-    fun assemble(ent: E): Mono<E> = add(ent).then(Mono.just(ent))
+    fun assemble(ent: E): Mono<out E> = add(ent).then(Mono.just(ent))
     fun rem(key: Key<T>): Mono<Void>
     fun get(key: Key<T>): Mono<out E>
     fun all(): Flux<out E>

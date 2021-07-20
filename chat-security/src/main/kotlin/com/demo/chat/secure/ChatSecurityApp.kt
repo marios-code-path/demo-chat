@@ -5,9 +5,9 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
+import com.demo.chat.service.impl.memory.auth.AbstractAuthorizationImpl
 import com.demo.chat.service.impl.memory.auth.AuthMetaPersistenceInMemory
 import com.demo.chat.service.impl.memory.auth.AuthenticationServiceImpl
-import com.demo.chat.service.impl.memory.auth.AuthorizationInMemory
 import com.demo.chat.service.impl.memory.auth.PasswordStoreInMemory
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
@@ -56,7 +56,7 @@ class ChatSecurityApp {
         passwdStore: PasswordStore<Long, String>,
         authenticationManager: SampleAuthenticationManager,
         userPersistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>>
+        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
 
     ): CommandLineRunner = CommandLineRunner { args ->
         val keyGenerator = Supplier { Key.funKey(Random(3894329L).nextLong()) }
@@ -127,7 +127,7 @@ class ChatSecurityApp {
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         passStore: PasswordStore<Long, String>,
         userPersistence: PersistenceStore<Long, User<Long>>,
-        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>>
+        authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
     ) =
         SampleAuthenticationManager(authenticationService(userIndex, passStore), userPersistence, authorizationService)
 
@@ -149,8 +149,9 @@ class ChatSecurityApp {
         { t -> t.key })
 
     @Bean
-    fun authMetaPersistence(keySvc: IKeyService<Long>) =
-        AuthMetaPersistenceInMemory<Long, String>(keySvc) { a -> a.key }
+    fun authMetaPersistence(keySvc: IKeyService<Long>):
+            PersistenceStore<Long, AuthMetadata<Long, String>> =
+        AuthMetaPersistenceInMemory(keySvc) { a -> a.key }
 
     @Bean
     fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> = LuceneIndex(
@@ -169,16 +170,17 @@ class ChatSecurityApp {
     fun authorizationService(
         authPersist: PersistenceStore<Long, AuthMetadata<Long, String>>,
         authIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>,
-    ) = AuthorizationInMemory(
-        authPersist,
-        authIndex,
-        { m -> IndexSearchRequest(AuthIndex.PRINCIPAL, m.toString(), 1) },
-        { m -> m.principal },
-        { m -> m.target },
-        { ANONYMOUS_KEY },
-        { m -> m.key },
-        { m -> m.principal.toString() + m.target.toString() },
-        { a, _ -> a })
+    ): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
+        AbstractAuthorizationImpl(
+            authPersist,
+            authIndex,
+            { m -> IndexSearchRequest(AuthIndex.PRINCIPAL, m.toString(), 1) },
+            { m -> m.principal },
+            { m -> m.target },
+            { ANONYMOUS_KEY },
+            { m -> m.key },
+            { m -> m.principal.toString() + m.target.toString() },
+            { a, _ -> a })
 
     @Bean
     fun passwordStore(): PasswordStore<Long, String> = PasswordStoreInMemory()
@@ -196,7 +198,7 @@ class ChatSecurityApp {
     class SampleAuthenticationManager(
         private val authenticationS: AuthenticationService<Long, String, String>,
         private val userPersistence: PersistenceStore<Long, User<Long>>,
-        private val authorizationS: AuthorizationService<Long, out AuthMetadata<Long, String>>
+        private val authorizationS: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
     ) :
         AuthenticationManager {
         override fun authenticate(authen: Authentication): Authentication {

@@ -10,17 +10,17 @@ import java.util.function.BiFunction
 import java.util.function.Function
 import java.util.function.Supplier
 
-class AuthorizationInMemory<T, M, G, Q>(
+class AbstractAuthorizationImpl<T, M, G, Q>(
     private val authPersist: PersistenceStore<T, M>,
     private val authIndex: IndexService<T, M, Q>,
-    private val authQueryForID: Function<T, Q>,
-    private val idForPrincipal: Function<M, Key<T>>,
-    private val idForTarget: Function<M, Key<T>>,
-    private val anonKey: Supplier<Key<T>>,
+    private val authQueryForID: Function<in Key<T>, Q>,
+    private val idForPrincipal: Function<M, out Key<T>>,
+    private val idForTarget: Function<M, out Key<T>>,
+    private val anonKey: Supplier<out Key<T>>,
     private val keyForAuth: Function<M, Key<T>>,
     private val grouper: Function<M, G>,
     private val reducer: BiFunction<M, M, M>
-) : AuthorizationService<T, M> {
+) : AuthorizationService<T, M, M> {
     override fun authorize(authorization: M, exist: Boolean): Mono<Void> =
         when (exist) {
             true -> authIndex.add(authorization)
@@ -28,7 +28,7 @@ class AuthorizationInMemory<T, M, G, Q>(
         }
 
     override fun getAuthorizationsFor(uid: Key<T>): Flux<M> = authIndex
-        .findBy(authQueryForID.apply(uid.id))
+        .findBy(authQueryForID.apply(uid))
         .flatMap(authPersist::get)
 
 

@@ -17,18 +17,19 @@ interface AuthenticationService<T, E, V> {
     fun authenticate(n: E, pw: V): Mono<out Key<T>>
 }
 
-interface AuthorizationService<T, M> {
-    fun authorize(authorization: M, exist: Boolean): Mono<Void>
-    fun getAuthorizationsFor(uid: Key<T>): Flux<M>
-    fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<M>
+interface AuthorizationService<T, out M, in N> {
+    fun authorize(authorization: N, exist: Boolean): Mono<Void>
+    fun getAuthorizationsFor(uid: Key<T>): Flux<out M>
+    fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<out M>
 }
 
-interface AuthMetadata<T, P> {
+interface AuthMetadata<T, out P> {
     val key: Key<T>
     val principal: Key<T>
     val target: Key<T>
     val permission: P
 }
 
-interface CoarseAuthorizationService<T>: AuthorizationService<T, String>
-interface GranularAuthorizationService<T, P>: AuthorizationService<T, AuthMetadata<T, P>>
+interface CoarseAuthorizationService<T> : AuthorizationService<T, String, String>
+interface GranularAuthorizationService<T, P> :
+    AuthorizationService<Key<T>, AuthMetadata<T, P>, AuthMetadata<T, P>>
