@@ -19,6 +19,10 @@ interface Key<T> {
         fun <T> funKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
             override val id: T
                 get() = id
+
+            override fun equals(k2: Any?): Boolean =
+                (k2 != null && k2::class == this::class) &&
+                        (k2 is Key<*> && k2.id == this.id)
         }
 
         @JvmStatic
@@ -36,11 +40,12 @@ interface KeyDataPair<T, out E> : KeyBearer<T> {
 
     companion object Factory {
         @JvmStatic
-        fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> = @com.fasterxml.jackson.annotation.JsonTypeName("keyData") object : KeyDataPair<T, E> {
-            override val key: Key<T>
-                get() = key
-            override val data: E
-                get() = data
-        }
+        fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> =
+            @com.fasterxml.jackson.annotation.JsonTypeName("keyData") object : KeyDataPair<T, E> {
+                override val key: Key<T>
+                    get() = key
+                override val data: E
+                    get() = data
+            }
     }
 }

@@ -1,6 +1,7 @@
-package com.demo.chat.secure
+package com.demo.chat.secure.service
 
 import com.demo.chat.domain.User
+import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.AuthenticationService
 import com.demo.chat.service.AuthorizationService
 import com.demo.chat.service.IndexService
@@ -14,14 +15,14 @@ open class ChatUserDetailsService<T, E, Q>(
     private val persist: PersistenceStore<T, User<T>>,
     private val index: IndexService<T, User<T>, Q>,
     private val auth: AuthenticationService<T, E, String>,
-    private val authZ: AuthorizationService<T, String>,
+    private val authZ: AuthorizationService<T, String, String>,
     val usernameQuery: (String) -> Q
 ) : ReactiveUserDetailsService, ReactiveUserDetailsPasswordService {
     override fun findByUsername(username: String): Mono<UserDetails> =
         index.findUnique(usernameQuery(username))
             .flatMap(persist::get)
             .flatMap { user ->
-                authZ.getAuthorizationsFor(user.key.id)
+                authZ.getAuthorizationsFor(user.key)
                     .collectList()
                     .map { authorizations -> ChatUserDetails(user, authorizations) }
             }
@@ -30,7 +31,7 @@ open class ChatUserDetailsService<T, E, Q>(
         index.findUnique(usernameQuery(userDetails.username))
             .flatMap(persist::get)
             .flatMap { user ->
-                auth.setAuthentication(user.key.id, newPassword)
+                auth.setAuthentication(user.key, newPassword)
                     .map { userDetails }
             }
 }

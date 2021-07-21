@@ -9,7 +9,8 @@ data class StringRoleAuthorizationMetadata<T>(
     override val key: Key<T>,
     override val principal: Key<T>,
     override val target: Key<T>,
-    override val permission: String
+    override val permission: String,
+    override val expires: Long = 0L
 ) : AuthMetadata<T, String>
 
 interface AuthenticationService<T, E, V> {
@@ -28,6 +29,7 @@ interface AuthMetadata<T, out P> {
     val principal: Key<T>
     val target: Key<T>
     val permission: P
+    val expires: Long
 }
 
 interface CoarseAuthorizationService<T> : AuthorizationService<T, String, String>

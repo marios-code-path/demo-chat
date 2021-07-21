@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
 
 interface PersistenceStoreMapping<T, E> : PersistenceStore<T, E> {
     @MessageMapping("assemble")
-    override fun assemble(ent: E): Mono<E>
+    override fun assemble(ent: E): Mono<out E>
 
     @MessageMapping("key")
     override fun key(): Mono<out Key<T>>

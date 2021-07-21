@@ -1,12 +1,10 @@
 package com.demo.chat.test
 
-import com.demo.chat.secure.ChatUserDetailsService
+import com.demo.chat.secure.service.ChatUserDetailsService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.security.core.userdetails.UserDetails
-import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 

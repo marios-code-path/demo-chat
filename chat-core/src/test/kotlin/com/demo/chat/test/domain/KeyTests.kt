@@ -8,15 +8,36 @@ import reactor.test.StepVerifier
 import reactor.test.publisher.TestPublisher
 import java.time.Duration
 import java.util.*
+import kotlin.reflect.jvm.internal.impl.resolve.scopes.receivers.ThisClassReceiver
 
 class KeyTests : TestBase() {
 
     @Test
+    fun `key equality should be the same`() {
+        val k1 = Key.funKey(1L)
+        val k2 = Key.funKey(1L)
+
+        Assertions
+            .assertThat(k1)
+            .isEqualTo(k2)
+    }
+
+    @Test
+    fun `key equality should be different`() {
+        val k1 = Key.funKey(1L)
+        val k2 = Key.funKey(2L)
+
+        Assertions
+            .assertThat(k1)
+            .isNotEqualTo(k2)
+    }
+
+    @Test
     fun `should create`() {
         Assertions
-                .assertThat(Key.funKey("TEST"))
-                .isNotNull
-                .hasNoNullFieldsOrProperties()
+            .assertThat(Key.funKey("TEST"))
+            .isNotNull
+            .hasNoNullFieldsOrProperties()
     }
 
     @Test
@@ -24,27 +45,27 @@ class KeyTests : TestBase() {
         val messagePub = TestPublisher.create<Key<*>>()
 
         StepVerifier
-                .create(messagePub)
-                .expectSubscription()
-                .then {
-                    messagePub.next(randomAnyKey())
-                    messagePub.next(randomAnyKey())
-                }
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                }
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                }
-                .then {
-                    messagePub.complete()
-                }
-                .expectComplete()
-                .verify(Duration.ofSeconds(1))
+            .create(messagePub)
+            .expectSubscription()
+            .then {
+                messagePub.next(randomAnyKey())
+                messagePub.next(randomAnyKey())
+            }
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+            }
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+            }
+            .then {
+                messagePub.complete()
+            }
+            .expectComplete()
+            .verify(Duration.ofSeconds(1))
     }
 
     private fun randomAnyKey(): Key<out Any> {

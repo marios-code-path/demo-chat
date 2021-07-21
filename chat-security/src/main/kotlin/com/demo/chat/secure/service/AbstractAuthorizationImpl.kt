@@ -1,6 +1,7 @@
-package com.demo.chat.service.impl.memory.auth
+package com.demo.chat.secure.service
 
 import com.demo.chat.domain.Key
+import com.demo.chat.service.AuthMetadata
 import com.demo.chat.service.AuthorizationService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
@@ -47,8 +48,4 @@ class AbstractAuthorizationImpl<T, M, G, Q>(
             }
             .groupBy(grouper)
             .flatMap { g -> g.reduce(reducer) }
-}
-
-interface Filterizer<M> {
-    fun filterize(elements: Flux<M>): Flux<M>
 }

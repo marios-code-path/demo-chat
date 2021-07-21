@@ -3,12 +3,12 @@ package com.demo.chat.secure
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
+import com.demo.chat.secure.service.AbstractAuthorizationImpl
+import com.demo.chat.secure.service.AuthMetaPersistenceInMemory
+import com.demo.chat.secure.service.AuthenticationServiceImpl
+import com.demo.chat.secure.service.PasswordStoreInMemory
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
-import com.demo.chat.service.impl.memory.auth.AbstractAuthorizationImpl
-import com.demo.chat.service.impl.memory.auth.AuthMetaPersistenceInMemory
-import com.demo.chat.service.impl.memory.auth.AuthenticationServiceImpl
-import com.demo.chat.service.impl.memory.auth.PasswordStoreInMemory
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import org.springframework.beans.factory.annotation.Autowired

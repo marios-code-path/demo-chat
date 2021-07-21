@@ -1,5 +1,4 @@
-package com.demo.chat.service.impl.memory.auth
-
+package com.demo.chat.secure.service
 import com.demo.chat.domain.Key
 import com.demo.chat.service.AuthMetadata
 import com.demo.chat.service.IKeyService
