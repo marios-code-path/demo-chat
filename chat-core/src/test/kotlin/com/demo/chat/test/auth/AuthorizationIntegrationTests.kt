@@ -8,7 +8,7 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 class AuthorizationIntegrationTests<M, T>(
-    private val authSvc: AuthorizationService<T, M>,
+    private val authSvc: AuthorizationService<T, M, M>,
     private val authMetaSupplier: Supplier<M>,
     private val uidSupply: Supplier<T>
 ) {

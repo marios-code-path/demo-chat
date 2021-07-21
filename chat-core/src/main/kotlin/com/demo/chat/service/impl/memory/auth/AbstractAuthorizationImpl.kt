@@ -31,7 +31,6 @@ class AbstractAuthorizationImpl<T, M, G, Q>(
         .findBy(authQueryForID.apply(uid))
         .flatMap(authPersist::get)
 
-
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<M> =
         Flux.merge(
             getAuthorizationsFor(anonKey.get()),
@@ -43,9 +42,13 @@ class AbstractAuthorizationImpl<T, M, G, Q>(
                 val tid = idForTarget.apply(it)
                 (uidA == pid && uidB == tid) ||
                         (pid == anonKey.get() && tid == anonKey.get()) ||
-                        (pid == anonKey.get() && tid == uidA) ||
+                        (pid == anonKey.get() && tid == uidB) ||
                         (pid == uidA && tid == uidA)
             }
             .groupBy(grouper)
             .flatMap { g -> g.reduce(reducer) }
+}
+
+interface Filterizer<M> {
+    fun filterize(elements: Flux<M>): Flux<M>
 }

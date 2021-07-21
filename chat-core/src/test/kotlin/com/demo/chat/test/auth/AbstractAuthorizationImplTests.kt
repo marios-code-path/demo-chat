@@ -38,31 +38,7 @@ class AbstractAuthorizationImplTests(
     ),
     { StringRoleAuthorizationMetadata(Key.funKey(1024L), Key.funKey(1L), Key.funKey(1L), "TEST") },
     { Key.funKey(1L) }
-) {
-    @BeforeEach
-    fun setUp() {
-        given(authIndex.add(any()))
-            .willReturn(Mono.empty())
-        given(authIndex.rem(any()))
-            .willReturn(Mono.empty())
-        given(authIndex.findBy(any()))
-            .willReturn(Flux.just(Key.funKey(1L)))
-        
-        given(authPersistence.add(any()))
-            .willReturn(Mono.empty())
-        given(authPersistence.rem(any()))
-            .willReturn(Mono.empty())
-        given(authPersistence.get(any()))
-            .willReturn(Mono.empty())
-        given(authPersistence.all())
-            .willReturn(Flux.empty())
-        given(authPersistence.byIds(Mockito.anyList()))
-            .willReturn(Flux.empty())
-        given(authPersistence.key())
-            .willReturn(Mono.just(Key.funKey(1L)))
-    }
-}
-
+)
 class TestAuthIndex {
     companion object {
         const val PRINCIPAL = "p"

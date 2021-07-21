@@ -7,14 +7,6 @@ import com.nhaarman.mockitokotlin2.mock
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class MockAuthorizationServiceSupplier() {
-    inline fun <reified M, reified T> get(): AuthorizationService<M, T> =
-        mock<AuthorizationService<M, T>>().apply {
-                given(authorize(any(), any()))
-                    .willReturn(Mono.create {
-                        it.success()
-                    })
-                given(getAuthorizationsFor(any()))
-                    .willReturn(Flux.empty())
-            }
+class MockAuthorizationServiceSupplier {
+    fun <T, M> get(): AuthorizationService<T, M, M> = mock()
 }

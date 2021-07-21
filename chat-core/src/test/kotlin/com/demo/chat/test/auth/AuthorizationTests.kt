@@ -8,13 +8,22 @@ import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
+import kotlin.random.Random
 
 @Disabled
-open class AuthorizationTests<out M, T>(
-    private val authSvc: AuthorizationService<T, M>,
-    private val authMetaSupplier: Supplier<M>,
-    private val uidSupply: Supplier<Key<T>>
+open class AuthorizationTests<M, T>(
+    val authSvc: AuthorizationService<T, M, M>,
+    val authMetaSupplier: Supplier<out M>,
+    val uidSupply: Supplier<out Key<T>>
 ) {
+    val a: Supplier<Sequence<Long>> = Supplier {
+        sequenceOf(Random.nextLong())
+    }
+
+    val b: Sequence<Supplier<Long>> =
+        sequenceOf(Supplier { Random.nextLong() })
+
+
     @Test
     fun `calling method authorize doesnt error`() {
         StepVerifier
@@ -25,14 +34,26 @@ open class AuthorizationTests<out M, T>(
     @Test
     fun `calling method findAuthorizationsFor doesnt error`() {
         StepVerifier
-            .create(authSvc.getAuthorizationsFor(uidSupply.get()))
+            .create(authSvc.getAuthorizationsFor(uidSupply.get()).collectList())
+            .assertNext { list ->
+                Assertions
+                    .assertThat(list)
+                    .isNotNull
+                    .isNotEmpty
+            }
             .verifyComplete()
     }
 
     @Test
     fun `calling method findAuthorizationsAgainst doesnt error`() {
         StepVerifier
-            .create(authSvc.getAuthorizationsFor(uidSupply.get()))
+            .create(authSvc.getAuthorizationsFor(uidSupply.get()).collectList())
+            .assertNext { list ->
+                Assertions
+                    .assertThat(list)
+                    .isNotNull
+                    .isNotEmpty
+            }
             .verifyComplete()
     }
 
@@ -41,15 +62,10 @@ open class AuthorizationTests<out M, T>(
         val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
         val auths = authSvc.getAuthorizationsFor(uidSupply.get())
 
-        val composed = Flux.from(saveAuth).thenMany(auths)
+        val composed = Flux.from(saveAuth).thenMany(auths).doOnNext(System.out::println)
 
         StepVerifier
             .create(composed)
-            .assertNext {
-                Assertions
-                    .assertThat(it)
-                    .isNotNull
-            }
             .verifyComplete()
     }
 
