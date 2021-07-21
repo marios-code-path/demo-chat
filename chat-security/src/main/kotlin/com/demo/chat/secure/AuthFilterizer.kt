@@ -13,7 +13,7 @@ interface Filterizer<M, T> {
 class AuthFilterizer<T, P> : Filterizer<AuthMetadata<T, P>, Key<T>> {
     override fun filterize(elements: Flux<AuthMetadata<T, P>>, hitElements: Sequence<Key<T>>): Flux<AuthMetadata<T, P>> =
         elements
-            .filter { meta -> (meta.expires == 0L || meta.expires < System.currentTimeMillis()) }
+            .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) }
             .filter { meta ->
                 val eP = meta.principal
                 val eT = meta.target
