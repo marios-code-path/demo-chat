@@ -31,7 +31,6 @@ open class AuthorizationServiceTests<M, T>(
                 Assertions
                     .assertThat(list)
                     .isNotNull
-                    .isNotEmpty
             }
             .verifyComplete()
     }
@@ -44,7 +43,6 @@ open class AuthorizationServiceTests<M, T>(
                 Assertions
                     .assertThat(list)
                     .isNotNull
-                    .isNotEmpty
             }
             .verifyComplete()
     }
@@ -54,10 +52,11 @@ open class AuthorizationServiceTests<M, T>(
         val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
         val auths = authSvc.getAuthorizationsFor(uidSupply.get())
 
-        val composed = Flux.from(saveAuth).thenMany(auths).doOnNext(System.out::println)
+        val composed = Flux.from(saveAuth).thenMany(auths)
 
         StepVerifier
             .create(composed)
+            .expectNextCount(1)
             .verifyComplete()
     }
 

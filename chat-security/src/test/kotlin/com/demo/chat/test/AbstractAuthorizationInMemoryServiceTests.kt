@@ -17,7 +17,7 @@ class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<Auth
         AuthorizationPersistenceInMemory,
         AuthorizationMetaIndexInMemory,
         AuthPrincipleByKeySearch,
-        { Key.funKey(0L) },
+        { Key.funKey(1L) },
         { m -> m.key },
         AuthFilterizer()
     ),
