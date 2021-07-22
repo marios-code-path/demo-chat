@@ -20,7 +20,7 @@ class AbstractAuthorizationService<T, M, Q>(
 ) : AuthorizationService<T, M, M> {
     override fun authorize(authorization: M, exist: Boolean): Mono<Void> =
         when (exist) {
-            true -> authIndex.add(authorization)
+            true -> authPersist.add(authorization).then(authIndex.add(authorization))
             else -> authIndex.rem(keyForAuth.apply(authorization))
         }
 
