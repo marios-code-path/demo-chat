@@ -27,8 +27,8 @@ class UserTests : TestBase() {
                 .create(userFlux)
                 .expectSubscription()
                 .then {
-                    userPub.next(User.create(Key.anyKey(3), "Test-User-3", "3", "http://"))
-                    userPub.next(User.create(Key.anyKey("FOO"), "Test-User-foo", "Foo", "http://"))
+                    userPub.next(User.create(Key.funKey(3), "Test-User-3", "3", "http://"))
+                    userPub.next(User.create(Key.funKey("FOO"), "Test-User-foo", "Foo", "http://"))
                 }
                 .assertNext {
                     Assertions

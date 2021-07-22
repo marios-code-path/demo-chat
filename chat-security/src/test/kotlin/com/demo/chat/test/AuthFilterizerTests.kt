@@ -74,7 +74,7 @@ class AuthFilterizerTests {
     }
 
     @Test
-    fun `should filter out anon dups`() {
+    fun `should filter out anon duplicates`() {
         val filterizer = AuthFilterizer<Long, String>()
 
         var aTarget = keyGen.get()

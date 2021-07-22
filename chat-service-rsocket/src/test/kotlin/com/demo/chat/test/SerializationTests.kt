@@ -52,7 +52,7 @@ class SerializationTests {
 
     @Test
     fun `serialization tests dont except`() {
-        val randomEventKey = Key.anyKey(UUID.randomUUID())
+        val randomEventKey = Key.funKey(UUID.randomUUID())
 
         val data = mapper.writeValueAsString(randomEventKey)
 

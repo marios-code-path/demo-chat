@@ -27,15 +27,15 @@ class TopicSerializerTests : TestBase() {
 
         val topicJsons = Flux.just(
                 MessageTopic.create(
-                        Key.anyKey(1L),
+                        Key.funKey(1L),
                         "MOON"
                 ),
                 MessageTopic.create(
-                        Key.anyKey(UUID.randomUUID()),
+                        Key.funKey(UUID.randomUUID()),
                         "MARS"
                 ),
                 MessageTopic.create(
-                        Key.anyKey("2"),
+                        Key.funKey("2"),
                         "VENUS"
                 )
         )

@@ -79,7 +79,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get many by Ids`() {
-        val publisher = userSvc.byIds(listOf(Key.anyKey(UUID.randomUUID())))
+        val publisher = userSvc.byIds(listOf(Key.funKey(UUID.randomUUID())))
 
         StepVerifier
                 .create(publisher)
@@ -94,7 +94,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get single`() {
-        val publisher = userSvc.get(Key.anyKey(UUID.randomUUID()))
+        val publisher = userSvc.get(Key.funKey(UUID.randomUUID()))
 
         StepVerifier
                 .create(publisher)

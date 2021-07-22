@@ -27,15 +27,15 @@ class UserSerliazerTests : TestBase() {
 
         val userJsons = Flux.just(
                 User.create(
-                        Key.anyKey(1L),
+                        Key.funKey(1L),
                         "MOON", "LUNA", "http://"
                 ),
                 User.create(
-                        Key.anyKey(UUID.randomUUID()),
+                        Key.funKey(UUID.randomUUID()),
                         "MARS", "WAR", "http://"
                 ),
                 User.create(
-                        Key.anyKey("2"),
+                        Key.funKey("2"),
                         "VENUS", "BEAUTY", "http://"
                 )
         )

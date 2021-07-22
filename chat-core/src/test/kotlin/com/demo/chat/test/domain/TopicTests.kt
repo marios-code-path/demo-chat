@@ -27,8 +27,8 @@ class TopicTests : TestBase() {
                 .create(topicFlux)
                 .expectSubscription()
                 .then {
-                    topicPub.next(MessageTopic.create(Key.anyKey(3), "Test-Topic-3"))
-                    topicPub.next(MessageTopic.create(Key.anyKey("foo-3"), "Test-Topic-foo"))
+                    topicPub.next(MessageTopic.create(Key.funKey(3), "Test-Topic-3"))
+                    topicPub.next(MessageTopic.create(Key.funKey("foo-3"), "Test-Topic-foo"))
                 }
                 .assertNext {
                     Assertions

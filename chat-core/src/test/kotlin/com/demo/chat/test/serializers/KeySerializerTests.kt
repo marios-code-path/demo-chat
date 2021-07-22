@@ -30,7 +30,7 @@ class KeySerializerTests : TestBase() {
         val publisher = TestPublisher.create<Key<out Any>>()
 
         val keysSerialized = listOf(
-                Key.anyKey(1L),
+                Key.funKey(1L),
                 MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
@@ -74,9 +74,9 @@ class KeySerializerTests : TestBase() {
         }
 
         val keyJsons = Flux.just(
-                Key.anyKey(1L),
-                Key.anyKey("a"),
-                Key.anyKey(UUID.randomUUID())
+                Key.funKey(1L),
+                Key.funKey("a"),
+                Key.funKey(UUID.randomUUID())
         )
                 .map(mapper::writeValueAsString)
                 .map<Key<out Any>>(mapper::readValue)

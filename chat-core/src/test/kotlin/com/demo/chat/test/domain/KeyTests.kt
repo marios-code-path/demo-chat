@@ -8,7 +8,6 @@ import reactor.test.StepVerifier
 import reactor.test.publisher.TestPublisher
 import java.time.Duration
 import java.util.*
-import kotlin.reflect.jvm.internal.impl.resolve.scopes.receivers.ThisClassReceiver
 
 class KeyTests : TestBase() {
 
@@ -48,8 +47,8 @@ class KeyTests : TestBase() {
             .create(messagePub)
             .expectSubscription()
             .then {
-                messagePub.next(randomAnyKey())
-                messagePub.next(randomAnyKey())
+                messagePub.next(randomFunKey())
+                messagePub.next(randomFunKey())
             }
             .assertNext {
                 Assertions
@@ -68,14 +67,14 @@ class KeyTests : TestBase() {
             .verify(Duration.ofSeconds(1))
     }
 
-    private fun randomAnyKey(): Key<out Any> {
+    private fun randomFunKey(): Key<out Any> {
 
         val id = UUID.randomUUID()
         counter++
 
         return if (counter % 2 == 0)
-            Key.anyKey(id)
+            Key.funKey(id)
         else
-            Key.anyKey(counter)
+            Key.funKey(counter)
     }
 }

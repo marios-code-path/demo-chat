@@ -47,7 +47,7 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.key())
-                .willReturn(Mono.just(Key.anyKey(UUID.randomUUID())))
+                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(anyObject()))
                 .willReturn(Mono.empty())

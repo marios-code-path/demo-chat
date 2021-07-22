@@ -4,7 +4,7 @@ import com.demo.chat.domain.*
 import java.util.function.Supplier
 
 object TestUserSupplier : Supplier<User<String>> {
-    override fun get(): User<String> = User.create(Key.anyKey(randomAlphaNumeric(10)), "TEST", "TEST", "TEST")
+    override fun get(): User<String> = User.create(Key.funKey(randomAlphaNumeric(10)), "TEST", "TEST", "TEST")
 }
 
 object TestMessageSupplier : Supplier<Message<String, String>> {

@@ -44,11 +44,11 @@ class MessageTopicRepositoryTests : CassandraSchemaTest(){
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = UUID.randomUUID()
-        val room = MessageTopic.create(Key.anyKey(roomId), ROOMNAME)
+        val room = MessageTopic.create(Key.funKey(roomId), ROOMNAME)
 
         val saveFlux = repo.add(room)
 
-        val deleteMono = repo.rem(Key.anyKey(roomId))
+        val deleteMono = repo.rem(Key.funKey(roomId))
 
         val findActiveRooms =
                 repo.findAll()
@@ -104,7 +104,7 @@ class MessageTopicRepositoryTests : CassandraSchemaTest(){
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = Flux.just(Key.anyKey(UUIDs.timeBased()))
+        val saveFlux = Flux.just(Key.funKey(UUIDs.timeBased()))
                 .flatMap {
                     byNameRepo.save(ChatTopicName(ChatTopicNameKey(it.id, "XYZ"), true))
                 }

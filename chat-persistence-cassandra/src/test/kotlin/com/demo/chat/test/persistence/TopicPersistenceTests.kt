@@ -72,7 +72,7 @@ class TopicPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    MessageTopic.create(Key.anyKey(UUIDs.timeBased()), name)
+                    MessageTopic.create(Key.funKey(UUIDs.timeBased()), name)
                 }
                 .flatMap(roomSvc::add)
 

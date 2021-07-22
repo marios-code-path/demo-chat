@@ -180,7 +180,7 @@ class TopicMembershipRepositoryTests : CassandraSchemaTest() {
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
-            Key.anyKey(UUIDs.timeBased())
+            Key.funKey(UUIDs.timeBased())
         }.limit(5).toList()
 
         val keyIdsList = keyList.stream().map { it.id }.toList()
