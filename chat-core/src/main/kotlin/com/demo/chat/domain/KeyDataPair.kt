@@ -24,12 +24,6 @@ interface Key<T> {
                 (k2 != null && k2::class == this::class) &&
                         (k2 is Key<*> && k2.id == this.id)
         }
-
-        @JvmStatic
-        fun <T : Any> anyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
-            override val id: T
-                get() = id
-        }
     }
 }
 
