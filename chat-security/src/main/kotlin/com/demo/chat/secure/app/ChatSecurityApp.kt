@@ -3,10 +3,7 @@ package com.demo.chat.secure
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.secure.service.AbstractAuthorizationImpl
-import com.demo.chat.secure.service.AuthMetaPersistenceInMemory
-import com.demo.chat.secure.service.AuthenticationServiceImpl
-import com.demo.chat.secure.service.PasswordStoreInMemory
+import com.demo.chat.secure.service.*
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
@@ -30,14 +27,6 @@ import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.random.Random
 
-
-class AuthIndex {
-    companion object {
-        const val PRINCIPAL = "p"
-        const val TARGET = "t"
-        const val ID = "id"
-    }
-}
 
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class ChatSecurityApp {
@@ -151,36 +140,25 @@ class ChatSecurityApp {
     @Bean
     fun authMetaPersistence(keySvc: IKeyService<Long>):
             PersistenceStore<Long, AuthMetadata<Long, String>> =
-        AuthMetaPersistenceInMemory(keySvc) { a -> a.key }
+        AuthorizationPersistenceInMemory
 
     @Bean
-    fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> = LuceneIndex(
-        { t ->
-            listOf(
-                Pair("permission", t.permission),
-                Pair("principal", t.principal.id.toString()),
-                Pair("target", t.target.id.toString())
-            )
-        },
-        { q -> Key.funKey(q.toLong()) },
-        { t -> t.key }
-    )
+    fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> =
+        AuthorizationMetaIndexInMemory
 
     @Bean
     fun authorizationService(
         authPersist: PersistenceStore<Long, AuthMetadata<Long, String>>,
         authIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>,
     ): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
-        AbstractAuthorizationImpl(
+        AbstractAuthorizationService(
             authPersist,
             authIndex,
-            { m -> IndexSearchRequest(AuthIndex.PRINCIPAL, m.toString(), 1) },
-            { m -> m.principal },
-            { m -> m.target },
+            AuthPrincipleByKeySearch,
             { ANONYMOUS_KEY },
             { m -> m.key },
-            { m -> m.principal.toString() + m.target.toString() },
-            { a, _ -> a })
+            AuthFilterizer()
+        )
 
     @Bean
     fun passwordStore(): PasswordStore<Long, String> = PasswordStoreInMemory()

@@ -8,21 +8,13 @@ import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
-import kotlin.random.Random
 
 @Disabled
-open class AuthorizationTests<M, T>(
+open class AuthorizationServiceTests<M, T>(
     val authSvc: AuthorizationService<T, M, M>,
     val authMetaSupplier: Supplier<out M>,
     val uidSupply: Supplier<out Key<T>>
 ) {
-    val a: Supplier<Sequence<Long>> = Supplier {
-        sequenceOf(Random.nextLong())
-    }
-
-    val b: Sequence<Supplier<Long>> =
-        sequenceOf(Supplier { Random.nextLong() })
-
 
     @Test
     fun `calling method authorize doesnt error`() {
