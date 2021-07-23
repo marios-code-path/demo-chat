@@ -19,7 +19,7 @@ class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<Auth
         AuthPrincipleByKeySearch,
         { Key.funKey(0L) },
         { m -> m.key },
-        AuthFilterizer()
+        AuthFilterizer  { a, b -> (a.key.id - b.key.id).toInt() }
     ),
     Supplier {
         StringRoleAuthorizationMetadata(

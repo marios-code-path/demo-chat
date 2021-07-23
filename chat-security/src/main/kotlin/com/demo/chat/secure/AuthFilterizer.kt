@@ -10,10 +10,9 @@ interface Filterizer<M, T> {
     fun filterize(elements: Flux<M>, hitElements: Sequence<T>): Flux<M>
 }
 
-class AuthFilterizer<T, P> : Filterizer<AuthMetadata<T, P>, Key<T>> {
+class AuthFilterizer<T, P>(private val comparator: Comparator<AuthMetadata<T, P>>) : Filterizer<AuthMetadata<T, P>, Key<T>> {
     override fun filterize(elements: Flux<AuthMetadata<T, P>>, hitElements: Sequence<Key<T>>): Flux<AuthMetadata<T, P>> =
         elements
-            .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) }
             .filter { meta ->
                 val eP = meta.principal
                 val eT = meta.target
@@ -23,5 +22,8 @@ class AuthFilterizer<T, P> : Filterizer<AuthMetadata<T, P>, Key<T>> {
                     .any()
             }
             .groupBy { g -> g.permission }
-            .flatMap { g -> g.reduce { a, _ -> a } }
+            .flatMap { g ->
+                g.sort(comparator).last()
+            }
+            .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) }
 }

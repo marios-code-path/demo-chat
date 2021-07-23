@@ -53,7 +53,7 @@ class ChatSecurityApp {
     ): CommandLineRunner = CommandLineRunner { args ->
         val keyGenerator = Supplier { Key.funKey(Random(3894329L).nextLong()) }
         val princpialKey = Key.funKey(2L)
-        val anotherUserKey = Key.funKey(Random(1384).nextInt(2580).toLong())
+        val anotherUserKey = Key.funKey(Random.nextInt(2580).toLong())
 
         val users = listOf(
             User.create(princpialKey, "mario", "mario", "http://foo"),
@@ -70,11 +70,12 @@ class ChatSecurityApp {
             .doFinally { println("Added users to index.") }
             .blockLast()
 
-        Flux.just(
-            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, princpialKey, "ROLE_WRITE"),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_OPTIONAL"),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, anotherUserKey, "ROLE_SUPER")
+        Flux.just(// role that determines required access? ( key, target, action, role )
+            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, anotherUserKey, "ROLE_MESSAGE"),
+            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, princpialKey, "ROLE_SUPER"),
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
             .doFinally { println("Added Authorizations to users.") }
@@ -152,17 +153,14 @@ class ChatSecurityApp {
         AuthorizationMetaIndexInMemory
 
     @Bean
-    fun authorizationService(
-        authPersist: PersistenceStore<Long, AuthMetadata<Long, String>>,
-        authIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>,
-    ): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
+    fun authorizationService(): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
         AbstractAuthorizationService(
-            authPersist,
-            authIndex,
+            AuthorizationPersistenceInMemory,
+            AuthorizationMetaIndexInMemory,
             AuthPrincipleByKeySearch,
             { ANONYMOUS_KEY },
             { m -> m.key },
-            AuthFilterizer()
+            AuthFilterizer { a, b -> (a.key.id - b.key.id).toInt() }
         )
 
     @Bean

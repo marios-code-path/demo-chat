@@ -20,6 +20,10 @@ interface Key<T> {
             override val id: T
                 get() = id
 
+            override fun toString(): String {
+                return id.toString()
+            }
+
             override fun equals(k2: Any?): Boolean =
                 (k2 != null && k2::class == this::class) &&
                         (k2 is Key<*> && k2.id == this.id)
