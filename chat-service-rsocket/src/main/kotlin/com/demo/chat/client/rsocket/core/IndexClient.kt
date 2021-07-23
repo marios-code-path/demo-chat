@@ -38,4 +38,8 @@ open class IndexClient<T, E, Q>(
             .route("${prefix}query")
             .data(query as Any)
             .retrieveFlux()
+
+        override fun findUnique(query: Q): Mono<out Key<T>> {
+                TODO("Not yet implemented")
+        }
 }

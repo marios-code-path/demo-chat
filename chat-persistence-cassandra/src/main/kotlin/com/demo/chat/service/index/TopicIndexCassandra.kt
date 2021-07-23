@@ -50,4 +50,8 @@ class TopicIndexCassandra<T>(
             }
         }
     }
+
+    override fun findUnique(query: Map<String, String>): Mono<out Key<T>> {
+        TODO("Not yet implemented")
+    }
 }

@@ -11,7 +11,7 @@ interface IndexServiceMapping<T, E, Q> : IndexService<T, E, Q> {
     override fun add(entity: E): Mono<Void>
     @MessageMapping("rem")
     override fun rem(key: Key<T>): Mono<Void>
-    @MessageMapping("find")
+    @MessageMapping("query")
     override fun findBy(query: Q): Flux<out Key<T>>
     @MessageMapping("unique")
     override fun findUnique(query: Q): Mono<out Key<T>>

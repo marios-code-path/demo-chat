@@ -70,4 +70,7 @@ class MessageIndexCassandra<T>(
 
     private fun findByTopic(topic: T) = byTopicRepo.findByKeyDest(topic)
     private fun findByUser(uid: T) = byUserRepo.findByKeyFrom(uid)
+    override fun findUnique(query: Map<String, String>): Mono<out Key<T>> {
+        TODO("Not yet implemented")
+    }
 }

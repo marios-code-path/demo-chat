@@ -68,8 +68,8 @@ class SerializationTests {
                 registerModule(KotlinModule())
                 val module = JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
                 registerModules(
-                        module.keyModule(),
-                        module("TESTKEY", TestKey::class.java, ETestKey::class.java)
+                    module.keyModule(),
+                    module("TESTKEY", TestKey::class.java, ETestKey::class.java)
                 )
                 setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
                 setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.NONE)
@@ -81,7 +81,8 @@ class SerializationTests {
 
         // Register this abstract module to let the app know when it sees a Interface type, which
         // concrete type to use on the way out.
-        fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) = SimpleModule("CustomModel$name", Version.unknownVersion())
+        fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) =
+            SimpleModule("CustomModel$name", Version.unknownVersion())
                 .apply { setAbstractTypes(SimpleAbstractTypeResolver().apply { addMapping(iface, concrete) }) }
 
         // old but useful to explain where this could potentially happen where autoscanning is not
@@ -90,8 +91,8 @@ class SerializationTests {
             val b = Jackson2ObjectMapperBuilder()
             b.indentOutput(true).dateFormat(SimpleDateFormat("yyyy-MM-dd"))
             b.modules(
-                    module("TESTKEY", TestKey::class.java, ETestKey::class.java),
-                    module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
+                module("TESTKEY", TestKey::class.java, ETestKey::class.java),
+                module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
             )
             return b
         }
