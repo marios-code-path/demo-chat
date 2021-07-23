@@ -1,8 +1,10 @@
-package com.demo.chat.secure
+package com.demo.chat.secure.app
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
+import com.demo.chat.secure.AuthFilterizer
+import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.service.*
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
@@ -100,13 +103,15 @@ class ChatSecurityApp {
             app.doSomethingNeedingAuth()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
+        } catch (e: AccessDeniedException) {
+            println("Not authorized for : "  + e.message)
         }
     }
 
     @Autowired
     private lateinit var app: ChatSecurityApp
 
-    @Secured("ROLE_SUPERUSER")
+    @Secured("ROLE_SUPER")
     fun doSomethingNeedingAuth() {
         println("HERE!")
     }
