@@ -2,35 +2,38 @@ package com.demo.chat.test
 
 import com.demo.chat.domain.Key
 import com.demo.chat.secure.AuthFilterizer
-import com.demo.chat.secure.service.AbstractAuthorizationService
-import com.demo.chat.secure.service.AuthPrincipleByKeySearch
-import com.demo.chat.secure.service.AuthorizationMetaIndexInMemory
-import com.demo.chat.secure.service.AuthorizationPersistenceInMemory
-import com.demo.chat.service.AuthMetadata
+import com.demo.chat.secure.service.*
 import com.demo.chat.service.StringRoleAuthorizationMetadata
 import com.demo.chat.test.auth.AuthorizationServiceTests
+import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
 import kotlin.random.Random
 
-class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<AuthMetadata<Long, String>, Long>(
+class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<Long, String>(
     AbstractAuthorizationService(
         AuthorizationPersistenceInMemory,
         AuthorizationMetaIndexInMemory,
         AuthPrincipleByKeySearch,
-        { Key.funKey(0L) },
+        AuthTargetByKeySearch,
+        { Key.funKey(ANON_ID) },
         { m -> m.key },
-        AuthFilterizer  { a, b -> (a.key.id - b.key.id).toInt() }
+        AuthFilterizer { a, b -> (a.key.id - b.key.id).toInt() }
     ),
     Supplier {
         StringRoleAuthorizationMetadata(
-            Key.funKey(Random.nextLong()),
-            Key.funKey(1L),
-            Key.funKey(2L),
-            "ALL",
+            Key.funKey(atomicLong.incrementAndGet()),
+            Key.funKey(PRINCIPAL_ID),
+            Key.funKey(TARGET_ID),
+            TEST_PERMISSION,
             Long.MAX_VALUE
         )
-    },
-    Supplier {
-        Key.funKey(1L)
     }
-)
+) {
+    companion object {
+        val atomicLong = AtomicLong(Random.nextLong(1024, 2048))
+        const val ANON_ID = 0L
+        const val TARGET_ID = 2L
+        const val PRINCIPAL_ID = 1L
+        const val TEST_PERMISSION = "ALL"
+    }
+}

@@ -14,11 +14,21 @@ import kotlin.random.Random
 
 class AuthFilterizerTests {
     companion object {
-        val atomicLong = AtomicLong(Random.nextLong())
+        val atomicLong = AtomicLong(Random.nextLong(1024,999999))
     }
 
     private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
-    private val filterizer = AuthFilterizer<Long, String> { a, b -> (a.key.id - b.key.id).toInt() }
+    private val filterizer = AuthFilterizer<Long, String> { a, b ->
+        when {
+            a.key.id < b.key.id -> {
+                -1
+            }
+            a.key.id > b.key.id -> {
+                1
+            }
+            else -> 0
+        }
+    }
 
     @Test
     fun `filterizer create`() {
@@ -100,7 +110,7 @@ class AuthFilterizerTests {
         var aPrinciple = keyGen.get()
         var aTarget = keyGen.get()
         val anonId = keyGen.get()
-        val idSeq = sequenceOf(aPrinciple, anonId)
+        val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
         val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ANY", 0L),
@@ -120,7 +130,7 @@ class AuthFilterizerTests {
         var aPrinciple = keyGen.get()
         var aTarget = keyGen.get()
         val anonId = keyGen.get()
-        val idSeq = sequenceOf(aPrinciple, anonId)
+        val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
         val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ANY", 1),
@@ -139,13 +149,13 @@ class AuthFilterizerTests {
         var aPrinciple = keyGen.get()
         var aTarget = keyGen.get()
         val anonId = keyGen.get()
-        val idSeq = sequenceOf(aPrinciple, anonId)
+        val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
         val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, anonId, "REQUEST"), // REM by next
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aPrinciple, "REQUEST", 1), // REMOVES last
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "SUM"),// REM by next
-            StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "SUM", 1),// REMOVES last
+            StringRoleAuthorizationMetadata(keyGen.get(), aTarget, aTarget, "SUM", 1),// REMOVES last
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "SUM") // ok
         )
 

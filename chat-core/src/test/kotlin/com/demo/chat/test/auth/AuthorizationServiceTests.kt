@@ -1,6 +1,6 @@
 package com.demo.chat.test.auth
 
-import com.demo.chat.domain.Key
+import com.demo.chat.service.AuthMetadata
 import com.demo.chat.service.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -10,10 +10,9 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class AuthorizationServiceTests<M, T>(
-    val authSvc: AuthorizationService<T, M, M>,
-    val authMetaSupplier: Supplier<out M>,
-    val uidSupply: Supplier<out Key<T>>
+open class AuthorizationServiceTests<T, P>(
+    val authSvc: AuthorizationService<T, AuthMetadata<T, P>, AuthMetadata<T, P>>,
+    val authMetaSupplier: Supplier<AuthMetadata<T, P>>
 ) {
 
     @Test
@@ -25,8 +24,9 @@ open class AuthorizationServiceTests<M, T>(
 
     @Test
     fun `calling method findAuthorizationsFor doesnt error`() {
+        val principal = authMetaSupplier.get().principal
         StepVerifier
-            .create(authSvc.getAuthorizationsFor(uidSupply.get()).collectList())
+            .create(authSvc.getAuthorizationsForPrincipal(principal).collectList())
             .assertNext { list ->
                 Assertions
                     .assertThat(list)
@@ -37,8 +37,11 @@ open class AuthorizationServiceTests<M, T>(
 
     @Test
     fun `calling method findAuthorizationsAgainst doesnt error`() {
+        val principal = authMetaSupplier.get().principal
+        val target = authMetaSupplier.get().target
+
         StepVerifier
-            .create(authSvc.getAuthorizationsFor(uidSupply.get()).collectList())
+            .create(authSvc.getAuthorizationsAgainst(principal, target).collectList())
             .assertNext { list ->
                 Assertions
                     .assertThat(list)
@@ -49,27 +52,38 @@ open class AuthorizationServiceTests<M, T>(
 
     @Test
     fun `saved authorization should return with getAuthorizationsFor(uid)`() {
-        val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
-        val auths = authSvc.getAuthorizationsFor(uidSupply.get())
+        val authMeta = authMetaSupplier.get()
+        val principal = authMeta.principal
+
+        val saveAuth = authSvc.authorize(authMeta, true)
+        val auths = authSvc.getAuthorizationsForPrincipal(principal)
 
         val composed = Flux.from(saveAuth).thenMany(auths)
 
         StepVerifier
             .create(composed)
-            .expectNextCount(1)
+            .thenConsumeWhile {
+                it.principal == principal
+            }
             .verifyComplete()
     }
 
     @Test
     fun `saved authorization should return with getAuthorizationsAgainst(uid, tid)`() {
-        val saveAuth = authSvc.authorize(authMetaSupplier.get(), true)
-        val auths = authSvc.getAuthorizationsAgainst(uidSupply.get(), uidSupply.get())
+        val authMeta = authMetaSupplier.get()
+        val principal = authMeta.principal
+        val target = authMeta.target
+
+        val saveAuth = authSvc.authorize(authMeta, true)
+        val auths = authSvc.getAuthorizationsAgainst(principal, target)
 
         val composed = Flux.from(saveAuth).thenMany(auths)
 
         StepVerifier
             .create(composed)
-            .expectNextCount(1)  // ANON && USER
+            .thenConsumeWhile {
+                it.target == target
+            }
             .verifyComplete()
     }
 }

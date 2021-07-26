@@ -15,15 +15,13 @@ class AuthFilterizer<T, P>(private val comparator: Comparator<AuthMetadata<T, P>
         elements
             .filter { meta ->
                 val eP = meta.principal
-                val eT = meta.target
 
                 hitElements
-                    .filter { k -> (k == eP || k == eT) }
+                    .filter { k -> (k == eP) }
                     .any()
             }
             .groupBy { g -> g.permission }
-            .flatMap { g ->
-                g.sort(comparator).last()
-            }
+            .flatMap { g -> g.sort(comparator).last() }
             .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) }
+
 }

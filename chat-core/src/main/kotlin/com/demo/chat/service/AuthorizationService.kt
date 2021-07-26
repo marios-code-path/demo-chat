@@ -20,7 +20,8 @@ interface AuthenticationService<T, E, V> {
 
 interface AuthorizationService<T, out M, in N> {
     fun authorize(authorization: N, exist: Boolean): Mono<Void>
-    fun getAuthorizationsFor(uid: Key<T>): Flux<out M>
+    fun getAuthorizationsForTarget(uid: Key<T>): Flux<out M>
+    fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<out M>
     fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<out M>
 }
 

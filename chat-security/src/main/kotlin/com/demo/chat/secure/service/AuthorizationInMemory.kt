@@ -31,7 +31,12 @@ object AuthorizationMetaIndexInMemory : LuceneIndex<Long, AuthMetadata<Long, Str
 
 object AuthPrincipleByKeySearch : Function<Key<Long>, IndexSearchRequest> {
     override fun apply(m: Key<Long>): IndexSearchRequest =
-        IndexSearchRequest(PRINCIPAL, m.id.toString(), 1)
+        IndexSearchRequest(PRINCIPAL, m.id.toString(), 100)
+}
+
+object AuthTargetByKeySearch : Function<Key<Long>, IndexSearchRequest> {
+    override fun apply(m: Key<Long>): IndexSearchRequest =
+        IndexSearchRequest(TARGET, m.id.toString(), 100)
 }
 
 class AuthIndex {

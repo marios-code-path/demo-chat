@@ -26,6 +26,8 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.lang.Math.abs
+import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.random.Random
@@ -35,6 +37,8 @@ import kotlin.random.Random
 class ChatSecurityApp {
     companion object {
         val ANONYMOUS_KEY: Key<Long> = Key.funKey(0L)
+        val atomicLong = AtomicLong(abs(Random.nextLong(1024,999999)))
+        private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -51,9 +55,8 @@ class ChatSecurityApp {
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
 
     ): CommandLineRunner = CommandLineRunner { args ->
-        val keyGenerator = Supplier { Key.funKey(Random(3894329L).nextLong()) }
-        val princpialKey = Key.funKey(2L)
-        val anotherUserKey = Key.funKey(Random.nextInt(2580).toLong())
+        val princpialKey = keyGen.get()
+        val anotherUserKey = keyGen.get()
 
         val users = listOf(
             User.create(princpialKey, "mario", "mario", "http://foo"),
@@ -71,14 +74,15 @@ class ChatSecurityApp {
             .blockLast()
 
         Flux.just(// role that determines required access? ( key, target, action, role )
-            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, anotherUserKey, "ROLE_MESSAGE"),
-            StringRoleAuthorizationMetadata(keyGenerator.get(), princpialKey, princpialKey, "ROLE_SUPER"),
+            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
+            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
+            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
+            StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_MESSAGE"),
+            StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_SUPER"),
+
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
-            .doFinally { println("Added Authorizations to users.") }
+            .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($ANONYMOUS_KEY).") }
             .blockLast()
 
 
@@ -102,6 +106,7 @@ class ChatSecurityApp {
 
             println("Success : ${SecurityContextHolder.getContext().authentication}")
             app.doSomethingNeedingAuth()
+            app.doSomethingMessagy()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         } catch (e: AccessDeniedException) {
@@ -114,7 +119,12 @@ class ChatSecurityApp {
 
     @Secured("ROLE_SUPER")
     fun doSomethingNeedingAuth() {
-        println("HERE!")
+        println("SUPER!")
+    }
+
+    @Secured("ROLE_MESSAGE")
+    fun doSomethingMessagy() {
+        println("MESSAGE")
     }
 
     @Bean
@@ -158,6 +168,7 @@ class ChatSecurityApp {
             AuthorizationPersistenceInMemory,
             AuthorizationMetaIndexInMemory,
             AuthPrincipleByKeySearch,
+            AuthTargetByKeySearch,
             { ANONYMOUS_KEY },
             { m -> m.key },
             AuthFilterizer { a, b -> (a.key.id - b.key.id).toInt() }
@@ -185,7 +196,7 @@ class ChatSecurityApp {
         override fun authenticate(authen: Authentication): Authentication {
             val credential = authen.credentials.toString()
             val targetId: Key<Long> = Key.funKey(if (authen.details is Long) authen.details as Long else 0L)
-            println("The Target Id is: $targetId")
+
             return authenticationS
                 .authenticate(authen.name, credential)
                 .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }
@@ -193,7 +204,6 @@ class ChatSecurityApp {
                 .flatMap { user ->
                     authorizationS
                         .getAuthorizationsAgainst(user.key, targetId)
-                        .doOnNext(System.out::println)
                         .map { authMeta -> authMeta.permission }
                         .collect(Collectors.toList())
                         .map { authorizations ->

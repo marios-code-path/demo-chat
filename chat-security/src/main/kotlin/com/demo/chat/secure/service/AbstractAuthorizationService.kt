@@ -14,6 +14,7 @@ class AbstractAuthorizationService<T, M, Q>(
     private val authPersist: PersistenceStore<T, M>,
     private val authIndex: IndexService<T, M, Q>,
     private val queryForPrinciple: Function<in Key<T>, Q>,
+    private val queryForTarget: Function<in Key<T>, Q>,
     private val anonKey: Supplier<out Key<T>>,
     private val keyForAuth: Function<M, Key<T>>,
     private val filterizer: Filterizer<M, Key<T>>
@@ -24,17 +25,17 @@ class AbstractAuthorizationService<T, M, Q>(
             else -> authIndex.rem(keyForAuth.apply(authorization))
         }
 
-    override fun getAuthorizationsFor(uid: Key<T>): Flux<M> = authIndex
+    override fun getAuthorizationsForTarget(uid: Key<T>): Flux<M> = authIndex
+        .findBy(queryForTarget.apply(uid))
+        .flatMap(authPersist::get)
+
+    override fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<M> = authIndex
         .findBy(queryForPrinciple.apply(uid))
         .flatMap(authPersist::get)
 
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<M> = filterizer
         .filterize(
-            Flux.merge(
-                getAuthorizationsFor(anonKey.get()),
-                getAuthorizationsFor(uidA),
-                getAuthorizationsFor(uidB)
-            ),
-            sequenceOf(uidA, uidB)
+            getAuthorizationsForTarget(uidB),
+            sequenceOf(anonKey.get(), uidA, uidB)
         )
 }
