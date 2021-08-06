@@ -11,11 +11,11 @@ import com.demo.chat.service.impl.memory.persistence.InMemoryPersistence
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import java.util.function.Function
 
-object MonotonicKeyService : KeyServiceInMemory<Long>({ System.currentTimeMillis() })
+object IncrementingKeyService : KeyServiceInMemory<Long>({ System.currentTimeMillis() })
 
 object AuthorizationPersistenceInMemory :
     InMemoryPersistence<Long, AuthMetadata<Long, String>>(
-        MonotonicKeyService, AuthMetadata::class.java, { t -> t.key })
+        IncrementingKeyService, AuthMetadata::class.java, { t -> t.key })
 
 object AuthorizationMetaIndexInMemory : LuceneIndex<Long, AuthMetadata<Long, String>>(
     { t ->

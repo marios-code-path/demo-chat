@@ -95,12 +95,10 @@ class ChatSecurityApp {
         val username = readLine()
         println("password: ")
         val password = readLine()
-        println("target: (number 1 - 10)")
-        val targetObject = readLine()
 
         try {
             val request = UsernamePasswordAuthenticationToken(username, password)
-                .apply { details = targetObject!!.toLong() }
+                .apply { details = anotherUserKey.id }
             val result = authenticationManager.authenticate(request)
             SecurityContextHolder.getContext().authentication = result
 
