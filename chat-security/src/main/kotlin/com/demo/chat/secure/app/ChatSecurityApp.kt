@@ -79,7 +79,6 @@ class ChatSecurityApp {
             StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
             StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_MESSAGE"),
             StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_SUPER"),
-
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
             .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($ANONYMOUS_KEY).") }

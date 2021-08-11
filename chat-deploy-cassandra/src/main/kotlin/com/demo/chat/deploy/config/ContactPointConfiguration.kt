@@ -10,7 +10,7 @@ class ContactPointConfiguration(
 ) : AbstractCassandraConfiguration() {
     override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
             SessionBuilderConfigurer { sessionBuilder ->
-                sessionBuilder // Spring Boot 2.3.0 https://github.com/spring-projects/spring-boot/issues/21487
+                sessionBuilder
                         .withAuthCredentials(props.username, props.password)
                         .withLocalDatacenter(props.localDatacenter)
             }
