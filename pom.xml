@@ -42,6 +42,7 @@
         <module>chat-persistence-xstream</module>
         <module>chat-service-rsocket</module>
         <module>chat-init</module>
+        <module>chat-streams</module>
         <module>chat-gateway</module>
         <module>chat-deploy</module>
         <module>chat-deploy-memory</module>

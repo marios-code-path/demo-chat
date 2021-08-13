@@ -165,15 +165,15 @@ class PubSubServiceRedis<T, E>(
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
     // Connect a Processor to a flux for message ingest ( xread -> processor )
-    fun sourceOf(topic: T): Flux<out Message<T, E>> =
-            topicXSource.getOrPut(topic, {
+    private fun sourceOf(topic: T): Flux<out Message<T, E>> =
+            topicXSource.getOrPut(topic) {
                 val listen = getPubSubFluxFor(topic)
                 val processor = ReplayProcessor.create<Message<T, E>>(replayDepth)
                 streamMgr.setSource(topic, processor)
                 streamMgr.subscribeUpstream(topic, listen)
 
                 listen
-            })
+            }
 
     override fun getByUser(uid: T): Flux<T> =
             stringTemplate
@@ -215,9 +215,7 @@ class PubSubServiceRedis<T, E>(
                     .map {
                         it.message
                     }
-                    .doOnNext {
-                        logger.info("PUBSUB: ${it.key.dest}")
-                    }.doOnComplete {
+                    .doOnComplete {
                         topicXSource.remove(topic)
                     }
 }

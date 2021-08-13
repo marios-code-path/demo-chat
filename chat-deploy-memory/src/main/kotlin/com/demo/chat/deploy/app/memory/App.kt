@@ -1,30 +1,23 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.controller.core.IndexServiceController
-import com.demo.chat.controller.core.PersistenceServiceController
-import com.demo.chat.controller.edge.JoinAlert
-import com.demo.chat.controller.edge.LeaveAlert
-import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreClientConfiguration
 import com.demo.chat.deploy.config.client.CoreClients
 import com.demo.chat.deploy.config.client.EdgeClients
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.codec.IndexSearchRequestConverters
 import com.demo.chat.deploy.config.codec.RequestToQueryConverters
+import com.demo.chat.deploy.config.codec.ValueLiterals
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PubSubControllerConfiguration
-import com.demo.chat.deploy.config.controllers.edge.*
-import com.demo.chat.deploy.config.core.IndexServiceConfiguration
+import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.core.KeyServiceConfiguration
-import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
-import com.demo.chat.deploy.config.codec.ValueLiterals
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
-import com.demo.chat.domain.*
+import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.conflate.*
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
@@ -39,8 +32,6 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
-import org.springframework.stereotype.Controller
 import java.util.*
 
 @SpringBootApplication

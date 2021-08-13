@@ -121,7 +121,7 @@ class ChatSecurityApp {
 
     @Secured("ROLE_MESSAGE")
     fun doSomethingMessagy() {
-        println("MESSAGE")
+        // sink.add(message)
     }
 
     @Bean
@@ -131,7 +131,7 @@ class ChatSecurityApp {
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
     ) =
-        SampleAuthenticationManager(authenticationService(userIndex, passStore), userPersistence, authorizationService)
+        SampleAuthenticationManager(chatAuthenticationService(userIndex, passStore), userPersistence, authorizationService)
 
     @Bean
     fun keyService(): IKeyService<Long> = KeyServiceInMemory(Supplier { Random.nextLong() })
@@ -175,7 +175,7 @@ class ChatSecurityApp {
     fun passwordStore(): PasswordStore<Long, String> = PasswordStoreInMemory()
 
     @Bean
-    fun authenticationService(
+    fun chatAuthenticationService(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         passwordStore: PasswordStore<Long, String>
     ) = AuthenticationServiceImpl(
