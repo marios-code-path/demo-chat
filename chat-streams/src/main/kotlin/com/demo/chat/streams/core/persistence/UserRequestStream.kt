@@ -16,13 +16,14 @@ open class UserRequestStream<T, Q>(
     open fun receiveUserRequest() = Function<Flux<UserCreateRequest>, Flux<User<T>>> { userReq ->
         userReq
             .flatMap { req ->
-            userPersistence.key()
-                .map { key ->
-                    User.create(key, req.name, req.handle, req.imgUri)
-                }
-
-
-
-        }
+                userPersistence
+                    .key()
+                    .map { key -> User.create(key, req.name, req.handle, req.imgUri) }
+            }
+            .flatMap { user ->
+                userIndex
+                    .add(user)
+                    .thenReturn(user)
+            }
     }
 }

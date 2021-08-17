@@ -37,7 +37,6 @@ open class LuceneIndex<T, E>(
     }
 
     override fun add(entity: E): Mono<Void> = Mono.create { sink ->
-
         val doc = Document().apply {
             entityEncoder.apply(entity).forEach { kv ->
                 add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
@@ -61,9 +60,8 @@ open class LuceneIndex<T, E>(
         sink.success()
     }
 
-
     override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> = Flux.create { sink ->
-        val indexReader: DirectoryReader = DirectoryReader.open(directory)//directory.use { DirectoryReader.open(it) }
+        val indexReader: DirectoryReader = DirectoryReader.open(directory)
         val indexSearcher = IndexSearcher(indexReader)
 
         val doc =

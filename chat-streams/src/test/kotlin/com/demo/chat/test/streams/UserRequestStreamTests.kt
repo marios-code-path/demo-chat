@@ -17,7 +17,7 @@ import org.springframework.messaging.converter.MessageConverter
 class UserRequestStreamTests {
 
     @Test
-    fun testUsageCostProcessor() {
+    fun `should userRequest turn into User`() {
         SpringApplicationBuilder(
             *TestChannelBinderConfiguration.getCompleteConfiguration(
                 StreamApp::class.java
@@ -38,7 +38,6 @@ class UserRequestStreamTests {
                 val target = context.getBean(OutputDestination::class.java)
                 val userMessage = target.receive(10000)
                 assertThat(userMessage).isNotNull
-                println("Message: $userMessage")
                 val user = converter.fromMessage(userMessage, User::class.java)
 
                 assertThat(user).hasFieldOrPropertyWithValue("name", "mario")
