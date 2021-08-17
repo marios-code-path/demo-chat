@@ -13,17 +13,16 @@ open class UserRequestStream<T, Q>(
     private val userIndex: IndexService<T, User<T>, Q>
 ) {
     @Bean
-    fun receiveUserRequest() = Function<Flux<UserCreateRequest>, Flux<User<T>>> { userReq ->
-        userReq.flatMap { req ->
+    open fun receiveUserRequest() = Function<Flux<UserCreateRequest>, Flux<User<T>>> { userReq ->
+        userReq
+            .flatMap { req ->
             userPersistence.key()
                 .map { key ->
                     User.create(key, req.name, req.handle, req.imgUri)
                 }
-                .flatMap { user ->
-                    userIndex
-                        .add(user)
-                        .map { user }
-                }
+
+
+
         }
     }
 }

@@ -35,4 +35,5 @@ open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
     open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
         addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeAnyDecoder))
     }
+
 }

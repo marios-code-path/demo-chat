@@ -1,8 +1,10 @@
 package com.demo.chat.streams.core
 
+import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
+import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
@@ -12,7 +14,6 @@ import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import com.demo.chat.streams.core.persistence.UserRequestStream
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.cloud.stream.annotation.EnableBinding
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import reactor.core.publisher.Hooks
@@ -20,7 +21,6 @@ import java.util.function.Supplier
 import kotlin.random.Random
 
 @SpringBootApplication
-@EnableBinding(CoreStreams::class)
 class StreamApp {
     companion object {
 
@@ -31,12 +31,14 @@ class StreamApp {
         }
     }
 
-    @Bean
-    fun chatUserRequestStream(
+    @Configuration
+    class AppJacksonModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
+
+    @Configuration
+    class ChatUserRequestStream(
         persist: PersistenceStore<Long, User<Long>>,
         index: IndexService<Long, User<Long>, IndexSearchRequest>
-    ) = UserRequestStream(persist, index)
-
+    ) : UserRequestStream<Long, IndexSearchRequest>(persist, index)
 
     @Configuration
     class AppConfig {
