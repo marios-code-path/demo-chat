@@ -30,7 +30,7 @@ open class MessageRequestStream<T, V, Q>(
                             .flatMap {
                                 index.add(msg)
                             }
-                            .map { msg }
+                            .thenReturn(msg)
                     }
             }
     }

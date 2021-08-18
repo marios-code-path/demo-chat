@@ -8,6 +8,8 @@ interface KeyBearer<T> {
     val key: Key<T>
 }
 
+interface NoKey<T>: Key<T>
+
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("key")
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))

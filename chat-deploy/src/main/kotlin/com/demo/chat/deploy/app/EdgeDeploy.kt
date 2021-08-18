@@ -28,7 +28,7 @@ class UserConflation(
     indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
 ) : IndexServiceController<UUID, User<UUID>, IndexSearchRequest>(
     LoadablePersistedIndex(
-        KeyFirstPersistence(persistenceConfig.user()) { ent, key ->
+        KeyEnricherPersistenceStore(persistenceConfig.user()) { ent, key ->
             User.create(key, ent.name, ent.handle, ent.imageUri)
         },
         indexConfig.userIndex()
@@ -43,7 +43,7 @@ class TopicConflation(
     indexConfig: IndexServiceConfiguration<UUID, String, IndexSearchRequest>,
 ) : IndexServiceController<UUID, MessageTopic<UUID>, IndexSearchRequest>(
     LoadablePersistedIndex(
-        KeyFirstPersistence(persistenceConfig.topic()) { ent, key ->
+        KeyEnricherPersistenceStore(persistenceConfig.topic()) { ent, key ->
             MessageTopic.create(key, ent.data)
         },
         indexConfig.topicIndex()
@@ -83,7 +83,7 @@ class MembershipConflation(
                 )
             }),
         IndexedPersistence(
-            KeyFirstPersistence(persistenceConfig.membership()) { ent, key ->
+            KeyEnricherPersistenceStore(persistenceConfig.membership()) { ent, key ->
                 TopicMembership.create(
                     key.id, ent.member, ent.memberOf
                 )
@@ -108,7 +108,7 @@ class MessageConflation(
             Optional.of(Message.create(it.key, it.data, false)) // TODO implement MessageDeletion(messageKey)
         }),
         IndexedPersistence(
-            KeyFirstPersistence(persistenceConfig.message()) { ent, key ->
+            KeyEnricherPersistenceStore(persistenceConfig.message()) { ent, key ->
                 Message.create(
                     MessageKey.create(key.id, ent.key.from, ent.key.dest),
                     ent.data, ent.record

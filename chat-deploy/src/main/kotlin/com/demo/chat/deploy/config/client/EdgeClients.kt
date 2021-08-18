@@ -11,7 +11,7 @@ import com.demo.chat.service.edge.ChatUserService
 
 class EdgeClients(
         private val requesterFactory: RequesterFactory,
-        val configProps: AppConfigurationProperties,
+        configProps: AppConfigurationProperties,
 ) {
     private val edgeProps: RSocketEdgeProperties = configProps.edge
 

@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.stream.Collectors
 
-@PreAuthorize("chat_admin")
 @RestController
 open class UserRestController<T, Q>(
     val userPersistence: PersistenceStore<T, User<T>>,

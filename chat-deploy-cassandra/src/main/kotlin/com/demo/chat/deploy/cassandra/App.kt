@@ -1,16 +1,19 @@
 package com.demo.chat.deploy.cassandra
 
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import com.demo.chat.deploy.config.*
+import com.demo.chat.deploy.config.AstraConfiguration
+import com.demo.chat.deploy.config.CassandraIndexServiceConfiguration
+import com.demo.chat.deploy.config.CassandraPersistenceServiceConfiguration
+import com.demo.chat.deploy.config.ContactPointConfiguration
 import com.demo.chat.deploy.config.client.CoreClientConfiguration
 import com.demo.chat.deploy.config.client.CoreClients
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.controllers.core.IndexControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.KeyControllersConfiguration
 import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
-import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
+import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
@@ -21,7 +24,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.*
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import java.util.*
@@ -33,7 +38,7 @@ class AppRSocketClientConfiguration(clients: CoreClients) : CoreClientConfigurat
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @Import(RSocketRequesterAutoConfiguration::class,
-        JacksonConfiguration::class,
+        DefaultChatJacksonModules::class,
         ConsulRequesterFactory::class,
         CoreClients::class)
 class App {

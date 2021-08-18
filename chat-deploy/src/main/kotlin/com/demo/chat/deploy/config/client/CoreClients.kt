@@ -16,9 +16,10 @@ import org.springframework.core.ParameterizedTypeReference
 
 data class AppDiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
 
+// TODO: We'll have to switch to grpc at some point!
 class CoreClients(
         private val requesterFactory: RequesterFactory,
-        val configProps: AppConfigurationProperties,
+        configProps: AppConfigurationProperties,
 ) {
 
     private val coreProps: RSocketCoreProperties = configProps.core

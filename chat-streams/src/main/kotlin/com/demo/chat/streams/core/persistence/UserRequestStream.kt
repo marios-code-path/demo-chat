@@ -6,6 +6,7 @@ import com.demo.chat.service.PersistenceStore
 import com.demo.chat.streams.core.UserCreateRequest
 import org.springframework.context.annotation.Bean
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.util.function.Function
 
 open class UserRequestStream<T, Q>(
@@ -21,9 +22,8 @@ open class UserRequestStream<T, Q>(
                     .map { key -> User.create(key, req.name, req.handle, req.imgUri) }
             }
             .flatMap { user ->
-                userIndex
-                    .add(user)
-                    .thenReturn(user)
+                Flux.concat(userPersistence.add(user), userIndex.add(user))
+                    .then(Mono.just(user))
             }
     }
 }

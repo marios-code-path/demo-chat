@@ -5,7 +5,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.impl.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.memory.stream.ReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId

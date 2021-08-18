@@ -4,12 +4,9 @@ import com.demo.chat.ByHandleRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.client.rsocket.core.MessagePersistenceClient
 import com.demo.chat.client.rsocket.core.UserPersistenceClient
-import com.demo.chat.deploy.config.core.JacksonConfiguration
 import com.demo.chat.deploy.config.client.CoreClientConfiguration
 import com.demo.chat.deploy.config.client.CoreClients
 import com.demo.chat.deploy.config.client.EdgeClients
-import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
-import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -17,25 +14,21 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import org.slf4j.LoggerFactory
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
 import java.util.*
 
-@EnableConfigurationProperties(AppConfigurationProperties::class)
-@SpringBootApplication
-@Import(
-        JacksonConfiguration::class,
-        RSocketStrategiesAutoConfiguration::class,
-        ConsulRequesterFactory::class,
-        CoreClients::class,
-        EdgeClients::class,
-)
+//@EnableConfigurationProperties(AppConfigurationProperties::class)
+//@SpringBootApplication
+//@Import(
+//        JacksonConfiguration::class,
+//        RSocketStrategiesAutoConfiguration::class,
+//        ConsulRequesterFactory::class,
+//        CoreClients::class,
+//        EdgeClients::class,
+//)
 // TODO: This should also embody integration tests
 class TestClient {
     companion object {

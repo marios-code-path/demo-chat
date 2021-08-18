@@ -37,9 +37,7 @@ interface TopicIndexService<T, Q> : IndexService<T, MessageTopic<T>, Q> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
-        const val IDS = "IDS"
         const val ALL = "ALL"
-        const val USERIN = "USERIN"
     }
 }
 

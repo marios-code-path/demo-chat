@@ -1,4 +1,4 @@
-package com.demo.chat.service.impl.stream
+package com.demo.chat.service.impl.memory.stream
 
 import com.demo.chat.domain.Message
 import org.slf4j.Logger

@@ -31,7 +31,7 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
+            <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>

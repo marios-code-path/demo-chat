@@ -3,7 +3,7 @@ package com.demo.chat.service.impl.memory.messaging
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.impl.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.memory.stream.ReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
