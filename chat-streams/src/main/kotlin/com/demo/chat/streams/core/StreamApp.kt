@@ -9,6 +9,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
+import com.demo.chat.service.conflate.KeyEnricherPersistenceStore
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.service.impl.memory.persistence.InMemoryPersistence
@@ -54,15 +55,20 @@ class StreamApp {
         override fun keyService() = KeyServiceInMemory { kotlin.math.abs(Random.nextLong()) }
     }
 
+    class UserCreatePersistence(store: PersistenceStore<Long, User<Long>>) :
+        KeyEnricherPersistenceStore<Long, UserCreateRequest, User<Long>>(
+            store,
+            { req, key -> User.create(key, req.name, req.handle, req.imgUri) })
+
     @Configuration
     class PersistenceBeans(keyService: IKeyService<Long>) : InMemoryPersistenceBeans<Long, String>(keyService) {
         @Bean
-        fun userPersistence() = user()
+        fun userPersistence() = UserCreatePersistence(user())
     }
 
     @Configuration
     class ChatUserRequestStream(
-        persist: PersistenceStore<Long, User<Long>>,
+        persist: EnricherPersistenceStore<Long, UserCreateRequest, User<Long>>,
         index: IndexService<Long, User<Long>, IndexSearchRequest>
     ) : UserRequestStream<Long, IndexSearchRequest>(persist, index)
 

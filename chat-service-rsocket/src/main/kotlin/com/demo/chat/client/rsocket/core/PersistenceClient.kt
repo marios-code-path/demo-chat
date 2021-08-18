@@ -31,11 +31,6 @@ open class PersistenceClient<T, E>(
         private val requester: RSocketRequester,
         private val ref: ParameterizedTypeReference<E>,
 ) : PersistenceStore<T, E> {
-    override fun assemble(ent: E): Mono<E> = requester
-            .route("${prefix}assemble")
-            .data(ent as Any)
-            .retrieveMono(ref)
-
     override fun key(): Mono<out Key<T>> = requester
             .route("${prefix}key")
             .retrieveMono()

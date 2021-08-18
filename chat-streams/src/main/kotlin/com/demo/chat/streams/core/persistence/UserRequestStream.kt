@@ -1,6 +1,7 @@
 package com.demo.chat.streams.core.persistence
 
 import com.demo.chat.domain.User
+import com.demo.chat.service.EnricherPersistenceStore
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.streams.core.UserCreateRequest
@@ -10,19 +11,18 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 
 open class UserRequestStream<T, Q>(
-    private val userPersistence: PersistenceStore<T, User<T>>,
+    private val userPersistence: EnricherPersistenceStore<T, UserCreateRequest, User<T>>,
     private val userIndex: IndexService<T, User<T>, Q>
 ) {
     @Bean
     open fun receiveUserRequest() = Function<Flux<UserCreateRequest>, Flux<User<T>>> { userReq ->
         userReq
             .flatMap { req ->
-                userPersistence
-                    .key()
-                    .map { key -> User.create(key, req.name, req.handle, req.imgUri) }
+                userPersistence.addEnriched(req)
             }
             .flatMap { user ->
-                Flux.concat(userPersistence.add(user), userIndex.add(user))
+                userIndex
+                    .add(user)
                     .then(Mono.just(user))
             }
     }

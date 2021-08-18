@@ -7,8 +7,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 open class PersistenceServiceController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceStoreMapping<T, E> {
-    override fun assemble(ent: E): Mono<out E> = that.assemble(ent)
-
     override fun key(): Mono<out Key<T>> = that.key()
 
     override fun add(ent: E): Mono<Void> = that.add(ent)
