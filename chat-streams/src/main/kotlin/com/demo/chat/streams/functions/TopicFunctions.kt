@@ -11,12 +11,12 @@ open class TopicFunctions<T, Q>(
     private val topicPersistence: EnricherPersistenceStore<T, MessageTopicRequest, MessageTopic<T>>,
     private val topicIndex: IndexService<T, MessageTopic<T>, Q>
 ) {
-    open fun receiveTopicRequest() = Function<Flux<MessageTopicRequest>, Flux<MessageTopic<T>>> { msgReq ->
+    open fun topicCreateFunction() = Function<Flux<MessageTopicRequest>, Flux<MessageTopic<T>>> { msgReq ->
         msgReq.flatMap { req -> topicPersistence.addEnriched(req) }
             .flatMap { topic ->
                 topicIndex
                     .add(topic)
-                    .then(Mono.just(topic))
+                    .thenReturn(topic)
             }
     }
 }

@@ -1,13 +1,87 @@
 package com.demo.chat.streams.app
 
+import com.demo.chat.config.index.memory.InMemoryIndexBeans
+import com.demo.chat.config.memory.InMemoryPersistenceBeans
+import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.streams.functions.MessageSendRequest
 import com.demo.chat.streams.functions.MessageTopicRequest
 import com.demo.chat.streams.functions.TopicMembershipRequest
 import com.demo.chat.streams.functions.UserCreateRequest
 import com.demo.chat.domain.*
+import com.demo.chat.service.IKeyService
+import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.conflate.KeyEnricherPersistenceStore
+import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
+import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
+import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
+import kotlin.random.Random
 
+open class MemoryKeyServiceConfiguration : KeyServiceConfiguration<Long> {
+    private val atom = AtomicLong(abs(Random.nextLong()))
+
+    @Bean
+    override fun keyService() = KeyServiceInMemory { atom.incrementAndGet() }
+}
+
+open class PersistenceBeans(keyService: IKeyService<Long>) : InMemoryPersistenceBeans<Long, String>(keyService) {
+    @Bean
+    open fun userPersistence() = UserCreatePersistence(user())
+
+    @Bean
+    open fun topicPersistence() = TopicCreatePersistence(topic())
+
+    @Bean
+    open fun messagePersistence() = MessageCreatePersistence(message())
+
+    @Bean
+    open fun membershipPersistence() = MembershipCreatePersistence(membership())
+}
+
+open class IndexBeans : InMemoryIndexBeans<Long, String>(
+    StringToKeyEncoder { i -> Key.funKey(i.toLong()) },
+    IndexEntryEncoder { t ->
+        listOf(
+            Pair("key", t.key.id.toString()),
+            Pair("handle", t.handle),
+            Pair("name", t.name)
+        )
+    },
+    IndexEntryEncoder { t ->
+        listOf(
+            Pair("key", t.key.id.toString()),
+            Pair("text", t.data)
+        )
+    },
+    IndexEntryEncoder { t ->
+        listOf(
+            Pair("key", t.key.id.toString()),
+            Pair("name", t.data)
+        )
+    },
+    IndexEntryEncoder { t ->
+        listOf(
+            Pair("key", Key.funKey(t.key).toString()),
+            Pair(MembershipIndexService.MEMBER, t.member.toString()),
+            Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
+        )
+    }) {
+    @Bean
+    open fun idxUser() = userIndex()
+
+    @Bean
+    open fun idxTopic() = topicIndex()
+
+    @Bean
+    open fun idxMembership() = membershipIndex()
+
+    @Bean
+    open fun idxMessage() = messageIndex()
+}
 
 class UserCreatePersistence(store: PersistenceStore<Long, User<Long>>) :
     KeyEnricherPersistenceStore<Long, UserCreateRequest, User<Long>>(

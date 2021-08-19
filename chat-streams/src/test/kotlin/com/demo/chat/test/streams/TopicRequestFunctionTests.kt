@@ -32,14 +32,14 @@ class TopicRequestFunctionTests {
                 val headers: MutableMap<String, Any> = HashMap()
                 headers["contentType"] = "application/json"
                 val messageHeaders = MessageHeaders(headers)
-                val userRequestMessage = converter.toMessage(userReq, messageHeaders)
-                source.send(userRequestMessage)
+                val topicCreateMessage = converter.toMessage(userReq, messageHeaders)
+                source.send(topicCreateMessage)
                 val target = context.getBean(OutputDestination::class.java)
                 val messageTopic = target.receive(10000)
                 Assertions.assertThat(messageTopic).isNotNull
                 val user = converter.fromMessage(messageTopic, MessageTopic::class.java)
 
-                Assertions.assertThat(user).hasFieldOrPropertyWithValue("name", "TEST")
+                Assertions.assertThat(user).hasFieldOrPropertyWithValue("data", "TEST")
             }
     }
 }
