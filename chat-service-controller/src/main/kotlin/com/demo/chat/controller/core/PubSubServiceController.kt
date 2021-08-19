@@ -7,10 +7,8 @@ import com.demo.chat.service.PubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class PubSubServiceController<T, V>(private val that: PubSubService<T, V>) : PubSubServiceMapping<T, V> {
+open class PubSubServiceController<T, V>(private val that: PubSubService<T, V>) : PubSubServiceMapping<T, V>, PubSubService<T, V> by that {
     override fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
-
-    override fun subscribe(member: T, topic: T): Mono<Void> = that.subscribe(member, topic)
 
     override fun unSubscribeOne(req: MemberTopicRequest<T>): Mono<Void> = unSubscribe(req.member, req.topic)
 
