@@ -1,9 +1,9 @@
 package com.demo.chat.test.streams
 
-import com.demo.chat.domain.User
-import com.demo.chat.streams.core.StreamApp
-import com.demo.chat.streams.core.UserCreateRequest
-import org.assertj.core.api.Assertions.assertThat
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.streams.app.StreamApp
+import com.demo.chat.streams.functions.MessageTopicRequest
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -14,10 +14,9 @@ import org.springframework.messaging.MessageHeaders
 import org.springframework.messaging.converter.CompositeMessageConverter
 import org.springframework.messaging.converter.MessageConverter
 
-class UserRequestStreamTests {
-
+class TopicRequestFunctionTests {
     @Test
-    fun `should userRequest turn into User`() {
+    fun `should topicRequest turn into Topic`() {
         SpringApplicationBuilder(
             *TestChannelBinderConfiguration.getCompleteConfiguration(
                 StreamApp::class.java
@@ -25,7 +24,7 @@ class UserRequestStreamTests {
         ).web(WebApplicationType.NONE)
             .run().use { context ->
                 val source = context.getBean(InputDestination::class.java)
-                val userReq = UserCreateRequest("mario","vaughn","http://localhost")
+                val userReq = MessageTopicRequest("TEST")
                 val converter: MessageConverter =
                     context.getBean(
                         CompositeMessageConverter::class.java
@@ -36,12 +35,11 @@ class UserRequestStreamTests {
                 val userRequestMessage = converter.toMessage(userReq, messageHeaders)
                 source.send(userRequestMessage)
                 val target = context.getBean(OutputDestination::class.java)
-                val userMessage = target.receive(10000)
-                assertThat(userMessage).isNotNull
-                val user = converter.fromMessage(userMessage, User::class.java)
+                val messageTopic = target.receive(10000)
+                Assertions.assertThat(messageTopic).isNotNull
+                val user = converter.fromMessage(messageTopic, MessageTopic::class.java)
 
-                assertThat(user).hasFieldOrPropertyWithValue("name", "mario")
-                assertThat(user).hasFieldOrPropertyWithValue("handle", "vaughn")
+                Assertions.assertThat(user).hasFieldOrPropertyWithValue("name", "TEST")
             }
     }
 }
