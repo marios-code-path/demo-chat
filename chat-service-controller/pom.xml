@@ -31,7 +31,7 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-messaging</artifactId>
-            <version>5.2.1.RELEASE</version>
+            <version>${spring-messaging.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

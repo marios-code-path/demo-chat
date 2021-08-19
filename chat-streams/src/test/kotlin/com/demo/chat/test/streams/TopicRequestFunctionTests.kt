@@ -22,8 +22,11 @@ class TopicRequestFunctionTests {
                 StreamApp::class.java
             )
         ).web(WebApplicationType.NONE)
-            .run().use { context ->
+            .run("--spring.cloud.function.definition=receiveTopicRequest",
+                "--spring.cloud.stream.bindings.receiveTopicRequest-in-0.destination=topic-req",
+                "--spring.cloud.stream.bindings.receiveTopicRequest-out-0.destination=topics").use { context ->
                 val source = context.getBean(InputDestination::class.java)
+                Assertions.assertThat(source).isNotNull
                 val userReq = MessageTopicRequest("TEST")
                 val converter: MessageConverter =
                     context.getBean(

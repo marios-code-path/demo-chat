@@ -23,8 +23,11 @@ class UserFunctionsTests {
                 StreamApp::class.java
             )
         ).web(WebApplicationType.NONE)
-            .run().use { context ->
+            .run("--spring.cloud.function.definition=receiveUserRequest",
+                "--spring.cloud.stream.bindings.receiveUserRequest-in-0.destination=user-req",
+                "--spring.cloud.stream.bindings.receiveUserRequest-out-0.destination=users").use { context ->
                 val source = context.getBean(InputDestination::class.java)
+
                 val userReq = UserCreateRequest("mario","vaughn","http://localhost")
                 val converter: MessageConverter =
                     context.getBean(
