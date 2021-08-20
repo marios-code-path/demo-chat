@@ -21,6 +21,11 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-deploy-client-consul</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-index-lucene</artifactId>
             <version>0.0.1</version>
         </dependency>
