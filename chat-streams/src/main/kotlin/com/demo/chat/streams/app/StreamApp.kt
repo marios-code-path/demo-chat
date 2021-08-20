@@ -3,10 +3,7 @@ package com.demo.chat.streams.app
 import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.service.EnricherPersistenceStore
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.impl.memory.persistence.InMemoryPersistence
 import com.demo.chat.streams.functions.*
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -44,7 +41,7 @@ class StreamApp {
     }
 
     @Configuration
-    class AppTopicFunctions(persist: TopicCreateStore) : TopicFunctions<Long, IndexSearchRequest>(persist) {
+    class AppMessageTopicFunctions(persist: TopicCreateStore) : MessageTopicFunctions<Long, IndexSearchRequest>(persist) {
         @Bean
         fun receiveTopicRequest() = this.topicCreateFunction()
     }

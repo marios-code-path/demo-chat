@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-open class TopicFunctions<T, Q>(
+open class MessageTopicFunctions<T, Q>(
     private val topicPersistence: EnricherPersistenceStore<T, MessageTopicRequest, MessageTopic<T>>
 ) {
     open fun topicCreateFunction() = Function<Flux<MessageTopicRequest>, Flux<MessageTopic<T>>> { msgReq ->

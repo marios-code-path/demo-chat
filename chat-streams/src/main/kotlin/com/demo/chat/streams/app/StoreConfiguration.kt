@@ -103,6 +103,6 @@ class MembershipCreateStore(store: PersistenceStore<Long, TopicMembership<Long>>
     KeyEnricherPersistenceStore<Long, TopicMembershipRequest<Long>, TopicMembership<Long>>(
         store,
         { req, key ->
-            TopicMembership.create(key.id, req.kId, req.destId)
+            TopicMembership.create(key.id, req.pid, req.destId)
         }
     )
