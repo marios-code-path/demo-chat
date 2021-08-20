@@ -2,7 +2,7 @@ package com.demo.chat.deploy.app.memory
 
 import com.demo.chat.config.index.memory.InMemoryIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
-import com.demo.chat.deploy.config.core.KeyServiceConfiguration
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.Key
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.PubSubService
@@ -22,7 +22,7 @@ class MemoryResourceConfiguration {
     fun memoryPubSub(): PubSubService<UUID, String> = MemoryPubSubTopicExchange()
 
     @Configuration
-    class PersistenceBeans(keyFactory: KeyServiceConfiguration<UUID>)
+    class PersistenceBeans(keyFactory: KeyServiceBeans<UUID>)
         : InMemoryPersistenceBeans<UUID, String>(keyFactory.keyService())
 
     @Configuration

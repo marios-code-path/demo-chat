@@ -1,8 +1,8 @@
 package com.demo.chat.streams.app
 
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.index.memory.InMemoryIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
-import com.demo.chat.deploy.config.core.KeyServiceConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipIndexService
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.random.Random
 
-open class MemoryKeyServiceConfiguration : KeyServiceConfiguration<Long> {
+open class MemoryKeyServiceConfiguration : KeyServiceBeans<Long> {
     private val atom = AtomicLong(abs(Random.nextLong()))
 
     @Bean

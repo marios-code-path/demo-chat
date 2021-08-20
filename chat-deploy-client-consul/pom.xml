@@ -8,22 +8,13 @@
         <version>0.0.1</version>
     </parent>
 
-    <artifactId>chat-deploy-memory</artifactId>
+    <groupId>com.demo</groupId>
+    <artifactId>chat-deploy-client-consul</artifactId>
     <version>0.0.1</version>
-    <name>chat-deploy-memory</name>
-    <description>Deployment for in-memory components</description>
-
-    <properties>
-        <appImageName>docker.io/library/${env.APP_IMAGE_NAME}:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.deploy.app.memory.App</appMainClass>
-    </properties>
+    <name>chat-deploy-client-consul</name>
+    <description>Deployment Configuration For Consul bound clients</description>
 
     <dependencies>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-index-lucene</artifactId>
-            <version>0.0.1</version>
-        </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
@@ -36,20 +27,12 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -70,7 +53,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
+            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -87,6 +70,13 @@
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -105,28 +95,6 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <!-- PER Actuator docs -->
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>${appMainClass}</mainClass>
-                    <image>
-                        <name>${appImageName}</name>
-                        <cleanCache>false</cleanCache>
-                        <env>
-                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-                        </env>
-                    </image>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>

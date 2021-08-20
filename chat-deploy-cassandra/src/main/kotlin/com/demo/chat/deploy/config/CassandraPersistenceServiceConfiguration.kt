@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config
 
-import com.demo.chat.deploy.config.core.PersistenceServiceConfiguration
+import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
@@ -15,7 +15,7 @@ open class CassandraPersistenceServiceConfiguration<T>(
         private val messageRepo: ChatMessageRepository<T>,
         private val membershipRepo: TopicMembershipRepository<T>,
 )
-    : PersistenceServiceConfiguration<T, String> {
+    : PersistenceServiceBeans<T, String> {
 
     override fun user(): UserPersistence<T> =
             UserPersistenceCassandra(keyService, userRepo)

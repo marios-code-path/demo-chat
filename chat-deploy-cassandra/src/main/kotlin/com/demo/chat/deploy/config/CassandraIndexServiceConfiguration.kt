@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.config
 
-import com.demo.chat.deploy.config.core.IndexServiceConfiguration
+import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.index.MessageIndexCassandra
@@ -20,7 +20,7 @@ open class CassandraIndexServiceConfiguration<T>(
         private val byUserRepo: ChatMessageByUserRepository<T>,
         private val byTopicRepo: ChatMessageByTopicRepository<T>,
         private val stringToKeyCodec: Function<String, T>,
-) : IndexServiceConfiguration<T, String, Map<String, String>> {
+) : IndexServiceBeans<T, String, Map<String, String>> {
     override fun userIndex() =
             UserIndexCassandra(userHandleRepo, cassandra)
 

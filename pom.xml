@@ -47,7 +47,7 @@
         <module>chat-init</module>
         <module>chat-streams</module>
         <module>chat-gateway</module>
-        <module>chat-deploy</module>
+        <module>chat-deploy-client-consul</module>
         <module>chat-deploy-memory</module>
         <module>chat-deploy-redis</module>
         <module>chat-deploy-cassandra</module>

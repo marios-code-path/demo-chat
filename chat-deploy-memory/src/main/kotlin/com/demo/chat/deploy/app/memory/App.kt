@@ -1,11 +1,10 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.deploy.config.client.CoreClientConfiguration
-import com.demo.chat.deploy.config.client.CoreClients
-import com.demo.chat.deploy.config.client.EdgeClients
+import com.demo.chat.config.CoreClientBeans
+import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
-import com.demo.chat.deploy.config.controllers.core.PersistenceControllersConfiguration
-import com.demo.chat.deploy.config.core.KeyServiceConfiguration
+import com.demo.chat.controller.config.PersistenceControllersConfiguration
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.deploy.config.properties.AppConfigurationProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
@@ -19,16 +18,16 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 
 @SpringBootApplication
 @EnableConfigurationProperties(AppConfigurationProperties::class)
 @Import(
-        RSocketRequesterAutoConfiguration::class,
-        DefaultChatJacksonModules::class,
-        ConsulRequesterFactory::class,
-        CoreClients::class,
-        EdgeClients::class,
+    RSocketRequesterAutoConfiguration::class,
+    DefaultChatJacksonModules::class,
+    ConsulRequesterFactory::class,
+    AppClientBeansConfiguration::class
 )
 class App {
 
@@ -40,11 +39,14 @@ class App {
     }
 
     @Configuration
-    class AppRSocketClientConfiguration(clients: CoreClients)
-        : CoreClientConfiguration<UUID, String, IndexSearchRequest>(clients)
+    class AppRSocketClientBeansConfiguration(clients: CoreClientBeans<UUID, String, IndexSearchRequest>) :
+        AppClientBeansConfiguration<UUID, String, IndexSearchRequest>(
+            clients,
+            ParameterizedTypeReference.forType(UUID::class.java)
+        )
 
     @Configuration
-    class MemoryKeyServiceFactory : KeyServiceConfiguration<UUID> {
+    class MemoryKeyServiceFactory : KeyServiceBeans<UUID> {
         override fun keyService() = KeyServiceInMemory { UUID.randomUUID() }
     }
 
