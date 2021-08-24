@@ -1,4 +1,4 @@
-package com.demo.chat.streams.app
+package com.demo.chat.streams.app.config
 
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.index.memory.InMemoryIndexBeans
@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.random.Random
 
-open class MemoryKeyServiceConfiguration : KeyServiceBeans<Long> {
+open class MemoryLongKeyServiceConfiguration : KeyServiceBeans<Long> {
     private val atom = AtomicLong(abs(Random.nextLong()))
 
     @Bean
@@ -103,6 +103,6 @@ class MembershipCreateStore(store: PersistenceStore<Long, TopicMembership<Long>>
     KeyEnricherPersistenceStore<Long, TopicMembershipRequest<Long>, TopicMembership<Long>>(
         store,
         { req, key ->
-            TopicMembership.create(key.id, req.pid, req.destId)
+            TopicMembership.create(key.id, req.principal, req.destination)
         }
     )

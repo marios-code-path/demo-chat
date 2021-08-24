@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import reactor.core.publisher.Hooks
 
-@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
+@SpringBootApplication
 class StreamApp {
 
     companion object {
@@ -26,7 +26,7 @@ class StreamApp {
     class AppJacksonModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
 
     @Configuration
-    class AppKeyConfiguration : MemoryKeyServiceConfiguration()
+    class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()
 
     @Configuration
     class AppPersistenceBeans(keySvc: IKeyService<Long>) : PersistenceBeans(keySvc)

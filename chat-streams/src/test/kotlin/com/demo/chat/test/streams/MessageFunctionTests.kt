@@ -1,8 +1,7 @@
 package com.demo.chat.test.streams
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.streams.app.StreamApp
+import com.demo.chat.test.streams.TestStreamConfiguration
 import com.demo.chat.streams.functions.MessageSendRequest
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -20,7 +19,7 @@ class MessageFunctionTests {
     fun `should messageSendRequest turn into Message`() {
         SpringApplicationBuilder(
             *TestChannelBinderConfiguration.getCompleteConfiguration(
-                StreamApp::class.java
+                TestStreamConfiguration::class.java
             )
         ).web(WebApplicationType.NONE)
             .run("--spring.cloud.function.definition=receiveMessageRequest",

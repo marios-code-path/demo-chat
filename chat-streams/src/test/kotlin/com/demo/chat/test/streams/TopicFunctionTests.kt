@@ -1,7 +1,6 @@
 package com.demo.chat.test.streams
 
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.streams.app.StreamApp
 import com.demo.chat.streams.functions.MessageTopicRequest
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -19,7 +18,7 @@ class TopicFunctionTests {
     fun `should topicRequest turn into Topic`() {
         SpringApplicationBuilder(
             *TestChannelBinderConfiguration.getCompleteConfiguration(
-                StreamApp::class.java
+                TestStreamConfiguration::class.java
             )
         ).web(WebApplicationType.NONE)
             .run("--spring.cloud.function.definition=receiveTopicRequest",

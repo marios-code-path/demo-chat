@@ -10,6 +10,6 @@ open class MembershipFunctions<T, Q>(
 ) {
     open fun membershipCreateFunction() = Function<Flux<TopicMembershipRequest<T>>, Flux<TopicMembership<T>>> { memReq ->
         memReq
-            .flatMap { req -> persist.addEnriched(req) }
+            .flatMap { req -> persist.addEnriched(TopicMembershipRequest(req.principal, req.destination)) }
     }
 }

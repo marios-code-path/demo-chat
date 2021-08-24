@@ -1,7 +1,6 @@
 package com.demo.chat.test.streams
 
 import com.demo.chat.domain.User
-import com.demo.chat.streams.app.StreamApp
 import com.demo.chat.streams.functions.UserCreateRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -20,7 +19,7 @@ class UserFunctionsTests {
     fun `should userRequest turn into User`() {
         SpringApplicationBuilder(
             *TestChannelBinderConfiguration.getCompleteConfiguration(
-                StreamApp::class.java
+                TestStreamConfiguration::class.java
             )
         ).web(WebApplicationType.NONE)
             .run("--spring.cloud.function.definition=receiveUserRequest",
