@@ -19,8 +19,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 
 @SpringBootApplication
-@Import(TestStreamConfiguration.AppJacksonModules::class)
-    class TestStreamConfiguration {
+class TestStreamConfiguration {
 
     @Bean
     fun mapper(modules: JacksonModules): ObjectMapper = ObjectMapper().registerModule(KotlinModule()).apply {
@@ -54,7 +53,8 @@ import org.springframework.context.annotation.Import
     }
 
     @Configuration
-    class AppMessageTopicFunctions(persist: TopicCreateStore) : MessageTopicFunctions<Long, IndexSearchRequest>(persist) {
+    class AppMessageTopicFunctions(persist: TopicCreateStore) :
+        MessageTopicFunctions<Long, IndexSearchRequest>(persist) {
         @Bean
         fun receiveTopicRequest() = this.topicCreateFunction()
     }

@@ -1,15 +1,18 @@
-package com.demo.chat.streams.app
+package com.demo.chat.streams.rabbit
 
 import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
+import com.demo.chat.streams.app.config.*
 import com.demo.chat.streams.functions.*
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
+import java.util.function.Function
 
 @SpringBootApplication
 class StreamApp {
@@ -17,7 +20,6 @@ class StreamApp {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            Hooks.onOperatorDebug()
             runApplication<StreamApp>(*args)
         }
     }
@@ -41,7 +43,8 @@ class StreamApp {
     }
 
     @Configuration
-    class AppMessageTopicFunctions(persist: TopicCreateStore) : MessageTopicFunctions<Long, IndexSearchRequest>(persist) {
+    class AppMessageTopicFunctions(persist: TopicCreateStore) :
+        MessageTopicFunctions<Long, IndexSearchRequest>(persist) {
         @Bean
         fun receiveTopicRequest() = this.topicCreateFunction()
     }
