@@ -1,16 +1,8 @@
 package com.demo.chat.test.streams
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
 import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.streams.functions.MembershipRequest
 import com.demo.chat.streams.functions.TopicMembershipRequest
-import com.fasterxml.jackson.annotation.JsonInclude
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
-import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
@@ -30,7 +22,6 @@ import org.springframework.messaging.converter.MessageConverter
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Function
-import com.fasterxml.jackson.module.kotlin.readValue
 
 class MembershipFunctionTests {
     private lateinit var applicationContextRunner: ApplicationContextRunner

@@ -105,4 +105,31 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>solace</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.solace.spring.cloud</groupId>
+                    <artifactId>spring-cloud-starter-stream-solace</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>rabbit</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-stream-binder-rabbit</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

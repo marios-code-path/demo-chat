@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeType
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory
+import org.springframework.util.NumberUtils
 import java.util.*
 
 fun interface Decoder<F, E> {
@@ -24,7 +25,7 @@ object JsonNodeAnyDecoder : Decoder<JsonNode, Any> {
                 val data = mapper.readValue(cborData, UUID::class.java)
                 data
             }
-            JsonNodeType.NUMBER -> record.asLong()
+            JsonNodeType.NUMBER -> record.asLong() // TODO this should check for Double too
             else -> {
                 try {
                     UUID.fromString(record.asText())

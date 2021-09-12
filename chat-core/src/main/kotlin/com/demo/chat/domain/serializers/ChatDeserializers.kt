@@ -8,6 +8,9 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonNode
 
+/**
+ * TODO: make deserializers recursively descend into 'data' objects as they can also be JSON.
+ */
 class KeyDeserializer<T>(private val nodeDecoder: Decoder<JsonNode, T>) : JsonDeserializer<Key<T>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
         val oc: ObjectCodec = jp?.codec!!
@@ -43,6 +46,27 @@ class MessageDeserializer<T, E>(keyCodec: Decoder<JsonNode, T>,
         return when (key) {
             is MessageKey<T> -> Message.create(key, decoded, visible)
             else -> throw ChatException("Invalid Message Key")
+        }
+    }
+}
+
+class KeyDataPairDeserializer<T, E>(keyCodec: Decoder<JsonNode, T>,
+                                val dataCodec: Decoder<JsonNode, E>) : JsonDeserializer<KeyDataPair<T, E>>() {
+    private val kd = KeyDeserializer(keyCodec)
+
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyDataPair<T, E> {
+        val oc: ObjectCodec = jp?.codec!!
+        val node: JsonNode = oc.readTree(jp)
+
+        val decoded = dataCodec.decode(node.get("data"))
+
+        val keyNode = node.get("key")
+
+        var key: Key<T> = kd.deserialize(keyNode.first().traverse(oc), ctxt)
+
+        return when (key) {
+            is Key<T> -> KeyDataPair.create(key, decoded)
+            else -> throw ChatException("Invalid Key Data pair.")
         }
     }
 }

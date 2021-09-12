@@ -7,13 +7,11 @@
         <artifactId>chat-parent</artifactId>
         <version>0.0.1</version>
     </parent>
-
     <groupId>com.demo</groupId>
     <artifactId>chat-deploy-cassandra</artifactId>
     <version>0.0.1</version>
     <name>chat-deploy-cassandra</name>
     <description>Deployment details for cassandra backed services</description>
-
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -89,17 +87,6 @@
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <configuration>
@@ -123,6 +110,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
                     <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
                 </configuration>
                 <executions>

@@ -14,6 +14,11 @@ open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
                           private val dataDecoder: Decoder<JsonNode, out Any>) {
 
     @Bean
+    open fun keyDataPairModule() = SimpleModule("KeyDataPairModule", Version.unknownVersion()).apply {
+        addDeserializer(KeyDataPair::class.java, KeyDataPairDeserializer(keyDecoder, dataDecoder))
+    }
+
+    @Bean
     open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
         addDeserializer(Key::class.java, KeyDeserializer(keyDecoder))
     }
@@ -37,5 +42,4 @@ open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
     open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
         addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeAnyDecoder))
     }
-
 }
