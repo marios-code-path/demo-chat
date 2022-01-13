@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap
 /*
     Layer 4 application Pub-Sub based on Reactive concepts.
  */
+/**
+ * TODO: Deprecate in favour of Integration PubSubChannel fan-out.
+ */
 class ReactiveStreamManager<T, E> {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)

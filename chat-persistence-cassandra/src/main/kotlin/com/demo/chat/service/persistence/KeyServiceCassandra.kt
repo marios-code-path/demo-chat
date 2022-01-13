@@ -8,7 +8,6 @@ import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.function.Supplier
 
-
 class KeyServiceCassandra<T>(
         private val template: ReactiveCassandraTemplate,
         private val keyGen: Supplier<T>,

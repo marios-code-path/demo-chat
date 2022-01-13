@@ -37,9 +37,12 @@ class UserFunctionsTests {
                 val messageHeaders = MessageHeaders(headers)
                 val userRequestMessage = converter.toMessage(userReq, messageHeaders)
                 source.send(userRequestMessage)
+                // == Hand off
                 val target = context.getBean(OutputDestination::class.java)
                 val userMessage = target.receive(10000)
                 assertThat(userMessage).isNotNull
+
+                // From Integration => Domain
                 val user = converter.fromMessage(userMessage, User::class.java)
 
                 assertThat(user).hasFieldOrPropertyWithValue("name", "user1")

@@ -13,6 +13,9 @@ object StringValCodec : Decoder<Unit, String> {
     override fun decode(record: Unit): String = randomAlphaNumeric(50)
 }
 
+/**
+ * TODO Refactor into Integration PubSubChannel (see StreamManager)
+ */
 class ReactiveStreamManagerTestBase : StreamManagerTestBase<UUID, String>(ReactiveStreamManager<UUID, String>(),
         UUIDKeyCodec,
         StringValCodec)

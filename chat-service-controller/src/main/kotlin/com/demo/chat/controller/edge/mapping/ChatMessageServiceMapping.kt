@@ -15,5 +15,4 @@ interface ChatMessageServiceMapping<T, V> : ChatMessageService<T, V> {
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
     @MessageMapping("message-send")
     override fun send(req: MessageSendRequest<T, V>): Mono<Void>
-
 }

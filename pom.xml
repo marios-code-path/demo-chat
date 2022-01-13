@@ -43,7 +43,7 @@
         <module>chat-security</module>
         <module>chat-persistence-cassandra</module>
         <module>chat-persistence-xstream</module>
-        <module>chat-service-rsocket</module>
+        <module>chat-client-rsocket</module>
         <module>chat-init</module>
         <module>chat-streams</module>
         <module>chat-gateway</module>

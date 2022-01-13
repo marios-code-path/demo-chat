@@ -15,6 +15,22 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.springframework.integration</groupId>
+            <artifactId>spring-integration-webflux</artifactId>
+            <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <artifactId>jackson-module-kotlin</artifactId>
+                    <groupId>com.fasterxml.jackson.module</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-stream</artifactId>
         </dependency>

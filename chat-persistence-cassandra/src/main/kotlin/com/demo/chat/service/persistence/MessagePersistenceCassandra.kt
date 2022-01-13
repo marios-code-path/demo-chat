@@ -11,6 +11,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
+// TODO: Convert me to STREAM
 open class MessagePersistenceCassandra<T>(private val keyService: IKeyService<T>,
                                           private val messageRepo: ChatMessageRepository<T>)
     : MessagePersistence<T, String> {
