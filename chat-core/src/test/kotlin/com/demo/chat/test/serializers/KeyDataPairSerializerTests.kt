@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyDataPair
 import com.demo.chat.domain.MessageKey
@@ -23,7 +23,7 @@ class KeyDataPairSerializerTests : TestBase() {
     fun `should chain deserialize`() {
         mapper.apply {
             registerModules(
-                JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder).keyDataPairModule()
+                JacksonModules(JsonKeyDecoder, JsonKeyDecoder).keyDataPairModule()
             )
         }
 
@@ -52,7 +52,7 @@ class KeyDataPairSerializerTests : TestBase() {
         Hooks.onOperatorDebug()
         mapper.apply {
             registerModules(
-                JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder).keyDataPairModule()
+                JacksonModules(JsonKeyDecoder, JsonKeyDecoder).keyDataPairModule()
             )
         }
 

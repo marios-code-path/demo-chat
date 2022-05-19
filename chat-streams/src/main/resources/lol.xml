@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:int="http://www.springframework.org/schema/integration"
+       xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd">
+    <int:gateway id="userGateway" service-interface="com.demo.chat.streams.gateway"
+                 default-request-channel="inputUsers">
+        <int:default-header name="calledMethod" expression="#gatewayMethod.name"/>
+        <int:method name="addUser" request-channel="inputA"
+                    reply-timeout="2" request-timeout="200"/>
+    </int:gateway>
+</beans>

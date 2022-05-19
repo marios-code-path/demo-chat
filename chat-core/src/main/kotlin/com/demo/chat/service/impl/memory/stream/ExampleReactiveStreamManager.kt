@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * TODO: Deprecate in favour of Integration PubSubChannel fan-out.
  */
-class ReactiveStreamManager<T, E> {
+class ExampleReactiveStreamManager<T, E> {
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     // TODO seek the Disposable Swap, and Composite to manage the disposable

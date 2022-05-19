@@ -1,6 +1,6 @@
 package com.demo.chat.test.redis
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -15,7 +15,7 @@ class TestContextConfiguration {
     @Bean
     fun mapper(): ObjectMapper =
         jacksonObjectMapper().registerModule(KotlinModule()).apply {
-            with(JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)) {
+            with(JacksonModules(JsonKeyDecoder, JsonKeyDecoder)) {
                 registerModules(
                     messageModule(),
                     keyModule(),

@@ -49,7 +49,7 @@ class ChatSecurityApp {
     @Bean
     fun appReady(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
-        passwdStore: PasswordStore<Long, String>,
+        passwdStore: SecretsStore<Long, String>,
         authenticationManager: SampleAuthenticationManager,
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
@@ -127,7 +127,7 @@ class ChatSecurityApp {
     @Bean
     fun authenticationManager(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
-        passStore: PasswordStore<Long, String>,
+        passStore: SecretsStore<Long, String>,
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
     ) =
@@ -172,15 +172,15 @@ class ChatSecurityApp {
         )
 
     @Bean
-    fun passwordStore(): PasswordStore<Long, String> = PasswordStoreInMemory()
+    fun passwordStore(): SecretsStore<Long, String> = SecretsStoreInMemory()
 
     @Bean
     fun chatAuthenticationService(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
-        passwordStore: PasswordStore<Long, String>
+        secretsStore: SecretsStore<Long, String>
     ) = AuthenticationServiceImpl(
         userIndex,
-        passwordStore,
+        secretsStore,
         { input, secure -> input == secure },
         { user: String -> IndexSearchRequest(UserIndexService.HANDLE, user, 1) })
 

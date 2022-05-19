@@ -1,7 +1,8 @@
 package com.demo.chat.test.gateway
 
+import com.demo.chat.streams.functions.UserCreateRequest
 import com.demo.chat.streams.gateway.App
-import com.demo.chat.streams.gateway.EnricherGateway
+import com.demo.chat.streams.gateway.UserEnricherGateway
 import com.demo.chat.test.TestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -18,24 +19,24 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @AutoConfigureWebTestClient
 @SpringBootTest(classes = [App::class])
-class MembershipGatewayTests : TestBase() {
+class UserGatewayTests : TestBase() {
 
     @Autowired
     private lateinit var webTestClient: WebTestClient
 
-    @Autowired
-    lateinit var gateway: EnricherGateway
+    //@Autowired
+    lateinit var gateway: UserEnricherGateway<Long>
 
-    @Test
+   // @Test
     fun `should gateway`() {
-        val echoed = gateway.doEcho("hello")
+        val request = gateway.add(UserCreateRequest("TESTNAME", "TESTHANDLE", "http://127.0.0.1/test"))
         Assertions
-            .assertThat(echoed)
+            .assertThat(request)
             .isNotNull
-            .isEqualTo("OLLEH")
+
     }
 
-    @Test
+    //@Test
     fun `should http inbound webFlux`() {
         webTestClient
             .post()

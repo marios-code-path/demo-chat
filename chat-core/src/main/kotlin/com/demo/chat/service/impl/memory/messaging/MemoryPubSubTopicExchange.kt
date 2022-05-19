@@ -3,7 +3,7 @@ package com.demo.chat.service.impl.memory.messaging
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.impl.memory.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor
@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * */
 class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
-    private val streamMgr: ReactiveStreamManager<T, V> = ReactiveStreamManager()
+    private val streamMgr: ExampleReactiveStreamManager<T, V> = ExampleReactiveStreamManager()
 
     // map of <topic : [msgInbox]s>
     private val topicMembers: MutableMap<T, HashSet<T>> = mutableMapOf()

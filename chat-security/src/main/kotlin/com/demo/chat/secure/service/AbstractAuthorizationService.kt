@@ -34,7 +34,7 @@ class AbstractAuthorizationService<T, M, Q>(
         .flatMap(authPersist::get)
 
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<M> = filterizer
-        .filterize(
+        .computeAggregates(
             getAuthorizationsForTarget(uidB),
             sequenceOf(anonKey.get(), uidA, uidB)
         )

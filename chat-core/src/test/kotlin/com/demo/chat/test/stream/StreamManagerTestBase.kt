@@ -3,7 +3,7 @@ package com.demo.chat.test.stream
 import com.demo.chat.codec.Decoder
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.impl.memory.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
@@ -16,9 +16,9 @@ import java.time.Duration
 // TODO Test for resource cleanup!
 @Disabled
 open class StreamManagerTestBase<K, V>(
-        val streamMan: ReactiveStreamManager<K, V>,
-        val codec: Decoder<Unit, K>,
-        val valueCodec: Decoder<Unit, V>) {
+    val streamMan: ExampleReactiveStreamManager<K, V>,
+    val codec: Decoder<Unit, K>,
+    val valueCodec: Decoder<Unit, V>) {
 
     @BeforeEach
     fun setUp() {

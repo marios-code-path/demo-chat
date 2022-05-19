@@ -1,6 +1,6 @@
 package com.demo.chat.streams.rabbit
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
@@ -10,9 +10,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Hooks
-import java.util.function.Function
 
 @SpringBootApplication
 class StreamApp {
@@ -25,7 +22,7 @@ class StreamApp {
     }
 
     @Configuration
-    class AppJacksonModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
+    class AppJacksonModules : JacksonModules(JsonKeyDecoder, JsonKeyDecoder)
 
     @Configuration
     class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()

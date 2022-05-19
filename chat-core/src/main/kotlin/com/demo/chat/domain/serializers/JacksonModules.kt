@@ -1,14 +1,14 @@
 package com.demo.chat.domain.serializers
 
 import com.demo.chat.codec.Decoder
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 
-open class DefaultChatJacksonModules() : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
+open class DefaultChatJacksonModules() : JacksonModules(JsonKeyDecoder, JsonKeyDecoder)
 
 open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
                           private val dataDecoder: Decoder<JsonNode, out Any>) {
@@ -40,6 +40,6 @@ open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
 
     @Bean
     open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
-        addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeAnyDecoder))
+        addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonKeyDecoder))
     }
 }

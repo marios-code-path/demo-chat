@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.UserDeserializer
@@ -21,7 +21,7 @@ class UserSerliazerTests : TestBase() {
     fun `Any User deserialize`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(User::class.java, UserDeserializer(JsonNodeAnyDecoder))
+                addDeserializer(User::class.java, UserDeserializer(JsonKeyDecoder))
             })
         }
 

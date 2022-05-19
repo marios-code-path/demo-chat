@@ -5,7 +5,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
 import com.demo.chat.service.PubSubService
-import com.demo.chat.service.impl.memory.stream.ReactiveStreamManager
+import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
@@ -40,7 +40,7 @@ class PubSubServiceRedis<T, E>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
-    private val streamMgr = ReactiveStreamManager<T, E>()
+    private val streamMgr = ExampleReactiveStreamManager<T, E>()
     private val topicXSource: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)

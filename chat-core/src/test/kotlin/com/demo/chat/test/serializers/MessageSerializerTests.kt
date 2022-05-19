@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
@@ -21,7 +21,7 @@ class MessageSerializerTests : TestBase() {
         Hooks.onOperatorDebug()
         mapper.apply {
             registerModules(
-                JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder).messageModule()
+                JacksonModules(JsonKeyDecoder, JsonKeyDecoder).messageModule()
             )
         }
 

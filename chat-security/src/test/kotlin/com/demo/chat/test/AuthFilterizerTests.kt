@@ -47,7 +47,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), keyGen.get(), "ALL", 0L)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .verifyComplete()
     }
 
@@ -61,7 +61,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, keyGen.get(), "ALL", 0L)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .expectNextCount(1)
             .verifyComplete()
     }
@@ -80,7 +80,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "ALL", 0L)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .expectNextCount(2)
             .verifyComplete()
     }
@@ -99,7 +99,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "ANY", 0L)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .expectNextCount(1)
             .verifyComplete()
     }
@@ -119,7 +119,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "SUM", 0L)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .expectNextCount(3)
             .verifyComplete()
     }
@@ -139,7 +139,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "SUM", 1)
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .verifyComplete()
     }
 
@@ -159,7 +159,7 @@ class AuthFilterizerTests {
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "SUM") // ok
         )
 
-        StepVerifier.create(filterizer.filterize(filterData, idSeq))
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
             .expectNextCount(1)
             .verifyComplete()
     }

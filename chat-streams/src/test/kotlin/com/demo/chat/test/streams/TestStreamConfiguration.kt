@@ -1,6 +1,6 @@
 package com.demo.chat.test.streams
 
-import com.demo.chat.codec.JsonNodeAnyDecoder
+import com.demo.chat.codec.JsonKeyDecoder
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
@@ -16,7 +16,6 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
 
 @SpringBootApplication
 class TestStreamConfiguration {
@@ -35,7 +34,7 @@ class TestStreamConfiguration {
     }
 
     @Configuration
-    class AppJacksonModules : JacksonModules(JsonNodeAnyDecoder, JsonNodeAnyDecoder)
+    class AppJacksonModules : JacksonModules(JsonKeyDecoder, JsonKeyDecoder)
 
     @Configuration
     class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()
