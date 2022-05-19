@@ -1,6 +1,6 @@
 package com.demo.chat.service.persistence.xstream
 
-import com.demo.chat.codec.Decoder
+import com.demo.chat.convert.Encoder
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
@@ -27,21 +27,21 @@ data class KeyConfigurationXStream(
 class UserPersistenceXStream<T>(private val keyConfigurationXStream: KeyConfigurationXStream,
                                 private val keyService: IKeyService<T>,
                                 private val userTemplate: ReactiveRedisTemplate<String, User<T>>,
-                                private val recordCodec: Decoder<MapRecord<String, String, String>, User<T>>,
-                                private val keyRangeCodec: Decoder<T, Pair<Long, Long>>
+                                private val recordCodec: Encoder<MapRecord<String, String, String>, User<T>>,
+                                private val keyRangeCodec: Encoder<T, Pair<Long, Long>>
 ) : UserPersistence<T> {
     override fun all(): Flux<out User<T>> = userTemplate
             .opsForStream<String, String>()
             .read(StreamOffset.fromStart(keyConfigurationXStream.keyUserStreamKey))
             .map { record ->
-                recordCodec.decode(record)
+                recordCodec.encode(record)
             }
 
 
     override fun get(key: Key<T>): Mono<out User<T>> = userTemplate
             .opsForStream<String, String>()
             .range(keyConfigurationXStream.keyUserStreamKey,
-                    Range.just(keyRangeCodec.decode(key.id).first.toString()))
+                    Range.just(keyRangeCodec.encode(key.id).first.toString()))
             .map { record ->
                 User.create(
                         key,

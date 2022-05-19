@@ -1,6 +1,6 @@
 package com.demo.chat.service.impl.memory.messaging
 
-import com.demo.chat.codec.Decoder
+import com.demo.chat.convert.Encoder
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
@@ -26,11 +26,11 @@ data class KeyConfigurationPubSub(
 
 @Suppress("DuplicatedCode")
 class PubSubServiceRedis<T, E>(
-        keyConfig: KeyConfigurationPubSub,
-        private val stringTemplate: ReactiveRedisTemplate<String, String>,
-        private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
-        private val stringKeyDecoder: Decoder<String, T>,
-        private val keyStringEncoder: Decoder<T, String>
+    keyConfig: KeyConfigurationPubSub,
+    private val stringTemplate: ReactiveRedisTemplate<String, String>,
+    private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
+    private val stringKeyEncoder: Encoder<String, T>,
+    private val keyStringEncoder: Encoder<T, String>
 ) : PubSubService<T, E> {
 
     private val replayDepth = 50
@@ -131,7 +131,7 @@ class PubSubServiceRedis<T, E>(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribe(member, stringKeyDecoder.decode(topicId))
+                                    unSubscribe(member, stringKeyEncoder.encode(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
@@ -146,7 +146,7 @@ class PubSubServiceRedis<T, E>(
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribe(stringKeyDecoder.decode(member), topic)
+                                    unSubscribe(stringKeyEncoder.encode(member), topic)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
@@ -179,10 +179,10 @@ class PubSubServiceRedis<T, E>(
             stringTemplate
                     .opsForSet()
                     .members(
-                            prefixUserToTopicSubs + keyStringEncoder.decode(uid)
+                            prefixUserToTopicSubs + keyStringEncoder.encode(uid)
                     )
                     .map {
-                        stringKeyDecoder.decode(it)
+                        stringKeyEncoder.encode(it)
                     }
 
     override fun getUsersBy(id: T): Flux<T> =
@@ -191,10 +191,10 @@ class PubSubServiceRedis<T, E>(
                             stringTemplate
                                     .opsForSet()
                                     .members(
-                                            prefixTopicToUserSubs + keyStringEncoder.decode(id)
+                                            prefixTopicToUserSubs + keyStringEncoder.encode(id)
                                     )
                                     .map {
-                                        stringKeyDecoder.decode(it)
+                                        stringKeyEncoder.encode(it)
                                     }
                     )
 

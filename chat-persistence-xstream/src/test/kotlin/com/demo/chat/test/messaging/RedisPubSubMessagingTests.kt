@@ -64,7 +64,7 @@ class PubSubBeanConfiguration {
             ),
             configRedisTemplate.stringTemplate(),
             configRedisTemplate.stringMessageTemplate(),
-            StringUUIDKeyDecoder(),
+            StringUUIDKeyEncoder(),
             UUIDKeyStringEncoder()
         )
 }

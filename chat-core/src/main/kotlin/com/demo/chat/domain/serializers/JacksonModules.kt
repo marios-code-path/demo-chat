@@ -1,45 +1,45 @@
 package com.demo.chat.domain.serializers
 
-import com.demo.chat.codec.Decoder
-import com.demo.chat.codec.JsonKeyDecoder
+import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.JsonNodeToAnyEncoder
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 
-open class DefaultChatJacksonModules() : JacksonModules(JsonKeyDecoder, JsonKeyDecoder)
+open class DefaultChatJacksonModules() : JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder)
 
-open class JacksonModules(private val keyDecoder: Decoder<JsonNode, out Any>,
-                          private val dataDecoder: Decoder<JsonNode, out Any>) {
+open class JacksonModules(private val keyEncoder: Encoder<JsonNode, out Any>,
+                          private val dataEncoder: Encoder<JsonNode, out Any>) {
 
     @Bean
     open fun keyDataPairModule() = SimpleModule("KeyDataPairModule", Version.unknownVersion()).apply {
-        addDeserializer(KeyDataPair::class.java, KeyDataPairDeserializer(keyDecoder, dataDecoder))
+        addDeserializer(KeyDataPair::class.java, KeyDataPairDeserializer(keyEncoder, dataEncoder))
     }
 
     @Bean
     open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
-        addDeserializer(Key::class.java, KeyDeserializer(keyDecoder))
+        addDeserializer(Key::class.java, KeyDeserializer(keyEncoder))
     }
 
     @Bean
     open fun  userModule() = SimpleModule("UserModule", Version.unknownVersion()).apply {
-        addDeserializer(User::class.java, UserDeserializer(keyDecoder))
+        addDeserializer(User::class.java, UserDeserializer(keyEncoder))
     }
 
     @Bean
     open fun topicModule() = SimpleModule("TopicModule", Version.unknownVersion()).apply {
-        addDeserializer(MessageTopic::class.java, TopicDeserializer(keyDecoder))
+        addDeserializer(MessageTopic::class.java, TopicDeserializer(keyEncoder))
     }
 
     @Bean
     open fun messageModule() = SimpleModule("MessageModule", Version.unknownVersion()).apply {
-        addDeserializer(Message::class.java, MessageDeserializer(keyDecoder, dataDecoder))
+        addDeserializer(Message::class.java, MessageDeserializer(keyEncoder, dataEncoder))
     }
 
     @Bean
     open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
-        addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonKeyDecoder))
+        addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeToAnyEncoder))
     }
 }

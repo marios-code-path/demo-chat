@@ -1,6 +1,6 @@
 package com.demo.chat.streams.rabbit
 
-import com.demo.chat.codec.JsonKeyDecoder
+import com.demo.chat.convert.JsonNodeToAnyEncoder
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
@@ -22,7 +22,7 @@ class StreamApp {
     }
 
     @Configuration
-    class AppJacksonModules : JacksonModules(JsonKeyDecoder, JsonKeyDecoder)
+    class AppJacksonModules : JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder)
 
     @Configuration
     class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()

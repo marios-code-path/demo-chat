@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.codec.JsonKeyDecoder
+import com.demo.chat.convert.JsonNodeToAnyEncoder
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
@@ -23,7 +23,7 @@ class KeySerializerTests : TestBase() {
     fun `Subclass Key deserialize`() {
         mapper.apply {
             registerModules(
-                JacksonModules(JsonKeyDecoder, JsonKeyDecoder).keyModule()
+                JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder).keyModule()
             )
         }
 
@@ -69,7 +69,7 @@ class KeySerializerTests : TestBase() {
     fun `Test type safety of Key serializer-deserializer`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(Key::class.java, KeyDeserializer(JsonKeyDecoder))
+                addDeserializer(Key::class.java, KeyDeserializer(JsonNodeToAnyEncoder))
             })
         }
 

@@ -6,8 +6,6 @@ import com.demo.chat.service.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.service.impl.memory.messaging.PubSubTopicExchangeRedisStream
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
-import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,7 +17,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
-import reactor.core.publisher.Hooks
 import java.util.*
 import java.util.function.Supplier
 
@@ -56,7 +53,7 @@ class XStreamBeanConfiguration {
         ),
         configRedisTemplate.stringTemplate(),
         configRedisTemplate.stringMessageTemplate(),
-        StringUUIDKeyDecoder(),
+        StringUUIDKeyEncoder(),
         UUIDKeyStringEncoder()
     )
 }
