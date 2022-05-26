@@ -1,7 +1,6 @@
 package com.demo.chat.service.impl.memory.persistence
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyBearer
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.PersistenceStore
 import reactor.core.publisher.Flux
@@ -10,21 +9,21 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 
 open class InMemoryPersistence<T, E>(
-        val keyService: IKeyService<T>,
-        val classId: Class<*>,
-        val keyReceiver: Function<E, Key<T>>
+    val keyService: IKeyService<T>,
+    val entityClass: Class<*>,
+    val keyFromEntity: Function<E, Key<T>>
 ) : PersistenceStore<T, E> {
     val map = ConcurrentHashMap<T, E>()
 
-    override fun key(): Mono<out Key<T>> = keyService.key(classId)
+    override fun key(): Mono<out Key<T>> = keyService.key(entityClass)
 
     override fun add(ent: E): Mono<Void> = Mono.create {
-        map[keyReceiver.apply(ent).id] = ent
+        map[keyFromEntity.apply(ent).id] = ent
         it.success()
     }
 
     override fun rem(key: Key<T>): Mono<Void> = Mono.create {
-        map.remove(key.id)
+        map.remove(key.id!!)
         it.success()
     }
 

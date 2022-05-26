@@ -1,6 +1,6 @@
 package com.demo.chat.test.stream
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
@@ -17,8 +17,8 @@ import java.time.Duration
 @Disabled
 open class StreamManagerTestBase<K, V>(
     val streamMan: ExampleReactiveStreamManager<K, V>,
-    val codec: Encoder<Unit, K>,
-    val valueCodec: Encoder<Unit, V>) {
+    val codec: Converter<Unit, K>,
+    val valueCodec: Converter<Unit, V>) {
 
     @BeforeEach
     fun setUp() {
@@ -27,7 +27,7 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should create a stream and flux`() {
-        val streamId = codec.encode(Unit)
+        val streamId = codec.convert(Unit)
 
         streamMan.getSource(streamId)
 
@@ -38,7 +38,7 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should subscribe to a stream`() {
-        val streamId = codec.encode(Unit)
+        val streamId = codec.convert(Unit)
 
         val subscriber = streamMan.subscribeUpstream(streamId, Flux.empty())
 
@@ -49,12 +49,12 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should subscribe to and send data`() {
-        val streamId = codec.encode(Unit)
+        val streamId = codec.convert(Unit)
 
         val dataSource = Flux
                 .just(Message
-                        .create(MessageKey.create(codec.encode(Unit), streamId, codec.encode(Unit)),
-                                valueCodec.encode(Unit), true))
+                        .create(MessageKey.create(codec.convert(Unit), streamId, codec.convert(Unit)),
+                                valueCodec.convert(Unit), true))
 
         StepVerifier
                 .create(streamMan.getSink(streamId))
@@ -76,8 +76,8 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should consume stream function succeed when no data is passed`() {
-        val streamId = codec.encode(Unit)
-        val consumerId = codec.encode(Unit)
+        val streamId = codec.convert(Unit)
+        val consumerId = codec.convert(Unit)
 
         val disposable = streamMan.subscribe(streamId, consumerId)
 
@@ -90,12 +90,12 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should consumer receive a subscribed stream messages`() {
-        val streamId = codec.encode(Unit)
-        val consumerId = codec.encode(Unit)
+        val streamId = codec.convert(Unit)
+        val consumerId = codec.convert(Unit)
 
-        val messageId = codec.encode(Unit)
-        val fromId = codec.encode(Unit)
-        val valueData = valueCodec.encode(Unit)
+        val messageId = codec.convert(Unit)
+        val fromId = codec.convert(Unit)
+        val valueData = valueCodec.convert(Unit)
 
         StepVerifier
                 .create(streamMan.getSink(consumerId))
@@ -123,12 +123,12 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `should multiple consumers receive a subscribed streams messages`() {
-        val streamId = codec.encode(Unit)
-        val consumerId = codec.encode(Unit)
-        val otherConsumerId = codec.encode(Unit)
-        val messageId = codec.encode(Unit)
-        val fromId = codec.encode(Unit)
-        val valueData = valueCodec.encode(Unit)
+        val streamId = codec.convert(Unit)
+        val consumerId = codec.convert(Unit)
+        val otherConsumerId = codec.convert(Unit)
+        val messageId = codec.convert(Unit)
+        val fromId = codec.convert(Unit)
+        val valueData = valueCodec.convert(Unit)
 
         StepVerifier
                 .create(Flux.merge(streamMan.getSink(consumerId), streamMan.getSink(otherConsumerId)))
@@ -153,12 +153,12 @@ open class StreamManagerTestBase<K, V>(
 
     @Test
     fun `disconnected consumers should not receive messages`() {
-        val streamId = codec.encode(Unit)
-        val consumerId = codec.encode(Unit)
-        val otherConsumerId = codec.encode(Unit)
-        val messageId = codec.encode(Unit)
-        val fromId = codec.encode(Unit)
-        val valueData = valueCodec.encode(Unit)
+        val streamId = codec.convert(Unit)
+        val consumerId = codec.convert(Unit)
+        val otherConsumerId = codec.convert(Unit)
+        val messageId = codec.convert(Unit)
+        val fromId = codec.convert(Unit)
+        val valueData = valueCodec.convert(Unit)
         StepVerifier
                 .create(Flux.merge(streamMan.getSink(consumerId), streamMan.getSink(otherConsumerId)))
                 .then {

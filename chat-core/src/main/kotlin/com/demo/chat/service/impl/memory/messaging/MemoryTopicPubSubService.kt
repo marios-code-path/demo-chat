@@ -2,7 +2,7 @@ package com.demo.chat.service.impl.memory.messaging
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -12,12 +12,13 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
+ * Memory implementation of PubSubService.
  *
  * This service handles the behaviour of topic record keeping and
  * message distribution using memory as storage.
  *
  * */
-class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
+class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
     private val streamMgr: ExampleReactiveStreamManager<T, V> = ExampleReactiveStreamManager()
 
     // map of <topic : [msgInbox]s>
@@ -28,10 +29,10 @@ class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
 
     private val sinkByTopic: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
 
-    override fun add(id: T): Mono<Void> = Mono
+    override fun open(topicId: T): Mono<Void> = Mono
             .fromCallable {
-                topicToMembers(id)
-                sourceOf(id)
+                topicToMembers(topicId)
+                sourceOf(topicId)
             }
             .then()
 
@@ -45,7 +46,7 @@ class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
 
     //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
 
-    override fun receiveOn(topic: T): Flux<out Message<T, V>> =
+    override fun listenTo(topic: T): Flux<out Message<T, V>> =
             streamMgr
                     .getSink(topic)
 
@@ -53,9 +54,9 @@ class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
      * topicManager is a subscriber to an upstream from topicXSource
      * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
      */
-    fun sourceOf(topic: T): Flux<out Message<T, V>> =
+    private fun sourceOf(topic: T): Flux<out Message<T, V>> =
             sinkByTopic
-                    .getOrPut(topic, {
+                    .getOrPut(topic) {
                         val proc = ReplayProcessor.create<Message<T, V>>(1)
                         streamMgr.setSource(topic, proc)
 
@@ -63,7 +64,7 @@ class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
                         sinkByTopic[topic] = reader
 
                         reader
-                    })
+                    }
 
     override fun sendMessage(message: Message<T, V>): Mono<Void> {
         val dest = message.key.dest
@@ -111,14 +112,14 @@ class MemoryPubSubTopicExchange<T, V> : PubSubService<T, V> {
             .subscribeOn(Schedulers.parallel())
             .then()
 
-    override fun rem(id: T): Mono<Void> = Mono
+    override fun close(topicId: T): Mono<Void> = Mono
             .fromCallable {
-                streamMgr.close(id)
+                streamMgr.close(topicId)
             }.then()
 
     override fun getByUser(uid: T): Flux<T> = Flux.fromIterable(memberToTopics(uid))
 
-    override fun getUsersBy(id: T): Flux<T> = Flux.fromIterable(topicToMembers(id))
+    override fun getUsersBy(topicId: T): Flux<T> = Flux.fromIterable(topicToMembers(topicId))
 
     private fun memberToTopics(memberId: T): MutableSet<T> =
             memberTopics.getOrPut(memberId) {

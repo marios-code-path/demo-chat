@@ -45,7 +45,7 @@ class TopicClientTests : EdgeTopicControllerTests() {
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(topicService.add(anyObject()))
+                .given(topicServiceTopic.open(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito

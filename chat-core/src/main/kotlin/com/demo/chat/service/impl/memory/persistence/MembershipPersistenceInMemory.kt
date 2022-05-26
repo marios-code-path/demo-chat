@@ -7,5 +7,5 @@ import java.util.function.Function
 
 class MembershipPersistenceInMemory<T>(
     keyService: IKeyService<T>,
-    keyReceiver: Function<TopicMembership<T>, Key<T>>
-) : InMemoryPersistence<T, TopicMembership<T>>(keyService, TopicMembership::class.java, keyReceiver)
+    keyFromEntity: Function<TopicMembership<T>, Key<T>>
+) : InMemoryPersistence<T, TopicMembership<T>>(keyService, TopicMembership::class.java, keyFromEntity)

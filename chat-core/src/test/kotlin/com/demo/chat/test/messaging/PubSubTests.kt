@@ -4,7 +4,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -15,7 +15,7 @@ import java.util.function.Supplier
 
 @Disabled
 open class PubSubTests<T, V>(
-    val messaging: PubSubService<T, V>,
+    val messaging: TopicPubSubService<T, V>,
     val keySvc: IKeyService<T>,
     val valueSupply: Supplier<V>,
 ) {
@@ -47,7 +47,7 @@ open class PubSubTests<T, V>(
                 val userId = keys[0].id
                 val testRoom = keys[1].id
 
-                messaging.add(testRoom)
+                messaging.open(testRoom)
                     .then(messaging.subscribe(userId, testRoom))
                     .then(messaging.unSubscribe(userId, testRoom))
                     .then(messaging.subscribe(userId, testRoom))
@@ -74,7 +74,7 @@ open class PubSubTests<T, V>(
                 val userId = keys[0].id
                 val testRoom = keys[1].id
                 messaging
-                    .add(testRoom)
+                    .open(testRoom)
                     .then(messaging.subscribe(userId, testRoom))
                     .thenMany(messaging.getUsersBy(testRoom))
             }
@@ -148,7 +148,7 @@ open class PubSubTests<T, V>(
                 val testRoom = keys[1].id
 
                 messaging
-                    .add(testRoom)
+                    .open(testRoom)
                     .then(messaging.exists(testRoom))
             }
         StepVerifier
@@ -173,9 +173,9 @@ open class PubSubTests<T, V>(
                 val testRoom = keys[1].id
                 val msgId = keys[2].id
 
-                val listener = messaging.receiveOn(testRoom)
+                val listener = messaging.listenTo(testRoom)
                 messaging
-                    .add(testRoom)
+                    .open(testRoom)
                     .then(messaging.subscribe(userId, testRoom))
                     .then(
                         messaging.sendMessage(

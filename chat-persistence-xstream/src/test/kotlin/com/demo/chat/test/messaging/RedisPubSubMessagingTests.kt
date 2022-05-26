@@ -1,9 +1,9 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.PubSubServiceRedis
+import com.demo.chat.service.impl.memory.messaging.TopicPubSubServiceRedis
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
 import org.assertj.core.api.Assertions
@@ -28,7 +28,7 @@ import java.util.function.Supplier
 @Import(TestContextConfiguration::class, PubSubBeanConfiguration::class)
 @Testcontainers
 class RedisPubSubMessagingTests(
-    @Autowired pubsub: PubSubService<UUID, String>,
+    @Autowired pubsub: TopicPubSubService<UUID, String>,
 ) : PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " })
 {
     companion object {
@@ -55,7 +55,7 @@ class RedisPubSubMessagingTests(
 class PubSubBeanConfiguration {
     @Bean
     fun pubsubTests(configRedisTemplate: RedisTemplateConfiguration) =
-        PubSubServiceRedis(
+        TopicPubSubServiceRedis(
             KeyConfigurationPubSub(
                 "t_all_topics",
                 "t_st_topic_",
@@ -64,7 +64,7 @@ class PubSubBeanConfiguration {
             ),
             configRedisTemplate.stringTemplate(),
             configRedisTemplate.stringMessageTemplate(),
-            StringUUIDKeyEncoder(),
-            UUIDKeyStringEncoder()
+            StringUUIDKeyConverter(),
+            UUIDKeyStringConverter()
         )
 }

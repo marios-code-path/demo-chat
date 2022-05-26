@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.convert.JsonNodeToAnyEncoder
+import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.serializers.TopicDeserializer
@@ -21,7 +21,7 @@ class TopicSerializerTests : TestBase() {
     fun `Any Topic deserialize`() {
         mapper.apply {
             registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(MessageTopic::class.java, TopicDeserializer(JsonNodeToAnyEncoder))
+                addDeserializer(MessageTopic::class.java, TopicDeserializer(JsonNodeToAnyConverter))
             })
         }
 

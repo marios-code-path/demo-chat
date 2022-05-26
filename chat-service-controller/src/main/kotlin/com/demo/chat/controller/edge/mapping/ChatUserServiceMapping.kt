@@ -14,7 +14,7 @@ interface ChatUserServiceMapping<T> : ChatUserService<T> {
     @MessageMapping("user-add")
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>>
     @MessageMapping("user-by-handle")
-    override fun findByHandle(req: ByHandleRequest): Flux<out User<T>>
+    override fun findByUsername(req: ByHandleRequest): Flux<out User<T>>
     @MessageMapping("user-by-id")
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>>
 }

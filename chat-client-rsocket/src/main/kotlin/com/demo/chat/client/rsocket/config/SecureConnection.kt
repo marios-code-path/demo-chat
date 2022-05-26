@@ -6,8 +6,7 @@ import io.rsocket.transport.netty.client.TcpClientTransport
 import org.springframework.beans.factory.annotation.Value
 import reactor.netty.tcp.TcpClient
 
-class SecureConnection {   // This stream is going down in 3 minutes!!!!! Audio Jitter - laptop uptime is
-                            // 70 DAYS!!!!!!!! This is gonna hurt my computer a little bit
+class SecureConnection {
 
     @Value("$\\{app.unsecure:false\\}")
     var unsecure: Boolean = false

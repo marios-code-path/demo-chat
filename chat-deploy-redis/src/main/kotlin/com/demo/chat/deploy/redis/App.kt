@@ -2,7 +2,7 @@ package com.demo.chat.deploy.redis
 
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.deploy.config.TopicMessagingConfigurationRedis
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.context.properties.ConfigurationProperties
@@ -13,7 +13,7 @@ import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 
 class App {
     @Bean
-    fun topicMessagingRedis(props: RedisTemplateConfiguration): PubSubService<*, *> =
+    fun topicMessagingRedis(props: RedisTemplateConfiguration): TopicPubSubService<*, *> =
             TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()
 
     @Bean

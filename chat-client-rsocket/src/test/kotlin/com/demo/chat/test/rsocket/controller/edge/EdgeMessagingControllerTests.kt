@@ -5,7 +5,7 @@ import com.demo.chat.ChatMessage
 import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -36,7 +36,7 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
     @Autowired
-    private lateinit var topicMessaging: PubSubService<UUID, String>
+    private lateinit var topicMessaging: TopicPubSubService<UUID, String>
 
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
@@ -73,7 +73,7 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(topicMessaging.receiveOn(anyObject()))
+                .given(topicMessaging.listenTo(anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
@@ -116,13 +116,13 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
         fun msgPersist(t: MessagePersistence<UUID, String>): MessagePersistence<UUID, String> = t
 
         @Bean
-        fun msging(t: PubSubService<UUID, String>): PubSubService<UUID, String> = t
+        fun msging(t: TopicPubSubService<UUID, String>): TopicPubSubService<UUID, String> = t
 
         @Controller
         class TestMessagingController(
-                messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
-                msgPersist: MessagePersistence<UUID, String>,
-                messaging: PubSubService<UUID, String>,
+            messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
+            msgPersist: MessagePersistence<UUID, String>,
+            messaging: TopicPubSubService<UUID, String>,
         ) : MessagingController<UUID, String, Map<String, String>>(
                 messageIdx,
                 msgPersist,

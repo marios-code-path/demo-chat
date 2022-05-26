@@ -11,6 +11,6 @@ import reactor.core.publisher.Mono
 
 interface ChatUserService<T> {
     fun addUser(userReq: UserCreateRequest): Mono<out Key<T>>
-    fun findByHandle(req: ByHandleRequest): Flux<out User<T>>
+    fun findByUsername(req: ByHandleRequest): Flux<out User<T>>
     fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>>
 }

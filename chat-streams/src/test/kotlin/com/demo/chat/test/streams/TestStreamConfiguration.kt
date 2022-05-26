@@ -1,6 +1,6 @@
 package com.demo.chat.test.streams
 
-import com.demo.chat.convert.JsonNodeToAnyEncoder
+import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.IKeyService
@@ -34,7 +34,7 @@ class TestStreamConfiguration {
     }
 
     @Configuration
-    class AppJacksonModules : JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder)
+    class AppJacksonModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
 
     @Configuration
     class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()

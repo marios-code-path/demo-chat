@@ -22,7 +22,7 @@ class UserClient<T>(
             .data(userReq)
             .retrieveMono()
 
-    override fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = requester
+    override fun findByUsername(req: ByHandleRequest): Flux<out User<T>> = requester
             .route("${prefix}user-by-handle")
             .data(req)
             .retrieveFlux()

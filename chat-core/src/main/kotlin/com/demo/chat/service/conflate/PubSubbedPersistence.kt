@@ -3,8 +3,7 @@ package com.demo.chat.service.conflate
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.PubSubService
-import reactor.core.publisher.Flux
+import com.demo.chat.service.TopicPubSubService
 import reactor.core.publisher.Mono
 import java.util.*
 
@@ -24,9 +23,9 @@ interface PublishConfiguration<T, E, V> {
 }
 
 class PubSubbedPersistence<T, E, V>(
-        val config: PublishConfiguration<T, E, V>,
-        val persistence: PersistenceStore<T, E>,
-        val pubsub: PubSubService<T, V>,
+    val config: PublishConfiguration<T, E, V>,
+    val persistence: PersistenceStore<T, E>,
+    val pubsub: TopicPubSubService<T, V>,
 ) : PersistenceStore<T, E> by persistence {
     override fun add(ent: E): Mono<Void> = persistence.add(ent)
             .flatMap {

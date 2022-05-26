@@ -5,10 +5,10 @@ import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.Key
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
 import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
-import com.demo.chat.service.impl.memory.messaging.MemoryPubSubTopicExchange
+import com.demo.chat.service.impl.memory.messaging.MemoryTopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -19,7 +19,7 @@ class MemoryResourceConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
-    fun memoryPubSub(): PubSubService<UUID, String> = MemoryPubSubTopicExchange()
+    fun memoryPubSub(): TopicPubSubService<UUID, String> = MemoryTopicPubSubService()
 
     @Configuration
     class PersistenceBeans(keyFactory: KeyServiceBeans<UUID>)

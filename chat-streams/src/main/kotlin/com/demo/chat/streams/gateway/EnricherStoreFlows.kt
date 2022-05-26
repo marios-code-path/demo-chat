@@ -13,9 +13,11 @@ import java.util.function.Function
 interface IntKeyEnricherPersistenceStore<T, V, E> : EnricherPersistenceStore<T, V, E> {
     fun channelPrefix(): String
 
-    @ServiceActivator(async = "true", requiresReply = "true",
-    inputChannel = "\${channelPrefix}.add.req",
-    outputChannel = "\${channelPrefix}.add.rep")
+    @ServiceActivator(
+        async = "true", requiresReply = "true",
+        inputChannel = "\${channelPrefix}.add.req",
+        outputChannel = "\${channelPrefix}.add.rep"
+    )
     override fun add(ent: E): Mono<Void>
 }
 

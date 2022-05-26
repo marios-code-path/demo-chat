@@ -1,6 +1,6 @@
 package com.demo.chat.test.codec
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import com.demo.chat.test.TestBase
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.mock
@@ -11,12 +11,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
 
-class StringUUIDCodec : Encoder<String, UUID> {
-    override fun encode(record: String): UUID = UUID.fromString(record)
+class StringUUIDCodec : Converter<String, UUID> {
+    override fun convert(record: String): UUID = UUID.fromString(record)
 }
 
 @ExtendWith(SpringExtension::class)
-class CodecTests : TestBase() {
+class ConversionTests : TestBase() {
     @Test
     fun `even better`() {
             val i = 0
@@ -50,13 +50,13 @@ class CodecTests : TestBase() {
 
     @Test
     fun `should encode Generic`() {
-        val codec: Encoder<String, Int> = mock()
+        val codec: Converter<String, Int> = mock()
 
-        whenever(codec.encode(any()))
+        whenever(codec.convert(any()))
                 .thenReturn(4)
 
         Assertions
-                .assertThat(codec.encode("TEST"))
+                .assertThat(codec.convert("TEST"))
                 .isNotNull
                 .isEqualTo(4)
     }
@@ -64,7 +64,7 @@ class CodecTests : TestBase() {
     @Test
     fun `should encode UUID methods`() {
         Assertions
-                .assertThat(StringUUIDCodec().encode(UUID.randomUUID().toString()))
+                .assertThat(StringUUIDCodec().convert(UUID.randomUUID().toString()))
                 .isNotNull
     }
 }

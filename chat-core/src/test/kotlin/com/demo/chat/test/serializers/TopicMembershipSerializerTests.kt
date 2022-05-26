@@ -1,6 +1,6 @@
 package com.demo.chat.test.serializers
 
-import com.demo.chat.convert.JsonNodeToAnyEncoder
+import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.test.TestBase
@@ -17,7 +17,7 @@ class TopicMembershipSerializerTests : TestBase() {
     @Test
     fun `Any Membership deserialize`() {
         mapper.apply {
-            registerModules(JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder).membershipModule())
+            registerModules(JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter).membershipModule())
         }
 
         val membershipJsons = Flux.just(

@@ -1,9 +1,9 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfiguration
-import com.demo.chat.service.impl.memory.messaging.PubSubTopicExchangeRedisStream
+import com.demo.chat.service.impl.memory.messaging.TopicPubSubTopicInventoryRedisStream
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
 import org.junit.jupiter.api.extension.ExtendWith
@@ -25,7 +25,7 @@ import java.util.function.Supplier
     ExtendWith(SpringExtension::class)
 )
 @Import(TestContextConfiguration::class, XStreamBeanConfiguration::class)
-class XStreamPubSubTests(@Autowired pubsub: PubSubService<UUID, String>) :
+class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
     PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " }) {
 
     companion object {
@@ -44,7 +44,7 @@ class XStreamPubSubTests(@Autowired pubsub: PubSubService<UUID, String>) :
 
 class XStreamBeanConfiguration {
     @Bean
-    fun topicService(configRedisTemplate: RedisTemplateConfiguration) = PubSubTopicExchangeRedisStream(
+    fun topicService(configRedisTemplate: RedisTemplateConfiguration) = TopicPubSubTopicInventoryRedisStream(
         KeyConfiguration(
             "all_topics",
             "st_topic_",
@@ -53,7 +53,7 @@ class XStreamBeanConfiguration {
         ),
         configRedisTemplate.stringTemplate(),
         configRedisTemplate.stringMessageTemplate(),
-        StringUUIDKeyEncoder(),
-        UUIDKeyStringEncoder()
+        StringUUIDKeyConverter(),
+        UUIDKeyStringConverter()
     )
 }

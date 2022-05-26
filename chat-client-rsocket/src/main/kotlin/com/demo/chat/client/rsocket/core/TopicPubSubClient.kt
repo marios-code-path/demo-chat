@@ -2,7 +2,7 @@ package com.demo.chat.client.rsocket.core
 
 import com.demo.chat.MemberTopicRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux
@@ -10,11 +10,11 @@ import org.springframework.messaging.rsocket.retrieveMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class PubSubClient<T, V>(
+class TopicPubSubClient<T, V>(
         private val prefix: String,
         private val requester: RSocketRequester,
         private val ref: ParameterizedTypeReference<T>,
-) : PubSubService<T, V> {
+) : TopicPubSubService<T, V> {
 
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> =
             requester.route("${prefix}subscribe")
@@ -46,7 +46,7 @@ class PubSubClient<T, V>(
                     .data(message)
                     .retrieveMono(Void::class.java)
 
-    override fun receiveOn(topic: T): Flux<out Message<T, V>> =
+    override fun listenTo(topic: T): Flux<out Message<T, V>> =
             requester.route("${prefix}receiveOn")
                     .data(Mono.just(topic), ref)
                     .retrieveFlux()
@@ -56,14 +56,14 @@ class PubSubClient<T, V>(
                     .data(Mono.just(topic), ref)
                     .retrieveMono()
 
-    override fun add(id: T): Mono<Void> =
+    override fun open(topicId: T): Mono<Void> =
             requester.route("${prefix}add")
-                    .data(Mono.just(id), ref)
+                    .data(Mono.just(topicId), ref)
                     .retrieveMono()
 
-    override fun rem(id: T): Mono<Void> =
+    override fun close(topicId: T): Mono<Void> =
             requester.route("${prefix}rem")
-                    .data(Mono.just(id), ref)
+                    .data(Mono.just(topicId), ref)
                     .retrieveMono()
 
     override fun getByUser(uid: T): Flux<T> =
@@ -71,8 +71,8 @@ class PubSubClient<T, V>(
                     .data(Mono.just(uid), ref)
                     .retrieveFlux(ref)
 
-    override fun getUsersBy(id: T): Flux<T> =
+    override fun getUsersBy(topicId: T): Flux<T> =
             requester.route("${prefix}getUsersBy")
-                    .data(Mono.just(id), ref)
+                    .data(Mono.just(topicId), ref)
                     .retrieveFlux(ref)
 }

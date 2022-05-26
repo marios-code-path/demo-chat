@@ -1,16 +1,16 @@
 package com.demo.chat.test.messaging
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import java.util.*
 
-class StringUUIDKeyEncoder : Encoder<String, UUID> {
-    override fun encode(record: String): UUID {
+class StringUUIDKeyConverter : Converter<String, UUID> {
+    override fun convert(record: String): UUID {
         return UUID.fromString(record)
     }
 }
 
-class UUIDKeyStringEncoder : Encoder<UUID, String> {
-    override fun encode(record: UUID): String {
+class UUIDKeyStringConverter : Converter<UUID, String> {
+    override fun convert(record: UUID): String {
         return record.toString()
     }
 }

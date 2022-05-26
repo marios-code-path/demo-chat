@@ -1,12 +1,12 @@
 package com.demo.chat.controller.config
 
-import com.demo.chat.controller.core.PubSubServiceController
-import com.demo.chat.service.PubSubService
+import com.demo.chat.controller.core.TopicPubSubServiceController
+import com.demo.chat.service.TopicPubSubService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
 open class PubSubControllerConfiguration {
     @Controller
     @MessageMapping("pubsub")
-    class PubSubController<T, V>(that: PubSubService<T, V>) : PubSubServiceController<T, V>(that)
+    class TopicPubSubController<T, V>(that: TopicPubSubService<T, V>) : TopicPubSubServiceController<T, V>(that)
 }

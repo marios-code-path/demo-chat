@@ -9,7 +9,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.slf4j.LoggerFactory
 import org.springframework.core.ParameterizedTypeReference
 
@@ -22,8 +22,8 @@ class CoreRSocketClients<T, V, Q>(
 
     override fun keyService(): IKeyService<T> = KeyClient("${coreProps.key.prefix}", requesterFactory.requester("key"))
 
-    override fun topicExchange(): PubSubService<T, V> =
-        PubSubClient("${coreProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), keyType)
+    override fun topicExchange(): TopicPubSubService<T, V> =
+        TopicPubSubClient("${coreProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), keyType)
 
     override fun user(): PersistenceStore<T, User<T>> =
         UserPersistenceClient("${coreProps.persistence.prefix}user.", requesterFactory.requester("persistence"))

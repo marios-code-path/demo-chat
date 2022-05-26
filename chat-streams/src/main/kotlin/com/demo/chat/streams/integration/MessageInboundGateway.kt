@@ -31,7 +31,6 @@ open class MessageInboundGateway<T>(val keyService: IKeyService<T>) {
 
     val inboxes: MutableMap<T, MessageChannel> = ConcurrentHashMap()
 
-    // HTTP POST -> {from: "12345", dest: "6789", message: "FOO"}
     @Bean
     fun chatMessageInboundFlowSpec(): WebFluxInboundEndpointSpec = WebFlux
         .inboundGateway("/message")

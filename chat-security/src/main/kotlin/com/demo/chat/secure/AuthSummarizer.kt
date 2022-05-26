@@ -6,11 +6,11 @@ import reactor.core.publisher.Flux
 
 // 1: requires a principal entity id = Pid
 // 2: requires all wildcard id's = Wid[n]
-interface Filterizer<M, T> {
+interface Summarizer<M, T> {
     fun computeAggregates(elements: Flux<M>, targetIds: Sequence<T>): Flux<M>
 }
 
-class AuthFilterizer<T, P>(private val comparator: Comparator<AuthMetadata<T, P>>) : Filterizer<AuthMetadata<T, P>, Key<T>> {
+class AuthSummarizer<T, P>(private val comparator: Comparator<AuthMetadata<T, P>>) : Summarizer<AuthMetadata<T, P>, Key<T>> {
     override fun computeAggregates(elements: Flux<AuthMetadata<T, P>>, targetIds: Sequence<Key<T>>): Flux<AuthMetadata<T, P>> =
         elements
             .filter { meta ->

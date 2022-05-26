@@ -5,50 +5,36 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
- * GIVEN: PRINCIPLE = TOPIC[MEMBERSHIP, MESSAGE, STAT]
- * GIVEN: ROOM = TOPIC[STAT, MEMBERSHIP, MESSAGE]
- *  ROOM.MEMBERSHIP && ROOM.STAT == true
- *  ROOM.MESSAGE && ROOM.STAT == true
- *  ROOM.STAT != PRINCIPLE.STAT
- *  PRINCIPLE is owner of ROOM. PRINCIPLE creates ROOM
- *  ROOM receives individual ID
- *  thus
- *  createRoom(name) = ROOM.apply {
- *      MEMBERSHIP = createExchangeTopic(MEMBERSHIP)
- *      STAT = this
- *      MESSAGES = createTopic(MESSAGE)
- *  }
- *  to join said room:
- *
- * svc.subscribe to (look up by user_id or room_id) ROOM_ID
- * svc.subscribe to ROOM[MEMBERSHIP]
- * svc.send to ROOM[MEMBERSHIP] with PRINCIPLE[MEMBERSHIP]
- * svc.send ( message ) to ROOM[MESSAGES]
+ * This publish-subscribe service achieves the following:
+ *  handle subscription logic per topic
+ *  send message to topic
+ *  listen to topic
  */
 interface PubSubMessagingService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
     fun unSubscribe(member: T, topic: T): Mono<Void>
-    fun unSubscribeAll(member: T): Mono<Void> // then closes
+    fun unSubscribeAll(member: T): Mono<Void>
     fun unSubscribeAllIn(topic: T): Mono<Void>
     fun sendMessage(message: Message<T, V>): Mono<Void>
-    fun receiveOn(topic: T): Flux<out Message<T, V>>
+    fun listenTo(topic: T): Flux<out Message<T, V>>
     fun exists(topic: T): Mono<Boolean>
-
-    // TODO: sourceOf (aka createSource) is an internal function
-    // receive externally bound resources by attaching a processor to that resources flux
-    // 1.  attach to some external source (like a redis pubsub channel)
-    // 2.  create FluxProcessor that will handle fanout from our source to any subscriber fluxes
-    // 3.  subscribe our processor to the source
-
-    //fun keyExists(topic: T, key: T): Mono<Boolean>
 }
 
-interface TopicExchangeService<T> {
-    fun add(id: T): Mono<Void>
-    fun rem(id: T): Mono<Void>
+/**
+ * Topic Exchange: achieve the following
+ *  add/remove topic
+ *  per topic user inventory
+ *  per user topic inventory
+ */
+interface TopicInventoryService<T> {
+    fun open(topicId: T): Mono<Void>
+    fun close(topicId: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>
-    fun getUsersBy(id: T): Flux<T>
+    fun getUsersBy(topicId: T): Flux<T>
 }
 
-interface PubSubService<T, V>
-    : PubSubMessagingService<T, V>, TopicExchangeService<T>
+/**
+ * Combined (Publish Subscribe + Topic Exchange)
+ */
+interface TopicPubSubService<T, V>
+    : PubSubMessagingService<T, V>, TopicInventoryService<T>

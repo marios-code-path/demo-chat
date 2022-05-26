@@ -1,25 +1,25 @@
 package com.demo.chat.deploy.config
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.PubSubServiceRedis
+import com.demo.chat.service.impl.memory.messaging.TopicPubSubServiceRedis
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import java.util.*
 
-class StringUUIDEncoder : Encoder<String, UUID> {
-    override fun encode(record: String): UUID {
+class StringUUIDConverter : Converter<String, UUID> {
+    override fun convert(record: String): UUID {
         return UUID.fromString(record)
     }
 }
 
-class UUIDStringEncoder : Encoder<UUID, String> {
-    override fun encode(record: UUID): String {
+class UUIDStringConverter : Converter<UUID, String> {
+    override fun convert(record: UUID): String {
         return record.toString()
     }
 }
@@ -33,15 +33,15 @@ open class ConnectionConfigurationRedis(private val props: ConfigurationProperti
 }
 
 class TopicMessagingConfigurationRedis(private val config: RedisTemplateConfiguration) {
-    fun topicMessagingRedisPubSub(): PubSubService<*, *> =
-            PubSubServiceRedis(
+    fun topicMessagingRedisPubSub(): TopicPubSubService<*, *> =
+            TopicPubSubServiceRedis(
                     KeyConfigurationPubSub("all_topics",
                             "st_topic_",
                             "l_user_topics_",
                             "l_topic_users_"),
                     config.stringTemplate(),
                     config.stringMessageTemplate(),
-                    StringUUIDEncoder(),
-                    UUIDStringEncoder()
+                    StringUUIDConverter(),
+                    UUIDStringConverter()
             )
 }

@@ -1,10 +1,10 @@
 package com.demo.chat.service.impl.memory.messaging
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicNotFoundException
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -25,13 +25,13 @@ data class KeyConfigurationPubSub(
 )
 
 @Suppress("DuplicatedCode")
-class PubSubServiceRedis<T, E>(
+class TopicPubSubServiceRedis<T, E>(
     keyConfig: KeyConfigurationPubSub,
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
-    private val stringKeyEncoder: Encoder<String, T>,
-    private val keyStringEncoder: Encoder<T, String>
-) : PubSubService<T, E> {
+    private val stringKeyConverter: Converter<String, T>,
+    private val keyStringConverter: Converter<T, String>
+) : TopicPubSubService<T, E> {
 
     private val replayDepth = 50
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -55,12 +55,12 @@ class PubSubServiceRedis<T, E>(
             .isMember(topicSetKey, topic.toString())
 
     // Idempotent
-    override fun add(id: T): Mono<Void> =
+    override fun open(topicId: T): Mono<Void> =
             stringTemplate
                     .opsForSet()
-                    .add(topicSetKey, id.toString())
+                    .add(topicSetKey, topicId.toString())
                     .thenEmpty {
-                        sourceOf(id)
+                        sourceOf(topicId)
                         it.onComplete()
                     }
 
@@ -131,7 +131,7 @@ class PubSubServiceRedis<T, E>(
                         Flux
                                 .fromIterable(topicList)
                                 .map { topicId ->
-                                    unSubscribe(member, stringKeyEncoder.encode(topicId))
+                                    unSubscribe(member, stringKeyConverter.convert(topicId))
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
@@ -146,7 +146,7 @@ class PubSubServiceRedis<T, E>(
                         Flux
                                 .fromIterable(members)
                                 .map { member ->
-                                    unSubscribe(stringKeyEncoder.encode(member), topic)
+                                    unSubscribe(stringKeyConverter.convert(member), topic)
                                 }
                                 .subscribeOn(Schedulers.parallel())
                                 .then()
@@ -160,7 +160,7 @@ class PubSubServiceRedis<T, E>(
                 .then()
     }
 
-    override fun receiveOn(topic: T): Flux<out Message<T, E>> =
+    override fun listenTo(topic: T): Flux<out Message<T, E>> =
             streamMgr.getSink(topic)
 
     // may need to turn this into a different rturn type ( just start the source using .subscribe() )
@@ -179,34 +179,34 @@ class PubSubServiceRedis<T, E>(
             stringTemplate
                     .opsForSet()
                     .members(
-                            prefixUserToTopicSubs + keyStringEncoder.encode(uid)
+                            prefixUserToTopicSubs + keyStringConverter.convert(uid)
                     )
                     .map {
-                        stringKeyEncoder.encode(it)
+                        stringKeyConverter.convert(it)
                     }
 
-    override fun getUsersBy(id: T): Flux<T> =
-            topicExistsOrError(id)
+    override fun getUsersBy(topicId: T): Flux<T> =
+            topicExistsOrError(topicId)
                     .thenMany(
                             stringTemplate
                                     .opsForSet()
                                     .members(
-                                            prefixTopicToUserSubs + keyStringEncoder.encode(id)
+                                            prefixTopicToUserSubs + keyStringConverter.convert(topicId)
                                     )
                                     .map {
-                                        stringKeyEncoder.encode(it)
+                                        stringKeyConverter.convert(it)
                                     }
                     )
 
-    override fun rem(id: T): Mono<Void> = messageTemplate
+    override fun close(topicId: T): Mono<Void> = messageTemplate
             .connectionFactory
             .reactiveConnection
             .keyCommands()
             .del(ByteBuffer
-                    .wrap((prefixTopicKey + id.toString()).toByteArray(Charset.defaultCharset())))
+                    .wrap((prefixTopicKey + topicId.toString()).toByteArray(Charset.defaultCharset())))
             .doOnNext {
                 streamMgr
-                        .close(id)
+                        .close(topicId)
             }.then()
 
     private fun getPubSubFluxFor(topic: T): Flux<out Message<T, E>> =

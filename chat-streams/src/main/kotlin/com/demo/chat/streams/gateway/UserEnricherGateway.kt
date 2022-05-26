@@ -14,7 +14,7 @@ import org.springframework.integration.annotation.MessagingGateway
         name = "calledMethod",
         expression = "#gatewayMethod.name"
     )]
-)  // TODO : EnricherPersistenceStore<T, UserCreateRequest, User<T>>
+)
 interface UserEnricherGateway<T> {
     @Gateway(requestChannel = "users.add.req", replyChannel = "users.add.res")
     fun add(ent: UserCreateRequest): User<T>

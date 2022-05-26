@@ -2,12 +2,12 @@ package com.demo.chat.controller.core.mapping
 
 import com.demo.chat.MemberTopicRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface PubSubServiceMapping<T, V> : PubSubService<T, V> {
+interface TopicPubSubServiceMapping<T, V> : TopicPubSubService<T, V> {
     @MessageMapping("subscribe")
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void>
 
@@ -24,20 +24,20 @@ interface PubSubServiceMapping<T, V> : PubSubService<T, V> {
     override fun sendMessage(message: Message<T, V>): Mono<Void>
 
     @MessageMapping("receiveOn")
-    override fun receiveOn(topic: T): Flux<out Message<T, V>>
+    override fun listenTo(topic: T): Flux<out Message<T, V>>
 
     @MessageMapping("exists")
     override fun exists(topic: T): Mono<Boolean>
 
     @MessageMapping("add")
-    override fun add(id: T): Mono<Void>
+    override fun open(topicId: T): Mono<Void>
 
     @MessageMapping("rem")
-    override fun rem(id: T): Mono<Void>
+    override fun close(topicId: T): Mono<Void>
 
     @MessageMapping("getByUser")
     override fun getByUser(uid: T): Flux<T>
 
     @MessageMapping("getUsersBy")
-    override fun getUsersBy(id: T): Flux<T>
+    override fun getUsersBy(topicId: T): Flux<T>
 }

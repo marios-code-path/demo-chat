@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.edge
 
-import com.demo.chat.convert.JsonNodeToAnyEncoder
+import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -14,7 +14,7 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import java.util.*
 
-class TestModules : JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder)
+class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
 
 @TestConfiguration
 @Import(TestModules::class,
@@ -40,7 +40,7 @@ class MockCoreServicesConfiguration {
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     @MockBean
-    private lateinit var topicService: PubSubService<UUID, String>
+    private lateinit var topicServiceTopic: TopicPubSubService<UUID, String>
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

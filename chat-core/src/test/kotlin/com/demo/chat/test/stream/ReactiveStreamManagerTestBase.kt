@@ -1,16 +1,16 @@
 package com.demo.chat.test.stream
 
-import com.demo.chat.convert.Encoder
+import com.demo.chat.convert.Converter
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import com.demo.chat.test.randomAlphaNumeric
 import java.util.*
 
-object UUIDKeyCodec : Encoder<Unit, UUID> {
-    override fun encode(record: Unit): UUID = UUID.randomUUID()
+object UUIDKeyCodec : Converter<Unit, UUID> {
+    override fun convert(record: Unit): UUID = UUID.randomUUID()
 }
 
-object StringValCodec : Encoder<Unit, String> {
-    override fun encode(record: Unit): String = randomAlphaNumeric(50)
+object StringValCodec : Converter<Unit, String> {
+    override fun convert(record: Unit): String = randomAlphaNumeric(50)
 }
 
 /**

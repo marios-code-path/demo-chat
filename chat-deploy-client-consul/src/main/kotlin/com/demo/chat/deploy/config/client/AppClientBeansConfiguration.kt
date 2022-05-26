@@ -2,7 +2,7 @@ package com.demo.chat.deploy.config.client
 
 import com.demo.chat.config.CoreClientBeans
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.PubSubService
+import com.demo.chat.service.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.core.ParameterizedTypeReference
@@ -14,7 +14,7 @@ open class AppClientBeansConfiguration<T, V, Q>(
 ) {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])
     @Bean
-    open fun pubsubClient(): PubSubService<T, V> = clients.topicExchange()
+    open fun pubsubClient(): TopicPubSubService<T, V> = clients.topicExchange()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["key"])
     @Bean

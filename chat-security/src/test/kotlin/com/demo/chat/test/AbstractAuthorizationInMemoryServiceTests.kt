@@ -1,7 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
-import com.demo.chat.secure.AuthFilterizer
+import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.*
 import com.demo.chat.service.StringRoleAuthorizationMetadata
 import com.demo.chat.test.auth.AuthorizationServiceTests
@@ -17,7 +17,7 @@ class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<Long
         AuthTargetByKeySearch,
         { Key.funKey(ANON_ID) },
         { m -> m.key },
-        AuthFilterizer { a, b -> (a.key.id - b.key.id).toInt() }
+        AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }
     ),
     Supplier {
         StringRoleAuthorizationMetadata(

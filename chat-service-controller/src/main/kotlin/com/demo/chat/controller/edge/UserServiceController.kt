@@ -40,7 +40,7 @@ open class UserServiceController<T, Q>(
                                 .then(Mono.just(it))
                     }
 
-    override fun findByHandle(req: ByHandleRequest): Flux<out User<T>> = userIndex
+    override fun findByUsername(req: ByHandleRequest): Flux<out User<T>> = userIndex
             .findBy(userHandleToQuery.apply(req))
             .flatMap(userPersistence::get)
 

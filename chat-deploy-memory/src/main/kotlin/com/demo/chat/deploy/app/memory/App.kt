@@ -53,6 +53,6 @@ class App {
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean
     fun commandRunner(): ApplicationRunner = ApplicationRunner {
-        println("Persistence/Controllers App.")
+        println("Persistence/Index/Messaging/Controllers App.")
     }
 }

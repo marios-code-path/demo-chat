@@ -3,7 +3,7 @@ package com.demo.chat.secure.app
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.secure.AuthFilterizer
+import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.service.*
 import com.demo.chat.service.*
@@ -168,7 +168,7 @@ class ChatSecurityApp {
             AuthTargetByKeySearch,
             { ANONYMOUS_KEY },
             { m -> m.key },
-            AuthFilterizer { a, b -> (a.key.id - b.key.id).toInt() }
+            AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }
         )
 
     @Bean

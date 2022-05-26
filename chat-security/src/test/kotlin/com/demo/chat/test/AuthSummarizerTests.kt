@@ -1,7 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
-import com.demo.chat.secure.AuthFilterizer
+import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.service.AuthMetadata
 import com.demo.chat.service.StringRoleAuthorizationMetadata
 import org.assertj.core.api.Assertions
@@ -12,13 +12,13 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
 import kotlin.random.Random
 
-class AuthFilterizerTests {
+class AuthSummarizerTests {
     companion object {
         val atomicLong = AtomicLong(Random.nextLong(1024,999999))
     }
 
     private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
-    private val filterizer = AuthFilterizer<Long, String> { a, b ->
+    private val filterizer = AuthSummarizer<Long, String> { a, b ->
         when {
             a.key.id < b.key.id -> {
                 -1

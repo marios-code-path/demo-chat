@@ -30,15 +30,15 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
 }
 
 open class TopicServiceController<T, V, Q>(
-        private val topicPersistence: PersistenceStore<T, MessageTopic<T>>,
-        private val topicIndex: IndexService<T, MessageTopic<T>, Q>,
-        private val messaging: PubSubService<T, V>,
-        private val userPersistence: PersistenceStore<T, User<T>>,
-        private val membershipPersistence: PersistenceStore<T, TopicMembership<T>>,
-        private val membershipIndex: IndexService<T, TopicMembership<T>, Q>,
-        private val emptyDataCodec: Supplier<V>,
-        private val topicNameToQuery: Function<ByNameRequest, Q>,
-        private val membershipIdToQuery: Function<ByIdRequest<T>, Q>,
+    private val topicPersistence: PersistenceStore<T, MessageTopic<T>>,
+    private val topicIndex: IndexService<T, MessageTopic<T>, Q>,
+    private val messaging: TopicPubSubService<T, V>,
+    private val userPersistence: PersistenceStore<T, User<T>>,
+    private val membershipPersistence: PersistenceStore<T, TopicMembership<T>>,
+    private val membershipIndex: IndexService<T, TopicMembership<T>, Q>,
+    private val emptyDataCodec: Supplier<V>,
+    private val topicNameToQuery: Function<ByNameRequest, Q>,
+    private val membershipIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatTopicServiceMapping<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -52,7 +52,7 @@ open class TopicServiceController<T, V, Q>(
                                 .flatMap {
                                     topicIndex.add(room)
                                 }
-                                .then(messaging.add(key.id))
+                                .then(messaging.open(key.id))
                                 .map { key }
                     }
 
@@ -63,7 +63,7 @@ open class TopicServiceController<T, V, Q>(
                         topicPersistence.rem(it.key)
                                 .then(topicIndex.rem(it.key))
                                 .then(messaging.unSubscribeAllIn(it.key.id))
-                                .then(messaging.rem(it.key.id))
+                                .then(messaging.close(it.key.id))
                     }
                     .then()
 

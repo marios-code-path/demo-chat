@@ -15,7 +15,6 @@ class IntegrationSubscriptionDirectory<T> : SubscriptionDirectory<T> {
     override fun subscribeTo(left: T, right: T) {
         if(! channels.containsKey(right))
             channels[right] = PublishSubscribeChannel()
-
     }
 
     override fun unsubscribe(left: T, right: T) {

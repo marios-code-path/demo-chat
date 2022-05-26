@@ -1,0 +1,3 @@
+export CORE_PORT=6790
+export EDGE_PORT=7790
+export CONSUL_PORT=8500

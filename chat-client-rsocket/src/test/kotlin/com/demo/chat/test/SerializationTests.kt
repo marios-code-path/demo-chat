@@ -1,6 +1,6 @@
 package com.demo.chat.test
 
-import com.demo.chat.convert.JsonNodeToAnyEncoder
+import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.annotation.*
@@ -66,7 +66,7 @@ class SerializationTests {
             return ObjectMapper().apply {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 registerModule(KotlinModule())
-                val module = JacksonModules(JsonNodeToAnyEncoder, JsonNodeToAnyEncoder)
+                val module = JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
                 registerModules(
                     module.keyModule(),
                     module("TESTKEY", TestKey::class.java, ETestKey::class.java)

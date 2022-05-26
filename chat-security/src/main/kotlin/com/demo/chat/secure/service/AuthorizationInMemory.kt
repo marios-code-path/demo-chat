@@ -11,7 +11,7 @@ import com.demo.chat.service.impl.memory.persistence.InMemoryPersistence
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import java.util.function.Function
 
-object IncrementingKeyService : KeyServiceInMemory<Long>({ System.currentTimeMillis() })
+object IncrementingKeyService : KeyServiceInMemory<Long>({ System.nanoTime() })
 
 object AuthorizationPersistenceInMemory :
     InMemoryPersistence<Long, AuthMetadata<Long, String>>(

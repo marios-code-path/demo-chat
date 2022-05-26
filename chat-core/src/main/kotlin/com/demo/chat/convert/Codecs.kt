@@ -7,12 +7,12 @@ import com.fasterxml.jackson.dataformat.cbor.CBORFactory
 
 import java.util.*
 
-fun interface Encoder<F, E> {
-    fun encode(record: F): E
+fun interface Converter<F, E> {
+    fun convert(record: F): E
 }
 
-object JsonNodeToAnyEncoder : Encoder<JsonNode, Any> {
-    override fun encode(record: JsonNode): Any {
+object JsonNodeToAnyConverter : Converter<JsonNode, Any> {
+    override fun convert(record: JsonNode): Any {
         return when (record.nodeType) {
             JsonNodeType.BINARY -> {
                 val f = CBORFactory()

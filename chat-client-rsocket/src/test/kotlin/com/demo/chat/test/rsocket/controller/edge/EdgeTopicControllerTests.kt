@@ -41,7 +41,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicService: PubSubService<UUID, String>
+    lateinit var topicServiceTopic: TopicPubSubService<UUID, String>
 
     @Autowired
     lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
@@ -70,7 +70,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(topicService.add(anyObject()))
+                .given(topicServiceTopic.open(anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
@@ -182,12 +182,12 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     class EdgeTopicControllerConfiguration {
         @Controller
         class TestTopicController(
-                topicP: TopicPersistence<UUID>,
-                topicInd: TopicIndexService<UUID, Map<String, String>>,
-                topicSvc: PubSubService<UUID, String>,
-                userP: UserPersistence<UUID>,
-                membershipP: MembershipPersistence<UUID>,
-                membershipInd: MembershipIndexService<UUID, Map<String, String>>,
+            topicP: TopicPersistence<UUID>,
+            topicInd: TopicIndexService<UUID, Map<String, String>>,
+            topicSvc: TopicPubSubService<UUID, String>,
+            userP: UserPersistence<UUID>,
+            membershipP: MembershipPersistence<UUID>,
+            membershipInd: MembershipIndexService<UUID, Map<String, String>>,
         ) :
                 TopicServiceController<UUID, String, Map<String, String>>(
                         topicP,
