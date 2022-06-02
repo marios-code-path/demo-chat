@@ -15,6 +15,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
+import java.util.stream.Collectors
 import java.util.stream.Stream
 import kotlin.streams.toList
 import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
@@ -101,13 +102,11 @@ class MembershipRepositoryTests : CassandraSchemaTest() {
                 .verifyComplete()
     }
 
-
-
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
             Key.funKey(UUIDs.timeBased())
-        }.limit(5).toList()
+        }.limit(5).collect(Collectors.toList())
 
         val keyIdsList = keyList.stream().map { it.id }.toList()
         val memberships = Flux.fromIterable(keyList

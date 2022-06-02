@@ -7,9 +7,11 @@ import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.TestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -28,6 +30,11 @@ class MembershipIndexRepositoryTests : CassandraSchemaTest() {
     @Autowired
     lateinit var byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>
 
+    @Test
+    fun shouldContextLoad() {
+        assertAll("Reactive Template Exists",
+            { org.junit.jupiter.api.Assertions.assertNotNull(template) })
+    }
 
     @Test
     fun `membershipOf should not return all`() {
@@ -39,7 +46,9 @@ class MembershipIndexRepositoryTests : CassandraSchemaTest() {
 
         StepVerifier
             .create(membershipSave)
-            .expectSubscription()
+            .assertNext {
+
+            }
             .verifyComplete()
     }
 
