@@ -14,7 +14,6 @@ import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
 
-// RULES Here
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 open class CassandraSchemaTest {
     @Autowired

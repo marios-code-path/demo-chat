@@ -10,9 +10,8 @@ import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
-import com.demo.chat.test.anyObject
-import com.demo.chat.test.randomAlphaNumeric
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -48,18 +47,18 @@ class TopicPersistenceTests {
     fun setUp() {
         val newRoom = ChatTopic(ChatTopicKey(rid), ROOMNAME, true)
         val roomNameRoom = ChatTopicName(ChatTopicNameKey(rid, ROOMNAME), true)
-        val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), randomAlphaNumeric(6), true)
+        val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), TestBase.randomAlphaNumeric(6), true)
 
-        BDDMockito.given(roomRepo.add(anyObject()))
+        BDDMockito.given(roomRepo.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito.given(roomRepo.findAll())
                 .willReturn(Flux.just(newRoom, roomTwo))
 
-        BDDMockito.given(roomRepo.findByKeyId(anyObject()))
+        BDDMockito.given(roomRepo.findByKeyId(TestBase.anyObject()))
                 .willReturn(Mono.just(newRoom))
 
-        BDDMockito.given(roomRepo.rem(anyObject()))
+        BDDMockito.given(roomRepo.rem(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         roomSvc = TopicPersistenceCassandra(keyService, roomRepo)
@@ -67,7 +66,7 @@ class TopicPersistenceTests {
 
     @Test
     fun `should create some rooms then get a list`() {
-        val names = setOf(randomAlphaNumeric(5), randomAlphaNumeric(5))
+        val names = setOf(TestBase.randomAlphaNumeric(5), TestBase.randomAlphaNumeric(5))
 
         val roomStore = Flux
                 .fromStream(names.stream())

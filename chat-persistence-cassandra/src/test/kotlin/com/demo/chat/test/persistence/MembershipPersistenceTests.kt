@@ -7,9 +7,8 @@ import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
-import com.demo.chat.test.TestStringKeyService
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
-import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -43,11 +42,11 @@ class MembershipPersistenceTests {
     @BeforeEach
     fun setUp() {
         BDDMockito
-                .given(repo.findByKey(anyObject()))
+                .given(repo.findByKey(TestBase.anyObject()))
                 .willReturn(Mono.just(testChatMembership))
 
         BDDMockito
-                .given(repo.save(Mockito.any<TopicMembershipByKey<UUID>>()))
+                .given(repo.save(TestBase.anyObject()))
                 .willReturn(Mono.empty<TopicMembershipByKey<UUID>>())
 
         BDDMockito
@@ -55,7 +54,7 @@ class MembershipPersistenceTests {
                 .willReturn(Flux.just(testChatMembership))
 
         BDDMockito
-                .given(repo.findByKeyIn(anyObject()))
+                .given(repo.findByKeyIn(TestBase.anyObject()))
                 .willReturn(Flux.just(testChatMembership))
 
         BDDMockito

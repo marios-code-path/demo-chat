@@ -1,14 +1,13 @@
 package com.demo.chat.test.persistence
 
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.cassandra.ChatUser
 import com.demo.chat.domain.cassandra.ChatUserKey
-import com.demo.chat.domain.Key
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.UserPersistenceCassandra
-import com.demo.chat.test.TestStringKeyService
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
-import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -41,19 +40,19 @@ class UserPersistenceTests {
         val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle", "", Instant.now())
 
         BDDMockito
-                .given(userRepo.findByKeyIdIn(anyObject()))
+                .given(userRepo.findByKeyIdIn(TestBase.anyObject()))
                 .willReturn(Flux.just(newUser))
 
         BDDMockito
-                .given(userRepo.findByKeyId(anyObject()))
+                .given(userRepo.findByKeyId(TestBase.anyObject()))
                 .willReturn(Mono.just(newUser))
 
         BDDMockito
-                .given(userRepo.add(anyObject<ChatUser<UUID>>()))
+                .given(userRepo.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(userRepo.rem(anyObject()))
+                .given(userRepo.rem(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito

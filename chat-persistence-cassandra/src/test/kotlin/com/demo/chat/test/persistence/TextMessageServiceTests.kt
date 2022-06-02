@@ -4,14 +4,11 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.cassandra.ChatMessageById
 import com.demo.chat.domain.cassandra.ChatMessageByIdKey
-import com.demo.chat.domain.cassandra.ChatMessageByTopic
-import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
-import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.MessagePersistenceCassandra
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
-import com.demo.chat.test.anyObject
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -45,9 +42,6 @@ class TextMessageServiceTests {
     @MockBean
     lateinit var msgRepo: ChatMessageRepository<UUID>
 
-    @MockBean
-    lateinit var msgByTopicRepo: ChatMessageByTopicRepository<UUID>
-
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
     private val rid: UUID = UUID.randomUUID()
@@ -57,17 +51,13 @@ class TextMessageServiceTests {
     @BeforeEach
     fun setUp() {
         val newMessage = ChatMessageById(ChatMessageByIdKey(UUID.randomUUID(), rid, uid, Instant.now()), MSGTEXT, true)
-        val byRoomMessage = ChatMessageByTopic(ChatMessageByTopicKey(UUID.randomUUID(), rid, uid, Instant.now()), MSGTEXT, true)
 
-        Mockito.`when`(msgRepo.add(anyObject()))
+        Mockito.`when`(msgRepo.add(TestBase.anyObject()))
                 .thenReturn(Mono.empty())
 
         BDDMockito
                 .given(msgRepo.findAll())
                 .willReturn(Flux.just(newMessage))
-
-        Mockito.`when`(msgByTopicRepo.findByKeyDest(anyObject()))
-                .thenReturn(Flux.just(byRoomMessage))
 
         msgSvc = MessagePersistenceCassandra(keyService, msgRepo)
     }
