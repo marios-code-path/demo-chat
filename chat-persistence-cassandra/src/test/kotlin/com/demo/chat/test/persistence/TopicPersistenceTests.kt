@@ -4,9 +4,6 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicKey
-import com.demo.chat.domain.cassandra.ChatTopicName
-import com.demo.chat.domain.cassandra.ChatTopicNameKey
-import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.TopicPersistenceCassandra
@@ -32,9 +29,6 @@ class TopicPersistenceTests {
     lateinit var roomSvc: TopicPersistenceCassandra<UUID>
 
     @MockBean
-    lateinit var roomByNameRepo: TopicByNameRepository<UUID>
-
-    @MockBean
     lateinit var roomRepo: TopicRepository<UUID>
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
@@ -46,7 +40,6 @@ class TopicPersistenceTests {
     @BeforeEach
     fun setUp() {
         val newRoom = ChatTopic(ChatTopicKey(rid), ROOMNAME, true)
-        val roomNameRoom = ChatTopicName(ChatTopicNameKey(rid, ROOMNAME), true)
         val roomTwo = ChatTopic(ChatTopicKey(UUID.randomUUID()), TestBase.randomAlphaNumeric(6), true)
 
         BDDMockito.given(roomRepo.add(TestBase.anyObject()))

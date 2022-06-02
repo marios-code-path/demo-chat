@@ -3,7 +3,6 @@ package com.demo.chat.repository.cassandra
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopic
-import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
@@ -11,11 +10,6 @@ import org.springframework.data.cassandra.core.query.Update
 import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
-
-
-interface TopicByNameRepository<T> : ReactiveCassandraRepository<ChatTopicName<T>, T> {
-    fun findByKeyName(name: String): Mono<ChatTopicName<T>>
-}
 
 interface TopicRepository<T> :
         ReactiveCassandraRepository<ChatTopic<T>, T>,

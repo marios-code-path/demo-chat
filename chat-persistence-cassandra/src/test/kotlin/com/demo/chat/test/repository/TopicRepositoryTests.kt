@@ -84,8 +84,8 @@ class TopicRepositoryTests : CassandraSchemaTest(){
                                 .thenMany(repo.findAll())
                 )
                 .expectSubscription()
-                .assertNext(::roomAssertions)
-                .assertNext(::roomAssertions)
+                .assertNext(TestBase::topicAssertions)
+                .assertNext(TestBase::topicAssertions)
                 .verifyComplete()
     }
 }

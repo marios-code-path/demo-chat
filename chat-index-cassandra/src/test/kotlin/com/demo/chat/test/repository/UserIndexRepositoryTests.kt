@@ -6,7 +6,7 @@ import com.demo.chat.domain.cassandra.ChatUserHandleKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
-import com.demo.chat.test.userAssertions
+import com.demo.chat.test.TestBase
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -53,7 +53,7 @@ class UserIndexRepositoryTests  : CassandraSchemaTest() {
         StepVerifier
             .create(saveAndFind)
             .expectSubscription()
-            .assertNext { userAssertions(it, "darkbit", "mario") }
+            .assertNext { TestBase.userAssertions(it, "darkbit", "mario") }
             .verifyComplete()
     }
 

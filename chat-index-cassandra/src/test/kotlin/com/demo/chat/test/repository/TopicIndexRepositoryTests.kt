@@ -7,7 +7,7 @@ import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
-import com.demo.chat.test.roomAssertions
+import com.demo.chat.test.TestBase
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -43,7 +43,7 @@ class TopicIndexRepositoryTests : CassandraSchemaTest() {
         StepVerifier
             .create(composed)
             .assertNext {
-                roomAssertions(it)
+                TestBase.topicAssertions(it)
             }
             .verifyComplete()
     }

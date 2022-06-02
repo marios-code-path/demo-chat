@@ -1,9 +1,13 @@
 package com.demo.chat.test
 
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.User
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.assertAll
 import org.mockito.Mockito
 import java.util.*
 
@@ -34,6 +38,23 @@ open class TestBase {
                 builder.append(ALPHA_NUMERIC_STRING[character])
             }
             return builder.toString()
+        }
+
+        fun topicAssertions(room: MessageTopic<UUID>) {
+            assertAll("Topic Assertions",
+                { Assertions.assertNotNull(room) },
+                { Assertions.assertNotNull(room.key.id) },
+                { Assertions.assertNotNull(room.data) })
+        }
+
+        fun userAssertions(user: User<UUID>, handle: String?, name: String?) {
+            assertAll("User Assertions",
+                { Assertions.assertNotNull(user) },
+                { Assertions.assertNotNull(user.key.id) },
+                { Assertions.assertNotNull(user.handle) },
+                { Assertions.assertEquals(handle, user.handle) },
+                { Assertions.assertEquals(name, user.name) }
+            )
         }
     }
 }

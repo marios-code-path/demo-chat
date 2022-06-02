@@ -43,7 +43,7 @@ class MembershipIndexRepositoryTests : CassandraSchemaTest() {
             .verifyComplete()
     }
 
-    @Test
+    //@Test
     fun `should save, find by memberId`() {
         val keyId = Uuids.timeBased()
         val membership = TopicMembershipByMember(

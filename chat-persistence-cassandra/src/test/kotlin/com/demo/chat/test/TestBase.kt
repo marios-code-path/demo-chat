@@ -17,20 +17,3 @@ object TestKeyService : IKeyService<UUID> {
 
     override fun rem(key: Key<UUID>): Mono<Void> = Mono.never()
 }
-
-fun roomAssertions(room: MessageTopic<UUID>) {
-    assertAll("Topic Assertions",
-        { Assertions.assertNotNull(room) },
-        { Assertions.assertNotNull(room.key.id) },
-        { Assertions.assertNotNull(room.data) })
-}
-
-fun userAssertions(user: User<UUID>, handle: String?, name: String?) {
-    assertAll("User Assertions",
-        { Assertions.assertNotNull(user) },
-        { Assertions.assertNotNull(user.key.id) },
-        { Assertions.assertNotNull(user.handle) },
-        { Assertions.assertEquals(handle, user.handle) },
-        { Assertions.assertEquals(name, user.name) }
-    )
-}
