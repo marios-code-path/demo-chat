@@ -42,6 +42,7 @@
         <module>chat-index-lucene</module>
         <module>chat-security</module>
         <module>chat-persistence-cassandra</module>
+	<module>chat-index-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-client-rsocket</module>
         <module>chat-init</module>

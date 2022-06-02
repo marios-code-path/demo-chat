@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.module.SimpleAbstractTypeResolver
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import org.mockito.Mockito
 import java.util.*
 
 open class TestBase {
@@ -18,6 +19,13 @@ open class TestBase {
         findAndRegisterModules()
     }!!
 }
+
+fun <T> anyObject(): T {
+    Mockito.anyObject<T>()
+    return uninitialized()
+}
+
+fun <T> uninitialized(): T = null as T
 
 private val ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 fun randomAlphaNumeric(size: Int): String {
