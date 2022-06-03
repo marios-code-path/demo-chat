@@ -1,10 +1,9 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.index.memory.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.Key
-import com.demo.chat.service.index.AuthMetadataIndex
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
@@ -27,7 +26,7 @@ class MemoryResourceConfiguration {
         : InMemoryPersistenceBeans<UUID, String>(keyFactory.keyService())
 
     @Configuration
-    class IndexBeans : LuceneIndexBeans<UUID, String, String>(
+    class IndexBeans : LuceneIndexBeans<UUID, String>(
             StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
             IndexEntryEncoder { t ->
                 listOf(
@@ -53,13 +52,6 @@ class MemoryResourceConfiguration {
                         Pair("key", Key.funKey(t.key).toString()),
                         Pair(MembershipIndexService.MEMBER, t.member.toString()),
                         Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
-                )
-            },
-            IndexEntryEncoder {  t ->
-                listOf(
-                    Pair(AuthMetadataIndex.PRINCIPAL, t.principal.id.toString()),
-                    Pair(AuthMetadataIndex.TARGET, t.target.id.toString()),
-                    Pair(AuthMetadataIndex.ID, t.key.id.toString())
                 )
             }
         )

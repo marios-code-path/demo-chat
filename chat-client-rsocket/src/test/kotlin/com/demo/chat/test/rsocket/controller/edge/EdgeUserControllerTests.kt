@@ -8,6 +8,7 @@ import com.demo.chat.controller.edge.UserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
+import com.demo.chat.test.TestBase
 import org.assertj.core.api.Assertions
 import org.junit.Ignore
 import org.junit.jupiter.api.Test
@@ -39,8 +40,8 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     val defaultImgUri = "http://"
-    val randomHandle = randomAlphaNumeric(4)
-    val randomName = randomAlphaNumeric(6)
+    val randomHandle = TestBase.randomAlphaNumeric(4)
+    val randomName = TestBase.randomAlphaNumeric(6)
     val randomUserId = UUID.randomUUID()!!
     val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
 
@@ -49,10 +50,10 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
         BDDMockito.given(userPersistence.key())
                 .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
-        BDDMockito.given(userPersistence.add(anyObject()))
+        BDDMockito.given(userPersistence.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(userIndex.add(anyObject()))
+        BDDMockito.given(userIndex.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         StepVerifier
@@ -73,7 +74,7 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
 
     @Test
     fun `should find user`() {
-        BDDMockito.given(userPersistence.get(anyObject()))
+        BDDMockito.given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
@@ -98,7 +99,7 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
 
     @Ignore
     fun `should list users`() {
-        BDDMockito.given(userPersistence.get(anyObject()))
+        BDDMockito.given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier.create(requester

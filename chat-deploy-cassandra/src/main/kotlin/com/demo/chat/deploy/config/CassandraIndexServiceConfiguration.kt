@@ -25,7 +25,7 @@ open class CassandraIndexServiceConfiguration<T>(
             UserIndexCassandra(userHandleRepo, cassandra)
 
     override fun topicIndex() =
-            TopicIndexCassandra(roomRepo, nameRepo)
+            TopicIndexCassandra(nameRepo)
 
     override fun membershipIndex() =
             MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)

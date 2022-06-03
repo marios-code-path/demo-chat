@@ -4,10 +4,10 @@ import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.client.rsocket.edge.UserClient
 import com.demo.chat.domain.Key
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.rsocket.controller.edge.EdgeUserControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
-import com.demo.chat.test.rsocket.controller.edge.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.Ignore
 import org.junit.jupiter.api.BeforeEach
@@ -39,10 +39,10 @@ class UserClientTests : EdgeUserControllerTests() {
         BDDMockito.given(userPersistence.key())
                 .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
-        BDDMockito.given(userPersistence.add(anyObject()))
+        BDDMockito.given(userPersistence.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
-        BDDMockito.given(userIndex.add(anyObject()))
+        BDDMockito.given(userIndex.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         StepVerifier
@@ -58,7 +58,7 @@ class UserClientTests : EdgeUserControllerTests() {
 
     @Test
     fun `client should find user`() {
-        BDDMockito.given(userPersistence.get(anyObject()))
+        BDDMockito.given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier
@@ -77,7 +77,7 @@ class UserClientTests : EdgeUserControllerTests() {
 
     @Ignore
     fun `client should list users`() {
-        BDDMockito.given(userPersistence.get(anyObject()))
+        BDDMockito.given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomUser))
 
         StepVerifier.create(requester

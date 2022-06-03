@@ -1,7 +1,7 @@
 package com.demo.chat.test.auth
 
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.security.AuthorizationService
+import com.demo.chat.service.security.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

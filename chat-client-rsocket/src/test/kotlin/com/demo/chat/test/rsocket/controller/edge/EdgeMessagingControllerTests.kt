@@ -6,6 +6,7 @@ import com.demo.chat.controller.edge.MessagingController
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
 import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.test.TestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -44,7 +45,7 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
     @Test
     fun `should fetch a single message`() {
         BDDMockito
-                .given(messagePersistence.get(anyObject()))
+                .given(messagePersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
         StepVerifier
@@ -69,15 +70,15 @@ class EdgeMessagingControllerTests : RSocketControllerTestBase() {
     @Test
     fun `should receive messages from a random topic`() {
         BDDMockito
-                .given(messagePersistence.byIds(anyObject()))
+                .given(messagePersistence.byIds(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(topicMessaging.listenTo(anyObject()))
+                .given(topicMessaging.listenTo(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(messageIndex.findBy(anyObject()))
+                .given(messageIndex.findBy(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val receiverFlux = requester

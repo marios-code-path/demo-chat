@@ -1,6 +1,6 @@
 package com.demo.chat.test.auth
 
-import com.demo.chat.service.AuthorizationService
+import com.demo.chat.service.security.AuthorizationService
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.extension.ParameterContext
 import org.junit.jupiter.api.extension.ParameterResolver

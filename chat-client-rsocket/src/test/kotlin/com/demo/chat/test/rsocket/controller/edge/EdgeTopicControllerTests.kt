@@ -1,10 +1,16 @@
 package com.demo.chat.test.rsocket.controller.edge
 
 
-import com.demo.chat.*
+import com.demo.chat.ByIdRequest
+import com.demo.chat.ByNameRequest
+import com.demo.chat.MembershipRequest
 import com.demo.chat.controller.edge.TopicServiceController
-import com.demo.chat.domain.*
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.TopicMemberships
+import com.demo.chat.domain.User
 import com.demo.chat.service.*
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
 import com.demo.chat.test.TestChatRoomKey
 import io.rsocket.exceptions.ApplicationErrorException
@@ -49,10 +55,10 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     @Autowired
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
-    val randomUserHandle = randomAlphaNumeric(4) + "User"
+    val randomUserHandle = TestBase.randomAlphaNumeric(4) + "User"
     val randomUserId: UUID = UUID.fromString("4455814b-9886-499a-8547-55968e3183c6")
 
-    val randomRoomName = randomAlphaNumeric(6) + "Room"
+    val randomRoomName = TestBase.randomAlphaNumeric(6) + "Room"
     val randomTopicId: UUID = UUID.randomUUID()
 
     val room = TestChatMessageTopic(
@@ -66,11 +72,11 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     @Test
     fun `should create a room receive Void response`() {
         BDDMockito
-                .given(topicPersistence.add(anyObject()))
+                .given(topicPersistence.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
-                .given(topicServiceTopic.open(anyObject()))
+                .given(topicServiceTopic.open(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
         BDDMockito
@@ -131,20 +137,20 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
         val membershipId = UUID.randomUUID()
 
         BDDMockito
-                .given(userPersistence.get(anyObject()))
+                .given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(User.create(
                         Key.funKey(randomUserId), "NAME", randomUserHandle, "http://imageURI"
                 )))
 
         BDDMockito
-                .given(membershipPersistence.byIds(anyObject()))
+                .given(membershipPersistence.byIds(TestBase.anyObject()))
                 .willReturn(Flux.just(TopicMembership.create(
                         membershipId,
                         randomTopicId,
                         randomUserId)))
 
         BDDMockito
-                .given(membershipIndex.findBy(anyObject()))
+                .given(membershipIndex.findBy(TestBase.anyObject()))
                 .willReturn(Flux.just(Key.funKey(membershipId)))
 
         StepVerifier

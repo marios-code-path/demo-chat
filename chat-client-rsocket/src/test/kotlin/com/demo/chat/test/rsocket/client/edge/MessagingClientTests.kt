@@ -7,9 +7,9 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
 import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.test.TestBase
 import com.demo.chat.test.rsocket.controller.edge.EdgeMessagingControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
-import com.demo.chat.test.rsocket.controller.edge.anyObject
 import com.demo.chat.test.rsocket.controller.core.RSocketTestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
@@ -47,7 +47,7 @@ class MessagingClientTests : RSocketTestBase() {
     @Test
     fun `should fetch a single message`() {
         BDDMockito
-                .given(messagePersistence.get(anyObject()))
+                .given(messagePersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
         val client = MessagingClient<UUID, String>(svcPrefix, requester)
@@ -72,15 +72,15 @@ class MessagingClientTests : RSocketTestBase() {
     @Test
     fun `should receive messages from a random topic`() {
         BDDMockito
-                .given(messagePersistence.byIds(anyObject()))
+                .given(messagePersistence.byIds(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(topicMessaging.listenTo(anyObject()))
+                .given(topicMessaging.listenTo(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(5)))
 
         BDDMockito
-                .given(messageIndex.findBy(anyObject()))
+                .given(messageIndex.findBy(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
         val client = MessagingClient<UUID, String>(svcPrefix, requester)

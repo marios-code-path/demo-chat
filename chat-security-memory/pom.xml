@@ -8,19 +8,26 @@
         <version>0.0.1</version>
     </parent>
 
-    <artifactId>chat-deploy-memory</artifactId>
+    <groupId>com.demo</groupId>
+    <artifactId>chat-security-memory</artifactId>
     <version>0.0.1</version>
-    <name>chat-deploy-memory</name>
-    <description>Deployment for in-memory components</description>
+    <name>chat-security-memory</name>
+    <description>Security Implementation in Memory</description>
 
-    <properties>
-        <appImageName>docker.io/library/${env.APP_IMAGE_NAME}:${project.version}</appImageName>
-        <appMainClass>com.demo.chat.deploy.app.memory.App</appMainClass>
-    </properties>
     <dependencies>
         <dependency>
+		<groupId>com.demo</groupId>
+		<artifactId>chat-security</artifactId>
+		<version>0.0.1</version>
+        </dependency>
+        <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-deploy-client-consul</artifactId>
+            <artifactId>chat-core</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-core</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -36,31 +43,21 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-persistence-memory</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-messaging-memory</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
+
         <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-rsocket</artifactId>
-            <version>0.0.1</version>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <version>5.3.4.RELEASE</version>
+            <scope>test</scope>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.security/spring-security-messaging -->
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-messaging</artifactId>
+            <version>5.4.6</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -68,12 +65,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+            <version>2.5.0</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -89,10 +87,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
         </dependency>
@@ -102,9 +96,16 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.nhaarman.mockitokotlin2</groupId>
+            <artifactId>mockito-kotlin</artifactId>
+            <version>2.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-security-memory</artifactId>
+            <artifactId>chat-persistence-memory</artifactId>
             <version>0.0.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
@@ -112,6 +113,13 @@
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
@@ -130,27 +138,6 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>${appMainClass}</mainClass>
-                    <image>
-                        <name>${appImageName}</name>
-                        <cleanCache>false</cleanCache>
-                        <env>
-                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-                        </env>
-                    </image>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>

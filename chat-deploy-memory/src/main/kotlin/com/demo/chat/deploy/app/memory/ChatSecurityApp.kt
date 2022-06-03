@@ -1,25 +1,25 @@
 package com.demo.chat.deploy.app.memory
 
 import com.demo.chat.domain.*
-import com.demo.chat.secure.AuthPrincipleByKeySearch
+import com.demo.chat.secure.AuthMetaPrincipleByKeySearch
+import com.demo.chat.secure.AuthMetaTargetByKeySearch
 import com.demo.chat.secure.AuthSummarizer
-import com.demo.chat.secure.AuthTargetByKeySearch
 import com.demo.chat.secure.ChatUserDetails
-import com.demo.chat.secure.service.*
-import com.demo.chat.security.AuthenticationService
-import com.demo.chat.security.AuthorizationService
-import com.demo.chat.security.SecretsStore
-import com.demo.chat.service.*
+import com.demo.chat.secure.service.AbstractAuthenticationService
+import com.demo.chat.secure.service.AbstractAuthorizationService
+import com.demo.chat.service.IKeyService
+import com.demo.chat.service.IndexService
+import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
-import com.demo.chat.service.index.AuthMetadataIndex.Companion.ID
-import com.demo.chat.service.index.AuthMetadataIndex.Companion.PRINCIPAL
-import com.demo.chat.service.index.AuthMetadataIndex.Companion.TARGET
+import com.demo.chat.service.security.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
@@ -32,18 +32,17 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.lang.Math.abs
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.random.Random
 
-
+@Profile("security")
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class ChatSecurityApp {
     companion object {
         val ANONYMOUS_KEY: Key<Long> = Key.funKey(0L)
-        val atomicLong = AtomicLong(abs(Random.nextLong(1024,999999)))
+        val atomicLong = AtomicLong(kotlin.math.abs(Random.nextLong(1024, 999999)))
         private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
 
         @JvmStatic
@@ -60,12 +59,12 @@ class ChatSecurityApp {
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
 
-    ): CommandLineRunner = CommandLineRunner { args ->
+    ): CommandLineRunner = CommandLineRunner {
         val princpialKey = keyGen.get()
         val anotherUserKey = keyGen.get()
 
         val users = listOf(
-            User.create(princpialKey, "mario", "mario", "http://foo"),
+            User.create(princpialKey, "mario", "mario", "https://foo"),
             User.create(ANONYMOUS_KEY, "ANON", "anonymous", "null")
         )
 
@@ -79,7 +78,8 @@ class ChatSecurityApp {
             .doFinally { println("Added users to index.") }
             .blockLast()
 
-        Flux.just(// role that determines required access? ( key, target, action, role )
+        Flux.just(
+// role that determines required access? ( key, target, action, role )
             StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
             StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
             StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
@@ -113,7 +113,7 @@ class ChatSecurityApp {
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         } catch (e: AccessDeniedException) {
-            println("Not authorized for : "  + e.message)
+            println("Not authorized for : " + e.message)
         }
     }
 
@@ -137,10 +137,14 @@ class ChatSecurityApp {
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>>
     ) =
-        SampleAuthenticationManager(chatAuthenticationService(userIndex, passStore), userPersistence, authorizationService)
+        SampleAuthenticationManager(
+            chatAuthenticationService(userIndex, passStore),
+            userPersistence,
+            authorizationService
+        )
 
     @Bean
-    fun keyService(): IKeyService<Long> = KeyServiceInMemory(Supplier { Random.nextLong() })
+    fun keyService(): IKeyService<Long> = KeyServiceInMemory { atomicLong.incrementAndGet() }
 
     @Bean
     fun userPersistence(keySvc: IKeyService<Long>) = UserPersistenceInMemory(keySvc) { u -> u.key }
@@ -159,30 +163,22 @@ class ChatSecurityApp {
     @Bean
     fun authMetaPersistence(keySvc: IKeyService<Long>):
             PersistenceStore<Long, AuthMetadata<Long, String>> =
-        AuthorizationPersistenceInMemory
+        AuthMetaPersistenceInMemory(keySvc) { t -> t.key }
 
-    object AuthorizationMetaIndexInMemory : LuceneIndex<Long, AuthMetadata<Long, String>>(
-        { t ->
-            listOf(
-                Pair(PRINCIPAL, t.principal.id.toString()),
-                Pair(TARGET, t.target.id.toString()),
-                Pair(ID, t.key.id.toString())
-            )
-        },
-        { q -> Key.funKey(q.toLong()) },
-        { t -> t.key }
-    )
     @Bean
     fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> =
-        AuthorizationMetaIndexInMemory
+        AuthMetaIndexLucene { q -> Key.funKey(q.toLong()) }
 
     @Bean
-    fun authorizationService(): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
+    fun authorizationService(
+        authPersist: PersistenceStore<Long, AuthMetadata<Long, String>>,
+        authIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>
+    ): AuthorizationService<Long, AuthMetadata<Long, String>, AuthMetadata<Long, String>> =
         AbstractAuthorizationService(
-            AuthorizationPersistenceInMemory,
-            AuthorizationMetaIndexInMemory,
-            AuthPrincipleByKeySearch,
-            AuthTargetByKeySearch,
+            authPersist,
+            authIndex,
+            AuthMetaPrincipleByKeySearch,
+            AuthMetaTargetByKeySearch,
             { ANONYMOUS_KEY },
             { m -> m.key },
             AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }

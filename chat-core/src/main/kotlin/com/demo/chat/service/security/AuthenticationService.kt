@@ -1,4 +1,4 @@
-package com.demo.chat.security
+package com.demo.chat.service.security
 
 import com.demo.chat.domain.Key
 import reactor.core.publisher.Mono

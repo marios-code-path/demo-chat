@@ -1,8 +1,8 @@
-package com.demo.chat.secure.service
+package com.demo.chat.service.security
 
 import com.demo.chat.domain.AuthenticationException
 import com.demo.chat.domain.Key
-import com.demo.chat.security.SecretsStore
+import com.demo.chat.service.security.SecretsStore
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 

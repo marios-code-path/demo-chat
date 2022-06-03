@@ -1,9 +1,9 @@
 package com.demo.chat.secure.service
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
-import com.demo.chat.security.AuthenticationService
+import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.IndexService
-import com.demo.chat.security.SecretsStore
+import com.demo.chat.service.security.SecretsStore
 import reactor.core.publisher.Mono
 import java.util.function.BiFunction
 import java.util.function.Function

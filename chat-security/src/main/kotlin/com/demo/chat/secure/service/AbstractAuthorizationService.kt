@@ -2,7 +2,7 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.secure.Summarizer
-import com.demo.chat.security.AuthorizationService
+import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import reactor.core.publisher.Flux
@@ -20,7 +20,7 @@ class AbstractAuthorizationService<T, M, Q>(
     private val summarizer: Summarizer<M, Key<T>>
 ) : AuthorizationService<T, M, M> {
     override fun authorize(authorization: M, exist: Boolean): Mono<Void> =
-        when (exist) {
+       when (exist) {
             true -> authPersist.add(authorization).then(authIndex.add(authorization))
             else -> authIndex.rem(keyFromAuthorization.apply(authorization))
         }

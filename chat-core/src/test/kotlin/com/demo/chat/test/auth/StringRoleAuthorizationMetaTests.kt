@@ -1,7 +1,7 @@
 package com.demo.chat.test.auth
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.StringRoleAuthorizationMetadata
+import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import kotlin.random.Random

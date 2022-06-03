@@ -1,4 +1,4 @@
-package com.demo.chat.secure.service
+package com.demo.chat.service.security
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.AuthMetadata
