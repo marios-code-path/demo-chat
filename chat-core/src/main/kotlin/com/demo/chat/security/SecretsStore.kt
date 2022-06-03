@@ -1,8 +1,7 @@
-package com.demo.chat.service
+package com.demo.chat.security
 
 import com.demo.chat.domain.Key
 import reactor.core.publisher.Mono
-import java.util.*
 
 data class ChatCredential(val secure: String)
 

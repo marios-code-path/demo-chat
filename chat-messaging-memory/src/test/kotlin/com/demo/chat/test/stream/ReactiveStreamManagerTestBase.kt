@@ -18,4 +18,5 @@ object StringValCodec : Converter<Unit, String> {
  */
 class ReactiveStreamManagerTestBase : StreamManagerTestBase<UUID, String>(ExampleReactiveStreamManager<UUID, String>(),
         UUIDKeyCodec,
-        StringValCodec)
+        StringValCodec
+)

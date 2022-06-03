@@ -1,8 +1,7 @@
-package com.demo.chat.test.key
+package com.demo.chat.test.persistence
 
-import com.demo.chat.service.IKeyService
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
-import org.junit.jupiter.api.extension.ExtendWith
+import com.demo.chat.test.key.KeyServiceTestBase
 import java.util.*
 
 class InMemoryKeyTests

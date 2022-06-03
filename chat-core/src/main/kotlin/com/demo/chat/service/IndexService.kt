@@ -14,6 +14,11 @@ interface IndexService<T, E, Q> {
     fun rem(key: Key<T>): Mono<Void>
     fun findBy(query: Q): Flux<out Key<T>>
     fun findUnique(query: Q): Mono<out Key<T>>
+
+    companion object {
+        const val ID = "ID"
+        const val ALL = "ALL"
+    }
 }
 
 /**
@@ -29,7 +34,6 @@ interface UserIndexService<T, Q> : IndexService<T, User<T>, Q> {
         const val IMAGEURI = "imageUri"
         const val ACTIVE = "active"
         const val HANDLE = "handle"
-        const val ID = "userId"
     }
 }
 
@@ -37,7 +41,6 @@ interface TopicIndexService<T, Q> : IndexService<T, MessageTopic<T>, Q> {
     companion object {
         const val NAME = "name"
         const val ID = "ID"
-        const val ALL = "ALL"
     }
 }
 
@@ -47,7 +50,6 @@ interface MembershipIndexService<T, Q> : IndexService<T, TopicMembership<T>, Q> 
     fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
 
     companion object {
-        const val ID = "ID"
         const val MEMBER = "member"
         const val MEMBEROF = "memberOf"
     }

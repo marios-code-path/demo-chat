@@ -1,15 +1,21 @@
-package com.demo.chat.secure.app
+package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
+import com.demo.chat.secure.AuthPrincipleByKeySearch
 import com.demo.chat.secure.AuthSummarizer
+import com.demo.chat.secure.AuthTargetByKeySearch
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.service.*
+import com.demo.chat.security.AuthenticationService
+import com.demo.chat.security.AuthorizationService
+import com.demo.chat.security.SecretsStore
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
+import com.demo.chat.service.index.AuthMetadataIndex.Companion.ID
+import com.demo.chat.service.index.AuthMetadataIndex.Companion.PRINCIPAL
+import com.demo.chat.service.index.AuthMetadataIndex.Companion.TARGET
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.runApplication
@@ -155,6 +161,17 @@ class ChatSecurityApp {
             PersistenceStore<Long, AuthMetadata<Long, String>> =
         AuthorizationPersistenceInMemory
 
+    object AuthorizationMetaIndexInMemory : LuceneIndex<Long, AuthMetadata<Long, String>>(
+        { t ->
+            listOf(
+                Pair(PRINCIPAL, t.principal.id.toString()),
+                Pair(TARGET, t.target.id.toString()),
+                Pair(ID, t.key.id.toString())
+            )
+        },
+        { q -> Key.funKey(q.toLong()) },
+        { t -> t.key }
+    )
     @Bean
     fun authMetaIndex(): IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest> =
         AuthorizationMetaIndexInMemory
@@ -178,7 +195,7 @@ class ChatSecurityApp {
     fun chatAuthenticationService(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         secretsStore: SecretsStore<Long, String>
-    ) = AuthenticationServiceImpl(
+    ) = AbstractAuthenticationService(
         userIndex,
         secretsStore,
         { input, secure -> input == secure },

@@ -1,7 +1,7 @@
 package com.demo.chat.secure
 
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
-import com.demo.chat.service.AuthMetadata
 import reactor.core.publisher.Flux
 
 // 1: requires a principal entity id = Pid

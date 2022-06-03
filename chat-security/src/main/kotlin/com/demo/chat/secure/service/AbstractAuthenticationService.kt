@@ -1,9 +1,9 @@
 package com.demo.chat.secure.service
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
-import com.demo.chat.service.AuthenticationService
+import com.demo.chat.security.AuthenticationService
 import com.demo.chat.service.IndexService
-import com.demo.chat.service.SecretsStore
+import com.demo.chat.security.SecretsStore
 import reactor.core.publisher.Mono
 import java.util.function.BiFunction
 import java.util.function.Function
@@ -13,7 +13,7 @@ import java.util.function.Function
 // U == UserObject type(???)
 // V == password type
 // Q == searchQuery Type(???)
-open class AuthenticationServiceImpl<E, T, U, V, Q>(
+open class AbstractAuthenticationService<E, T, U, V, Q>(
     private val userIndex: IndexService<T, U, Q>,
     private val secretsStore: SecretsStore<T, V>,
     private val passwordValidator: BiFunction<V, V, Boolean>,

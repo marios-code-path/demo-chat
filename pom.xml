@@ -37,12 +37,14 @@
 
     <modules>
         <module>chat-core</module>
+        <module>chat-persistence-memory</module>
+        <module>chat-messaging-memory</module>
         <module>chat-service-controller</module>
         <module>chat-index-elastic</module>
         <module>chat-index-lucene</module>
         <module>chat-security</module>
         <module>chat-persistence-cassandra</module>
-	<module>chat-index-cassandra</module>
+	    <module>chat-index-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-client-rsocket</module>
         <module>chat-init</module>

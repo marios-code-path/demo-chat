@@ -1,7 +1,7 @@
 package com.demo.chat.test.auth
 
-import com.demo.chat.service.AuthMetadata
-import com.demo.chat.service.AuthorizationService
+import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.security.AuthorizationService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -11,8 +11,8 @@ import java.util.function.Supplier
 
 @Disabled
 open class AuthorizationServiceTests<T, P>(
-    val authSvc: AuthorizationService<T, AuthMetadata<T, P>, AuthMetadata<T, P>>,
-    val authMetaSupplier: Supplier<AuthMetadata<T, P>>
+    private val authSvc: AuthorizationService<T, AuthMetadata<T, P>, AuthMetadata<T, P>>,
+    private val authMetaSupplier: Supplier<AuthMetadata<T, P>>
 ) {
 
     @Test

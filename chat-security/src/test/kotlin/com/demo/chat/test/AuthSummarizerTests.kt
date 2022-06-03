@@ -1,9 +1,9 @@
 package com.demo.chat.test
 
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import com.demo.chat.secure.AuthSummarizer
-import com.demo.chat.service.AuthMetadata
-import com.demo.chat.service.StringRoleAuthorizationMetadata
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux

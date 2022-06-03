@@ -1,9 +1,11 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.StringRoleAuthorizationMetadata
+import com.demo.chat.secure.AuthPrincipleByKeySearch
 import com.demo.chat.secure.AuthSummarizer
+import com.demo.chat.secure.AuthTargetByKeySearch
 import com.demo.chat.secure.service.*
-import com.demo.chat.service.StringRoleAuthorizationMetadata
 import com.demo.chat.test.auth.AuthorizationServiceTests
 import java.util.concurrent.atomic.AtomicLong
 import java.util.function.Supplier
@@ -11,8 +13,8 @@ import kotlin.random.Random
 
 class AbstractAuthorizationInMemoryServiceTests : AuthorizationServiceTests<Long, String>(
     AbstractAuthorizationService(
-        AuthorizationPersistenceInMemory,
-        AuthorizationMetaIndexInMemory,
+        MockAuthMetaPersistence,
+        MockAuthMetaIndex,
         AuthPrincipleByKeySearch,
         AuthTargetByKeySearch,
         { Key.funKey(ANON_ID) },

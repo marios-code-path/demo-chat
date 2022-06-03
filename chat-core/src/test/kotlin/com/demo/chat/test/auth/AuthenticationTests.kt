@@ -1,7 +1,7 @@
 package com.demo.chat.test.auth
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.AuthenticationService
+import com.demo.chat.security.AuthenticationService
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier

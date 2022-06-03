@@ -1,7 +1,7 @@
 package com.demo.chat.streams.app.config
 
 import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.config.index.memory.InMemoryIndexBeans
+import com.demo.chat.config.index.memory.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyService
@@ -41,7 +41,7 @@ open class PersistenceBeans(keyService: IKeyService<Long>) : InMemoryPersistence
     open fun membershipPersistence() = MembershipCreateStore(membership())
 }
 
-open class IndexBeans : InMemoryIndexBeans<Long, String>(
+open class IndexBeans : LuceneIndexBeans<Long, String>(
     StringToKeyEncoder { i -> Key.funKey(i.toLong()) },
     IndexEntryEncoder { t ->
         listOf(

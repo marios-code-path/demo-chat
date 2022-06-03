@@ -2,11 +2,10 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.AuthenticationException
 import com.demo.chat.domain.Key
-import com.demo.chat.service.SecretsStore
+import com.demo.chat.security.SecretsStore
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
-// TODO: implement with a Persistence Store
 class SecretsStoreInMemory<T, V> : SecretsStore<T, V> {
     private val secureMap = ConcurrentHashMap<T, V>()
 

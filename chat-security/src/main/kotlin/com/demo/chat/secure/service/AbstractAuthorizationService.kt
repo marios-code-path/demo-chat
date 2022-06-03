@@ -2,7 +2,7 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.secure.Summarizer
-import com.demo.chat.service.AuthorizationService
+import com.demo.chat.security.AuthorizationService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import reactor.core.publisher.Flux
