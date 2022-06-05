@@ -5,7 +5,7 @@ import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
 import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.deploy.config.properties.AppConfigurationProperties
+import com.demo.chat.deploy.config.properties.AppRSocketBindings
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
@@ -22,14 +22,14 @@ import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 
 @SpringBootApplication
-@EnableConfigurationProperties(AppConfigurationProperties::class)
+@EnableConfigurationProperties(AppRSocketBindings::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
     ConsulRequesterFactory::class,
     AppClientBeansConfiguration::class
 )
-class App {
+class App { // Free The Types!
 
     companion object {
         @JvmStatic

@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.app
 
 import com.demo.chat.client.rsocket.config.CoreRSocketClients
-import com.demo.chat.client.rsocket.config.RSocketCoreProperties
+import com.demo.chat.client.rsocket.config.CoreRSocketProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.client.rsocket.core.MessagePersistenceClient
 import com.demo.chat.client.rsocket.core.UserPersistenceClient
@@ -40,7 +40,7 @@ class TestClient {
 
     @Bean
     fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
-                               coreProps: RSocketCoreProperties) = CoreRSocketClients<UUID, String, IndexSearchRequest>(requesterFactory, coreProps, ParameterizedTypeReference.forType(UUID::class.java))
+                               coreRSocketProps: CoreRSocketProperties) = CoreRSocketClients<UUID, String, IndexSearchRequest>(requesterFactory, coreRSocketProps, ParameterizedTypeReference.forType(UUID::class.java))
 
     @Configuration
     class ClientsBeansConfiguration(clients: CoreRSocketClients<UUID, String, IndexSearchRequest>) : AppClientBeansConfiguration<UUID, String, IndexSearchRequest>(

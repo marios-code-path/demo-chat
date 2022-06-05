@@ -6,7 +6,7 @@ import com.demo.chat.service.IKeyService
 import com.demo.chat.service.impl.memory.persistence.InMemoryPersistence
 import java.util.function.Function
 
-open class AuthMetaPersistenceInMemory<T, P>(
+open class AuthMetaPersistenceInMemory<T>(
     keyService: IKeyService<T>,
-    keyReceiver: Function<AuthMetadata<T, P>, Key<T>>
-) : InMemoryPersistence<T, AuthMetadata<T, P>>(keyService, AuthMetadata::class.java, keyReceiver)
+    keyReceiver: Function<AuthMetadata<T>, Key<T>>
+) : InMemoryPersistence<T, AuthMetadata<T>>(keyService, AuthMetadata::class.java, keyReceiver)

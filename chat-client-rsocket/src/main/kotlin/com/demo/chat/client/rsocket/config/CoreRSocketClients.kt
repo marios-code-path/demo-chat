@@ -15,40 +15,40 @@ import org.springframework.core.ParameterizedTypeReference
 
 class CoreRSocketClients<T, V, Q>(
     private val requesterFactory: RequesterFactory,
-    private val coreProps: RSocketCoreProperties,
+    private val coreRSocketProps: CoreRSocketProperties,
     private val keyType: ParameterizedTypeReference<T>
 ) : CoreClientBeans<T, V, Q> {
     private val logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    override fun keyService(): IKeyService<T> = KeyClient("${coreProps.key.prefix}", requesterFactory.requester("key"))
+    override fun keyService(): IKeyService<T> = KeyClient("${coreRSocketProps.key.prefix}", requesterFactory.requester("key"))
 
     override fun topicExchange(): TopicPubSubService<T, V> =
-        TopicPubSubClient("${coreProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), keyType)
+        TopicPubSubClient("${coreRSocketProps.pubsub.prefix}.", requesterFactory.requester("pubsub"), keyType)
 
     override fun user(): PersistenceStore<T, User<T>> =
-        UserPersistenceClient("${coreProps.persistence.prefix}user.", requesterFactory.requester("persistence"))
+        UserPersistenceClient("${coreRSocketProps.persistence.prefix}user.", requesterFactory.requester("persistence"))
 
     override fun message(): PersistenceStore<T, Message<T, V>> =
-        MessagePersistenceClient("${coreProps.persistence.prefix}message.", requesterFactory.requester("persistence"))
+        MessagePersistenceClient("${coreRSocketProps.persistence.prefix}message.", requesterFactory.requester("persistence"))
 
     override fun topic(): PersistenceStore<T, MessageTopic<T>> =
-        TopicPersistenceClient("${coreProps.persistence.prefix}topic.", requesterFactory.requester("persistence"))
+        TopicPersistenceClient("${coreRSocketProps.persistence.prefix}topic.", requesterFactory.requester("persistence"))
 
     override fun membership(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(
-        "${coreProps.persistence.prefix}membership.",
+        "${coreRSocketProps.persistence.prefix}membership.",
         requesterFactory.requester("persistence")
     )
 
     override fun userIndex(): IndexService<T, User<T>, Q> =
-        UserIndexClient("${coreProps.index.prefix}user.", requesterFactory.requester("index"))
+        UserIndexClient("${coreRSocketProps.index.prefix}user.", requesterFactory.requester("index"))
 
     override fun topicIndex(): IndexService<T, MessageTopic<T>, Q> =
-        TopicIndexClient("${coreProps.index.prefix}topic.", requesterFactory.requester("index"))
+        TopicIndexClient("${coreRSocketProps.index.prefix}topic.", requesterFactory.requester("index"))
 
     override fun membershipIndex(): IndexService<T, TopicMembership<T>, Q> =
-        MembershipIndexClient("${coreProps.index.prefix}membership.", requesterFactory.requester("index"))
+        MembershipIndexClient("${coreRSocketProps.index.prefix}membership.", requesterFactory.requester("index"))
 
     override fun messageIndex(): IndexService<T, Message<T, V>, Q> =
-        MessageIndexClient("${coreProps.index.prefix}message.", requesterFactory.requester("index"))
+        MessageIndexClient("${coreRSocketProps.index.prefix}message.", requesterFactory.requester("index"))
 
 }

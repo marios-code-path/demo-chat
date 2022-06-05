@@ -10,7 +10,7 @@ import java.util.stream.Collectors
 data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
     override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
         roles.stream()
-            .map { rb -> SimpleGrantedAuthority(rb) }
+            .map { role -> SimpleGrantedAuthority(role) }
             .collect(Collectors.toList())
 
     override fun getPassword(): String = ""

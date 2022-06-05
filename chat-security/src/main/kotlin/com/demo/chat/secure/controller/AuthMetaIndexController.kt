@@ -6,6 +6,6 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.IndexService
 
-open class AuthMetaIndexController<T, P: String>(private val that: AuthMetaIndex<T, IndexSearchRequest, P>) :
-    IndexServiceMapping<T, AuthMetadata<T, P>, IndexSearchRequest>,
-    IndexService<T, AuthMetadata<T, P>, IndexSearchRequest> by that
+open class AuthMetaIndexController<T>(private val that: AuthMetaIndex<T, IndexSearchRequest>) :
+    IndexServiceMapping<T, AuthMetadata<T>, IndexSearchRequest>,
+    IndexService<T, AuthMetadata<T>, IndexSearchRequest> by that

@@ -7,7 +7,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.core.ParameterizedTypeReference
 
-// this strictly takes a CoreClientBeans and turns it into conditional configuration.
 open class AppClientBeansConfiguration<T, V, Q>(
     private val clients: CoreClientBeans<T, V, Q>,
     private val keyType: ParameterizedTypeReference<T>

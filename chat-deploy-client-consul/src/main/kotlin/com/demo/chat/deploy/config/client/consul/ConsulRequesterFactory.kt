@@ -1,9 +1,9 @@
 package com.demo.chat.deploy.config.client.consul
 
-import com.demo.chat.client.rsocket.config.RSocketCoreProperties
+import com.demo.chat.client.rsocket.config.CoreRSocketProperties
 import com.demo.chat.deploy.config.client.AppDiscoveryException
 import com.demo.chat.client.rsocket.config.RequesterFactory
-import com.demo.chat.deploy.config.properties.AppConfigurationProperties
+import com.demo.chat.deploy.config.properties.AppRSocketBindings
 import com.ecwid.consul.v1.ConsulClient
 import io.rsocket.transport.netty.client.TcpClientTransport
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
@@ -16,10 +16,10 @@ import java.util.*
 class ConsulRequesterFactory(private val builder: RSocketRequester.Builder,
                              client: ConsulClient,
                              props: ConsulDiscoveryProperties,
-                             configProps: AppConfigurationProperties,
+                             configProps: AppRSocketBindings,
                              transport: TcpClientTransport
 ) : RequesterFactory {
-    private val coreProps: RSocketCoreProperties = configProps.core
+    private val coreRSocketProps: CoreRSocketProperties = configProps.core
 
     val discovery: ReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
 
@@ -44,10 +44,10 @@ class ConsulRequesterFactory(private val builder: RSocketRequester.Builder,
      * TODO: Index these properties to eliminate static decision tree.
      */
     private fun serviceDestination(serviceKey: String) = when (serviceKey) {
-        "key" -> coreProps.key.dest
-        "index" -> coreProps.index.dest
-        "persistence" -> coreProps.persistence.dest
-        "pubsub" -> coreProps.pubsub.dest
+        "key" -> coreRSocketProps.key.dest
+        "index" -> coreRSocketProps.index.dest
+        "persistence" -> coreRSocketProps.persistence.dest
+        "pubsub" -> coreRSocketProps.pubsub.dest
         else -> throw AppDiscoveryException(serviceKey)
     }
 

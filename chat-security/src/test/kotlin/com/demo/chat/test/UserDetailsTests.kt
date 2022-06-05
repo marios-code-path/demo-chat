@@ -9,8 +9,8 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class UserDetailsTests<T, E, Q>(
-    private val svc: ChatUserDetailsService<T, E, Q>,
+open class UserDetailsTests<T, Q>(
+    private val svc: ChatUserDetailsService<T, Q>,
     private val uNameSupplier: Supplier<String>,
     private val userSupplier: Supplier<UserDetails>,
     private val pwSupplier: Supplier<String>

@@ -15,13 +15,13 @@ interface RSocketProperty {
     }
 }
 
-interface RSocketEdgeProperties {
+interface EdgeRSocketProperties {
     val topic: RSocketProperty
     val message: RSocketProperty
     val user: RSocketProperty
 }
 
-interface RSocketCoreProperties {
+interface CoreRSocketProperties {
     val key: RSocketProperty
     val index: RSocketProperty
     val persistence: RSocketProperty

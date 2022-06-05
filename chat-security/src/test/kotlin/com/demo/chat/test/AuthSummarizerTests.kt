@@ -18,7 +18,7 @@ class AuthSummarizerTests {
     }
 
     private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
-    private val filterizer = AuthSummarizer<Long, String> { a, b ->
+    private val filterizer = AuthSummarizer<Long> { a, b ->
         when {
             a.key.id < b.key.id -> {
                 -1
@@ -43,7 +43,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(anonId)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), keyGen.get(), "ALL", 0L)
         )
 
@@ -57,7 +57,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(anonId)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, keyGen.get(), "ALL", 0L)
         )
 
@@ -73,7 +73,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(anonId)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aTarget, aTarget, "ANY", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), aTarget, "ALL", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "NON", 0L),
@@ -92,7 +92,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(anonId)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aTarget, aTarget, "ANY", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), aTarget, "ANY", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aTarget, "ANY", 0L),
@@ -112,7 +112,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ANY", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), aTarget, "ANY", 0L),
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ALL", 0L),
@@ -132,7 +132,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ANY", 1),
             StringRoleAuthorizationMetadata(keyGen.get(), keyGen.get(), aTarget, "ANY", 1),
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "ALL", 1),
@@ -151,7 +151,7 @@ class AuthSummarizerTests {
         val anonId = keyGen.get()
         val idSeq = sequenceOf(aPrinciple, anonId, aTarget)
 
-        val filterData: Flux<AuthMetadata<Long, String>> = Flux.just(
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, anonId, "REQUEST"), // REM by next
             StringRoleAuthorizationMetadata(keyGen.get(), anonId, aPrinciple, "REQUEST", 1), // REMOVES last
             StringRoleAuthorizationMetadata(keyGen.get(), aPrinciple, aTarget, "SUM"),// REM by next

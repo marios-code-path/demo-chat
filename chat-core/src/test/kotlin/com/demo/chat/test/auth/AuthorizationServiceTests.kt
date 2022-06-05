@@ -10,9 +10,9 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class AuthorizationServiceTests<T, P>(
-    private val authSvc: AuthorizationService<T, AuthMetadata<T, P>, AuthMetadata<T, P>>,
-    private val authMetaSupplier: Supplier<AuthMetadata<T, P>>
+open class AuthorizationServiceTests<T>(
+    private val authSvc: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+    private val authMetaSupplier: Supplier<AuthMetadata<T>>
 ) {
 
     @Test

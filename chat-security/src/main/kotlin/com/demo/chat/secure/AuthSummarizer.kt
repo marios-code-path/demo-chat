@@ -10,8 +10,8 @@ interface Summarizer<M, T> {
     fun computeAggregates(elements: Flux<M>, targetIds: Sequence<T>): Flux<M>
 }
 
-class AuthSummarizer<T, P>(private val comparator: Comparator<AuthMetadata<T, P>>) : Summarizer<AuthMetadata<T, P>, Key<T>> {
-    override fun computeAggregates(elements: Flux<AuthMetadata<T, P>>, targetIds: Sequence<Key<T>>): Flux<AuthMetadata<T, P>> =
+class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : Summarizer<AuthMetadata<T>, Key<T>> {
+    override fun computeAggregates(elements: Flux<AuthMetadata<T>>, targetIds: Sequence<Key<T>>): Flux<AuthMetadata<T>> =
         elements
             .filter { meta ->
                 val principalId = meta.principal

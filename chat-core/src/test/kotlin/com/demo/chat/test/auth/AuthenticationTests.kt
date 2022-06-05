@@ -8,11 +8,11 @@ import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-open class AuthenticationServiceTests<T, E, V>(
-    private val svc: AuthenticationService<T, E, V>,
+open class AuthenticationServiceTests<T>(
+    private val svc: AuthenticationService<T>,
     private val uidSupply: Supplier<Key<T>>,
-    private val uNameSupply: Supplier<E>,
-    private val pwSupply: Supplier<V>
+    private val uNameSupply: Supplier<String>,
+    private val pwSupply: Supplier<String>
 ) {
     @Test
     fun `should call createAuthentication doesnt error`() {

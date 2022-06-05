@@ -5,7 +5,7 @@ import reactor.core.publisher.Mono
 
 data class ChatCredential(val secure: String)
 
-interface SecretsStore<T, V> {
-    fun getStoredCredentials(key: Key<T>): Mono<V>
-    fun addCredential(key: Key<T>, credential: V): Mono<Void>
+interface SecretsStore<T> {
+    fun getStoredCredentials(key: Key<T>): Mono<String>
+    fun addCredential(key: Key<T>, credential: String): Mono<Void>
 }

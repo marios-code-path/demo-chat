@@ -24,7 +24,7 @@ object TestTopicMembershipSupplier : Supplier<TopicMembership<String>> {
     )
 }
 
-object TestAuthMetaSupplier : Supplier<AuthMetadata<String, String>> {
+object TestAuthMetaSupplier : Supplier<AuthMetadata<String>> {
     override fun get() = AuthMetadata.create(Key.funKey("TEST"), Key.funKey("TEST"), Key.funKey("TEST"), "TEST", Long.MAX_VALUE)
 }
 

@@ -1,11 +1,8 @@
 package com.demo.chat.test
 
-import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.StringRoleAuthorizationMetadata
-import com.demo.chat.secure.AuthMetaPrincipleByKeySearch
-import com.demo.chat.secure.AuthMetaTargetByKeySearch
+import com.demo.chat.domain.*
+import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
+import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.AbstractAuthorizationService
 import com.demo.chat.service.IndexService
@@ -20,14 +17,14 @@ import kotlin.random.Random
 
 @ExtendWith(MockPersistenceResolver::class, MockIndexResolver::class)
 class AbstractAuthorizationServiceTests(
-    authMetaPersistence: PersistenceStore<Long, AuthMetadata<Long, String>>,
-    authMetaIndex: IndexService<Long, AuthMetadata<Long, String>, IndexSearchRequest>
-) : AuthorizationServiceTests<Long, String>(
+    authMetaPersistence: PersistenceStore<Long, AuthMetadata<Long>>,
+    authMetaIndex: IndexService<Long, AuthMetadata<Long>, IndexSearchRequest>
+) : AuthorizationServiceTests<Long>(
     AbstractAuthorizationService(
         authMetaPersistence,
         authMetaIndex,
-        AuthMetaPrincipleByKeySearch,
-        AuthMetaTargetByKeySearch,
+        AuthMetadataPrincipleKeySearch(LongUtil()),
+        AuthMetadataTargetKeySearch(LongUtil()),
         { Key.funKey(ANON_ID) },
         { m -> m.key },
         AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }

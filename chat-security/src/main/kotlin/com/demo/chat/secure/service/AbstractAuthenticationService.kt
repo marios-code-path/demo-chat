@@ -8,22 +8,23 @@ import reactor.core.publisher.Mono
 import java.util.function.BiFunction
 import java.util.function.Function
 
-// E == username type
-// T == key type
-// U == UserObject type(???)
-// V == password type
-// Q == searchQuery Type(???)
-open class AbstractAuthenticationService<E, T, U, V, Q>(
+/**
+ * Authentication Service for which
+ * T = Key Type
+ * U = User Type
+ * Q = Username search Type
+ */
+open class AbstractAuthenticationService<T, U, Q>(
     private val userIndex: IndexService<T, U, Q>,
-    private val secretsStore: SecretsStore<T, V>,
-    private val passwordValidator: BiFunction<V, V, Boolean>,
-    private val userHandleToQuery: Function<E, Q>
-) : AuthenticationService<T, E, V> {
-    override fun setAuthentication(pKey: Key<T>, pw: V): Mono<Void> = secretsStore.addCredential(pKey, pw)
+    private val secretsStore: SecretsStore<T>,
+    private val passwordValidator: BiFunction<String, String, Boolean>,
+    private val userNameToQuery: Function<String, Q>
+) : AuthenticationService<T> {
+    override fun setAuthentication(pKey: Key<T>, pw: String): Mono<Void> = secretsStore.addCredential(pKey, pw)
 
-    override fun authenticate(n: E, pw: V): Mono<out Key<T>> =
+    override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
         userIndex
-            .findUnique(userHandleToQuery.apply(n))
+            .findUnique(userNameToQuery.apply(n))
             .flatMap { userKey ->
                 secretsStore
                     .getStoredCredentials(userKey)

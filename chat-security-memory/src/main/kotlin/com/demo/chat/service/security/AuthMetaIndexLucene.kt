@@ -9,9 +9,9 @@ import com.demo.chat.service.security.AuthMetaIndex.Companion.TARGET
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import java.util.function.Function
 
-open class AuthMetaIndexLucene<T, P : String>(keyEncoder: Function<String, Key<T>>) :
-    AuthMetaIndex<T, IndexSearchRequest, P>,
-    LuceneIndex<T, AuthMetadata<T, P>>(
+open class AuthMetaIndexLucene<T>(keyEncoder: Function<String, Key<T>>) :
+    AuthMetaIndex<T, IndexSearchRequest>,
+    LuceneIndex<T, AuthMetadata<T>>(
     { t ->
         listOf(
             Pair(PRINCIPAL, t.principal.id.toString()),

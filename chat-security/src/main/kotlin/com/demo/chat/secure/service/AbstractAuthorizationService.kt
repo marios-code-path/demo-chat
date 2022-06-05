@@ -10,6 +10,13 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.function.Supplier
 
+/**
+ * Base functionality for an authorization service where
+ *
+ * T = Key Type
+ * M = AuthorizationMetaData Type
+ * Q = Authorization Query Type
+ */
 class AbstractAuthorizationService<T, M, Q>(
     private val authPersist: PersistenceStore<T, M>,
     private val authIndex: IndexService<T, M, Q>,
