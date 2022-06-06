@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
 class SampleAuthenticationManager(
-    private val authenticationS: AuthenticationService<Long, String, String>,
+    private val authenticationS: AuthenticationService<Long>,
     private val userPersistence: PersistenceStore<Long, User<Long>>,
     private val authorizationS: AuthorizationService<Long, AuthMetadata<Long>, AuthMetadata<Long>>
 ) :

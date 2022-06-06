@@ -31,7 +31,7 @@ class SampleAppSecurityRunner {
     @Bean
     fun appReady(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
-        passwdStore: SecretsStore<Long, String>,
+        passwdStore: SecretsStore<Long>,
         authenticationManager: SampleAuthenticationManager,
         userPersistence: PersistenceStore<Long, User<Long>>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long>, AuthMetadata<Long>>

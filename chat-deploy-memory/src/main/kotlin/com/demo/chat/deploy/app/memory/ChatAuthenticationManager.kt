@@ -18,7 +18,7 @@ import java.util.stream.Collectors
 
 class ChatAuthenticationManager<T>(
     private val typeUtil: TypeUtil<T>,
-    private val authenticationS: AuthenticationService<T, String, String>,
+    private val authenticationS: AuthenticationService<T>,
     private val userPersistence: PersistenceStore<T, User<T>>,
     private val authorizationS: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
 ) :

@@ -32,7 +32,7 @@ class MemoryResourceConfiguration {
         AuthMetaIndexLucene { q -> Key.funKey(q.toLong()) }
 
     @Bean
-    fun passwordStoreInMemory(): SecretsStore<Long, String> = SecretsStoreInMemory()
+    fun passwordStoreInMemory(): SecretsStore<Long> = SecretsStoreInMemory()
 
 
     @Bean
@@ -40,37 +40,37 @@ class MemoryResourceConfiguration {
     fun memoryPubSub(): TopicPubSubService<UUID, String> = MemoryTopicPubSubService()
 
     @Configuration
-    class PersistenceBeans(keyFactory: KeyServiceBeans<UUID>)
-        : InMemoryPersistenceBeans<UUID, String>(keyFactory.keyService())
+    class PersistenceBeans(keyFactory: KeyServiceBeans<UUID>) :
+        InMemoryPersistenceBeans<UUID, String>(keyFactory.keyService())
 
     @Configuration
     class IndexBeans : LuceneIndexBeans<UUID, String>(
-            StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
-            IndexEntryEncoder { t ->
-                listOf(
-                        Pair("key", t.key.id.toString()),
-                        Pair("handle", t.handle),
-                        Pair("name", t.name)
-                )
-            },
-            IndexEntryEncoder { t ->
-                listOf(
-                        Pair("key", t.key.id.toString()),
-                        Pair("text", t.data)
-                )
-            },
-            IndexEntryEncoder { t ->
-                listOf(
-                        Pair("key", t.key.id.toString()),
-                        Pair("name", t.data)
-                )
-            },
-            IndexEntryEncoder { t ->
-                listOf(
-                        Pair("key", Key.funKey(t.key).toString()),
-                        Pair(MembershipIndexService.MEMBER, t.member.toString()),
-                        Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
-                )
-            }
-        )
+        StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
+        IndexEntryEncoder { t ->
+            listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("handle", t.handle),
+                Pair("name", t.name)
+            )
+        },
+        IndexEntryEncoder { t ->
+            listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("text", t.data)
+            )
+        },
+        IndexEntryEncoder { t ->
+            listOf(
+                Pair("key", t.key.id.toString()),
+                Pair("name", t.data)
+            )
+        },
+        IndexEntryEncoder { t ->
+            listOf(
+                Pair("key", Key.funKey(t.key).toString()),
+                Pair(MembershipIndexService.MEMBER, t.member.toString()),
+                Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
+            )
+        }
+    )
 }
