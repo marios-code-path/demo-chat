@@ -23,8 +23,8 @@ class AbstractAuthorizationServiceTests(
     AbstractAuthorizationService(
         authMetaPersistence,
         authMetaIndex,
-        AuthMetadataPrincipleKeySearch(LongUtil()),
-        AuthMetadataTargetKeySearch(LongUtil()),
+        AuthMetadataPrincipleKeySearch(TypeUtil.LongUtil),
+        AuthMetadataTargetKeySearch(TypeUtil.LongUtil),
         { Key.funKey(ANON_ID) },
         { m -> m.key },
         AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }

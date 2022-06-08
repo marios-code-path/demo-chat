@@ -1,7 +1,8 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.secure.service
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.PersistenceStore
@@ -15,15 +16,17 @@ import org.springframework.security.core.Authentication
 import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
-class SampleAuthenticationManager(
-    private val authenticationS: AuthenticationService<Long>,
-    private val userPersistence: PersistenceStore<Long, User<Long>>,
-    private val authorizationS: AuthorizationService<Long, AuthMetadata<Long>, AuthMetadata<Long>>
+class ChatAuthenticationManager<T>(
+    private val typeUtil: TypeUtil<T>,
+    private val authenticationS: AuthenticationService<T>,
+    private val userPersistence: PersistenceStore<T, User<T>>,
+    private val authorizationS: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
 ) :
     AuthenticationManager {
     override fun authenticate(authen: Authentication): Authentication {
         val credential = authen.credentials.toString()
-        val targetId: Key<Long> = Key.funKey(if (authen.details is Long) authen.details as Long else 0L)
+        //val targetId: Key<Long> = Key.funKey(if (authen.details is Long) authen.details as Long else 0L)
+        val targetId: Key<T> = Key.funKey(typeUtil.assignFrom(authen.details))
 
         return authenticationS
             .authenticate(authen.name, credential)

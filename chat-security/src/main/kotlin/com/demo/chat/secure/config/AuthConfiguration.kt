@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.secure.config
 
 import com.demo.chat.domain.*
 import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
@@ -6,6 +6,7 @@ import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.AbstractAuthenticationService
 import com.demo.chat.secure.service.AbstractAuthorizationService
+import com.demo.chat.secure.service.ChatAuthenticationManager
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.UserIndexService
@@ -14,12 +15,12 @@ import com.demo.chat.service.security.SecretsStore
 import org.springframework.context.annotation.Bean
 
 
-open class SecurityManagers<T>(
+open class AuthConfiguration<T>(
     private val keyTypeUtil: TypeUtil<T>,
     private val anonymousKey: Key<T>
 ) {
     @Bean
-    fun authorizationService(
+    open fun authorizationService(
         authPersist: PersistenceStore<T, AuthMetadata<T>>,
         authIndex: IndexService<T, AuthMetadata<T>, IndexSearchRequest>
     ): AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>> =
@@ -34,7 +35,7 @@ open class SecurityManagers<T>(
         )
 
     @Bean
-    fun chatAuthenticationService(
+    open fun chatAuthenticationService(
         userIndex: IndexService<T, User<T>, IndexSearchRequest>,
         secretStore: SecretsStore<T>
     ) = AbstractAuthenticationService(
@@ -44,7 +45,7 @@ open class SecurityManagers<T>(
         { username: String -> IndexSearchRequest(UserIndexService.HANDLE, username, 1) })
 
     @Bean
-    fun authenticationManager(
+    open fun authenticationManager(
         userIndex: IndexService<T, User<T>, IndexSearchRequest>,
         secretStore: SecretsStore<T>,
         userPersistence: PersistenceStore<T, User<T>>,

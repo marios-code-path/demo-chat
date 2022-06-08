@@ -10,7 +10,7 @@ import org.springframework.core.ParameterizedTypeReference
 open class AppClientBeansConfiguration<T, V, Q>(
     private val clients: CoreClientBeans<T, V, Q>,
     private val keyType: ParameterizedTypeReference<T>
-) {
+)  {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])
     @Bean
     open fun pubsubClient(): TopicPubSubService<T, V> = clients.topicExchange()

@@ -2,22 +2,33 @@ package com.demo.chat.config.index.memory
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.*
-import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
+import com.demo.chat.domain.lucene.IndexEntryEncoder
+import com.demo.chat.service.IndexService
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
-import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
+import org.springframework.context.annotation.Bean
 
 open class LuceneIndexBeans<T, V>(
-    private val key: StringToKeyEncoder<T>,
+    private val typeUtil: TypeUtil<T>,
     private val user: IndexEntryEncoder<User<T>>,
     private val message: IndexEntryEncoder<Message<T, V>>,
     private val topic: IndexEntryEncoder<MessageTopic<T>>,
     private val membership: IndexEntryEncoder<TopicMembership<T>>
 ) : IndexServiceBeans<T, V, IndexSearchRequest> {
-    override fun userIndex() = LuceneIndex(user, key) { t -> t.key }
+    private val stringToKey: (String) -> Key<T> = { str -> Key.funKey(typeUtil.fromString(str)) }
 
-    override fun messageIndex() = LuceneIndex(message, key) { t -> t.key }
+    @Bean
+    override fun userIndex(): IndexService<T, User<T>, IndexSearchRequest> =
+        LuceneIndex(user, stringToKey) { t -> t.key }
 
-    override fun topicIndex() = LuceneIndex(topic, key) { t -> t.key }
+    @Bean
+    override fun messageIndex(): IndexService<T, Message<T, V>, IndexSearchRequest> =
+        LuceneIndex(message, stringToKey) { t -> t.key }
 
-    override fun membershipIndex() = LuceneIndex(membership, key) { t -> Key.funKey(t.key) }
+    @Bean
+    override fun topicIndex(): IndexService<T, MessageTopic<T>, IndexSearchRequest> =
+        LuceneIndex(topic, stringToKey) { t -> t.key }
+
+    @Bean
+    override fun membershipIndex(): IndexService<T, TopicMembership<T>, IndexSearchRequest> =
+        LuceneIndex(membership, stringToKey) { t -> Key.funKey(t.key) }
 }

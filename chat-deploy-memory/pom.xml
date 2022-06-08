@@ -55,6 +55,11 @@
             <version>0.0.1</version>
         </dependency>
         <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-security-memory</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
@@ -100,11 +105,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-security-memory</artifactId>
-            <version>0.0.1</version>
         </dependency>
     </dependencies>
 

@@ -17,7 +17,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>>
 fun interface StringToKeyEncoder<T> : Function<String, Key<T>>
 
 open class LuceneIndex<T, E>(

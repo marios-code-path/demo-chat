@@ -1,5 +1,6 @@
 package com.demo.chat.streams.rabbit
 
+import com.demo.chat.config.memory.LongKeyServiceBeans
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.JacksonModules
@@ -25,7 +26,7 @@ class StreamApp {
     class AppJacksonModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
 
     @Configuration
-    class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()
+    class AppLongKeyBeans : LongKeyServiceBeans()
 
     @Configuration
     class AppPersistenceBeans(keySvc: IKeyService<Long>) : PersistenceBeans(keySvc)

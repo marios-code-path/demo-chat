@@ -1,44 +1,63 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.client.rsocket.config.SecureConnection
+import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
+import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
+import com.demo.chat.deploy.config.properties.AppRSocketBindings
 import com.demo.chat.domain.*
+import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.secure.config.AuthConfiguration
+import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
+import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
-import java.util.concurrent.atomic.AtomicLong
-import java.util.function.Supplier
-import kotlin.random.Random
 
 /**
  * Test Class
  */
-@Profile("security")
+@Profile("SampleRunner")
+@SpringBootApplication
+@EnableConfigurationProperties(AppRSocketBindings::class)
+@Import(
+    RSocketRequesterAutoConfiguration::class,
+    DefaultChatJacksonModules::class,
+    SecureConnection::class,
+    MemoryResourceConfiguration::class
+)
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class SampleAppSecurityRunner {
+
 
     @Bean
     fun appReady(
         userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
         passwdStore: SecretsStore<Long>,
-        authenticationManager: SampleAuthenticationManager,
-        userPersistence: PersistenceStore<Long, User<Long>>,
+        authenticationManager: AuthenticationManager,
+        userPersistence: UserPersistence<Long>,
         authorizationService: AuthorizationService<Long, AuthMetadata<Long>, AuthMetadata<Long>>
-
     ): CommandLineRunner = CommandLineRunner {
-        val princpialKey = keyGen.get()
-        val anotherUserKey = keyGen.get()
+        val princpialKey = userPersistence.key().block()!!
+        val anotherUserKey = userPersistence.key().block()!!
 
         val users = listOf(
             User.create(princpialKey, "mario", "mario", "https://foo"),
@@ -56,12 +75,12 @@ class SampleAppSecurityRunner {
             .blockLast()
 
         Flux.just(
-// role that determines required access? ( key, target, action, role )
-            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
-            StringRoleAuthorizationMetadata(keyGen.get(), ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
-            StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_MESSAGE"),
-            StringRoleAuthorizationMetadata(keyGen.get(), princpialKey, anotherUserKey, "ROLE_SUPER"),
+            // role that determines required access? ( key, target, action, role )
+            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
+            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
+            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
+            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, princpialKey, anotherUserKey, "ROLE_MESSAGE"),
+            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, princpialKey, anotherUserKey, "ROLE_SUPER"),
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
             .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($ANONYMOUS_KEY).") }
@@ -72,6 +91,7 @@ class SampleAppSecurityRunner {
             .addCredential(users[0].key, "password")
             .doFinally { println("Added a password.") }
             .block()
+
 
         println("username: ")
         val username = readLine()
@@ -96,9 +116,6 @@ class SampleAppSecurityRunner {
 
     companion object {
         val ANONYMOUS_KEY: Key<Long> = Key.funKey(0L)
-        inline fun <reified T> anonymousKeyFetcher(): () -> Key<T> = { Key.funKey( 0L as T)}
-        val atomicLong = AtomicLong(kotlin.math.abs(Random.nextLong(1024, 999999)))
-        private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
 
         @JvmStatic
         fun main(args: Array<String>) {
@@ -118,6 +135,4 @@ class SampleAppSecurityRunner {
     fun doSomethingMessagy() {
         // sink.add(message)
     }
-
-
 }

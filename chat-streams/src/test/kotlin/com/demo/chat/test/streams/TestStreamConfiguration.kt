@@ -1,5 +1,6 @@
 package com.demo.chat.test.streams
 
+import com.demo.chat.config.memory.LongKeyServiceBeans
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.JacksonModules
@@ -37,7 +38,7 @@ class TestStreamConfiguration {
     class AppJacksonModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
 
     @Configuration
-    class AppLongKeyConfiguration : MemoryLongKeyServiceConfiguration()
+    class AppLongKeyBeans : LongKeyServiceBeans()
 
     @Configuration
     class AppPersistenceBeans(keySvc: IKeyService<Long>) : PersistenceBeans(keySvc)

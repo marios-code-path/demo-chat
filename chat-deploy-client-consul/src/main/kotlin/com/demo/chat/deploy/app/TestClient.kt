@@ -26,8 +26,7 @@ import java.util.*
 //        JacksonConfiguration::class,
 //        RSocketStrategiesAutoConfiguration::class,
 //        ConsulRequesterFactory::class,
-//        CoreClients::class,
-//        EdgeClients::class,
+//          AppClientBeansConfiguration::class,
 //)
 // TODO: This should also embody integration tests
 class TestClient {
@@ -38,6 +37,20 @@ class TestClient {
         }
     }
 
+    /**
+     *     @Configuration
+    class AppRSocketClientBeansConfiguration(clients: CoreClientBeans<Long, String, IndexSearchRequest>) :
+    AppClientBeansConfiguration<Long, String, IndexSearchRequest>(
+    clients,
+    ParameterizedTypeReference.forType(Long::class.java)
+    )
+
+    @Bean
+    fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
+    coreRSocketProps: CoreRSocketProperties
+    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(requesterFactory, coreRSocketProps, ParameterizedTypeReference.forType(Long::class.java))
+
+     */
     @Bean
     fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
                                coreRSocketProps: CoreRSocketProperties) = CoreRSocketClients<UUID, String, IndexSearchRequest>(requesterFactory, coreRSocketProps, ParameterizedTypeReference.forType(UUID::class.java))

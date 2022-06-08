@@ -1,15 +1,19 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.index.memory.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
+import com.demo.chat.config.memory.LongKeyServiceBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
-import com.demo.chat.service.*
-import com.demo.chat.service.impl.lucene.index.IndexEntryEncoder
-import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.User
+import com.demo.chat.domain.lucene.IndexEntryEncoder
+import com.demo.chat.service.IKeyService
+import com.demo.chat.service.IndexService
+import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.MemoryTopicPubSubService
+import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
 import com.demo.chat.service.security.AuthMetaIndexLucene
 import com.demo.chat.service.security.AuthMetaPersistenceInMemory
 import com.demo.chat.service.security.SecretsStore
@@ -17,60 +21,38 @@ import com.demo.chat.service.security.SecretsStoreInMemory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import java.util.*
 
-@Configuration
-class MemoryResourceConfiguration {
+open class MemoryResourceConfiguration {
+
+    @Configuration
+    class KeyServiceBeans : LongKeyServiceBeans()
 
     @Bean
-    fun authMetaPersistence(keySvc: IKeyService<Long>):
+    open fun authMetaPersistence(keySvc: IKeyService<Long>):
             PersistenceStore<Long, AuthMetadata<Long>> =
         AuthMetaPersistenceInMemory(keySvc) { t -> t.key }
 
     @Bean
-    fun authMetaIndex(): IndexService<Long, AuthMetadata<Long>, IndexSearchRequest> =
-        AuthMetaIndexLucene { q -> Key.funKey(q.toLong()) }
+    open fun authMetaIndex(): IndexService<Long, AuthMetadata<Long>, IndexSearchRequest> =
+        AuthMetaIndexLucene(TypeUtil.LongUtil)
 
     @Bean
-    fun passwordStoreInMemory(): SecretsStore<Long> = SecretsStoreInMemory()
-
+    open fun passwordStoreInMemory(): SecretsStore<Long> = SecretsStoreInMemory()
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
-    fun memoryPubSub(): TopicPubSubService<UUID, String> = MemoryTopicPubSubService()
+    open fun memoryPubSub(): TopicPubSubService<Long, String> = MemoryTopicPubSubService()
 
     @Configuration
-    class PersistenceBeans(keyFactory: KeyServiceBeans<UUID>) :
-        InMemoryPersistenceBeans<UUID, String>(keyFactory.keyService())
+    class PersistenceBeans(keyFactory: KeyServiceBeans) :
+        InMemoryPersistenceBeans<Long, String>(keyFactory.keyService())
 
     @Configuration
-    class IndexBeans : LuceneIndexBeans<UUID, String>(
-        StringToKeyEncoder { i -> Key.funKey(UUID.fromString(i)) },
-        IndexEntryEncoder { t ->
-            listOf(
-                Pair("key", t.key.id.toString()),
-                Pair("handle", t.handle),
-                Pair("name", t.name)
-            )
-        },
-        IndexEntryEncoder { t ->
-            listOf(
-                Pair("key", t.key.id.toString()),
-                Pair("text", t.data)
-            )
-        },
-        IndexEntryEncoder { t ->
-            listOf(
-                Pair("key", t.key.id.toString()),
-                Pair("name", t.data)
-            )
-        },
-        IndexEntryEncoder { t ->
-            listOf(
-                Pair("key", Key.funKey(t.key).toString()),
-                Pair(MembershipIndexService.MEMBER, t.member.toString()),
-                Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
-            )
-        }
+    class IndexBeans : LuceneIndexBeans<Long, String>(
+        TypeUtil.LongUtil,
+        IndexEntryEncoder.ofUser(),
+        IndexEntryEncoder.ofMessage(),
+        IndexEntryEncoder.ofTopic(),
+        IndexEntryEncoder.ofTopicMembership()
     )
 }

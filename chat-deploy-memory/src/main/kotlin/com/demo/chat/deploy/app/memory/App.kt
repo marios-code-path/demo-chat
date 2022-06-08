@@ -1,5 +1,9 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.client.rsocket.config.CoreRSocketClients
+import com.demo.chat.client.rsocket.config.CoreRSocketProperties
+import com.demo.chat.client.rsocket.config.RequesterFactory
+import com.demo.chat.client.rsocket.config.SecureConnection
 import com.demo.chat.config.CoreClientBeans
 import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
 import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
@@ -7,7 +11,10 @@ import com.demo.chat.controller.config.PersistenceControllersConfiguration
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.deploy.config.properties.AppRSocketBindings
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -18,7 +25,9 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.Profile
 import org.springframework.core.ParameterizedTypeReference
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import java.util.*
 
 @SpringBootApplication
@@ -27,9 +36,10 @@ import java.util.*
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
     ConsulRequesterFactory::class,
-    AppClientBeansConfiguration::class
+    SecureConnection::class,
+    MemoryResourceConfiguration::class
 )
-class App { // Free The Types!
+class App {
 
     companion object {
         @JvmStatic
@@ -39,16 +49,8 @@ class App { // Free The Types!
     }
 
     @Configuration
-    class AppRSocketClientBeansConfiguration(clients: CoreClientBeans<UUID, String, IndexSearchRequest>) :
-        AppClientBeansConfiguration<UUID, String, IndexSearchRequest>(
-            clients,
-            ParameterizedTypeReference.forType(UUID::class.java)
-        )
-
-    @Configuration
-    class MemoryKeyServiceFactory : KeyServiceBeans<UUID> {
-        override fun keyService() = KeyServiceInMemory { UUID.randomUUID() }
-    }
+    @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
+    class SecurityConfiguration : AuthConfiguration<Long>(TypeUtil.LongUtil, Key.funKey(0L))
 
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean
