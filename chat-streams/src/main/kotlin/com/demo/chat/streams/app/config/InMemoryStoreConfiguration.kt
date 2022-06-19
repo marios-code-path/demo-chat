@@ -3,12 +3,10 @@ package com.demo.chat.streams.app.config
 import com.demo.chat.config.index.memory.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.domain.*
+import com.demo.chat.domain.lucene.IndexEntryEncoder
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.conflate.KeyEnricherPersistenceStore
-import com.demo.chat.domain.lucene.IndexEntryEncoder
-import com.demo.chat.service.impl.lucene.index.StringToKeyEncoder
 import com.demo.chat.streams.functions.MessageSendRequest
 import com.demo.chat.streams.functions.MessageTopicRequest
 import com.demo.chat.streams.functions.TopicMembershipRequest
@@ -29,34 +27,13 @@ open class PersistenceBeans(keyService: IKeyService<Long>) : InMemoryPersistence
     open fun membershipPersistence() = MembershipCreateStore(membership())
 }
 
-open class IndexBeans : LuceneIndexBeans<Long, String>(
+open class IndexBeans : LuceneIndexBeans<Long>(
     TypeUtil.LongUtil,
-    IndexEntryEncoder { t ->
-        listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("handle", t.handle),
-            Pair("name", t.name)
-        )
-    },
-    IndexEntryEncoder { t ->
-        listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("text", t.data)
-        )
-    },
-    IndexEntryEncoder { t ->
-        listOf(
-            Pair("key", t.key.id.toString()),
-            Pair("name", t.data)
-        )
-    },
-    IndexEntryEncoder { t ->
-        listOf(
-            Pair("key", Key.funKey(t.key).toString()),
-            Pair(MembershipIndexService.MEMBER, t.member.toString()),
-            Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
-        )
-    }) {
+    IndexEntryEncoder.ofUser(),
+    IndexEntryEncoder.ofMessage(),
+    IndexEntryEncoder.ofTopic(),
+    IndexEntryEncoder.ofTopicMembership()
+) {
     @Bean
     open fun idxUser() = userIndex()
 
