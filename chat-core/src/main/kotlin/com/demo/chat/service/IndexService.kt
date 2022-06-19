@@ -45,9 +45,9 @@ interface TopicIndexService<T, Q> : IndexService<T, MessageTopic<T>, Q> {
 }
 
 interface MembershipIndexService<T, Q> : IndexService<T, TopicMembership<T>, Q> {
-    fun size(key: Key<T>): Mono<Int>
-    fun addMember(topicMembership: TopicMembership<T>): Mono<Void>
-    fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
+    fun size(query: Q): Mono<Long>
+ //   fun addMember(topicMembership: TopicMembership<T>): Mono<Void>
+ //   fun remMember(topicMembership: TopicMembership<T>): Mono<Void>
 
     companion object {
         const val MEMBER = "member"

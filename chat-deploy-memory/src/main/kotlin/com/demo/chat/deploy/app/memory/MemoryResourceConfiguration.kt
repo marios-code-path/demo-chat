@@ -14,10 +14,7 @@ import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.MemoryTopicPubSubService
 import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
-import com.demo.chat.service.security.AuthMetaIndexLucene
-import com.demo.chat.service.security.AuthMetaPersistenceInMemory
-import com.demo.chat.service.security.SecretsStore
-import com.demo.chat.service.security.SecretsStoreInMemory
+import com.demo.chat.service.security.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -37,7 +34,7 @@ open class MemoryResourceConfiguration {
         AuthMetaIndexLucene(TypeUtil.LongUtil)
 
     @Bean
-    open fun passwordStoreInMemory(): SecretsStore<Long> = SecretsStoreInMemory()
+    open fun passwordStoreInMemory(): UserCredentialSecretsStore<Long> = SecretsStoreInMemory()
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])

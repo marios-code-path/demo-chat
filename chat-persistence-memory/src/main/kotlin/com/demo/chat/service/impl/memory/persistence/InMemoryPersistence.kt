@@ -10,10 +10,10 @@ import java.util.function.Function
 
 open class InMemoryPersistence<T, E>(
     val keyService: IKeyService<T>,
-    val entityClass: Class<*>,
-    val keyFromEntity: Function<E, Key<T>>
+    private val entityClass: Class<*>,
+    private val keyFromEntity: Function<E, Key<T>>
 ) : PersistenceStore<T, E> {
-    val map = ConcurrentHashMap<T, E>()
+    private val map = ConcurrentHashMap<T, E>()
 
     override fun key(): Mono<out Key<T>> = keyService.key(entityClass)
 

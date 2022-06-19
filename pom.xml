@@ -43,13 +43,14 @@
         <module>chat-index-elastic</module>
         <module>chat-index-lucene</module>
         <module>chat-security</module>
-	    <module>chat-security-memory</module>
+	<module>chat-security-memory</module>
         <module>chat-persistence-cassandra</module>
-	    <module>chat-index-cassandra</module>
+	<module>chat-index-cassandra</module>
         <module>chat-persistence-xstream</module>
         <module>chat-client-rsocket</module>
         <module>chat-init</module>
         <module>chat-streams</module>
+        <module>chat-messaging-pulsar</module>
         <module>chat-gateway</module>
         <module>chat-deploy-client-consul</module>
         <module>chat-deploy-memory</module>

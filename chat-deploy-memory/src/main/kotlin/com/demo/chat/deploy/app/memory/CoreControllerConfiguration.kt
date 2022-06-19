@@ -7,7 +7,7 @@ import com.demo.chat.controller.config.PubSubControllerConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 
-class CoreControllerConfiguration {
+open class CoreControllerConfiguration {
 
     @Configuration
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])

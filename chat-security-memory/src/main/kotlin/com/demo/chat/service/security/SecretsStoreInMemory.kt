@@ -5,7 +5,7 @@ import com.demo.chat.domain.Key
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
-class SecretsStoreInMemory<T> : SecretsStore<T> {
+class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
     private val secureMap = ConcurrentHashMap<T, String>()
 
     override fun getStoredCredentials(key: Key<T>): Mono<String> =

@@ -2,8 +2,6 @@ source ../chat-deloy/deploy-ports.sh
 source ./cassandra-options.sh
 export DOCKER_RUN=$1;shift
 # how to auto-discover consul using dns alone!
-export CONSUL_HOST=172.17.0.2
-export CONSUL_PORT=8500
 export SPRING_PROFILE="cassandra-astra"
 export APP_PRIMARY="core"
 export APP_IMAGE_NAME="core-service-cassandra"

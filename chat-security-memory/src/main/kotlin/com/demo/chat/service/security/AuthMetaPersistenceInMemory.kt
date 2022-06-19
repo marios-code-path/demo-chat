@@ -9,4 +9,5 @@ import java.util.function.Function
 open class AuthMetaPersistenceInMemory<T>(
     keyService: IKeyService<T>,
     keyReceiver: Function<AuthMetadata<T>, Key<T>>
-) : InMemoryPersistence<T, AuthMetadata<T>>(keyService, AuthMetadata::class.java, keyReceiver)
+) : InMemoryPersistence<T, AuthMetadata<T>>(keyService, AuthMetadata::class.java, keyReceiver),
+    AuthMetaPersistence<T>

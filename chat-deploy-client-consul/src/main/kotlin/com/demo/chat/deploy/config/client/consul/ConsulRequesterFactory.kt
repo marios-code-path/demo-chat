@@ -9,6 +9,7 @@ import io.rsocket.transport.netty.client.TcpClientTransport
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
+import org.springframework.core.SpringProperties
 import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Mono
 import java.util.*
@@ -48,6 +49,7 @@ class ConsulRequesterFactory(private val builder: RSocketRequester.Builder,
         "index" -> coreRSocketProps.index.dest
         "persistence" -> coreRSocketProps.persistence.dest
         "pubsub" -> coreRSocketProps.pubsub.dest
+        "command" -> SpringProperties.getProperty("route.host.destination")
         else -> throw AppDiscoveryException(serviceKey)
     }
 

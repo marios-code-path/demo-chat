@@ -1,7 +1,6 @@
 source ../shell-scripts/ports.sh
 export DOCKER_RUN=$1;shift
 # how to auto-discover consul using dns alone!
-export CONSUL_HOST=172.17.0.2
 export SPRING_PROFILE="default"
 export APP_PRIMARY="edge"
 export APP_IMAGE_NAME="edge-services-monolith"

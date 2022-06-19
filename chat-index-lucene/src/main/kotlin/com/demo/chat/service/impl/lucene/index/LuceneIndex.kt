@@ -25,8 +25,8 @@ open class LuceneIndex<T, E>(
     private val keyReceiver: Function<E, Key<T>>,
 ) : IndexService<T, E, IndexSearchRequest> {
 
-    private val analyzer = StandardAnalyzer()
-    private val directory = ByteBuffersDirectory()
+    val analyzer = StandardAnalyzer()
+    val directory = ByteBuffersDirectory()
     private val writer = IndexWriter(directory, IndexWriterConfig(analyzer))
 
     fun onClose() {

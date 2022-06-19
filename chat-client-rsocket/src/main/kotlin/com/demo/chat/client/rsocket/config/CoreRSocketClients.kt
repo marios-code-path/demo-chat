@@ -50,5 +50,4 @@ class CoreRSocketClients<T, V, Q>(
 
     override fun messageIndex(): IndexService<T, Message<T, V>, Q> =
         MessageIndexClient("${coreRSocketProps.index.prefix}message.", requesterFactory.requester("index"))
-
 }

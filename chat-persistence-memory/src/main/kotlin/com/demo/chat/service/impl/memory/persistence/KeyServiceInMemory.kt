@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
 open class KeyServiceInMemory<T>(private val keyGen: Supplier<T>) : IKeyService<T> {
-    val map = ConcurrentHashMap<T, Key<T>>()
+    private val map = ConcurrentHashMap<T, Key<T>>()
 
     override fun <S> key(kind: Class<S>): Mono<out Key<T>> = Mono.just(
             Key.funKey(keyGen.get()).apply {

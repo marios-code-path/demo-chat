@@ -41,15 +41,16 @@ class MembershipIndexCassandra<T>(
                     }
                     .then()
 
-    override fun size(key: Key<T>): Mono<Int> =
-            byMemberOfRepo.findByMemberOf(key.id)
+    // TODO deperecate this or fix this implementation
+    override fun size(query: Map<String, String>): Mono<Long> =
+            byMemberOfRepo.findByMemberOf(stringToKey.apply(query.keys.first()))
                     .reduce(0) { c, _ ->
                         c + 1
                     }
-
-    override fun addMember(topicMembership: TopicMembership<T>): Mono<Void> = add(topicMembership)
-
-    override fun remMember(topicMembership: TopicMembership<T>): Mono<Void> = rem(Key.funKey(topicMembership.key))
+//
+//    override fun addMember(topicMembership: TopicMembership<T>): Mono<Void> = add(topicMembership)
+//
+//    override fun remMember(topicMembership: TopicMembership<T>): Mono<Void> = rem(Key.funKey(topicMembership.key))
 
     override fun findBy(query: Map<String, String>): Flux<Key<T>> =
             when (val queryBy = query.keys.first()) {
