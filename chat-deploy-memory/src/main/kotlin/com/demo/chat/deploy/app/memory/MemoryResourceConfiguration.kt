@@ -26,11 +26,11 @@ open class MemoryResourceConfiguration {
 
     @Bean
     open fun authMetaPersistence(keySvc: IKeyService<Long>):
-            PersistenceStore<Long, AuthMetadata<Long>> =
+            AuthMetaPersistence<Long> =
         AuthMetaPersistenceInMemory(keySvc) { t -> t.key }
 
     @Bean
-    open fun authMetaIndex(): IndexService<Long, AuthMetadata<Long>, IndexSearchRequest> =
+    open fun authMetaIndex(): AuthMetaIndex<Long, IndexSearchRequest> =
         AuthMetaIndexLucene(TypeUtil.LongUtil)
 
     @Bean
@@ -45,7 +45,7 @@ open class MemoryResourceConfiguration {
         InMemoryPersistenceBeans<Long, String>(keyFactory.keyService())
 
     @Configuration
-    class IndexBeans : LuceneIndexBeans<Long, String>(
+    class IndexBeans : LuceneIndexBeans<Long>(
         TypeUtil.LongUtil,
         IndexEntryEncoder.ofUser(),
         IndexEntryEncoder.ofMessage(),
