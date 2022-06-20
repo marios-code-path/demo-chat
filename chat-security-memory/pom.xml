@@ -16,19 +16,15 @@
 
     <dependencies>
         <dependency>
-		<groupId>com.demo</groupId>
-		<artifactId>chat-security</artifactId>
-		<version>0.0.1</version>
-        </dependency>
-        <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
+            <artifactId>chat-security</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
+            <artifactId>chat-persistence-memory</artifactId>
             <version>0.0.1</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
@@ -37,16 +33,9 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
-            <type>test-jar</type>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
-
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
@@ -68,11 +57,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-client</artifactId>
-            <version>2.5.0</version>
-        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>org.springframework.boot</groupId>-->
+        <!--            <artifactId>spring-boot-starter-oauth2-client</artifactId>-->
+        <!--            <version>2.5.0</version>-->
+        <!--        </dependency>-->
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-reflect</artifactId>
@@ -100,12 +89,6 @@
             <artifactId>mockito-kotlin</artifactId>
             <version>2.2.0</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-persistence-memory</artifactId>
-            <version>0.0.1</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

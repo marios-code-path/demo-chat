@@ -41,8 +41,7 @@ import reactor.core.publisher.Flux
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    SecureConnection::class,
-    MemoryResourceConfiguration::class
+    SecureConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class SampleAppSecurityRunner {
