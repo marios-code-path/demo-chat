@@ -1,15 +1,10 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.init
 
 import com.demo.chat.client.rsocket.config.SecureConnection
-import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
-import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.deploy.config.properties.AppRSocketBindings
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.secure.config.AuthConfiguration
-import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
@@ -20,7 +15,6 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfig
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException

@@ -2,10 +2,10 @@ package com.demo.chat.controller.config
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.core.PersistenceServiceController
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.User
+import com.demo.chat.controller.core.mapping.PersistenceStoreMapping
+import com.demo.chat.domain.*
+import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
@@ -31,4 +31,10 @@ open class PersistenceControllersConfiguration {
     @MessageMapping("persist.membership")
     class MembershipPersistenceController<T, V>(s: PersistenceServiceBeans<T, V>) :
         PersistenceServiceController<T, TopicMembership<T>>(s.membership())
+
+    @Controller
+    @MessageMapping("persist.authmeta")
+    class AuthMetaPersistenceController<T>(that: AuthMetaPersistence<T>) :
+        PersistenceStoreMapping<T, AuthMetadata<T>>,
+        PersistenceStore<T, AuthMetadata<T>> by that
 }

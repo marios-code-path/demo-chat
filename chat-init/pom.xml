@@ -14,11 +14,17 @@
 	<description>Chat Application Initialization</description>
 
 	<dependencies>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
-            <version>0.0.1</version>
-        </dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-deploy-client-consul</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-service-rsocket</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-engine</artifactId>

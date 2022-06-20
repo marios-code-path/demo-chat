@@ -21,18 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-deploy-client-consul</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-index-lucene</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
-            <type>test-jar</type>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -47,17 +36,18 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-security-memory</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service-rsocket</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-security-memory</artifactId>
+            <artifactId>chat-core</artifactId>
+            <type>test-jar</type>
             <version>0.0.1</version>
         </dependency>
         <dependency>
