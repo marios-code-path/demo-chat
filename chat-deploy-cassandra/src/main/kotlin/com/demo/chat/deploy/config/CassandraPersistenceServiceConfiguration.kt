@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.config
 
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.repository.cassandra.ChatMessageRepository
 import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
@@ -28,4 +29,8 @@ open class CassandraPersistenceServiceConfiguration<T>(
 
     override fun membership(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
+
+    override fun authMetadata(): PersistenceStore<T, AuthMetadata<T>> {
+        TODO("Not yet implemented")
+    }
 }

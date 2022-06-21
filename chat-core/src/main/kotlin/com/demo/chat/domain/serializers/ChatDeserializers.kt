@@ -118,3 +118,23 @@ class TopicDeserializer<T>(keyConverter: Converter<JsonNode, T>) : JsonDeseriali
         return MessageTopic.create(key, node.get("data").asText())
     }
 }
+
+class AuthMetadataDeserializer<T>(keyConverter: Converter<JsonNode, T>) : JsonDeserializer<AuthMetadata<T>>() {
+    private val kd = KeyDeserializer(keyConverter)
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): AuthMetadata<T> {
+        val oc: ObjectCodec = jp?.codec!!
+        val node: JsonNode = oc.readTree(jp)
+
+        val keyNode = node.get("key").get("key")
+        val key: Key<T> = kd.deserialize(keyNode.traverse(oc), ctxt)
+
+        val pplNode = node.get("principal").get("key")
+        val principal: Key<T> = kd.deserialize(pplNode.traverse(oc), ctxt)
+
+        val targNode = node.get("target").get("key")
+        val target: Key<T> = kd.deserialize(targNode.traverse(oc), ctxt)
+
+        return AuthMetadata.create(key, principal, target, node.get("permission").asText(), node.get("expires").asLong())
+    }
+
+}

@@ -8,17 +8,17 @@ import org.springframework.boot.context.properties.ConstructorBinding
 
 @ConfigurationProperties("app.rsocket.config")
 @ConstructorBinding
-data class AppRSocketBindings(
-        val core: CoreRSocketAppBindings
+data class AppRSocketProperties(
+        val core: CoreRSocketAppProperties
 )
 
 @ConstructorBinding
-data class AppRSocketProperty(override var dest: String? = "", override var prefix: String? = "") : RSocketProperty
+data class CoreRSocketProperty(override var dest: String? = "", override var prefix: String? = "") : RSocketProperty
 
 @ConstructorBinding
-data class CoreRSocketAppBindings(
-        override val key: RSocketProperty = AppRSocketProperty(),
-        override val index: RSocketProperty = AppRSocketProperty(),
-        override val persistence: RSocketProperty = AppRSocketProperty(),
-        override val pubsub: RSocketProperty = AppRSocketProperty(),
+data class CoreRSocketAppProperties(
+        override val key: RSocketProperty = CoreRSocketProperty(),
+        override val index: RSocketProperty = CoreRSocketProperty(),
+        override val persistence: RSocketProperty = CoreRSocketProperty(),
+        override val pubsub: RSocketProperty = CoreRSocketProperty(),
 ) : CoreRSocketProperties

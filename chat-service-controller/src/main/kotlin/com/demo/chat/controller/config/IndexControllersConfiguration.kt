@@ -26,7 +26,7 @@ open class IndexControllersConfiguration {
         IndexServiceController<T, MessageTopic<T>, Q>(s.topicIndex())
 
     @Controller
-    @MessageMapping("index.authmeta")
+    @MessageMapping("index.authmetadata")
     class AuthMetaIndexController<T>(that: AuthMetaIndex<T, IndexSearchRequest>) :
         IndexServiceMapping<T, AuthMetadata<T>, IndexSearchRequest>,
         IndexService<T, AuthMetadata<T>, IndexSearchRequest> by that

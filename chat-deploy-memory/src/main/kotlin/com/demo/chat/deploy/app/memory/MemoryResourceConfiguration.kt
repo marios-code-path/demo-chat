@@ -1,20 +1,20 @@
 package com.demo.chat.deploy.app.memory
 
+import com.demo.chat.config.index.memory.AuthMetaIndexLucene
 import com.demo.chat.config.index.memory.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.config.memory.LongKeyServiceBeans
-import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.User
 import com.demo.chat.domain.lucene.IndexEntryEncoder
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.messaging.MemoryTopicPubSubService
-import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
-import com.demo.chat.service.security.*
+import com.demo.chat.service.impl.memory.persistence.AuthMetaPersistenceInMemory
+import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.service.security.AuthMetaPersistence
+import com.demo.chat.service.security.SecretsStoreInMemory
+import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,7 +31,7 @@ open class MemoryResourceConfiguration {
 
     @Bean
     open fun authMetaIndex(): AuthMetaIndex<Long, IndexSearchRequest> =
-        AuthMetaIndexLucene(TypeUtil.LongUtil)
+        AuthMetaIndexLucene(TypeUtil)
 
     @Bean
     open fun passwordStoreInMemory(): UserCredentialSecretsStore<Long> = SecretsStoreInMemory()

@@ -3,10 +3,7 @@ package com.demo.chat.config.index.memory
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.*
 import com.demo.chat.domain.lucene.IndexEntryEncoder
-import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.TopicIndexService
-import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.*
 import org.springframework.context.annotation.Bean
 
 open class LuceneIndexBeans<T>(
@@ -33,4 +30,8 @@ open class LuceneIndexBeans<T>(
     @Bean
     override fun membershipIndex(): MembershipIndexService<T, IndexSearchRequest> =
         MembershipLuceneIndex(membership, stringToKey) { t -> Key.funKey(t.key) }
+
+    @Bean
+    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, IndexSearchRequest> =
+        AuthMetaIndexLucene(typeUtil)
 }

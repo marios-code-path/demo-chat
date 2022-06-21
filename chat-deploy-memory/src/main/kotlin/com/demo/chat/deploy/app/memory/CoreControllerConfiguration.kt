@@ -4,7 +4,9 @@ import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
 import com.demo.chat.controller.config.PubSubControllerConfiguration
+import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 open class CoreControllerConfiguration {

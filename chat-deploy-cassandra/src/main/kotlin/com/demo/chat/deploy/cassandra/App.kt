@@ -13,7 +13,7 @@ import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
 import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
-import com.demo.chat.deploy.config.properties.AppRSocketBindings
+import com.demo.chat.deploy.config.properties.AppRSocketProperties
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
@@ -37,7 +37,7 @@ import java.util.*
 class AppRSocketClientBeansConfiguration(clients: CoreClientBeans<UUID, String, Map<String, String>>) :
     AppClientBeansConfiguration<UUID, String, Map<String, String>>(clients, ParameterizedTypeReference.forType(UUID::class.java))
 
-@EnableConfigurationProperties(AppRSocketBindings::class)
+@EnableConfigurationProperties(AppRSocketProperties::class)
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @Import(

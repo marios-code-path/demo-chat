@@ -36,12 +36,12 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-security-memory</artifactId>
+            <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
+            <artifactId>chat-security</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -96,6 +96,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-rsocket</artifactId>
         </dependency>
     </dependencies>
 

@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.client.core
 
-import com.demo.chat.client.rsocket.core.MessageIndexClient
+import com.demo.chat.client.rsocket.core.impl.MessageIndexClient
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.MessageIndexService

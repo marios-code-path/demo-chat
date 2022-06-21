@@ -3,7 +3,7 @@ package com.demo.chat.test.rsocket.client.core
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.client.rsocket.core.PersistenceClient
-import com.demo.chat.client.rsocket.core.UserPersistenceClient
+import com.demo.chat.client.rsocket.core.impl.UserPersistenceClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence

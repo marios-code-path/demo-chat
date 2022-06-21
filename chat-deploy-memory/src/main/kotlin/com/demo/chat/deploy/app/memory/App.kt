@@ -13,6 +13,8 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.rsocket.RSocketStrategies
+import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 
 @EnableDiscoveryClient
@@ -30,7 +32,13 @@ class App {
             runApplication<App>(*args)
         }
     }
-
+    @Bean
+    fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
+        val handler = RSocketMessageHandler()
+        handler.rSocketStrategies = strategies
+        handler.afterPropertiesSet()
+        return handler
+    }
     @Configuration
     @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
     class SecurityConfiguration : AuthConfiguration<Long>(TypeUtil.LongUtil, Key.funKey(0L))

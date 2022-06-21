@@ -1,4 +1,4 @@
-package com.demo.chat.service.security
+package com.demo.chat.config.index.memory
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
@@ -8,7 +8,7 @@ import com.demo.chat.service.security.AuthMetaIndex.Companion.ID
 import com.demo.chat.service.security.AuthMetaIndex.Companion.PRINCIPAL
 import com.demo.chat.service.security.AuthMetaIndex.Companion.TARGET
 import com.demo.chat.service.impl.lucene.index.LuceneIndex
-import java.util.function.Function
+import com.demo.chat.service.security.AuthMetaIndex
 
 open class AuthMetaIndexLucene<T>(typeUtil: TypeUtil<T>) :
     AuthMetaIndex<T, IndexSearchRequest>,

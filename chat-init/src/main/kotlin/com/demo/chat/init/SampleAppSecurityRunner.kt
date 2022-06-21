@@ -1,10 +1,15 @@
 package com.demo.chat.init
 
+import com.demo.chat.client.rsocket.config.CoreRSocketClients
+import com.demo.chat.client.rsocket.config.CoreRSocketProperties
+import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.client.rsocket.config.SecureConnection
-import com.demo.chat.deploy.config.properties.AppRSocketBindings
+import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
+import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
+import com.demo.chat.deploy.config.properties.AppRSocketProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
@@ -15,8 +20,10 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfig
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
+import org.springframework.core.ParameterizedTypeReference
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
@@ -31,19 +38,32 @@ import reactor.core.publisher.Flux
  */
 @Profile("SampleRunner")
 @SpringBootApplication
-@EnableConfigurationProperties(AppRSocketBindings::class)
+@EnableConfigurationProperties(AppRSocketProperties::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    SecureConnection::class
+    SecureConnection::class,
+    ConsulRequesterFactory::class,
+    AppClientBeansConfiguration::class,
 )
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class SampleAppSecurityRunner {
 
+    @Configuration
+    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) : AppClientBeansConfiguration<Long, String, IndexSearchRequest>(
+        clients,
+        ParameterizedTypeReference.forType(Long::class.java)
+    )
+
+    @Bean
+    fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
+                               coreRSocketProps: CoreRSocketProperties
+    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(requesterFactory, coreRSocketProps, ParameterizedTypeReference.forType(
+        Long::class.java))
 
     @Bean
     fun appReady(
-        userIndex: IndexService<Long, User<Long>, IndexSearchRequest>,
+        userIndex: UserIndexService<Long, IndexSearchRequest>,
         passwdStore: SecretsStore<Long>,
         authenticationManager: AuthenticationManager,
         userPersistence: UserPersistence<Long>,
@@ -69,11 +89,38 @@ class SampleAppSecurityRunner {
 
         Flux.just(
             // role that determines required access? ( key, target, action, role )
-            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, ANONYMOUS_KEY, "ROLE_REQUEST"),
-            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, princpialKey, "ROLE_REQUEST", 1),
-            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, ANONYMOUS_KEY, anotherUserKey, "ROLE_MESSAGE", 1),
-            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, princpialKey, anotherUserKey, "ROLE_MESSAGE"),
-            StringRoleAuthorizationMetadata(userPersistence.key().block()!!, princpialKey, anotherUserKey, "ROLE_SUPER"),
+            StringRoleAuthorizationMetadata(
+                userPersistence.key().block()!!,
+                ANONYMOUS_KEY,
+                ANONYMOUS_KEY,
+                "ROLE_REQUEST"
+            ),
+            StringRoleAuthorizationMetadata(
+                userPersistence.key().block()!!,
+                ANONYMOUS_KEY,
+                princpialKey,
+                "ROLE_REQUEST",
+                1
+            ),
+            StringRoleAuthorizationMetadata(
+                userPersistence.key().block()!!,
+                ANONYMOUS_KEY,
+                anotherUserKey,
+                "ROLE_MESSAGE",
+                1
+            ),
+            StringRoleAuthorizationMetadata(
+                userPersistence.key().block()!!,
+                princpialKey,
+                anotherUserKey,
+                "ROLE_MESSAGE"
+            ),
+            StringRoleAuthorizationMetadata(
+                userPersistence.key().block()!!,
+                princpialKey,
+                anotherUserKey,
+                "ROLE_SUPER"
+            ),
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
             .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($ANONYMOUS_KEY).") }

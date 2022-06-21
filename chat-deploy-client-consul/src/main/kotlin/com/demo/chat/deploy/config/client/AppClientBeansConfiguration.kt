@@ -35,6 +35,11 @@ open class AppClientBeansConfiguration<T, V, Q>(
     @Bean
     open fun membershipPersistenceClient() = clients.membership()
 
+    @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
+    @Bean
+    open fun authMetadataPersistenceClient() = clients.authMetadata()
+
+
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
     @Bean
     open fun userIndexClient() = clients.userIndex()
@@ -50,4 +55,8 @@ open class AppClientBeansConfiguration<T, V, Q>(
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
     @Bean
     open fun messageIndexClient() = clients.messageIndex()
+
+    @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
+    @Bean
+    open fun authMetadataIndexClient() = clients.authMetadataIndex()
 }

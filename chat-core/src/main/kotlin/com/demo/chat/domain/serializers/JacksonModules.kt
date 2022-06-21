@@ -10,8 +10,10 @@ import org.springframework.context.annotation.Bean
 
 open class DefaultChatJacksonModules() : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
 
-open class JacksonModules(private val keyConverter: Converter<JsonNode, out Any>,
-                          private val dataConverter: Converter<JsonNode, out Any>) {
+open class JacksonModules(
+    private val keyConverter: Converter<JsonNode, out Any>,
+    private val dataConverter: Converter<JsonNode, out Any>
+) {
 
     @Bean
     open fun keyDataPairModule() = SimpleModule("KeyDataPairModule", Version.unknownVersion()).apply {
@@ -24,7 +26,7 @@ open class JacksonModules(private val keyConverter: Converter<JsonNode, out Any>
     }
 
     @Bean
-    open fun  userModule() = SimpleModule("UserModule", Version.unknownVersion()).apply {
+    open fun userModule() = SimpleModule("UserModule", Version.unknownVersion()).apply {
         addDeserializer(User::class.java, UserDeserializer(keyConverter))
     }
 
@@ -41,5 +43,10 @@ open class JacksonModules(private val keyConverter: Converter<JsonNode, out Any>
     @Bean
     open fun membershipModule() = SimpleModule("MembershipModule", Version.unknownVersion()).apply {
         addDeserializer(TopicMembership::class.java, MembershipDeserializer(JsonNodeToAnyConverter))
+    }
+
+    @Bean
+    open fun authMetadataModule() = SimpleModule("AuthMetadataModule", Version.unknownVersion()).apply {
+        addDeserializer(AuthMetadata::class.java, AuthMetadataDeserializer(JsonNodeToAnyConverter))
     }
 }

@@ -1,7 +1,9 @@
 package com.demo.chat.deploy.config
 
 import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.repository.cassandra.*
+import com.demo.chat.service.IndexService
 import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.index.MessageIndexCassandra
 import com.demo.chat.service.index.TopicIndexCassandra
@@ -32,4 +34,8 @@ open class CassandraIndexServiceConfiguration<T>(
 
     override fun messageIndex() =
             MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
+
+    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, Map<String, String>> {
+        TODO("Not yet implemented")
+    }
 }

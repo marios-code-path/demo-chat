@@ -1,11 +1,9 @@
 package com.demo.chat.client.rsocket.config
 
 import com.demo.chat.client.rsocket.core.*
+import com.demo.chat.client.rsocket.core.impl.*
 import com.demo.chat.config.CoreClientBeans
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
@@ -39,6 +37,11 @@ class CoreRSocketClients<T, V, Q>(
         requesterFactory.requester("persistence")
     )
 
+    override fun authMetadata(): PersistenceStore<T, AuthMetadata<T>> = AuthMetadataPersistenceClient(
+        "${coreRSocketProps.persistence.prefix}authmeta.",
+        requesterFactory.requester("persistence")
+    )
+
     override fun userIndex(): IndexService<T, User<T>, Q> =
         UserIndexClient("${coreRSocketProps.index.prefix}user.", requesterFactory.requester("index"))
 
@@ -50,4 +53,7 @@ class CoreRSocketClients<T, V, Q>(
 
     override fun messageIndex(): IndexService<T, Message<T, V>, Q> =
         MessageIndexClient("${coreRSocketProps.index.prefix}message.", requesterFactory.requester("index"))
+
+    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, Q> =
+        AuthMetaIndexClient("${coreRSocketProps.index.prefix}authmeta.", requesterFactory.requester("index"))
 }

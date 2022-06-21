@@ -33,7 +33,7 @@ open class PersistenceControllersConfiguration {
         PersistenceServiceController<T, TopicMembership<T>>(s.membership())
 
     @Controller
-    @MessageMapping("persist.authmeta")
+    @MessageMapping("persist.authmetadata")
     class AuthMetaPersistenceController<T>(that: AuthMetaPersistence<T>) :
         PersistenceStoreMapping<T, AuthMetadata<T>>,
         PersistenceStore<T, AuthMetadata<T>> by that
