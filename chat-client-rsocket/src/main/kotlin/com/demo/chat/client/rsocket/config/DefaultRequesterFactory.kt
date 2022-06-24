@@ -7,18 +7,24 @@ class DefaultRequesterFactory(
     private val connection: SecureConnection,
     private val properties: Map<String, RSocketProperty>
 ) : RequesterFactory {
+    private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = LinkedHashMap()
+
     private fun getServicePair(serviceKey: String): Pair<String, Int> =
-        serviceDestination(serviceKey).split(":")
+        serviceDestination(serviceKey)
+            .split(":")
             .zipWithNext()
             .map { Pair(it.first, it.second.toInt()) }
             .single()
 
     override fun requester(serviceKey: String): RSocketRequester {
         val pair = getServicePair(serviceKey)
-        return builder
-            .connect(connection.tcpClientTransport(pair.first, pair.second, false))
-            .log()
-            .block()!!
+        if(!perHostRequester.containsKey(pair)) {
+            perHostRequester[pair] = builder
+                .connect(connection.tcpClientTransport(pair.first, pair.second, false))
+                .log()
+                .block()!!
+        }
+        return perHostRequester[pair]!!
     }
 
     override fun serviceDestination(serviceKey: String): String = properties[serviceKey]?.dest!!

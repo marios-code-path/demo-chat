@@ -11,21 +11,14 @@ data class AppRSocketProperties(
 )
 
 
-@ConfigurationProperties("app.rsocket.client.config")
+@ConfigurationProperties("app.rsocket.client")
 @ConstructorBinding
-data class ClientRSocketProperties(val core: Map<String, RSocketPropertyValue>)
+data class ClientRSocketProperties(val config: Map<String, RSocketPropertyValue>) {
+    fun getServiceConfig(str: String): RSocketProperty = config[str]!!
+}
 
 @ConstructorBinding
 data class RSocketPropertyValue(override var dest: String? = "", override var prefix: String? = "") : RSocketProperty
-
-@ConstructorBinding
-@ConfigurationProperties("app.rsocket.client")
-data class RSocketConnectionProperties(
-    private val config: Map<String, RSocketProperty>
-) {
-    fun getKey(str: String): RSocketProperty = config[str]!!
-}
-
 
 @ConstructorBinding
 data class CoreRSocketAppProperties(

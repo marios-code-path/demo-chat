@@ -1,12 +1,11 @@
 package com.demo.chat.init
 
+import com.demo.chat.client.rsocket.config.ClientRSocketProperties
 import com.demo.chat.client.rsocket.config.CoreRSocketClients
-import com.demo.chat.client.rsocket.config.CoreRSocketProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.client.rsocket.config.SecureConnection
-import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
+import com.demo.chat.deploy.config.client.RSocketClientBeansConfiguration
 import com.demo.chat.deploy.config.client.consul.ConsulDiscoveryRequesterFactory
-import com.demo.chat.deploy.config.properties.AppRSocketProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.service.UserIndexService
@@ -38,27 +37,27 @@ import reactor.core.publisher.Flux
  */
 @Profile("SampleRunner")
 @SpringBootApplication
-@EnableConfigurationProperties(AppRSocketProperties::class)
+@EnableConfigurationProperties(ClientRSocketProperties::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
     SecureConnection::class,
     ConsulDiscoveryRequesterFactory::class,
-    AppClientBeansConfiguration::class,
+    RSocketClientBeansConfiguration::class,
 )
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 class SampleAppSecurityRunner {
 
     @Configuration
-    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) : AppClientBeansConfiguration<Long, String, IndexSearchRequest>(
+    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) : RSocketClientBeansConfiguration<Long, String, IndexSearchRequest>(
         clients,
         ParameterizedTypeReference.forType(Long::class.java)
     )
 
     @Bean
     fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
-                               coreRSocketProps: CoreRSocketProperties
-    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(requesterFactory, coreRSocketProps, ParameterizedTypeReference.forType(
+                               clientRSocketProps: ClientRSocketProperties
+    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(requesterFactory, clientRSocketProps, ParameterizedTypeReference.forType(
         Long::class.java))
 
     @Bean

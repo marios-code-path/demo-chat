@@ -1,7 +1,9 @@
 package com.demo.chat.test.rsocket.properties
 
 import com.demo.chat.client.rsocket.config.ClientRSocketProperties
+import com.demo.chat.client.rsocket.config.RSocketPropertyValue
 import com.demo.chat.test.YamlFileContextInitializer
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -19,7 +21,16 @@ class ClientRSocketPropertiesTests {
     private lateinit var clientProperties: ClientRSocketProperties
 
     @Test
-    fun `should index and load service properties`() {
-        println("PROPERTIES: $clientProperties")
+    fun `should load service properties`() {
+        Assertions.assertThat(clientProperties.config)
+            .containsKeys("key", "index", "persistence", "pubsub", "user", "message", "topic")
+    }
+
+    @Test
+    fun `service property loaded`() {
+        Assertions.assertThat(clientProperties.getServiceConfig("key"))
+            .isInstanceOf(RSocketPropertyValue::class.java)
+            .hasFieldOrPropertyWithValue("dest", "core-service-rsocket")
+            .hasFieldOrPropertyWithValue("prefix", "key.")
     }
 }

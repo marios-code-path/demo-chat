@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.core.ParameterizedTypeReference
 
-open class AppClientBeansConfiguration<T, V, Q>(
+open class RSocketClientBeansConfiguration<T, V, Q>(
     private val clients: CoreClientBeans<T, V, Q>,
     private val keyType: ParameterizedTypeReference<T>
 )  {
