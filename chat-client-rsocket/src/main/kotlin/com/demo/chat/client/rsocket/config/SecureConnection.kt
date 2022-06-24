@@ -7,17 +7,16 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import reactor.netty.tcp.TcpClient
 
-class SecureConnection {
+open class SecureConnection {
+//    TODO move the secure flag to the app arguments
+//    @Value("\${app.unsecure:false}")
+//    var unsecure: Boolean = false
 
-    @Value("\${app.unsecure:false}")
-    var unsecure: Boolean = false
-
-    @Bean
-    fun secureUnsecureTransport(): TcpClientTransport =
+    fun tcpClientTransport(host: String, port: Int, secure: Boolean): TcpClientTransport =
         TcpClientTransport.create(
             TcpClient.create()
-                .host("")
-                .port(1)
+                .host(host)
+                .port(port)
                 .secure { s ->
                     s.sslContext(
                         SslContextBuilder

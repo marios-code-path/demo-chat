@@ -9,7 +9,7 @@ import com.demo.chat.deploy.config.CassandraPersistenceServiceConfiguration
 import com.demo.chat.deploy.config.ContactPointConfiguration
 import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
 import com.demo.chat.client.rsocket.config.CoreRSocketClients
-import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
+import com.demo.chat.deploy.config.client.consul.ConsulDiscoveryRequesterFactory
 import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
@@ -43,7 +43,7 @@ class AppRSocketClientBeansConfiguration(clients: CoreClientBeans<UUID, String, 
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    ConsulRequesterFactory::class,
+    ConsulDiscoveryRequesterFactory::class,
     CoreRSocketClients::class
 )
 class App {

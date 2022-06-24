@@ -5,7 +5,7 @@ import com.demo.chat.client.rsocket.config.CoreRSocketProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.client.rsocket.config.SecureConnection
 import com.demo.chat.deploy.config.client.AppClientBeansConfiguration
-import com.demo.chat.deploy.config.client.consul.ConsulRequesterFactory
+import com.demo.chat.deploy.config.client.consul.ConsulDiscoveryRequesterFactory
 import com.demo.chat.deploy.config.properties.AppRSocketProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
@@ -43,7 +43,7 @@ import reactor.core.publisher.Flux
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
     SecureConnection::class,
-    ConsulRequesterFactory::class,
+    ConsulDiscoveryRequesterFactory::class,
     AppClientBeansConfiguration::class,
 )
 @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)

@@ -1,0 +1,27 @@
+app:
+  rsocket:
+    client:
+      config:
+        core:
+          pubsub:
+            dest: core-service-rsocket
+            prefix: pubsub.
+          index:
+            dest: core-service-rsocket
+            prefix: index.
+          persistence:
+            dest: core-service-rsocket
+            prefix: persist.
+          key:
+            dest: core-service-rsocket
+            prefix: key.
+        edge:
+          message:
+            dest: core-service-rsocket
+            prefix: message.
+          topic:
+            dest: core-service-rsocket
+            prefix: topic.
+          user:
+            dest: core-service-rsocket
+            prefix: user.
