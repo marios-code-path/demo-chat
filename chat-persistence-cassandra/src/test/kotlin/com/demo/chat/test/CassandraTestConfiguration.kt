@@ -2,13 +2,14 @@ package com.demo.chat.test
 
 import com.playtika.test.common.utils.ContainerUtils.containerLogsConsumer
 import com.playtika.test.common.utils.ContainerUtils.startAndLogTime
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.TestInstance
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfigureOrder
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
@@ -17,9 +18,19 @@ import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.SchemaAction
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
 import java.time.Duration
+import java.util.*
+
+interface KeyConfiguration {
+    val keyType: String
+}
+
+data class LongKeyConfiguration(override val keyType: String = "Long") : KeyConfiguration
+data class UUIDKeyConfiguration(override val keyType: String = "UUID") : KeyConfiguration
+data class StringKeyConfiguration(override val keyType: String = "String") : KeyConfiguration
 
 @AutoConfigureOrder
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -27,13 +38,22 @@ import java.time.Duration
 @ComponentScan("com.demo.chat.test")
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 @EnableConfigurationProperties(CassandraProperties::class)
-class CassandraTestConfiguration(val props: CassandraProperties) {
+class CassandraTestConfiguration(val props: CassandraProperties, val keyConfiguration: KeyConfiguration) {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
+    // TODO convert to embedded.cassandra properties
     // start container, and re-wire cassandraProperties to contain
     // values (IP, Port, DC...) that container provides.
     @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
-    fun cassandraContainer(environment: ConfigurableEnvironment): CassandraContainer<*> {
+    fun cassandraContainer(context: ConfigurableApplicationContext): CassandraContainer<*> {
+        val ddlResource = "keyspace-${keyConfiguration.keyType}.cql"
+        val resource = context.getResource(ddlResource)
+
+        Assertions
+            .assertThat(resource)
+            .isNotNull
+            .hasFieldOrPropertyWithValue("readable", true)
+
         val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {
             log.debug("Testcontainer-Cassandra is on port:  ${props.port}")
             //withConfigurationOverride("cassandra.yaml")
@@ -43,13 +63,13 @@ class CassandraTestConfiguration(val props: CassandraProperties) {
             withNetwork(Network.SHARED)
             withConfigurationOverride("cassandra")
             withStartupTimeout(Duration.ofSeconds(60))
-            withInitScript("keyspace.cql")
+            withInitScript(ddlResource)
             startAndLogTime(this)
 
             log.debug("Test Container STARTED")
         }
 
-        val host = container.containerIpAddress
+        val host = container.host
         val mappedPort = container.getMappedPort(props.port)
         log.debug("Container is reachable on port: $mappedPort")
 

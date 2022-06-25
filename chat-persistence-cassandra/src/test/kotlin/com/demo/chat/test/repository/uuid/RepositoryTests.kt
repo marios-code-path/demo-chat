@@ -1,4 +1,4 @@
-package com.demo.chat.test.repository
+package com.demo.chat.test.repository.uuid
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

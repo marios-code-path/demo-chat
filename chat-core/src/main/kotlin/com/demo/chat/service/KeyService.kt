@@ -8,3 +8,7 @@ interface  IKeyService <T> {
     fun rem(key: Key<T>): Mono<Void>
     fun exists(key: Key<T>): Mono<Boolean>
 }
+
+interface IKeyGenerator <T> {
+    open fun nextKey(): T
+}

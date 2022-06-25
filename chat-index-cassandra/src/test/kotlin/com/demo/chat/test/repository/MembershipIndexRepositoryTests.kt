@@ -5,9 +5,7 @@ import com.demo.chat.domain.cassandra.TopicMembershipByMember
 import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
-import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.CassandraTestConfiguration
-import com.demo.chat.test.TestBase
+import com.demo.chat.test.*
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -15,6 +13,7 @@ import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.test.StepVerifier
 import java.util.*
@@ -22,8 +21,9 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class])
-class MembershipIndexRepositoryTests : CassandraSchemaTest() {
+    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class])
+@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
+class MembershipIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var byMemberRepo: TopicMembershipByMemberRepository<UUID>
 

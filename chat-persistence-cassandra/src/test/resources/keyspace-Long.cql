@@ -6,40 +6,40 @@ CREATE TYPE chat.event_key_meta(
 );
 
 CREATE TABLE chat.keys(
-id UUID,
+id BIGINT,
 kind varchar ,
 PRIMARY KEY(id) );
 
 
 CREATE TABLE chat.topic_membership
 (
-    id       UUID,
-    member   UUID,
-    memberOf UUID,
+    id       BIGINT,
+    member   BIGINT,
+    memberOf BIGINT,
     PRIMARY KEY (id)
 );
 
 CREATE TABLE chat.topic_membership_by_member
 (
-    id       UUID,
-    member   UUID,
-    memberOf UUID,
+    id       BIGINT,
+    member   BIGINT,
+    memberOf BIGINT,
     PRIMARY KEY (member)
 );
 
 CREATE TABLE chat.topic_membership_by_member_of
 (
-    id       UUID,
-    member   UUID,
-    memberOf UUID,
+    id       BIGINT,
+    member   BIGINT,
+    memberOf BIGINT,
     PRIMARY KEY (memberOf)
 );
 
 
 CREATE TABLE chat.chat_message_id (
-    msg_id TIMEUUID,
-    user_id UUID,
-    topic_id UUID,
+    msg_id TIMESTAMP,
+    user_id BIGINT,
+    topic_id BIGINT,
     text    varchar,
     msg_time timestamp,
     visible Boolean,
@@ -47,9 +47,9 @@ CREATE TABLE chat.chat_message_id (
 WITH CLUSTERING ORDER BY (msg_time DESC);
 
 CREATE TABLE chat.chat_message_user (
-    msg_id TIMEUUID,
-    user_id UUID,
-    topic_id UUID,
+    msg_id TIMESTAMP,
+    user_id BIGINT,
+    topic_id BIGINT,
     text    varchar,
     msg_time timestamp,
     visible Boolean,
@@ -57,9 +57,9 @@ CREATE TABLE chat.chat_message_user (
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 CREATE TABLE chat.chat_message_topic (
-    msg_id TIMEUUID,
-    user_id UUID,
-    topic_id UUID,
+    msg_id TIMESTAMP,
+    user_id BIGINT,
+    topic_id BIGINT,
     text    varchar,
     msg_time timestamp,
     visible Boolean,
@@ -68,14 +68,14 @@ WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 
 CREATE TABLE chat.chat_room(
-  room_id UUID,
+  room_id BIGINT,
   name varchar,
   active Boolean,
   PRIMARY KEY(room_id)
 );
 
 CREATE TABLE chat.chat_room_name(
-room_id UUID,
+room_id BIGINT,
 name varchar,
 active Boolean,
 PRIMARY KEY(name, room_id))
@@ -84,7 +84,7 @@ WITH CLUSTERING ORDER BY (room_id DESC);
 
 CREATE TABLE chat.chat_user
 (
-    user_id   UUID,
+    user_id   BIGINT,
     handle    varchar,
     name      varchar,
     image_uri varchar,
@@ -94,7 +94,7 @@ CREATE TABLE chat.chat_user
 
 CREATE TABLE chat.chat_user_handle
 (
-    user_id   UUID,
+    user_id   BIGINT,
     handle    varchar,
     name      varchar,
     image_uri varchar,

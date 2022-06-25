@@ -1,11 +1,12 @@
 package com.demo.chat.test.persistence
 
-import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.User
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.TestUUIDKeyGenerator
+import com.demo.chat.test.UUIDKeyConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -14,18 +15,24 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.core.io.Resource
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.*
+import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
-class KeyServiceTests : CassandraSchemaTest() {
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+)
+@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
+class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
 
-    @Value("classpath:keyspace.cql")
+    @Value("classpath:keyspace-Long.cql")
     override lateinit var cqlFile: Resource
 
     @BeforeAll
@@ -36,17 +43,17 @@ class KeyServiceTests : CassandraSchemaTest() {
     @Test
     fun `created key should Exist`() {
         val keyStream = svc
-                .key(User::class.java)
-                .flatMap(svc::exists)
+            .key(User::class.java)
+            .flatMap(svc::exists)
 
         StepVerifier
-                .create(keyStream)
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isTrue()
-                }
-                .verifyComplete()
+            .create(keyStream)
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isTrue()
+            }
+            .verifyComplete()
     }
 
     @Test
@@ -54,26 +61,26 @@ class KeyServiceTests : CassandraSchemaTest() {
         val key = svc.key(User::class.java)
 
         StepVerifier
-                .create(key)
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrProperty("id")
-                }
-                .verifyComplete()
+            .create(key)
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrProperty("id")
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `should delete a key`() {
         val key = svc.key(User::class.java)
         val deleteStream = Flux
-                .from(key)
-                .flatMap(svc::rem)
+            .from(key)
+            .flatMap(svc::rem)
 
         StepVerifier
-                .create(deleteStream)
-                .expectSubscription()
-                .verifyComplete()
+            .create(deleteStream)
+            .expectSubscription()
+            .verifyComplete()
     }
 }

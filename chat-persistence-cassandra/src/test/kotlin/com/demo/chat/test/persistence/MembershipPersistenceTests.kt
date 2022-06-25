@@ -1,10 +1,8 @@
 package com.demo.chat.test.persistence
 
-import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.cassandra.TopicMembershipByKey
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
-import com.demo.chat.service.IKeyService
 import com.demo.chat.service.MembershipPersistence
 import com.demo.chat.service.persistence.MembershipPersistenceCassandra
 import com.demo.chat.test.TestBase
@@ -31,13 +29,9 @@ class MembershipPersistenceTests {
     @MockBean
     lateinit var repo: TopicMembershipRepository<UUID>
 
-    private val keyService: IKeyService<UUID> = TestUUIDKeyService()
+    private val keyService = TestUUIDKeyService()
 
-    private val keyId = UUIDs.timeBased()
-    private val memberId = UUIDs.timeBased()
-    private val topicId = UUIDs.timeBased()
-
-    private val testChatMembership = TopicMembershipByKey(keyId, memberId, topicId)
+    private val testChatMembership = TopicMembershipByKey(keyService.nextKey(), keyService.nextKey(), keyService.nextKey())
 
     @BeforeEach
     fun setUp() {

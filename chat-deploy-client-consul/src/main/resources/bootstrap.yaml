@@ -1,16 +1,7 @@
-super:
-  app:
-    config:
-      core:
-        dest: localhost
-        prefix: core.
-      edge:
-        dest: local
-        prefix: edge.
 app:
   rsocket:
-    config:
-      core:
+    client:
+      config:
         pubsub:
           dest: core-service-rsocket
           prefix: pubsub.
@@ -23,7 +14,6 @@ app:
         key:
           dest: core-service-rsocket
           prefix: key.
-      edge:
         message:
           dest: core-service-rsocket
           prefix: message.
@@ -33,9 +23,3 @@ app:
         user:
           dest: core-service-rsocket
           prefix: user.
-spring:
-  cloud:
-    consul:
-      config:
-        format: YAML
-        data-key: data

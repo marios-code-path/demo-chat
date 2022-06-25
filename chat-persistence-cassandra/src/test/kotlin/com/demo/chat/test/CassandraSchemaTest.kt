@@ -1,10 +1,16 @@
 package com.demo.chat.test
 
+import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.IKeyService
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.annotation.Bean
 import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.testcontainers.containers.CassandraContainer
@@ -13,11 +19,18 @@ import java.io.File
 import java.nio.file.Files
 import java.time.Duration
 import java.time.Instant
+import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
+import kotlin.random.Random
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-open class CassandraSchemaTest {
+open class CassandraSchemaTest<T>(val keyGenerator: IKeyGenerator<T>) {
     @Autowired
     lateinit var template: ReactiveCassandraTemplate
+
+    @Autowired
+    private lateinit var context: ConfigurableApplicationContext
 
     @Autowired
     lateinit var container: CassandraContainer<Nothing>
@@ -28,17 +41,19 @@ open class CassandraSchemaTest {
 
     val log = LoggerFactory.getLogger("TEST")
 
+    private val atom = AtomicLong(abs(Random.nextLong()))
+
     fun execStatement(statements: Flux<String>): Flux<Boolean> {
         return template
-                .reactiveCqlOperations
-                .execute(statements)
-                .doOnError {
-                    statements
-                            .doOnNext { println("exec: $it") }
-                            .blockLast()
-                    log.info("ErrCompleted: $statements.")
-                    log.info("THROWN : ${it.message}")
-                }
+            .reactiveCqlOperations
+            .execute(statements)
+            .doOnError {
+                statements
+                    .doOnNext { println("exec: $it") }
+                    .blockLast()
+                log.info("ErrCompleted: $statements.")
+                log.info("THROWN : ${it.message}")
+            }
     }
 
     @BeforeEach
@@ -49,14 +64,14 @@ open class CassandraSchemaTest {
         }
 
         execStatement(Flux.fromArray(cqlDrop.toTypedArray()))
-                .blockLast(Duration.ofSeconds(5))
+            .blockLast(Duration.ofSeconds(5))
     }
 
     fun sqlFile(file: File) =
-            String(Files.readAllBytes(file.toPath()))
-                    .split(";")
-                    .map(String::trim)
-                    .filter {
-                        it.isNotEmpty()
-                    }
+        String(Files.readAllBytes(file.toPath()))
+            .split(";")
+            .map(String::trim)
+            .filter {
+                it.isNotEmpty()
+            }
 }

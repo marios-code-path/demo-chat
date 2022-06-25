@@ -1,22 +1,61 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
+import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.IKeyService
+import org.springframework.context.annotation.Bean
 import reactor.core.publisher.Mono
 import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
+import kotlin.random.Random
 
-class TestStringKeyService : IKeyService<String> {
+class TestStringKeyGen : IKeyGenerator<String> {
+    override fun nextKey(): String = randomAlphaNumeric(10)
+}
+
+class TestUUIDKeyGenerator : IKeyGenerator<UUID> {
+    override fun nextKey(): UUID = UUID.randomUUID()
+}
+
+class TestLongKeyGenerator : IKeyGenerator<Long> {
+    private val atom = AtomicLong(abs(Random.nextLong()))
+
+    override fun nextKey(): Long = atom.incrementAndGet()
+}
+
+class TestGeneratorKeyService<T>(val generator: IKeyGenerator<T>) : IKeyService<T> {
+    override fun <S> key(kind: Class<S>): Mono<out Key<T>> =
+        Mono.just(Key.funKey(generator.nextKey()))
+
+    override fun rem(key: Key<T>): Mono<Void> = Mono.empty()
+
+    override fun exists(key: Key<T>): Mono<Boolean> = Mono.just(true)
+}
+
+class TestStringKeyService : IKeyService<String>, IKeyGenerator<String> {
     override fun <S> key(kind: Class<S>): Mono<out Key<String>> =
-            Mono.just(Key.funKey(randomAlphaNumeric(10)))
+        Mono.just(Key.funKey(nextKey()))
 
     override fun rem(key: Key<String>): Mono<Void> = Mono.empty()
     override fun exists(key: Key<String>): Mono<Boolean> = Mono.just(true)
+    override fun nextKey(): String = randomAlphaNumeric(10)
 }
 
-class TestUUIDKeyService : IKeyService<UUID> {
+class TestUUIDKeyService : IKeyService<UUID>, IKeyGenerator<UUID> {
     override fun <S> key(kind: Class<S>): Mono<out Key<UUID>> =
-            Mono.just(Key.funKey(UUID.randomUUID()))
+        Mono.just(Key.funKey(nextKey()))
 
     override fun rem(key: Key<UUID>): Mono<Void> = Mono.empty()
     override fun exists(key: Key<UUID>): Mono<Boolean> = Mono.just(true)
+    override fun nextKey(): UUID = UUID.randomUUID()
+}
+
+class TestLongKeyService : IKeyService<Long>, IKeyGenerator<Long> {
+    private val atom = AtomicLong(abs(Random.nextLong()))
+
+    override fun <S> key(kind: Class<S>): Mono<out Key<Long>> = Mono.just(Key.funKey(nextKey()))
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
+    override fun exists(key: Key<Long>): Mono<Boolean> = Mono.just(true)
+    override fun nextKey(): Long = atom.incrementAndGet()
 }
