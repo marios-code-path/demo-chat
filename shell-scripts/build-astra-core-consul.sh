@@ -1,5 +1,5 @@
-source ../chat-deloy/deploy-ports.sh
-source ./cassandra-options.sh
+source ../shell-scripts/ports.sh
+source ../shell-scripts/astra-options.sh
 export DOCKER_RUN=$1;shift
 # how to auto-discover consul using dns alone!
 export SPRING_PROFILE="cassandra-astra"
@@ -18,6 +18,12 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dspring.cloud.consul.port=${CONSUL_PORT} \
 ${CASSANDRA_OPTIONS}"
 
-mvn spring-boot:build-image
+cd ../chat-deploy-cassandra
 
-[ ! -e $DOCKER_RUN ] && docker run --rm -d $APP_IMAGE_NAME:$APP_VERSION
+[[ $DOCKER_RUN == "" ]] && exit
+[[ $DOCKER_RUN == "build" ]] && MAVEN_ARG="spring-boot:build-image"
+[[ $DOCKER_RUN == "run" ]] && MAVEN_ARG="spring-boot:run"
+
+mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG
+
+[[ $DOCKER_RUN == "docker" ]] && docker run --rm -d $APP_IMAGE_NAME:$APP_VERSION

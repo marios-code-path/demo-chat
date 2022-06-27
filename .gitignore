@@ -2,6 +2,8 @@ HELP.md
 /target/
 !.mvn/wrapper/maven-wrapper.jar
 target
+azure
+astra
 
 ### STS ###
 .apt_generated
