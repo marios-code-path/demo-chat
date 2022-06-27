@@ -7,7 +7,6 @@ import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
-import com.demo.chat.test.UUIDKeyConfiguration
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Assertions
@@ -29,9 +28,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+    classes = [CassandraTestConfiguration::class]
 )
-@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
 class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var repo: ChatUserRepository<UUID>

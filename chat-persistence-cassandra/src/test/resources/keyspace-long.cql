@@ -1,17 +1,17 @@
-DROP KEYSPACE IF EXISTS chat;
-CREATE KEYSPACE IF NOT EXISTS chat WITH replication={'class' : 'SimpleStrategy', 'replication_factor':'1'};
+DROP KEYSPACE IF EXISTS chat_long;
+CREATE KEYSPACE IF NOT EXISTS chat_long WITH replication={'class' : 'SimpleStrategy', 'replication_factor':'1'};
 
-CREATE TYPE chat.event_key_meta(
+CREATE TYPE chat_long.event_key_meta(
     kind varchar
 );
 
-CREATE TABLE chat.keys(
+CREATE TABLE chat_long.keys(
 id BIGINT,
 kind varchar ,
 PRIMARY KEY(id) );
 
 
-CREATE TABLE chat.topic_membership
+CREATE TABLE chat_long.topic_membership
 (
     id       BIGINT,
     member   BIGINT,
@@ -19,7 +19,7 @@ CREATE TABLE chat.topic_membership
     PRIMARY KEY (id)
 );
 
-CREATE TABLE chat.topic_membership_by_member
+CREATE TABLE chat_long.topic_membership_by_member
 (
     id       BIGINT,
     member   BIGINT,
@@ -27,7 +27,7 @@ CREATE TABLE chat.topic_membership_by_member
     PRIMARY KEY (member)
 );
 
-CREATE TABLE chat.topic_membership_by_member_of
+CREATE TABLE chat_long.topic_membership_by_member_of
 (
     id       BIGINT,
     member   BIGINT,
@@ -36,7 +36,7 @@ CREATE TABLE chat.topic_membership_by_member_of
 );
 
 
-CREATE TABLE chat.chat_message_id (
+CREATE TABLE chat_long.chat_message_id (
     msg_id TIMESTAMP,
     user_id BIGINT,
     topic_id BIGINT,
@@ -46,7 +46,7 @@ CREATE TABLE chat.chat_message_id (
     PRIMARY KEY (msg_id, msg_time))
 WITH CLUSTERING ORDER BY (msg_time DESC);
 
-CREATE TABLE chat.chat_message_user (
+CREATE TABLE chat_long.chat_message_user (
     msg_id TIMESTAMP,
     user_id BIGINT,
     topic_id BIGINT,
@@ -56,7 +56,7 @@ CREATE TABLE chat.chat_message_user (
     PRIMARY KEY (user_id, msg_time, msg_id))
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
-CREATE TABLE chat.chat_message_topic (
+CREATE TABLE chat_long.chat_message_topic (
     msg_id TIMESTAMP,
     user_id BIGINT,
     topic_id BIGINT,
@@ -67,14 +67,14 @@ CREATE TABLE chat.chat_message_topic (
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 
-CREATE TABLE chat.chat_room(
+CREATE TABLE chat_long.chat_room(
   room_id BIGINT,
   name varchar,
   active Boolean,
   PRIMARY KEY(room_id)
 );
 
-CREATE TABLE chat.chat_room_name(
+CREATE TABLE chat_long.chat_room_name(
 room_id BIGINT,
 name varchar,
 active Boolean,
@@ -82,7 +82,7 @@ PRIMARY KEY(name, room_id))
 WITH CLUSTERING ORDER BY (room_id DESC);
 
 
-CREATE TABLE chat.chat_user
+CREATE TABLE chat_long.chat_user
 (
     user_id   BIGINT,
     handle    varchar,
@@ -92,7 +92,7 @@ CREATE TABLE chat.chat_user
     PRIMARY KEY (user_id)
 );
 
-CREATE TABLE chat.chat_user_handle
+CREATE TABLE chat_long.chat_user_handle
 (
     user_id   BIGINT,
     handle    varchar,

@@ -6,7 +6,6 @@ import com.demo.chat.service.persistence.KeyServiceCassandra
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
-import com.demo.chat.test.UUIDKeyConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -26,18 +25,17 @@ import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+    classes = [CassandraTestConfiguration::class]
 )
-@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
 class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
 
-    @Value("classpath:keyspace-Long.cql")
+    @Value("classpath:keyspace-\${keyType}.cql")
     override lateinit var cqlFile: Resource
 
     @BeforeAll
     fun setUp() {
-        this.svc = KeyServiceCassandra(template, UUIDs::timeBased)
+        this.svc = KeyServiceCassandra(template, keyGenerator::nextKey)
     }
 
     @Test

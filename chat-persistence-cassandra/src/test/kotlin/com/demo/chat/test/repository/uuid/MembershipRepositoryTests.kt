@@ -6,7 +6,6 @@ import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
-import com.demo.chat.test.UUIDKeyConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -26,9 +25,8 @@ import kotlin.streams.toList
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+    classes = [CassandraTestConfiguration::class]
 )
-@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
 class MembershipRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>

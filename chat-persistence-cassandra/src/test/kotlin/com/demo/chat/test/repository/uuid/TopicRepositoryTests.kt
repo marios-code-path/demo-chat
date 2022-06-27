@@ -5,28 +5,28 @@ import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.cassandra.ChatTopic
 import com.demo.chat.domain.cassandra.ChatTopicKey
 import com.demo.chat.repository.cassandra.TopicRepository
-import com.demo.chat.test.*
+import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.TestBase
+import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.context.annotation.PropertySource
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.switchIfEmpty
 import reactor.test.StepVerifier
 import java.util.*
-import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+    classes = [CassandraTestConfiguration::class]
 )
-@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
 class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val ROOMNAME = "XYZ"

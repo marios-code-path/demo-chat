@@ -1,0 +1,11 @@
+Truncate Table chat_long.keys;
+Truncate Table chat_long.topic_membership;
+Truncate Table chat_long.topic_membership_by_member;
+Truncate Table chat_long.topic_membership_by_member_of;
+Truncate Table chat_long.chat_message_id;
+Truncate Table chat_long.chat_message_user;
+Truncate Table chat_long.chat_message_topic;
+Truncate Table chat_long.chat_room;
+Truncate Table chat_long.chat_room_name;
+Truncate Table chat_long.chat_user;
+Truncate Table chat_long.chat_user_handle;

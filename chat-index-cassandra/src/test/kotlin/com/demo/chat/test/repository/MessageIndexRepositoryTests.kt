@@ -10,7 +10,6 @@ import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
-import com.demo.chat.test.UUIDKeyConfiguration
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -29,9 +28,7 @@ import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class,
-UUIDKeyConfiguration::class])
-@TestPropertySource(properties = ["embedded.cassandra.enabled=false"])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestConfiguration::class])
 class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val MSGTEXT = "SUP TEST"

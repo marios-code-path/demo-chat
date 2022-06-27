@@ -4,7 +4,10 @@ import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.cassandra.ChatUserHandle
 import com.demo.chat.domain.cassandra.ChatUserHandleKey
 import com.demo.chat.repository.cassandra.ChatUserHandleRepository
-import com.demo.chat.test.*
+import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.TestBase
+import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -22,7 +25,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class, UUIDKeyConfiguration::class]
+    classes = [CassandraTestConfiguration::class]
 )
 class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
