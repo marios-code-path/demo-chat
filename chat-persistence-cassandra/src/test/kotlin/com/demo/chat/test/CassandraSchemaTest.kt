@@ -36,7 +36,7 @@ open class CassandraSchemaTest<T>(val keyGenerator: IKeyGenerator<T>) {
     lateinit var container: CassandraContainer<Nothing>
 
     @Autowired
-    @Value("classpath:truncate_\${keyType}.cql")
+    @Value("classpath:truncate-\${keyType:uuid}.cql")
     open lateinit var cqlFile: Resource
 
     val log = LoggerFactory.getLogger("TEST")

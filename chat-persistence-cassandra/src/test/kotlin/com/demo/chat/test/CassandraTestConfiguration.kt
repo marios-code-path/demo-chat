@@ -29,7 +29,7 @@ import java.time.Duration
 class CassandraTestConfiguration(val props: CassandraProperties) {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
-    @Value("\${keyType}")
+    @Value("\${keyType:uuid}")
     private lateinit var keyType: String
 
     // TODO convert to embedded.cassandra properties
