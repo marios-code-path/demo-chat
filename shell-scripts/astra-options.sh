@@ -19,7 +19,7 @@ TOKEN=`cat $TOKEN_FILE | jq .token`
 ABSOLUTE_SCP=`readlink -f $SECURE_CONNECT_PATH`
 
 export CASSANDRA_OPTIONS="\
--Dspring.data.cassandra.keyspace-name=${ASTRA_DB_KEYSPACE} \
+-Dspring.data.cassandra.keyspace-name=\"${ASTRA_DB_KEYSPACE}\" \
 -Dspring.data.cassandra.username=${CLIENT_ID} \
 -Dspring.data.cassandra.password=${SECRET_KEY} \
 -Dastra.secure-connect-bundle=${ABSOLUTE_SCP}"
