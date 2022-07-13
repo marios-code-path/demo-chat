@@ -1,10 +1,9 @@
-package com.demo.chat.config.index.memory
+package com.demo.chat.service.impl.index.lucene
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import java.util.function.Function
 
 open class MessageLuceneIndex<T>(

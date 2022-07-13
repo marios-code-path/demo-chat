@@ -1,10 +1,9 @@
-package com.demo.chat.config.index.memory
+package com.demo.chat.service.impl.index.lucene
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.impl.lucene.index.LuceneIndex
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.queryparser.classic.QueryParser
 import org.apache.lucene.search.IndexSearcher
@@ -21,7 +20,9 @@ open class MembershipLuceneIndex<T>(
         val indexReader: DirectoryReader = DirectoryReader.open(directory)
         val indexSearcher = IndexSearcher(indexReader)
 
-        val hit = indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.third).totalHits
+        val hit = indexSearcher.search(QueryParser(query.first, analyzer)
+            .parse(query.second), query.third)
+            .totalHits
         sink.success(hit.value)
     }
 }

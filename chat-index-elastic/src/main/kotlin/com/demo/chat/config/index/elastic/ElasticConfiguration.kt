@@ -1,4 +1,4 @@
-package com.demo.chat.config.elastic
+package com.demo.chat.config.index.elastic
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

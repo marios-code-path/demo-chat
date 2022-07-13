@@ -12,7 +12,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ElasticContainerConfiguration::class])
-class HealthTest {
+class ElasticHealthTest {
     @Autowired
     private lateinit var webClient: WebTestClient
 

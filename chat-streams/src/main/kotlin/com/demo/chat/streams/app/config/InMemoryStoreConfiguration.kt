@@ -1,6 +1,6 @@
 package com.demo.chat.streams.app.config
 
-import com.demo.chat.config.index.memory.LuceneIndexBeans
+import com.demo.chat.config.index.lucene.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.domain.*
 import com.demo.chat.domain.lucene.IndexEntryEncoder

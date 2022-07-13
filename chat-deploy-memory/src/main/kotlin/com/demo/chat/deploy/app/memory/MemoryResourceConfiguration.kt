@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.app.memory
 
-import com.demo.chat.config.index.memory.AuthMetaIndexLucene
-import com.demo.chat.config.index.memory.LuceneIndexBeans
+import com.demo.chat.service.impl.index.lucene.AuthMetaIndexLucene
+import com.demo.chat.config.index.lucene.LuceneIndexBeans
 import com.demo.chat.config.memory.InMemoryPersistenceBeans
 import com.demo.chat.config.memory.LongKeyServiceBeans
 import com.demo.chat.domain.IndexSearchRequest
