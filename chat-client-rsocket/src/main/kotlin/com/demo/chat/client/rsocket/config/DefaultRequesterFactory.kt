@@ -1,10 +1,11 @@
 package com.demo.chat.client.rsocket.config
 
+import com.demo.chat.secure.rsocket.TransportFactory
 import org.springframework.messaging.rsocket.RSocketRequester
 
 class DefaultRequesterFactory(
     private val builder: RSocketRequester.Builder,
-    private val connection: SecureConnection,
+    private val connection: TransportFactory,
     private val properties: Map<String, RSocketProperty>
 ) : RequesterFactory {
     private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = LinkedHashMap()
@@ -20,7 +21,7 @@ class DefaultRequesterFactory(
         val pair = getServicePair(serviceKey)
         if(!perHostRequester.containsKey(pair)) {
             perHostRequester[pair] = builder
-                .connect(connection.tcpClientTransport(pair.first, pair.second, false))
+                .connect(connection.tcpClientTransport(pair.first, pair.second))
                 .log()
                 .block()!!
         }

@@ -1,18 +1,13 @@
-package com.demo.chat.client.rsocket.config
+package com.demo.chat.secure.rsocket
 
 import io.netty.handler.ssl.SslContextBuilder
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.rsocket.transport.netty.client.TcpClientTransport
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.annotation.Bean
 import reactor.netty.tcp.TcpClient
 
-open class SecureConnection {
-//    TODO move the secure flag to the app arguments
-//    @Value("\${app.unsecure:false}")
-//    var unsecure: Boolean = false
+open class InsecureConnection : TransportFactory {
 
-    fun tcpClientTransport(host: String, port: Int, secure: Boolean): TcpClientTransport =
+    override fun tcpClientTransport(host: String, port: Int): TcpClientTransport =
         TcpClientTransport.create(
             TcpClient.create()
                 .host(host)

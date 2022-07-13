@@ -2,8 +2,8 @@ package com.demo.chat.init
 
 import com.demo.chat.client.rsocket.config.ClientRSocketProperties
 import com.demo.chat.client.rsocket.config.CoreRSocketClients
+import com.demo.chat.secure.rsocket.PKISecureConnection
 import com.demo.chat.client.rsocket.config.RequesterFactory
-import com.demo.chat.client.rsocket.config.SecureConnection
 import com.demo.chat.deploy.config.client.RSocketClientBeansConfiguration
 import com.demo.chat.deploy.config.client.consul.ConsulDiscoveryRequesterFactory
 import com.demo.chat.domain.*
@@ -41,24 +41,29 @@ import reactor.core.publisher.Flux
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    SecureConnection::class,
+    PKISecureConnection::class,
     ConsulDiscoveryRequesterFactory::class,
     RSocketClientBeansConfiguration::class,
 )
-@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
+@EnableGlobalMethodSecurity(securedEnabled = true)
 class SampleAppSecurityRunner {
 
     @Configuration
-    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) : RSocketClientBeansConfiguration<Long, String, IndexSearchRequest>(
-        clients,
-        ParameterizedTypeReference.forType(Long::class.java)
-    )
+    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) :
+        RSocketClientBeansConfiguration<Long, String, IndexSearchRequest>(
+            clients,
+            ParameterizedTypeReference.forType(Long::class.java)
+        )
 
     @Bean
-    fun coreRSocketClientBeans(requesterFactory: RequesterFactory,
-                               clientRSocketProps: ClientRSocketProperties
-    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(requesterFactory, clientRSocketProps, ParameterizedTypeReference.forType(
-        Long::class.java))
+    fun coreRSocketClientBeans(
+        requesterFactory: RequesterFactory,
+        clientRSocketProps: ClientRSocketProperties
+    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(
+        requesterFactory,
+        clientRSocketProps,
+        ParameterizedTypeReference.forType(Long::class.java)
+    )
 
     @Bean
     fun appReady(
@@ -72,7 +77,7 @@ class SampleAppSecurityRunner {
         val anotherUserKey = userPersistence.key().block()!!
 
         val users = listOf(
-            User.create(princpialKey, "mario", "mario", "https://foo"),
+            User.create(princpialKey, "test", "test", "https://foo"),
             User.create(ANONYMOUS_KEY, "ANON", "anonymous", "null")
         )
 

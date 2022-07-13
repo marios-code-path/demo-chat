@@ -5,6 +5,9 @@ target
 azure
 astra
 
+### Key Stores ###
+*.jks
+
 ### STS ###
 .apt_generated
 .classpath

@@ -16,13 +16,13 @@ CLIENT_ID=`cat $TOKEN_FILE | jq .clientId`
 # shellcheck disable=SC2006
 TOKEN=`cat $TOKEN_FILE | jq .token`
 
-ABSOLUTE_SCP=`readlink -f $SECURE_CONNECT_PATH`
+ABSOLUTE_SCB=`readlink -f $SECURE_CONNECT_PATH`
 
 export CASSANDRA_OPTIONS="\
 -Dspring.data.cassandra.keyspace-name=\"${ASTRA_DB_KEYSPACE}\" \
 -Dspring.data.cassandra.username=${CLIENT_ID} \
 -Dspring.data.cassandra.password=${SECRET_KEY} \
--Dastra.secure-connect-bundle=${ABSOLUTE_SCP}"
+-Dastra.secure-connect-bundle=${ABSOLUTE_SCB}"
 
 #
 #curl --request POST \

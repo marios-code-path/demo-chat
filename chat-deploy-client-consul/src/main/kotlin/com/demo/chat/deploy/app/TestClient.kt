@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.app
 
 import com.demo.chat.client.rsocket.config.*
+import com.demo.chat.secure.rsocket.InsecureConnection
 import com.demo.chat.config.CoreClientBeans
 import com.demo.chat.deploy.config.client.RSocketClientBeansConfiguration
 import com.demo.chat.domain.IndexSearchRequest
@@ -46,7 +47,7 @@ class TestClient {
     ): DefaultRequesterFactory =
         DefaultRequesterFactory(
             builder,
-            SecureConnection(),
+            InsecureConnection(),
             clientConnectionProps.config
         )
 

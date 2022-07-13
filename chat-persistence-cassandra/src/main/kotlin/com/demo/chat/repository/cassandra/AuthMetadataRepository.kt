@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono
 
 interface AuthMetadataRepository<T> : ReactiveCassandraRepository<AuthMetadata<T>, T> {
     fun findByKeyId(id: T): Mono<AuthMetadata<T>>
-    fun findByKeyIn(ids: List<T>): Flux<AuthMetadata<T>>
+    fun findByKeysIn(ids: List<T>): Flux<AuthMetadata<T>>
 }

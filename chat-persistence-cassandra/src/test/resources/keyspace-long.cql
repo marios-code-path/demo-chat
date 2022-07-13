@@ -41,7 +41,7 @@ CREATE TABLE chat_long.chat_message_id (
     user_id BIGINT,
     topic_id BIGINT,
     text    varchar,
-    msg_time timestamp,
+    msg_time TIMESTAMP,
     visible Boolean,
     PRIMARY KEY (msg_id, msg_time))
 WITH CLUSTERING ORDER BY (msg_time DESC);
