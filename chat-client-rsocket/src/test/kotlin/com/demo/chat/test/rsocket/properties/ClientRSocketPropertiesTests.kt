@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.properties
 
-import com.demo.chat.client.rsocket.config.ClientRSocketProperties
+import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RSocketPropertyValue
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
@@ -13,12 +13,12 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 
 @ExtendWith(SpringExtension::class)
 @SpringJUnitConfig(initializers = [ClientRSocketPropertiesTests.TestProperties::class])
-@EnableConfigurationProperties(ClientRSocketProperties::class)
+@EnableConfigurationProperties(RSocketClientProperties::class)
 class ClientRSocketPropertiesTests {
     class TestProperties : YamlFileContextInitializer("classpath:clientRSocketTestProperties.yaml")
 
     @Autowired
-    private lateinit var clientProperties: ClientRSocketProperties
+    private lateinit var clientProperties: RSocketClientProperties
 
     @Test
     fun `should load service properties`() {

@@ -2,23 +2,19 @@ package com.demo.chat.client.rsocket.config
 
 import com.demo.chat.client.rsocket.core.*
 import com.demo.chat.client.rsocket.core.impl.*
-import com.demo.chat.config.CoreClientBeans
+import com.demo.chat.config.CoreClients
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.TopicPubSubService
-import org.slf4j.LoggerFactory
 import org.springframework.core.ParameterizedTypeReference
-import org.springframework.messaging.rsocket.RSocketRequester
 
 class CoreRSocketClients<T, V, Q>(
     private val requesterFactory: RequesterFactory,
-    private val clientProperties: ClientRSocketProperties,
-    private val keyType: ParameterizedTypeReference<T>
-) : CoreClientBeans<T, V, Q> {
-    private val logger = LoggerFactory.getLogger(this::class.simpleName)
-
+    private val clientProperties: RSocketClientProperties,
+    private val typeUtil: TypeUtil<T>,
+) : CoreClients<T, V, Q> {
     private fun serviceKey(key: String) = clientProperties.getServiceConfig(key)
 
     private val persistenceProps = serviceKey("persistence")
@@ -30,7 +26,7 @@ class CoreRSocketClients<T, V, Q>(
         KeyClient("${serviceKey("key").prefix}", requesterFactory.requester("key"))
 
     override fun topicExchange(): TopicPubSubService<T, V> =
-        TopicPubSubClient("${serviceKey("pubsub").prefix}.", requesterFactory.requester("pubsub"), keyType)
+        TopicPubSubClient("${serviceKey("pubsub").prefix}.", requesterFactory.requester("pubsub"), typeUtil)
 
     override fun user(): PersistenceStore<T, User<T>> =
         UserPersistenceClient("${persistenceProps.prefix}user.", persistenceRequester())

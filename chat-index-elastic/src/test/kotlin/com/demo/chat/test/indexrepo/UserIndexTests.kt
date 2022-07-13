@@ -15,26 +15,31 @@ import java.time.Instant
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ElasticContainerConfiguration::class])
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [ElasticContainerConfiguration::class]
+)
 class UserIndexTests {
     @Autowired
     private lateinit var repo: ReactiveUserIndexRepository<String>
 
     @Test
     fun `should store to index and success`() {
-        val user = ChatUser(ChatUserKey("1234"),
-                "testuser",
-                "testhandle",
-                "http://",
-                Instant.now())
+        val user = ChatUser(
+            ChatUserKey("1234"),
+            "testuser",
+            "testhandle",
+            "http://",
+            Instant.now()
+        )
 
         StepVerifier
-                .create(repo.save(user))
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                }
-                .verifyComplete()
+            .create(repo.save(user))
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+            }
+            .verifyComplete()
     }
 }

@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.cassandra.config.dse
 
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.data.cassandra.config.AbstractCassandraConfiguration

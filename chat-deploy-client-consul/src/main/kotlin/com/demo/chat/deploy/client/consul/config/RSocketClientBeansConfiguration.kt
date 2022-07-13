@@ -1,15 +1,13 @@
-package com.demo.chat.deploy.config.client
+package com.demo.chat.deploy.client.consul.config
 
-import com.demo.chat.config.CoreClientBeans
+import com.demo.chat.config.CoreClients
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
-import org.springframework.core.ParameterizedTypeReference
 
 open class RSocketClientBeansConfiguration<T, V, Q>(
-    private val clients: CoreClientBeans<T, V, Q>,
-    private val keyType: ParameterizedTypeReference<T>
+    private val clients: CoreClients<T, V, Q>
 )  {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])
     @Bean
@@ -38,7 +36,6 @@ open class RSocketClientBeansConfiguration<T, V, Q>(
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
     open fun authMetadataPersistenceClient() = clients.authMetadata()
-
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
     @Bean

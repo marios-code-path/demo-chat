@@ -22,24 +22,26 @@ arguments into the executing JVM.
 The following configuration will proceed by passing a `BPE_JAVA_TOOL_OPTIONS` env containing the value of `JAVA_TOOL_OPTIONS`.
    
 POM.xml
+
 ```xml
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.chat.deploy.app.memory.App</mainClass>
-                    <image>
-                        <name>${appImageName}</name>
-                        <cleanCache>false</cleanCache>
-                        <env>
-                            <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-                        </env>
-                    </image>
-                    <profiles>
-                        <profile>key-service</profile>
-                    </profiles>
-                </configuration>
-        </plugin>
+
+<plugin>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-maven-plugin</artifactId>
+    <configuration>
+        <mainClass>com.demo.chat.deploy.memory.App</mainClass>
+        <image>
+            <name>${appImageName}</name>
+            <cleanCache>false</cleanCache>
+            <env>
+                <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+            </env>
+        </image>
+        <profiles>
+            <profile>key-service</profile>
+        </profiles>
+    </configuration>
+</plugin>
 ```
 
 NOTE: Make your `JAVA_TOOL_OPTIONS` environment variable available at build-time.

@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.properties
 
-import com.demo.chat.client.rsocket.config.AppRSocketProperties
+import com.demo.chat.client.rsocket.config.RSocketAppProperties
 import com.demo.chat.client.rsocket.config.RSocketProperty
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
@@ -13,13 +13,13 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 
 @ExtendWith(SpringExtension::class)
 @SpringJUnitConfig(initializers = [CoreRSocketPropertiesTests.TestProperties::class])
-@EnableConfigurationProperties(AppRSocketProperties::class)
+@EnableConfigurationProperties(RSocketAppProperties::class)
 class CoreRSocketPropertiesTests {
 
     class TestProperties : YamlFileContextInitializer("classpath:appRsocketTestProperties.yaml")
 
     @Autowired
-    private lateinit var appRsocketProperties: AppRSocketProperties
+    private lateinit var appRsocketProperties: RSocketAppProperties
 
     @Test
     fun `rsocket property structure is consistent with spec`() {

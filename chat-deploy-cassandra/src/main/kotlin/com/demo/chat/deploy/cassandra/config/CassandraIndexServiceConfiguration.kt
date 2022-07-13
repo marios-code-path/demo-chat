@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.cassandra.config
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.AuthMetadata

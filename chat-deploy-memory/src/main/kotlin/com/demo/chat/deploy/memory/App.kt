@@ -1,6 +1,8 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.deploy.memory
 
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
+import com.demo.chat.deploy.memory.config.CoreControllerConfiguration
+import com.demo.chat.deploy.memory.config.MemoryResourceConfiguration
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules

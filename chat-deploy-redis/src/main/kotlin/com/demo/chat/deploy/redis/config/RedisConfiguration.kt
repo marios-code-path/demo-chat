@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.redis.config
 
 import com.demo.chat.convert.Converter
 import com.demo.chat.config.ConfigurationPropertiesRedis

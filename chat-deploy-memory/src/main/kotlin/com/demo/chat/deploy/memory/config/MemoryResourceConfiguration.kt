@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.deploy.memory.config
 
 import com.demo.chat.service.impl.index.lucene.AuthMetaIndexLucene
 import com.demo.chat.config.index.lucene.LuceneIndexBeans

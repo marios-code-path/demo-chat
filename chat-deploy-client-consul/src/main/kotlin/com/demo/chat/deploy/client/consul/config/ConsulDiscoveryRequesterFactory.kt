@@ -1,9 +1,8 @@
-package com.demo.chat.deploy.config.client.consul
+package com.demo.chat.deploy.client.consul.config
 
-import com.demo.chat.client.rsocket.config.ClientRSocketProperties
+import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.secure.rsocket.TransportFactory
-import com.demo.chat.deploy.config.client.DiscoveryException
 import com.ecwid.consul.v1.ConsulClient
 import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
@@ -16,7 +15,7 @@ class ConsulDiscoveryRequesterFactory(
     private val builder: RSocketRequester.Builder,
     client: ConsulClient,
     props: ConsulDiscoveryProperties,
-    private val configProps: ClientRSocketProperties,
+    private val configProps: RSocketClientProperties,
     private val connection: TransportFactory
 ) : RequesterFactory {
 

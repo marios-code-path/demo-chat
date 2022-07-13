@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.config
+package com.demo.chat.deploy.cassandra.config.dse
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties

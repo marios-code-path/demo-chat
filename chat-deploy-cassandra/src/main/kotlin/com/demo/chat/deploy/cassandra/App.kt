@@ -5,10 +5,10 @@ import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
-import com.demo.chat.deploy.config.AstraConfiguration
-import com.demo.chat.deploy.config.CassandraIndexServiceConfiguration
-import com.demo.chat.deploy.config.CassandraPersistenceServiceConfiguration
-import com.demo.chat.deploy.config.ContactPointConfiguration
+import com.demo.chat.deploy.cassandra.config.CassandraIndexServiceConfiguration
+import com.demo.chat.deploy.cassandra.config.CassandraPersistenceServiceConfiguration
+import com.demo.chat.deploy.cassandra.config.dse.AstraConfiguration
+import com.demo.chat.deploy.cassandra.config.dse.ContactPointConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
@@ -24,7 +24,6 @@ import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import java.util.*
-
 
 @SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])

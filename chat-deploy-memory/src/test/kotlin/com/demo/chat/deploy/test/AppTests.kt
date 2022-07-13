@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.deploy.app.memory.App
+import com.demo.chat.deploy.memory.App
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.autoconfigure.properties.PropertyMapping
 import org.springframework.boot.test.context.SpringBootTest

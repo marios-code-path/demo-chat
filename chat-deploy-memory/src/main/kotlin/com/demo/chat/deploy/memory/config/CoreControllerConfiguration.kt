@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.app.memory
+package com.demo.chat.deploy.memory.config
 
 import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration

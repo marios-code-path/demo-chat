@@ -1,11 +1,11 @@
 package com.demo.chat.init
 
-import com.demo.chat.client.rsocket.config.ClientRSocketProperties
+import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.CoreRSocketClients
 import com.demo.chat.secure.rsocket.PKISecureConnection
 import com.demo.chat.client.rsocket.config.RequesterFactory
-import com.demo.chat.deploy.config.client.RSocketClientBeansConfiguration
-import com.demo.chat.deploy.config.client.consul.ConsulDiscoveryRequesterFactory
+import com.demo.chat.deploy.client.consul.config.RSocketClientBeansConfiguration
+import com.demo.chat.deploy.client.consul.config.ConsulDiscoveryRequesterFactory
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.service.UserIndexService
@@ -37,7 +37,7 @@ import reactor.core.publisher.Flux
  */
 @Profile("SampleRunner")
 @SpringBootApplication
-@EnableConfigurationProperties(ClientRSocketProperties::class)
+@EnableConfigurationProperties(RSocketClientProperties::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
@@ -58,7 +58,7 @@ class SampleAppSecurityRunner {
     @Bean
     fun coreRSocketClientBeans(
         requesterFactory: RequesterFactory,
-        clientRSocketProps: ClientRSocketProperties
+        clientRSocketProps: RSocketClientProperties
     ) = CoreRSocketClients<Long, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
