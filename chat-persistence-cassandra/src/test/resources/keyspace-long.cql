@@ -101,3 +101,13 @@ CREATE TABLE chat_long.chat_user_handle
     timestamp timestamp,
     PRIMARY KEY (handle)
 );
+
+CREATE TABLE chat_long.auth_metadata
+(
+    id  BIGINT,
+    principal BIGINT,
+    target BIGINT,
+    permission varchar,
+    expires timestamp,
+    PRIMARY KEY (id)
+);
