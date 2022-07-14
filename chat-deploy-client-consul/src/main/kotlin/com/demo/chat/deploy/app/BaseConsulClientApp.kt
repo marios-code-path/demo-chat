@@ -14,6 +14,7 @@ import java.io.File
 @EnableConfigurationProperties(RSocketClientProperties::class)
 class BaseConsulClientApp {
     @Configuration
+    @ConditionalOnProperty(prefix = "app.client", name = ["rsocket"])
     class ConsulClientAppConfiguration() : BaseConsulClientAppConfiguration()
 
     @Bean
