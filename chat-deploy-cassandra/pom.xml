@@ -115,7 +115,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
+                    <mainClass>com.demo.chat.deploy.cassandra.BaseCassandraApp</mainClass>
                     <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
                 </configuration>
                 <executions>

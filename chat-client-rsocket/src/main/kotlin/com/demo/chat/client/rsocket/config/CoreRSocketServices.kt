@@ -2,19 +2,18 @@ package com.demo.chat.client.rsocket.config
 
 import com.demo.chat.client.rsocket.core.*
 import com.demo.chat.client.rsocket.core.impl.*
-import com.demo.chat.config.CoreClients
+import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.service.TopicPubSubService
-import org.springframework.core.ParameterizedTypeReference
 
-class CoreRSocketClients<T, V, Q>(
+class CoreRSocketServices<T, V, Q>(
     private val requesterFactory: RequesterFactory,
     private val clientProperties: RSocketClientProperties,
     private val typeUtil: TypeUtil<T>,
-) : CoreClients<T, V, Q> {
+) : CoreServices<T, V, Q> {
     private fun serviceKey(key: String) = clientProperties.getServiceConfig(key)
 
     private val persistenceProps = serviceKey("persistence")

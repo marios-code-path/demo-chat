@@ -1,6 +1,6 @@
 package com.demo.chat.config
 
-interface CoreClients<T, V, Q> :
+interface CoreServices<T, V, Q> :
     KeyServiceBeans<T>,
     PersistenceServiceBeans<T, V>,
     IndexServiceBeans<T, V, Q>,

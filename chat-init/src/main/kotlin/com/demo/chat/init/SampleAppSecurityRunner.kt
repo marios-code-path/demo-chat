@@ -1,10 +1,10 @@
 package com.demo.chat.init
 
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.client.rsocket.config.CoreRSocketClients
+import com.demo.chat.client.rsocket.config.CoreRSocketServices
 import com.demo.chat.secure.rsocket.PKISecureConnection
 import com.demo.chat.client.rsocket.config.RequesterFactory
-import com.demo.chat.deploy.client.consul.config.RSocketClientBeansConfiguration
+import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.deploy.client.consul.config.ConsulDiscoveryRequesterFactory
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
@@ -43,15 +43,15 @@ import reactor.core.publisher.Flux
     DefaultChatJacksonModules::class,
     PKISecureConnection::class,
     ConsulDiscoveryRequesterFactory::class,
-    RSocketClientBeansConfiguration::class,
+    ServiceBeanConfiguration::class,
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
 class SampleAppSecurityRunner {
 
     @Configuration
-    class ClientsBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) :
-        RSocketClientBeansConfiguration<Long, String, IndexSearchRequest>(
-            clients,
+    class ClientsBeansConfiguration(services: CoreRSocketServices<Long, String, IndexSearchRequest>) :
+        ServiceBeanConfiguration<Long, String, IndexSearchRequest>(
+            services,
             ParameterizedTypeReference.forType(Long::class.java)
         )
 
@@ -59,7 +59,7 @@ class SampleAppSecurityRunner {
     fun coreRSocketClientBeans(
         requesterFactory: RequesterFactory,
         clientRSocketProps: RSocketClientProperties
-    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(
+    ) = CoreRSocketServices<Long, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
         ParameterizedTypeReference.forType(Long::class.java)

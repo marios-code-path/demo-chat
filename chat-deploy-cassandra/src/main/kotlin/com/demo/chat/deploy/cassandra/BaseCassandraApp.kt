@@ -25,18 +25,8 @@ import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import java.util.*
 
-@SpringBootApplication(excludeName = ["com.demo.chat.deploy"])
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
-@Import(
-    DefaultChatJacksonModules::class
-)
-class App {
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            runApplication<App>(*args)
-        }
-    }
+class BaseCassandraApp {
 
     @Configuration
     @Profile("cassandra-astra")
@@ -76,7 +66,6 @@ class App {
             byTopicRepo,
             UUID::fromString
         ) {
-
             @Configuration
             class AppIndexControllers : IndexControllersConfiguration()
         }

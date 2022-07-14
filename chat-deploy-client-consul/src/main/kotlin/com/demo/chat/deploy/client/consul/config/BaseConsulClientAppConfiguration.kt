@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.client.consul.config
 
-import com.demo.chat.client.rsocket.config.CoreRSocketClients
+import com.demo.chat.client.rsocket.config.CoreRSocketServices
 import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 
-class BaseAppConfiguration {
+open class BaseConsulClientAppConfiguration {
 
     @Bean
     fun requesterBuilder(strategies: RSocketStrategies): RSocketRequester.Builder =
@@ -32,16 +32,16 @@ class BaseAppConfiguration {
         )
 
     @Bean
-    fun clientBeans(
+    fun serviceBeans(
         requesterFactory: RequesterFactory,
         clientProps: RSocketClientProperties
-    ) = CoreRSocketClients<Long, String, IndexSearchRequest>(
+    ) = CoreRSocketServices<Long, String, IndexSearchRequest>(
         requesterFactory,
         clientProps,
         TypeUtil.LongUtil
     )
 
     @Configuration
-    class RSocketRSocketClientBeansConfiguration(clients: CoreRSocketClients<Long, String, IndexSearchRequest>) :
-        RSocketClientBeansConfiguration<Long, String, IndexSearchRequest>(clients)
+    class RSocketServiceBeanConfiguration(services: CoreRSocketServices<Long, String, IndexSearchRequest>) :
+        ServiceBeanConfiguration<Long, String, IndexSearchRequest>(services)
 }
