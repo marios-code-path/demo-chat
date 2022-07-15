@@ -5,6 +5,7 @@ import com.playtika.test.common.utils.ContainerUtils.startAndLogTime
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.TestInstance
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.AutoConfigureOrder
@@ -14,6 +15,7 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.io.Resource
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.CassandraContainer

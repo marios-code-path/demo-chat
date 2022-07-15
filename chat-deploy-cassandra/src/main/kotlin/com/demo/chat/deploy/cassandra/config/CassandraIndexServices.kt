@@ -2,17 +2,20 @@ package com.demo.chat.deploy.cassandra.config
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IndexService
+import com.demo.chat.service.dummy.DummyIndexService
 import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.index.MessageIndexCassandra
 import com.demo.chat.service.index.TopicIndexCassandra
 import com.demo.chat.service.index.UserIndexCassandra
+import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.function.Function
 
 
-open class CassandraIndexServiceConfiguration<T>(
+open class CassandraIndexServices<T>(
         private val cassandra: ReactiveCassandraTemplate,
         private val userHandleRepo: ChatUserHandleRepository<T>,
         private val roomRepo: TopicRepository<T>,
@@ -35,7 +38,7 @@ open class CassandraIndexServiceConfiguration<T>(
     override fun messageIndex() =
             MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
 
-    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, Map<String, String>> {
-        TODO("Not yet implemented")
-    }
+    override fun authMetadataIndex() = DummyAuthMetaIndex<T, Map<String, String>>()
 }
+
+class DummyAuthMetaIndex<T, Q>() : DummyIndexService<T, AuthMetadata<T>,Q>(), AuthMetaIndex<T, Q>

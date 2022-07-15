@@ -112,9 +112,9 @@ class MembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator
             Key.funKey(keyGenerator.nextKey())
         }.limit(5).collect(Collectors.toList())
 
-        val keyIdsList = keyList.stream().map { it.id }.toList()
-        val memberships = Flux.fromIterable(keyList
-            .map {
+        val keyIdsList = keyList.stream().map { it.id }.collect(Collectors.toList())
+        val memberships = Flux.fromIterable(keyList.map
+            {
                 TopicMembershipByKey(
                     it.id,
                     keyGenerator.nextKey(),

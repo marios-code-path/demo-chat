@@ -7,9 +7,11 @@ import com.demo.chat.repository.cassandra.ChatUserRepository
 import com.demo.chat.repository.cassandra.TopicMembershipRepository
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.*
+import com.demo.chat.service.dummy.DummyPersistenceStore
 import com.demo.chat.service.persistence.*
+import com.demo.chat.service.security.AuthMetaPersistence
 
-open class CassandraPersistenceServiceConfiguration<T>(
+open class CassandraPersistenceServices<T>(
         private val keyService: IKeyService<T>,
         private val userRepo: ChatUserRepository<T>,
         private val topicRepo: TopicRepository<T>,
@@ -30,7 +32,7 @@ open class CassandraPersistenceServiceConfiguration<T>(
     override fun membership(): MembershipPersistence<T> =
             MembershipPersistenceCassandra(keyService, membershipRepo)
 
-    override fun authMetadata(): PersistenceStore<T, AuthMetadata<T>> {
-        TODO("Not yet implemented")
-    }
+    override fun authMetadata(): AuthMetaPersistence<T, > = DummyAuthMetaPersistence()
 }
+
+class DummyAuthMetaPersistence<T> : DummyPersistenceStore<T, AuthMetadata<T>>(), AuthMetaPersistence<T>

@@ -34,7 +34,6 @@ open class PersistenceControllersConfiguration {
 
     @Controller
     @MessageMapping("persist.authmetadata")
-    class AuthMetaPersistenceController<T>(that: AuthMetaPersistence<T>) :
-        PersistenceStoreMapping<T, AuthMetadata<T>>,
-        PersistenceStore<T, AuthMetadata<T>> by that
+    class AuthMetaPersistenceController<T, V>(s: PersistenceServiceBeans<T, V>) :
+        PersistenceServiceController<T, AuthMetadata<T>>(s.authMetadata())
 }
