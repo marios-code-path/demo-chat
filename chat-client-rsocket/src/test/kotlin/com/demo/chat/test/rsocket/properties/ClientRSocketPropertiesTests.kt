@@ -30,7 +30,7 @@ class ClientRSocketPropertiesTests {
     fun `service property loaded`() {
         Assertions.assertThat(clientProperties.getServiceConfig("key"))
             .isInstanceOf(RSocketPropertyValue::class.java)
-            .hasFieldOrPropertyWithValue("dest", "core-service-rsocket")
+            .hasFieldOrPropertyWithValue("dest", "127.0.0.1:6790")
             .hasFieldOrPropertyWithValue("prefix", "key.")
     }
 }

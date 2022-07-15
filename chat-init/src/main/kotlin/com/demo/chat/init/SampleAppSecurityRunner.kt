@@ -1,13 +1,14 @@
 package com.demo.chat.init
 
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.CoreRSocketServices
-import com.demo.chat.secure.rsocket.PKISecureConnection
+import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
+import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
-import com.demo.chat.deploy.client.consul.config.ConsulDiscoveryRequesterFactory
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.secure.rsocket.InsecureConnection
+import com.demo.chat.secure.rsocket.TransportFactory
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.AuthorizationService
@@ -21,8 +22,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Profile
-import org.springframework.core.ParameterizedTypeReference
+import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
@@ -35,34 +35,40 @@ import reactor.core.publisher.Flux
 /**
  * Test Class
  */
-@Profile("SampleRunner")
 @SpringBootApplication
 @EnableConfigurationProperties(RSocketClientProperties::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    PKISecureConnection::class,
-    ConsulDiscoveryRequesterFactory::class,
-    ServiceBeanConfiguration::class,
+    InsecureConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
 class SampleAppSecurityRunner {
 
-    @Configuration
-    class ClientsBeansConfiguration(services: CoreRSocketServices<Long, String, IndexSearchRequest>) :
-        ServiceBeanConfiguration<Long, String, IndexSearchRequest>(
-            services,
-            ParameterizedTypeReference.forType(Long::class.java)
+    @Bean
+    fun requesterFactory(
+        builder: RSocketRequester.Builder,
+        clientConnectionProps: RSocketClientProperties,
+        tcpConnectionFactory: TransportFactory
+    ): DefaultRequesterFactory =
+        DefaultRequesterFactory(
+            builder,
+            tcpConnectionFactory,
+            clientConnectionProps.config
         )
 
+    @Configuration
+    class ServiceConfiguration(services: CoreRSocketServices<Long, String, IndexSearchRequest>) :
+        ServiceBeanConfiguration<Long, String, IndexSearchRequest>(services)
+
     @Bean
-    fun coreRSocketClientBeans(
+    fun rSocketBoundServices(
         requesterFactory: RequesterFactory,
         clientRSocketProps: RSocketClientProperties
     ) = CoreRSocketServices<Long, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
-        ParameterizedTypeReference.forType(Long::class.java)
+        TypeUtil.LongUtil
     )
 
     @Bean
