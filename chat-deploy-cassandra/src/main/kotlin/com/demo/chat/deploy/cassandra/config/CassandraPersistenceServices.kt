@@ -12,27 +12,26 @@ import com.demo.chat.service.persistence.*
 import com.demo.chat.service.security.AuthMetaPersistence
 
 open class CassandraPersistenceServices<T>(
-        private val keyService: IKeyService<T>,
-        private val userRepo: ChatUserRepository<T>,
-        private val topicRepo: TopicRepository<T>,
-        private val messageRepo: ChatMessageRepository<T>,
-        private val membershipRepo: TopicMembershipRepository<T>,
-)
-    : PersistenceServiceBeans<T, String> {
+    private val keyService: IKeyService<T>,
+    private val userRepo: ChatUserRepository<T>,
+    private val topicRepo: TopicRepository<T>,
+    private val messageRepo: ChatMessageRepository<T>,
+    private val membershipRepo: TopicMembershipRepository<T>,
+) : PersistenceServiceBeans<T, String> {
 
     override fun user(): UserPersistence<T> =
-            UserPersistenceCassandra(keyService, userRepo)
+        UserPersistenceCassandra(keyService, userRepo)
 
     override fun topic(): TopicPersistence<T> =
-            TopicPersistenceCassandra(keyService, topicRepo)
+        TopicPersistenceCassandra(keyService, topicRepo)
 
     override fun message(): MessagePersistence<T, String> =
-            MessagePersistenceCassandra(keyService, messageRepo)
+        MessagePersistenceCassandra(keyService, messageRepo)
 
     override fun membership(): MembershipPersistence<T> =
-            MembershipPersistenceCassandra(keyService, membershipRepo)
+        MembershipPersistenceCassandra(keyService, membershipRepo)
 
-    override fun authMetadata(): AuthMetaPersistence<T, > = DummyAuthMetaPersistence()
+    override fun authMetadata(): AuthMetaPersistence<T> = DummyAuthMetaPersistence()
 }
 
 class DummyAuthMetaPersistence<T> : DummyPersistenceStore<T, AuthMetadata<T>>(), AuthMetaPersistence<T>

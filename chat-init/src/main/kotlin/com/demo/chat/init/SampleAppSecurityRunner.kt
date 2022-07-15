@@ -1,18 +1,19 @@
 package com.demo.chat.init
 
-import com.demo.chat.client.rsocket.config.CoreRSocketServices
+import com.demo.chat.client.rsocket.config.CoreRSocketServiceDefinitions
 import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.secure.rsocket.InsecureConnection
+import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.secure.rsocket.TransportFactory
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.secure.rsocket.UnprotectedConnection
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
+import com.demo.chat.service.security.SecretsStoreInMemory
+import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -31,6 +32,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
+import java.util.*
 
 /**
  * Test Class
@@ -40,10 +42,13 @@ import reactor.core.publisher.Flux
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
-    InsecureConnection::class
+    UnprotectedConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
 class SampleAppSecurityRunner {
+
+    @Bean
+    fun typeUtil() = UUIDUtil()
 
     @Bean
     fun requesterFactory(
@@ -58,27 +63,36 @@ class SampleAppSecurityRunner {
         )
 
     @Configuration
-    class ServiceConfiguration(services: CoreRSocketServices<Long, String, IndexSearchRequest>) :
-        ServiceBeanConfiguration<Long, String, IndexSearchRequest>(services)
+    class ServiceClientConfiguration(serviceDefinitions: CoreRSocketServiceDefinitions<UUID, String, IndexSearchRequest>) :
+        ServiceBeanConfiguration<UUID, String, IndexSearchRequest>(serviceDefinitions)
 
     @Bean
     fun rSocketBoundServices(
         requesterFactory: RequesterFactory,
         clientRSocketProps: RSocketClientProperties
-    ) = CoreRSocketServices<Long, String, IndexSearchRequest>(
+    ) = CoreRSocketServiceDefinitions<UUID, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
-        TypeUtil.LongUtil
+        UUIDUtil()
     )
 
     @Bean
+    fun passwdStore(): UserCredentialSecretsStore<UUID> = SecretsStoreInMemory()
+
+    @Configuration
+    class AppAuthConfiguration(val typeUtil: TypeUtil<UUID>) : AuthConfiguration<UUID>(keyTypeUtil = typeUtil, ANONYMOUS_KEY)
+
+    @Bean
     fun appReady(
-        userIndex: UserIndexService<Long, IndexSearchRequest>,
-        passwdStore: SecretsStore<Long>,
+        serviceBeans: ServiceBeanConfiguration<UUID, String, IndexSearchRequest>,
+        passwdStore: SecretsStore<UUID>,
         authenticationManager: AuthenticationManager,
-        userPersistence: UserPersistence<Long>,
-        authorizationService: AuthorizationService<Long, AuthMetadata<Long>, AuthMetadata<Long>>
+        authorizationService: AuthorizationService<UUID, AuthMetadata<UUID>, AuthMetadata<UUID>>
     ): CommandLineRunner = CommandLineRunner {
+
+        val userIndex  = serviceBeans.userIndexClient()
+        val userPersistence = serviceBeans.userPersistenceClient()
+
         val princpialKey = userPersistence.key().block()!!
         val anotherUserKey = userPersistence.key().block()!!
 
@@ -165,7 +179,7 @@ class SampleAppSecurityRunner {
     }
 
     companion object {
-        val ANONYMOUS_KEY: Key<Long> = Key.funKey(0L)
+        val ANONYMOUS_KEY: Key<UUID> = Key.funKey(UUID.randomUUID())
 
         @JvmStatic
         fun main(args: Array<String>) {

@@ -1,15 +1,15 @@
 package com.demo.chat.client.rsocket.config
 
-import com.demo.chat.client.rsocket.core.*
+import com.demo.chat.client.rsocket.core.KeyClient
+import com.demo.chat.client.rsocket.core.TopicPubSubClient
 import com.demo.chat.client.rsocket.core.impl.*
 import com.demo.chat.config.CoreServices
-import com.demo.chat.domain.*
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.service.*
+import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.service.security.AuthMetaPersistence
 
-class CoreRSocketServices<T, V, Q>(
+class CoreRSocketServiceDefinitions<T, V, Q>(
     private val requesterFactory: RequesterFactory,
     private val clientProperties: RSocketClientProperties,
     private val typeUtil: TypeUtil<T>,
@@ -18,8 +18,8 @@ class CoreRSocketServices<T, V, Q>(
 
     private val persistenceProps = serviceKey("persistence")
     private val indexProps = serviceKey("index")
-    private fun persistenceRequester() =  requesterFactory.requester("persistence")
-    private fun indexRequester() =  requesterFactory.requester("index")
+    private fun persistenceRequester() = requesterFactory.requester("persistence")
+    private fun indexRequester() = requesterFactory.requester("index")
 
     override fun keyService(): IKeyService<T> =
         KeyClient("${serviceKey("key").prefix}", requesterFactory.requester("key"))
@@ -27,37 +27,38 @@ class CoreRSocketServices<T, V, Q>(
     override fun topicExchange(): TopicPubSubService<T, V> =
         TopicPubSubClient("${serviceKey("pubsub").prefix}.", requesterFactory.requester("pubsub"), typeUtil)
 
-    override fun user(): PersistenceStore<T, User<T>> =
+    override fun user(): UserPersistence<T> =
         UserPersistenceClient("${persistenceProps.prefix}user.", persistenceRequester())
 
-    override fun message(): PersistenceStore<T, Message<T, V>> =
+    override fun message(): MessagePersistence<T, V> =
         MessagePersistenceClient("${persistenceProps.prefix}message.", persistenceRequester())
 
-    override fun topic(): PersistenceStore<T, MessageTopic<T>> =
+    override fun topic(): TopicPersistence<T> =
         TopicPersistenceClient("${persistenceProps.prefix}topic.", persistenceRequester())
 
-    override fun membership(): PersistenceStore<T, TopicMembership<T>> = MembershipPersistenceClient(
+    override fun membership(): MembershipPersistence<T> = MembershipPersistenceClient(
         "${persistenceProps.prefix}membership.",
         persistenceRequester()
     )
 
-    override fun authMetadata(): PersistenceStore<T, AuthMetadata<T>> = AuthMetadataPersistenceClient(
-        "${persistenceProps.prefix}authmeta.",
-        persistenceRequester()
-    )
+    override fun authMetadata(): AuthMetaPersistence<T> =
+        AuthMetadataPersistenceClient( //PersistenceStore<T, AuthMetadata<T>> = AuthMetadataPersistenceClient(
+            "${persistenceProps.prefix}authmeta.",
+            persistenceRequester()
+        )
 
-    override fun userIndex(): IndexService<T, User<T>, Q> =
+    override fun userIndex(): UserIndexService<T, Q> =
         UserIndexClient("${indexProps.prefix}user.", indexRequester())
 
-    override fun topicIndex(): IndexService<T, MessageTopic<T>, Q> =
+    override fun topicIndex(): TopicIndexService<T, Q> =
         TopicIndexClient("${indexProps.prefix}topic.", indexRequester())
 
-    override fun membershipIndex(): IndexService<T, TopicMembership<T>, Q> =
-        MembershipIndexClient("${indexProps.prefix}membership.", indexRequester())
+    override fun membershipIndex(): MembershipIndexService<T, Q> =
+        MembershipIndexClientImpl("${indexProps.prefix}membership.", indexRequester())
 
-    override fun messageIndex(): IndexService<T, Message<T, V>, Q> =
+    override fun messageIndex(): MessageIndexService<T, V, Q> =
         MessageIndexClient("${indexProps.prefix}message.", indexRequester())
 
-    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, Q> =
+    override fun authMetadataIndex(): AuthMetaIndex<T, Q> =
         AuthMetaIndexClient("${indexProps.prefix}authmeta.", indexRequester())
 }

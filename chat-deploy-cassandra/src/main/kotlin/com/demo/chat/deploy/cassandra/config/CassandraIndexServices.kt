@@ -16,29 +16,25 @@ import java.util.function.Function
 
 
 open class CassandraIndexServices<T>(
-        private val cassandra: ReactiveCassandraTemplate,
-        private val userHandleRepo: ChatUserHandleRepository<T>,
-        private val roomRepo: TopicRepository<T>,
-        private val nameRepo: TopicByNameRepository<T>,
-        private val byMemberRepo: TopicMembershipByMemberRepository<T>,
-        private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
-        private val byUserRepo: ChatMessageByUserRepository<T>,
-        private val byTopicRepo: ChatMessageByTopicRepository<T>,
-        private val stringToKeyCodec: Function<String, T>,
+    private val cassandra: ReactiveCassandraTemplate,
+    private val userHandleRepo: ChatUserHandleRepository<T>,
+    private val roomRepo: TopicRepository<T>,
+    private val nameRepo: TopicByNameRepository<T>,
+    private val byMemberRepo: TopicMembershipByMemberRepository<T>,
+    private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
+    private val byUserRepo: ChatMessageByUserRepository<T>,
+    private val byTopicRepo: ChatMessageByTopicRepository<T>,
+    private val stringToKeyCodec: Function<String, T>,
 ) : IndexServiceBeans<T, String, Map<String, String>> {
-    override fun userIndex() =
-            UserIndexCassandra(userHandleRepo, cassandra)
+    override fun userIndex() = UserIndexCassandra(userHandleRepo, cassandra)
 
-    override fun topicIndex() =
-            TopicIndexCassandra(nameRepo)
+    override fun topicIndex() = TopicIndexCassandra(nameRepo)
 
-    override fun membershipIndex() =
-            MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)
+    override fun membershipIndex() = MembershipIndexCassandra(stringToKeyCodec, byMemberRepo, byMemberOfRepo)
 
-    override fun messageIndex() =
-            MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
+    override fun messageIndex() = MessageIndexCassandra(stringToKeyCodec, byUserRepo, byTopicRepo)
 
     override fun authMetadataIndex() = DummyAuthMetaIndex<T, Map<String, String>>()
 }
 
-class DummyAuthMetaIndex<T, Q>() : DummyIndexService<T, AuthMetadata<T>,Q>(), AuthMetaIndex<T, Q>
+class DummyAuthMetaIndex<T, Q> : DummyIndexService<T, AuthMetadata<T>, Q>(), AuthMetaIndex<T, Q>

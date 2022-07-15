@@ -36,7 +36,7 @@ open class AuthConfiguration<T>(
         )
 
     @Bean
-    open fun chatAuthenticationService(
+    open fun authenticationService(
         userIndex: UserIndexService<T, IndexSearchRequest>,
         secretStore: UserCredentialSecretsStore<T>
     ) = AbstractAuthenticationService(
@@ -54,9 +54,8 @@ open class AuthConfiguration<T>(
     ) =
         ChatAuthenticationManager(
             keyTypeUtil,
-            chatAuthenticationService(userIndex, secretStore),
+            authenticationService(userIndex, secretStore),
             userPersistence,
             authorizationService
         )
-
 }

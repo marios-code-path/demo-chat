@@ -5,6 +5,7 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.memory.persistence.*
+import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.context.annotation.Bean
 
 open class InMemoryPersistenceBeans<T, V>(private val keyService: IKeyService<T>) :
@@ -15,18 +16,18 @@ open class InMemoryPersistenceBeans<T, V>(private val keyService: IKeyService<T>
         UserPersistenceInMemory(keyService) { t -> t.key }
 
     @Bean
-    override fun topic(): TopicPersistence<T> = // PersistenceStore<T, MessageTopic<T>> =
+    override fun topic(): TopicPersistence<T> =
         TopicPersistenceInMemory(keyService) { t -> t.key }
 
     @Bean
-    override fun message(): MessagePersistence<T, V> = //PersistenceStore<T, Message<T, V>> =
+    override fun message(): MessagePersistence<T, V> =
         MessagePersistenceInMemory(keyService) { t -> t.key }
 
     @Bean
-    override fun membership(): MembershipPersistence<T> = //PersistenceStore<T, TopicMembership<T>> =
+    override fun membership(): MembershipPersistence<T> =
         MembershipPersistenceInMemory(keyService) { t -> Key.funKey(t.key) }
 
     @Bean
-    override fun authMetadata(): PersistenceStore<T, AuthMetadata<T>> =
+    override fun authMetadata(): AuthMetaPersistence<T> =
         AuthMetaPersistenceInMemory(keyService) { t -> t.key }
 }

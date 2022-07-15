@@ -27,7 +27,7 @@ import kotlin.streams.toList
     classes = [CassandraTestConfiguration::class]
 )
 @ActiveProfiles("long")
-class MembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
+class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
     @Autowired
     lateinit var repo: TopicMembershipRepository<Long>
 

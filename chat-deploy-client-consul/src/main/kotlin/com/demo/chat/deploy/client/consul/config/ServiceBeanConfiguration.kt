@@ -3,6 +3,7 @@ package com.demo.chat.deploy.client.consul.config
 import com.demo.chat.config.CoreServices
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 
@@ -11,11 +12,11 @@ open class ServiceBeanConfiguration<T, V, Q>(
 )  {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])
     @Bean
-    open fun pubsubClient(): TopicPubSubService<T, V> = services.topicExchange()
+    open fun pubsubClient() = services.topicExchange()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["key"])
     @Bean
-    open fun keyClient(): IKeyService<T> = services.keyService()
+    open fun keyClient() = services.keyService()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
