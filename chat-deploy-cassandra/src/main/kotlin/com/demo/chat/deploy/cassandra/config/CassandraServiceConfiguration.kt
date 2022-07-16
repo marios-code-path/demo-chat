@@ -48,7 +48,8 @@ open class CassandraServiceConfiguration {
         topicRepo: TopicRepository<UUID>,
         messageRepo: ChatMessageRepository<UUID>,
         membershipRepo: TopicMembershipRepository<UUID>,
-    ) : CassandraPersistenceServices<UUID>(keyService, userRepo, topicRepo, messageRepo, membershipRepo) {
+        authmetaRepo: AuthMetadataRepository<UUID>
+    ) : CassandraPersistenceServices<UUID>(keyService, userRepo, topicRepo, messageRepo, membershipRepo, authmetaRepo) {
         @Configuration
         class PersistenceControllers : PersistenceControllersConfiguration()
     }

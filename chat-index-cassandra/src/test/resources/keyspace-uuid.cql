@@ -101,3 +101,33 @@ CREATE TABLE chat_uuid.chat_user_handle
     timestamp timestamp,
     PRIMARY KEY (handle)
 );
+
+CREATE TABLE chat_uuid.auth_metadata
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    permission  varchar,
+    expires bigint,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE chat_uuid.auth_metadata_principal
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    permission  varchar,
+    expires bigint,
+    PRIMARY KEY (principal)
+);
+
+CREATE TABLE chat_uuid.auth_metadata_target
+(
+    id  UUID,
+    principal   UUID,
+    target      UUID,
+    permission  varchar,
+    expires bigint,
+    PRIMARY KEY (target)
+);

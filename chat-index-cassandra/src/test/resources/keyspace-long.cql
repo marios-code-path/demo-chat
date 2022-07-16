@@ -105,9 +105,29 @@ CREATE TABLE chat_long.chat_user_handle
 CREATE TABLE chat_long.auth_metadata
 (
     id  BIGINT,
-    principal BIGINT,
-    target BIGINT,
-    permission varchar,
-    expires timestamp,
+    principal   BIGINT,
+    target      BIGINT,
+    permission  varchar,
+    expires BIGINT,
     PRIMARY KEY (id)
+);
+
+CREATE TABLE chat_long.auth_metadata_principal
+(
+    id  BIGINT,
+    principal   BIGINT,
+    target      BIGINT,
+    permission  varchar,
+    expires BIGINT,
+    PRIMARY KEY (principal)
+);
+
+CREATE TABLE chat_long.auth_metadata_target
+(
+    id  BIGINT,
+    principal   BIGINT,
+    target      BIGINT,
+    permission  varchar,
+    expires BIGINT,
+    PRIMARY KEY (target)
 );

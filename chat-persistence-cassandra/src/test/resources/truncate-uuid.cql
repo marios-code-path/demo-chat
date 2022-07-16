@@ -9,4 +9,6 @@ Truncate Table chat_uuid.chat_room;
 Truncate Table chat_uuid.chat_room_name;
 Truncate Table chat_uuid.chat_user;
 Truncate Table chat_uuid.chat_user_handle;
-Truncate Table chat_uuid.auth_metadata
+Truncate Table chat_uuid.auth_metadata;
+Truncate Table chat_uuid.auth_metadata_principal;
+Truncate Table chat_uuid.auth_metadata_target;

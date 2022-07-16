@@ -9,3 +9,6 @@ Truncate Table chat_long.chat_room;
 Truncate Table chat_long.chat_room_name;
 Truncate Table chat_long.chat_user;
 Truncate Table chat_long.chat_user_handle;
+Truncate Table chat_long.auth_metadata;
+Truncate Table chat_long.auth_metadata_principal;
+Truncate Table chat_long.auth_metadata_target;
