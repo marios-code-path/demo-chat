@@ -43,6 +43,7 @@
         <module>chat-index-elastic</module>
         <module>chat-index-lucene</module>
         <module>chat-security</module>
+        <module>shared-resources-cassandra</module>
         <module>chat-persistence-cassandra</module>
     	<module>chat-index-cassandra</module>
         <module>chat-persistence-xstream</module>

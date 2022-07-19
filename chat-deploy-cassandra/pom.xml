@@ -25,6 +25,19 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-cassandra</artifactId>
+            <type>test-jar</type>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.playtika.testcontainers</groupId>
+            <artifactId>embedded-cassandra</artifactId>
+            <version>1.82</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
@@ -79,6 +92,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>shared-resources-cassandra</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 

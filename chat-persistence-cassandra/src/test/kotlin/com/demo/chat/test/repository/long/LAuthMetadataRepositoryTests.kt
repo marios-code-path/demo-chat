@@ -25,7 +25,7 @@ import reactor.test.StepVerifier
     classes = [CassandraTestConfiguration::class]
 )
 @ActiveProfiles("long")
-class LAuthMetadataRepositoryTests  : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
+class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired
     private lateinit var repository: AuthMetadataRepository<Long>

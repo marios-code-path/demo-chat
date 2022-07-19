@@ -3,9 +3,11 @@ package com.demo.chat.deploy.cassandra
 import com.demo.chat.deploy.cassandra.config.CassandraServiceConfiguration
 import com.demo.chat.deploy.cassandra.config.dse.AstraConfiguration
 import com.demo.chat.deploy.cassandra.config.dse.ContactPointConfiguration
+import com.demo.chat.domain.UUIDUtil
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
@@ -13,6 +15,9 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 @Configuration
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
 class BaseCassandraApp {
+
+    @Bean
+    fun uuidTypeUtil() = UUIDUtil()
 
     @Configuration
     @Profile("cassandra-astra")
