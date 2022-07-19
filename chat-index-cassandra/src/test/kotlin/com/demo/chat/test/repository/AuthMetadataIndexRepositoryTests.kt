@@ -1,10 +1,8 @@
 package com.demo.chat.test.repository
 
-import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.cassandra.AuthMetadataByPrincipal
 import com.demo.chat.domain.cassandra.AuthMetadataByTarget
-import com.demo.chat.domain.cassandra.TopicMembershipByMember
 import com.demo.chat.repository.cassandra.AuthMetadataByPrincipalRepository
 import com.demo.chat.repository.cassandra.AuthMetadataByTargetRepository
 import com.demo.chat.test.CassandraSchemaTest
@@ -13,7 +11,6 @@ import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -23,9 +20,11 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class])
-class AuthMetadataIndexRepositoryTests  : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()){
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [CassandraTestConfiguration::class]
+)
+class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var byPrincipalRepo: AuthMetadataByPrincipalRepository<UUID>
 
@@ -34,16 +33,22 @@ class AuthMetadataIndexRepositoryTests  : CassandraSchemaTest<UUID>(TestUUIDKeyG
 
     @Test
     fun shouldContextLoad() {
-             Assertions
-                .assertThat(template)
-                .describedAs("Reactive Template Exists")
-                .isNotNull
+        Assertions
+            .assertThat(template)
+            .describedAs("Reactive Template Exists")
+            .isNotNull
     }
 
 
     @Test
     fun `byPrincipal should not return all`() {
-        val authMeta = AuthMetadataByPrincipal(keyGenerator.nextKey(), keyGenerator.nextKey(), keyGenerator.nextKey(), "TEST", System.currentTimeMillis())
+        val authMeta = AuthMetadataByPrincipal(
+            keyGenerator.nextKey(),
+            keyGenerator.nextKey(),
+            keyGenerator.nextKey(),
+            "TEST",
+            System.currentTimeMillis()
+        )
 
         val membershipSave = byPrincipalRepo
             .save(authMeta)

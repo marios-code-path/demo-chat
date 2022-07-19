@@ -26,7 +26,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
     MemoryResourceConfiguration::class,
     CoreControllerConfiguration::class
 )
-class App {
+class  App {
 
     companion object {
         @JvmStatic

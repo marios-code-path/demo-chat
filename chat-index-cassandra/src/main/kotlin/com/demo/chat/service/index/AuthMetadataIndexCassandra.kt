@@ -51,9 +51,9 @@ class AuthMetadataIndexCassandra<T>(
 
     override fun findBy(query: Map<String, String>): Flux<out Key<T>> =
         when (val queryBy = query.keys.first()) {
-            PRINCIPAL -> principalRepository.findByPrincipalId(typeUtil.fromString(queryBy ?: error("missing principal")))
-            TARGET -> targetRepository.findByTargetId(typeUtil.fromString(queryBy ?: error("missing target")))
-            else -> Flux.empty()
+            PRINCIPAL -> principalRepository.findByPrincipalId(typeUtil.fromString(query[queryBy] ?: error("missing principal")))
+            TARGET -> targetRepository.findByTargetId(typeUtil.fromString(query[queryBy] ?: error("missing target")))
+            else -> Flux.error(Exception("Cannot find by query"))
         }.map { it.key }
 
     override fun findUnique(query: Map<String, String>): Mono<out Key<T>> {

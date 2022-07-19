@@ -25,15 +25,6 @@ open class MemoryResourceConfiguration {
     class KeyServiceBeans : LongKeyServiceBeans()
 
     @Bean
-    open fun authMetaPersistence(keySvc: IKeyService<Long>):
-            AuthMetaPersistence<Long> =
-        AuthMetaPersistenceInMemory(keySvc) { t -> t.key }
-
-    @Bean
-    open fun authMetaIndex(): AuthMetaIndex<Long, IndexSearchRequest> =
-        AuthMetaIndexLucene(TypeUtil)
-
-    @Bean
     open fun passwordStoreInMemory(): UserCredentialSecretsStore<Long> = SecretsStoreInMemory()
 
     @Bean

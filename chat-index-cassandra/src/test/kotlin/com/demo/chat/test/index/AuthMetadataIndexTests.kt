@@ -1,28 +1,21 @@
 package com.demo.chat.test.index
 
-import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.domain.cassandra.AuthMetadataByPrincipal
 import com.demo.chat.domain.cassandra.AuthMetadataByTarget
-import com.demo.chat.domain.cassandra.TopicMembershipByMember
-import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.AuthMetadataByPrincipalRepository
 import com.demo.chat.repository.cassandra.AuthMetadataByTargetRepository
-import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.index.AuthMetadataIndexCassandra
-import com.demo.chat.service.index.MembershipIndexCassandra
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -43,7 +36,7 @@ class AuthMetadataIndexTests {
 
     private val keyGenerator: () -> UUID = { UUID.randomUUID() }
 
-    @BeforeAll
+    @BeforeEach
     fun setUp() {
 
         val authMetaPrincipal = AuthMetadataByPrincipal(

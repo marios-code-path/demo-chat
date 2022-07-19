@@ -5,6 +5,7 @@ import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
@@ -12,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.*
+import java.util.function.Function
 
 open class CassandraServiceConfiguration {
     @Configuration
@@ -25,6 +27,9 @@ open class CassandraServiceConfiguration {
         byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>,
         byUserRepo: ChatMessageByUserRepository<UUID>,
         byTopicRepo: ChatMessageByTopicRepository<UUID>,
+        principalRepo: AuthMetadataByPrincipalRepository<UUID>,
+        targetRepo: AuthMetadataByTargetRepository<UUID>,
+        typeUtil: TypeUtil<UUID>
     ) : CassandraIndexServices<UUID>(
         cassandra,
         userHandleRepo,
@@ -34,7 +39,10 @@ open class CassandraServiceConfiguration {
         byMemberOfRepo,
         byUserRepo,
         byTopicRepo,
-        UUID::fromString
+        principalRepo,
+        targetRepo,
+        typeUtil::fromString,
+        typeUtil
     ) {
         @Configuration
         class IndexControllers : IndexControllersConfiguration()

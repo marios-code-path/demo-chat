@@ -5,6 +5,7 @@ import com.demo.chat.domain.*
 import com.demo.chat.domain.lucene.IndexEntryEncoder
 import com.demo.chat.service.*
 import com.demo.chat.service.impl.index.lucene.*
+import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.context.annotation.Bean
 
 open class LuceneIndexBeans<T>(
@@ -33,6 +34,6 @@ open class LuceneIndexBeans<T>(
         MembershipLuceneIndex(membership, stringToKey) { t -> Key.funKey(t.key) }
 
     @Bean
-    override fun authMetadataIndex(): IndexService<T, AuthMetadata<T>, IndexSearchRequest> =
+    override fun authMetadataIndex(): AuthMetaIndex<T, IndexSearchRequest> =
         AuthMetaIndexLucene(typeUtil)
 }
