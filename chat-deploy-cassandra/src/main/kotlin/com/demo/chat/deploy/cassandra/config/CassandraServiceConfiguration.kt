@@ -10,6 +10,7 @@ import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.*
@@ -65,6 +66,7 @@ open class CassandraServiceConfiguration {
     @Configuration
     @ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
     class CoreKeyBeans(val t: ReactiveCassandraTemplate) : KeyServiceBeans<UUID> {
+        @Bean
         override fun keyService(): IKeyService<UUID> = KeyServiceCassandra(t, Uuids::timeBased)
 
         @Configuration

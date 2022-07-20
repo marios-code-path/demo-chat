@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import java.util.*
 
 @Configuration
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
@@ -20,11 +21,11 @@ class BaseCassandraApp {
 
     @Bean
     @ConditionalOnProperty("keyType", havingValue = "uuid")
-    fun uuidTypeUtil() = UUIDUtil()
+    fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
 
     @Bean
     @ConditionalOnProperty("keyType", havingValue = "long")
-    fun longTypeUtil() = TypeUtil.LongUtil
+    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
 
     @Configuration
     @Profile("cassandra-astra")
