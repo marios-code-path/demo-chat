@@ -22,19 +22,19 @@ import kotlin.random.Random
 open class CassandraServiceConfiguration {
     @Configuration
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
-    class CoreIndexBeans(
+    class CoreIndexBeans<T>(
         cassandra: ReactiveCassandraTemplate,
-        userHandleRepo: ChatUserHandleRepository<UUID>,
-        roomRepo: TopicRepository<UUID>,
-        nameRepo: TopicByNameRepository<UUID>,
-        byMemberRepo: TopicMembershipByMemberRepository<UUID>,
-        byMemberOfRepo: TopicMembershipByMemberOfRepository<UUID>,
-        byUserRepo: ChatMessageByUserRepository<UUID>,
-        byTopicRepo: ChatMessageByTopicRepository<UUID>,
-        principalRepo: AuthMetadataByPrincipalRepository<UUID>,
-        targetRepo: AuthMetadataByTargetRepository<UUID>,
-        typeUtil: TypeUtil<UUID>
-    ) : CassandraIndexServices<UUID>(
+        userHandleRepo: ChatUserHandleRepository<T>,
+        roomRepo: TopicRepository<T>,
+        nameRepo: TopicByNameRepository<T>,
+        byMemberRepo: TopicMembershipByMemberRepository<T>,
+        byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
+        byUserRepo: ChatMessageByUserRepository<T>,
+        byTopicRepo: ChatMessageByTopicRepository<T>,
+        principalRepo: AuthMetadataByPrincipalRepository<T>,
+        targetRepo: AuthMetadataByTargetRepository<T>,
+        typeUtil: TypeUtil<T>
+    ) : CassandraIndexServices<T>(
         cassandra,
         userHandleRepo,
         roomRepo,
@@ -54,14 +54,14 @@ open class CassandraServiceConfiguration {
 
     @Configuration
     @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
-    class CorePersistenceBeans(
-        keyService: IKeyService<UUID>,
-        userRepo: ChatUserRepository<UUID>,
-        topicRepo: TopicRepository<UUID>,
-        messageRepo: ChatMessageRepository<UUID>,
-        membershipRepo: TopicMembershipRepository<UUID>,
-        authmetaRepo: AuthMetadataRepository<UUID>
-    ) : CassandraPersistenceServices<UUID>(keyService, userRepo, topicRepo, messageRepo, membershipRepo, authmetaRepo) {
+    class CorePersistenceBeans<T>(
+        keyService: IKeyService<T>,
+        userRepo: ChatUserRepository<T>,
+        topicRepo: TopicRepository<T>,
+        messageRepo: ChatMessageRepository<T>,
+        membershipRepo: TopicMembershipRepository<T>,
+        authmetaRepo: AuthMetadataRepository<T>
+    ) : CassandraPersistenceServices<T>(keyService, userRepo, topicRepo, messageRepo, membershipRepo, authmetaRepo) {
         @Configuration
         class PersistenceControllers : PersistenceControllersConfiguration()
     }
