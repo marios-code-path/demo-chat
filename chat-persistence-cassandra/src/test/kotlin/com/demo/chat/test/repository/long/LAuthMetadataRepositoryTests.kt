@@ -4,11 +4,10 @@ import com.demo.chat.domain.cassandra.AuthMetadataById
 import com.demo.chat.domain.cassandra.AuthMetadataIdKey
 import com.demo.chat.repository.cassandra.AuthMetadataRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.CassandraTestConfiguration
 import com.demo.chat.test.TestLongKeyGenerator
+import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -19,10 +18,9 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class]
+    classes = [RepositoryTestConfiguration::class]
 )
 @ActiveProfiles("long")
 class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {

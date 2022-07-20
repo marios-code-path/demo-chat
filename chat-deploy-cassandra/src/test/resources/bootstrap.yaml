@@ -1,0 +1,3 @@
+embedded:
+  cassandra:
+    enabled: false

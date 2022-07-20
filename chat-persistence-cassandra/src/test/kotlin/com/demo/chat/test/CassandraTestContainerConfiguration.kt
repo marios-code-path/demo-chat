@@ -6,12 +6,16 @@ import org.assertj.core.api.Assertions
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.DependsOn
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
 import java.time.Duration
 
+@EnableConfigurationProperties(CassandraProperties::class)
 open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
@@ -23,7 +27,7 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
     // values (IP, Port, DC...) that container provides.
     @Bean(name = ["embeddedCassandra"], destroyMethod = "stop")
     open fun cassandraContainer(context: ConfigurableApplicationContext): CassandraContainer<*> {
-        val ddlResource = "qspace-${keyType}.cql"
+        val ddlResource = "keyspace-${keyType}.cql"
         val resource = context.getResource(ddlResource)
 
         Assertions
@@ -56,4 +60,8 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
 
         return container
     }
+
+    @Configuration
+    @DependsOn("embeddedCassandra")
+    class ReactiveCassandraConfiguration(aprops: CassandraProperties) : TestReactiveCassandraConfiguration(aprops)
 }

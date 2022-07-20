@@ -38,6 +38,11 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>shared-resources-cassandra</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
@@ -93,17 +98,29 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>shared-resources-cassandra</artifactId>
-            <version>${project.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-remote-resources-plugin</artifactId>
+                <version>1.7.0</version>
+                <configuration>
+                    <resourceBundles>
+                        <resourceBundle>com.demo:shared-resources-cassandra:${project.version}</resourceBundle>
+                    </resourceBundles>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>process</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>

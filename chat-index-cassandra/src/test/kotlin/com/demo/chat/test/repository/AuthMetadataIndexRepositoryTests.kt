@@ -6,7 +6,7 @@ import com.demo.chat.domain.cassandra.AuthMetadataByTarget
 import com.demo.chat.repository.cassandra.AuthMetadataByPrincipalRepository
 import com.demo.chat.repository.cassandra.AuthMetadataByTargetRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.CassandraTestConfiguration
+import com.demo.chat.test.CassandraTestContainerConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -22,7 +22,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestConfiguration::class]
+    classes = [CassandraTestContainerConfiguration::class]
 )
 class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired

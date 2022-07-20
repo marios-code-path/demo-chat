@@ -6,9 +6,8 @@ import org.springframework.context.annotation.DependsOn
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.SchemaAction
 
-@Configuration
-@DependsOn("embeddedCassandra")
-class TestClusterConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
+
+class TestReactiveCassandraConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
 
     override fun getLocalDataCenter(): String {
         return props.localDatacenter
