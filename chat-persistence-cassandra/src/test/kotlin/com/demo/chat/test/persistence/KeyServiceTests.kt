@@ -33,7 +33,7 @@ class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @BeforeAll
     fun setUp() {
-        this.svc = KeyServiceCassandra(template, keyGenerator::nextKey)
+        this.svc = KeyServiceCassandra(template, keyGenerator)
     }
 
     @Test

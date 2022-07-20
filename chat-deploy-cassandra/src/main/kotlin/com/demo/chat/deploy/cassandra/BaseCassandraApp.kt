@@ -20,11 +20,11 @@ import java.util.*
 class BaseCassandraApp {
 
     @Bean
-    @ConditionalOnProperty("keyType", havingValue = "uuid")
+    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
     fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
 
     @Bean
-    @ConditionalOnProperty("keyType", havingValue = "long")
+    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
     fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
 
     @Configuration
