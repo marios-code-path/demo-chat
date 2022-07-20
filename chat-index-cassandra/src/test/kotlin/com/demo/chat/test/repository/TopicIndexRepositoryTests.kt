@@ -6,7 +6,6 @@ import com.demo.chat.domain.cassandra.ChatTopicName
 import com.demo.chat.domain.cassandra.ChatTopicNameKey
 import com.demo.chat.repository.cassandra.TopicByNameRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.CassandraTestContainerConfiguration
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Test
@@ -21,7 +20,7 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [CassandraTestContainerConfiguration::class])
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [RepositoryTestConfiguration::class])
 class TopicIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Autowired

@@ -6,7 +6,6 @@ import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
 import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
 import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.CassandraTestContainerConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -22,7 +21,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [CassandraTestContainerConfiguration::class])
+    classes = [RepositoryTestConfiguration::class])
 class MembershipIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var byMemberRepo: TopicMembershipByMemberRepository<UUID>
