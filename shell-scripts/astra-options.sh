@@ -1,6 +1,7 @@
 export TOKEN_FILE=$1; shift
 export SECURE_CONNECT_PATH=$1; shift
 export ASTRA_DB_KEYSPACE=$1; shift
+export KEYSPACE_TYPE=$1; shift
 
 # step 1 - grab a TOKEN File from your Astra Database config page
 # step 2 - grab a SECURE CONNECT BUNDLE from the same place
