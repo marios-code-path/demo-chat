@@ -15,8 +15,10 @@ import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.service.security.SecretsStoreInMemory
 import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
@@ -46,9 +48,28 @@ import java.util.*
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
 class SampleAppSecurityRunner {
+    @Bean
+    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
+    fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
 
     @Bean
-    fun typeUtil() = UUIDUtil()
+    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
+
+    @Value("\${app.service.identity.anonymous}")
+    private lateinit var anonymousId: String
+
+    @Value("\${app.service.identity.admin}")
+    private lateinit var adminId: String
+
+    data class AnonymousKey<T>(override val id: T) : Key<T>
+    data class AdminKey<T>(override val id: T) : Key<T>
+
+    @Bean
+    fun <T> anonymousKey(typeUtil: TypeUtil<T>) = AnonymousKey(typeUtil.fromString(anonymousId))
+
+    @Bean
+    fun <T> adminKey(typeUtil: TypeUtil<T>) = AdminKey(typeUtil.fromString(adminId))
 
     @Bean
     fun requesterFactory(
@@ -63,34 +84,38 @@ class SampleAppSecurityRunner {
         )
 
     @Configuration
-    class ServiceClientConfiguration(serviceDefinitions: CoreRSocketServiceDefinitions<UUID, String, IndexSearchRequest>) :
-        ServiceBeanConfiguration<UUID, String, IndexSearchRequest>(serviceDefinitions)
+    class ServiceClientConfiguration<T>(serviceDefinitions: CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>) :
+        ServiceBeanConfiguration<T, String, IndexSearchRequest>(serviceDefinitions)
 
     @Bean
-    fun rSocketBoundServices(
+    fun <T> rSocketBoundServices(
         requesterFactory: RequesterFactory,
-        clientRSocketProps: RSocketClientProperties
-    ) = CoreRSocketServiceDefinitions<UUID, String, IndexSearchRequest>(
+        clientRSocketProps: RSocketClientProperties,
+        typeUtil: TypeUtil<T>
+    ) = CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
-        UUIDUtil()
+        typeUtil
     )
 
     @Bean
-    fun passwdStore(): UserCredentialSecretsStore<UUID> = SecretsStoreInMemory()
+    fun <T> passwdStore(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
 
     @Configuration
-    class AppAuthConfiguration(val typeUtil: TypeUtil<UUID>) : AuthConfiguration<UUID>(keyTypeUtil = typeUtil, ANONYMOUS_KEY)
+    class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: AnonymousKey<T>) :
+        AuthConfiguration<T>(keyTypeUtil = typeUtil, anonKey)
 
     @Bean
-    fun appReady(
-        serviceBeans: ServiceBeanConfiguration<UUID, String, IndexSearchRequest>,
-        passwdStore: SecretsStore<UUID>,
+    fun <T> appReady(
+        serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
+        passwdStore: SecretsStore<T>,
         authenticationManager: AuthenticationManager,
-        authorizationService: AuthorizationService<UUID, AuthMetadata<UUID>, AuthMetadata<UUID>>
+        authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+        anonKey: AnonymousKey<T>,
+        adminKey: AdminKey<T>
     ): CommandLineRunner = CommandLineRunner {
 
-        val userIndex  = serviceBeans.userIndexClient()
+        val userIndex = serviceBeans.userIndexClient()
         val userPersistence = serviceBeans.userPersistenceClient()
 
         val princpialKey = userPersistence.key().block()!!
@@ -98,7 +123,8 @@ class SampleAppSecurityRunner {
 
         val users = listOf(
             User.create(princpialKey, "test", "test", "https://foo"),
-            User.create(ANONYMOUS_KEY, "ANON", "anonymous", "null")
+            User.create(anonKey, "ANON", "anonymous", "null"),
+            User.create(adminKey, "ADMIN", "administrator", "http://localhost/icons/admin.png")
         )
 
         Flux.fromIterable(users)
@@ -115,20 +141,20 @@ class SampleAppSecurityRunner {
             // role that determines required access? ( key, target, action, role )
             StringRoleAuthorizationMetadata(
                 userPersistence.key().block()!!,
-                ANONYMOUS_KEY,
-                ANONYMOUS_KEY,
+                anonKey,
+                anonKey,
                 "ROLE_REQUEST"
             ),
             StringRoleAuthorizationMetadata(
                 userPersistence.key().block()!!,
-                ANONYMOUS_KEY,
+                anonKey,
                 princpialKey,
                 "ROLE_REQUEST",
                 1
             ),
             StringRoleAuthorizationMetadata(
                 userPersistence.key().block()!!,
-                ANONYMOUS_KEY,
+                anonKey,
                 anotherUserKey,
                 "ROLE_MESSAGE",
                 1
@@ -147,7 +173,7 @@ class SampleAppSecurityRunner {
             ),
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
-            .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($ANONYMOUS_KEY).") }
+            .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($anonKey).") }
             .blockLast()
 
 
@@ -179,8 +205,6 @@ class SampleAppSecurityRunner {
     }
 
     companion object {
-        val ANONYMOUS_KEY: Key<UUID> = Key.funKey(UUID.randomUUID())
-
         @JvmStatic
         fun main(args: Array<String>) {
             runApplication<SampleAppSecurityRunner>(*args)
