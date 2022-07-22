@@ -20,16 +20,12 @@ import reactor.test.StepVerifier
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
 class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
-
-    @Value("classpath:keyspace-\${keyType}.cql")
-    override lateinit var cqlFile: Resource
 
     @BeforeAll
     fun setUp() {
