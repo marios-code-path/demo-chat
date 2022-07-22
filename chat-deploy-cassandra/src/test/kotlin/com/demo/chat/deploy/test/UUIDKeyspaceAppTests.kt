@@ -26,7 +26,7 @@ import java.util.*
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [AppTestConfiguration::class, BaseCassandraApp::class]
 )
-@TestPropertySource(properties = ["keyType=uuid", "app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.service.core.key=uuid"])
 class UUIDKeyspaceAppTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     private lateinit var keyService: IKeyService<UUID>

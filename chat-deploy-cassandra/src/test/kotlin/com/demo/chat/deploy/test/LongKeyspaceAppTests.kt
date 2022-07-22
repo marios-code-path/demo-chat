@@ -22,7 +22,7 @@ import reactor.test.StepVerifier
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [AppTestConfiguration::class, BaseCassandraApp::class]
 )
-@TestPropertySource(properties = ["keyType=long", "app.service.core.key=long"])
+@TestPropertySource(properties = ["app.service.core.key=long"])
 class LongKeyspaceAppTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
     @Autowired
     private lateinit var keyService: IKeyService<Long>
