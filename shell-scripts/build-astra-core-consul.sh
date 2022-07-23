@@ -16,6 +16,7 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.edge.user -Dapp.service.edge.messaging \
 -Dapp.primary=core -Dspring.cloud.consul.host=${CONSUL_HOST} \
 -Dspring.cloud.consul.port=${CONSUL_PORT} \
+-Dspring.shell.interactive.enabled=false \
 ${CASSANDRA_OPTIONS}"
 
 cd ../chat-deploy-cassandra

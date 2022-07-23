@@ -16,8 +16,8 @@ class InitCommands<T>(
     private val authenticationManager: AuthenticationManager,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: SampleAppSecurityRunner.AnonymousKey<T>,
-    private val adminKey: SampleAppSecurityRunner.AdminKey<T>
+    private val anonKey: AnonymousKey<T>,
+    private val adminKey: AdminKey<T>
 ) {
 
     @ShellMethod("Add A User")
@@ -45,4 +45,28 @@ class InitCommands<T>(
         return "OK"
     }
 
+    // e.g. userA -> topicB : "SEND_MESSAGE"
+    @ShellMethod("Add a User Permission")
+    fun permission(
+        @ShellOption userId: T,
+        @ShellOption targetUserId: T,
+        @ShellOption role: String
+    ) {
+        val keySvc = serviceBeans.keyClient()
+        keySvc
+            .key(AuthMetadata::class.java)
+            .flatMap { metadataKey ->
+                authorizationService.authorize(
+                    StringRoleAuthorizationMetadata(
+                        metadataKey,
+                        Key.funKey(userId),
+                        Key.funKey(targetUserId),
+                        role,
+                        Long.MAX_VALUE
+                    ),
+                    true
+                )
+            }
+            .block()
+    }
 }

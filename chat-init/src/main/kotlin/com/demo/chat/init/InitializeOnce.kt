@@ -1,31 +1,22 @@
 package com.demo.chat.init
 
-import com.demo.chat.client.rsocket.config.CoreRSocketServiceDefinitions
-import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.secure.config.AuthConfiguration
-import com.demo.chat.secure.rsocket.TransportFactory
 import com.demo.chat.secure.rsocket.UnprotectedConnection
+import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
-import com.demo.chat.service.security.SecretsStoreInMemory
-import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
@@ -34,6 +25,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.util.*
 
 /**
@@ -47,66 +39,11 @@ import java.util.*
     UnprotectedConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
-class SampleAppSecurityRunner {
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
-    fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
+class InitializeOnce {
 
     @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
-
-    @Value("\${app.service.identity.anonymous}")
-    private lateinit var anonymousId: String
-
-    @Value("\${app.service.identity.admin}")
-    private lateinit var adminId: String
-
-    data class AnonymousKey<T>(override val id: T) : Key<T>
-    data class AdminKey<T>(override val id: T) : Key<T>
-
-    @Bean
-    fun <T> anonymousKey(typeUtil: TypeUtil<T>) = AnonymousKey(typeUtil.fromString(anonymousId))
-
-    @Bean
-    fun <T> adminKey(typeUtil: TypeUtil<T>) = AdminKey(typeUtil.fromString(adminId))
-
-    @Bean
-    fun requesterFactory(
-        builder: RSocketRequester.Builder,
-        clientConnectionProps: RSocketClientProperties,
-        tcpConnectionFactory: TransportFactory
-    ): DefaultRequesterFactory =
-        DefaultRequesterFactory(
-            builder,
-            tcpConnectionFactory,
-            clientConnectionProps.config
-        )
-
-    @Configuration
-    class ServiceClientConfiguration<T>(serviceDefinitions: CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>) :
-        ServiceBeanConfiguration<T, String, IndexSearchRequest>(serviceDefinitions)
-
-    @Bean
-    fun <T> rSocketBoundServices(
-        requesterFactory: RequesterFactory,
-        clientRSocketProps: RSocketClientProperties,
-        typeUtil: TypeUtil<T>
-    ) = CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>(
-        requesterFactory,
-        clientRSocketProps,
-        typeUtil
-    )
-
-    @Bean
-    fun <T> passwdStore(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
-
-    @Configuration
-    class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: AnonymousKey<T>) :
-        AuthConfiguration<T>(keyTypeUtil = typeUtil, anonKey)
-
-    @Bean
-    fun <T> appReady(
+    @Profile("init")
+    fun <T> initOnce(
         serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
         passwdStore: SecretsStore<T>,
         authenticationManager: AuthenticationManager,
@@ -118,12 +55,8 @@ class SampleAppSecurityRunner {
         val userIndex = serviceBeans.userIndexClient()
         val userPersistence = serviceBeans.userPersistenceClient()
 
-        val princpialKey = userPersistence.key().block()!!
-        val anotherUserKey = userPersistence.key().block()!!
-
         val users = listOf(
-            User.create(princpialKey, "test", "test", "https://foo"),
-            User.create(anonKey, "ANON", "anonymous", "null"),
+            User.create(anonKey, "ANONYMOUS", "anonymous", "null"),
             User.create(adminKey, "ADMIN", "administrator", "http://localhost/icons/admin.png")
         )
 
@@ -147,33 +80,13 @@ class SampleAppSecurityRunner {
             ),
             StringRoleAuthorizationMetadata(
                 userPersistence.key().block()!!,
+                adminKey,
                 anonKey,
-                princpialKey,
-                "ROLE_REQUEST",
-                1
-            ),
-            StringRoleAuthorizationMetadata(
-                userPersistence.key().block()!!,
-                anonKey,
-                anotherUserKey,
-                "ROLE_MESSAGE",
-                1
-            ),
-            StringRoleAuthorizationMetadata(
-                userPersistence.key().block()!!,
-                princpialKey,
-                anotherUserKey,
-                "ROLE_MESSAGE"
-            ),
-            StringRoleAuthorizationMetadata(
-                userPersistence.key().block()!!,
-                princpialKey,
-                anotherUserKey,
                 "ROLE_SUPER"
             ),
         )
             .flatMap { meta -> authorizationService.authorize(meta, true) }
-            .doFinally { println("Added Authorizations to principal($princpialKey), anotherUser($anotherUserKey) and anon ($anonKey).") }
+            .doFinally { println("Added Authorizations to Administrator(${anonKey.id}), Anonymous(${anonKey.id}).") }
             .blockLast()
 
 
@@ -181,22 +94,33 @@ class SampleAppSecurityRunner {
             .addCredential(users[0].key, "password")
             .doFinally { println("Added a password.") }
             .block()
+    }
 
+    fun <T> userLogin(
+        serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
+        passwdStore: SecretsStore<T>,
+        authenticationManager: AuthenticationManager,
+        authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+    ) {
 
         println("username: ")
-        val username = readLine()
+        val username = readLine()!!
         println("password: ")
-        val password = readLine()
+        val password = readLine()!!
 
         try {
+            val userKey =
+                serviceBeans.userIndexClient().findBy(IndexSearchRequest(UserIndexService.HANDLE, username, 1))
+                    .switchIfEmpty(Mono.error(Exception("NO USER FOUND")))
+                    .blockLast()
+
             val request = UsernamePasswordAuthenticationToken(username, password)
-                .apply { details = anotherUserKey.id }
+                .apply { details = userKey.id }
             val result = authenticationManager.authenticate(request)
             SecurityContextHolder.getContext().authentication = result
 
-            println("Success : ${SecurityContextHolder.getContext().authentication}")
-            sampleAppSecurityRunner.doSomethingNeedingAuth()
-            sampleAppSecurityRunner.doSomethingMessagy()
+            initializeOnce.doSomethingNeedingAuth()
+            initializeOnce.doSomethingMessagy()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         } catch (e: AccessDeniedException) {
@@ -207,12 +131,12 @@ class SampleAppSecurityRunner {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            runApplication<SampleAppSecurityRunner>(*args)
+            runApplication<InitializeOnce>(*args)
         }
     }
 
     @Autowired
-    private lateinit var sampleAppSecurityRunner: SampleAppSecurityRunner
+    private lateinit var initializeOnce: InitializeOnce
 
     @Secured("ROLE_SUPER")
     fun doSomethingNeedingAuth() {

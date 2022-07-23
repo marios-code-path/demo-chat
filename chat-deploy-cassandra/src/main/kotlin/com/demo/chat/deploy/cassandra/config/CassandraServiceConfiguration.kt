@@ -6,11 +6,13 @@ import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
 import com.demo.chat.deploy.cassandra.keygen.AtomicLongKeyGenerator
 import com.demo.chat.deploy.cassandra.keygen.CassandraUUIDKeyGenerator
+import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.repository.cassandra.*
 import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.persistence.KeyServiceCassandra
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -45,7 +47,6 @@ open class CassandraServiceConfiguration {
         byTopicRepo,
         principalRepo,
         targetRepo,
-        typeUtil::fromString,
         typeUtil
     ) {
         @Configuration
@@ -66,9 +67,16 @@ open class CassandraServiceConfiguration {
         class PersistenceControllers : PersistenceControllersConfiguration()
     }
 
-    @Bean       // Ideally, this is a (64+bits) partition mask value
+    // enforce number on nodeid
+    @Value("\${app.nodeid:0}")
+    lateinit var nodeId: String
+
+    @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    open fun longKeyGen(): IKeyGenerator<Long> = AtomicLongKeyGenerator(abs(Random.nextLong()))
+    open fun longKeyGen(): IKeyGenerator<Long> = when (nodeId) {
+        null, "0", "" -> SnowflakeGenerator()
+        else -> SnowflakeGenerator(nodeId.toInt())
+    }
 
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
