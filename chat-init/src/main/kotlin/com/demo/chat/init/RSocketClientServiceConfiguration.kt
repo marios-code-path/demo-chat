@@ -6,10 +6,12 @@ import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.secure.rsocket.TransportFactory
+import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.security.SecretsStoreInMemory
 import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Value
@@ -19,6 +21,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import java.util.*
 
+@Configuration
 class RSocketClientServiceConfiguration {
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
@@ -27,6 +30,10 @@ class RSocketClientServiceConfiguration {
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
     fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
+
+    @Bean
+    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    open fun longKeyGen(): IKeyGenerator<Long> = SnowflakeGenerator()
 
     @Value("\${app.service.identity.anonymous:1}")
     private lateinit var anonymousId: String

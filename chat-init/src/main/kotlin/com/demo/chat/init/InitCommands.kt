@@ -2,12 +2,16 @@ package com.demo.chat.init
 
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
+import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Profile
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
+import reactor.core.publisher.Flux
 
 @ShellComponent
 class InitCommands<T>(
@@ -17,7 +21,8 @@ class InitCommands<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
     private val anonKey: AnonymousKey<T>,
-    private val adminKey: AdminKey<T>
+    private val adminKey: AdminKey<T>,
+    private val keyGen: IKeyGenerator<T>
 ) {
 
     @ShellMethod("Add A User")
@@ -26,10 +31,17 @@ class InitCommands<T>(
         @ShellOption handle: String,
         @ShellOption imageUri: String
     ): String {
-        return serviceBeans.keyClient().key(User::class.java)
-            .map { key -> User.create(key, name, handle, imageUri) }
-            .map { user -> typeUtil.toString(user.key.id) }
-            .block()!!
+        val keyId = keyGen.nextKey()
+        val newUser = User.create(Key.funKey(keyId), name, handle, imageUri)
+        Flux.just(newUser)
+            .flatMap { user ->
+                serviceBeans.userPersistenceClient().add(user)
+                    .flatMap {
+                        serviceBeans.userIndexClient().add(user)
+                    }
+            }
+            .blockLast()
+        return typeUtil.toString(keyId)
     }
 
     @ShellMethod("Change User Password")
@@ -43,6 +55,32 @@ class InitCommands<T>(
             .block()!!
 
         return "OK"
+    }
+
+    @ShellMethod("Create a Key")
+    fun key():T  {
+        return keyGen.nextKey()
+    }
+
+    @ShellMethod("Send a Message")
+    fun send(
+        @ShellOption toUserId: T,
+        @ShellOption messageText: String
+    ) {
+        val keySvc = serviceBeans.keyClient()
+        keySvc.key(Message::class.java).flatMap { messageId ->
+            serviceBeans.pubsubClient()
+                .sendMessage(
+                    Message.create(
+                        MessageKey.Factory.create(messageId.id, adminKey.id, toUserId),
+                        messageText,
+                        true
+                    )
+                )
+        }
+            .block()
+
+        // ERROR HANDLING
     }
 
     // e.g. userA -> topicB : "SEND_MESSAGE"

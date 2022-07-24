@@ -2,7 +2,10 @@ package com.demo.chat.init
 
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
-import com.demo.chat.domain.*
+import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.StringRoleAuthorizationMetadata
+import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.secure.rsocket.UnprotectedConnection
 import com.demo.chat.service.UserIndexService
@@ -26,7 +29,6 @@ import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.*
 
 /**
  * Test Class
@@ -39,7 +41,27 @@ import java.util.*
     UnprotectedConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
-class InitializeOnce {
+class App {
+
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            runApplication<App>(*args)
+        }
+    }
+
+    @Autowired
+    private lateinit var app: App
+
+    @Secured("ROLE_SUPER")
+    fun doSomethingNeedingAuth() {
+        println("SUPER!")
+    }
+
+    @Secured("ROLE_MESSAGE")
+    fun doSomethingMessagy() {
+        // sink.add(message)
+    }
 
     @Bean
     @Profile("init")
@@ -115,36 +137,16 @@ class InitializeOnce {
                     .blockLast()
 
             val request = UsernamePasswordAuthenticationToken(username, password)
-                .apply { details = userKey.id }
+                .apply { details = userKey!!.id }
             val result = authenticationManager.authenticate(request)
             SecurityContextHolder.getContext().authentication = result
 
-            initializeOnce.doSomethingNeedingAuth()
-            initializeOnce.doSomethingMessagy()
+            app.doSomethingNeedingAuth()
+            app.doSomethingMessagy()
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         } catch (e: AccessDeniedException) {
             println("Not authorized for : " + e.message)
         }
-    }
-
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            runApplication<InitializeOnce>(*args)
-        }
-    }
-
-    @Autowired
-    private lateinit var initializeOnce: InitializeOnce
-
-    @Secured("ROLE_SUPER")
-    fun doSomethingNeedingAuth() {
-        println("SUPER!")
-    }
-
-    @Secured("ROLE_MESSAGE")
-    fun doSomethingMessagy() {
-        // sink.add(message)
     }
 }
