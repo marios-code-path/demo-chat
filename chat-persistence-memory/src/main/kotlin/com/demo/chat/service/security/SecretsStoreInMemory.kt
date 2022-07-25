@@ -16,9 +16,11 @@ class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
                 sink.error(AuthenticationException("Cannot Find Credential for  ${key.id}."))
         }
 
-    override fun addCredential(key: Key<T>, credential: String): Mono<Void> =
+    override fun addCredential(keyCredential: KeyCredential<T>): Mono<Void> =
         Mono.create { sink ->
-            secureMap[key.id] = credential
+            val keyId = keyCredential.key.id
+            val credential = keyCredential.credential
+            secureMap[keyId] = credential
             sink.success()
         }
 }

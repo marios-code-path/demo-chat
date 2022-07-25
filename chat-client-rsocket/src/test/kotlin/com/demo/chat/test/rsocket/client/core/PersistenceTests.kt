@@ -1,13 +1,17 @@
 package com.demo.chat.test.rsocket.client.core
 
-import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.client.rsocket.core.PersistenceClient
 import com.demo.chat.client.rsocket.core.impl.UserPersistenceClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserPersistence
-import com.demo.chat.test.rsocket.controller.core.*
+import com.demo.chat.test.TestChatUser
+import com.demo.chat.test.TestChatUserKey
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.randomAlphaNumeric
+import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.controller.core.UserPersistenceRSocketTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -24,7 +28,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestConfigurationRSocket::class,
+@Import(
+    TestConfigurationRSocket::class,
         UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
 class PersistenceTests : RSocketTestBase() {
     @MockBean

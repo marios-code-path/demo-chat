@@ -8,9 +8,9 @@ import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.test.TestBase
+import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.edge.EdgeMessagingControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
-import com.demo.chat.test.rsocket.controller.core.RSocketTestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers

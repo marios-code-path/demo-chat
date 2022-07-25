@@ -1,7 +1,7 @@
 package com.demo.chat.service.impl.memory.messaging
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TopicNotFoundException
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import reactor.core.publisher.Flux
@@ -39,7 +39,7 @@ class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
     private fun topicExistsOrError(topic: T): Mono<Boolean> =
             exists(topic)
                     .filter { it == true }
-                    .switchIfEmpty(Mono.error(TopicNotFoundException))
+                    .switchIfEmpty(Mono.error(NotFoundException))
 
     override fun exists(topic: T): Mono<Boolean> = Mono
             .fromCallable { sinkByTopic.containsKey(topic) }
@@ -75,7 +75,7 @@ class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
                             .getSource(dest)
                             .onNext(message)
                 }
-                .switchIfEmpty(Mono.error(TopicNotFoundException))
+                .switchIfEmpty(Mono.error(NotFoundException))
                 .then()
     }
 

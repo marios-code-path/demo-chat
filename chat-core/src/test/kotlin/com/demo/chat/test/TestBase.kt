@@ -21,7 +21,7 @@ open class TestBase {
     }!!
 
     companion object TestBase {
-        fun <T> anyObject(): T {
+        open fun <T> anyObject(): T {
             Mockito.anyObject<T>()
             return uninitialized()
         }
@@ -30,7 +30,7 @@ open class TestBase {
 
         private val ALPHA_NUMERIC_STRING = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-        fun randomAlphaNumeric(size: Int): String {
+        open fun randomAlphaNumeric(size: Int): String {
             var count = size
             val builder = StringBuilder()
             while (count-- != 0) {

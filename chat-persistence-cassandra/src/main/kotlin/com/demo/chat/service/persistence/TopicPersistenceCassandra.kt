@@ -2,7 +2,7 @@ package com.demo.chat.service.persistence
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.TopicNotFoundException
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.repository.cassandra.TopicRepository
 import com.demo.chat.service.IKeyService
 import com.demo.chat.service.TopicPersistence
@@ -26,6 +26,6 @@ open class TopicPersistenceCassandra<T>(private val keyService: IKeyService<T>,
     override fun rem(key: Key<T>): Mono<Void> =
             roomRepo
                     .findByKeyId(key.id)
-                    .switchIfEmpty(Mono.error(TopicNotFoundException))
+                    .switchIfEmpty(Mono.error(NotFoundException))
                     .flatMap { roomRepo.rem(key) }
 }

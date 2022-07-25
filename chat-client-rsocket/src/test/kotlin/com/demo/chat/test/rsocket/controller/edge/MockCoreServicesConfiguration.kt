@@ -5,6 +5,7 @@ import com.demo.chat.domain.serializers.JacksonModules
 import com.demo.chat.service.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
+import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -19,7 +20,8 @@ class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverte
 @TestConfiguration
 @Import(TestModules::class,
         JacksonAutoConfiguration::class,
-        RSocketStrategiesAutoConfiguration::class)
+        RSocketStrategiesAutoConfiguration::class,
+        RSocketMessagingAutoConfiguration::class)
 class MockCoreServicesConfiguration {
     @MockBean
     private lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
@@ -53,12 +55,4 @@ class MockCoreServicesConfiguration {
 
     @Autowired
     private lateinit var rsocketStrategies: RSocketStrategies
-
-    @Bean
-    fun serverMessageHandler(strategies: RSocketStrategies): RSocketMessageHandler {
-        val handler = RSocketMessageHandler()
-        handler.rSocketStrategies = strategies
-        handler.afterPropertiesSet()
-        return handler
-    }
 }

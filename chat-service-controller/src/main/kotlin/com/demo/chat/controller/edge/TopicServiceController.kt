@@ -86,7 +86,7 @@ open class TopicServiceController<T, V, Q>(
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
             topicPersistence
                     .get(Key.funKey(req.roomId))
-                    .switchIfEmpty(Mono.error(TopicNotFoundException))
+                    .switchIfEmpty(Mono.error(NotFoundException))
                     .then(
                             membershipPersistence
                                     .key()

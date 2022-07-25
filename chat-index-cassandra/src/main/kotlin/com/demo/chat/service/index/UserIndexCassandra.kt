@@ -1,7 +1,7 @@
 package com.demo.chat.service.index
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel
-import com.demo.chat.domain.DuplicateUserException
+import com.demo.chat.domain.DuplicateException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUserHandle
@@ -31,7 +31,7 @@ class UserIndexCassandra<T>(
     )
             .handle { write, sink ->
                 when (write.wasApplied()) {
-                    false -> sink.error(DuplicateUserException)
+                    false -> sink.error(DuplicateException)
                     else -> sink.complete()
                 }
             }

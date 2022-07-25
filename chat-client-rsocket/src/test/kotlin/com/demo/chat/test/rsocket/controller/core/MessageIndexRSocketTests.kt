@@ -6,6 +6,9 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessageIndexService.Companion.TOPIC
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.TestConfigurationRSocket
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -14,7 +17,6 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -24,7 +26,8 @@ import java.util.*
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestConfigurationRSocket::class,
+@Import(
+    TestConfigurationRSocket::class,
         MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
 class MessageIndexRSocketTests : RSocketTestBase() {
     @MockBean

@@ -4,9 +4,8 @@ import com.demo.chat.controller.config.IndexControllersConfiguration
 import com.demo.chat.controller.config.KeyControllersConfiguration
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
 import com.demo.chat.controller.config.PubSubControllerConfiguration
-import org.springframework.boot.CommandLineRunner
+import com.demo.chat.secure.config.SecretStoreControllerConfiguration
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 open class CoreControllerConfiguration {
@@ -26,4 +25,9 @@ open class CoreControllerConfiguration {
     @Configuration
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
     class PubSubControllers : PubSubControllerConfiguration()
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+    class SecretsControllers : SecretStoreControllerConfiguration()
+
 }

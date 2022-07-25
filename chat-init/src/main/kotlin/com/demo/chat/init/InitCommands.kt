@@ -4,6 +4,7 @@ import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Profile
@@ -51,7 +52,7 @@ class InitCommands<T>(
     ): String {
         serviceBeans.userPersistenceClient().byIds(listOf(Key.funKey(id)))
             .last()
-            .flatMap { passwdStore.addCredential(it.key, passwd) }
+            .flatMap { passwdStore.addCredential(KeyCredential(it.key, passwd)) }
             .block()!!
 
         return "OK"

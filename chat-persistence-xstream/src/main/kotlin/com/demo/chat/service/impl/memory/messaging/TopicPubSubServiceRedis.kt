@@ -3,7 +3,7 @@ package com.demo.chat.service.impl.memory.messaging
 import com.demo.chat.convert.Converter
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TopicNotFoundException
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.service.TopicPubSubService
 import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
 import org.slf4j.LoggerFactory
@@ -47,7 +47,7 @@ class TopicPubSubServiceRedis<T, E>(
             .filter {
                 it == true
             }
-            .switchIfEmpty(Mono.error(TopicNotFoundException))
+            .switchIfEmpty(Mono.error(NotFoundException))
             .then()
 
     override fun exists(topic: T): Mono<Boolean> = stringTemplate

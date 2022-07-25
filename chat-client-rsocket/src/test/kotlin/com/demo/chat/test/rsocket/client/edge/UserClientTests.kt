@@ -55,7 +55,6 @@ class UserClientTests : EdgeUserControllerTests() {
                 .verifyComplete()
     }
 
-
     @Test
     fun `client should find user`() {
         BDDMockito.given(userPersistence.get(TestBase.anyObject()))

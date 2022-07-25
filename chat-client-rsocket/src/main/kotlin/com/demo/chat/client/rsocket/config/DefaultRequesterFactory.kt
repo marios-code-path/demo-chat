@@ -3,7 +3,7 @@ package com.demo.chat.client.rsocket.config
 import com.demo.chat.secure.rsocket.TransportFactory
 import org.springframework.messaging.rsocket.RSocketRequester
 
-class DefaultRequesterFactory(
+open class DefaultRequesterFactory(
     private val builder: RSocketRequester.Builder,
     private val connection: TransportFactory,
     private val properties: Map<String, RSocketProperty>

@@ -1,6 +1,6 @@
 package com.demo.chat.repository.cassandra
 
-import com.demo.chat.domain.DuplicateUserException
+import com.demo.chat.domain.DuplicateException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.cassandra.ChatUserHandle
@@ -51,7 +51,7 @@ class ChatUserHandleRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemp
                     )
                     .handle<Void> { write, sink ->
                         when (write.wasApplied()) {
-                            false -> sink.error(DuplicateUserException)
+                            false -> sink.error(DuplicateException)
                             else -> sink.complete()
                         }
                     }

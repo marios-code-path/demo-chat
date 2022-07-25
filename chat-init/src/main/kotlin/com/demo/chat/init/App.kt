@@ -10,6 +10,7 @@ import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.secure.rsocket.UnprotectedConnection
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
@@ -113,7 +114,7 @@ class App {
 
 
         passwdStore
-            .addCredential(users[0].key, "password")
+            .addCredential(KeyCredential( users[0].key, "password"))
             .doFinally { println("Added a password.") }
             .block()
     }

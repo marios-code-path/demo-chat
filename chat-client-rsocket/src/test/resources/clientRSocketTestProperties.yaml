@@ -23,3 +23,6 @@ app:
         user:
           dest: "127.0.0.1:6790"
           prefix: user.
+        secrets:
+          dest: "127.0.0.1:6790"
+          prefix: secrets.
