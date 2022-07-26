@@ -41,6 +41,7 @@ class  App {
         handler.afterPropertiesSet()
         return handler
     }
+
     @Configuration
     @EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
     class SecurityConfiguration : AuthConfiguration<Long>(TypeUtil.LongUtil, Key.funKey(0L))

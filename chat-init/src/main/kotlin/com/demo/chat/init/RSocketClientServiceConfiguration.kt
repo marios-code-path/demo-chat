@@ -48,7 +48,7 @@ class RSocketClientServiceConfiguration {
     fun <T> adminKey(typeUtil: TypeUtil<T>) = AdminKey(typeUtil.fromString(adminId))
 
     @Bean
-    @ConditionalOnProperty("app.rsocket.client.config.factory", havingValue = "default")
+    @ConditionalOnProperty("app.rsocket.client.requester.factory", havingValue = "default")
     fun requesterFactory(
         builder: RSocketRequester.Builder,
         clientConnectionProps: RSocketClientProperties,

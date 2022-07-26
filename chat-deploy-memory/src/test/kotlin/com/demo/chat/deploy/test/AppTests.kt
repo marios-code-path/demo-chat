@@ -11,7 +11,7 @@ import org.springframework.test.context.TestPropertySource
     properties = [
         "app.proto=rsocket", "spring.cloud.consul.config.enabled=false",
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
-        "spring.shell.interactive.enabled=false"]
+        "spring.shell.interactive.enabled=false", "app.service.core.key=long"]
 )
 class AppTests {
 

@@ -12,7 +12,11 @@
 	<version>0.0.1</version>
 	<name>chat-init</name>
 	<description>Chat Application Initialization</description>
-
+	<properties>
+		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+		<mainClass>com.demo.chat.deploy.memory.App</mainClass>
+		<appMainClass>${mainClass}</appMainClass>
+	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.shell</groupId>
@@ -143,8 +147,14 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<mainClass>com.demo.chat.init.App</mainClass>
-					<imageName>${env.CHAT_IMAGE_NAME:chat-init}</imageName>
+					<mainClass>${appMainClass}</mainClass>
+					<image>
+						<name>${appImageName}</name>
+						<cleanCache>false</cleanCache>
+						<env>
+							<BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+						</env>
+					</image>
 				</configuration>
 				<executions>
 					<execution>

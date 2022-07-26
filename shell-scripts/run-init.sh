@@ -1,0 +1,1 @@
+./build-init-client-local.sh -k long -t chat_core -n chat_shell -b runlocal

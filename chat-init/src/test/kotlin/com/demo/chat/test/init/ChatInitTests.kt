@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource
         "app.primary=init", "server.port=0", "management.endpoints.enabled-by-default=false",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.key", "spring.rsocket.server.port=6790",
-        "spring.cloud.service-registry.auto-registration.enabled=false",
+        "spring.cloud.service-registry.auto-registration.enabled=false","app.rsocket.client.requester.factory=test",
         "spring.shell.interactive.enabled=false"]
 )
 @Import(TestClientServerConfiguration::class, TestConfigurationRSocket::class)

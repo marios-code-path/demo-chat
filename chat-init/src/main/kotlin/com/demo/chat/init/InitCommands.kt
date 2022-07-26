@@ -3,6 +3,7 @@ package com.demo.chat.init
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
@@ -43,6 +44,28 @@ class InitCommands<T>(
             }
             .blockLast()
         return typeUtil.toString(keyId)
+    }
+
+    @ShellMethod("All Users")
+    fun users(): String? {
+        return serviceBeans.userPersistenceClient().all()
+            .map<String> { user ->
+                "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
+            }
+            .reduce {t, u -> t + u}
+            .block()
+    }
+
+    @ShellMethod("Get a user")
+    fun getUser(@ShellOption handle: String) : String {
+        return serviceBeans.userIndexClient().findBy(IndexSearchRequest(UserIndexService.HANDLE, handle, 100))
+            .flatMap  {
+                serviceBeans.userPersistenceClient().byIds(listOf(it))
+            }
+            .map { user ->
+                "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
+            }
+            .blockLast()!!
     }
 
     @ShellMethod("Change User Password")
