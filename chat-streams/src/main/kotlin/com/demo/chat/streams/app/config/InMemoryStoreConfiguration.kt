@@ -15,16 +15,16 @@ import org.springframework.context.annotation.Bean
 
 open class PersistenceBeans(keyService: IKeyService<Long>) : InMemoryPersistenceBeans<Long, String>(keyService) {
     @Bean
-    open fun userPersistence() = UserCreateStore(user())
+    open fun user() = UserCreateStore(userPersistence())
 
     @Bean
-    open fun topicPersistence() = TopicCreateStore(topic())
+    open fun topic() = TopicCreateStore(topicPersistence())
 
     @Bean
-    open fun messagePersistence() = MessageCreateStore(message())
+    open fun message() = MessageCreateStore(messagePersistence())
 
     @Bean
-    open fun membershipPersistence() = MembershipCreateStore(membership())
+    open fun membership() = MembershipCreateStore(membershipPersistence())
 }
 
 open class IndexBeans : LuceneIndexBeans<Long>(

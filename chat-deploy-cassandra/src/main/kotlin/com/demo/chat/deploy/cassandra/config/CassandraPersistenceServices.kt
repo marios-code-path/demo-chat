@@ -17,18 +17,18 @@ open class CassandraPersistenceServices<T>(
     private val authMetadataRepo: AuthMetadataRepository<T>
 ) : PersistenceServiceBeans<T, String> {
 
-    override fun user(): UserPersistence<T> =
+    override fun userPersistence(): UserPersistence<T> =
         UserPersistenceCassandra(keyService, userRepo)
 
-    override fun topic(): TopicPersistence<T> =
+    override fun topicPersistence(): TopicPersistence<T> =
         TopicPersistenceCassandra(keyService, topicRepo)
 
-    override fun message(): MessagePersistence<T, String> =
+    override fun messagePersistence(): MessagePersistence<T, String> =
         MessagePersistenceCassandra(keyService, messageRepo)
 
-    override fun membership(): MembershipPersistence<T> =
+    override fun membershipPersistence(): MembershipPersistence<T> =
         MembershipPersistenceCassandra(keyService, membershipRepo)
 
-    override fun authMetadata(): AuthMetaPersistence<T> =
+    override fun authMetaPersistence(): AuthMetaPersistence<T> =
         AuthMetaPersistenceCassandra(keyService, authMetadataRepo)
 }

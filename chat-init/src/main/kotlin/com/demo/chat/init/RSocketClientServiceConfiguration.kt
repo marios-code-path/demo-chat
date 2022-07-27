@@ -4,6 +4,7 @@ import com.demo.chat.client.rsocket.config.CoreRSocketServiceDefinitions
 import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
+import com.demo.chat.client.rsocket.core.SecretStoreClient
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.SnowflakeGenerator
@@ -14,6 +15,7 @@ import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.secure.rsocket.TransportFactory
 import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.service.security.SecretsStoreInMemory
 import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Value
@@ -78,10 +80,12 @@ class RSocketClientServiceConfiguration {
     )
 
     @Bean
-    fun <T> passwdStore(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
+    fun <T> secretsClient(
+        requesterFactory: RequesterFactory,
+        typeUtil: TypeUtil<T>
+    ): SecretsStore<T> = SecretStoreClient("secrets", requesterFactory.requester("secrets"))
 
     @Configuration
     class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: AnonymousKey<T>) :
         AuthConfiguration<T>(keyTypeUtil = typeUtil, anonKey)
-
 }

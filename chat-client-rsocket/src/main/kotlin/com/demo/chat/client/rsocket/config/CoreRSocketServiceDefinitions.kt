@@ -27,21 +27,21 @@ class CoreRSocketServiceDefinitions<T, V, Q>(
     override fun topicExchange(): TopicPubSubService<T, V> =
         TopicPubSubClient("${serviceKey("pubsub").prefix}.", requesterFactory.requester("pubsub"), typeUtil)
 
-    override fun user(): UserPersistence<T> =
+    override fun userPersistence(): UserPersistence<T> =
         UserPersistenceClient("${persistenceProps.prefix}user.", persistenceRequester())
 
-    override fun message(): MessagePersistence<T, V> =
+    override fun messagePersistence(): MessagePersistence<T, V> =
         MessagePersistenceClient("${persistenceProps.prefix}message.", persistenceRequester())
 
-    override fun topic(): TopicPersistence<T> =
+    override fun topicPersistence(): TopicPersistence<T> =
         TopicPersistenceClient("${persistenceProps.prefix}topic.", persistenceRequester())
 
-    override fun membership(): MembershipPersistence<T> = MembershipPersistenceClient(
+    override fun membershipPersistence(): MembershipPersistence<T> = MembershipPersistenceClient(
         "${persistenceProps.prefix}membership.",
         persistenceRequester()
     )
 
-    override fun authMetadata(): AuthMetaPersistence<T> =
+    override fun authMetaPersistence(): AuthMetaPersistence<T> =
         AuthMetadataPersistenceClient( //PersistenceStore<T, AuthMetadata<T>> = AuthMetadataPersistenceClient(
             "${persistenceProps.prefix}authmeta.",
             persistenceRequester()

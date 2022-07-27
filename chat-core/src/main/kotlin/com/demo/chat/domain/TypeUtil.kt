@@ -27,8 +27,9 @@ interface TypeUtil<T> {
         override fun parameterizedType(): ParameterizedTypeReference<Long> =
             ParameterizedTypeReference.forType(Long::class.java)
     }
-
 }
+
+interface KeyTypeUtil<T> : TypeUtil<T>
 
 class UUIDUtil : TypeUtil<UUID> {
     override fun compare(a: UUID, b: UUID): Int = a.compareTo(b)
@@ -46,4 +47,18 @@ class UUIDUtil : TypeUtil<UUID> {
 
     override fun parameterizedType(): ParameterizedTypeReference<UUID> =
         ParameterizedTypeReference.forType(UUID::class.java)
+}
+
+class StringUtil: TypeUtil<String> {
+    override fun compare(a: String, b: String): Int = a.compareTo(b)
+
+    override fun toString(t: String): String = t
+
+    override fun fromString(t: String): String = t
+
+    override fun assignFrom(t: Any): String = t.toString()
+
+    override fun parameterizedType(): ParameterizedTypeReference<String> =
+        ParameterizedTypeReference.forType(String::class.java)
+
 }

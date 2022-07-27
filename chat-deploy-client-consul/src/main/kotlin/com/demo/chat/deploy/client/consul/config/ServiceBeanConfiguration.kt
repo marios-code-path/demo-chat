@@ -1,9 +1,6 @@
 package com.demo.chat.deploy.client.consul.config
 
 import com.demo.chat.config.CoreServices
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.TopicPubSubService
-import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 
@@ -20,23 +17,23 @@ open class ServiceBeanConfiguration<T, V, Q>(
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun messagePersistenceClient() = services.message()
+    open fun messagePersistenceClient() = services.messagePersistence()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun userPersistenceClient() = services.user()
+    open fun userPersistenceClient() = services.userPersistence()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun topicPersistenceClient() = services.topic()
+    open fun topicPersistenceClient() = services.topicPersistence()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun membershipPersistenceClient() = services.membership()
+    open fun membershipPersistenceClient() = services.membershipPersistence()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["persistence"])
     @Bean
-    open fun authMetadataPersistenceClient() = services.authMetadata()
+    open fun authMetadataPersistenceClient() = services.authMetaPersistence()
 
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
     @Bean

@@ -2,67 +2,40 @@ package com.demo.chat.deploy.memory.config
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
-import com.demo.chat.controller.edge.MessagingController
-import com.demo.chat.controller.edge.TopicServiceController
-import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.controller.config.edge.EdgeUserControllerConfiguration
+import com.demo.chat.controller.config.edge.MessagingControllerConfiguration
+import com.demo.chat.controller.config.edge.TopicControllerConfiguration
 import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.StringUtil
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.service.*
+import com.demo.chat.service.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
-import java.util.function.Function
 
 open class EdgeControllerConfiguration {
-
+    // TODO : Convert for parameter Q (is IndexSearchRequest now )  push references up to App deployment (rather than down in chat-service-controller )
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
-    @MessageMapping("user")
     class UserService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,
-    ) :
-        UserServiceController<T, IndexSearchRequest>(
-            userPersistence = s.user(),
-            userIndex = x.userIndex(),
-            userHandleToQuery = Function { r ->
-                IndexSearchRequest(UserIndexService.HANDLE, r.handle, 100)
-            })
+    ) : EdgeUserControllerConfiguration<T, String>(s, x)
 
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
-    @MessageMapping("topic")
     class TopicService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,
         p: TopicPubSubService<T, String>,
         t: TypeUtil<T>
-    ) : TopicServiceController<T, String, IndexSearchRequest>(
-        topicPersistence = s.topic(),
-        topicIndex = x.topicIndex(),
-        messaging = p,
-        userPersistence = s.user(),
-        membershipPersistence = s.membership(),
-        membershipIndex = x.membershipIndex(),
-        emptyDataCodec = { "" },
-        topicNameToQuery = { r -> IndexSearchRequest(TopicIndexService.NAME, r.name, 100) },
-        membershipIdToQuery = { mid -> IndexSearchRequest(MembershipIndexService.MEMBER, t.toString(mid.id), 100) }
-    )
+    ) : TopicControllerConfiguration<T, String>(s, x, p, t, StringUtil())
 
-    // MessageService
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["message"])
-    @MessageMapping("message")
     class MessageService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,
         p: TopicPubSubService<T, String>,
         t: TypeUtil<T>
-    ) : MessagingController<T, String, IndexSearchRequest>(
-        messageIndex = x.messageIndex(),
-        messagePersistence = s.message(),
-        topicMessaging = p,
-        messageIdToQuery = { r -> IndexSearchRequest(MessageIndexService.ID, t.toString(r.id), 100) }
-    )
-
+    ) : MessagingControllerConfiguration<T, String>(s, x, p, t)
 }

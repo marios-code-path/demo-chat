@@ -7,9 +7,9 @@ import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.AuthMetaPersistence
 
 interface PersistenceServiceBeans<T, V> {
-    fun user(): UserPersistence<T> //PersistenceStore<T, User<T>>
-    fun topic(): TopicPersistence<T> //PersistenceStore<T, MessageTopic<T>>
-    fun message(): MessagePersistence<T, V> //PersistenceStore<T, Message<T, V>>
-    fun membership(): MembershipPersistence<T> //PersistenceStore<T, TopicMembership<T>>
-    fun authMetadata(): AuthMetaPersistence<T> //PersistenceStore<T, AuthMetadata<T>>
+    fun userPersistence(): UserPersistence<T> //PersistenceStore<T, User<T>>
+    fun topicPersistence(): TopicPersistence<T> //PersistenceStore<T, MessageTopic<T>>
+    fun messagePersistence(): MessagePersistence<T, V> //PersistenceStore<T, Message<T, V>>
+    fun membershipPersistence(): MembershipPersistence<T> //PersistenceStore<T, TopicMembership<T>>
+    fun authMetaPersistence(): AuthMetaPersistence<T> //PersistenceStore<T, AuthMetadata<T>>
 }

@@ -35,7 +35,6 @@ open class MemoryResourceConfiguration {
     @Configuration
     class LongMemoryKeyServiceBeans : LongKeyServiceBeans()
 
-
     @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
     @Configuration
     class UUIDMemoryKeyServiceBeans : KeyServiceBeans<UUID> {
