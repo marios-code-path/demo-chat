@@ -27,6 +27,10 @@ while getopts ":cd:k:b:n:o" o; do
       -c == enables Discovery with consul
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
+
+      Consumed Environments:
+      DOCKER_ARGS     == additional arguments passed into docker command
+      DEPLOYMENT_NAME == name of the container that will be deployed
 CATZ
       exit
       ;;
@@ -39,7 +43,7 @@ export DOCKER_ARGS="${DOCKER_ARGS} --name ${DEPLOYMENT_NAME}"
 # how to auto-discover consul using dns alone!
 export SPRING_PROFILE="default"
 export APP_PRIMARY="core"
-export APP_IMAGE_NAME="core-services-monolith"
+export APP_IMAGE_NAME="core-services"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.App"
 export APP_VERSION=0.0.1
 

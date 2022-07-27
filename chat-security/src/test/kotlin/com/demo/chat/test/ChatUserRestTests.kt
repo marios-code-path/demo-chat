@@ -1,7 +1,9 @@
 package com.demo.chat.test
 
 import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.domain.User
 import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.UserPersistence
 import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.index.MockIndexSupplier
 import com.demo.chat.test.persistence.MockPersistenceResolver
@@ -30,8 +32,8 @@ open class EdgeUserRestControllerTests {
         @Controller
         class TestUserController :
             UserServiceController<UUID, Map<String, String>>(
-                MockPersistenceSupplier().get(),
-                MockIndexSupplier().get(),
+                MockPersistenceSupplier().get<UUID, String>() as UserPersistence<UUID>,
+                MockIndexSupplier().get<UUID, User<UUID>, Map<String, String>>() as UserIndexService<UUID, Map<String, String>>,
                 Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
     }
 }

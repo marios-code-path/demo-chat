@@ -7,8 +7,6 @@ import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Profile
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
@@ -16,16 +14,20 @@ import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Flux
 
 @ShellComponent
-class InitCommands<T>(
+class UserCommands<T>(
     private val serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
     private val passwdStore: SecretsStore<T>,
-    private val authenticationManager: AuthenticationManager,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
     private val anonKey: AnonymousKey<T>,
     private val adminKey: AdminKey<T>,
     private val keyGen: IKeyGenerator<T>
 ) {
+
+    @ShellMethod("Create a Key")
+    fun key():T  {
+        return keyGen.nextKey()
+    }
 
     @ShellMethod("Add A User")
     fun addUser(
@@ -79,32 +81,6 @@ class InitCommands<T>(
             .block()!!
 
         return "OK"
-    }
-
-    @ShellMethod("Create a Key")
-    fun key():T  {
-        return keyGen.nextKey()
-    }
-
-    @ShellMethod("Send a Message")
-    fun send(
-        @ShellOption toUserId: T,
-        @ShellOption messageText: String
-    ) {
-        val keySvc = serviceBeans.keyClient()
-        keySvc.key(Message::class.java).flatMap { messageId ->
-            serviceBeans.pubsubClient()
-                .sendMessage(
-                    Message.create(
-                        MessageKey.Factory.create(messageId.id, adminKey.id, toUserId),
-                        messageText,
-                        true
-                    )
-                )
-        }
-            .block()
-
-        // ERROR HANDLING
     }
 
     // e.g. userA -> topicB : "SEND_MESSAGE"

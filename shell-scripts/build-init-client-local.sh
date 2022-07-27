@@ -2,7 +2,7 @@
 cd ../chat-init
 source ../shell-scripts/ports.sh
 
-while getopts ":cd:k:b:n:t:o" o; do
+while getopts ":ck:b:n:t:o" o; do
   case $o in
     n)
       export DEPLOYMENT_NAME=${OPTARG}

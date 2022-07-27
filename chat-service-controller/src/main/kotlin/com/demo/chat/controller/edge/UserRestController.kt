@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.stream.Collectors
 
-@RestController
+//@RestController
 open class UserRestController<T, Q>(
     val userPersistence: PersistenceStore<T, User<T>>,
     private val userIndex: IndexService<T, User<T>, Q>,

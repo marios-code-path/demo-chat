@@ -9,14 +9,15 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 
 open class InMemoryPersistence<T, E>(
-    val keyService: IKeyService<T>,
+    private val keyService: IKeyService<T>,
     private val entityClass: Class<*>,
     private val keyFromEntity: Function<E, Key<T>>
 ) : PersistenceStore<T, E> {
-    private val map = ConcurrentHashMap<T, E>()
+    val map = ConcurrentHashMap<T, E>()
 
     override fun key(): Mono<out Key<T>> = keyService.key(entityClass)
 
+    @Synchronized
     override fun add(ent: E): Mono<Void> = Mono.create {
         map[keyFromEntity.apply(ent).id] = ent
         it.success()
@@ -36,3 +37,4 @@ open class InMemoryPersistence<T, E>(
 
     override fun all(): Flux<out E> = Flux.fromIterable(map.values.asIterable())
 }
+

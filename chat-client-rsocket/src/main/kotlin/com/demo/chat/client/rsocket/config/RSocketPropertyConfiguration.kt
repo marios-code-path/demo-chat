@@ -10,7 +10,6 @@ data class RSocketAppProperties(
     val core: CoreRSocketAppProperties
 )
 
-
 @ConfigurationProperties("app.rsocket.client")
 @ConstructorBinding
 data class RSocketClientProperties(val config: Map<String, RSocketPropertyValue>) {
@@ -26,4 +25,7 @@ data class CoreRSocketAppProperties(
     override val index: RSocketProperty = RSocketPropertyValue(),
     override val persistence: RSocketProperty = RSocketPropertyValue(),
     override val pubsub: RSocketProperty = RSocketPropertyValue(),
-) : CoreRSocketProperties
+    override val topic: RSocketProperty = RSocketPropertyValue(),
+    override val message: RSocketProperty = RSocketPropertyValue(),
+    override val user: RSocketProperty = RSocketPropertyValue()
+) : CoreRSocketProperties, EdgeRSocketProperties

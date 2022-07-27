@@ -1,1 +1,1 @@
-./build-memory-core.sh -n chat_core -k long -b runlocal -p
+./build-memory-core.sh -n core_services -k long -b rundocker

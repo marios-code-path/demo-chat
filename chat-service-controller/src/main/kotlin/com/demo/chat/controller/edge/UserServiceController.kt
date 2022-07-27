@@ -3,11 +3,11 @@ package com.demo.chat.controller.edge
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
+import com.demo.chat.controller.edge.mapping.ChatUserServiceMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
-import com.demo.chat.controller.edge.mapping.ChatUserServiceMapping
+import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.UserPersistence
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.messaging.handler.annotation.MessageMapping
@@ -17,8 +17,8 @@ import java.util.function.Function
 import java.util.stream.Collectors
 
 open class UserServiceController<T, Q>(
-        val userPersistence: PersistenceStore<T, User<T>>,
-        private val userIndex: IndexService<T, User<T>, Q>,
+        val userPersistence: UserPersistence<T>,
+        private val userIndex: UserIndexService<T, Q>,
         private val userHandleToQuery: Function<ByHandleRequest, Q>,
 ) : ChatUserServiceMapping<T> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
