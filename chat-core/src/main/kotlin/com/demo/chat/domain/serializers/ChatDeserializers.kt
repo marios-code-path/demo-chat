@@ -51,7 +51,7 @@ class MessageDeserializer<T, E>(keyCodec: Converter<JsonNode, T>,
 }
 
 class KeyDataPairDeserializer<T, E>(keyCodec: Converter<JsonNode, T>,
-                                    val dataCodec: Converter<JsonNode, E>) : JsonDeserializer<KeyDataPair<T, E>>() {
+                                    private val dataCodec: Converter<JsonNode, E>) : JsonDeserializer<KeyDataPair<T, E>>() {
     private val kd = KeyDeserializer(keyCodec)
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyDataPair<T, E> {

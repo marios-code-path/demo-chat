@@ -17,7 +17,7 @@ open class EdgeControllerConfiguration {
 
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
-    @MessageMapping("edge.user")
+    @MessageMapping("user")
     class UserService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,
@@ -31,7 +31,7 @@ open class EdgeControllerConfiguration {
 
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
-    @MessageMapping("edge.topic")
+    @MessageMapping("topic")
     class TopicService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,
@@ -52,7 +52,7 @@ open class EdgeControllerConfiguration {
     // MessageService
     @Controller
     @ConditionalOnProperty(prefix = "app.service.edge", name = ["message"])
-    @MessageMapping("edge.message")
+    @MessageMapping("message")
     class MessageService<T>(
         s: PersistenceServiceBeans<T, String>,
         x: IndexServiceBeans<T, String, IndexSearchRequest>,

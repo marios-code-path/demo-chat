@@ -1,13 +1,14 @@
-package com.demo.chat.init
+package com.demo.chat.init.commands
 
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
+import com.demo.chat.init.domain.AdminKey
+import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
-import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption

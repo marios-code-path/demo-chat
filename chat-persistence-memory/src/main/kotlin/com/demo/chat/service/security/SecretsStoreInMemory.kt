@@ -19,7 +19,7 @@ class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
     override fun addCredential(keyCredential: KeyCredential<T>): Mono<Void> =
         Mono.create { sink ->
             val keyId = keyCredential.key.id
-            val credential = keyCredential.credential
+            val credential = keyCredential.data
             secureMap[keyId] = credential
             sink.success()
         }

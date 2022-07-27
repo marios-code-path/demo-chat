@@ -46,6 +46,7 @@ open class MemoryResourceConfiguration {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
     open fun <T>passwordStoreInMemory(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
 
     @Bean
@@ -53,10 +54,12 @@ open class MemoryResourceConfiguration {
     open fun <T> memoryPubSub(typeUtil: TypeUtil<T>): TopicPubSubService<T, String> = MemoryTopicPubSubService()
 
     @Configuration
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
     class PersistenceBeans<T>(keyFactory: KeyServiceBeans<T>) :
         InMemoryPersistenceBeans<T, String>(keyFactory.keyService())
 
     @Configuration
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
     class IndexBeans<T>(typeUtil: TypeUtil<T>) : LuceneIndexBeans<T>(
         typeUtil,
         IndexEntryEncoder.ofUser(),

@@ -1,10 +1,12 @@
-package com.demo.chat.init
+package com.demo.chat.init.commands
 
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.init.domain.AdminKey
+import com.demo.chat.init.domain.AnonymousKey
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption

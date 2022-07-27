@@ -7,6 +7,8 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import com.demo.chat.domain.User
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.init.domain.AdminKey
+import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.secure.rsocket.UnprotectedConnection
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.security.AuthorizationService

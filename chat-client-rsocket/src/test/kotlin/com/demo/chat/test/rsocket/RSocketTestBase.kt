@@ -6,10 +6,8 @@ import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.server.CloseableChannel
 import io.rsocket.transport.netty.server.TcpServerTransport
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationContext
 import org.springframework.messaging.rsocket.RSocketRequester
@@ -17,13 +15,6 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
-
-fun <T> anyObject(): T {
-    Mockito.anyObject<T>()
-    return uninitialized()
-}
-
-fun <T> uninitialized(): T = null as T
 
 @ExtendWith(SpringExtension::class)
 open class RSocketTestBase {

@@ -14,18 +14,18 @@ open class SecretStoreClient<T>(
     override fun getStoredCredentials(key: Key<T>): Mono<String> =
         requester
             .route("${prefix}get")
-            .data(key.id as Any)
-            .retrieveMono()
+            .data(Mono.just(key), Key::class.java)
+            .retrieveMono(String::class.java)
 
     override fun addCredential(keyCredential: KeyCredential<T>): Mono<Void> =
         requester
             .route("${prefix}add")
-            .data(keyCredential)
+            .data(Mono.just(keyCredential), KeyCredential::class.java)
             .send()
 
     override fun compareSecret(keyCredential: KeyCredential<T>): Mono<Boolean> =
         requester
             .route("${prefix}compare")
-            .data(keyCredential)
+            .data(Mono.just(keyCredential), KeyCredential::class.java)
             .retrieveMono()
 }

@@ -9,6 +9,8 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
+import com.demo.chat.init.domain.AdminKey
+import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.secure.rsocket.TransportFactory
 import com.demo.chat.service.IKeyGenerator
@@ -33,7 +35,7 @@ class RSocketClientServiceConfiguration {
 
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    open fun longKeyGen(): IKeyGenerator<Long> = SnowflakeGenerator()
+    fun longKeyGen(): IKeyGenerator<Long> = SnowflakeGenerator()
 
     @Value("\${app.service.identity.anonymous:1}")
     private lateinit var anonymousId: String

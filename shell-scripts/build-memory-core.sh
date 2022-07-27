@@ -2,7 +2,7 @@
 cd ../chat-deploy-memory
 source ../shell-scripts/ports.sh
 
-while getopts ":cd:k:b:n:o" o; do
+while getopts ":ecdk:b:n:o" o; do
   case $o in
     n)
       export DEPLOYMENT_NAME=${OPTARG}
@@ -19,14 +19,24 @@ while getopts ":cd:k:b:n:o" o; do
     b)
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
+    e)
+      export EDGE_SERVICES="${EDGE_SERVICES} -Dapp.service.edge.user -Dapp.service.edge.topic -Dapp.service.edge.message"
+      ;;
+    d)
+      export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp"
+      ;;
     *)
       cat << CATZ
       specify:
-      -n name == Name of container
-      -o == disables the build step
-      -c == enables Discovery with consul
-      -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
+      -k key_type == one of [long, uuid]
+      -n name == Name of container
+      -c == enables Discovery with consul
+      -d == export rsocket TCP to localhost
+      -e == enables core edge (message, user, topic) services
+      -o == disables the build step
+
+
 
       Consumed Environments:
       DOCKER_ARGS     == additional arguments passed into docker command
@@ -51,9 +61,9 @@ export APP_VERSION=0.0.1
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dserver.port=$((CORE_PORT+1)) -Dspring.rsocket.server.port=${CORE_PORT} \
+-Dapp.primary=core \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
--Dapp.service.core.persistence -Dapp.service.edge.topic \
--Dapp.service.edge.user -Dapp.service.edge.messaging \
+-Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES}\
 -Dapp.primary=core -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
 
 [[ $RUN_MAVEN_ARG == "" ]] && exit
@@ -63,4 +73,4 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 
 [[ $NOBUILD == "false" ]] && mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG
 
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS}  --rm -d $APP_IMAGE_NAME:$APP_VERSION
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && echo docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION

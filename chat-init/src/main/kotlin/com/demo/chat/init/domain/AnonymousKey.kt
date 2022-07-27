@@ -1,4 +1,4 @@
-package com.demo.chat.init
+package com.demo.chat.init.domain
 
 import com.demo.chat.domain.Key
 
