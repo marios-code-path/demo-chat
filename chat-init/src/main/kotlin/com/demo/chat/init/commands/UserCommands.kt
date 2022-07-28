@@ -125,20 +125,22 @@ class UserCommands<T>(
         val keySvc = serviceBeans.keyClient()
         val e: Long = java.lang.Long.parseLong(expireTime)
         val expiryTime = if (e == 1L) Long.MAX_VALUE else e
-
         keySvc
             .key(AuthMetadata::class.java)
-            .flatMap { metadataKey ->
-                authorizationService.authorize(
+            .map { metadataKey ->
                     StringRoleAuthorizationMetadata(
                         metadataKey,
                         Key.funKey(typeUtil.fromString(userId)),
                         Key.funKey(typeUtil.fromString(targetUserId)),
                         role,
                         expiryTime
-                    ),
-                   true
-                )
+                    )
+            }
+            .doOnNext { auth ->
+                println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
+            }
+            .flatMap { auth ->
+                authorizationService.authorize(auth, true)
             }
             .block()
     }

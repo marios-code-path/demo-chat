@@ -1,3 +1,3 @@
 add-user --name estelle --handle belle --image-uri https
 add-user --name mario --handle darkbit --image-uri http
-add-permission --user-id 7603527378428651765 --target-user-id 7603527378428651766 --role SEND_MESSAGE --exists true --expire-time 1
+add-permission --user-id 6923816998592879035 --target-user-id 6923816998592879034 --role SEND_MESSAGE --expire-time 1

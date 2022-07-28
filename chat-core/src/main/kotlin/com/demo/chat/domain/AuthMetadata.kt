@@ -1,11 +1,14 @@
 package com.demo.chat.domain
 
+import java.time.Instant
+
 interface AuthMetadata<T> {
     val key: Key<T>
     val principal: Key<T>
     val target: Key<T>
     val permission: String
     val expires: Long
+    //val timestamp: Instant
 
     companion object Factory {
         fun <T> create(k: Key<T>, ppl: Key<T>, targ: Key<T>, perm: String, exp: Long): AuthMetadata<T> = object : AuthMetadata<T> {
@@ -19,6 +22,8 @@ interface AuthMetadata<T> {
                 get() = perm
             override val expires: Long
                 get() = exp
+//            override val timestamp: Instant
+//                get() = ts
         }
     }
 }
