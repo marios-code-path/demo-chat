@@ -2,8 +2,11 @@
 cd ../chat-init
 source ../shell-scripts/ports.sh
 
-while getopts ":cgk:b:n:t:o" o; do
+while getopts ":cgk:b:n:t:op:" o; do
   case $o in
+    p)
+      export SPRING_PROFILE=${OPTARG}
+      ;;
     g)
       export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
       ;;
@@ -28,6 +31,7 @@ while getopts ":cgk:b:n:t:o" o; do
     *)
       cat << CATZ
       specify:
+      -p profile == spring profile to activate
       -g == enable DEBUG on RSocket
       -n name == Name of container
       -o == disables the build step
@@ -56,10 +60,9 @@ export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_init}
 export DOCKER_CNAME="--name ${DEPLOYMENT_NAME}"
 
 # how to auto-discover consul using dns alone!
-export SPRING_PROFILE="shell"
 export APP_PRIMARY="init"
 export APP_IMAGE_NAME="chat-init"
-export APP_MAIN_CLASS="com.demo.chat.init.App"
+export APP_MAIN_CLASS="com.demo.chat.init.ShellApp"
 export APP_VERSION=0.0.1
 
 # makes no use of cloud configuration or config-maps
@@ -68,6 +71,7 @@ export APP_VERSION=0.0.1
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.client.rsocket.core.pubsub -Dapp.client.rsocket.core.index \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.key \
+-Dspring.shell.interactive.enabled=true \
 -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
 
 set -x

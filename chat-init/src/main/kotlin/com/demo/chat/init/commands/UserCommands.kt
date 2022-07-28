@@ -14,11 +14,13 @@ import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
+import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
 
+@Profile("shell")
 @ShellComponent
 class UserCommands<T>(
     private val userService: ChatUserService<T>,

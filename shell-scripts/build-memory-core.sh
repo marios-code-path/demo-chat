@@ -61,7 +61,7 @@ export APP_VERSION=0.0.1
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dserver.port=$((CORE_PORT+1)) -Dspring.rsocket.server.port=${CORE_PORT} \
--Dapp.primary=core \
+-Dapp.primary=core -Dspring.shell.interactive.enabled=false \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES}\
 -Dapp.primary=core -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"

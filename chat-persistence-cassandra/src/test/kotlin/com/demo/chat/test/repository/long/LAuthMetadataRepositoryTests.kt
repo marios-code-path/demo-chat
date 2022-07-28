@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
@@ -22,7 +23,7 @@ import reactor.test.StepVerifier
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@ActiveProfiles("long")
+@TestPropertySource(properties = ["app.service.core.key=long"])
 class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

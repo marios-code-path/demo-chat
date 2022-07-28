@@ -14,21 +14,20 @@
 	<description>Chat Application Initialization</description>
 	<properties>
 		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-		<mainClass>com.demo.chat.deploy.memory.App</mainClass>
+		<mainClass>com.demo.chat.init.ShellApp</mainClass>
 		<appMainClass>${mainClass}</appMainClass>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.shell</groupId>
 			<artifactId>spring-shell-starter</artifactId>
-			<version>2.0.0.RELEASE</version>
+			<version>2.1.0</version>
 		</dependency>
 		<dependency>
 			<groupId>com.demo</groupId>
 			<artifactId>chat-persistence-memory</artifactId>
 			<version>0.0.1</version>
 		</dependency>
-
 		<dependency>
 			<groupId>com.demo</groupId>
 			<artifactId>chat-deploy-client-consul</artifactId>

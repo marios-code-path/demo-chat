@@ -1,4 +1,4 @@
-import com.demo.chat.init.App
+import com.demo.chat.init.InitApp
 import com.demo.chat.test.init.TestClientServerConfiguration
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
 import org.junit.jupiter.api.Test
@@ -9,7 +9,7 @@ import org.springframework.test.context.TestPropertySource
 
 // Tests instances of client configurations with a dummy server
 // configured just before RequesterFactory = see TestClientServerConfiguration
-@SpringBootTest(classes = [App::class])
+@SpringBootTest(classes = [InitApp::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [
