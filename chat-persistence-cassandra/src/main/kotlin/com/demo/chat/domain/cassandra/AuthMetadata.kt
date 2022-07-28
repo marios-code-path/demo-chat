@@ -21,6 +21,7 @@ data class AuthMetadataById<T>(
 ) : AuthMetadata<T> {
     @Transient
     override val principal: Key<T> = Key.funKey(principalId)
+
     @Transient
     override val target: Key<T> = Key.funKey(targetId)
 }
@@ -29,4 +30,7 @@ data class AuthMetadataById<T>(
 data class AuthMetadataIdKey<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
     override val id: T
-) : Key<T>
+) : Key<T> {
+    @Transient
+    override val empty: Boolean = false
+}

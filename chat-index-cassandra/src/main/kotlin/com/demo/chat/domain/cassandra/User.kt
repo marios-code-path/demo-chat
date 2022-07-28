@@ -29,4 +29,7 @@ data class ChatUserHandleKey<T>(
     override val id: T,
     @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
     val handle: String
-) : Key<T>
+) : Key<T> {
+    @Transient
+    override val empty: Boolean = false
+}

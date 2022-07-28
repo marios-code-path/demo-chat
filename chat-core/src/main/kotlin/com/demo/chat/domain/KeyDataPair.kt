@@ -15,13 +15,29 @@ interface NoKey<T>: Key<T>
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
 interface Key<T> {
     val id: T
+    val empty: Boolean
 
     companion object Factory {
         @JvmStatic
         fun <T> funKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
             override val id: T
                 get() = id
+            override val empty: Boolean
+                get() = false
+            override fun toString(): String {
+                return id.toString()
+            }
 
+            override fun equals(k2: Any?): Boolean =
+                (k2 != null && k2::class == this::class) &&
+                        (k2 is Key<*> && k2.id == this.id)
+        }
+
+        fun <T> emptyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : NoKey<T> {
+            override val id: T
+                get() = id
+            override val empty: Boolean
+                get() = true
             override fun toString(): String {
                 return id.toString()
             }
@@ -31,6 +47,7 @@ interface Key<T> {
                         (k2 is Key<*> && k2.id == this.id)
         }
     }
+
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)

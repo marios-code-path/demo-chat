@@ -8,7 +8,7 @@ import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
 import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.AbstractAuthenticationService
-import com.demo.chat.secure.service.AbstractAuthorizationService
+import com.demo.chat.secure.service.AuthorizationMetadataService
 import com.demo.chat.secure.service.ChatAuthenticationManager
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -24,8 +24,8 @@ open class AuthConfiguration<T>(
     open fun authorizationService(
         authPersist: AuthMetaPersistence<T>,
         authIndex: AuthMetaIndex<T, IndexSearchRequest>
-    ): AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>> =
-        AbstractAuthorizationService(
+    ): AuthorizationService<T, AuthMetadata<T>, IndexSearchRequest> =
+        AuthorizationMetadataService(
             authPersist,
             authIndex,
             AuthMetadataPrincipleKeySearch(keyTypeUtil),

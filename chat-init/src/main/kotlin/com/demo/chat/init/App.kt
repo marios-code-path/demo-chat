@@ -1,18 +1,15 @@
 package com.demo.chat.init
 
+import com.demo.chat.UserCreateRequest
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
-import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.StringRoleAuthorizationMetadata
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.init.domain.AdminKey
-import com.demo.chat.init.domain.AnonymousKey
+import com.demo.chat.init.domain.BootstrapProperties
 import com.demo.chat.secure.rsocket.UnprotectedConnection
 import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.edge.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
-import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.CommandLineRunner
@@ -30,14 +27,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 /**
  * Test Class
  */
 @SpringBootApplication
-@EnableConfigurationProperties(RSocketClientProperties::class)
+@EnableConfigurationProperties(RSocketClientProperties::class, BootstrapProperties::class)
 @Import(
     RSocketRequesterAutoConfiguration::class,
     DefaultChatJacksonModules::class,
@@ -66,59 +62,64 @@ class App {
         // sink.add(message)
     }
 
+
     @Bean
     @Profile("init")
     fun <T> initOnce(
-        serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
-        passwdStore: SecretsStore<T>,
-        authenticationManager: AuthenticationManager,
+        userService: ChatUserService<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
-        anonKey: AnonymousKey<T>,
-        adminKey: AdminKey<T>
+        authenticationManager: AuthenticationManager,
+        bootstrapProperties: BootstrapProperties,
+        typeUtil: TypeUtil<T>
     ): CommandLineRunner = CommandLineRunner {
+        val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
+        val identityKeys = mutableMapOf<String, Key<T>>()
 
-        val userIndex = serviceBeans.userIndexClient()
-        val userPersistence = serviceBeans.userPersistenceClient()
+        // add users
+        bootstrapProperties.users.keys.forEach { identity ->
+            val thisUser = bootstrapProperties.users[identity]!!
 
-        val users = listOf(
-            User.create(anonKey, "ANONYMOUS", "anonymous", "null"),
-            User.create(adminKey, "ADMIN", "administrator", "http://localhost/icons/admin.png")
-        )
+            identityKeys[identity] = userService.addUser(
+                UserCreateRequest(
+                    thisUser.name,
+                    thisUser.handle,
+                    thisUser.imageUri
+                )
+            ).block()!!
+        }
 
-        Flux.fromIterable(users)
-            .flatMap(userPersistence::add)
-            .doFinally { println("Added users to persistence.") }
-            .blockLast()
+        val anonKey = identityKeys["anonymous"]!!
+        val rootKey = identityKeys["root"]!!
 
-        Flux.fromIterable(users)
-            .flatMap(userIndex::add)
-            .doFinally { println("Added users to index.") }
-            .blockLast()
+        // set roles
+        bootstrapProperties
+            .users["anonymous"]!!.roles.forEach { permission ->
+                authorizationService
+                    .authorize(
+                        StringRoleAuthorizationMetadata(
+                            emptyKey,
+                            anonKey,
+                            anonKey,
+                            permission
+                        ), true
+                    )
+                    .block()
+            }
 
-        Flux.just(
-            // role that determines required access? ( key, target, action, role )
-            StringRoleAuthorizationMetadata(
-                userPersistence.key().block()!!,
-                anonKey,
-                anonKey,
-                "ROLE_REQUEST"
-            ),
-            StringRoleAuthorizationMetadata(
-                userPersistence.key().block()!!,
-                adminKey,
-                anonKey,
-                "ROLE_SUPER"
-            ),
-        )
-            .flatMap { meta -> authorizationService.authorize(meta, true) }
-            .doFinally { println("Added Authorizations to Administrator(${anonKey.id}), Anonymous(${anonKey.id}).") }
-            .blockLast()
+        bootstrapProperties
+            .users["root"]!!.roles.forEach { permission ->
+            authorizationService
+                .authorize(
+                    StringRoleAuthorizationMetadata(
+                        emptyKey,
+                        rootKey,
+                        anonKey,
+                        permission
+                    ), true
+                )
+                .block()
+        }
 
-
-        passwdStore
-            .addCredential(KeyCredential( users[0].key, "password"))
-            .doFinally { println("Added a password.") }
-            .block()
     }
 
     fun <T> userLogin(

@@ -9,6 +9,7 @@ interface MessageKey<T> : Key<T> {
     val from: T
     val dest: T
     val timestamp: Instant
+    override val empty: Boolean
 
     companion object Factory {
         @JvmStatic
@@ -21,6 +22,8 @@ interface MessageKey<T> : Key<T> {
                 get() = dest
             override val timestamp: Instant
                 get() = Instant.now()
+            override val empty: Boolean
+                get() = false
         }
 
         @JvmStatic
@@ -34,6 +37,8 @@ interface MessageKey<T> : Key<T> {
                 get() = dest
             override val timestamp: Instant
                 get() = Instant.now()
+            override val empty: Boolean
+                get() = false
         }
     }
 }

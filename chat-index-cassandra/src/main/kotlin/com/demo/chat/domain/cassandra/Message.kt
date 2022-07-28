@@ -2,6 +2,7 @@ package com.demo.chat.domain.cassandra
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
@@ -27,7 +28,10 @@ data class ChatMessageByUserKey<T>(
     override val dest: T,
     @Column("msg_time")
     override val timestamp: Instant
-) : MessageKey<T>
+) : MessageKey<T> {
+    @Transient
+    override val empty: Boolean = false
+}
 
 @PrimaryKeyClass
 data class ChatMessageByTopicKey<T>(
@@ -39,4 +43,7 @@ data class ChatMessageByTopicKey<T>(
     override val dest: T,
     @Column("msg_time")
     override val timestamp: Instant
-) : MessageKey<T>
+) : MessageKey<T> {
+    @Transient
+    override val empty: Boolean = false
+}

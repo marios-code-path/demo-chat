@@ -2,6 +2,7 @@ package com.demo.chat.domain.cassandra
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
+import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
@@ -24,4 +25,7 @@ data class ChatUser<T>(
 data class ChatUserKey<T>(
     @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
     override val id: T
-) : Key<T>
+) : Key<T> {
+    @Transient
+    override val empty: Boolean = false
+}

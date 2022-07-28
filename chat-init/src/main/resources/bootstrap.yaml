@@ -1,4 +1,19 @@
 app:
+  init:
+    roles:
+      rolesAllowed: [ "READ", "WRITE", "SEND", "MODIFY" ]
+      wildcard: "*"
+    users:
+      anonymous:
+        handle: ANONYMOUS
+        name: "ANY USER"
+        imageUri: chatimg://anon.png,
+        roles: "READ"
+      root:
+        handle: PLAID
+        name: "SUPER USER"
+        imageUri: chatimg://plaid.png
+        roles: "*"
   rsocket:
     client:
       config:

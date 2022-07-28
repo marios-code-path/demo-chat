@@ -22,5 +22,6 @@ data class ChatMessageKey<T>(
         override val id: T,
         override val from: T,
         override val dest: T,
-        override val timestamp: Instant
+        override val timestamp: Instant,
+        override val empty: Boolean = false
 ) : MessageKey<T>

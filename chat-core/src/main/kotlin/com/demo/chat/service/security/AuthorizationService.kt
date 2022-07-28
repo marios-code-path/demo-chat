@@ -1,5 +1,7 @@
 package com.demo.chat.service.security
 
+import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.AuthorizationRequest
 import com.demo.chat.domain.Key
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -12,7 +14,7 @@ import reactor.core.publisher.Mono
  * N = Authorization Type (in bound)
  */
 interface AuthorizationService<T, out M, in N> {
-    fun authorize(authorization: N, exist: Boolean): Mono<Void>
+    fun authorize(authorization: AuthMetadata<T>, exist: Boolean): Mono<Void>
     fun getAuthorizationsForTarget(uid: Key<T>): Flux<out M>
     fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<out M>
     fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<out M>

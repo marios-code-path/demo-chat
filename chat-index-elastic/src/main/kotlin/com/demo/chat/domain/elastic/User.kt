@@ -26,14 +26,6 @@ data class ChatUser<T>(
 ) : User<T>
 
 data class ChatUserKey<T>(
-        override val id: T
+        override val id: T,
+        override val empty:Boolean = false
 ) : Key<T>
-
-
-@Document(indexName="foo")
-data class Foo(
-        @Id
-        val id: String,
-        @Field
-        val data: String
-)

@@ -4,7 +4,7 @@ import com.demo.chat.domain.*
 import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
 import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
-import com.demo.chat.secure.service.AbstractAuthorizationService
+import com.demo.chat.secure.service.AuthorizationMetadataService
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.PersistenceStore
 import com.demo.chat.test.auth.AuthorizationServiceTests
@@ -16,11 +16,11 @@ import java.util.function.Supplier
 import kotlin.random.Random
 
 @ExtendWith(MockPersistenceResolver::class, MockIndexResolver::class)
-class AbstractAuthorizationServiceTests(
+class AuthorizationMetadataServiceTests(
     authMetaPersistence: PersistenceStore<Long, AuthMetadata<Long>>,
     authMetaIndex: IndexService<Long, AuthMetadata<Long>, IndexSearchRequest>
 ) : AuthorizationServiceTests<Long>(
-    AbstractAuthorizationService(
+    AuthorizationMetadataService(
         authMetaPersistence,
         authMetaIndex,
         AuthMetadataPrincipleKeySearch(TypeUtil.LongUtil),

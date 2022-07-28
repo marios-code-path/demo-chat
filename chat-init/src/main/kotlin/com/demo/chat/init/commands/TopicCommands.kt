@@ -56,7 +56,6 @@ class TopicCommands<T>(
         }
         .block()
 
-
     @ShellMethod("Subscribe to a topic")
     fun join(
         @ShellOption userId: T,
@@ -82,6 +81,4 @@ class TopicCommands<T>(
     ): TopicMemberships? = topicService
         .roomMembers(ByIdRequest(topicId))
         .block()
-
-
 }

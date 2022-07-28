@@ -8,10 +8,10 @@ import java.time.Instant
 
 
 @JsonTypeName("Key")
-data class TestKey<T>( override val id: T) : Key<T>
+data class TestKey<T>(override val id: T, override val empty: Boolean = false) : Key<T>
 
 @JsonTypeName("AlertKey")
-data class TestAlertKey<T>(override val id: T, override val dest: T, override val from: T) : MessageKey<T> {
+data class TestAlertKey<T>(override val id: T, override val dest: T, override val from: T, override val empty: Boolean = false) : MessageKey<T> {
     override val timestamp = Instant.now()
 }
 
@@ -21,7 +21,7 @@ data class TestAlert<T>(override val key: TestAlertKey<T>, override val data: In
 }
 
 @JsonTypeName("MessageKey")
-data class TestMessageKey<T>(override val id: T, override val dest: T, override val from: T) : MessageKey<T> {
+data class TestMessageKey<T>(override val id: T, override val dest: T, override val from: T, override val empty: Boolean = false) : MessageKey<T> {
     override val timestamp = Instant.now()
 }
 

@@ -30,11 +30,14 @@ interface TestKey : Key<UUID> {
         fun create(eid: UUID): Key<UUID> = object : Key<UUID> {
             override val id: UUID
                 @JsonProperty("eid") get() = eid
+            override val empty: Boolean = false
         }
     }
 }
 
-data class ETestKey(@JsonProperty("eid") override val id: UUID) : TestKey
+data class ETestKey(@JsonProperty("eid") override val id: UUID) : TestKey {
+    override val empty: Boolean = false
+}
 
 // If you dont register module explicitly, then use this way:
 // after putting @JsonDeserialize(`as` = ETestKey::class) on the
