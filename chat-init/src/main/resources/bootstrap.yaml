@@ -17,6 +17,9 @@ app:
         message:
           dest: "127.0.0.1:6790"
           prefix: message.
+        secrets:
+          dest: "127.0.0.1:6790"
+          prefix: secrets.
         topic:
           dest: "127.0.0.1:6790"
           prefix: topic.

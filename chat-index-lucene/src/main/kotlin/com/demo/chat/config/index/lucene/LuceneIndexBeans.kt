@@ -3,7 +3,10 @@ package com.demo.chat.config.index.lucene
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.*
 import com.demo.chat.domain.lucene.IndexEntryEncoder
-import com.demo.chat.service.*
+import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.impl.index.lucene.*
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.context.annotation.Bean

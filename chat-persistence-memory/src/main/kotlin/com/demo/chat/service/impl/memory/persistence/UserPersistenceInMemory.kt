@@ -10,4 +10,5 @@ import java.util.function.Function
 open class UserPersistenceInMemory<T>(
     keyService: IKeyService<T>,
     keyFromEntity: Function<User<T>, Key<T>>
-) : ComparatorInMemoryPersistence<T, User<T>>(keyService, User::class.java, keyFromEntity, UserComparater()), UserPersistence<T>
+) : ComparatorInMemoryPersistence<T, User<T>>(keyService, User::class.java, keyFromEntity, UserComparater()),
+    UserPersistence<T>

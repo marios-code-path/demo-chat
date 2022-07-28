@@ -2,8 +2,11 @@
 cd ../chat-init
 source ../shell-scripts/ports.sh
 
-while getopts ":ck:b:n:t:o" o; do
+while getopts ":cgk:b:n:t:o" o; do
   case $o in
+    g)
+      export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
+      ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
@@ -25,6 +28,7 @@ while getopts ":ck:b:n:t:o" o; do
     *)
       cat << CATZ
       specify:
+      -g == enable DEBUG on RSocket
       -n name == Name of container
       -o == disables the build step
       -c == enables Discovery with consul
@@ -61,10 +65,12 @@ export APP_VERSION=0.0.1
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
 # TODO: difference between '-D' and '--'
-export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.client.rsocket.core.pubsub -Dapp.client.rsocket.core.index \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.key \
 -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
+
+set -x
 
 [[ $RUN_MAVEN_ARG == "" ]] && exit
 [[ $RUN_MAVEN_ARG == "build" ]] && MAVEN_ARG="spring-boot:build-image"

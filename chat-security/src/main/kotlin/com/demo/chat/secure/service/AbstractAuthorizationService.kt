@@ -27,18 +27,24 @@ class AbstractAuthorizationService<T, M, Q>(
     private val summarizer: Summarizer<M, Key<T>>
 ) : AuthorizationService<T, M, M> {
     override fun authorize(authorization: M, exist: Boolean): Mono<Void> =
-       when (exist) {
+        when (exist) {
             true -> authPersist.add(authorization).then(authIndex.add(authorization))
             else -> authIndex.rem(keyFromAuthorization.apply(authorization))
         }
 
-    override fun getAuthorizationsForTarget(uid: Key<T>): Flux<M> = authIndex
-        .findBy(queryForTarget.apply(uid))
-        .flatMap(authPersist::get)
+    override fun getAuthorizationsForTarget(uid: Key<T>): Flux<M> = summarizer
+        .computeAggregates(
+            authIndex.findBy(queryForTarget.apply(uid)).flatMap(authPersist::get),
+            sequenceOf(anonKey.get(), uid)
+        )
 
-    override fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<M> = authIndex
-        .findBy(queryForPrinciple.apply(uid))
-        .flatMap(authPersist::get)
+    override fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<M> = summarizer
+        .computeAggregates(
+            authIndex
+                .findBy(queryForPrinciple.apply(uid))
+                .flatMap(authPersist::get),
+            sequenceOf(anonKey.get(), uid)
+        )
 
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<M> = summarizer
         .computeAggregates(

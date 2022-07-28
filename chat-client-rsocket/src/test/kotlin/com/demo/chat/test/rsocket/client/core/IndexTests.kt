@@ -1,6 +1,7 @@
 package com.demo.chat.test.rsocket.client.core
 
 import com.demo.chat.client.rsocket.core.impl.MessageIndexClient
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.MessageIndexService
@@ -28,7 +29,7 @@ import java.util.*
         MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
 class IndexTests : RSocketTestBase() {
     @MockBean
-    private lateinit var indexService: MessageIndexService<UUID, String, Map<String, String>>
+    private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 
     private val svcPrefix = ""
 
@@ -40,10 +41,11 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.findBy(anyObject()))
                 .willReturn(Flux.just(message.key))
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
+        val client = MessageIndexClient<UUID, String, IndexSearchRequest>(svcPrefix, requester)
 
         StepVerifier
-                .create(client.findBy(mapOf(Pair(MessageIndexService.TOPIC, UUID.randomUUID().toString()))))
+                .create(client.findBy(
+                    IndexSearchRequest(MessageIndexService.TOPIC, UUID.randomUUID().toString(), 100)))
                 .assertNext {
                     Assertions
                             .assertThat(it)
@@ -60,7 +62,7 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.rem(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
+        val client = MessageIndexClient<UUID, String, IndexSearchRequest>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.rem(message.key))
@@ -73,7 +75,7 @@ class IndexTests : RSocketTestBase() {
                 .given(indexService.add(anyObject()))
                 .willReturn(Mono.empty())
 
-        val client = MessageIndexClient<UUID, String, Map<String, String>>(svcPrefix, requester)
+        val client = MessageIndexClient<UUID, String, IndexSearchRequest>(svcPrefix, requester)
 
         StepVerifier
                 .create(client.add(message))

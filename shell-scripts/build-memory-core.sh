@@ -66,6 +66,8 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES}\
 -Dapp.primary=core -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
 
+set -x
+
 [[ $RUN_MAVEN_ARG == "" ]] && exit
 [[ $RUN_MAVEN_ARG == "build" ]] && MAVEN_ARG="spring-boot:build-image"
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && MAVEN_ARG="spring-boot:build-image"
@@ -73,4 +75,4 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 
 [[ $NOBUILD == "false" ]] && mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG
 
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && echo docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION

@@ -17,7 +17,6 @@ app:
         secrets:
           dest: core-service-rsocket
           prefix: secrets.
-      edge:
         message:
           dest: core-service-rsocket
           prefix: message.

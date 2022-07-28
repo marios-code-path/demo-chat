@@ -12,21 +12,21 @@ import org.springframework.stereotype.Controller
 open class IndexControllersConfiguration {
     @Controller
     @MessageMapping("index.user")
-    class UserIndexController<T, V, Q>(s: IndexServiceBeans<T, V, Q>) :
+    class UserIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, User<T>, Q>(s.userIndex())
 
     @Controller
     @MessageMapping("index.message")
-    class MessageIndexController<T, V, Q>(s: IndexServiceBeans<T, V, Q>) :
+    class MessageIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, Message<T, V>, Q>(s.messageIndex())
 
     @Controller
     @MessageMapping("index.topic")
-    class TopicIndexController<T, V, Q>(s: IndexServiceBeans<T, V, Q>) :
+    class TopicIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, MessageTopic<T>, Q>(s.topicIndex())
 
     @Controller
     @MessageMapping("index.authmetadata")
-    class AuthMetaIndexController<T, V, Q>(s: IndexServiceBeans<T, V, Q>) :
+    class AuthMetaIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, AuthMetadata<T>, Q>(s.authMetadataIndex())
 }

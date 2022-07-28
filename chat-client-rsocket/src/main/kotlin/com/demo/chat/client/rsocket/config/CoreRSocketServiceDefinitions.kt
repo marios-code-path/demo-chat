@@ -42,8 +42,8 @@ class CoreRSocketServiceDefinitions<T, V, Q>(
     )
 
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
-        AuthMetadataPersistenceClient( //PersistenceStore<T, AuthMetadata<T>> = AuthMetadataPersistenceClient(
-            "${persistenceProps.prefix}authmeta.",
+        AuthMetadataPersistenceClient(
+            "${persistenceProps.prefix}authmetadata.",
             persistenceRequester()
         )
 
@@ -60,5 +60,5 @@ class CoreRSocketServiceDefinitions<T, V, Q>(
         MessageIndexClient("${indexProps.prefix}message.", indexRequester())
 
     override fun authMetadataIndex(): AuthMetaIndex<T, Q> =
-        AuthMetaIndexClient("${indexProps.prefix}authmeta.", indexRequester())
+        AuthMetaIndexClient("${indexProps.prefix}authmetadata.", indexRequester())
 }

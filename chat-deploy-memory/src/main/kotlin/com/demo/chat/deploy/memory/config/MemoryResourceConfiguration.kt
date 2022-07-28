@@ -15,12 +15,10 @@ import com.demo.chat.service.impl.memory.messaging.MemoryTopicPubSubService
 import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
 import com.demo.chat.service.security.SecretsStoreInMemory
 import com.demo.chat.service.security.UserCredentialSecretsStore
-import com.fasterxml.jackson.annotation.ObjectIdGenerators
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.*
-import javax.crypto.KeyGenerator
 
 open class MemoryResourceConfiguration {
     @Bean

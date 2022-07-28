@@ -15,10 +15,11 @@ interface TypeUtil<T> {
 
         override fun toString(t: Long): String = t.toString()
 
-        override fun fromString(t: String): Long = t.toLong()
+        override fun fromString(t: String): Long = java.lang.Long.parseLong(t)
 
         override fun assignFrom(t: Any): Long {
             return when (t) {
+                is String -> java.lang.Long.parseLong(t)
                 is Long -> t.toLong()
                 else -> 0L
             }
@@ -40,6 +41,7 @@ class UUIDUtil : TypeUtil<UUID> {
 
     override fun assignFrom(t: Any): UUID {
         return when (t) {
+            is String -> fromString(t)
             is Long -> UUID(t, 0)
             else -> UUID(0, 0)
         }
@@ -56,9 +58,13 @@ class StringUtil: TypeUtil<String> {
 
     override fun fromString(t: String): String = t
 
-    override fun assignFrom(t: Any): String = t.toString()
+    override fun assignFrom(t: Any): String = when (t) {
+        is String -> fromString(t)
+        else -> t.toString()
+    }
 
     override fun parameterizedType(): ParameterizedTypeReference<String> =
         ParameterizedTypeReference.forType(String::class.java)
+
 
 }

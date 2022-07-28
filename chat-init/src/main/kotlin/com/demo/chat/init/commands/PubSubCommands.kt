@@ -1,18 +1,24 @@
 package com.demo.chat.init.commands
 
+import com.demo.chat.ByIdRequest
+import com.demo.chat.MembershipRequest
+import com.demo.chat.MessageSendRequest
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.TopicMemberships
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
+import com.demo.chat.service.edge.ChatMessageService
+import com.demo.chat.service.edge.ChatTopicService
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
 
 @ShellComponent
 class PubSubCommands<T>(
+    private val messageService: ChatMessageService<T, String>,
+    private val topicService: ChatTopicService<T, String>,
     private val serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
     private val anonKey: AnonymousKey<T>,
@@ -24,34 +30,22 @@ class PubSubCommands<T>(
         @ShellOption topicId: T,
         @ShellOption messageText: String
     ) {
-        val keySvc = serviceBeans.keyClient()
-        keySvc.key(Message::class.java).flatMap { messageId ->
-            serviceBeans.pubsubClient()
-                .sendMessage(
-                    Message.create(
-                        MessageKey.Factory.create(messageId.id, adminKey.id, topicId),
-                        messageText,
-                        true
-                    )
-                )
-        }
+        messageService
+            .send(MessageSendRequest(messageText, adminKey.id, topicId))
             .block()
-
-        // ERROR HANDLING
     }
 
     @ShellMethod("Subscribe to a topic")
     fun subscribe(
         @ShellOption userId: T,
         @ShellOption topicId: T
-    ) = serviceBeans
-        .pubsubClient()
-        .subscribe(userId, topicId)
+    ) = topicService
+        .joinRoom(MembershipRequest(userId, topicId))
         .block()
 
 
     @ShellMethod("Show what topics user is subscribed to")
-    fun subsribedTo(
+    fun userSubscriptions(
         @ShellOption userId: T
     ): String? = serviceBeans
         .pubsubClient()
@@ -63,22 +57,13 @@ class PubSubCommands<T>(
     @ShellMethod("Show Subscribers on a topic")
     fun subscribers(
         @ShellOption topicId: T
-    ): String? = serviceBeans
-            .pubsubClient()
-            .getUsersBy(topicId)
-            .map {
-                typeUtil.toString(it)
-            }
-            .reduce { t, u -> "$t\n$u" }
-            .block()
+    ): TopicMemberships? = topicService.roomMembers(ByIdRequest(topicId)).block()
 
     @ShellMethod("Listen to a topic")
-    fun listenSubscription(
+    fun listen(
         @ShellOption userId: T,
         @ShellOption topicId: T
-    ) = serviceBeans
-        .pubsubClient()
-        .listenTo(topicId)
+    ) = messageService.listenTopic(ByIdRequest(topicId))
         .doOnNext { message ->
             println("Message: ${message.key.from} : ${message.data}\n")
         }
