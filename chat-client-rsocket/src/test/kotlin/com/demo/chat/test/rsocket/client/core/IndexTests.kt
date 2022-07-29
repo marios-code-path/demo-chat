@@ -81,4 +81,17 @@ class IndexTests : RSocketTestBase() {
                 .create(client.add(message))
                 .verifyComplete()
     }
+
+    @Test
+    fun `should find unique`() {
+        BDDMockito
+            .given(indexService.findUnique(anyObject()))
+            .willReturn(Mono.empty())
+
+        val client = MessageIndexClient<UUID, String, IndexSearchRequest>(svcPrefix, requester)
+
+        StepVerifier
+            .create(client.findUnique( IndexSearchRequest(MessageIndexService.TOPIC, UUID.randomUUID().toString(), 100)))
+            .verifyComplete()
+    }
 }

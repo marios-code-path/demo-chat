@@ -25,7 +25,6 @@ class ChatAuthenticationManager<T>(
     AuthenticationManager {
     override fun authenticate(authen: Authentication): Authentication {
         val credential = authen.credentials.toString()
-        //val targetId: Key<Long> = Key.funKey(if (authen.details is Long) authen.details as Long else 0L)
         val targetId: Key<T> = Key.funKey(typeUtil.assignFrom(authen.details))
 
         return authenticationS

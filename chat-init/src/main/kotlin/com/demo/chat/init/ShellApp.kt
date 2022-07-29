@@ -38,62 +38,12 @@ import reactor.core.publisher.Mono
     UnprotectedConnection::class
 )
 @EnableGlobalMethodSecurity(securedEnabled = true)
-@ShellComponent
 class ShellApp {
-
-    @ShellMethod("Send a Message")
-    fun hello() = "hello"
 
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            runApplication<InitApp>(*args)
-        }
-    }
-
-    @Autowired
-    private lateinit var app: ShellApp
-
-    @Secured("ROLE_SUPER")
-    fun doSomethingNeedingAuth() {
-        println("SUPER!")
-    }
-
-    @Secured("ROLE_MESSAGE")
-    fun doSomethingMessagy() {
-        // sink.add(message)
-    }
-
-
-    fun <T> userLogin(
-        serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
-        passwdStore: SecretsStore<T>,
-        authenticationManager: AuthenticationManager,
-        authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
-    ) {
-
-        println("username: ")
-        val username = readLine()!!
-        println("password: ")
-        val password = readLine()!!
-
-        try {
-            val userKey =
-                serviceBeans.userIndexClient().findBy(IndexSearchRequest(UserIndexService.HANDLE, username, 1))
-                    .switchIfEmpty(Mono.error(Exception("NO USER FOUND")))
-                    .blockLast()
-
-            val request = UsernamePasswordAuthenticationToken(username, password)
-                .apply { details = userKey!!.id }
-            val result = authenticationManager.authenticate(request)
-            SecurityContextHolder.getContext().authentication = result
-
-            app.doSomethingNeedingAuth()
-            app.doSomethingMessagy()
-        } catch (e: AuthenticationException) {
-            println("Authentication failed :" + e.message)
-        } catch (e: AccessDeniedException) {
-            println("Not authorized for : " + e.message)
+            runApplication<ShellApp>(*args)
         }
     }
 }
