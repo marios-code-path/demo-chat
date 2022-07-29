@@ -22,7 +22,7 @@ class ChatAuthenticationManager<T>(
     private val userPersistence: PersistenceStore<T, User<T>>,
     private val authorizationS: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
 ) :
-    AuthenticationManager {
+    AuthenticationManager { // authentication details will hold an ID
     override fun authenticate(authen: Authentication): Authentication {
         val credential = authen.credentials.toString()
         val targetId: Key<T> = Key.funKey(typeUtil.assignFrom(authen.details))

@@ -21,5 +21,11 @@ data class BootstrapUser(
     val name: String,
     val handle: String,
     val imageUri: String,
-    val roles: Array<String>
+    val roles: Array<RoleDefinition>
+)
+
+@ConstructorBinding
+data class RoleDefinition(
+    val role: String,
+    val user: String
 )

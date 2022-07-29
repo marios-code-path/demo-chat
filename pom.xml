@@ -52,6 +52,7 @@
         <module>chat-streams</module>
         <module>chat-messaging-pulsar</module>
         <module>chat-gateway</module>
+        <module>chat-tracing-rsocket-sleuth</module>
         <module>chat-deploy-client-consul</module>
         <module>chat-deploy-memory</module>
         <module>chat-deploy-redis</module>

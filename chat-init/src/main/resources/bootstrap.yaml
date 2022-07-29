@@ -8,12 +8,14 @@ app:
         handle: ANONYMOUS
         name: "ANY USER"
         imageUri: chatimg://anon.png,
-        roles: "READ"
+        roles:
+          - { role: READ, user: anonymous }
       root:
         handle: PLAID
         name: "SUPER USER"
         imageUri: chatimg://plaid.png
-        roles: "*"
+        roles:
+          - { role: "*", user: anonymous }
   rsocket:
     client:
       config:

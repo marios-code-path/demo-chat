@@ -11,6 +11,7 @@ import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.edge.ChatUserService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.AuthenticationException
@@ -27,6 +28,13 @@ class LoginCommands<T>(
     val authenticationManager: AuthenticationManager,
     val typeUtil: TypeUtil<T>
 ) {
+
+    @ShellMethod("Secret")
+    @Secured("SHELL")       // expand capabilities to check current calling method, and data involved in the call
+    fun secret(): String {
+        println("This is the secret")
+        return "SECRET STRINGS"
+    }
 
     @ShellMethod("WHo am I?")
     fun identity(): String? {

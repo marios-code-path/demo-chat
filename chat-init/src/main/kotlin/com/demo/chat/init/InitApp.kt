@@ -74,7 +74,7 @@ class InitApp {
                             emptyKey,
                             anonKey,
                             anonKey,
-                            permission
+                            permission.role
                         ), true
                     )
                     .block()
@@ -88,7 +88,7 @@ class InitApp {
                         emptyKey,
                         rootKey,
                         anonKey,
-                        permission
+                        permission.role
                     ), true
                 )
                 .block()
