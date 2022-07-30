@@ -25,7 +25,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-        KeyServiceRSocketTests.KeyPersistenceTestConfiguration::class)
+    KeyServiceRSocketTests.KeyPersistenceTestConfiguration::class
+)
 class KeyServiceRSocketTests : RSocketTestBase() {
 
     @MockBean
@@ -34,38 +35,38 @@ class KeyServiceRSocketTests : RSocketTestBase() {
     @Test
     fun `Controller should provide existence`() {
         BDDMockito
-                .given(keyService.exists(anyObject()))
-                .willReturn(Mono.just(true))
+            .given(keyService.exists(anyObject()))
+            .willReturn(Mono.just(true))
 
         StepVerifier
-                .create(
-                        requester
-                                .route("key.exists")
-                                .data(Key.funKey(0))
-                                .retrieveMono(Boolean::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isTrue()
-                }
-                .verifyComplete()
+            .create(
+                requester
+                    .route("key.exists")
+                    .data(Key.funKey(0))
+                    .retrieveMono(Boolean::class.java)
+            )
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isTrue()
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `Controller should remove a key`() {
         BDDMockito
-                .given(keyService.rem(anyObject()))
-                .willReturn(Mono.empty())
+            .given(keyService.rem(anyObject()))
+            .willReturn(Mono.empty())
 
         StepVerifier
-                .create(
-                        requester
-                                .route("key.rem")
-                                .data(Key.funKey(0))
-                                .retrieveMono(Void::class.java)
-                )
-                .verifyComplete()
+            .create(
+                requester
+                    .route("key.rem")
+                    .data(Key.funKey(0))
+                    .retrieveMono(Void::class.java)
+            )
+            .verifyComplete()
     }
 
     @Test
@@ -73,23 +74,23 @@ class KeyServiceRSocketTests : RSocketTestBase() {
         val randomID = UUID.randomUUID()
 
         BDDMockito
-                .given(keyService.key<Any>(anyObject()))
-                .willReturn(Mono.just(Key.funKey(randomID)))
+            .given(keyService.key<Any>(anyObject()))
+            .willReturn(Mono.just(Key.funKey(randomID)))
 
         StepVerifier
-                .create(
-                        requester
-                                .route("key.key")
-                                .data(Any::class.java)
-                                .retrieveMono(Key::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasFieldOrPropertyWithValue("id", randomID)
-                }
-                .verifyComplete()
+            .create(
+                requester
+                    .route("key.key")
+                    .data(Any::class.java)
+                    .retrieveMono(Key::class.java)
+            )
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", randomID)
+            }
+            .verifyComplete()
     }
 
     @TestConfiguration

@@ -8,5 +8,4 @@ class TestRequesterFactory(private val req: RSocketRequester) : RequesterFactory
     override fun requester(serviceKey: String): RSocketRequester = req
 
     override fun serviceDestination(serviceKey: String): String = ""
-
 }
