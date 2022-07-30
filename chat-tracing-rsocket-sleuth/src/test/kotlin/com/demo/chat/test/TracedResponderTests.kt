@@ -1,9 +1,16 @@
 package com.demo.chat.test
 
-import org.springframework.boot.test.context.SpringBootTest
+import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.junit.jupiter.SpringExtension
 
-@SpringBootTest
+@ExtendWith(SpringExtension::class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Import(TestConfigurationRSocket::class)
 @TestPropertySource(
     properties = [
         "app.service.core.key=long", "server.port=0", "management.endpoints.enabled-by-default=false",
@@ -13,4 +20,8 @@ import org.springframework.test.context.TestPropertySource
 )
 class TracedResponderTests {
 
+    @Test
+    fun context() {
+
+    }
 }
