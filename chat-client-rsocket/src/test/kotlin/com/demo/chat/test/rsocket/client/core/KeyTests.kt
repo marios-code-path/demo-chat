@@ -31,7 +31,7 @@ class KeyTests : RSocketTestBase() {
     private val svcPrefix: String = "key."
 
     @Test
-    fun `client should call persistence`() {
+    fun `client should call exists`() {
         BDDMockito
                 .given(keyService.exists(anyObject()))
                 .willReturn(Mono.just(true))

@@ -39,6 +39,21 @@ Nothing is better than reducing surface area of a changing API!
 
 # Part 1 - But I have RSocket Services that I want to trace! (The Server Side)
 
+The Components!  Lets break down sleuth as it's composed of a few components we may be interested in.. OK you WILL
+be interested in when your app needs special tracing support. The next few paragraphs will discuss the following:
+
+ * Tracing Object ? what is it why is it needed outside of Sleuth?
+ * Sleuth Tracer (vs brave tracer) => TracedMono, TracedFlux, etc..
+   
+    This API was heavily influenced by Brave. Parts of its documentation were taken directly from Brave. Using a tracer, you can create a root span capturing the critical path of a request. Child spans can be created to allocate latency relating to outgoing requests. When tracing single-threaded code, just run it inside a scoped span:
+   
+ * Whats that span ?
+   
+    This API was heavily influenced by Brave. Parts of its documentation were taken directly from Brave. Using a tracer, you can create a root span capturing the critical path of a request. Child spans can be created to allocate latency relating to outgoing requests. When tracing single-threaded code, just run it inside a scoped span:
+   
+ * AutoConfiguration
+ * Configuring your own Tracer (Manually)
+ 
 ## Secure TCP Connection Primer
 
 ## An RSocket Controller
