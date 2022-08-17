@@ -1,5 +1,4 @@
 import com.demo.chat.init.InitApp
-import com.demo.chat.test.init.TestRSocketClientServerConfiguration
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -20,7 +19,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.cloud.service-registry.auto-registration.enabled=false","app.rsocket.client.requester.factory=test",
         "spring.shell.interactive.enabled=false"]
 )
-@Import(TestRSocketClientServerConfiguration::class, TestConfigurationRSocket::class)
+@Import(TestConfigurationRSocket::class)
 class ChatInitTests {
 
     @Test

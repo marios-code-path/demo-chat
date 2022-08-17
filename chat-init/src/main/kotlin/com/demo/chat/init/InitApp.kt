@@ -20,6 +20,7 @@ import org.springframework.security.authentication.AuthenticationManager
 
 /**
  * Test Class
+ * TODO: turn this into a command 'bootstrap'
  */
 @Profile("init")
 @SpringBootApplication

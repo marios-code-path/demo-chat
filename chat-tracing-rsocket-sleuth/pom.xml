@@ -10,7 +10,7 @@
 	<groupId>com.demo</groupId>
 	<artifactId>chat-tracing-rsocket-sleuth</artifactId>
 	<version>0.0.1</version>
-	<name>chat-tracing-sleuth</name>
+	<name>chat-tracing-rsocket-sleuth</name>
 	<description>Service-Tracing via Sleuth</description>
 
 	<properties>
@@ -24,7 +24,7 @@
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
 				<!-- Provide the latest stable Spring Cloud release train version (e.g. 2020.0.0) -->
-				<version>2022.0.0-SNAPSHOT</version>
+				<version>2021.0.3</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
@@ -33,24 +33,23 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-core</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-core</artifactId>
+			<type>test-jar</type>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-starter-sleuth</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-rsocket</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.demo</groupId>
-			<artifactId>chat-service-rsocket</artifactId>
-			<version>0.0.1</version>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>com.demo</groupId>
-			<artifactId>chat-service-rsocket</artifactId>
-			<version>0.0.1</version>
-			<type>test-jar</type>
 		</dependency>
 		<dependency>
 			<groupId>org.jetbrains.kotlinx</groupId>
