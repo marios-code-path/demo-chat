@@ -15,9 +15,9 @@
     <description>Demo-Chat Reactive ElasticSearch Index</description>
 
     <properties>
-        <datastax.driver.version>3.7.1</datastax.driver.version>
         <lognet.version>2.1.4</lognet.version>
         <kotlin.version>1.7.10</kotlin.version>
+        <spring-data-elastic.version>5.0.1</spring-data-elastic.version>
     </properties>
 
     <dependencies>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter</artifactId>
-            <version>2.2.0.RC1</version>
+            <version>${spring-cloud.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -19,18 +19,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
-        <kotlin.version>1.7.22</kotlin.version>
+        <kotlin.version>1.8.0</kotlin.version>
         <serialization.version>1.2.2</serialization.version>
 
 
         <spring-boot.version>3.0.1</spring-boot.version>
-        <spring-cloud.version>Hoxton.SR12</spring-cloud.version>
-        <spring-data.version>3.0.3.RELEASE</spring-data.version>
-        <spring.version>5.2.6.RELEASE</spring.version>
-        <spring-messaging.version>5.3.3</spring-messaging.version>
+        <spring-cloud-bom.version>2022.0.0</spring-cloud-bom.version>
+        <spring-cloud.version>4.0.1</spring-cloud.version>
+        <spring-cloud-stream.version>4.0.1</spring-cloud-stream.version>
+        <spring.version>6.0.4</spring.version>
+        <spring-messaging.version>${spring.version}</spring-messaging.version>
 
-        <jackson.version>2.9.7</jackson.version>
-        <io-reactor.version>3.3.0.RELEASE</io-reactor.version>
+        <jackson.version>2.14.1</jackson.version>
+        <io-reactor.version>3.5.2</io-reactor.version>
         <cassandra-driver.version>4.9.0</cassandra-driver.version>
         <lognet.version>2.1.4</lognet.version>
     </properties>
@@ -104,7 +105,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
+                <version>${spring-cloud-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -114,8 +115,8 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>pl.project13.maven</groupId>
-                <artifactId>git-commit-id-plugin</artifactId>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
             </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>

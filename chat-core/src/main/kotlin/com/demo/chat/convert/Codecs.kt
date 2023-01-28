@@ -36,17 +36,17 @@ object JsonNodeToAnyConverter : Converter<JsonNode, Any> {
                 else
                     variable
             }
-            JsonNodeType.STRING -> record.asText()
-            JsonNodeType.BOOLEAN -> record.asBoolean()
-            JsonNodeType.OBJECT -> record.fields().asSequence().associate { it.key to convert(it.value) }
-            JsonNodeType.ARRAY -> record.elements().asSequence().map { convert(it) }.toList()
-            else -> {
+            JsonNodeType.STRING -> {
                 try {
                     UUID.fromString(record.asText())
                 } catch (e: Exception) {
                     record.asText()
                 }
             }
+            JsonNodeType.BOOLEAN -> record.asBoolean()
+            JsonNodeType.OBJECT -> record.fields().asSequence().associate { it.key to convert(it.value) }
+            JsonNodeType.ARRAY -> record.elements().asSequence().map { convert(it) }.toList()
+            else -> record.asText()
         }
     }
 }

@@ -8,12 +8,14 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.springframework.core.env.ConfigurableEnvironment
 import org.springframework.data.elasticsearch.client.ClientConfiguration
-import org.springframework.data.elasticsearch.client.reactive.ReactiveElasticsearchClient
-import org.springframework.data.elasticsearch.client.reactive.ReactiveRestClients
-import org.springframework.data.elasticsearch.core.ReactiveElasticsearchTemplate
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchClients
+import org.springframework.data.elasticsearch.client.elc.ElasticsearchConfiguration
+import org.springframework.data.elasticsearch.client.elc.ReactiveElasticsearchClient
+import org.springframework.data.elasticsearch.client.elc.ReactiveElasticsearchTemplate
+import org.springframework.data.elasticsearch.config.ElasticsearchConfigurationSupport
+import org.springframework.data.elasticsearch.core.convert.ElasticsearchConverter
 import org.springframework.data.elasticsearch.repository.config.EnableReactiveElasticsearchRepositories
 import org.springframework.test.web.reactive.server.WebTestClient
-import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.testcontainers.elasticsearch.ElasticsearchContainer
 
 
@@ -23,7 +25,7 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer
 class ElasticContainerConfiguration {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
-    @Value("\${embedded.elastic.image}")
+    @Value("\${embedded.elastic.image:docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2-amd64}")
     private lateinit var imageName: String
 
     @Bean(name = ["embeddedElastic"], destroyMethod = "stop")
@@ -37,8 +39,10 @@ class ElasticContainerConfiguration {
 
     @Bean
     @DependsOn("embeddedElastic")
-    fun reactiveElasticsearchTemplate(client: ReactiveElasticsearchClient): ReactiveElasticsearchTemplate =
-            ReactiveElasticsearchTemplate(client)
+    fun reactiveElasticsearchTemplate(client: ReactiveElasticsearchClient,
+                                      converter: ElasticsearchConverter
+    ): ReactiveElasticsearchTemplate =
+            ReactiveElasticsearchTemplate(client, converter)
 
     @Bean
     @DependsOn("embeddedElastic")
@@ -50,20 +54,18 @@ class ElasticContainerConfiguration {
 
     @Bean
     @DependsOn("embeddedElastic")
-    fun client(container: ElasticsearchContainer): ReactiveElasticsearchClient =
-            ReactiveRestClients
-                    .create(
-                            ClientConfiguration.builder()
-                                    .connectedTo(container.httpHostAddress)
-                                    .withWebClientConfigurer { wc ->
-                                        val ex = ExchangeStrategies.builder()
-                                                .codecs { conf ->
-                                                    conf.defaultCodecs()
-                                                            .maxInMemorySize(-1)
-                                                }
-                                                .build()
-                                        return@withWebClientConfigurer wc.mutate().exchangeStrategies(ex).build()
-                                    }
-                                    .build()
-                    )
+    fun client(container: ElasticsearchContainer,
+               config: ClientConfiguration): ReactiveElasticsearchClient =
+            ElasticsearchClients
+                    .createReactive(config)
+
+    @Bean
+    @DependsOn("embeddedElastic")
+    fun clientConfiguration(container: ElasticsearchContainer) : ClientConfiguration =
+        ClientConfiguration.builder()
+            .connectedTo(container.httpHostAddress)
+            .build()
+
+    @org.springframework.context.annotation.Configuration
+    class Configuration : ElasticsearchConfigurationSupport ()
 }
