@@ -1,9 +1,9 @@
-package com.demo.chat.controller.edge
+package com.demo.chat.controller.composite
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ByNameRequest
 import com.demo.chat.MembershipRequest
-import com.demo.chat.controller.edge.mapping.ChatTopicServiceMapping
+import com.demo.chat.controller.composite.mapping.ChatTopicServiceMapping
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import com.fasterxml.jackson.annotation.JsonTypeName

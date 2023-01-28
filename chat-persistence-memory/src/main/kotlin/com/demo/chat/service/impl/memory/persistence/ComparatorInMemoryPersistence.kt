@@ -8,13 +8,13 @@ import java.util.function.Function
 
 open class ComparatorInMemoryPersistence<T, E>(
     val keyService: IKeyService<T>,
-    val entityClass: Class<*>,
-    val keyFromEntity: Function<E, Key<T>>,
+    entityClass: Class<*>,
+    private val keyFromEntity: Function<E, Key<T>>,
     private val comparator: Comparator<E>
 ) : InMemoryPersistence<T, E>(keyService, entityClass, keyFromEntity) {
     override fun add(ent: E): Mono<Void> = Mono.create { sink ->
-        map.values.forEach {
-            if (comparator.compare(it, ent) == 0) {
+        map.values.forEach { mapEntity ->
+            if (comparator.compare(mapEntity, ent) == 0) {
                 sink.error(DuplicateException)
                 return@create
             }

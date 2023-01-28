@@ -5,9 +5,9 @@ import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.client.rsocket.config.RequesterFactory
 import com.demo.chat.client.rsocket.core.SecretStoreClient
-import com.demo.chat.client.rsocket.edge.MessagingClient
-import com.demo.chat.client.rsocket.edge.TopicClient
-import com.demo.chat.client.rsocket.edge.UserClient
+import com.demo.chat.client.rsocket.composite.MessagingClient
+import com.demo.chat.client.rsocket.composite.TopicClient
+import com.demo.chat.client.rsocket.composite.UserClient
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.SnowflakeGenerator
@@ -18,7 +18,7 @@ import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.secure.config.AuthConfiguration
 import com.demo.chat.secure.rsocket.TransportFactory
 import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

@@ -3,6 +3,7 @@ package com.demo.chat.domain
 import org.springframework.core.ParameterizedTypeReference
 import java.util.*
 
+// Path: chat-core/src/main/kotlin/com/demo/chat/domain/TypeUtil.kt
 interface TypeUtil<T> {
     fun compare(a: T, b: T): Int
     fun toString(t: T): String

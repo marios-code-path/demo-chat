@@ -2,13 +2,9 @@ package com.demo.chat.init.commands
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
-import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
@@ -32,7 +28,6 @@ class LoginCommands<T>(
     @ShellMethod("Secret")
     @Secured("SHELL")       // expand capabilities to check current calling method, and data involved in the call
     fun secret(): String {
-        println("This is the secret")
         return "SECRET STRINGS"
     }
 

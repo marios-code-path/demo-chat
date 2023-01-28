@@ -6,7 +6,7 @@ import com.demo.chat.deploy.redis.config.TopicMessagingConfigurationRedis
 import com.demo.chat.service.TopicPubSubService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
@@ -17,15 +17,19 @@ class App {
         TopicMessagingConfigurationRedis(props).topicMessagingRedisPubSub()
 
     @Bean
-    fun redisTemplate(factory: ReactiveRedisConnectionFactory,
-                      mapper: ObjectMapper): RedisTemplateConfiguration =
-            RedisTemplateConfiguration(factory, mapper)
+    fun redisTemplate(
+        factory: ReactiveRedisConnectionFactory,
+        mapper: ObjectMapper
+    ): RedisTemplateConfiguration =
+        RedisTemplateConfiguration(factory, mapper)
 
 
-    @ConstructorBinding
     @ConfigurationProperties("redis-topics")
-    data class ConfigurationPropertiesRedisTopics(override val host: String = "127.0.0.1",
-                                                  override val port: Int = 6379) : ConfigurationPropertiesRedis
+    data class ConfigurationPropertiesRedisTopics
+    @ConstructorBinding constructor(
+        override val host: String = "127.0.0.1",
+        override val port: Int = 6379
+    ) : ConfigurationPropertiesRedis
 
     @EnableConfigurationProperties(ConfigurationPropertiesRedisTopics::class)
     class ServicesDiscovery {}

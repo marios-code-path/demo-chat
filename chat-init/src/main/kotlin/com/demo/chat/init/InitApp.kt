@@ -6,7 +6,7 @@ import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.init.domain.BootstrapProperties
 import com.demo.chat.secure.rsocket.UnprotectedConnection
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication

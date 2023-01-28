@@ -1,9 +1,9 @@
-package com.demo.chat.client.rsocket.edge
+package com.demo.chat.client.rsocket.composite
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ByNameRequest
 import com.demo.chat.MembershipRequest
-import com.demo.chat.service.edge.ChatTopicService
+import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMemberships

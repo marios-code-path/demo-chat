@@ -1,9 +1,9 @@
-package com.demo.chat.controller.edge
+package com.demo.chat.controller.composite
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.controller.edge.mapping.ChatUserServiceMapping
+import com.demo.chat.controller.composite.mapping.ChatUserServiceMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserIndexService

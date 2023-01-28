@@ -4,7 +4,7 @@ import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
-import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
@@ -18,7 +18,6 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller

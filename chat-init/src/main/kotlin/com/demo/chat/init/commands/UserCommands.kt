@@ -9,8 +9,7 @@ import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.edge.ChatUserService
-import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore

@@ -1,12 +1,11 @@
-package com.demo.chat.client.rsocket.edge
+package com.demo.chat.client.rsocket.composite
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.domain.User
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono

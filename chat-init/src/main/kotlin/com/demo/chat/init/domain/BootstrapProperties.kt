@@ -1,31 +1,27 @@
 package com.demo.chat.init.domain
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 @ConfigurationProperties("app.init")
-@ConstructorBinding
-data class BootstrapProperties(
+data class BootstrapProperties @ConstructorBinding constructor(
     val roles: BootstrapRoles,
     val users: Map<String, BootstrapUser>
 )
 
-@ConstructorBinding
-data class BootstrapRoles(
+data class BootstrapRoles @ConstructorBinding constructor(
     val rolesAllowed: Array<String>,
     val wildcard: String
 )
 
-@ConstructorBinding
-data class BootstrapUser(
+data class BootstrapUser @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,
     val roles: Array<RoleDefinition>
 )
 
-@ConstructorBinding
-data class RoleDefinition(
+data class RoleDefinition @ConstructorBinding constructor(
     val role: String,
     val user: String
 )

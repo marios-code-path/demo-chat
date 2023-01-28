@@ -1,6 +1,5 @@
 package com.demo.chat.domain
 
-import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 
-@ConstructorBinding
-data class IndexSearchRequest(val first: String, val second: String, val third: Int)
+data class IndexSearchRequest @ConstructorBinding constructor(val first: String, val second: String, val third: Int)

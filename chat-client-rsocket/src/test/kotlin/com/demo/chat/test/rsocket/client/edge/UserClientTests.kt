@@ -2,7 +2,7 @@ package com.demo.chat.test.rsocket.client.edge
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.client.rsocket.edge.UserClient
+import com.demo.chat.client.rsocket.composite.UserClient
 import com.demo.chat.domain.Key
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser

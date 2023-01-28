@@ -1,11 +1,11 @@
-package com.demo.chat.controller.edge.mapping
+package com.demo.chat.controller.composite.mapping
 
 import com.demo.chat.ByHandleRequest
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.edge.ChatUserService
+import com.demo.chat.service.composite.ChatUserService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

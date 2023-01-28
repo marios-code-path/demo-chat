@@ -1,6 +1,6 @@
 package com.demo.chat.test
 
-import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.User
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence

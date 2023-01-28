@@ -1,4 +1,4 @@
-package com.demo.chat.service.edge
+package com.demo.chat.service.composite
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ByNameRequest

@@ -4,7 +4,7 @@ import com.demo.chat.ByIdRequest
 import com.demo.chat.MessageSendRequest
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
-import com.demo.chat.service.edge.ChatMessageService
+import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod

@@ -2,7 +2,7 @@ package com.demo.chat.controller.config.edge
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
-import com.demo.chat.controller.edge.UserServiceController
+import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.service.UserIndexService
 import org.springframework.messaging.handler.annotation.MessageMapping

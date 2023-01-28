@@ -1,8 +1,8 @@
-package com.demo.chat.client.rsocket.edge
+package com.demo.chat.client.rsocket.composite
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.MessageSendRequest
-import com.demo.chat.service.edge.ChatMessageService
+import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.domain.Message
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.retrieveFlux

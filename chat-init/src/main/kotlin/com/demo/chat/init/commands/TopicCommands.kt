@@ -3,20 +3,17 @@ package com.demo.chat.init.commands
 import com.demo.chat.ByIdRequest
 import com.demo.chat.ByNameRequest
 import com.demo.chat.MembershipRequest
-import com.demo.chat.MessageSendRequest
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.edge.ChatMessageService
-import com.demo.chat.service.edge.ChatTopicService
+import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
-import java.time.Instant
 
 @Profile("shell")
 @ShellComponent

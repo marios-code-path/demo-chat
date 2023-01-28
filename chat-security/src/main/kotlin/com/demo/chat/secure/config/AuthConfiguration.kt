@@ -46,6 +46,8 @@ open class AuthConfiguration<T>(
         { username: String -> IndexSearchRequest(UserIndexService.HANDLE, username, 1) })
 
     @Bean
+    // This is going to be deprecated on the fact that we
+    // can use an authorization server instead.
     open fun authenticationManager(
         userIndex: UserIndexService<T, IndexSearchRequest>,
         secretStore: UserCredentialSecretsStore<T>,

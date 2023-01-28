@@ -1,9 +1,8 @@
 package com.demo.chat.domain
 
-import org.springframework.boot.context.properties.ConstructorBinding
+import org.springframework.boot.context.properties.bind.ConstructorBinding
 
-@ConstructorBinding
-data class AuthorizationRequest<T>(
+data class AuthorizationRequest<T> @ConstructorBinding constructor(
     val principal: Key<T>,
     val target: Key<T>,
     val permission: String,
