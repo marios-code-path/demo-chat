@@ -1,26 +1,39 @@
 package com.demo.chat.test.indexrepo
 
+import co.elastic.clients.elasticsearch._types.HealthStatus
+import co.elastic.clients.elasticsearch._types.Level
+import co.elastic.clients.elasticsearch.cluster.HealthResponse
+import com.demo.chat.config.index.elastic.ElasticConfiguration
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.junit.jupiter.SpringExtension
-import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.data.elasticsearch.client.elc.ReactiveElasticsearchClient
+import reactor.test.StepVerifier
 
-@ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ElasticContainerConfiguration::class])
-class ElasticHealthTest {
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [ElasticConfiguration::class]
+)
+class ElasticHealthTest : BaseContainerSetup() {
+
     @Autowired
-    private lateinit var webClient: WebTestClient
+    private lateinit var client: ReactiveElasticsearchClient
 
     @Test
     fun healthCheck() {
-        webClient
-                .get()
-                .uri("/_cluster/health")
-                .exchange()
-                .expectStatus().isOk
+
+        StepVerifier
+            .create(client.cluster().health { builder ->
+                builder.level(Level.Cluster)
+            })
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .isInstanceOf(HealthResponse::class.java)
+                    .extracting(HealthResponse::status)
+                    .isNotEqualTo(HealthStatus.Red)
+            }
     }
 }

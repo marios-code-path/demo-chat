@@ -1,25 +1,24 @@
 package com.demo.chat.test.indexrepo
 
+import com.demo.chat.config.index.elastic.ElasticConfiguration
 import com.demo.chat.domain.elastic.ChatUser
 import com.demo.chat.domain.elastic.ChatUserKey
 import com.demo.chat.repository.elastic.ReactiveUserIndexRepository
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.data.elasticsearch.repository.config.EnableReactiveElasticsearchRepositories
 import reactor.test.StepVerifier
 import java.time.Instant
 
-@ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [ElasticContainerConfiguration::class]
+    classes = [ElasticConfiguration::class, BaseContainerSetup.ConfConfig::class]
 )
-class UserIndexTests {
+@EnableReactiveElasticsearchRepositories(basePackages = ["com.demo.chat"])
+class UserIndexTests : BaseContainerSetup() {
     @Autowired
     private lateinit var repo: ReactiveUserIndexRepository<String>
 
