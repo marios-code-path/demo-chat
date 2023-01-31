@@ -56,6 +56,8 @@ open class TestBase {
                 { Assertions.assertEquals(name, user.name) }
             )
         }
+
+        fun NotFoundException(): Exception = Exception("Not Found")
     }
 }
 

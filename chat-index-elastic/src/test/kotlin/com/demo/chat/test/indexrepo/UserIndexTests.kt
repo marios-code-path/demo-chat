@@ -15,10 +15,11 @@ import java.time.Instant
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [ElasticConfiguration::class, BaseContainerSetup.ConfConfig::class]
+    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
 )
 @EnableReactiveElasticsearchRepositories(basePackages = ["com.demo.chat"])
-class UserIndexTests : BaseContainerSetup() {
+class UserIndexTests : ElasticContainerBase() {
+
     @Autowired
     private lateinit var repo: ReactiveUserIndexRepository<String>
 

@@ -10,13 +10,13 @@ import org.springframework.data.cassandra.core.mapping.*
 data class AuthMetadataById<T>(
     @PrimaryKey
     override val key: AuthMetadataIdKey<T>,
-    @Column("target")
+    @field:Column("target")
     val targetId: T,
-    @Column("principal")
+    @field:Column("principal")
     val principalId: T,
-    @Column("permission")
+    @field:Column("permission")
     override val permission: String,
-    @Column("expires")
+    @field:Column("expires")
     override val expires: Long
 ) : AuthMetadata<T> {
     @Transient

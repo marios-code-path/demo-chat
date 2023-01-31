@@ -11,13 +11,13 @@ import java.time.Instant
 data class ChatUser<T>(
     @PrimaryKey
     override val key: ChatUserKey<T>,
-    @Column("name")
+    @field:Column("name")
     override val name: String,
-    @Column("handle")
+    @field:Column("handle")
     override val handle: String,
-    @Column("image_uri")
+    @field:Column("image_uri")
     override val imageUri: String,
-    @Column("timestamp")
+    @field:Column("timestamp")
     override val timestamp: Instant
 ) : User<T>
 

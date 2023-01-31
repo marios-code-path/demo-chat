@@ -12,11 +12,11 @@ import java.time.Instant
 data class ChatUserHandle<T>(
     @PrimaryKey
     override val key: ChatUserHandleKey<T>,
-    @Column("name")
+    @field:Column("name")
     override val name: String,
-    @Column("image_uri")
+    @field:Column("image_uri")
     override val imageUri: String,
-    @Column("timestamp")
+    @field:Column("timestamp")
     override val timestamp: Instant
 ) : User<T> {
     @Transient
@@ -25,7 +25,7 @@ data class ChatUserHandle<T>(
 
 @PrimaryKeyClass
 data class ChatUserHandleKey<T>(
-    @Column("user_id")
+    @field:Column("user_id")
     override val id: T,
     @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
     val handle: String

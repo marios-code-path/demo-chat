@@ -27,8 +27,8 @@ import org.springframework.data.cassandra.core.mapping.*
 data class TopicMembershipByKey<T>(
         @PrimaryKey("id")
         override val key: T,
-        @Column("member")
+        @field:Column("member")
         override val member: T,
-        @Column("memberOf")
+        //@field:Column("member_of")
         override val memberOf: T
 ) : TopicMembership<T>

@@ -15,7 +15,7 @@ CREATE TABLE chat_uuid.topic_membership
 (
     id       UUID,
     member   UUID,
-    memberOf UUID,
+    member_of UUID,
     PRIMARY KEY (id)
 );
 
@@ -23,7 +23,7 @@ CREATE TABLE chat_uuid.topic_membership_by_member
 (
     id       UUID,
     member   UUID,
-    memberOf UUID,
+    member_of UUID,
     PRIMARY KEY (member)
 );
 
@@ -31,8 +31,8 @@ CREATE TABLE chat_uuid.topic_membership_by_member_of
 (
     id       UUID,
     member   UUID,
-    memberOf UUID,
-    PRIMARY KEY (memberOf)
+    member_of UUID,
+    PRIMARY KEY (member_of)
 );
 
 

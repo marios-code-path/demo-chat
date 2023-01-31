@@ -13,16 +13,15 @@ import reactor.test.StepVerifier
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [ElasticConfiguration::class]
+    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
 )
-class ElasticHealthTest : BaseContainerSetup() {
+class ElasticHealthTest : ElasticContainerBase() {
 
     @Autowired
     private lateinit var client: ReactiveElasticsearchClient
 
     @Test
     fun healthCheck() {
-
         StepVerifier
             .create(client.cluster().health { builder ->
                 builder.level(Level.Cluster)
@@ -35,5 +34,6 @@ class ElasticHealthTest : BaseContainerSetup() {
                     .extracting(HealthResponse::status)
                     .isNotEqualTo(HealthStatus.Red)
             }
+            .verifyComplete()
     }
 }

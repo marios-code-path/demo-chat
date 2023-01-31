@@ -16,8 +16,6 @@
 
     <properties>
         <lognet.version>2.1.4</lognet.version>
-        <kotlin.version>1.7.10</kotlin.version>
-        <spring-data-elastic.version>5.0.1</spring-data-elastic.version>
     </properties>
 
     <dependencies>

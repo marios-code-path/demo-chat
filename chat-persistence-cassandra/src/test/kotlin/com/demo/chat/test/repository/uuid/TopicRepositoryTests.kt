@@ -17,7 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
-import reactor.core.publisher.switchIfEmpty
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 
@@ -65,7 +65,8 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     fun `should fail to find room`() {
         val queryFlux = repo
             .findByKeyId(keyGenerator.nextKey())
-            .switchIfEmpty { throw (Exception("No Such Room")) }
+            .switchIfEmpty (Mono.error(TestBase.NotFoundException()))
+
 
         StepVerifier
             .create(queryFlux)

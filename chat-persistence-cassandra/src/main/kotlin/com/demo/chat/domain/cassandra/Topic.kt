@@ -10,7 +10,7 @@ import org.springframework.data.cassandra.core.mapping.*
 data class ChatTopic<T>(
     @PrimaryKey
     override val key: ChatTopicKey<T>,
-    @Column("name")
+    @field:Column("name")
     override val data: String,
     val active: Boolean
 ) : MessageTopic<T>

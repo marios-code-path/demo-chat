@@ -2,17 +2,18 @@ package com.demo.chat.test.repository.uuid
 
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.springframework.data.repository.reactive.ReactiveCrudRepository
 import org.springframework.data.repository.reactive.ReactiveSortingRepository
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-abstract class RepositoryTests<T, E>(
+abstract class RepositoryTests<T, E: Any>(
     val valueSupply: Supplier<E>,
     val keySupply: Supplier<T>
 ) {
-    lateinit var repo: ReactiveSortingRepository<E, T>
+    lateinit var repo: ReactiveCrudRepository<E, T>
 
     abstract fun assertElement(element: E): Unit
 

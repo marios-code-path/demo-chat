@@ -45,7 +45,8 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
             withConfigurationOverride("cassandra")
             withStartupTimeout(Duration.ofSeconds(60))
             withInitScript(ddlResource)
-            ContainerUtils.startAndLogTime(this)
+            //ContainerUtils.startAndLogTime(this)
+            this.start()
 
             log.debug("Test Container STARTED")
         }

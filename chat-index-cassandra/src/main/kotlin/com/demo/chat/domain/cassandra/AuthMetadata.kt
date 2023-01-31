@@ -8,15 +8,15 @@ import org.springframework.data.cassandra.core.mapping.*
 
 @Table("auth_metadata_principal")
 data class AuthMetadataByPrincipal<T>(
-    @Column("id")
+    @field:Column("id")
     val keyId: T,
-    @Column("target")
+    @field:Column("target")
     val targetId: T,
     @PrimaryKey("principal")
     val principalId: T,
-    @Column("permission")
+    @field:Column("permission")
     override val permission: String,
-    @Column("expires")
+    @field:Column("expires")
     override val expires: Long
 ) : AuthMetadata<T> {
     @Transient
@@ -29,15 +29,15 @@ data class AuthMetadataByPrincipal<T>(
 
 @Table("auth_metadata_target")
 data class AuthMetadataByTarget<T>(
-    @Column("id")
+    @field:Column("id")
     val keyId: T,
     @PrimaryKey("target")
     val targetId: T,
-    @Column("principal")
+    @field:Column("principal")
     val principalId: T,
-    @Column("permission")
+    @field:Column("permission")
     override val permission: String,
-    @Column("expires")
+    @field:Column("expires")
     override val expires: Long
 ) : AuthMetadata<T> {
     @Transient

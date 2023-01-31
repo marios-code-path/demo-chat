@@ -9,12 +9,14 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.test.context.DynamicPropertySource
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import org.testcontainers.elasticsearch.ElasticsearchContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Duration
 
 @Testcontainers
-open class BaseContainerSetup {
+open class ElasticContainerBase {
 
     @TestConfiguration
     class ConfConfig {
@@ -40,22 +42,30 @@ open class BaseContainerSetup {
 
         @Container
         val elasticContainer = ElasticsearchContainer(imageName).apply {
-                withExposedPorts(9200)
-                withPassword("s3cret")
-                start()
+            withExposedPorts(9200)
+            withPassword("s3cret")
+            start()
 
-                val host = HttpHost("localhost", getMappedPort(9200), "https")
-                val credentialsProvider = BasicCredentialsProvider().apply {
-                    setCredentials(AuthScope.ANY, UsernamePasswordCredentials("elastic", "s3cret"))
-                }
-                val builder = RestClient.builder(host)
-
-                builder.setHttpClientConfigCallback { clientBuilder ->
-                    clientBuilder.setDefaultCredentialsProvider(credentialsProvider)
-                    clientBuilder.setSSLContext(this.createSslContextFromCa())
-                    clientBuilder
-                }
+            val host = HttpHost("localhost", getMappedPort(9200), "https")
+            val credentialsProvider = BasicCredentialsProvider().apply {
+                setCredentials(AuthScope.ANY, UsernamePasswordCredentials("elastic", "s3cret"))
             }
+            val builder = RestClient.builder(host)
+
+            builder.setHttpClientConfigCallback { clientBuilder ->
+                clientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+                clientBuilder.setSSLContext(this.createSslContextFromCa())
+                clientBuilder
+            }
+            val regex = ".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)"
+
+
+            setWaitStrategy(
+                (LogMessageWaitStrategy())
+                    .withRegEx(regex)
+                    .withStartupTimeout(Duration.ofSeconds(60))
+            )
+        }
 
         fun sslContext() = elasticContainer.createSslContextFromCa()
 
