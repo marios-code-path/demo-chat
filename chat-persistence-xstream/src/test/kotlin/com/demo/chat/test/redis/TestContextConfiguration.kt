@@ -4,6 +4,7 @@ import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.domain.serializers.JacksonModules
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import org.springframework.beans.factory.annotation.Value
@@ -17,6 +18,7 @@ class TestContextConfiguration {
         jacksonObjectMapper().registerModule(KotlinModule()).apply {
             with(JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)) {
                 registerModules(
+                    JavaTimeModule(),
                     messageModule(),
                     keyModule(),
                     topicModule(),

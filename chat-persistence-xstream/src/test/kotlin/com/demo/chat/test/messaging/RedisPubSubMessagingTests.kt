@@ -17,8 +17,10 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import java.time.Duration
 import java.util.*
 import java.util.function.Supplier
 
@@ -33,8 +35,17 @@ class RedisPubSubMessagingTests(
 {
     companion object {
         @Container
-        private var redisContainer: GenericContainer<*> =
-            GenericContainer<Nothing>("redis:5.0.12-alpine")
+        var redisContainer: GenericContainer<*> =
+            GenericContainer<Nothing>("redis:5.0.14")
+                .apply {
+                    withExposedPorts(6379)
+                    waitingFor(
+                        LogMessageWaitStrategy()
+                            .withRegEx(".*Ready to accept connections.*\\s")
+                            .withStartupTimeout(Duration.ofSeconds(60))
+                    )
+                    start()
+                }
 
         @JvmStatic
         @DynamicPropertySource

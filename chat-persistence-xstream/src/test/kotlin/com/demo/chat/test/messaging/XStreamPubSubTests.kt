@@ -31,7 +31,10 @@ class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
     companion object {
         @Container
         private var redisContainer: GenericContainer<*> =
-            GenericContainer<Nothing>("redis:5.0.12-alpine")
+            GenericContainer<Nothing>("redis:5.0.12-alpine").apply {
+                withExposedPorts(6379)
+                start()
+            }
 
         @JvmStatic
         @DynamicPropertySource
