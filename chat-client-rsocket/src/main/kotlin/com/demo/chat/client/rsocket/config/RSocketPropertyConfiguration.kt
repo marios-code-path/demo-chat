@@ -1,28 +1,27 @@
 package com.demo.chat.client.rsocket.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 
 @ConfigurationProperties("app.rsocket.config")
 data class RSocketAppProperties
-@ConstructorBinding constructor(
+constructor(
     val core: CoreRSocketAppProperties
 )
 
 @ConfigurationProperties("app.rsocket.client")
 data class RSocketClientProperties
-@ConstructorBinding constructor(val config: Map<String, RSocketPropertyValue>) {
+constructor(val config: Map<String, RSocketPropertyValue>) {
     fun getServiceConfig(str: String): RSocketProperty = config[str]!!
 }
 
 data class RSocketPropertyValue
-@ConstructorBinding constructor(
+constructor(
     override var dest: String? = "", override var prefix: String? = ""
 ) : RSocketProperty
 
 data class CoreRSocketAppProperties
-@ConstructorBinding constructor(
+constructor(
     override val key: RSocketProperty = RSocketPropertyValue(),
     override val index: RSocketProperty = RSocketPropertyValue(),
     override val persistence: RSocketProperty = RSocketPropertyValue(),

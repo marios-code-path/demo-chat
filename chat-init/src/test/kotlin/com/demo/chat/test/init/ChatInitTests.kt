@@ -19,7 +19,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.cloud.service-registry.auto-registration.enabled=false","app.rsocket.client.requester.factory=test",
         "spring.shell.interactive.enabled=false"]
 )
-@Import(TestConfigurationRSocket::class)
+//@Import(TestConfigurationRSocket::class)
 class ChatInitTests {
 
     @Test

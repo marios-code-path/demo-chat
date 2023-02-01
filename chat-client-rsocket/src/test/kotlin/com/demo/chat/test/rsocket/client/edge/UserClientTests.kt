@@ -10,7 +10,6 @@ import com.demo.chat.test.rsocket.TestConfigurationRSocket
 import com.demo.chat.test.rsocket.controller.edge.EdgeUserControllerTests
 import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
 import org.assertj.core.api.Assertions
-import org.junit.Ignore
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -79,7 +78,7 @@ class UserClientTests : EdgeUserControllerTests() {
             .verifyComplete()
     }
 
-    @Ignore
+
     fun `client should list users`() {
         BDDMockito.given(userPersistence.get(TestBase.anyObject()))
             .willReturn(Mono.just(randomUser))

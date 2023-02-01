@@ -22,8 +22,8 @@ open class TestBase {
 
     companion object TestBase {
         open fun <T> anyObject(): T {
-            Mockito.any<T>()
-            return uninitialized()
+            return Mockito.any<T>()
+            //return uninitialized()
         }
 
         private fun <T> uninitialized(): T = null as T

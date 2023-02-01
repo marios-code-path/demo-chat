@@ -51,7 +51,6 @@
         <module>chat-persistence-xstream</module>
         <module>chat-client-rsocket</module>
         <module>chat-init</module>
-        <module>chat-streams</module>
         <module>chat-messaging-pulsar</module>
         <module>chat-gateway</module>
         <module>chat-tracing-rsocket-sleuth</module>

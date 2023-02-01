@@ -5,7 +5,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.IKeyService
 import io.rsocket.RSocket
-import io.rsocket.RSocketFactory
+import io.rsocket.core.RSocketServer
 import io.rsocket.frame.decoder.PayloadDecoder
 import io.rsocket.transport.netty.server.CloseableChannel
 import io.rsocket.transport.netty.server.TcpServerTransport
@@ -49,33 +49,32 @@ open class RSocketControllerTestBase {
     fun setUp(context: ApplicationContext) {
         val messageHandler = context.getBean(RSocketMessageHandler::class.java)
 
-        server = RSocketFactory.receive()
-                .frameDecoder(PayloadDecoder.ZERO_COPY)
-                .acceptor(messageHandler.responder())
-                .transport(TcpServerTransport.create("localhost", 0))
-                .start()
-                .block()!!
+        server = RSocketServer
+            .create(messageHandler.responder())
+            .payloadDecoder(PayloadDecoder.ZERO_COPY)
+            .bindNow(TcpServerTransport.create("localhost", 0))
+
 
         val strategies = context.getBean(RSocketStrategies::class.java)
 
         requester = RSocketRequester
-                .builder()
-                .rsocketStrategies(strategies)
-                .connectTcp("localhost", server.address().port)
-                .block()!!
+            .builder()
+            .rsocketStrategies(strategies)
+            .connectTcp("localhost", server.address().port)
+            .block()!!
 
-        socket = requester.rsocket()
+        socket = requester.rsocket()!!
 
         BDDMockito
-                .given(keyService.key(String::class.java))
-                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .given(keyService.key(String::class.java))
+            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 
         Hooks.onOperatorDebug()
     }
 
     @AfterEach
     fun tearDown(@Autowired config: MockCoreServicesConfiguration) {
-        requester.rsocket().dispose()
+        requester.rsocket()!!.dispose()
         server.dispose()
     }
 }

@@ -46,7 +46,7 @@ class TestConfigurationRSocket {
         rs.bind(TcpServerTransport.create("localhost", serverPort.toInt())).block()!!
 
     @Bean
-    fun rSocket(rq: RSocketRequester): RSocket = rq.rsocket()
+    fun rSocket(rq: RSocketRequester): RSocket = rq.rsocket()!!
 
     @Bean
     fun rSocketRequester(server: CloseableChannel, strategies: RSocketStrategies): RSocketRequester = RSocketRequester

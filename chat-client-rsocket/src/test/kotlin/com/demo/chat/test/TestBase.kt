@@ -3,8 +3,8 @@ package com.demo.chat.test
 import org.mockito.Mockito
 
 fun <T> anyObject(): T {
-    Mockito.any<T>()
-    return uninitialized()
+    return Mockito.any<T>()
+    //return uninitialized()
 }
 
 fun <T> uninitialized(): T = null as T

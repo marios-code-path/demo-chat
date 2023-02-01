@@ -8,7 +8,7 @@ import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.core.io.Resource
 import java.io.IOException
 
-open class YamlFileContextInitializer(@Value("\${test.property.locations}") private val locations: String) : ApplicationContextInitializer<ConfigurableApplicationContext> {
+open class YamlFileContextInitializer(private val locations: String) : ApplicationContextInitializer<ConfigurableApplicationContext> {
 
         override fun initialize(applicationContext: ConfigurableApplicationContext) {
             try {

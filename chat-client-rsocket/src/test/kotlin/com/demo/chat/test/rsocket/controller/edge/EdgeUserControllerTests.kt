@@ -2,15 +2,14 @@ package com.demo.chat.test.rsocket.controller.edge
 
 import com.demo.chat.ByIdRequest
 import com.demo.chat.UserCreateRequest
-import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import com.demo.chat.test.TestBase
+import com.demo.chat.test.TestChatUser
+import com.demo.chat.test.TestChatUserKey
 import org.assertj.core.api.Assertions
-import org.junit.Ignore
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -96,7 +95,7 @@ open class EdgeUserControllerTests : RSocketControllerTestBase() {
                 .verifyComplete()
     }
 
-    @Ignore
+
     fun `should list users`() {
         BDDMockito.given(userPersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomUser))
