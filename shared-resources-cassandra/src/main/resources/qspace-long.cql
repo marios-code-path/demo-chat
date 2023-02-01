@@ -15,7 +15,7 @@ CREATE TABLE chat_long.topic_membership
 (
     id       BIGINT,
     member   BIGINT,
-    memberOf BIGINT,
+    member_of BIGINT,
     PRIMARY KEY (id)
 );
 
@@ -23,7 +23,7 @@ CREATE TABLE chat_long.topic_membership_by_member
 (
     id       BIGINT,
     member   BIGINT,
-    memberOf BIGINT,
+    member_of BIGINT,
     PRIMARY KEY (member)
 );
 
@@ -31,7 +31,7 @@ CREATE TABLE chat_long.topic_membership_by_member_of
 (
     id       BIGINT,
     member   BIGINT,
-    memberOf BIGINT,
+    member_of BIGINT,
     PRIMARY KEY (memberOf)
 );
 

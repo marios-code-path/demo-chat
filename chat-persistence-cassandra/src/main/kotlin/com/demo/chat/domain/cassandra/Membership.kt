@@ -29,6 +29,6 @@ data class TopicMembershipByKey<T>(
         override val key: T,
         @field:Column("member")
         override val member: T,
-        //@field:Column("member_of")
+        @field:Column("member_of")
         override val memberOf: T
 ) : TopicMembership<T>
