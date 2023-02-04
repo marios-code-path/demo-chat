@@ -1,10 +1,10 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.User
-import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.index.cassandra.repository.ChatUserHandleRepository
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.index.UserIndexCassandra
+import com.demo.chat.index.cassandra.impl.UserIndex
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -33,7 +33,7 @@ class UserIndexTests {
 
     @BeforeEach
     fun setUp() {
-        userIndex = UserIndexCassandra(byHandleRepo, cassandra)
+        userIndex = UserIndex(byHandleRepo, cassandra)
     }
 
     fun getIndex(): IndexService<UUID, User<UUID>, Map<String, String>> = userIndex

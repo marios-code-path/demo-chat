@@ -1,6 +1,6 @@
 package com.demo.chat.client.rsocket.core
 
-import com.demo.chat.MemberTopicRequest
+import com.demo.chat.domain.MemberTopicRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.TopicPubSubService

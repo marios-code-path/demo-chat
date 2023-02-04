@@ -1,6 +1,6 @@
 package com.demo.chat.controller.core.mapping
 
-import com.demo.chat.MemberTopicRequest
+import com.demo.chat.domain.MemberTopicRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.service.TopicPubSubService
 import org.springframework.messaging.handler.annotation.MessageMapping

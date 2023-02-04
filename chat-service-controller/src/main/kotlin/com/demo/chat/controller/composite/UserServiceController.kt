@@ -1,8 +1,8 @@
 package com.demo.chat.controller.composite
 
-import com.demo.chat.ByHandleRequest
-import com.demo.chat.ByIdRequest
-import com.demo.chat.UserCreateRequest
+import com.demo.chat.domain.ByHandleRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.controller.composite.mapping.ChatUserServiceMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -17,9 +17,9 @@ import java.util.function.Function
 import java.util.stream.Collectors
 
 open class UserServiceController<T, Q>(
-        val userPersistence: UserPersistence<T>,
-        private val userIndex: UserIndexService<T, Q>,
-        private val userHandleToQuery: Function<ByHandleRequest, Q>,
+    val userPersistence: UserPersistence<T>,
+    private val userIndex: UserIndexService<T, Q>,
+    private val userHandleToQuery: Function<ByHandleRequest, Q>,
 ) : ChatUserServiceMapping<T> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 

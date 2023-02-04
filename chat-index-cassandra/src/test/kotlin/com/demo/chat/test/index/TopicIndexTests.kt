@@ -1,13 +1,13 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.cassandra.ChatTopicName
-import com.demo.chat.domain.cassandra.ChatTopicNameKey
-import com.demo.chat.repository.cassandra.TopicByNameRepository
+import com.demo.chat.index.cassandra.domain.ChatTopicName
+import com.demo.chat.index.cassandra.domain.ChatTopicNameKey
+import com.demo.chat.index.cassandra.repository.TopicByNameRepository
 import com.demo.chat.service.IndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.TopicIndexService.Companion.NAME
-import com.demo.chat.service.index.TopicIndexCassandra
+import com.demo.chat.index.cassandra.impl.TopicIndex
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import org.assertj.core.api.Assertions
@@ -39,7 +39,7 @@ class TopicIndexTests {
 
     @BeforeEach
     fun setUp() {
-        topicIndex = TopicIndexCassandra(nameRepo)
+        topicIndex = TopicIndex(nameRepo)
     }
 
 

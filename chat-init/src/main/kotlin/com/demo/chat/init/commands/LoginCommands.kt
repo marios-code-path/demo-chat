@@ -1,7 +1,7 @@
 package com.demo.chat.init.commands
 
-import com.demo.chat.ByHandleRequest
-import com.demo.chat.ByIdRequest
+import com.demo.chat.domain.ByHandleRequest
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.ChatUserService

@@ -1,7 +1,7 @@
 package com.demo.chat.client.rsocket.composite
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.MessageSendRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.domain.Message
 import org.springframework.messaging.rsocket.RSocketRequester

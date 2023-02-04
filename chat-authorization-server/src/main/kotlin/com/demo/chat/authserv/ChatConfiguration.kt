@@ -1,7 +1,7 @@
 package com.demo.chat.authserv
 
 import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.config.index.lucene.LuceneIndexBeans
+import com.demo.chat.index.lucene.config.LuceneIndexBeans
 import com.demo.chat.persistence.memory.config.InMemoryPersistenceBeans
 import com.demo.chat.persistence.memory.config.LongKeyServiceBeans
 import com.demo.chat.domain.IndexSearchRequest

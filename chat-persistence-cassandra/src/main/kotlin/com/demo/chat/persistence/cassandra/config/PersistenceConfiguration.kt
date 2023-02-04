@@ -3,12 +3,10 @@ package com.demo.chat.persistence.cassandra.config
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.persistence.cassandra.domain.keygen.CassandraUUIDKeyGenerator
-import com.demo.chat.repository.cassandra.*
-import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.IKeyService
 import com.demo.chat.persistence.cassandra.impl.KeyServiceCassandra
 import com.demo.chat.persistence.cassandra.repository.*
-import com.demo.chat.persistence.repository.cassandra.*
+import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.IKeyService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

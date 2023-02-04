@@ -4,7 +4,7 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.IndexService
-import com.demo.chat.service.impl.index.lucene.LuceneIndex
+import com.demo.chat.index.lucene.impl.LuceneIndex
 import com.demo.chat.test.index.IndexTests
 import java.util.function.Function
 import java.util.function.Supplier

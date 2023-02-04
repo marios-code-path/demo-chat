@@ -1,7 +1,7 @@
 package com.demo.chat.controller.composite
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.MessageSendRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.controller.composite.mapping.ChatMessageServiceMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message

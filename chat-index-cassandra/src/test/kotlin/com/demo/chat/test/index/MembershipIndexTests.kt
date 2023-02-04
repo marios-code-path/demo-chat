@@ -1,12 +1,12 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.cassandra.TopicMembershipByMember
-import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
-import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
-import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
+import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
+import com.demo.chat.index.cassandra.domain.TopicMembershipByMemberOf
+import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberOfRepository
+import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberRepository
 import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.index.MembershipIndexCassandra
+import com.demo.chat.index.cassandra.impl.MembershipIndex
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -62,7 +62,7 @@ class MembershipIndexTests {
         BDDMockito.given(byMemberOfRepository.findByMemberOf(anyObject()))
                 .willReturn(Flux.just(membershipOf))
 
-        this.membershipIndex = MembershipIndexCassandra(UUID::fromString, byMemberRepository, byMemberOfRepository)
+        this.membershipIndex = MembershipIndex(UUID::fromString, byMemberRepository, byMemberOfRepository)
     }
 
     @Test

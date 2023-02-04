@@ -3,8 +3,6 @@ package com.demo.chat.persistence.cassandra.config
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.persistence.cassandra.impl.*
 import com.demo.chat.persistence.cassandra.repository.*
-import com.demo.chat.persistence.impl.cassandra.*
-import com.demo.chat.persistence.repository.cassandra.*
 import com.demo.chat.service.*
 import com.demo.chat.service.security.AuthMetaPersistence
 

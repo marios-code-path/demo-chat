@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket.controller.edge
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.UserCreateRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.UserIndexService

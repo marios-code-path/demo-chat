@@ -1,11 +1,12 @@
 package com.demo.chat.test.repository
 
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import com.demo.chat.domain.cassandra.TopicMembershipByMember
-import com.demo.chat.domain.cassandra.TopicMembershipByMemberOf
-import com.demo.chat.repository.cassandra.TopicMembershipByMemberOfRepository
-import com.demo.chat.repository.cassandra.TopicMembershipByMemberRepository
+import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
+import com.demo.chat.index.cassandra.domain.TopicMembershipByMemberOf
+import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberOfRepository
+import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberRepository
 import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -22,7 +23,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [RepositoryTestConfiguration::class])
+    classes = [IndexRepositoryTestConfiguration::class])
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class MembershipIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired

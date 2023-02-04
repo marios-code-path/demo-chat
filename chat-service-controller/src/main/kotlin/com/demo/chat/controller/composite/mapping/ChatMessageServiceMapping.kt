@@ -1,7 +1,7 @@
 package com.demo.chat.controller.composite.mapping
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.MessageSendRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.messaging.handler.annotation.MessageMapping

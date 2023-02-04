@@ -1,6 +1,6 @@
 package com.demo.chat.test.messaging
 
-import com.demo.chat.pubsub.impl.memory.messaging.MemoryTopicPubSubService
+import com.demo.chat.pubsub.memory.impl.MemoryTopicPubSubService
 import com.demo.chat.test.TestStringKeyService
 import org.junit.jupiter.api.BeforeEach
 import reactor.core.publisher.Hooks

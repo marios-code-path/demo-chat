@@ -1,6 +1,6 @@
 package com.demo.chat.controller.core
 
-import com.demo.chat.MemberTopicRequest
+import com.demo.chat.domain.MemberTopicRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.controller.core.mapping.TopicPubSubServiceMapping
 import com.demo.chat.service.TopicPubSubService

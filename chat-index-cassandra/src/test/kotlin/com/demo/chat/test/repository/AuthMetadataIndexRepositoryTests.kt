@@ -1,11 +1,12 @@
 package com.demo.chat.test.repository
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.cassandra.AuthMetadataByPrincipal
-import com.demo.chat.domain.cassandra.AuthMetadataByTarget
-import com.demo.chat.repository.cassandra.AuthMetadataByPrincipalRepository
-import com.demo.chat.repository.cassandra.AuthMetadataByTargetRepository
+import com.demo.chat.index.cassandra.domain.AuthMetadataByPrincipal
+import com.demo.chat.index.cassandra.domain.AuthMetadataByTarget
+import com.demo.chat.index.cassandra.repository.AuthMetadataByPrincipalRepository
+import com.demo.chat.index.cassandra.repository.AuthMetadataByTargetRepository
 import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -22,7 +23,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [RepositoryTestConfiguration::class]
+    classes = [IndexRepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {

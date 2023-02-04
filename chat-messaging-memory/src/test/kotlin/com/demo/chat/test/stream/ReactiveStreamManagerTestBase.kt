@@ -1,7 +1,7 @@
 package com.demo.chat.test.stream
 
 import com.demo.chat.convert.Converter
-import com.demo.chat.pubsub.impl.memory.stream.ExampleReactiveStreamManager
+import com.demo.chat.pubsub.memory.impl.ExampleReactiveStreamManager
 import com.demo.chat.test.randomAlphaNumeric
 import java.util.*
 

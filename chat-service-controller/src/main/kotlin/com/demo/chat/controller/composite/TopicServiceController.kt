@@ -1,8 +1,8 @@
 package com.demo.chat.controller.composite
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.ByNameRequest
-import com.demo.chat.MembershipRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.controller.composite.mapping.ChatTopicServiceMapping
 import com.demo.chat.domain.*
 import com.demo.chat.service.*

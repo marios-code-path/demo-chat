@@ -1,8 +1,8 @@
 package com.demo.chat.init.commands
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.ByNameRequest
-import com.demo.chat.MembershipRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.init.domain.AdminKey

@@ -3,7 +3,7 @@ package com.demo.chat.test.indexrepo
 import co.elastic.clients.elasticsearch._types.HealthStatus
 import co.elastic.clients.elasticsearch._types.Level
 import co.elastic.clients.elasticsearch.cluster.HealthResponse
-import com.demo.chat.config.index.elastic.ElasticConfiguration
+import com.demo.chat.index.elastic.config.ElasticConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

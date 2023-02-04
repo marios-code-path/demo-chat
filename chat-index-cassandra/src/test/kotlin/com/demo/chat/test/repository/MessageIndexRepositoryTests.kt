@@ -1,13 +1,14 @@
 package com.demo.chat.test.repository
 
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import com.demo.chat.domain.cassandra.ChatMessageByTopic
-import com.demo.chat.domain.cassandra.ChatMessageByTopicKey
-import com.demo.chat.domain.cassandra.ChatMessageByUser
-import com.demo.chat.domain.cassandra.ChatMessageByUserKey
-import com.demo.chat.repository.cassandra.ChatMessageByTopicRepository
-import com.demo.chat.repository.cassandra.ChatMessageByUserRepository
+import com.demo.chat.index.cassandra.domain.ChatMessageByTopic
+import com.demo.chat.index.cassandra.domain.ChatMessageByTopicKey
+import com.demo.chat.index.cassandra.domain.ChatMessageByUser
+import com.demo.chat.index.cassandra.domain.ChatMessageByUserKey
+import com.demo.chat.index.cassandra.repository.ChatMessageByTopicRepository
+import com.demo.chat.index.cassandra.repository.ChatMessageByUserRepository
 import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
@@ -27,7 +28,10 @@ import kotlin.streams.asSequence
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [RepositoryTestConfiguration::class])
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [IndexRepositoryTestConfiguration::class]
+)
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
@@ -95,9 +99,12 @@ class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
 
         val messages = Flux
             .generate<ChatMessageByTopic<UUID>> {
-                it.next(ChatMessageByTopic(
-                    ChatMessageByTopicKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
-                    MSGTEXT, true))
+                it.next(
+                    ChatMessageByTopic(
+                        ChatMessageByTopicKey(getMsg.get(), getUser.get(), roomIds.random(), Instant.now()),
+                        MSGTEXT, true
+                    )
+                )
             }
             .take(10)
             .cache()
@@ -130,13 +137,50 @@ class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
 
         val messages = Flux
             .just(
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome1", true),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome2", true),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome3", true),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome4", false),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome5", true),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), UUID.randomUUID(), UUID.randomUUID(), Instant.now()), "Welcome6", true),
-                ChatMessageByUser(ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()), "Welcome7", false)
+                ChatMessageByUser(
+                    ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()),
+                    "Welcome1",
+                    true
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(
+                        Uuids.timeBased(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        Instant.now()
+                    ), "Welcome2", true
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()),
+                    "Welcome3",
+                    true
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(
+                        Uuids.timeBased(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        Instant.now()
+                    ), "Welcome4", false
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()),
+                    "Welcome5",
+                    true
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(
+                        Uuids.timeBased(),
+                        UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        Instant.now()
+                    ), "Welcome6", true
+                ),
+                ChatMessageByUser(
+                    ChatMessageByUserKey(Uuids.timeBased(), userId, UUID.randomUUID(), Instant.now()),
+                    "Welcome7",
+                    false
+                )
             )
             .flatMap {
                 byUserRepo.save(it)

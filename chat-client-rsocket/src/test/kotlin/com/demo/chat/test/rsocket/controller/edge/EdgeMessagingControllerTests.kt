@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket.controller.edge
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.ChatMessage
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ChatMessage
 import com.demo.chat.controller.composite.MessagingController
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.MessagePersistence

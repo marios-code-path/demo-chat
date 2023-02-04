@@ -1,9 +1,9 @@
 package com.demo.chat.test.rsocket.controller.edge
 
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.ByNameRequest
-import com.demo.chat.MembershipRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.controller.composite.TopicServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership

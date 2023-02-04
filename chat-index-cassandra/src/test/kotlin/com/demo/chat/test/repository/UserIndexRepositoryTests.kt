@@ -1,10 +1,11 @@
 package com.demo.chat.test.repository
 
 import com.datastax.oss.driver.api.core.uuid.Uuids
-import com.demo.chat.domain.cassandra.ChatUserHandle
-import com.demo.chat.domain.cassandra.ChatUserHandleKey
-import com.demo.chat.repository.cassandra.ChatUserHandleRepository
+import com.demo.chat.index.cassandra.domain.ChatUserHandle
+import com.demo.chat.index.cassandra.domain.ChatUserHandleKey
+import com.demo.chat.index.cassandra.repository.ChatUserHandleRepository
 import com.demo.chat.test.CassandraSchemaTest
+import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Assertions
@@ -25,7 +26,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [RepositoryTestConfiguration::class]
+    classes = [IndexRepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {

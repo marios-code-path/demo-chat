@@ -6,5 +6,5 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 @Configuration
-@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.persistence.cassandra.repository"])
 class RepositoryTestConfiguration(props: CassandraProperties) : CassandraTestContainerConfiguration(props)

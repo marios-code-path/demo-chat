@@ -1,6 +1,6 @@
 package com.demo.chat.init
 
-import com.demo.chat.UserCreateRequest
+import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules

@@ -1,7 +1,7 @@
 package com.demo.chat.init.commands
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.MessageSendRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.service.composite.ChatMessageService

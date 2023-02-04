@@ -1,7 +1,7 @@
 package com.demo.chat.service.composite
 
-import com.demo.chat.ByIdRequest
-import com.demo.chat.MessageSendRequest
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.Message
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

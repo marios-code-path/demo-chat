@@ -31,7 +31,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-        UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
+    UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class
+)
 class UserPersistenceRSocketTests : RSocketTestBase() {
 
     @MockBean
@@ -47,86 +48,88 @@ class UserPersistenceRSocketTests : RSocketTestBase() {
     @Test
     fun `should add one`() {
         BDDMockito
-                .given(userPersistence.add(anyObject()))
-                .willReturn(Mono.empty())
+            .given(userPersistence.add(anyObject()))
+            .willReturn(Mono.empty())
 
         StepVerifier
-                .create(
-                        requester
-                                .route("add")
-                                .data(Mono.just(randomUser), TestChatUser::class.java)
-                                .retrieveMono(Void::class.java)
-                )
-                .verifyComplete()
+            .create(
+                requester
+                    .route("add")
+                    .data(Mono.just(randomUser), TestChatUser::class.java)
+                    .retrieveMono(Void::class.java)
+            )
+            .verifyComplete()
     }
 
     @Test
     fun `should find all users`() {
         BDDMockito.given(userPersistence.all())
-                .willReturn(Flux.just(
-                        randomUser, randomUser
-                ))
+            .willReturn(
+                Flux.just(
+                    randomUser, randomUser
+                )
+            )
 
         StepVerifier
-                .create(
-                        requester
-                                .route("all")
-                                .retrieveFlux(TestChatUser::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
+            .create(
+                requester
+                    .route("all")
+                    .retrieveFlux(TestChatUser::class.java)
+            )
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
 
-                    Assertions
-                            .assertThat(it.key)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("id", randomUserId)
-                }
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                }
-                .verifyComplete()
+                Assertions
+                    .assertThat(it.key)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrPropertyWithValue("handle", randomHandle)
+                    .hasFieldOrPropertyWithValue("id", randomUserId)
+            }
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `should get one`() {
         BDDMockito.given(userPersistence.get(anyObject()))
-                .willReturn(Mono.just(randomUser))
+            .willReturn(Mono.just(randomUser))
 
         StepVerifier
-                .create(
-                        requester
-                                .route("get")
-                                .data(Mono.just(Key.funKey(userKey.id)))
-                                .retrieveMono(TestChatUser::class.java)
-                )
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
+            .create(
+                requester
+                    .route("get")
+                    .data(Mono.just(Key.funKey(userKey.id)))
+                    .retrieveMono(TestChatUser::class.java)
+            )
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
 
-                    Assertions
-                            .assertThat(it.key)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("id", randomUserId)
-                }
-                .verifyComplete()
+                Assertions
+                    .assertThat(it.key)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrPropertyWithValue("handle", randomHandle)
+                    .hasFieldOrPropertyWithValue("id", randomUserId)
+            }
+            .verifyComplete()
 
     }
 
     @TestConfiguration
     class UserPersistenceTestConfiguration {
         @Controller
-        class TestPersistenceController<T>(up: UserPersistence<T>): PersistenceServiceController<T, User<T>>(up)
+        class TestPersistenceController<T>(up: UserPersistence<T>) : PersistenceServiceController<T, User<T>>(up)
     }
 }

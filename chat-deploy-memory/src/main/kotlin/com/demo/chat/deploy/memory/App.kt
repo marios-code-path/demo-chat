@@ -1,7 +1,6 @@
 package com.demo.chat.deploy.memory
 
 import com.demo.chat.controller.config.PersistenceControllersConfiguration
-import com.demo.chat.deploy.memory.config.MemoryResourceConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication

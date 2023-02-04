@@ -15,7 +15,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 import java.util.*
 
 @Configuration
-@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.repository.cassandra"])
+@EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.persistence.cassandra.repository"])
 class BaseCassandraApp {
 
     @Bean

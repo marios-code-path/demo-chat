@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.client.edge
 
-import com.demo.chat.ByIdRequest
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.client.rsocket.composite.MessagingClient
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey

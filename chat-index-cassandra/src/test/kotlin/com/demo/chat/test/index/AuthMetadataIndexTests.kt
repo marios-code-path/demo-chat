@@ -3,11 +3,11 @@ package com.demo.chat.test.index
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDUtil
-import com.demo.chat.domain.cassandra.AuthMetadataByPrincipal
-import com.demo.chat.domain.cassandra.AuthMetadataByTarget
-import com.demo.chat.repository.cassandra.AuthMetadataByPrincipalRepository
-import com.demo.chat.repository.cassandra.AuthMetadataByTargetRepository
-import com.demo.chat.service.index.AuthMetadataIndexCassandra
+import com.demo.chat.index.cassandra.domain.AuthMetadataByPrincipal
+import com.demo.chat.index.cassandra.domain.AuthMetadataByTarget
+import com.demo.chat.index.cassandra.repository.AuthMetadataByPrincipalRepository
+import com.demo.chat.index.cassandra.repository.AuthMetadataByTargetRepository
+import com.demo.chat.index.cassandra.impl.AuthMetadataIndex
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -76,7 +76,7 @@ class AuthMetadataIndexTests {
         BDDMockito.given(byTargetRepo.findByTargetId(anyObject()))
             .willReturn(Flux.just(authMetaTarget))
 
-        this.index = AuthMetadataIndexCassandra(UUIDUtil(), byTargetRepo, byPrincipalRepo)
+        this.index = AuthMetadataIndex(UUIDUtil(), byTargetRepo, byPrincipalRepo)
 
     }
 
