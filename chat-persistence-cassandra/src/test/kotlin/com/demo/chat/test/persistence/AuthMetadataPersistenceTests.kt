@@ -1,9 +1,9 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.cassandra.AuthMetadataById
-import com.demo.chat.domain.cassandra.AuthMetadataIdKey
-import com.demo.chat.repository.cassandra.AuthMetadataRepository
-import com.demo.chat.service.persistence.AuthMetaPersistenceCassandra
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
+import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
+import com.demo.chat.persistence.cassandra.impl.AuthMetaPersistenceCassandra
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService

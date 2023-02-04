@@ -5,8 +5,12 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.service.UserIndexService
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.stereotype.Controller
 
+@ConditionalOnProperty(prefix = "app.service.edge", name = ["user"])
+@Controller
 @MessageMapping("user")
 open class EdgeUserControllerConfiguration<T, V>(
     s: PersistenceServiceBeans<T, V>,

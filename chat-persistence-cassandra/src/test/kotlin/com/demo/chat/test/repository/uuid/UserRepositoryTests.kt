@@ -1,9 +1,9 @@
 package com.demo.chat.test.repository.uuid
 
 import com.demo.chat.domain.User
-import com.demo.chat.domain.cassandra.ChatUser
-import com.demo.chat.domain.cassandra.ChatUserKey
-import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.persistence.cassandra.domain.ChatUser
+import com.demo.chat.persistence.cassandra.domain.ChatUserKey
+import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration

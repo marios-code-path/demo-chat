@@ -8,8 +8,12 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.MembershipIndexService
 import com.demo.chat.service.TopicIndexService
 import com.demo.chat.service.TopicPubSubService
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.stereotype.Controller
 
+@ConditionalOnProperty(prefix = "app.service.edge", name = ["topic"])
+@Controller
 @MessageMapping("topic")
 open class TopicControllerConfiguration<T, V>(
     s: PersistenceServiceBeans<T, V>,

@@ -1,10 +1,10 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.*
-import com.demo.chat.service.impl.memory.persistence.MembershipPersistenceInMemory
-import com.demo.chat.service.impl.memory.persistence.MessagePersistenceInMemory
-import com.demo.chat.service.impl.memory.persistence.TopicPersistenceInMemory
-import com.demo.chat.service.impl.memory.persistence.UserPersistenceInMemory
+import com.demo.chat.persistence.memory.impl.MembershipPersistenceInMemory
+import com.demo.chat.persistence.memory.impl.MessagePersistenceInMemory
+import com.demo.chat.persistence.memory.impl.TopicPersistenceInMemory
+import com.demo.chat.persistence.memory.impl.UserPersistenceInMemory
 import com.demo.chat.test.*
 
 

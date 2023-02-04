@@ -1,7 +1,7 @@
 package com.demo.chat.test.stream
 
 import com.demo.chat.convert.Converter
-import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
+import com.demo.chat.pubsub.impl.memory.stream.ExampleReactiveStreamManager
 import com.demo.chat.test.randomAlphaNumeric
 import java.util.*
 
@@ -16,7 +16,8 @@ object StringValCodec : Converter<Unit, String> {
 /**
  * TODO Refactor into Integration PubSubChannel (see StreamManager)
  */
-class ReactiveStreamManagerTestBase : StreamManagerTestBase<UUID, String>(ExampleReactiveStreamManager<UUID, String>(),
+class ReactiveStreamManagerTestBase : StreamManagerTestBase<UUID, String>(
+    ExampleReactiveStreamManager<UUID, String>(),
         UUIDKeyCodec,
         StringValCodec
 )

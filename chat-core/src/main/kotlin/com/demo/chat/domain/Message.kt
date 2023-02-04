@@ -28,7 +28,7 @@ interface MessageKey<T> : Key<T> {
 
         @JvmStatic
         @Deprecated("key requires 'from' as parameter")
-        fun <T> create(messageId: T, dest: T): MessageKey<T> = object : @com.fasterxml.jackson.annotation.JsonTypeName("key") MessageKey<T> {
+        fun <T> create(messageId: T, dest: T): MessageKey<T> =  @com.fasterxml.jackson.annotation.JsonTypeName("key") object : MessageKey<T> {
             override val id: T
                 get() = messageId
             override val from: T

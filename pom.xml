@@ -58,6 +58,7 @@
         <module>chat-deploy-memory</module>
         <module>chat-deploy-redis</module>
         <module>chat-deploy-cassandra</module>
+        <module>chat-authorization-server</module>
     </modules>
 
     <repositories>

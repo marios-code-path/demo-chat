@@ -1,6 +1,6 @@
 package com.demo.chat.test.unit
 
-import com.demo.chat.domain.cassandra.ChatTopic
+import com.demo.chat.persistence.cassandra.domain.ChatTopic
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith

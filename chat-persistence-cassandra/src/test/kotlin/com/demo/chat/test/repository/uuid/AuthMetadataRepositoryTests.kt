@@ -1,8 +1,8 @@
 package com.demo.chat.test.repository.uuid
 
-import com.demo.chat.domain.cassandra.AuthMetadataById
-import com.demo.chat.domain.cassandra.AuthMetadataIdKey
-import com.demo.chat.repository.cassandra.AuthMetadataRepository
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
+import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration

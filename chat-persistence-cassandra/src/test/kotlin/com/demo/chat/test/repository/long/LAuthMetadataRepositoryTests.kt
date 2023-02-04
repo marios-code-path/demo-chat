@@ -1,8 +1,8 @@
 package com.demo.chat.test.repository.long
 
-import com.demo.chat.domain.cassandra.AuthMetadataById
-import com.demo.chat.domain.cassandra.AuthMetadataIdKey
-import com.demo.chat.repository.cassandra.AuthMetadataRepository
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
+import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
+import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks

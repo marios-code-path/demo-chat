@@ -1,8 +1,8 @@
 package com.demo.chat.test.repository.long
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.cassandra.TopicMembershipByKey
-import com.demo.chat.repository.cassandra.TopicMembershipRepository
+import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
+import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
@@ -12,7 +12,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux

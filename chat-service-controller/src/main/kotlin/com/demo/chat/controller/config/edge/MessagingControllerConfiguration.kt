@@ -7,8 +7,12 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.MessageIndexService
 import com.demo.chat.service.TopicPubSubService
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.stereotype.Controller
 
+@ConditionalOnProperty(prefix = "app.service.edge", name = ["message"])
+@Controller
 @MessageMapping("message")
 open class MessagingControllerConfiguration<T, V>(
     s: PersistenceServiceBeans<T, V>,

@@ -1,6 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.service.impl.memory.persistence.KeyServiceInMemory
+import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
 import com.demo.chat.test.key.KeyServiceTestBase
 import java.util.*
 

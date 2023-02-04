@@ -2,11 +2,11 @@ package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.domain.cassandra.ChatTopic
-import com.demo.chat.domain.cassandra.ChatTopicKey
-import com.demo.chat.repository.cassandra.TopicRepository
+import com.demo.chat.persistence.cassandra.domain.ChatTopic
+import com.demo.chat.persistence.cassandra.domain.ChatTopicKey
+import com.demo.chat.persistence.cassandra.repository.TopicRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.persistence.TopicPersistenceCassandra
+import com.demo.chat.persistence.cassandra.impl.TopicPersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
 import org.junit.jupiter.api.*

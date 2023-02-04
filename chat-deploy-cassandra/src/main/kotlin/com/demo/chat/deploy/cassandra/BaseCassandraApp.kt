@@ -1,12 +1,11 @@
 package com.demo.chat.deploy.cassandra
 
-import com.demo.chat.deploy.cassandra.config.CassandraServiceConfiguration
 import com.demo.chat.deploy.cassandra.config.dse.AstraConfiguration
 import com.demo.chat.deploy.cassandra.config.dse.ContactPointConfiguration
+import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -25,7 +24,7 @@ class BaseCassandraApp {
 
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
+    fun longTypeUtil(): TypeUtil<Long> = LongUtil()
 
     @Configuration
     @Profile("cassandra-astra")
@@ -41,6 +40,4 @@ class BaseCassandraApp {
         props: CassandraProperties
     ) : ContactPointConfiguration(props)
 
-    @Configuration
-    class ServiceConfiguration() : CassandraServiceConfiguration()
 }

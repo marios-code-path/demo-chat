@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import java.util.*
+import java.util.function.Supplier
 
 @Configuration
 class RSocketClientServiceConfiguration {
@@ -49,10 +50,10 @@ class RSocketClientServiceConfiguration {
     private lateinit var adminId: String
 
     @Bean
-    fun <T> anonymousKey(typeUtil: TypeUtil<T>) = AnonymousKey(typeUtil.fromString(anonymousId))
+    fun <T> anonymousKey(typeUtil: TypeUtil<T>) = Supplier { AnonymousKey(typeUtil.fromString(anonymousId)) }
 
     @Bean
-    fun <T> adminKey(typeUtil: TypeUtil<T>) = AdminKey(typeUtil.fromString(adminId))
+    fun <T> adminKey(typeUtil: TypeUtil<T>) = Supplier { AdminKey(typeUtil.fromString(adminId)) }
 
     @Bean
     @ConditionalOnProperty("app.rsocket.client.requester.factory", havingValue = "default")
@@ -106,6 +107,6 @@ class RSocketClientServiceConfiguration {
     }
 
     @Configuration
-    class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: AnonymousKey<T>) :
+    class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: Supplier<AnonymousKey<T>>) :
         AuthConfiguration<T>(keyTypeUtil = typeUtil, anonKey)
 }

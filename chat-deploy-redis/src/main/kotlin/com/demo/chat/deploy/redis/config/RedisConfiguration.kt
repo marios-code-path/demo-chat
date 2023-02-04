@@ -4,8 +4,8 @@ import com.demo.chat.convert.Converter
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.TopicPubSubService
-import com.demo.chat.service.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.service.impl.memory.messaging.TopicPubSubServiceRedis
+import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
+import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubServiceRedis
 import org.springframework.context.annotation.Bean
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration

@@ -3,7 +3,7 @@ package com.demo.chat.test.stream
 import com.demo.chat.convert.Converter
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.impl.memory.stream.ExampleReactiveStreamManager
+import com.demo.chat.pubsub.impl.memory.stream.ExampleReactiveStreamManager
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled

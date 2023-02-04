@@ -1,11 +1,11 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.cassandra.ChatUser
-import com.demo.chat.domain.cassandra.ChatUserKey
-import com.demo.chat.repository.cassandra.ChatUserRepository
+import com.demo.chat.persistence.cassandra.domain.ChatUser
+import com.demo.chat.persistence.cassandra.domain.ChatUserKey
+import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.persistence.UserPersistenceCassandra
+import com.demo.chat.persistence.cassandra.impl.UserPersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
 import org.assertj.core.api.Assertions

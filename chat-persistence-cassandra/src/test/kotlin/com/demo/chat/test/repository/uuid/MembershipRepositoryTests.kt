@@ -1,8 +1,8 @@
 package com.demo.chat.test.repository.uuid
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.cassandra.TopicMembershipByKey
-import com.demo.chat.repository.cassandra.TopicMembershipRepository
+import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
+import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
@@ -19,7 +19,6 @@ import reactor.test.StepVerifier
 import java.util.*
 import java.util.stream.Collectors
 import java.util.stream.Stream
-import kotlin.streams.toList
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

@@ -2,11 +2,11 @@ package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.cassandra.ChatMessageById
-import com.demo.chat.domain.cassandra.ChatMessageByIdKey
-import com.demo.chat.repository.cassandra.ChatMessageRepository
+import com.demo.chat.persistence.cassandra.domain.ChatMessageById
+import com.demo.chat.persistence.cassandra.domain.ChatMessageByIdKey
+import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
 import com.demo.chat.service.IKeyService
-import com.demo.chat.service.persistence.MessagePersistenceCassandra
+import com.demo.chat.persistence.cassandra.impl.MessagePersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService
 import org.hamcrest.MatcherAssert

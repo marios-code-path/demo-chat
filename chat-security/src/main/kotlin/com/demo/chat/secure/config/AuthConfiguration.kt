@@ -14,11 +14,12 @@ import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
 import com.demo.chat.service.security.*
 import org.springframework.context.annotation.Bean
+import java.util.function.Supplier
 
 
 open class AuthConfiguration<T>(
     private val keyTypeUtil: TypeUtil<T>,
-    private val anonymousKey: Key<T>
+    private val anonKeySupplier: Supplier<out Key<T>>,
 ) {
     @Bean
     open fun authorizationService(
@@ -30,7 +31,7 @@ open class AuthConfiguration<T>(
             authIndex,
             AuthMetadataPrincipleKeySearch(keyTypeUtil),
             AuthMetadataTargetKeySearch(keyTypeUtil),
-            { anonymousKey },
+            anonKeySupplier,
             { m -> m.key },
             AuthSummarizer { a, b -> keyTypeUtil.compare(a.key.id, b.key.id) }
         )
