@@ -8,6 +8,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 open class TopicPubSubServiceController<T, V>(private val that: TopicPubSubService<T, V>) : TopicPubSubServiceMapping<T, V>, TopicPubSubService<T, V> by that {
+
     override fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
 
     override fun unSubscribeOne(req: MemberTopicRequest<T>): Mono<Void> = unSubscribe(req.member, req.topic)

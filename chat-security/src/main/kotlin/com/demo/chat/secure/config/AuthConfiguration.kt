@@ -12,17 +12,26 @@ import com.demo.chat.secure.service.AuthorizationMetadataService
 import com.demo.chat.secure.service.ChatAuthenticationManager
 import com.demo.chat.service.UserIndexService
 import com.demo.chat.service.UserPersistence
-import com.demo.chat.service.security.*
+import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.service.security.AuthMetaPersistence
+import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.UserCredentialSecretsStore
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import java.util.function.Supplier
 
-
-open class AuthConfiguration<T>(
+// TODO UPGRADE TO Spring Security 5.0x
+@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
+@Configuration
+@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+class AuthConfiguration<T>(
     private val keyTypeUtil: TypeUtil<T>,
     private val anonKeySupplier: Supplier<out Key<T>>,
 ) {
     @Bean
-    open fun authorizationService(
+    fun authorizationService(
         authPersist: AuthMetaPersistence<T>,
         authIndex: AuthMetaIndex<T, IndexSearchRequest>
     ): AuthorizationService<T, AuthMetadata<T>, IndexSearchRequest> =
@@ -37,7 +46,7 @@ open class AuthConfiguration<T>(
         )
 
     @Bean
-    open fun authenticationService(
+    fun authenticationService(
         userIndex: UserIndexService<T, IndexSearchRequest>,
         secretStore: UserCredentialSecretsStore<T>
     ) = AbstractAuthenticationService(
@@ -49,7 +58,7 @@ open class AuthConfiguration<T>(
     @Bean
     // This is going to be deprecated on the fact that we
     // can use an authorization server instead.
-    open fun authenticationManager(
+    fun authenticationManager(
         userIndex: UserIndexService<T, IndexSearchRequest>,
         secretStore: UserCredentialSecretsStore<T>,
         userPersistence: UserPersistence<T>,

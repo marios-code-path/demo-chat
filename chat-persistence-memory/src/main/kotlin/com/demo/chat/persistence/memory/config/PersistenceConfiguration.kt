@@ -1,6 +1,5 @@
 package com.demo.chat.persistence.memory.config
 
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
@@ -14,9 +13,14 @@ import java.util.function.Supplier
 
 @Configuration
 class PersistenceConfiguration {
+
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
     fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
+
+    @Bean
+    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
 
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
@@ -26,25 +30,8 @@ class PersistenceConfiguration {
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
     fun anonymousLongKeySupplier(): Supplier<Key<Long>> = Supplier { Key.funKey(0L) }
 
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
-
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    @Configuration
-    class LongMemoryKeyServiceBeans : LongKeyServiceBeans()
-
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
-    @Configuration
-    class UUIDMemoryKeyServiceBeans : UUIDKeyServiceBeans()
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
-    open fun <T> passwordStoreInMemory(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
-
-    @Configuration
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
-    class PersistenceBeans<T>(keyFactory: KeyServiceBeans<T>) :
-        InMemoryPersistenceBeans<T, String>(keyFactory.keyService())
-
+    fun <T> passwordStoreInMemory(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()
 }

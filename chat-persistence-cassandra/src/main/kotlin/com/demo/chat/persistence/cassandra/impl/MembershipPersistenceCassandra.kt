@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
 // TODO: Convert me to STREAM
-class MembershipPersistenceCassandra<T>(
+class MembershipPersistenceCassandra<T: Any>(
         private val keyService: IKeyService<T>,
         private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {
@@ -25,7 +25,10 @@ class MembershipPersistenceCassandra<T>(
             )
             .then()
 
-    override fun rem(key: Key<T>): Mono<Void> = membershipRepo.deleteById(key.id)
+    override fun rem(key: Key<T>): Mono<Void> {
+        requireNotNull(key.id)
+        return membershipRepo.deleteById(key.id)
+    }
 
     override fun get(key: Key<T>): Mono<out com.demo.chat.domain.TopicMembership<T>> = membershipRepo
             .findByKey(key.id)

@@ -5,9 +5,13 @@ import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.service.IKeyGenerator
 import com.demo.chat.service.IKeyService
 import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import java.util.*
 
+@ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
+@Configuration
 open class UUIDKeyServiceBeans : KeyServiceBeans<UUID> {
     private val idGenerator: IKeyGenerator<Long> = SnowflakeGenerator()
 

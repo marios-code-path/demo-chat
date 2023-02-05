@@ -1,0 +1,79 @@
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
+#  level:
+#    io.rsocket.FrameLogger: DEBUG
+
+management:
+  info:
+    git:
+      mode: full
+  endpoint:
+    shutdown:
+      enabled: true
+    enabled-by-default: true
+    health:
+      enabled: true
+    info:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: info,health,shutdown
+
+spring:
+  main:
+    web-application-type: reactive
+  application:
+    name: "${app.primary}-service-${app.proto}"
+
+  cloud:
+    consul:
+      discovery:
+        enabled: true
+        tags: rsocket.port=${spring.rsocket.server.port}
+        instance-id: "${spring.application.name}:${random.value}"
+      config:
+        enabled: false
+        format: YAML
+        data-key: data
+
+app:
+  proto: rsocket
+  rsocket:
+    config:
+      core:
+        pubsub:
+          dest: core-service-rsocket
+          prefix: pubsub.
+        index:
+          dest: core-service-rsocket
+          prefix: index.
+        persistence:
+          dest: core-service-rsocket
+          prefix: persist.
+        key:
+          dest: core-service-rsocket
+          prefix: key.
+      edge:
+        message:
+          dest: core-service-rsocket
+          prefix: message.
+        topic:
+          dest: core-service-rsocket
+          prefix: topic.
+        user:
+          dest: core-service-rsocket
+          prefix: user.
+
+
+#spring:
+#  rsocket:
+#    server:
+#      transport: websocket
+#      mapping-path: /rsocket
+
+#app:
+#  suffix: ${git.commit.id.abbrev}-${git.branch}

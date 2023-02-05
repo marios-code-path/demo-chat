@@ -14,7 +14,7 @@ import org.springframework.stereotype.Controller
 @ConditionalOnProperty(prefix = "app.service.edge", name = ["message"])
 @Controller
 @MessageMapping("message")
-open class MessagingControllerConfiguration<T, V>(
+class MessagingControllerConfiguration<T, V>(
     s: PersistenceServiceBeans<T, V>,
     x: IndexServiceBeans<T, V, IndexSearchRequest>,
     p: TopicPubSubService<T, V>,
