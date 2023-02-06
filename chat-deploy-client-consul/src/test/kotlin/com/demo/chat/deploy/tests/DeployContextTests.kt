@@ -1,12 +1,12 @@
 package com.demo.chat.deploy.tests
 
-import com.demo.chat.deploy.app.BaseConsulClientApp
+import com.demo.chat.deploy.client.consul.config.ConsulClientAppConfiguration
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [BaseConsulClientApp::class]
+    classes = [ConsulClientAppConfiguration::class]
 )
 @TestPropertySource(
     properties = [

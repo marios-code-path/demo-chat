@@ -30,7 +30,6 @@ class PersistenceConfiguration {
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
     fun anonymousLongKeySupplier(): Supplier<Key<Long>> = Supplier { Key.funKey(0L) }
 
-
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
     fun <T> passwordStoreInMemory(typeUtil: TypeUtil<T>): UserCredentialSecretsStore<T> = SecretsStoreInMemory()

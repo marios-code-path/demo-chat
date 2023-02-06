@@ -11,8 +11,12 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 
+@Configuration
+@ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
 open class LuceneIndexBeans<T>(
     private val typeUtil: TypeUtil<T>,
 ) : IndexServiceBeans<T, String, IndexSearchRequest> {

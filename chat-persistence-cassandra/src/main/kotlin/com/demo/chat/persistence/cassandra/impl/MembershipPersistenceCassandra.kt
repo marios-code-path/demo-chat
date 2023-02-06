@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
 // TODO: Convert me to STREAM
-class MembershipPersistenceCassandra<T: Any>(
+class MembershipPersistenceCassandra<T>(
     private val keyService: IKeyService<T>,
     private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {
