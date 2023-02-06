@@ -1,7 +1,7 @@
 package com.demo.chat.service.dummy
 
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PubSubMessagingService
+import com.demo.chat.service.core.PubSubMessagingService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.empty

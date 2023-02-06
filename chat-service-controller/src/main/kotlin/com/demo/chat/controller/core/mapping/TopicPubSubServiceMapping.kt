@@ -2,7 +2,7 @@ package com.demo.chat.controller.core.mapping
 
 import com.demo.chat.domain.MemberTopicRequest
 import com.demo.chat.domain.Message
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

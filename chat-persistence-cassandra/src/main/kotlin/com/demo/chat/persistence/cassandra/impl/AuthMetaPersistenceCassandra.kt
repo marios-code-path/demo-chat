@@ -6,7 +6,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthMetaPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

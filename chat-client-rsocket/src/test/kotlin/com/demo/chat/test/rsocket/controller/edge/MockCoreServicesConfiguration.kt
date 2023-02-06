@@ -2,17 +2,15 @@ package com.demo.chat.test.rsocket.controller.edge
 
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.service.*
+import com.demo.chat.service.core.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketStrategies
-import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import java.util.*
 
 class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)

@@ -1,8 +1,8 @@
 package com.demo.chat.persistence.memory.impl
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.PersistenceStore
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap

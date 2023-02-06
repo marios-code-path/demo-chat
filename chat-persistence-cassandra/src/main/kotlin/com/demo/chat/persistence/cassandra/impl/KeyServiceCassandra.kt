@@ -2,8 +2,8 @@ package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.CSKey
-import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Mono
 import reactor.util.retry.Retry

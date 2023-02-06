@@ -44,6 +44,3 @@ class App {
         println("Consul Discovery Persistence/Index/Messaging/Controllers App.")
     }
 }
-
-@Controller
-class Foo()

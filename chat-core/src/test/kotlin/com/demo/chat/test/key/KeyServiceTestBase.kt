@@ -1,10 +1,6 @@
 package com.demo.chat.test.key
 
-import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
-import com.nhaarman.mockitokotlin2.any
-import com.nhaarman.mockitokotlin2.anyOrNull
-import com.nhaarman.mockitokotlin2.given
+import com.demo.chat.service.core.IKeyService
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Disabled

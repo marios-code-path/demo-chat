@@ -1,9 +1,8 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.IKeyService
-import org.springframework.context.annotation.Bean
+import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import reactor.core.publisher.Mono
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong

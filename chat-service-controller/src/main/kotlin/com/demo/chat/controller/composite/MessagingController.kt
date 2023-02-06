@@ -1,12 +1,10 @@
 package com.demo.chat.controller.composite
 
-import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.controller.composite.mapping.ChatMessageServiceMapping
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.*
+import com.demo.chat.domain.*
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicPubSubService
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -19,6 +17,7 @@ open class MessagingController<T, V, Q>(
     private val topicMessaging: TopicPubSubService<T, V>,
     private val messageIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatMessageServiceMapping<T, V> {
+
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =

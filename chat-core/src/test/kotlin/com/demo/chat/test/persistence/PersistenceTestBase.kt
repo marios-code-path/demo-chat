@@ -1,6 +1,6 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.PersistenceStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

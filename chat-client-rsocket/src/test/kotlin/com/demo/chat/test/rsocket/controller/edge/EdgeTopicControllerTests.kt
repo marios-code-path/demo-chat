@@ -10,6 +10,7 @@ import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.TopicMemberships
 import com.demo.chat.domain.User
 import com.demo.chat.service.*
+import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
 import com.demo.chat.test.TestChatRoomKey

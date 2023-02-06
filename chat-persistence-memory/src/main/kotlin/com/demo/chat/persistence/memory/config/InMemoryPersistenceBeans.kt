@@ -3,7 +3,7 @@ package com.demo.chat.persistence.memory.config
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.memory.impl.*
-import com.demo.chat.service.*
+import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

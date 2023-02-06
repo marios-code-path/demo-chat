@@ -2,8 +2,8 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.IndexService
+import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.security.core.userdetails.ReactiveUserDetailsPasswordService

@@ -3,7 +3,7 @@ package com.demo.chat.test.rsocket.controller.edge
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import io.rsocket.RSocket
 import io.rsocket.core.RSocketServer
 import io.rsocket.frame.decoder.PayloadDecoder

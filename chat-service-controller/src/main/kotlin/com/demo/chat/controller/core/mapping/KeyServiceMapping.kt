@@ -1,7 +1,7 @@
 package com.demo.chat.controller.core.mapping
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Mono
 

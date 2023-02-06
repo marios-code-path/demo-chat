@@ -4,7 +4,7 @@ import com.demo.chat.convert.Converter
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.pubsub.memory.impl.ExampleReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord

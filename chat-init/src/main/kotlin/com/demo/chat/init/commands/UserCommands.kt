@@ -3,12 +3,12 @@ package com.demo.chat.init.commands
 import com.demo.chat.domain.ByHandleRequest
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
+import com.demo.chat.client.rsocket.config.CoreClientsConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
-import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono
 @ShellComponent
 class UserCommands<T>(
     private val userService: ChatUserService<T>,
-    private val serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
+    private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val passwdStore: SecretsStore<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,

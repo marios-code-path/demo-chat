@@ -4,7 +4,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.ChatUser
 import com.demo.chat.persistence.cassandra.domain.ChatUserKey
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.persistence.cassandra.impl.UserPersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService

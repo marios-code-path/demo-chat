@@ -5,7 +5,7 @@ import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import com.demo.chat.test.rsocket.RSocketTestBase
@@ -18,7 +18,6 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux

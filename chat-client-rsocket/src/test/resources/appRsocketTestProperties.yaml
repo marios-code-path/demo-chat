@@ -26,3 +26,13 @@ app:
         user:
           dest: core-service-rsocket
           prefix: user.
+      composite:
+        message:
+          dest: core-service-rsocket
+          prefix: message.
+        topic:
+          dest: core-service-rsocket
+          prefix: topic.
+        user:
+          dest: core-service-rsocket
+          prefix: user.

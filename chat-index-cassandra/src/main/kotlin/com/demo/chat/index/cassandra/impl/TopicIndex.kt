@@ -5,8 +5,8 @@ import com.demo.chat.domain.MessageTopic
 import com.demo.chat.index.cassandra.domain.ChatTopicName
 import com.demo.chat.index.cassandra.domain.ChatTopicNameKey
 import com.demo.chat.index.cassandra.repository.TopicByNameRepository
-import com.demo.chat.service.TopicIndexService
-import com.demo.chat.service.TopicIndexService.Companion.NAME
+import com.demo.chat.service.core.TopicIndexService
+import com.demo.chat.service.core.TopicIndexService.Companion.NAME
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 

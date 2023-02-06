@@ -2,7 +2,7 @@ package com.demo.chat.pubsub.memory.impl
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.ReplayProcessor

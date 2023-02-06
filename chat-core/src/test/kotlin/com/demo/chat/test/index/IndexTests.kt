@@ -1,21 +1,20 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
-import java.time.Duration
 import java.util.function.Function
 import java.util.function.Supplier
 
 @Disabled
 abstract class IndexTests<T, E, Q>(
-        val myIndex: IndexService<T, E, Q>,
-        val valueSupply: Supplier<E>,
-        val keyExtract: Function<E, Key<T>>,
-        val querySupply: Supplier<Q>
+    val myIndex: IndexService<T, E, Q>,
+    val valueSupply: Supplier<E>,
+    val keyExtract: Function<E, Key<T>>,
+    val querySupply: Supplier<Q>
 ) {
     abstract fun getIndex(): IndexService<T, E, Q>
 

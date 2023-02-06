@@ -3,7 +3,7 @@ package com.demo.chat.deploy.redis.config
 import com.demo.chat.convert.Converter
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
 import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubServiceRedis
 import org.springframework.context.annotation.Bean

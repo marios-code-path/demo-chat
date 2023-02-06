@@ -6,10 +6,10 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.index.lucene.domain.IndexEntryEncoder
 import com.demo.chat.index.lucene.impl.*
-import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.TopicIndexService
-import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.core.MembershipIndexService
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.TopicIndexService
+import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.context.annotation.Bean
 

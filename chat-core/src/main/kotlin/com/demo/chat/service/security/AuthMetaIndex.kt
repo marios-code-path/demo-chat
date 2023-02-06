@@ -1,7 +1,7 @@
 package com.demo.chat.service.security
 
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 
 interface AuthMetaIndex<T, Q> : IndexService<T, AuthMetadata<T>, Q> {
     companion object {

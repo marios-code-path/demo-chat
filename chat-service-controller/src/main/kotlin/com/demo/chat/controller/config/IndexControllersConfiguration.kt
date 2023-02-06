@@ -2,10 +2,7 @@ package com.demo.chat.controller.config
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.controller.core.IndexServiceController
-import com.demo.chat.controller.core.mapping.IndexServiceMapping
 import com.demo.chat.domain.*
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.handler.annotation.MessageMapping

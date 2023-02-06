@@ -1,6 +1,6 @@
 package com.demo.chat.test.index
 
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import com.demo.chat.test.TestBase
 import com.nhaarman.mockitokotlin2.given
 import com.nhaarman.mockitokotlin2.mock

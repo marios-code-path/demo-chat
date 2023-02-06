@@ -1,43 +1,24 @@
 package com.demo.chat.init.config
 
-import com.demo.chat.client.rsocket.config.CoreRSocketServiceDefinitions
-import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
+import com.demo.chat.client.rsocket.RequesterFactory
+import com.demo.chat.client.rsocket.clients.CoreRSocketClients
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.client.rsocket.config.RequesterFactory
-import com.demo.chat.client.rsocket.core.SecretStoreClient
-import com.demo.chat.client.rsocket.composite.MessagingClient
-import com.demo.chat.client.rsocket.composite.TopicClient
-import com.demo.chat.client.rsocket.composite.UserClient
-import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
 import com.demo.chat.secure.config.AuthConfiguration
-import com.demo.chat.secure.rsocket.TransportFactory
-import com.demo.chat.service.IKeyGenerator
-import com.demo.chat.service.composite.ChatUserService
-import com.demo.chat.service.security.UserCredentialSecretsStore
+import com.demo.chat.service.core.IKeyGenerator
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.messaging.rsocket.RSocketRequester
 import java.util.*
 import java.util.function.Supplier
 
 @Configuration
 class RSocketClientServiceConfiguration {
-
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
-    fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
-
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    fun longTypeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
 
     @Bean
     @ConditionalOnProperty("app.service.core.key", havingValue = "long")
@@ -56,57 +37,17 @@ class RSocketClientServiceConfiguration {
     fun <T> adminKey(typeUtil: TypeUtil<T>) = Supplier { AdminKey(typeUtil.fromString(adminId)) }
 
     @Bean
-    @ConditionalOnProperty("app.rsocket.client.requester.factory", havingValue = "default")
-    fun requesterFactory(
-        builder: RSocketRequester.Builder,
-        clientConnectionProps: RSocketClientProperties,
-        tcpConnectionFactory: TransportFactory
-    ): DefaultRequesterFactory =
-        DefaultRequesterFactory(
-            builder,
-            tcpConnectionFactory,
-            clientConnectionProps.config
-        )
-
-    @Configuration
-    class ServiceClientConfiguration<T>(serviceDefinitions: CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>) :
-        ServiceBeanConfiguration<T, String, IndexSearchRequest>(serviceDefinitions)
-
-    @Bean
-    fun <T> rSocketBoundServices(
+    fun <T: Any> rSocketBoundServices(
         requesterFactory: RequesterFactory,
         clientRSocketProps: RSocketClientProperties,
         typeUtil: TypeUtil<T>
-    ) = CoreRSocketServiceDefinitions<T, String, IndexSearchRequest>(
+    ) = CoreRSocketClients<T, String, IndexSearchRequest>(
         requesterFactory,
         clientRSocketProps,
         typeUtil
     )
 
     @Configuration
-    class EdgeConfiguration<T>(
-        val clientProperties: RSocketClientProperties,
-        val requesterFactory: RequesterFactory,
-        val typeUtil: TypeUtil<T>
-    ) {
-        @Bean
-        fun userService(): ChatUserService<T> =
-            UserClient(clientProperties.config["user"]?.prefix!!, requesterFactory.requester("user"))
-
-        @Bean
-        fun messagingService(): MessagingClient<T, String> =
-            MessagingClient(clientProperties.config["message"]?.prefix!!, requesterFactory.requester("message"))
-
-        @Bean
-        fun edgeTopicService(): TopicClient<T, String> =
-            TopicClient(clientProperties.config["topic"]?.prefix!!, requesterFactory.requester("topic"))
-
-        @Bean
-        fun <T> secretsClient(): UserCredentialSecretsStore<T> =
-            SecretStoreClient(clientProperties.config["secrets"]?.prefix!!, requesterFactory.requester("secrets"))
-    }
-
-    @Configuration
-    class AppAuthConfiguration<T>(typeUtil: TypeUtil<T>, anonKey: Supplier<AnonymousKey<T>>) :
+    class AppAuthConfiguration<T: Any>(typeUtil: TypeUtil<T>, anonKey: Supplier<AnonymousKey<T>>) :
         AuthConfiguration<T>(keyTypeUtil = typeUtil, anonKey)
 }

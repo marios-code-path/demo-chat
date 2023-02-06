@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket
 
-import com.demo.chat.client.rsocket.config.RequesterFactory
+import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
 import io.rsocket.RSocket

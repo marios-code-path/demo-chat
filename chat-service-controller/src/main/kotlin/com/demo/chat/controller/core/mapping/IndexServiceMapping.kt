@@ -1,7 +1,7 @@
 package com.demo.chat.controller.core.mapping
 
 import com.demo.chat.domain.*
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

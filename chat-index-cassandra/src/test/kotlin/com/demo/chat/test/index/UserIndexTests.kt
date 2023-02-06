@@ -2,8 +2,8 @@ package com.demo.chat.test.index
 
 import com.demo.chat.domain.User
 import com.demo.chat.index.cassandra.repository.ChatUserHandleRepository
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.core.IndexService
+import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.index.cassandra.impl.UserIndex
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInstance

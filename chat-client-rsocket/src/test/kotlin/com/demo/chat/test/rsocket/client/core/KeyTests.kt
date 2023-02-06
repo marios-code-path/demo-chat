@@ -1,19 +1,22 @@
 package com.demo.chat.test.rsocket.client.core
 
-import com.demo.chat.client.rsocket.core.KeyClient
+import com.demo.chat.client.rsocket.clients.core.KeyClient
+import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
-import com.demo.chat.test.rsocket.controller.core.KeyServiceRSocketTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.handler.annotation.MessageMapping
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -23,7 +26,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-        KeyServiceRSocketTests.KeyPersistenceTestConfiguration::class)
+    KeyTests.KeyPersistenceTestConfiguration::class)
 class KeyTests : RSocketTestBase() {
     @MockBean
     private lateinit var keyService: IKeyService<UUID>
@@ -72,5 +75,12 @@ class KeyTests : RSocketTestBase() {
         StepVerifier
                 .create(client.key(String::class.java))
                 .verifyComplete()
+    }
+
+    @TestConfiguration
+    class KeyPersistenceTestConfiguration {
+        @Controller
+        @MessageMapping("key")
+        class TestKeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)
     }
 }

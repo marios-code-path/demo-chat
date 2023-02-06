@@ -4,8 +4,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.persistence.cassandra.repository.TopicRepository
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.TopicPersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.TopicPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 

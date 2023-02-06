@@ -1,9 +1,9 @@
 package com.demo.chat.config
 
-import com.demo.chat.service.MembershipPersistence
-import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.TopicPersistence
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.MembershipPersistence
+import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicPersistence
+import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.security.AuthMetaPersistence
 
 interface PersistenceServiceBeans<T, V> {

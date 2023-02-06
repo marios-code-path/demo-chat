@@ -1,6 +1,6 @@
 package com.demo.chat.service.dummy
 
-import com.demo.chat.service.TopicInventoryService
+import com.demo.chat.service.core.TopicInventoryService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.empty

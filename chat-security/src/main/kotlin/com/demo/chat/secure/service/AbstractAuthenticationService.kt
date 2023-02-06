@@ -2,7 +2,7 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore

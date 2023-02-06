@@ -2,7 +2,7 @@ package com.demo.chat.test.rsocket.controller.core
 
 import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket

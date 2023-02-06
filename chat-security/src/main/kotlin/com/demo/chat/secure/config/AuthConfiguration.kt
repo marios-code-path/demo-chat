@@ -10,8 +10,8 @@ import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.AbstractAuthenticationService
 import com.demo.chat.secure.service.AuthorizationMetadataService
 import com.demo.chat.secure.service.ChatAuthenticationManager
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.demo.chat.service.security.AuthorizationService
@@ -19,13 +19,12 @@ import com.demo.chat.service.security.UserCredentialSecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import java.util.function.Supplier
 
 // TODO UPGRADE TO Spring Security 5.0x
-@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
+//@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+@ConditionalOnProperty(prefix = "app.service.core", name = ["auth"])
 class AuthConfiguration<T>(
     private val keyTypeUtil: TypeUtil<T>,
     private val anonKeySupplier: Supplier<out Key<T>>,

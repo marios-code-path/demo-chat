@@ -3,7 +3,7 @@ package com.demo.chat.test.persistence
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
-import com.demo.chat.service.MembershipPersistence
+import com.demo.chat.service.core.MembershipPersistence
 import com.demo.chat.persistence.cassandra.impl.MembershipPersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService

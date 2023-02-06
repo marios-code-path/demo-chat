@@ -2,8 +2,8 @@ package com.demo.chat.test
 
 import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.domain.User
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.index.MockIndexSupplier
 import com.demo.chat.test.persistence.MockPersistenceResolver

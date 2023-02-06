@@ -2,7 +2,7 @@ package com.demo.chat.test.persistence
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.persistence.memory.impl.UserPersistenceInMemory
 import com.demo.chat.test.TestLongKeyService
 import org.assertj.core.api.Assertions

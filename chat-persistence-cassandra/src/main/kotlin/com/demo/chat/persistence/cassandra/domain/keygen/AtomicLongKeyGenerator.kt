@@ -1,6 +1,6 @@
 package com.demo.chat.persistence.cassandra.domain.keygen
 
-import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.core.IKeyGenerator
 import java.util.concurrent.atomic.AtomicLong
 
 class AtomicLongKeyGenerator(startSeed: Long) : IKeyGenerator<Long> {

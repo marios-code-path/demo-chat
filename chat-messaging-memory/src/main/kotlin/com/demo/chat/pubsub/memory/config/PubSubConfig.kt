@@ -1,7 +1,7 @@
 package com.demo.chat.pubsub.memory.config
 
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.pubsub.memory.impl.MemoryTopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

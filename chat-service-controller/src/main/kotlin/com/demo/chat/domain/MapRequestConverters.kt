@@ -1,8 +1,8 @@
 package com.demo.chat.domain
 
-import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.TopicIndexService
-import com.demo.chat.service.UserIndexService
+import com.demo.chat.service.core.MembershipIndexService
+import com.demo.chat.service.core.TopicIndexService
+import com.demo.chat.service.core.UserIndexService
 
 
 class MapRequestConverters<T> : RequestToQueryConverters<T, Map<String, String>> {

@@ -1,7 +1,7 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
 import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubServiceRedis
 import com.demo.chat.test.TestUUIDKeyService

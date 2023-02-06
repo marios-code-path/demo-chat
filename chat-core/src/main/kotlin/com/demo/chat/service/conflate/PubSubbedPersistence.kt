@@ -2,8 +2,8 @@ package com.demo.chat.service.conflate
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
-import com.demo.chat.service.PersistenceStore
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.PersistenceStore
+import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Mono
 import java.util.*
 

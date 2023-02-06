@@ -5,8 +5,8 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.MessageIndexService.Companion.TOPIC
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessageIndexService.Companion.TOPIC
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket

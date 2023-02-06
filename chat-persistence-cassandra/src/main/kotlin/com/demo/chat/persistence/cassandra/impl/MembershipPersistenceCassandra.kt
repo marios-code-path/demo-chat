@@ -3,16 +3,16 @@ package com.demo.chat.persistence.cassandra.impl
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.MembershipPersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.MembershipPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.stream.Collectors
 
 // TODO: Convert me to STREAM
 class MembershipPersistenceCassandra<T: Any>(
-        private val keyService: IKeyService<T>,
-        private val membershipRepo: TopicMembershipRepository<T>
+    private val keyService: IKeyService<T>,
+    private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {
     override fun key(): Mono<out Key<T>> = keyService.key(TopicMembershipByKey::class.java)
 

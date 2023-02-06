@@ -3,7 +3,7 @@ package com.demo.chat.index.lucene.impl
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
-import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.core.MembershipIndexService
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.queryparser.classic.QueryParser
 import org.apache.lucene.search.IndexSearcher

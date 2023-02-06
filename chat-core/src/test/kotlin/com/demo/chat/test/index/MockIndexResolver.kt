@@ -1,6 +1,6 @@
 package com.demo.chat.test.index
 
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.api.extension.ParameterContext
 import org.junit.jupiter.api.extension.ParameterResolver

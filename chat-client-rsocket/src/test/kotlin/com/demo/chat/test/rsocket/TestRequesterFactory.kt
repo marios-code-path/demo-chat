@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket
 
-import com.demo.chat.client.rsocket.config.RequesterFactory
+import com.demo.chat.client.rsocket.RequesterFactory
 import org.springframework.messaging.rsocket.RSocketRequester
 
 

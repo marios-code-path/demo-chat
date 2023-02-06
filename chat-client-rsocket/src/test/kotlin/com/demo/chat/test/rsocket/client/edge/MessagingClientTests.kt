@@ -1,12 +1,12 @@
 package com.demo.chat.test.rsocket.client.edge
 
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.client.rsocket.composite.MessagingClient
+import com.demo.chat.client.rsocket.clients.composite.MessagingClient
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket

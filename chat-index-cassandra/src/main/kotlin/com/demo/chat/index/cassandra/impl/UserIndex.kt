@@ -7,8 +7,8 @@ import com.demo.chat.domain.User
 import com.demo.chat.index.cassandra.domain.ChatUserHandle
 import com.demo.chat.index.cassandra.domain.ChatUserHandleKey
 import com.demo.chat.index.cassandra.repository.ChatUserHandleRepository
-import com.demo.chat.service.UserIndexService
-import com.demo.chat.service.UserIndexService.Companion.HANDLE
+import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.core.UserIndexService.Companion.HANDLE
 import org.springframework.data.cassandra.core.InsertOptions
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Flux

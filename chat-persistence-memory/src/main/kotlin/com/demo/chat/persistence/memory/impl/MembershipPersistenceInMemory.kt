@@ -2,8 +2,8 @@ package com.demo.chat.persistence.memory.impl
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.MembershipPersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.MembershipPersistence
 import java.util.function.Function
 
 class MembershipPersistenceInMemory<T>(

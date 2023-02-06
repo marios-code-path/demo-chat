@@ -1,7 +1,7 @@
 package com.demo.chat.service.persistence.xstream
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId

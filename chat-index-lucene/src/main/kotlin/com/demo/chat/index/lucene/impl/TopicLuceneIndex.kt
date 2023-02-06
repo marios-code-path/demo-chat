@@ -3,7 +3,7 @@ package com.demo.chat.index.lucene.impl
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.service.TopicIndexService
+import com.demo.chat.service.core.TopicIndexService
 import java.util.function.Function
 
 open class TopicLuceneIndex<T>(

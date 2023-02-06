@@ -1,6 +1,6 @@
 package com.demo.chat.test
 
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith

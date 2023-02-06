@@ -1,6 +1,6 @@
 package com.demo.chat.domain
 
-import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.core.IKeyGenerator
 import java.net.NetworkInterface
 import java.security.SecureRandom
 import java.time.Instant

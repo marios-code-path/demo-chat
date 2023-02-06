@@ -6,9 +6,9 @@ import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
 import com.demo.chat.index.cassandra.domain.TopicMembershipByMemberOf
 import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberOfRepository
 import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberRepository
-import com.demo.chat.service.MembershipIndexService
-import com.demo.chat.service.MembershipIndexService.Companion.MEMBER
-import com.demo.chat.service.MembershipIndexService.Companion.MEMBEROF
+import com.demo.chat.service.core.MembershipIndexService
+import com.demo.chat.service.core.MembershipIndexService.Companion.MEMBER
+import com.demo.chat.service.core.MembershipIndexService.Companion.MEMBEROF
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function

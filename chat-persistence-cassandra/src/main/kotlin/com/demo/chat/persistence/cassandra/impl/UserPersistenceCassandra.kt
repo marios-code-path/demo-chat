@@ -3,8 +3,8 @@ package com.demo.chat.persistence.cassandra.impl
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.UserPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.stream.Collectors

@@ -2,7 +2,7 @@ package com.demo.chat.test.repository
 
 import com.demo.chat.persistence.cassandra.config.PersistenceConfiguration
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.assertj.core.api.Assertions

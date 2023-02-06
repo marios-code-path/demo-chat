@@ -3,8 +3,8 @@ package com.demo.chat.service.persistence.xstream
 import com.demo.chat.convert.Converter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.UserPersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.UserPersistence
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.MapRecord

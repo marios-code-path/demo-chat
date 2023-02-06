@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.client.core
 
-import com.demo.chat.client.rsocket.core.SecretStoreClient
+import com.demo.chat.client.rsocket.clients.core.SecretStoreClient
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore

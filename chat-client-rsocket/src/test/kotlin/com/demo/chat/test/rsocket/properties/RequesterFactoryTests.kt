@@ -1,7 +1,6 @@
 package com.demo.chat.test.rsocket.properties
 
-import com.demo.chat.client.rsocket.config.DefaultRequesterFactory
-import com.demo.chat.client.rsocket.config.RSocketAppProperties
+import com.demo.chat.client.rsocket.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.config.RSocketClientProperties
 import com.demo.chat.secure.rsocket.InsecureConnection
 import com.demo.chat.test.YamlFileContextInitializer
@@ -34,7 +33,7 @@ class RequesterFactoryTests {
     fun `requesterFactory should Construct`() {
         val factory = DefaultRequesterFactory(
             RSocketRequester.builder(),
-            InsecureConnection(), clientProperties.config
+            InsecureConnection(), clientProperties
         )
 
         Assertions
@@ -46,7 +45,7 @@ class RequesterFactoryTests {
     fun `fetch One from RequesterFactory`() {
         val factory = DefaultRequesterFactory(
             RSocketRequester.builder(),
-            InsecureConnection(), clientProperties.config
+            InsecureConnection(), clientProperties
         )
 
         val connectionProperty = factory.serviceDestination("user")

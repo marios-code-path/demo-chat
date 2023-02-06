@@ -5,8 +5,8 @@ import com.demo.chat.domain.Message
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
 import com.demo.chat.persistence.cassandra.domain.ChatMessageByIdKey
 import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.MessagePersistence
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.MessagePersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant

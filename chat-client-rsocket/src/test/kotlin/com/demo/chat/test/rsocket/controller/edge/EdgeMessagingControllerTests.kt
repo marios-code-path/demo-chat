@@ -3,9 +3,9 @@ package com.demo.chat.test.rsocket.controller.edge
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.controller.composite.MessagingController
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.MessagePersistence
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert

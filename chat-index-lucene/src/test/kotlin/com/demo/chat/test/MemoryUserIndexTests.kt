@@ -3,7 +3,7 @@ package com.demo.chat.test
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import com.demo.chat.index.lucene.impl.LuceneIndex
 import com.demo.chat.test.index.IndexTests
 import java.util.function.Function

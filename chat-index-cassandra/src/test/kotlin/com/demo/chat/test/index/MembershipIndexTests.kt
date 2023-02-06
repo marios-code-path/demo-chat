@@ -5,7 +5,7 @@ import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
 import com.demo.chat.index.cassandra.domain.TopicMembershipByMemberOf
 import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberOfRepository
 import com.demo.chat.index.cassandra.repository.TopicMembershipByMemberRepository
-import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.index.cassandra.impl.MembershipIndex
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions

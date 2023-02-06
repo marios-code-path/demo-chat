@@ -5,7 +5,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.security.authentication.AuthenticationManager

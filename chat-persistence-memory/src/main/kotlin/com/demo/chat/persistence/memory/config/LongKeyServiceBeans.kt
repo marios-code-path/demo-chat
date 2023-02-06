@@ -2,7 +2,7 @@ package com.demo.chat.persistence.memory.config
 
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.SnowflakeGenerator
-import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

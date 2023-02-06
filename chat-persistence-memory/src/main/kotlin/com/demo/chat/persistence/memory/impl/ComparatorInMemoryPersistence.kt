@@ -2,7 +2,7 @@ package com.demo.chat.persistence.memory.impl
 
 import com.demo.chat.domain.DuplicateException
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import reactor.core.publisher.Mono
 import java.util.function.Function
 

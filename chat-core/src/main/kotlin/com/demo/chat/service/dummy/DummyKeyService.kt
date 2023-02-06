@@ -1,7 +1,7 @@
 package com.demo.chat.service.dummy
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.empty
 

@@ -1,10 +1,10 @@
 package com.demo.chat.test.rsocket.client.core
 
-import com.demo.chat.client.rsocket.core.impl.MessageIndexClient
+import com.demo.chat.client.rsocket.clients.core.config.MessageIndexClient
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.MessageIndexService
+import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket

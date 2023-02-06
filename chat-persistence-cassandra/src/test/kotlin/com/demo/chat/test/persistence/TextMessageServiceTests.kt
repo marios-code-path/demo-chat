@@ -5,7 +5,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
 import com.demo.chat.persistence.cassandra.domain.ChatMessageByIdKey
 import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
-import com.demo.chat.service.IKeyService
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.persistence.cassandra.impl.MessagePersistenceCassandra
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestUUIDKeyService

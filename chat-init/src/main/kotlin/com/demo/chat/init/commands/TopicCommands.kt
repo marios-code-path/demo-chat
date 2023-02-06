@@ -3,11 +3,11 @@ package com.demo.chat.init.commands
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByNameRequest
 import com.demo.chat.domain.MembershipRequest
-import com.demo.chat.deploy.client.consul.config.ServiceBeanConfiguration
+import com.demo.chat.client.rsocket.config.CoreClientsConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
-import com.demo.chat.service.IKeyGenerator
+import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
@@ -20,7 +20,7 @@ import org.springframework.shell.standard.ShellOption
 class TopicCommands<T>(
     private val topicService: ChatTopicService<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
-    private val serviceBeans: ServiceBeanConfiguration<T, String, IndexSearchRequest>,
+    private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
     private val anonKey: AnonymousKey<T>,
     private val adminKey: AdminKey<T>,

@@ -3,8 +3,8 @@ package com.demo.chat.secure.service
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.secure.Summarizer
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.IndexService
+import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthorizationService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

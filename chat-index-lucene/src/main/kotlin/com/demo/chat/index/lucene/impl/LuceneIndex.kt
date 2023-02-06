@@ -2,7 +2,7 @@ package com.demo.chat.index.lucene.impl
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.IndexService
+import com.demo.chat.service.core.IndexService
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field

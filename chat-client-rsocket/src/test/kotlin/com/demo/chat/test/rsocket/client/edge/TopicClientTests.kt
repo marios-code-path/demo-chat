@@ -4,7 +4,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByNameRequest
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.test.anyObject
-import com.demo.chat.client.rsocket.composite.TopicClient
+import com.demo.chat.client.rsocket.clients.composite.TopicClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User

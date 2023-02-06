@@ -5,8 +5,8 @@ import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
 import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.secure.service.AuthorizationMetadataService
-import com.demo.chat.service.IndexService
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.IndexService
+import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.test.auth.AuthorizationServiceTests
 import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.persistence.MockPersistenceResolver

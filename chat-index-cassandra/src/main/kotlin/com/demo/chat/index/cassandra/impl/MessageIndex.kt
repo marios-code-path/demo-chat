@@ -9,9 +9,9 @@ import com.demo.chat.index.cassandra.domain.ChatMessageByUser
 import com.demo.chat.index.cassandra.domain.ChatMessageByUserKey
 import com.demo.chat.index.cassandra.repository.ChatMessageByTopicRepository
 import com.demo.chat.index.cassandra.repository.ChatMessageByUserRepository
-import com.demo.chat.service.MessageIndexService
-import com.demo.chat.service.MessageIndexService.Companion.TOPIC
-import com.demo.chat.service.MessageIndexService.Companion.USER
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessageIndexService.Companion.TOPIC
+import com.demo.chat.service.core.MessageIndexService.Companion.USER
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Flux.empty
 import reactor.core.publisher.Mono

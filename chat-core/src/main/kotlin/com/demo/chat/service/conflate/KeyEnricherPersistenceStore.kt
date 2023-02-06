@@ -1,8 +1,8 @@
 package com.demo.chat.service.conflate
 
 import com.demo.chat.domain.Key
-import com.demo.chat.service.EnricherPersistenceStore
-import com.demo.chat.service.PersistenceStore
+import com.demo.chat.service.core.EnricherPersistenceStore
+import com.demo.chat.service.core.PersistenceStore
 import reactor.core.publisher.Mono
 
 open class KeyEnricherPersistenceStore<T, V, E>(

@@ -1,7 +1,7 @@
 package com.demo.chat.index.lucene.domain
 
 import com.demo.chat.domain.*
-import com.demo.chat.service.MembershipIndexService
+import com.demo.chat.service.core.MembershipIndexService
 import java.util.function.Function
 
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {

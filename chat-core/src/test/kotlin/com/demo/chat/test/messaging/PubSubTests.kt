@@ -3,8 +3,8 @@ package com.demo.chat.test.messaging
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.service.IKeyService
-import com.demo.chat.service.TopicPubSubService
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.TopicPubSubService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
