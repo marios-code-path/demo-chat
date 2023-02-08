@@ -32,6 +32,7 @@ import java.util.*
 )
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
+
     @Autowired
     lateinit var repo: ChatUserRepository<UUID>
 

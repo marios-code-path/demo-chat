@@ -28,6 +28,7 @@ import java.util.stream.Stream
 )
 @TestPropertySource(properties = ["app.service.core.key=uuid"])
 class MembershipRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
+
     @Autowired
     lateinit var repo: TopicMembershipRepository<UUID>
 

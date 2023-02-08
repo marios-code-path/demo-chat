@@ -18,7 +18,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.shell.interactive.enabled=false", "app.service.core.key=long",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
         "app.service.core.secrets",
-        "app.service.edge.user", "app.service.edge.topic", "app.service.edge.message",
+        "app.service.composite.user", "app.service.composite.topic", "app.service.composite.message",
     ]
 )
 @ActiveProfiles("exec-chat")

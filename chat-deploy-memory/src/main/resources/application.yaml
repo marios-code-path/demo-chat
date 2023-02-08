@@ -28,7 +28,6 @@ spring:
     web-application-type: reactive
   application:
     name: "${app.primary}-service-${app.proto}"
-
   cloud:
     consul:
       discovery:

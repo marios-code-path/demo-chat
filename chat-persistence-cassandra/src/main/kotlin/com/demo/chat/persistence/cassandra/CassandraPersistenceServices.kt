@@ -1,4 +1,4 @@
-package com.demo.chat.persistence.cassandra.config
+package com.demo.chat.persistence.cassandra
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.persistence.cassandra.impl.*

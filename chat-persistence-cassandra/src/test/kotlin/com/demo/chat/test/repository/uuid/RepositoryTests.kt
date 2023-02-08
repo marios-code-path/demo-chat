@@ -3,13 +3,12 @@ package com.demo.chat.test.repository.uuid
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.data.repository.reactive.ReactiveCrudRepository
-import org.springframework.data.repository.reactive.ReactiveSortingRepository
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
 @Disabled
-abstract class RepositoryTests<T, E: Any>(
+abstract class RepositoryTests<T: Any, E: Any>(
     val valueSupply: Supplier<E>,
     val keySupply: Supplier<T>
 ) {

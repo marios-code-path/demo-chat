@@ -27,6 +27,7 @@ import java.util.stream.Stream
 )
 @TestPropertySource(properties = ["app.service.core.key=long"])
 class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
+
     @Autowired
     lateinit var repo: TopicMembershipRepository<Long>
 

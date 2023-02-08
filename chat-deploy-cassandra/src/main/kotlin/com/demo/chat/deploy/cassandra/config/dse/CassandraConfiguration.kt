@@ -1,13 +1,16 @@
-package com.demo.chat.test
+package com.demo.chat.deploy.cassandra.config.dse
 
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.SchemaAction
 
-
-class TestReactiveCassandraConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
+@Configuration
+@DependsOn("KeyGenerator", "TypeUtil")
+@EnableConfigurationProperties(CassandraProperties::class)
+class CassandraConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
 
     override fun getLocalDataCenter(): String {
         return props.localDatacenter

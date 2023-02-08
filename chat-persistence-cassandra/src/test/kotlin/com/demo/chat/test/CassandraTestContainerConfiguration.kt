@@ -1,15 +1,11 @@
 package com.demo.chat.test
 
 
-import com.demo.chat.domain.LongUtil
-import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.UUIDUtil
 import com.playtika.test.common.utils.ContainerUtils
 import org.assertj.core.api.Assertions
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
@@ -26,15 +22,6 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
 
     @Value("\${app.service.core.key:uuid}")
     private lateinit var keyType: String
-
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
-    open fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
-
-    @Bean
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
-    open fun longTypeUtil(): TypeUtil<Long> = LongUtil()
-
 
     // TODO convert to embedded.cassandra properties
     // start container, and re-wire cassandraProperties to contain

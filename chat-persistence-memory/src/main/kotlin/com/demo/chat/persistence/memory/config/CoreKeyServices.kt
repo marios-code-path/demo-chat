@@ -1,18 +1,23 @@
 package com.demo.chat.persistence.memory.config
 
 import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.domain.SnowflakeGenerator
-import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
+import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty("app.service.core.key", havingValue = "long")
-open class LongKeyServiceBeans : KeyServiceBeans<Long> {
-    private val idGenerator: IKeyGenerator<Long> = SnowflakeGenerator()
+@ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
+class CoreKeyServices<T>(
+    val keyGenerator: IKeyGenerator<T>
+) : KeyServiceBeans<T> {
 
     @Bean
-    override fun keyService() = KeyServiceInMemory { idGenerator.nextKey() }
+    override fun keyService(): IKeyService<T> =
+        KeyServiceInMemory { keyGenerator.nextKey() }
 }
+
+
+

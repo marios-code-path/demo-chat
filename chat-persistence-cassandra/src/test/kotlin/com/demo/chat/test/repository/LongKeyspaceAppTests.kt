@@ -1,7 +1,10 @@
 package com.demo.chat.test.repository
 
-import com.demo.chat.persistence.cassandra.config.PersistenceConfiguration
+import com.demo.chat.config.TypeUtilConfiguration
+import com.demo.chat.persistence.cassandra.config.CorePersistenceServices
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.persistence.cassandra.config.CoreKeyServices
+import com.demo.chat.persistence.cassandra.config.KeyGenConfiguration
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
@@ -20,7 +23,13 @@ import reactor.test.StepVerifier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [RepositoryTestConfiguration::class, PersistenceConfiguration::class]
+    classes = [
+        RepositoryTestConfiguration::class,
+        TypeUtilConfiguration::class,
+        KeyGenConfiguration::class,
+        CoreKeyServices::class,
+        CorePersistenceServices::class
+    ]
 )
 @TestPropertySource(properties = ["app.service.core.key=long"])
 class LongKeyspaceAppTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
