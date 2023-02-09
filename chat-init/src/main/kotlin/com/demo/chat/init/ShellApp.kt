@@ -1,9 +1,9 @@
 package com.demo.chat.init
 
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.init.domain.BootstrapProperties
-import com.demo.chat.secure.rsocket.UnprotectedConnection
+import com.demo.chat.secure.transport.UnprotectedConnection
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties

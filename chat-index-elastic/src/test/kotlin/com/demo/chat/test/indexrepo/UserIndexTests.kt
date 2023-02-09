@@ -1,6 +1,6 @@
 package com.demo.chat.test.indexrepo
 
-import com.demo.chat.index.elastic.config.ElasticConfiguration
+import com.demo.chat.config.index.elastic.ElasticConfiguration
 import com.demo.chat.index.elastic.domain.ChatUser
 import com.demo.chat.index.elastic.domain.ChatUserKey
 import com.demo.chat.index.elastic.repository.ReactiveUserIndexRepository

@@ -1,15 +1,16 @@
 package com.demo.chat.deploy
 
 import com.demo.chat.config.TypeUtilConfiguration
-import com.demo.chat.controller.config.IndexControllersConfiguration
-import com.demo.chat.controller.config.KeyControllersConfiguration
-import com.demo.chat.controller.config.PersistenceControllersConfiguration
-import com.demo.chat.controller.config.composite.MessagingControllerConfiguration
+import com.demo.chat.config.controller.IndexControllersConfiguration
+import com.demo.chat.config.controller.KeyControllersConfiguration
+import com.demo.chat.config.controller.PersistenceControllersConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.index.cassandra.config.IndexServiceConfiguration
-import com.demo.chat.persistence.cassandra.config.CoreKeyServices
-import com.demo.chat.persistence.cassandra.config.CorePersistenceServices
-import com.demo.chat.persistence.cassandra.config.KeyGenConfiguration
+import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
+import com.demo.chat.config.persistence.cassandra.CoreKeyServices
+import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
+import com.demo.chat.config.persistence.cassandra.KeyGenConfiguration
+import com.demo.chat.config.secure.AuthConfiguration
+import com.demo.chat.config.secure.TransportConfiguration
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
@@ -25,16 +26,18 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
     RSocketMessagingAutoConfiguration::class,
     // TYPES
     TypeUtilConfiguration::class,
+    // Transport Security
+    TransportConfiguration::class,
     // Services
     KeyGenConfiguration::class,
     CoreKeyServices::class,
     CorePersistenceServices::class,
     IndexServiceConfiguration::class,
+    AuthConfiguration::class,
     // Controllers
     KeyControllersConfiguration::class,
     IndexControllersConfiguration::class,
     PersistenceControllersConfiguration::class,
-    MessagingControllerConfiguration::class
 )
 @EnableReactiveCassandraRepositories(
     basePackages = [

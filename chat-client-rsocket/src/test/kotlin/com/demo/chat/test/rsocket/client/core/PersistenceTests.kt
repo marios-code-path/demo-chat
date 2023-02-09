@@ -30,7 +30,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-        UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class)
+    UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class
+)
 class PersistenceTests : RSocketTestBase() {
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
@@ -43,74 +44,77 @@ class PersistenceTests : RSocketTestBase() {
     private val randomUser = TestChatUser(userKey, randomName, defaultImgUri, Instant.now())
 
     private val svcPrefix = ""
+
     @Test
     fun `should add one`() {
         BDDMockito
-                .given(userPersistence.add(anyObject()))
-                .willReturn(Mono.empty())
+            .given(userPersistence.add(anyObject()))
+            .willReturn(Mono.empty())
 
         val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.add(randomUser))
-                .verifyComplete()
+            .create(client.add(randomUser))
+            .verifyComplete()
     }
 
     @Test
     fun `should find all users`() {
         BDDMockito.given(userPersistence.all())
-                .willReturn(Flux.just(
-                        randomUser, randomUser
-                ))
+            .willReturn(
+                Flux.just(
+                    randomUser, randomUser
+                )
+            )
 
         val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.all())
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
+            .create(client.all())
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
 
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
-                }
-                .assertNext {
-                    Assertions
-                            .assertThat(it.key)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                }
-                .verifyComplete()
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrPropertyWithValue("handle", randomHandle)
+                    .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
+            }
+            .assertNext {
+                Assertions
+                    .assertThat(it.key)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `should get one`() {
         BDDMockito.given(userPersistence.get(anyObject()))
-                .willReturn(Mono.just(randomUser))
+            .willReturn(Mono.just(randomUser))
 
         val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.get(Key.funKey(userKey.id)))
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
+            .create(client.get(Key.funKey(userKey.id)))
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
 
-                    Assertions
-                            .assertThat(it)
-                            .isNotNull
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
-                            .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
-                }
-                .verifyComplete()
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrPropertyWithValue("handle", randomHandle)
+                    .hasFieldOrPropertyWithValue("imageUri", defaultImgUri)
+            }
+            .verifyComplete()
     }
 }

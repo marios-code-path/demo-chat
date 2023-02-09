@@ -18,8 +18,7 @@ better flexibility when making changes to the datasets and roles.
 Likely, you'll want to add users and do some basic administrivia. We can allow this by overriding 
 settings on `dse.yaml` thus telling DSE to enable authorization/euthentaction/RBAC
 
-Check out the [datastax/docker-images](https://github.com/datastax/docker-images) repository for easy access to
-default configuration templates.
+Check out the [datastax/docker-images](https://github.com/datastax/docker-images) repository for easy access to default configuration templates.
 
 ```shell script
 ~$ cd workspace ; git clone https://github.com/datastax/docker-images.git dse-docker-images

@@ -1,8 +1,8 @@
 package com.demo.chat.test.rsocket.properties
 
 import com.demo.chat.client.rsocket.DefaultRequesterFactory
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.secure.rsocket.InsecureConnection
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
+import com.demo.chat.secure.transport.InsecureConnection
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test

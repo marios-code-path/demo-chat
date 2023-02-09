@@ -3,7 +3,7 @@ package com.demo.chat.init.commands
 import com.demo.chat.domain.ByHandleRequest
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.client.rsocket.config.CoreClientsConfiguration
+import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey

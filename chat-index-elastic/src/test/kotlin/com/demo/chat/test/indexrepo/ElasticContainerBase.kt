@@ -76,7 +76,6 @@ open class ElasticContainerBase {
             registry.add("spring.elasticsearchport") { elasticContainer.getMappedPort(9200) }
             registry.add("spring.elasticsearch.username") { "elastic" }
             registry.add("spring.elasticsearch.password") { "s3cret" }
-
         }
     }
 }

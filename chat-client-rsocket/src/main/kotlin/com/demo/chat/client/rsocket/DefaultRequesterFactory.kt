@@ -1,7 +1,7 @@
 package com.demo.chat.client.rsocket
 
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.secure.rsocket.TransportFactory
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
+import com.demo.chat.secure.transport.TransportFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester

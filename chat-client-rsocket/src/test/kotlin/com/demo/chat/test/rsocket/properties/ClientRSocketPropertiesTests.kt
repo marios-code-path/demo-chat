@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket.properties
 
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
-import com.demo.chat.client.rsocket.config.RSocketPropertyValue
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketPropertyValue
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test

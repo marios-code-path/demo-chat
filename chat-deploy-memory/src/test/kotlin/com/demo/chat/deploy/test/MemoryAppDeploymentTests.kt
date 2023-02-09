@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.deploy.AppConfiguration
 import com.demo.chat.deploy.memory.App
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [App::class])
+@SpringBootTest(classes = [App::class, AppConfiguration::class])
 @TestPropertySource(
     properties = [
         "app.proto=rsocket",

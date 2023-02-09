@@ -2,13 +2,13 @@ package com.demo.chat.init.config
 
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.CoreRSocketClients
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.SnowflakeGenerator
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.init.domain.AdminKey
 import com.demo.chat.init.domain.AnonymousKey
-import com.demo.chat.secure.config.AuthConfiguration
+import com.demo.chat.config.secure.AuthConfiguration
 import com.demo.chat.service.core.IKeyGenerator
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

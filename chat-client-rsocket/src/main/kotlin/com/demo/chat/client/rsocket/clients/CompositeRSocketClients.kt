@@ -4,7 +4,7 @@ import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.composite.MessagingClient
 import com.demo.chat.client.rsocket.clients.composite.TopicClient
 import com.demo.chat.client.rsocket.clients.composite.UserClient
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.service.composite.ChatUserService
 
 class CompositeRSocketClients<T>(

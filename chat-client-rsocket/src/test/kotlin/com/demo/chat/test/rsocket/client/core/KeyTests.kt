@@ -26,7 +26,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-    KeyTests.KeyPersistenceTestConfiguration::class)
+    KeyTests.KeyPersistenceTestConfiguration::class
+)
 class KeyTests : RSocketTestBase() {
     @MockBean
     private lateinit var keyService: IKeyService<UUID>
@@ -36,45 +37,45 @@ class KeyTests : RSocketTestBase() {
     @Test
     fun `client should call exists`() {
         BDDMockito
-                .given(keyService.exists(anyObject()))
-                .willReturn(Mono.just(true))
+            .given(keyService.exists(anyObject()))
+            .willReturn(Mono.just(true))
 
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.exists(Key.funKey(UUID.randomUUID())))
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .isTrue()
-                }
-                .verifyComplete()
+            .create(client.exists(Key.funKey(UUID.randomUUID())))
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isTrue()
+            }
+            .verifyComplete()
     }
 
     @Test
     fun `Client should remove a key`() {
         BDDMockito
-                .given(keyService.rem(anyObject()))
-                .willReturn(Mono.empty())
+            .given(keyService.rem(anyObject()))
+            .willReturn(Mono.empty())
 
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.rem(Key.funKey(UUID.randomUUID())))
-                .verifyComplete()
+            .create(client.rem(Key.funKey(UUID.randomUUID())))
+            .verifyComplete()
     }
 
     @Test
     fun `Client should create a key`() {
         BDDMockito
-                .given(keyService.key<Any>(anyObject()))
-                .willReturn(Mono.empty())
+            .given(keyService.key<Any>(anyObject()))
+            .willReturn(Mono.empty())
 
         val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
 
         StepVerifier
-                .create(client.key(String::class.java))
-                .verifyComplete()
+            .create(client.key(String::class.java))
+            .verifyComplete()
     }
 
     @TestConfiguration

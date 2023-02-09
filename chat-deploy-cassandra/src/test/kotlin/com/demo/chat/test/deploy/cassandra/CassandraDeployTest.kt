@@ -1,7 +1,7 @@
 package com.demo.chat.test.deploy.cassandra
 
 import com.demo.chat.deploy.cassandra.App
-import com.demo.chat.index.cassandra.config.IndexServiceConfiguration
+import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance

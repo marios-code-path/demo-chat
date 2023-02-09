@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.memory
 
-import com.demo.chat.controller.config.PersistenceControllersConfiguration
+import com.demo.chat.config.controller.PersistenceControllersConfiguration
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean

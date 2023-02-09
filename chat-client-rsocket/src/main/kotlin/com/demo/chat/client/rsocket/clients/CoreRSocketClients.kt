@@ -1,6 +1,6 @@
 package com.demo.chat.client.rsocket.clients
 
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.core.KeyClient
 import com.demo.chat.client.rsocket.clients.core.TopicPubSubClient

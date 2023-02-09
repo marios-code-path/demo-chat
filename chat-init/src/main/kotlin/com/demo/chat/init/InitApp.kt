@@ -1,11 +1,11 @@
 package com.demo.chat.init
 
 import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.client.rsocket.config.RSocketClientProperties
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.init.domain.BootstrapProperties
-import com.demo.chat.secure.rsocket.UnprotectedConnection
+import com.demo.chat.secure.transport.UnprotectedConnection
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.CommandLineRunner

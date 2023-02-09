@@ -1,10 +1,10 @@
 package com.demo.chat.test.repository
 
 import com.demo.chat.config.TypeUtilConfiguration
-import com.demo.chat.persistence.cassandra.config.CorePersistenceServices
+import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.persistence.cassandra.config.CoreKeyServices
-import com.demo.chat.persistence.cassandra.config.KeyGenConfiguration
+import com.demo.chat.config.persistence.cassandra.CoreKeyServices
+import com.demo.chat.config.persistence.cassandra.KeyGenConfiguration
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
