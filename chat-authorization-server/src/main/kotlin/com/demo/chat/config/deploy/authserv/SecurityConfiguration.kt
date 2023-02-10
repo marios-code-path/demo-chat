@@ -1,4 +1,4 @@
-package com.demo.chat.authserv
+package com.demo.chat.config.deploy.authserv
 
 import com.demo.chat.secure.service.ChatUserDetailsService
 import com.nimbusds.jose.jwk.JWKSet

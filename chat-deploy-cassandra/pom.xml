@@ -12,6 +12,42 @@
     <version>0.0.1</version>
     <name>chat-deploy-cassandra</name>
     <description>Deployment details for cassandra backed services</description>
+    <properties>
+        <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+        <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
+        <appMainClass>${mainClass}</appMainClass>
+    </properties>
+    <profiles>
+        <profile>
+            <id>deploy</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <mainClass>${appMainClass}</mainClass>
+                            <image>
+                                <name>${appImageName}</name>
+                                <cleanCache>false</cleanCache>
+                                <env>
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                </env>
+                            </image>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>build-info</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -147,22 +183,6 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <!-- PER Actuator docs -->
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
-                    <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>pl.project13.maven</groupId>

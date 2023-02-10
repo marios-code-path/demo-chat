@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.cassandra.config.dse
+package com.demo.chat.config.deploy.cassandra.dse
 
 import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import org.springframework.beans.factory.annotation.Value

@@ -1,4 +1,4 @@
-package com.demo.chat.authserv
+package com.demo.chat.config.deploy.authserv
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.secure.service.ChatUserDetailsService
@@ -8,7 +8,6 @@ import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Profile
 
 @Configuration
 class ChatConfiguration {

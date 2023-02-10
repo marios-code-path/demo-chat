@@ -1,14 +1,12 @@
-package com.demo.chat.deploy.cassandra
+package com.demo.chat.deploy.authserv
 
-import com.demo.chat.config.deploy.cassandra.AppConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Import
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 
-@SpringBootApplication
-@Import(AppConfiguration::class)
-class App {
-
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
+@EnableWebSecurity
+open class App {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {

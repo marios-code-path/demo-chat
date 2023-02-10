@@ -1,11 +1,11 @@
 package com.demo.chat.client.rsocket.clients
 
-import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.core.KeyClient
 import com.demo.chat.client.rsocket.clients.core.TopicPubSubClient
 import com.demo.chat.client.rsocket.clients.core.config.*
 import com.demo.chat.config.CoreServices
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaIndex
@@ -15,7 +15,7 @@ import com.demo.chat.service.security.SecretsStore
 /**
  * This is a bean that declares only the local clients for the core services
  */
-class CoreRSocketClients<T : Any, V, Q>(
+class CoreRSocketClients<T, V, Q>(
     private val requesterFactory: RequesterFactory,
     private val clientProperties: RSocketClientProperties,
     private val typeUtil: TypeUtil<T>,

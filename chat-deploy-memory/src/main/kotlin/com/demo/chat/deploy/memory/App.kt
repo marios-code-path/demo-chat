@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
 
 
-@SpringBootApplication
-@Profile("exec-chat")
-class App {
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
+@Profile("exec")
+open class App {
 
     companion object {
         @JvmStatic
@@ -23,7 +23,7 @@ class App {
 
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean
-    fun commandRunner(): ApplicationRunner = ApplicationRunner {
+    open fun commandRunner(): ApplicationRunner = ApplicationRunner {
         println("Consul Discovery Persistence/Index/Messaging/Controllers App.")
     }
 }

@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono
 import java.util.*
 
 @Configuration
-@ConditionalOnProperty("app.client.rsocket.discovery.consul")
+@ConditionalOnProperty("spring.cloud.consul.config.enabled")
 class ConsulDiscoveryRequesterFactory(
     private val builder: RSocketRequester.Builder,
     client: ConsulClient,

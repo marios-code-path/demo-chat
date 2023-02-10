@@ -1,6 +1,5 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.deploy.AppConfiguration
 import com.demo.chat.deploy.memory.App
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -11,7 +10,7 @@ import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [App::class, AppConfiguration::class])
+@SpringBootTest(classes = [App::class])
 @TestPropertySource(
     properties = [
         "app.proto=rsocket",
@@ -22,7 +21,7 @@ import org.springframework.test.context.TestPropertySource
         "app.service.composite.user", "app.service.composite.topic", "app.service.composite.message",
     ]
 )
-@ActiveProfiles("exec-chat")
+@ActiveProfiles("exec")
 class MemoryAppDeploymentTests {
 
     @Autowired

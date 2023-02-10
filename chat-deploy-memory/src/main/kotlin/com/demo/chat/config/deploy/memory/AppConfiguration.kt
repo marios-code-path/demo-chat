@@ -1,14 +1,15 @@
-package com.demo.chat.deploy
+package com.demo.chat.config.deploy.memory
 
 import com.demo.chat.config.TypeUtilConfiguration
-import com.demo.chat.config.controller.IndexControllersConfiguration
-import com.demo.chat.config.controller.KeyControllersConfiguration
-import com.demo.chat.config.controller.PersistenceControllersConfiguration
+import com.demo.chat.config.controller.*
+import com.demo.chat.config.controller.composite.MessagingControllerConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
-import com.demo.chat.config.persistence.cassandra.CoreKeyServices
-import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
-import com.demo.chat.config.persistence.cassandra.KeyGenConfiguration
+import com.demo.chat.index.lucene.config.LuceneIndexBeans
+import com.demo.chat.config.persistence.memory.CoreKeyServices
+import com.demo.chat.config.persistence.memory.CorePersistenceServices
+import com.demo.chat.config.persistence.memory.KeyGenConfiguration
+import com.demo.chat.config.persistence.memory.SecretsStoreService
+import com.demo.chat.config.pubsub.memory.PubSubConfig
 import com.demo.chat.config.secure.AuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -16,7 +17,6 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfig
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
-import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 @Import(
     // Serialization
@@ -32,18 +32,17 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
     KeyGenConfiguration::class,
     CoreKeyServices::class,
     CorePersistenceServices::class,
-    IndexServiceConfiguration::class,
+    LuceneIndexBeans::class,
+    SecretsStoreService::class,
+    PubSubConfig::class,
     AuthConfiguration::class,
     // Controllers
     KeyControllersConfiguration::class,
     IndexControllersConfiguration::class,
     PersistenceControllersConfiguration::class,
-)
-@EnableReactiveCassandraRepositories(
-    basePackages = [
-        "com.demo.chat.persistence.cassandra.repository",
-        "com.demo.chat.index.cassandra.repository"
-    ]
+    PubSubControllerConfiguration::class,
+    MessagingControllerConfiguration::class,
+    SecretsStoreControllerConfiguration::class
 )
 @Configuration
-class AppConfiguration
+open class AppConfiguration

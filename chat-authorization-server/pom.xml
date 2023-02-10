@@ -13,16 +13,39 @@
 	<name>chat-authorization-server</name>
 	<description>Chat Authorization Server</description>
 
+	<properties>
+		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+		<mainClass>com.demo.chat.deploy.authserv.App</mainClass>
+		<appMainClass>${mainClass}</appMainClass>
+	</properties>
 	<profiles>
 		<profile>
-			<id>client-consul</id>
-			<dependencies>
-				<dependency>
-					<groupId>com.demo</groupId>
-					<artifactId>chat-deploy-client-consul</artifactId>
-					<version>0.0.1</version>
-				</dependency>
-			</dependencies>
+			<id>deploy</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.springframework.boot</groupId>
+						<artifactId>spring-boot-maven-plugin</artifactId>
+						<configuration>
+							<mainClass>${appMainClass}</mainClass>
+							<image>
+								<name>${appImageName}</name>
+								<cleanCache>false</cleanCache>
+								<env>
+									<BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+								</env>
+							</image>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>build-info</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
 		</profile>
 		<profile>
 			<id>memory</id>
@@ -33,6 +56,16 @@
 				<dependency>
 					<groupId>com.demo</groupId>
 					<artifactId>chat-deploy-memory</artifactId>
+					<version>0.0.1</version>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>client-consul</id>
+			<dependencies>
+				<dependency>
+					<groupId>com.demo</groupId>
+					<artifactId>chat-deploy-client-consul</artifactId>
 					<version>0.0.1</version>
 				</dependency>
 			</dependencies>
@@ -97,10 +130,6 @@
 		<testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
 		<plugins>
 			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-			<plugin>
 				<groupId>org.jetbrains.kotlin</groupId>
 				<artifactId>kotlin-maven-plugin</artifactId>
 				<configuration>
@@ -119,7 +148,17 @@
 					</dependency>
 				</dependencies>
 			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>pl.project13.maven</groupId>
+				<artifactId>git-commit-id-plugin</artifactId>
+			</plugin>
 		</plugins>
 	</build>
-
 </project>
