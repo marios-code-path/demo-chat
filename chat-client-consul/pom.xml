@@ -9,7 +9,7 @@
     </parent>
 
     <groupId>com.demo</groupId>
-    <artifactId>chat-deploy-client-consul</artifactId>
+    <artifactId>chat-client-consul</artifactId>
     <version>0.0.1</version>
     <name>chat-deploy-client-consul</name>
     <description>Deployment Configuration For Consul bound clients</description>

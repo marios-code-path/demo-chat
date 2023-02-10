@@ -1,5 +1,6 @@
 package com.demo.chat.config.client.rsocket
 
+import com.demo.chat.client.rsocket.clients.CoreRSocketClients
 import com.demo.chat.config.CoreServices
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -7,7 +8,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 open class CoreClientsConfiguration<T, V, Q>(
-    private val services: CoreServices<T, V, Q>
+    private val services: CoreRSocketClients<T, V, Q>
 )  {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])
     @Bean
