@@ -1,0 +1,32 @@
+logging:
+  level:
+    root: INFO
+  pattern:
+    console: %d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n
+
+management:
+  info:
+    git:
+      mode: full
+  endpoint:
+    shutdown.enabled: true
+    health.enabled: true
+    info.enabled: true
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: health,info,shutdown
+
+  cloud:
+    consul:
+      config:
+        enabled: true
+        format: YAML
+        data-key: data
+        discovery:
+          enabled: true
+          tags: rsocket.port=${spring.rsocket.server.port}
+          instance-id: ${spring.application.name}:${random.value}}
+  main:
+    web-application-type: REACTIVE
