@@ -10,7 +10,8 @@ import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [App::class])
+@SpringBootTest(classes = [App::class],
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(
     properties = [
         "app.proto=rsocket",
@@ -19,9 +20,11 @@ import org.springframework.test.context.TestPropertySource
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
         "app.service.core.secrets",
         "app.service.composite.user", "app.service.composite.topic", "app.service.composite.message",
+        "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
+        "spring.cloud.consul.host=127.0.0.1",
     ]
 )
-@ActiveProfiles("exec")
+@ActiveProfiles("exec-chat")
 class MemoryAppDeploymentTests {
 
     @Autowired

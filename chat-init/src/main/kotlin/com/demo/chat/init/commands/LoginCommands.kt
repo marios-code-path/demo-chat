@@ -31,7 +31,7 @@ class LoginCommands<T>(
         return "SECRET STRINGS"
     }
 
-    @ShellMethod("WHo am I?")
+    @ShellMethod("whoami")
     fun identity(): String? {
         val idOf: T = typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
 
@@ -43,7 +43,7 @@ class LoginCommands<T>(
             .block()
     }
 
-    @ShellMethod("Login a User")
+    @ShellMethod("Login")
     fun login(
         @ShellOption username: String,
         @ShellOption password: String

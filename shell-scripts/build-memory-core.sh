@@ -65,8 +65,8 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.p
 -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT} \
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
--Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES}\
--Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
+-Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES} \
+-Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.cloud.import=optional:consul:"
 
 #set -x
 

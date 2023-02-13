@@ -7,10 +7,11 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Profile
+import org.springframework.web.reactive.config.EnableWebFlux
 
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
-@Profile("exec")
+@Profile("exec-chat")
 open class App {
 
     companion object {

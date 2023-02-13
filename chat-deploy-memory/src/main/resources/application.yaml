@@ -24,6 +24,8 @@ management:
         include: info,health,shutdown
 
 spring:
+#  config:
+#    import: "optional:consul:"
   main:
     web-application-type: reactive
   application:
@@ -31,11 +33,11 @@ spring:
   cloud:
     consul:
       discovery:
-        enabled: false
+        enabled: true
         tags: rsocket.port=${spring.rsocket.server.port}
         instance-id: "${spring.application.name}:${random.value}"
       config:
-        enabled: false
+        enabled: true
         format: YAML
         data-key: data
 
