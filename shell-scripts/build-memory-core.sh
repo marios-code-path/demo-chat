@@ -57,7 +57,7 @@ export APP_PRIMARY="core"
 export APP_IMAGE_NAME="core-services"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.App"
 export APP_VERSION=0.0.1
-export MAVEN_PROFILE=-Pmemory,deploy
+export MAVEN_PROFILE=-Pdeploy
 
 # makes no use of cloud configuration or config-maps
 # TODO: difference between '-D' and '--'
@@ -66,7 +66,7 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.p
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false \
 -Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES} \
--Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.cloud.import=optional:consul:"
+-Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.config.import=optional:consul:"
 
 #set -x
 
@@ -75,6 +75,6 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.p
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && MAVEN_ARG="spring-boot:build-image"
 [[ $RUN_MAVEN_ARG == "runlocal" ]] && MAVEN_ARG="spring-boot:run"
 
-mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE
+mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE -DskipTests
 
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION

@@ -10,7 +10,7 @@ import java.util.*
 import java.util.function.Supplier
 
 @Configuration
-class RSocketClientServiceConfiguration {
+class DefaultIdentityConfiguration {
 
     /** Keep anon/admin keys here because later will be db bound **/
     @Value("\${app.service.identity.anonymous:1}")

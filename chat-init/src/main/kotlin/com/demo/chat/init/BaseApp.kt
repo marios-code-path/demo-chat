@@ -23,7 +23,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.RSocketRequester
 
 @SpringBootApplication
-@EnableConfigurationProperties(RSocketClientProperties::class, BootstrapProperties::class)
+@EnableConfigurationProperties(BootstrapProperties::class)
 @Import(
     // Serialization
     JacksonAutoConfiguration::class,
