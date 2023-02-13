@@ -2,6 +2,7 @@ package com.demo.chat.config.secure
 
 import com.demo.chat.secure.transport.InsecureConnection
 import com.demo.chat.secure.transport.PKISecureConnection
+import com.demo.chat.secure.transport.UnprotectedConnection
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -10,6 +11,10 @@ import java.io.File
 
 @Configuration
 class TransportConfiguration {
+
+    @Bean
+    @ConditionalOnProperty("app.rsocket.transport.unprotected")
+    fun unprotectedConnection() = UnprotectedConnection()
 
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.insecure")

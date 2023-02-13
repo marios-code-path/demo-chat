@@ -5,10 +5,10 @@ import com.demo.chat.init.domain.BootstrapProperties
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.CommandLineRunner
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
-import org.springframework.security.authentication.AuthenticationManager
 
 /**
  * Test Class
@@ -18,11 +18,13 @@ import org.springframework.security.authentication.AuthenticationManager
 @Configuration
 class InitApp{
 
+    // TODO: NOTE - the anonymous key used here should be ignored.
+    // This program will generate the anonymous key and admin keys
     @Bean
+    @ConditionalOnProperty("app.init.bootstrap", havingValue = "true")
     fun <T> initOnce(
         userService: ChatUserService<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
-        authenticationManager: AuthenticationManager,
         bootstrapProperties: BootstrapProperties,
         typeUtil: TypeUtil<T>
     ): CommandLineRunner = CommandLineRunner {
@@ -73,6 +75,10 @@ class InitApp{
                 )
                 .block()
         }
-        println("Initialization Complete.")
+        println("Summary::(Save the keys for later use)")
+        println("""
+            |Anonymous Key: ${anonKey.id}
+            |Root Key: ${rootKey.id}
+        """.trimMargin())
     }
 }

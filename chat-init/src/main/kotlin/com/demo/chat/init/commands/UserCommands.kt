@@ -5,8 +5,8 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
-import com.demo.chat.init.domain.AdminKey
-import com.demo.chat.init.domain.AnonymousKey
+import com.demo.chat.domain.knownkey.AdminKey
+import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.composite.ChatUserService

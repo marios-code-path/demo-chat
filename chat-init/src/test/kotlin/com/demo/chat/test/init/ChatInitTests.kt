@@ -5,21 +5,24 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-// Tests instances of client configurations with a dummy server
+// TODO: use the dummyservers or mock the services
 // configured just before RequesterFactory = see TestClientServerConfiguration
+// TODO: refactor to use test components instead of PROD ones
 @SpringBootTest(classes = [BaseApp::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [
-        "app.service.core.key=long", "spring.cloud.consul.config.enabled=false", "app.client.rsocket",
-        "app.primary=init", "server.port=0", "management.endpoints.enabled-by-default=false",
+        "app.service.core.key=long", "app.client.rsocket", "app.primary=init",
+        "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
-        "app.client.rsocket.core.secrets", "spring.rsocket.server.port=7890",
-        "spring.cloud.service-registry.auto-registration.enabled=false","app.rsocket.client.requester.factory=test",
-        "spring.shell.interactive.enabled=false"]
+        "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",
+        "app.client.rsocket.composite.topic", "app.service.composite.auth",
+        "app.client.rsocket.discovery.default", "spring.cloud.service-registry.auto-registration.enabled=false",
+        "spring.cloud.consul.config.enabled=false", "spring.rsocket.server.port=7890", "server.port=0",
+        "spring.shell.interactive.enabled=false", "management.endpoints.enabled-by-default=false",
+    ]
 )
 @ActiveProfiles("init")
-//@Import(TestConfigurationRSocket::class)
 class ChatInitTests {
 
     @Test

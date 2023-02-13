@@ -6,6 +6,7 @@ import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.SecretsStore
+import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.access.annotation.Secured
 import org.springframework.security.authentication.AuthenticationManager
@@ -18,6 +19,7 @@ import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
 
 @ShellComponent
+@Profile("shell")
 class LoginCommands<T>(
     val userService: ChatUserService<T>,
     val passwdStore: SecretsStore<T>,

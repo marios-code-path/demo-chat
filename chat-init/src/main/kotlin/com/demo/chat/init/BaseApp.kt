@@ -4,6 +4,8 @@ import com.demo.chat.client.rsocket.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.config.TypeUtilConfiguration
 import com.demo.chat.config.client.rsocket.ClientConfiguration
+import com.demo.chat.config.client.rsocket.CompositeClientsConfiguration
+import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.AuthConfiguration
@@ -37,6 +39,8 @@ import org.springframework.messaging.rsocket.RSocketRequester
     // Services
     KeyGenConfiguration::class,
     ClientConfiguration::class,
+    CoreClientsConfiguration::class,
+    CompositeClientsConfiguration::class,
     AuthConfiguration::class,
 )
 class BaseApp {

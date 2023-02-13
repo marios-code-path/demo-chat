@@ -2,8 +2,8 @@ package com.demo.chat.init.commands
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MessageSendRequest
-import com.demo.chat.init.domain.AdminKey
-import com.demo.chat.init.domain.AnonymousKey
+import com.demo.chat.domain.knownkey.AdminKey
+import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
