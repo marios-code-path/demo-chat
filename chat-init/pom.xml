@@ -14,7 +14,7 @@
     <description>Chat Application Initialization</description>
     <properties>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.init.ShellApp</mainClass>
+        <mainClass>com.demo.chat.init.BaseApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>

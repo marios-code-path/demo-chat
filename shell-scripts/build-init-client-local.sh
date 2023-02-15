@@ -51,8 +51,8 @@ export MAVEN_PROFILE
 # That leading space is IMPORTANT ! DONT remove!
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.primary=init -Dapp.client.rsocket \
--Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key \
+-Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.primary=init \
+-Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key -Dapp.init.bootstrap=true \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic -Dapp.service.composite.auth \

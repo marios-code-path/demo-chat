@@ -33,6 +33,10 @@ class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverte
     RSocketMessagingAutoConfiguration::class
 )
 class TestConfigurationRSocket {
+    init {
+        println("TESTCONFIGURATION")
+        Hooks.onOperatorDebug()
+    }
 
     @Value("\${spring.rsocket.server.port:0}")
     lateinit var serverPort: String
@@ -44,9 +48,10 @@ class TestConfigurationRSocket {
     @Bean
     fun rSocketConnectedServer(rs: RSocketServer): CloseableChannel =
         rs.bind(TcpServerTransport.create("localhost", serverPort.toInt())).block()!!
+            .apply { server = this }
 
     @Bean
-    fun rSocket(rq: RSocketRequester): RSocket = rq.rsocket()!!
+    fun rSocket(rq: RSocketRequester): RSocket = rq.rsocket()!!.apply { socket = this }
 
     @Bean
     fun rSocketRequester(server: CloseableChannel, strategies: RSocketStrategies): RSocketRequester = RSocketRequester
@@ -57,14 +62,11 @@ class TestConfigurationRSocket {
 
     @Bean
     fun requesterFactory(requester: RSocketRequester): RequesterFactory {
-        Hooks.onOperatorDebug()
         return TestRequesterFactory(requester)
     }
 
-    @Autowired
     private lateinit var socket: RSocket
 
-    @Autowired
     private lateinit var server: CloseableChannel
 
     @EventListener

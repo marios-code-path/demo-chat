@@ -51,12 +51,12 @@ class BaseApp {
             runApplication<InitApp>(*args)
         }
     }
-
-    @Bean
-    @ConditionalOnMissingBean(RequesterFactory::class)
-    fun requesterFactory(
-        builder: RSocketRequester.Builder,
-        connection: TransportFactory,
-        rSocketClientProperties: RSocketClientProperties
-    ): RequesterFactory = DefaultRequesterFactory(builder, connection, rSocketClientProperties)
+//
+//    @Bean
+//    @ConditionalOnMissingBean(RequesterFactory::class)
+//    fun requesterFactory(
+//        builder: RSocketRequester.Builder,
+//        connection: TransportFactory,
+//        rSocketClientProperties: RSocketClientProperties
+//    ): RequesterFactory = DefaultRequesterFactory(builder, connection, rSocketClientProperties)
 }

@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration
 class CompositeClientsConfiguration<T>(
     val compositeClients: CompositeRSocketClients<T>
 ) {
+
     @Bean
     @ConditionalOnProperty(prefix = "app.client.rsocket.composite", name = ["user"])
     fun userService(): ChatUserService<T> = compositeClients.userService()

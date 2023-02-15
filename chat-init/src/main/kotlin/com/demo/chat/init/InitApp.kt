@@ -8,7 +8,9 @@ import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.DependsOn
 import org.springframework.context.annotation.Profile
+import reactor.core.publisher.Mono
 
 /**
  * Test Class
@@ -21,13 +23,13 @@ class InitApp{
     // TODO: NOTE - the anonymous key used here should be ignored.
     // This program will generate the anonymous key and admin keys
     @Bean
-    @ConditionalOnProperty("app.init.bootstrap", havingValue = "true")
     fun <T> initOnce(
         userService: ChatUserService<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
         bootstrapProperties: BootstrapProperties,
         typeUtil: TypeUtil<T>
     ): CommandLineRunner = CommandLineRunner {
+
         val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
         val identityKeys = mutableMapOf<String, Key<T>>()
 
@@ -35,13 +37,17 @@ class InitApp{
         bootstrapProperties.users.keys.forEach { identity ->
             val thisUser = bootstrapProperties.users[identity]!!
 
-            identityKeys[identity] = userService.addUser(
+            val thisUserKey = Mono.from(userService.addUser(
                 UserCreateRequest(
                     thisUser.name,
                     thisUser.handle,
                     thisUser.imageUri
                 )
-            ).block()!!
+            ))
+                .defaultIfEmpty(emptyKey)
+                ?.block()
+
+            identityKeys[identity] = thisUserKey!!
         }
 
         val anonKey = identityKeys["anonymous"]!!

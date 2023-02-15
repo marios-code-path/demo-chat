@@ -36,5 +36,4 @@ open class TypeUtilConfiguration {
     @Bean
     open fun <T> adminKey(typeUtil: TypeUtil<T>): Supplier<AdminKey<T>> =
         Supplier { AdminKey(typeUtil.fromString(adminId)) }
-
 }
