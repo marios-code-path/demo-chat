@@ -1,9 +1,7 @@
-import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.composite.UserServiceController
 import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.User
 import com.demo.chat.init.BaseApp
 import com.demo.chat.service.core.*
@@ -15,7 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Profile
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
@@ -48,6 +46,7 @@ class ChatInitTests {
 }
 
 @TestConfiguration
+@Profile("init")
 class TestDummyControllerServices {
 
     class DummyUserIndex<T, Q>(that: IndexService<T, User<T>, Q>) : UserIndexService<T, Q>,
@@ -58,19 +57,20 @@ class TestDummyControllerServices {
 
     @Controller
     @MessageMapping("key")
-    class TestKeyController<T>() : KeyServiceController<T>(DummyKeyService<T>())
+    class TestKeyController<T> : KeyServiceController<T>(DummyKeyService())
 
     @Controller
     @MessageMapping("user")
-    class TestUserController<T>() : UserServiceController<T, Map<String, String>>(
+    class TestUserController<T> : UserServiceController<T, Map<String, String>>(
         DummyUserPersistence(DummyPersistenceStore()),
-        DummyUserIndex(DummyIndexService<T, User<T>, Map<String, String>>()),
+        DummyUserIndex(DummyIndexService()),
         java.util.function.Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
 
-    class DummyAuthMetadataPersistence<T>(that: PersistenceStore<T, AuthMetadata<T>>) : PersistenceStore<T, AuthMetadata<T>> by that
+    class DummyAuthMetadataPersistence<T>(that: PersistenceStore<T, AuthMetadata<T>>) :
+        PersistenceStore<T, AuthMetadata<T>> by that
 
     @Controller
     @MessageMapping("persist.authmetadata")
-    class AuthMetaPersistenceController<T, V>() :
+    class AuthMetaPersistenceController<T> :
         PersistenceServiceController<T, AuthMetadata<T>>(DummyAuthMetadataPersistence(DummyPersistenceStore()))
 }
