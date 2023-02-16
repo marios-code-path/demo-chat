@@ -1,17 +1,13 @@
+package com.demo.chat.test.init
+
 import com.demo.chat.init.BaseApp
-import com.demo.chat.service.core.*
-import com.demo.chat.test.init.TestDummyControllerServices
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
-import java.util.*
 
-// TODO: use the dummyservers or mock the services
-// configured just before RequesterFactory = see TestClientServerConfiguration
-// TODO: refactor to use test components instead of PROD ones
 @SpringBootTest(classes = [BaseApp::class, TestConfigurationRSocket::class, TestDummyControllerServices::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
@@ -26,8 +22,8 @@ import java.util.*
         "spring.shell.interactive.enabled=false", "management.endpoints.enabled-by-default=false",
     ]
 )
-@ActiveProfiles("init")
-class ChatInitTests {
+@ActiveProfiles("shell")
+class ChatShellTests {
 
     @Test
     fun contextLoads() {

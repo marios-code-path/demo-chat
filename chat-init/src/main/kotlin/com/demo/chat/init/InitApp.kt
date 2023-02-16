@@ -75,6 +75,11 @@ class InitApp{
                 )
             ))
                 .defaultIfEmpty(emptyKey)
+                .onErrorResume { userService
+                    .findByUsername(ByHandleRequest(thisUser.handle))
+                    .map { u -> u.key }
+                    .last()
+                }
                 ?.block()
 
             identityKeys[identity] = thisUserKey!!
