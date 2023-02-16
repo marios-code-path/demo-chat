@@ -16,6 +16,7 @@
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
         <mainClass>com.demo.chat.init.BaseApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
+				<spring-shell.version>3.0.0</spring-shell.version>
     </properties>
     <profiles>
         <profile>
@@ -33,7 +34,7 @@
         <dependency>
             <groupId>org.springframework.shell</groupId>
             <artifactId>spring-shell-starter</artifactId>
-            <version>3.0.0</version>
+            <version>${spring-shell.version}</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
@@ -124,6 +125,18 @@
             <scope>compile</scope>
         </dependency>
     </dependencies>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.shell</groupId>
+        <artifactId>spring-shell-dependencies</artifactId>
+        <version>${spring-shell.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
