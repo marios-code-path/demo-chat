@@ -23,11 +23,11 @@ import java.util.*
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.service.core.key", "app.key.type=uuid"])
 class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
 
-    @Value("\${app.service.core.key:uuid}")
+    @Value("\${app.key.type:uuid}")
     private lateinit var keyType: String
 
     @BeforeAll

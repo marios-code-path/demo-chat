@@ -11,7 +11,7 @@ export APP_VERSION=0.0.1
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dserver.port=$((CORE_PORT+1)) -Dspring.rsocket.server.port=${CORE_PORT} \
--Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.composite.topic \
 -Dapp.service.composite.user -Dapp.service.composite.messaging \
 -Dapp.primary=core -Dspring.cloud.consul.host=${CONSUL_HOST} \

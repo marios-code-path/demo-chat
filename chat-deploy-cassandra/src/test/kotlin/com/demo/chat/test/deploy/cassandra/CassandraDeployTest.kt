@@ -21,7 +21,7 @@ import java.util.*
 @TestPropertySource(
     properties = [
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
-        "spring.shell.interactive.enabled=false", "app.service.core.key=uuid",
+        "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=uuid",
         "app.service.core.persistence", "app.service.core.secrets", "app.service.core.index"
     ]
 )

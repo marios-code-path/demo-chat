@@ -25,7 +25,7 @@ import java.util.*
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.key.type=uuid"])
 class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Autowired

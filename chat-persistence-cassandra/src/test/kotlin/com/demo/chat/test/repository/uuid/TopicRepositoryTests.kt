@@ -27,7 +27,7 @@ import java.util.*
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.key.type=uuid"])
 class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val ROOMNAME = "XYZ"

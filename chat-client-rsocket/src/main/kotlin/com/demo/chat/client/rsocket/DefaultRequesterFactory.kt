@@ -13,9 +13,7 @@ class DefaultRequesterFactory(
     private val connection: TransportFactory,
     private val clientProps: RSocketClientProperties
 ) : RequesterFactory {
-    init {
-        println("REQUESTER FACTORY")
-    }
+
     private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = LinkedHashMap()
 
     private fun getServicePair(serviceKey: String): Pair<String, Int> =

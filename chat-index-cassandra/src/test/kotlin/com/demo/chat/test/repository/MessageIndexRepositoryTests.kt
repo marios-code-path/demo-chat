@@ -32,7 +32,7 @@ import kotlin.streams.asSequence
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [IndexRepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.key.type=uuid"])
 class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val MSGTEXT = "SUP TEST"

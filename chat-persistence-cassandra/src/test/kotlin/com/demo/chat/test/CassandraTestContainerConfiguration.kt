@@ -20,7 +20,7 @@ import java.util.*
 open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
     val log = LoggerFactory.getLogger(this::class.qualifiedName)
 
-    @Value("\${app.service.core.key:uuid}")
+    @Value("\${app.key.type:uuid}")
     private lateinit var keyType: String
 
     // TODO convert to embedded.cassandra properties

@@ -23,7 +23,7 @@ import reactor.test.StepVerifier
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=long"])
+@TestPropertySource(properties = ["app.key.type=long"])
 class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

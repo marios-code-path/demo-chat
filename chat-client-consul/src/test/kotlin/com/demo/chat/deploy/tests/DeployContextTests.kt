@@ -10,7 +10,7 @@ import org.springframework.test.context.TestPropertySource
 )
 @TestPropertySource(
     properties = [
-        "app.service.core.key=long", "spring.cloud.consul.config.enabled=false",
+        "app.service.core.key","app.key.type=long", "spring.cloud.consul.config.enabled=false",
         "app.client=rsocket", "server.port=0", "management.endpoints.enabled-by-default=false",
         "app.rsocket.transport.insecure",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",

@@ -25,7 +25,7 @@ import java.util.stream.Stream
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=long"])
+@TestPropertySource(properties = ["app.key.type=long"])
 class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

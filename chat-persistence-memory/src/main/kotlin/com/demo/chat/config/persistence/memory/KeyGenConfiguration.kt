@@ -15,11 +15,11 @@ class KeyGenConfiguration {
     @Value("\${app.nodeid:0}")
     lateinit var nodeId: String
 
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
+    @ConditionalOnProperty("app.key.type", havingValue = "uuid")
     @Bean("KeyGenerator")
     fun uuidGenerator(): IKeyGenerator<UUID> = UUIDKeyGenerator(nodeId.toInt())
 
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    @ConditionalOnProperty("app.key.type", havingValue = "long")
     @Bean("KeyGenerator")
     fun longGenerator(): IKeyGenerator<Long> = LongKeyGenerator(nodeId.toInt())
 }

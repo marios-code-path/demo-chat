@@ -33,7 +33,7 @@ import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [RepositoryTestConfiguration::class]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.key.type=uuid"])
 class MessageRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val MSGTEXT = "SUP TEST"

@@ -14,13 +14,13 @@ import java.util.function.Supplier
 
 @Configuration
 open class TypeUtilConfiguration {
-    // TODO: change app.service.core.key to app.key.type
+
     @Bean("TypeUtil")
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
+    @ConditionalOnProperty("app.key.type", havingValue = "uuid")
     open fun uuidTypeUtil(): TypeUtil<UUID> = UUIDUtil()
 
     @Bean("TypeUtil")
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    @ConditionalOnProperty("app.key.type", havingValue = "long")
     open fun longTypeUtil(): TypeUtil<Long> = LongUtil()
 
     @Value("\${app.identity.anonymous:1}")

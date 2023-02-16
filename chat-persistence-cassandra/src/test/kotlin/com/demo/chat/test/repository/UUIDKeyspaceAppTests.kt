@@ -32,7 +32,7 @@ import java.util.*
         CorePersistenceServices::class
     ]
 )
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.service.core.key","app.key.type=uuid"])
 class UUIDKeyspaceAppTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Autowired

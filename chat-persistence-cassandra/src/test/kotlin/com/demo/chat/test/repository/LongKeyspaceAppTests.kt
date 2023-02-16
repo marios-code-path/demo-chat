@@ -31,7 +31,7 @@ import reactor.test.StepVerifier
         CorePersistenceServices::class
     ]
 )
-@TestPropertySource(properties = ["app.service.core.key=long"])
+@TestPropertySource(properties = ["app.service.core.key","app.key.type=long"])
 class LongKeyspaceAppTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

@@ -21,7 +21,7 @@ while getopts :ecdon:k:b: o; do
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
     e)
-      export EDGE_SERVICES="${EDGE_SERVICES} -Dapp.service.edge.user -Dapp.service.edge.topic -Dapp.service.edge.message"
+      export EDGE_SERVICES="${EDGE_SERVICES} -Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message -Dapp.service.composite.auth"
       ;;
     d)
       export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp"
@@ -63,8 +63,8 @@ export MAVEN_PROFILE=-Pdeploy
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.port=$((CORE_PORT+1)) \
 -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT} \
--Dapp.primary=core -Dspring.shell.interactive.enabled=false \
--Dapp.service.core.key=${KEYSPACE_TYPE} -Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=${KEYSPACE_TYPE} \
+-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES} \
 -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.config.import=optional:consul:"
 

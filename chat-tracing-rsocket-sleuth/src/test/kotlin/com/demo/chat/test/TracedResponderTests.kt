@@ -15,7 +15,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [
-        "app.service.core.key=long", "server.port=0", "management.endpoints.enabled-by-default=false",
+        "app.service.core.key","app.key.type=long", "server.port=0", "management.endpoints.enabled-by-default=false",
         "app.client.rsocket.core.persistence", "spring.rsocket.server.port=7890",
         "spring.cloud.service-registry.auto-registration.enabled=false", "app.rsocket.client.requester.factory=test",
         "spring.shell.interactive.enabled=false"]

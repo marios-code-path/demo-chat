@@ -24,7 +24,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [IndexRepositoryTestConfiguration::class])
-@TestPropertySource(properties = ["app.service.core.key=uuid"])
+@TestPropertySource(properties = ["app.key.type=uuid"])
 class MembershipIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Autowired
     lateinit var byMemberRepo: TopicMembershipByMemberRepository<UUID>

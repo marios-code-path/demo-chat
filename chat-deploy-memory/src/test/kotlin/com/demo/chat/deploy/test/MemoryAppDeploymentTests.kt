@@ -16,7 +16,7 @@ import org.springframework.test.context.TestPropertySource
     properties = [
         "app.proto=rsocket",
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
-        "spring.shell.interactive.enabled=false", "app.service.core.key=long",
+        "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=long",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
         "app.service.core.secrets",
         "app.service.composite.user", "app.service.composite.topic", "app.service.composite.message",

@@ -27,7 +27,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [
-        "app.service.core.key=long", "app.client.rsocket", "app.primary=init",
+        "app.key.type=long", "app.client.rsocket", "app.primary=init",
         "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",

@@ -17,11 +17,11 @@ class KeyGenConfiguration {
     lateinit var nodeId: String
 
     @Bean("KeyGenerator")
-    @ConditionalOnProperty("app.service.core.key", havingValue = "long")
+    @ConditionalOnProperty("app.key.type", havingValue = "long")
     fun longKeyGen(): IKeyGenerator<Long> = LongKeyGenerator(nodeId.toInt())
 
     @Bean("KeyGenerator")
-    @ConditionalOnProperty("app.service.core.key", havingValue = "uuid")
+    @ConditionalOnProperty("app.key.type", havingValue = "uuid")
     fun uuidKeyGen(): IKeyGenerator<UUID> { return CassandraUUIDKeyGenerator() }
 
 }
