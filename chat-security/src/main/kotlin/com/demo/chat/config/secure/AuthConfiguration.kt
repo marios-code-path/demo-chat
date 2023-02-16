@@ -2,7 +2,6 @@ package com.demo.chat.config.secure
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
@@ -16,7 +15,7 @@ import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.demo.chat.service.security.AuthorizationService
-import com.demo.chat.service.security.UserCredentialSecretsStore
+import com.demo.chat.service.security.SecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -48,7 +47,7 @@ class AuthConfiguration<T>(
     @Bean
     fun authenticationService(
         userIndex: UserIndexService<T, IndexSearchRequest>,
-        secretStore: UserCredentialSecretsStore<T>
+        secretStore: SecretsStore<T>
     ) = AbstractAuthenticationService(
         userIndex,
         secretStore,
@@ -60,7 +59,7 @@ class AuthConfiguration<T>(
     // can use an authorization server instead.
     fun authenticationManager(
         userIndex: UserIndexService<T, IndexSearchRequest>,
-        secretStore: UserCredentialSecretsStore<T>,
+        secretStore: SecretsStore<T>,
         userPersistence: UserPersistence<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
     ) =

@@ -1,15 +1,12 @@
 package com.demo.chat.init.commands
 
-import com.demo.chat.domain.ByHandleRequest
-import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.AdminKey
 import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.UserIndexService
-import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
@@ -18,6 +15,7 @@ import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
+import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
@@ -27,8 +25,8 @@ class UserCommands<T>(
     private val passwdStore: SecretsStore<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: AnonymousKey<T>,
-    private val adminKey: AdminKey<T>,
+    private val anonKey: Supplier<AnonymousKey<T>>,
+    private val adminKey: Supplier<AdminKey<T>>,
     private val keyGen: IKeyGenerator<T>
 ) {
 

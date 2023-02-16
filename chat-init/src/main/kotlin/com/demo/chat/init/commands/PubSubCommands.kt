@@ -9,13 +9,14 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
+import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
 class PubSubCommands<T>(
     private val messageService: ChatMessageService<T, String>,
-    private val anonKey: AnonymousKey<T>,
-    private val adminKey: AdminKey<T>,
+    private val anonKey: Supplier<AnonymousKey<T>>,
+    private val adminKey: Supplier<AdminKey<T>>
     ) {
 
     @ShellMethod("Send a Message")
@@ -24,7 +25,7 @@ class PubSubCommands<T>(
         @ShellOption messageText: String
     ) {
         messageService
-            .send(MessageSendRequest(messageText, adminKey.id, topicId))
+            .send(MessageSendRequest(messageText, adminKey.get().id, topicId))
             .block()
     }
 

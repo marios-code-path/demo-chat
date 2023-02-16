@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
+import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
@@ -22,8 +23,8 @@ class TopicCommands<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: AnonymousKey<T>,
-    private val adminKey: AdminKey<T>,
+    private val anonKey: Supplier<AnonymousKey<T>>,
+    private val adminKey: Supplier<AdminKey<T>>,
     private val keyGenerator: IKeyGenerator<T>
 ) {
 
