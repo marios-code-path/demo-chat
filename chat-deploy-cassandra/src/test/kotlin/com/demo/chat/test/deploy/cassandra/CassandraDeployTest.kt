@@ -22,7 +22,9 @@ import java.util.*
     properties = [
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
         "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=uuid",
-        "app.service.core.persistence", "app.service.core.secrets", "app.service.core.index"
+        "app.service.core.persistence", "app.service.core.secrets", "app.service.core.index",
+        "app.controller.persistence", "app.controller.index", "app.controller.key",
+        "app.controller.secrets"
     ]
 )
 class CassandraDeployTest : CassandraContainerBase() {

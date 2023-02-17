@@ -11,6 +11,6 @@ import org.springframework.stereotype.Controller
 open class PubSubControllerConfiguration {
     @Controller
     @MessageMapping("pubsub")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["pubsub"])
     class TopicPubSubController<T, V>(that: TopicPubSubService<T, V>) : TopicPubSubServiceController<T, V>(that)
 }

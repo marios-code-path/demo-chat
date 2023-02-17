@@ -12,25 +12,25 @@ import org.springframework.stereotype.Controller
 open class IndexControllersConfiguration {
     @Controller
     @MessageMapping("index.user")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     class UserIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, User<T>, Q>(s.userIndex())
 
     @Controller
     @MessageMapping("index.message")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     class MessageIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, Message<T, V>, Q>(s.messageIndex())
 
     @Controller
     @MessageMapping("index.topic")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     class TopicIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, MessageTopic<T>, Q>(s.topicIndex())
 
     @Controller
     @MessageMapping("index.authmetadata")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     class AuthMetaIndexController<T, V, Q:IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
         IndexServiceController<T, AuthMetadata<T>, Q>(s.authMetadataIndex())
 }

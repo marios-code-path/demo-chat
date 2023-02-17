@@ -7,6 +7,6 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
 @Controller
-@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+@ConditionalOnProperty(prefix = "app.controller", name = ["secrets"])
 @MessageMapping("secrets")
 class SecretsStoreControllerConfiguration<T>(private val that: SecretsStore<T>) : SecretsStoreMapping<T>, SecretsStore<T> by that

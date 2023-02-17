@@ -14,7 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest
 		"management.endpoints.enabled-by-default=false",
 		"app.service.core.key", "app.key.type=long",
 		"app.service.core.index","app.service.core.persistence","app.service.composite.auth",
-		"app.service.core.secrets",
+		"app.service.core.secrets", // add clients
 		"spring.cloud.consul.enabled=false","spring.cloud.consul.config.enabled=false",
 		"spring.cloud.config.enabled=false", "spring.cloud.config.import-check.enabled=false"])
 class AuthorizationServerDeployTests {

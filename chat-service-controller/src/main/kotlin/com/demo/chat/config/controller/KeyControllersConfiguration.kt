@@ -11,7 +11,7 @@ import org.springframework.stereotype.Controller
 open class KeyControllersConfiguration {
     @Controller
     @MessageMapping("key")
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
+    @ConditionalOnProperty(prefix = "app.controller", name = ["key"])
     class KeyController<T>(factory: KeyServiceBeans<T>) :
             KeyServiceController<T>(factory.keyService())
 }

@@ -21,7 +21,7 @@ while getopts :ecdon:k:b: o; do
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
     e)
-      export EDGE_SERVICES="${EDGE_SERVICES} -Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message -Dapp.service.composite.auth"
+      export COMPOSITE_SERVICES="${COMPOSITE_SERVICES} -Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message -Dapp.service.composite.auth"
       ;;
     d)
       export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp"
@@ -58,14 +58,19 @@ export APP_IMAGE_NAME="core-services"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.App"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy
+export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+                      -Dapp.service.core.persistence -Dapp.service.core.secrets"
+export CORE_CONTROLLERS="-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets"
+export COMPOSITE_CONTROLLERS="-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message -Dapp.controller.auth"
 
 # makes no use of cloud configuration or config-maps
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.port=$((CORE_PORT+1)) \
 -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT} \
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=${KEYSPACE_TYPE} \
--Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
--Dapp.service.core.persistence -Dapp.service.core.secrets ${EDGE_SERVICES} \
+${CORE_SERVICES} \
+${COMPOSITE_SERVICES} \
+${CORE_CONTROLLERS} \
 -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.config.import=optional:consul:"
 
 #set -x

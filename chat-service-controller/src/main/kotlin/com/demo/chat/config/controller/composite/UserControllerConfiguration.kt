@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["user"])
+@ConditionalOnProperty(prefix = "app.controller", name = ["user"])
 @Controller
 @MessageMapping("user")
 open class EdgeUserControllerConfiguration<T, V>(

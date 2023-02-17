@@ -12,7 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["topic"])
+@ConditionalOnProperty(prefix = "app.controller", name = ["topic"])
 @Controller
 @MessageMapping("topic")
 open class TopicControllerConfiguration<T, V>(
