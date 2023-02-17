@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 
+// Deprecated RSocketAppProperties has been Deprectaed
 @ExtendWith(SpringExtension::class)
 @SpringJUnitConfig(initializers = [CoreRSocketClientPropertiesTests.TestProperties::class])
 @EnableConfigurationProperties(RSocketAppProperties::class)

@@ -1,5 +1,6 @@
 package com.demo.chat.client.rsocket.clients
 
+import com.demo.chat.client.rsocket.RSocketProperty
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.core.KeyClient
 import com.demo.chat.client.rsocket.clients.core.TopicPubSubClient
@@ -21,7 +22,7 @@ class CoreRSocketClients<T, V, Q>(
     private val typeUtil: TypeUtil<T>,
 ) : CoreServices<T, V, Q> {
 
-    private fun serviceKey(key: String) = clientProperties.getServiceConfig(key)
+    private fun serviceKey(key: String): RSocketProperty = clientProperties.getServiceConfig(key)
 
     private val secretsProps = serviceKey("secrets")
     private val persistenceProps = serviceKey("persistence")

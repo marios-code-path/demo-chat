@@ -13,7 +13,7 @@ import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.client", name = ["rsocket"])
+@ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
 @EnableConfigurationProperties(RSocketClientProperties::class)
 class ClientConfiguration {
 

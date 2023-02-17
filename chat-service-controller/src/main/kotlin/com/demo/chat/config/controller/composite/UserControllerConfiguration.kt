@@ -12,7 +12,7 @@ import org.springframework.stereotype.Controller
 @ConditionalOnProperty(prefix = "app.controller", name = ["user"])
 @Controller
 @MessageMapping("user")
-open class EdgeUserControllerConfiguration<T, V>(
+open class UserControllerConfiguration<T, V>(
     s: PersistenceServiceBeans<T, V>,
     x: IndexServiceBeans<T, V, IndexSearchRequest>,
 ) :

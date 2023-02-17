@@ -41,7 +41,8 @@ spring:
         data-key: data
 
 app:
-  proto: rsocket
+  client:
+    protocol: rsocket
   rsocket:
     config:
       core:

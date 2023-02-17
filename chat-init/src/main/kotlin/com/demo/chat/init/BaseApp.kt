@@ -26,7 +26,9 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
+import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Operators
 
 @SpringBootApplication()
 @EnableConfigurationProperties(BootstrapProperties::class, RSocketClientProperties::class)
@@ -53,6 +55,7 @@ class BaseApp {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
+            Hooks.onOperatorDebug()
             runApplication<BaseApp>(*args)
 
         }

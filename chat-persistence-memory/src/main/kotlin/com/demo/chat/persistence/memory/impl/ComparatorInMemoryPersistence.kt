@@ -19,7 +19,7 @@ open class ComparatorInMemoryPersistence<T, E>(
                 return@create
             }
         }
-
+    println("Putting : ${keyFromEntity.apply(ent).id}")
         map[keyFromEntity.apply(ent).id] = ent
         sink.success()
     }

@@ -24,7 +24,6 @@ management:
     enabled-by-default: false
 
 
-
 app:
   rsocket:
     client:
@@ -50,3 +49,6 @@ app:
         user:
           dest: core-service-rsocket
           prefix: user.
+        secrets:
+          dest: core-service-rsocket
+          prefix: secrets.

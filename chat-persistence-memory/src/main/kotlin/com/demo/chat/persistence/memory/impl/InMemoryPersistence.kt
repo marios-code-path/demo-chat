@@ -17,7 +17,7 @@ open class InMemoryPersistence<T, E>(
 
     override fun key(): Mono<out Key<T>> = keyService.key(entityClass)
 
-    @Synchronized
+    //@Synchronized
     override fun add(ent: E): Mono<Void> = Mono.create {
         map[keyFromEntity.apply(ent).id] = ent
         it.success()
@@ -29,6 +29,7 @@ open class InMemoryPersistence<T, E>(
     }
 
     override fun get(key: Key<T>): Mono<out E> = Mono.create {
+        println("Looking for a key: ${key.id}")
         when (map.containsKey(key.id)) {
             true -> it.success(map[key.id])
             else -> it.success()

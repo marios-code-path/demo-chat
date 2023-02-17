@@ -20,9 +20,6 @@ while getopts :ecdon:k:b: o; do
     b)
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
-    e)
-      export COMPOSITE_SERVICES="${COMPOSITE_SERVICES} -Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message -Dapp.service.composite.auth"
-      ;;
     d)
       export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp"
       ;;
@@ -34,7 +31,6 @@ while getopts :ecdon:k:b: o; do
       -n name == Name of container
       -c == enables Discovery with consul
       -d == export rsocket TCP to localhost
-      -e == enables core edge (message, user, topic) services
       -o == disables the build step
 
       (!!) required
@@ -58,10 +54,11 @@ export APP_IMAGE_NAME="core-services"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.App"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy
-export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
-                      -Dapp.service.core.persistence -Dapp.service.core.secrets"
+export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index -Dapp.service.core.persistence -Dapp.service.core.secrets"
 export CORE_CONTROLLERS="-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets"
-export COMPOSITE_CONTROLLERS="-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message -Dapp.controller.auth"
+export COMPOSITE_CONTROLLERS="-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
+export COMPOSITE_SERVICES="-Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message"
+#-Dapp.service.composite.auth"
 
 # makes no use of cloud configuration or config-maps
 # TODO: difference between '-D' and '--'
@@ -71,6 +68,7 @@ export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.p
 ${CORE_SERVICES} \
 ${COMPOSITE_SERVICES} \
 ${CORE_CONTROLLERS} \
+${COMPOSITE_CONTROLLERS} \
 -Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.config.import=optional:consul:"
 
 #set -x

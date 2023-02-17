@@ -7,4 +7,4 @@ export CONSUL_PORT=8500
 # with EDGE_SERVICES enabled
 # with exposed rSOCKET ports on 6970
 # with consul discovery enabled
-./build-memory-core.sh -n core_services -k long -b rundocker -e -d -c $@
+./build-memory-core.sh -n core_services -k long -b rundocker -d -c $@
