@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.controller.edge
+package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message

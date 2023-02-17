@@ -1,14 +1,8 @@
-package com.demo.chat.test.rsocket.controller.edge
+package com.demo.chat.test.rsocket.controller.composite
 
 
-import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.ByNameRequest
-import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.controller.composite.TopicServiceController
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.TopicMembership
-import com.demo.chat.domain.TopicMemberships
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
@@ -34,8 +28,8 @@ import java.util.function.Function
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(MockCoreServicesConfiguration::class, EdgeTopicControllerTests.EdgeTopicControllerConfiguration::class)
-open class EdgeTopicControllerTests : RSocketControllerTestBase() {
+@Import(MockCoreServicesConfiguration::class, TopicControllerTests.TestTopicControllerConfiguration::class)
+open class TopicControllerTests : RSocketControllerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired
@@ -48,7 +42,7 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     lateinit var userPersistence: UserPersistence<UUID>
 
     @Autowired
-    lateinit var topicServiceTopic: TopicPubSubService<UUID, String>
+    lateinit var pubsub: TopicPubSubService<UUID, String>
 
     @Autowired
     lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
@@ -69,29 +63,6 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     val roomWithMembers = TestChatMessageTopic(
             TestChatRoomKey(randomTopicId, randomRoomName),
             true)
-
-    @Test
-    fun `should create a room receive Void response`() {
-        BDDMockito
-                .given(topicPersistence.add(TestBase.anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(topicServiceTopic.open(TestBase.anyObject()))
-                .willReturn(Mono.empty())
-
-        BDDMockito
-                .given(topicPersistence.key())
-                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
-
-        StepVerifier.create(
-                requester.route("topic-add")
-                        .data(ByNameRequest(randomRoomName))
-                        .retrieveMono(Void::class.java)
-        )
-                .expectSubscription()
-                .verifyComplete()
-    }
 
     @Test
     fun `should receive list of rooms`() {
@@ -120,7 +91,77 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     }
 
     @Test
+    fun `should create and join a room`() {
+        val theRoomId = UUID.randomUUID()
+
+        BDDMockito
+            .given(topicPersistence.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito
+            .given(pubsub.open(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito
+            .given(topicPersistence.key())
+            .willReturn(Mono.just(Key.funKey(theRoomId)))
+
+        StepVerifier.create(
+            requester.route("topic-add")
+                .data(ByNameRequest(randomRoomName))
+                .retrieveMono(Void::class.java)
+        )
+            .expectSubscription()
+            .verifyComplete()
+
+        val topicRoom = MessageTopic.create(Key.funKey(theRoomId), randomRoomName)
+
+        BDDMockito
+            .given(topicPersistence.get(TestBase.anyObject()))
+            .willReturn(Mono.just(topicRoom))
+        BDDMockito
+            .given(membershipPersistence.key())
+            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+        BDDMockito
+            .given(membershipPersistence.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(pubsub.sendMessage(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(pubsub.subscribe(TestBase.anyObject(), TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+
+        StepVerifier
+            .create(
+                requester
+                    .route("topic-join")
+                    .data(MembershipRequest(randomUserId, randomTopicId))
+                    .retrieveMono(Void::class.java)
+            )
+            .expectSubscription()
+            .verifyComplete()
+    }
+
+    @Test
     fun `should not join a non existent Room`() {
+        BDDMockito
+            .given(topicPersistence.get(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(membershipPersistence.key())
+            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+        BDDMockito
+            .given(membershipPersistence.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(pubsub.sendMessage(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(pubsub.subscribe(TestBase.anyObject(), TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
         StepVerifier
                 .create(
                         requester
@@ -186,12 +227,12 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
     }
 
     @TestConfiguration
-    class EdgeTopicControllerConfiguration {
+    class TestTopicControllerConfiguration {
         @Controller
         class TestTopicController(
             topicP: TopicPersistence<UUID>,
             topicInd: TopicIndexService<UUID, Map<String, String>>,
-            topicSvc: TopicPubSubService<UUID, String>,
+            pubsub: TopicPubSubService<UUID, String>,
             userP: UserPersistence<UUID>,
             membershipP: MembershipPersistence<UUID>,
             membershipInd: MembershipIndexService<UUID, Map<String, String>>,
@@ -199,13 +240,13 @@ open class EdgeTopicControllerTests : RSocketControllerTestBase() {
                 TopicServiceController<UUID, String, Map<String, String>>(
                         topicP,
                         topicInd,
-                        topicSvc,
+                        pubsub,
                         userP,
                         membershipP,
                         membershipInd,
                         { "" },
                         Function { i -> mapOf(Pair(TopicIndexService.NAME, i.name)) },
-                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, i.id.toString())) }
+                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, UUIDUtil().toString(i.id))) }
                 )
     }
 }

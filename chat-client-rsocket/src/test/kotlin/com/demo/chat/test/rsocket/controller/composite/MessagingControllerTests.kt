@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.controller.edge
+package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
@@ -31,8 +31,8 @@ import java.util.stream.Stream
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 @Import(MockCoreServicesConfiguration::class,
-        EdgeMessagingControllerTests.EdgeMessagingTestConfiguration::class)
-class EdgeMessagingControllerTests : RSocketControllerTestBase() {
+        MessagingControllerTests.EdgeMessagingTestConfiguration::class)
+class MessagingControllerTests : RSocketControllerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 

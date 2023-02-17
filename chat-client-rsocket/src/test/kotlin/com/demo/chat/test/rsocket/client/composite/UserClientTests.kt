@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.client.edge
+package com.demo.chat.test.rsocket.client.composite
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
@@ -7,8 +7,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
-import com.demo.chat.test.rsocket.controller.edge.EdgeUserControllerTests
-import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
+import com.demo.chat.test.rsocket.controller.composite.UserControllerTests
+import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -27,9 +27,9 @@ import java.util.*
 @Import(
     TestConfigurationRSocket::class,
     MockCoreServicesConfiguration::class,
-    EdgeUserControllerTests.TestConfiguration::class
+    UserControllerTests.TestConfiguration::class
 )
-class UserClientTests : EdgeUserControllerTests() {
+class UserClientTests : UserControllerTests() {
     private lateinit var client: UserClient<UUID>
     private val svcPrefix = ""
 

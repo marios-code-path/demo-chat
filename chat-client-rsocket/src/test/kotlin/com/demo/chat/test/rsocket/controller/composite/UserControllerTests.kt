@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.controller.edge
+package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
@@ -29,8 +29,8 @@ import java.util.function.Function
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(MockCoreServicesConfiguration::class, EdgeUserControllerTests.TestConfiguration::class)
-open class EdgeUserControllerTests : RSocketControllerTestBase() {
+@Import(MockCoreServicesConfiguration::class, UserControllerTests.TestConfiguration::class)
+open class UserControllerTests : RSocketControllerTestBase() {
     @Autowired
     lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 

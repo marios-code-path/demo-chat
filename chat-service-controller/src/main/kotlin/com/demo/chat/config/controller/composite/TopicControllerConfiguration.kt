@@ -24,11 +24,11 @@ open class TopicControllerConfiguration<T, V>(
 ) : TopicServiceController<T, V, IndexSearchRequest>(
     topicPersistence = s.topicPersistence(),
     topicIndex = x.topicIndex(),
-    messaging = p,
+    pubsub = p,
     userPersistence = s.userPersistence(),
     membershipPersistence = s.membershipPersistence(),
     membershipIndex = x.membershipIndex(),
     emptyDataCodec = { v.fromString("") },
     topicNameToQuery = { r -> IndexSearchRequest(TopicIndexService.NAME, r.name, 100) },
-    membershipIdToQuery = { mid -> IndexSearchRequest(MembershipIndexService.MEMBER, t.toString(mid.id), 100) }
+    membershipIdToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBER, t.toString(req.id), 100) }
 )

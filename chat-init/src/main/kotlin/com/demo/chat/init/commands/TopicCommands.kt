@@ -29,7 +29,7 @@ class TopicCommands<T>(
 ) {
 
     @ShellMethod("show topics")
-    fun allTopics() = topicService
+    fun showTopics() = topicService
         .listRooms()
         .doOnNext { topic ->
             println("${topic.key.id} | ${topic.data}")

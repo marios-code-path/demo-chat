@@ -1,4 +1,4 @@
-package com.demo.chat.test
+package com.demo.chat.test.memory
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -12,7 +12,7 @@ import kotlin.math.abs
 import kotlin.random.Random
 
 
-class MemoryUserIndexTests : IndexTests<Long, User<Long>, IndexSearchRequest>(
+class UserIndexTests : IndexTests<Long, User<Long>, IndexSearchRequest>(
         LuceneIndex<Long, User<Long>>(
                 { t ->
                     listOf(

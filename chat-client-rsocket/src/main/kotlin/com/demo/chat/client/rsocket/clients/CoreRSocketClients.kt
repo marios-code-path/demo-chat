@@ -23,6 +23,7 @@ class CoreRSocketClients<T, V, Q>(
 
     private fun serviceKey(key: String) = clientProperties.getServiceConfig(key)
 
+    private val secretsProps = serviceKey("secrets")
     private val persistenceProps = serviceKey("persistence")
     private val indexProps = serviceKey("index")
     private val pubSubProps = serviceKey("pubsub")
@@ -41,7 +42,7 @@ class CoreRSocketClients<T, V, Q>(
         TopicPubSubClient("${pubSubProps.prefix}", pubSubRequester(), typeUtil)
 
     override fun secretsStore(): SecretsStore<T> =
-        SecretsClient("${persistenceProps.prefix}", secretsRequester())
+        SecretsClient("${secretsProps.prefix}", secretsRequester())
 
     override fun userPersistence(): UserPersistence<T> =
         UserPersistenceClient("${persistenceProps.prefix}user.", persistenceRequester())

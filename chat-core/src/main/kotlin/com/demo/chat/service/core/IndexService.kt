@@ -58,9 +58,9 @@ interface MembershipIndexService<T, Q> : IndexService<T, TopicMembership<T>, Q> 
 // TODO: that query needs to be Map<String, String> not String, T
 interface MessageIndexService<T, V, Q> : IndexService<T, Message<T, V>, Q> {
     companion object {
-        const val ID = "msgId"
-        const val TOPIC = "topicId"
-        const val USER = "userId"
+        const val ID = "id"
+        const val TOPIC = "topic"
+        const val USER = "user"
         const val DATA = "data"
     }
 }

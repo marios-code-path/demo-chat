@@ -28,7 +28,7 @@ import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import reactor.core.publisher.Mono
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.init.commands"])
+@SpringBootApplication()
 @EnableConfigurationProperties(BootstrapProperties::class, RSocketClientProperties::class)
 @Import(
     // Serialization

@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.client.edge
+package com.demo.chat.test.rsocket.client.composite
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.client.rsocket.clients.composite.MessagingClient
@@ -10,8 +10,8 @@ import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocket
-import com.demo.chat.test.rsocket.controller.edge.EdgeMessagingControllerTests
-import com.demo.chat.test.rsocket.controller.edge.MockCoreServicesConfiguration
+import com.demo.chat.test.rsocket.controller.composite.MessagingControllerTests
+import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -32,7 +32,7 @@ import java.util.stream.Stream
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(TestConfigurationRSocket::class,
         MockCoreServicesConfiguration::class,
-        EdgeMessagingControllerTests.EdgeMessagingTestConfiguration::class
+        MessagingControllerTests.EdgeMessagingTestConfiguration::class
 )
 class MessagingClientTests : RSocketTestBase() {
     @Autowired

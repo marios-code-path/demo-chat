@@ -1,4 +1,4 @@
-package com.demo.chat.test.rsocket.controller.edge
+package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules

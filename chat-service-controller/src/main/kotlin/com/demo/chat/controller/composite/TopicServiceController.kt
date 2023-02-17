@@ -30,7 +30,7 @@ data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: 
 open class TopicServiceController<T, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
     private val topicIndex: TopicIndexService<T, Q>,
-    private val messaging: TopicPubSubService<T, V>,
+    private val pubsub: TopicPubSubService<T, V>,
     private val userPersistence: UserPersistence<T>,
     private val membershipPersistence: MembershipPersistence<T>,
     private val membershipIndex: MembershipIndexService<T, Q>,
@@ -50,7 +50,7 @@ open class TopicServiceController<T, V, Q>(
                     .flatMap {
                         topicIndex.add(room)
                     }
-                    .then(messaging.open(key.id))
+                    .then(pubsub.open(key.id))
                     .map { key }
             }
 
@@ -60,8 +60,8 @@ open class TopicServiceController<T, V, Q>(
             .flatMap {
                 topicPersistence.rem(it.key)
                     .then(topicIndex.rem(it.key))
-                    .then(messaging.unSubscribeAllIn(it.key.id))
-                    .then(messaging.close(it.key.id))
+                    .then(pubsub.unSubscribeAllIn(it.key.id))
+                    .then(pubsub.close(it.key.id))
             }
             .then()
 
@@ -92,14 +92,14 @@ open class TopicServiceController<T, V, Q>(
                         membershipPersistence
                             .add(TopicMembership.create(key.id, req.roomId, req.uid))
                             .thenMany(
-                                messaging
+                                pubsub
                                     .sendMessage(
                                         JoinAlert(
                                             MessageKey.create(key.id, req.roomId, req.uid),
                                             emptyDataCodec.get()
                                         )
                                     )
-                                    .then(messaging.subscribe(req.uid, req.roomId))
+                                    .then(pubsub.subscribe(req.uid, req.roomId))
                             )
                             .then()
                     }
@@ -112,14 +112,14 @@ open class TopicServiceController<T, V, Q>(
             .flatMap { m ->
                 membershipPersistence.rem(Key.funKey(m.key))
                     .thenMany(
-                        messaging
+                        pubsub
                             .sendMessage(
                                 LeaveAlert(
                                     MessageKey.create(m.key, m.member, m.memberOf),
                                     emptyDataCodec.get()
                                 )
                             )
-                            .then(messaging.unSubscribe(m.member, m.memberOf))
+                            .then(pubsub.unSubscribe(m.member, m.memberOf))
                     )
                     .then()
 
