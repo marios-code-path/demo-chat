@@ -15,7 +15,7 @@ open class MessagingController<T, V, Q>(
     private val messageIndex: MessageIndexService<T, V, Q>,
     private val messagePersistence: MessagePersistence<T, V>,
     private val topicMessaging: TopicPubSubService<T, V>,
-    private val messageIdToQuery: Function<ByIdRequest<T>, Q>,
+    private val topicIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatMessageServiceMapping<T, V> {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -23,7 +23,7 @@ open class MessagingController<T, V, Q>(
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
         Flux.concat(
             messageIndex
-                .findBy(messageIdToQuery.apply(req))
+                .findBy(topicIdToQuery.apply(req))
                 .collectList()
                 .flatMapMany { messageKeys ->
                     messagePersistence.byIds(messageKeys)
@@ -47,8 +47,7 @@ open class MessagingController<T, V, Q>(
                     messagePersistence.add(sending(it.id)),
                     messageIndex.add(sending(it.id)),
                     topicMessaging.sendMessage(sending(it.id))
-                )
-                    .then()
+                ).then()
             }
     }
 }

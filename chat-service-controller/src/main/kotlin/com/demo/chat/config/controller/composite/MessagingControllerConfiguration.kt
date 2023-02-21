@@ -23,5 +23,5 @@ class MessagingControllerConfiguration<T, V>(
     messageIndex = x.messageIndex(),
     messagePersistence = s.messagePersistence(),
     topicMessaging = p,
-    messageIdToQuery = { r -> IndexSearchRequest(MessageIndexService.ID, t.toString(r.id), 100) }
+    topicIdToQuery = { r -> IndexSearchRequest(MessageIndexService.TOPIC, t.toString(r.id), 100) }
 )

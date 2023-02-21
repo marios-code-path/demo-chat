@@ -5,7 +5,9 @@ import com.demo.chat.service.core.PersistenceStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import reactor.test.StepVerifier
+import reactor.test.StepVerifier.Step
 import java.util.function.Supplier
 
 
@@ -30,9 +32,28 @@ open class KeyAwarePersistenceTestBase<K, V>(
             }
             .verifyComplete()
     }
+
+    @Test
+    fun `add one find by ids`() {
+
+        val byIds = store.add(valCodec.get())
+            .thenMany(store.all())
+            .collectList()
+            .flatMapMany { list ->
+                val ids = list.map { keyFromEntity(it) }
+                store.byIds(ids)
+            }
+
+        StepVerifier
+            .create(byIds)
+            .expectNextCount(1)
+            .verifyComplete()
+
+    }
 }
 
 @Disabled
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 open class PersistenceTestBase<K, V>(
     val valCodec: Supplier<V>,
     val store: PersistenceStore<K, V>,
@@ -88,4 +109,5 @@ open class PersistenceTestBase<K, V>(
             .create(keyPub)
             .verifyComplete()
     }
+
 }

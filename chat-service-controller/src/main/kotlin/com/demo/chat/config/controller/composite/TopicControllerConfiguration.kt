@@ -15,20 +15,19 @@ import org.springframework.stereotype.Controller
 @ConditionalOnProperty(prefix = "app.controller", name = ["topic"])
 @Controller
 @MessageMapping("topic")
-open class TopicControllerConfiguration<T, V>(
-    s: PersistenceServiceBeans<T, V>,
-    x: IndexServiceBeans<T, V, IndexSearchRequest>,
-    p: TopicPubSubService<T, V>,
+open class TopicControllerConfiguration<T>(
+    s: PersistenceServiceBeans<T, String>,
+    x: IndexServiceBeans<T, String, IndexSearchRequest>,
+    p: TopicPubSubService<T, String>,
     t: TypeUtil<T>,
-    v: TypeUtil<V>
-) : TopicServiceController<T, V, IndexSearchRequest>(
+) : TopicServiceController<T, String, IndexSearchRequest>(
     topicPersistence = s.topicPersistence(),
     topicIndex = x.topicIndex(),
     pubsub = p,
     userPersistence = s.userPersistence(),
     membershipPersistence = s.membershipPersistence(),
     membershipIndex = x.membershipIndex(),
-    emptyDataCodec = { v.fromString("") },
+    emptyDataCodec = { "" },
     topicNameToQuery = { r -> IndexSearchRequest(TopicIndexService.NAME, r.name, 100) },
-    membershipIdToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBER, t.toString(req.id), 100) }
+    memberOfIdToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBEROF, t.toString(req.id), 100) }
 )

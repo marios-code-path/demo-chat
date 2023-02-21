@@ -27,6 +27,11 @@ open class LuceneIndex<T, E>(
     val directory = ByteBuffersDirectory()
     private val writer = IndexWriter(directory, IndexWriterConfig(analyzer))
 
+    init {
+        writer.deleteAll()
+        writer.commit()
+    }
+
     fun onClose() {
         writer.use {
             it.close()
@@ -55,6 +60,7 @@ open class LuceneIndex<T, E>(
         writer.commit()
 
         sink.success()
+
     }
 
     override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> = Flux.create { sink ->

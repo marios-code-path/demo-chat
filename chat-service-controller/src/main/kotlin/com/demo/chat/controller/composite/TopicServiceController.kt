@@ -36,23 +36,22 @@ open class TopicServiceController<T, V, Q>(
     private val membershipIndex: MembershipIndexService<T, Q>,
     private val emptyDataCodec: Supplier<V>,
     private val topicNameToQuery: Function<ByNameRequest, Q>,
-    private val membershipIdToQuery: Function<ByIdRequest<T>, Q>,
+    private val memberOfIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatTopicServiceMapping<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun addRoom(req: ByNameRequest): Mono<out Key<T>> =
         topicPersistence
             .key()
-            .flatMap { key ->
-                val room = MessageTopic.create(Key.funKey(key.id), req.name)
+            .map { key -> MessageTopic.create(key, req.name)}
+            .flatMap { room ->
                 topicPersistence
                     .add(room)
-                    .flatMap {
-                        topicIndex.add(room)
-                    }
-                    .then(pubsub.open(key.id))
-                    .map { key }
+                    .then(topicIndex.add(room))
+                    .then(pubsub.open(room.key.id))
+                    .then(Mono.just(room.key))
             }
+
 
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
         topicPersistence
@@ -81,29 +80,28 @@ open class TopicServiceController<T, V, Q>(
                 topicPersistence.get(it)
             }
 
-    override fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
-        topicPersistence
+    override fun joinRoom(req: MembershipRequest<T>): Mono<Void> {
+        return topicPersistence
             .get(Key.funKey(req.roomId))
             .switchIfEmpty(Mono.error(NotFoundException))
-            .then(
+            .then(membershipPersistence.key())
+            .flatMapMany { key ->
                 membershipPersistence
-                    .key()
-                    .flatMap { key ->
-                        membershipPersistence
-                            .add(TopicMembership.create(key.id, req.roomId, req.uid))
-                            .thenMany(
-                                pubsub
-                                    .sendMessage(
-                                        JoinAlert(
-                                            MessageKey.create(key.id, req.roomId, req.uid),
-                                            emptyDataCodec.get()
-                                        )
-                                    )
-                                    .then(pubsub.subscribe(req.uid, req.roomId))
+                    .add(TopicMembership.create(key.id, req.uid, req.roomId))
+                    .then(membershipIndex.add(TopicMembership.create(key.id, req.uid, req.roomId)))
+                    .then(
+                        pubsub
+                            .sendMessage(
+                                JoinAlert(
+                                    MessageKey.create(key.id, req.uid, req.roomId),
+                                    emptyDataCodec.get()
+                                )
                             )
-                            .then()
-                    }
-            )
+
+                    )
+            }
+            .then(pubsub.subscribe(req.uid, req.roomId))
+    }
 
 
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
@@ -111,7 +109,7 @@ open class TopicServiceController<T, V, Q>(
             .get(Key.funKey(req.roomId))
             .flatMap { m ->
                 membershipPersistence.rem(Key.funKey(m.key))
-                    .thenMany(
+                    .then(
                         pubsub
                             .sendMessage(
                                 LeaveAlert(
@@ -119,24 +117,23 @@ open class TopicServiceController<T, V, Q>(
                                     emptyDataCodec.get()
                                 )
                             )
-                            .then(pubsub.unSubscribe(m.member, m.memberOf))
-                    )
-                    .then()
 
+                    )
+                    .then(pubsub.unSubscribe(m.member, m.memberOf))
             }
 
     override fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships> =
-        membershipIndex.findBy(membershipIdToQuery.apply(req))
+        membershipIndex.findBy(memberOfIdToQuery.apply(req))
             .collectList()
             .flatMapMany { membershipList ->
-                membershipPersistence.byIds(membershipList)
+                membershipPersistence.byIds(membershipList).doOnNext {
+                    println("${it.key} ${it.member} : ${it.memberOf}")
+                }
             }
             .flatMap { membership ->
                 userPersistence
                     .get(Key.funKey(membership.member))
-                    .map { user ->
-                        TopicMember(user.key.id.toString(), user.handle, user.imageUri)
-                    }
+                    .map { user -> TopicMember(user.key.id.toString(), user.handle, user.imageUri) }
             }
             .collectList()
             .map {

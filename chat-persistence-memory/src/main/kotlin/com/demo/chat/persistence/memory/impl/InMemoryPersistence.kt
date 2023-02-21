@@ -29,7 +29,6 @@ open class InMemoryPersistence<T, E>(
     }
 
     override fun get(key: Key<T>): Mono<out E> = Mono.create {
-        println("Looking for a key: ${key.id}")
         when (map.containsKey(key.id)) {
             true -> it.success(map[key.id])
             else -> it.success()
@@ -37,5 +36,15 @@ open class InMemoryPersistence<T, E>(
     }
 
     override fun all(): Flux<out E> = Flux.fromIterable(map.values.asIterable())
+
+    override fun byIds(keys: List<Key<T>>): Flux<out E> = Flux.create {sink ->
+        keys.forEach { key ->
+            if (map.containsKey(key.id)) {
+                sink.next(map[key.id]!!)
+            }
+        }
+
+        sink.complete()
+    }
 }
 

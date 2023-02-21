@@ -3,6 +3,7 @@ package com.demo.chat.test.persistence
 import com.demo.chat.domain.*
 import com.demo.chat.persistence.memory.impl.*
 import com.demo.chat.test.*
+import org.junit.jupiter.api.TestInstance
 
 
 class PersistenceUserTests : KeyAwarePersistenceTestBase<String, User<String>>

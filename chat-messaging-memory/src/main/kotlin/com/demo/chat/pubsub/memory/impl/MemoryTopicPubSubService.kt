@@ -28,12 +28,12 @@ class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
 
     private val sinkByTopic: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
 
-    override fun open(topicId: T): Mono<Void> = Mono
-            .fromCallable {
-                topicToMembers(topicId)
-                sourceOf(topicId)
-            }
-            .then()
+    override fun open(topicId: T): Mono<Void> = Mono.create { sink ->
+        topicToMembers(topicId)
+        sourceOf(topicId)
+
+        sink.success()
+    }
 
     private fun topicExistsOrError(topic: T): Mono<Boolean> =
             exists(topic)
@@ -60,7 +60,6 @@ class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
                         streamMgr.setSource(topic, proc)
 
                         val reader = streamMgr.getSink(topic)
-                        sinkByTopic[topic] = reader
 
                         reader
                     }
