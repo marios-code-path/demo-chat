@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
@@ -78,6 +79,9 @@ class TopicClientTests : RSocketControllerTestBase() {
 
     @Test
     fun `client should create a room`() {
+        Hooks.onOperatorDebug()
+        val keyId = UUID.randomUUID()
+
         BDDMockito
             .given(topicPersistence.add(anyObject()))
             .willReturn(Mono.empty())
@@ -88,10 +92,21 @@ class TopicClientTests : RSocketControllerTestBase() {
 
         BDDMockito
             .given(topicPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(Key.funKey(keyId)))
+
+        BDDMockito
+            .given(topicIndex.add(anyObject()))
+            .willReturn(Mono.empty())
 
         StepVerifier.create(client.addRoom(ByNameRequest(randomRoomName)))
             .expectSubscription()
+            .assertNext { key ->
+
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", keyId)
+            }
             .verifyComplete()
     }
 
@@ -119,6 +134,7 @@ class TopicClientTests : RSocketControllerTestBase() {
     @Test
     fun `should create and join a room`() {
         val theRoomId = UUID.randomUUID()
+        Hooks.onOperatorDebug()
 
         BDDMockito
             .given(topicPersistence.add(TestBase.anyObject()))
@@ -132,12 +148,34 @@ class TopicClientTests : RSocketControllerTestBase() {
             .given(topicPersistence.key())
             .willReturn(Mono.just(Key.funKey(theRoomId)))
 
+        BDDMockito
+            .given(topicIndex.add(anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito
+            .given(membershipIndex.add(anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito
+            .given(membershipPersistence.add(anyObject()))
+            .willReturn(Mono.empty())
+
         StepVerifier.create(client.addRoom(ByNameRequest(randomRoomName)))
             .expectSubscription()
+            .assertNext { key ->
+
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", theRoomId)
+            }
             .verifyComplete()
 
         val topicRoom = MessageTopic.create(Key.funKey(theRoomId), randomRoomName)
 
+        BDDMockito
+            .given(topicIndex.add(anyObject()))
+            .willReturn(Mono.empty())
         BDDMockito
             .given(topicPersistence.get(TestBase.anyObject()))
             .willReturn(Mono.just(topicRoom))

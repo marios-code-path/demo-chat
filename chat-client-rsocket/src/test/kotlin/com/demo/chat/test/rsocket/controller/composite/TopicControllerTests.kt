@@ -103,6 +103,10 @@ open class TopicControllerTests : RSocketControllerTestBase() {
             .willReturn(Mono.empty())
 
         BDDMockito
+            .given(topicIndex.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito
             .given(topicPersistence.key())
             .willReturn(Mono.just(Key.funKey(theRoomId)))
 
@@ -124,6 +128,9 @@ open class TopicControllerTests : RSocketControllerTestBase() {
             .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
         BDDMockito
             .given(membershipPersistence.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+        BDDMockito
+            .given(membershipIndex.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
         BDDMockito
             .given(pubsub.sendMessage(TestBase.anyObject()))
