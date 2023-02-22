@@ -2,6 +2,7 @@ package com.demo.chat.init.commands
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.AdminKey
 import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.composite.ChatMessageService
@@ -16,24 +17,25 @@ import java.util.function.Supplier
 class PubSubCommands<T>(
     private val messageService: ChatMessageService<T, String>,
     private val anonKey: Supplier<AnonymousKey<T>>,
-    private val adminKey: Supplier<AdminKey<T>>
+    private val adminKey: Supplier<AdminKey<T>>,
+    private val typeUtil: TypeUtil<T>
     ) {
 
     @ShellMethod("Send a Message")
     fun send(
-        @ShellOption topicId: T,
+        @ShellOption topicId: String,
         @ShellOption messageText: String
     ) {
         messageService
-            .send(MessageSendRequest(messageText, adminKey.get().id, topicId))
+            .send(MessageSendRequest(messageText, adminKey.get().id, typeUtil.assignFrom(topicId)))
             .block()
     }
 
 
     @ShellMethod("Listen to a topic")
     fun listen(
-        @ShellOption topicId: T
-    ) = messageService.listenTopic(ByIdRequest(topicId))
+        @ShellOption topicId: String
+    ) = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
         .doOnNext { message ->
             println("Message: ${message.key.from} : ${message.data}\n")
         }

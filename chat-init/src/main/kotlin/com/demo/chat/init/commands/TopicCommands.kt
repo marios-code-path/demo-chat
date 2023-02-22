@@ -58,27 +58,29 @@ class TopicCommands<T>(
 
     @ShellMethod("Subscribe to a topic")
     fun join(
-        @ShellOption userId: T,
-        @ShellOption topicId: T
+        @ShellOption userId: String,
+        @ShellOption topicId: String
     ) = topicService
-        .joinRoom(MembershipRequest(userId, topicId))
+        .joinRoom(MembershipRequest(typeUtil.assignFrom(userId), typeUtil.assignFrom(topicId)))
         .block()
 
 
     @ShellMethod("Show what topics user is subscribed to")
     fun memberOf(
-        @ShellOption userId: T
+        @ShellOption userId: String
     ): String? = serviceBeans
         .pubsubClient()
-        .getByUser(userId)
+        .getByUser(typeUtil.assignFrom(userId))
         .map(typeUtil::toString)
         .reduce { t, u -> "${t}\n${u}" }
         .block()
 
     @ShellMethod("Show Subscribers on a topic")
     fun listMembers(
-        @ShellOption topicId: T
-    ): TopicMemberships? = topicService
-        .roomMembers(ByIdRequest(topicId))
-        .block()
+        @ShellOption topicId: String
+    ): TopicMemberships? {
+        return topicService
+            .roomMembers(ByIdRequest(typeUtil.assignFrom(topicId)))
+            .block()
+    }
 }
