@@ -18,7 +18,7 @@ class InitOnceCommands<T>(
     private val authenticationManager: AuthenticationManager,
     private val bootstrapProperties: BootstrapProperties,
     private val typeUtil: TypeUtil<T>
-) {
+) : CommandsUtil<T>(typeUtil){
     @ShellMethod("Bootstrap the system")
     fun bootstrap() {
         val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))

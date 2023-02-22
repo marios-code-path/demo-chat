@@ -4,7 +4,7 @@ import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.assertAll
@@ -14,8 +14,8 @@ import java.util.*
 open class TestBase {
     var counter = Random().nextInt()
 
-    val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule()).apply {
-        propertyNamingStrategy = PropertyNamingStrategy.LOWER_CAMEL_CASE
+    val mapper: ObjectMapper = ObjectMapper().registerModule(KotlinModule.Builder().build()).apply {
+        propertyNamingStrategy = PropertyNamingStrategies.LOWER_CAMEL_CASE
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
         findAndRegisterModules()
     }!!

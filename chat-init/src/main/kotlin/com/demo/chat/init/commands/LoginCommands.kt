@@ -13,8 +13,10 @@ import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.shell.Availability
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
+import org.springframework.shell.standard.ShellMethodAvailability
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
 
@@ -25,7 +27,7 @@ class LoginCommands<T>(
     val passwdStore: SecretsStore<T>,
     val authenticationManager: AuthenticationManager,
     val typeUtil: TypeUtil<T>
-) {
+) : CommandsUtil<T>(typeUtil){
 
     @ShellMethod("Secret")
     @Secured("SHELL")       // expand capabilities to check current calling method, and data involved in the call
@@ -34,6 +36,7 @@ class LoginCommands<T>(
     }
 
     @ShellMethod("whoami")
+    @ShellMethodAvailability("isAuthenticated")
     fun identity(): String? {
         val idOf: T = typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
 

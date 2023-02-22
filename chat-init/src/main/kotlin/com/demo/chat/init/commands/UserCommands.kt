@@ -11,6 +11,7 @@ import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.context.annotation.Profile
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
@@ -28,7 +29,7 @@ class UserCommands<T>(
     private val anonKey: Supplier<AnonymousKey<T>>,
     private val adminKey: Supplier<AdminKey<T>>,
     private val keyGen: IKeyGenerator<T>
-) {
+) : CommandsUtil<T>(typeUtil){
 
     @ShellMethod("Create a Key")
     fun key(): T {
@@ -76,10 +77,10 @@ class UserCommands<T>(
 
     @ShellMethod("Change User Password")
     fun passwd(
-        @ShellOption id: String,
+        @ShellOption(defaultValue = "_") userId: String,
         @ShellOption passwd: String
     ): String {
-        userService.findByUserId(ByIdRequest(typeUtil.fromString(id)))
+        userService.findByUserId(ByIdRequest(identity(userId)))
             .doOnNext {
                 println("user: ${it.key.id}: ${it.handle}")
             }
@@ -96,10 +97,10 @@ class UserCommands<T>(
 
     @ShellMethod("Gets user Permissions")
     fun getPermissionsForUser(
-        @ShellOption userId: String
+        @ShellOption(defaultValue = "_") userId: String,
     ) {
         authorizationService
-            .getAuthorizationsForPrincipal(Key.funKey(typeUtil.fromString(userId)))
+            .getAuthorizationsForPrincipal(Key.funKey(identity(userId)))
             .doOnNext { auth ->
                 println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
             }
@@ -116,7 +117,7 @@ class UserCommands<T>(
     // e.g. userA -> topicB : "SEND_MESSAGE"
     @ShellMethod("Add a User Permission")
     fun addPermission(
-        @ShellOption userId: String,
+        @ShellOption(defaultValue = "_") userId: String,
         @ShellOption targetUserId: String,
         @ShellOption role: String,
         @ShellOption expireTime: String
@@ -129,7 +130,7 @@ class UserCommands<T>(
             .map { metadataKey ->
                     StringRoleAuthorizationMetadata(
                         metadataKey,
-                        Key.funKey(typeUtil.fromString(userId)),
+                        Key.funKey(identity(userId)),
                         Key.funKey(typeUtil.fromString(targetUserId)),
                         role,
                         expiryTime

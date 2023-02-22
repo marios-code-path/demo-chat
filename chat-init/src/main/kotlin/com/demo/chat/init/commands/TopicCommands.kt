@@ -11,6 +11,8 @@ import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.shell.Availability
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
@@ -26,7 +28,7 @@ class TopicCommands<T>(
     private val anonKey: Supplier<AnonymousKey<T>>,
     private val adminKey: Supplier<AdminKey<T>>,
     private val keyGenerator: IKeyGenerator<T>
-) {
+) : CommandsUtil<T>(typeUtil){
 
     @ShellMethod("show topics")
     fun showTopics() = topicService
@@ -38,7 +40,7 @@ class TopicCommands<T>(
 
     @ShellMethod("Create a topic")
     fun addTopic(
-        @ShellOption userId: String,
+        @ShellOption(defaultValue = "_") userId: String,
         @ShellOption name: String
     ) = topicService
         .addRoom(ByNameRequest(name))
@@ -47,7 +49,7 @@ class TopicCommands<T>(
                 .authorize(
                     AuthMetadata.create(
                         Key.funKey(keyGenerator.nextKey()),
-                        Key.funKey(typeUtil.fromString(userId)),
+                        Key.funKey(identity(userId)),
                         topicKey,
                         "*",
                         1
@@ -58,19 +60,26 @@ class TopicCommands<T>(
 
     @ShellMethod("Subscribe to a topic")
     fun join(
-        @ShellOption userId: String,
+        @ShellOption(defaultValue = "_") userId: String,
         @ShellOption topicId: String
     ) = topicService
-        .joinRoom(MembershipRequest(typeUtil.assignFrom(userId), typeUtil.assignFrom(topicId)))
+        .joinRoom(MembershipRequest(identity(userId), typeUtil.assignFrom(topicId)))
         .block()
 
+    @ShellMethod("unSubscribe to a topic")
+    fun leave(
+        @ShellOption(defaultValue = "_") userId: String,
+        @ShellOption topicId: String
+    ) = topicService
+        .leaveRoom(MembershipRequest(identity(userId), typeUtil.assignFrom(topicId)))
+        .block()
 
     @ShellMethod("Show what topics user is subscribed to")
     fun memberOf(
-        @ShellOption userId: String
+        @ShellOption(defaultValue = "_") userId: String,
     ): String? = serviceBeans
         .pubsubClient()
-        .getByUser(typeUtil.assignFrom(userId))
+        .getByUser(identity(userId))
         .map(typeUtil::toString)
         .reduce { t, u -> "${t}\n${u}" }
         .block()

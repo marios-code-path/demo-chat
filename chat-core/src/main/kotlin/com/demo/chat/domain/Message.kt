@@ -1,5 +1,6 @@
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
@@ -45,6 +46,10 @@ interface MessageKey<T> : Key<T> {
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("message")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = JoinAlert::class, name = "JoinAlert"),
+    JsonSubTypes.Type(value = LeaveAlert::class, name = "LeaveAlert"),
+)
 interface Message<T,  out E> : KeyDataPair<T, E> {
     val record: Boolean
     override val key: MessageKey<T>
@@ -62,3 +67,10 @@ interface Message<T,  out E> : KeyDataPair<T, E> {
         }
     }
 }
+
+// TODO: Extract pubsub into interface for wrapping classes
+@JsonTypeName("JoinAlert")
+data class JoinAlert<T, V>(override val key: MessageKey<T>, override val data: V,override val record: Boolean=false) : Message<T, V>
+
+@JsonTypeName("LeaveAlert")
+data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: V, override val record: Boolean=false) : Message<T, V>

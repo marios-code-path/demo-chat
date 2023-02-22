@@ -1,6 +1,7 @@
 package com.demo.chat.test.serializers
 
 import com.demo.chat.convert.JsonNodeToAnyConverter
+import com.demo.chat.domain.JoinAlert
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.serializers.JacksonModules
@@ -20,15 +21,17 @@ class MessageSerializerTests : TestBase() {
     fun `Any Message deserialize`() {
         Hooks.onOperatorDebug()
         mapper.apply {
+            val jacksonModules = JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
             registerModules(
-                JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter).messageModule()
+                jacksonModules.messageModule()
+                ,jacksonModules.keyModule()
             )
         }
 
         val msgUUID = UUID.randomUUID()
         val destUUID = UUID.randomUUID()
         val messageJsons = Flux.just(
-                Message.create(MessageKey.create(1L, 2L), "foo", true),
+                JoinAlert(MessageKey.create(1L, 3L), "JOINED"),
                 Message.create(MessageKey.create("a", "b"), "Foo", true),
                 Message.create(MessageKey.create(msgUUID, destUUID), 2345, false)
         )

@@ -20,14 +20,14 @@ class PubSubCommands<T>(
     private val anonKey: Supplier<AnonymousKey<T>>,
     private val adminKey: Supplier<AdminKey<T>>,
     private val typeUtil: TypeUtil<T>
-    ) {
+    ) : CommandsUtil<T>(typeUtil) {
 
     @ShellMethod("Send a Message")
     fun send(
         @ShellOption topicId: String,
         @ShellOption messageText: String
     ) {
-        val identity: T = typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
+        val identity: T = identity("_")
 
         messageService
             .send(MessageSendRequest(messageText, identity, typeUtil.assignFrom(topicId)))

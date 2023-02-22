@@ -11,6 +11,24 @@ import com.fasterxml.jackson.databind.JsonNode
 /**
  * TODO: make deserializers recursively descend into 'data' objects as they can also be JSON.
  */
+class MessageKeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : JsonDeserializer<MessageKey<T>>() {
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): MessageKey<T> {
+        val oc: ObjectCodec = jp?.codec!!
+        val node: JsonNode = oc.readTree(jp)
+
+        val idNode = node.get("id")
+
+        val destNode = node.get("dest")
+        val fromNode = node.get("from")
+
+        return MessageKey.create(
+            nodeConverter.convert(idNode),
+            nodeConverter.convert(fromNode),
+            nodeConverter.convert(destNode)
+        )
+    }
+}
+
 class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : JsonDeserializer<Key<T>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
         val oc: ObjectCodec = jp?.codec!!
@@ -22,14 +40,20 @@ class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : Js
             val destNode = node.get("dest")
             val fromNode = node.get("from")
 
-            MessageKey.create(nodeConverter.convert(idNode), nodeConverter.convert(fromNode), nodeConverter.convert(destNode))
+            MessageKey.create(
+                nodeConverter.convert(idNode),
+                nodeConverter.convert(fromNode),
+                nodeConverter.convert(destNode)
+            )
         } else
             Key.funKey(nodeConverter.convert(idNode))
     }
 }
 
-class MessageDeserializer<T, E>(keyCodec: Converter<JsonNode, T>,
-                                val dataCodec: Converter<JsonNode, E>) : JsonDeserializer<Message<T, E>>() {
+class MessageDeserializer<T, E>(
+    keyCodec: Converter<JsonNode, T>,
+    val dataCodec: Converter<JsonNode, E>
+) : JsonDeserializer<Message<T, E>>() {
     private val kd = KeyDeserializer(keyCodec)
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Message<T, E> {
@@ -50,8 +74,10 @@ class MessageDeserializer<T, E>(keyCodec: Converter<JsonNode, T>,
     }
 }
 
-class KeyDataPairDeserializer<T, E>(keyCodec: Converter<JsonNode, T>,
-                                    private val dataCodec: Converter<JsonNode, E>) : JsonDeserializer<KeyDataPair<T, E>>() {
+class KeyDataPairDeserializer<T, E>(
+    keyCodec: Converter<JsonNode, T>,
+    private val dataCodec: Converter<JsonNode, E>
+) : JsonDeserializer<KeyDataPair<T, E>>() {
     private val kd = KeyDeserializer(keyCodec)
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyDataPair<T, E> {
@@ -80,10 +106,12 @@ class UserDeserializer<T>(keyConverter: Converter<JsonNode, T>) : JsonDeserializ
         val keyNode = node.get("key").get("key")
         val key: Key<T> = kd.deserialize(keyNode.traverse(oc), ctxt)
 
-        return User.create(key,
-                node.get("name").asText(),
-                node.get("handle").asText(),
-                node.get("imageUri").asText())
+        return User.create(
+            key,
+            node.get("name").asText(),
+            node.get("handle").asText(),
+            node.get("imageUri").asText()
+        )
     }
 }
 
@@ -134,7 +162,13 @@ class AuthMetadataDeserializer<T>(keyConverter: Converter<JsonNode, T>) : JsonDe
         val targNode = node.get("target").get("key")
         val target: Key<T> = kd.deserialize(targNode.traverse(oc), ctxt)
 
-        return AuthMetadata.create(key, principal, target, node.get("permission").asText(), node.get("expires").asLong())
+        return AuthMetadata.create(
+            key,
+            principal,
+            target,
+            node.get("permission").asText(),
+            node.get("expires").asLong()
+        )
     }
 
 }

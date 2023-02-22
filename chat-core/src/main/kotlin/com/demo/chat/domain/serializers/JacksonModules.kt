@@ -23,6 +23,7 @@ open class JacksonModules(
     @Bean
     open fun keyModule() = SimpleModule("KeyModule", Version.unknownVersion()).apply {
         addDeserializer(Key::class.java, KeyDeserializer(keyConverter))
+        addDeserializer(MessageKey::class.java, MessageKeyDeserializer(keyConverter))
     }
 
     @Bean
