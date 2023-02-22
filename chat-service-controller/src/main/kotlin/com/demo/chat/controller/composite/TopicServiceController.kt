@@ -16,13 +16,13 @@ import java.util.function.Supplier
 // bundling extra data types.
 // TODO: Extract pubsub into interface for wrapping classes
 @JsonTypeName("JoinAlert")
-data class JoinAlert<T, V>(override val key: MessageKey<T>, override val data: V) : Message<T, V> {
+data class JoinAlert<T>(override val key: MessageKey<T>, override val data: String) : Message<T, String> {
     override val record: Boolean
         get() = false
 }
 
 @JsonTypeName("LeaveAlert")
-data class LeaveAlert<T, V>(override val key: MessageKey<T>, override val data: V) : Message<T, V> {
+data class LeaveAlert<T>(override val key: MessageKey<T>, override val data: String) : Message<T, String> {
     override val record: Boolean
         get() = false
 }
@@ -92,9 +92,9 @@ open class TopicServiceController<T, V, Q>(
                     .then(
                         pubsub
                             .sendMessage(
-                                JoinAlert(
+                                Message.create(
                                     MessageKey.create(key.id, req.uid, req.roomId),
-                                    emptyDataCodec.get()
+                                    emptyDataCodec.get(), false
                                 )
                             )
 
@@ -112,9 +112,9 @@ open class TopicServiceController<T, V, Q>(
                     .then(
                         pubsub
                             .sendMessage(
-                                LeaveAlert(
+                                Message.create(
                                     MessageKey.create(m.key, m.member, m.memberOf),
-                                    emptyDataCodec.get()
+                                    emptyDataCodec.get(), false
                                 )
                             )
 

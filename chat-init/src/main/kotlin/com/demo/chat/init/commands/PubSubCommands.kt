@@ -7,6 +7,7 @@ import com.demo.chat.domain.knownkey.AdminKey
 import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.context.annotation.Profile
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
@@ -26,11 +27,12 @@ class PubSubCommands<T>(
         @ShellOption topicId: String,
         @ShellOption messageText: String
     ) {
+        val identity: T = typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
+
         messageService
-            .send(MessageSendRequest(messageText, adminKey.get().id, typeUtil.assignFrom(topicId)))
+            .send(MessageSendRequest(messageText, identity, typeUtil.assignFrom(topicId)))
             .block()
     }
-
 
     @ShellMethod("Listen to a topic")
     fun listen(
@@ -40,5 +42,4 @@ class PubSubCommands<T>(
             println("Message: ${message.key.from} : ${message.data}\n")
         }
         .subscribe()
-
 }

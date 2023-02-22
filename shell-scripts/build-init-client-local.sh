@@ -49,11 +49,12 @@ export APP_IMAGE_NAME="chat-init"
 export APP_MAIN_CLASS="com.demo.chat.init.BaseApp"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE
+export IDENTITIES="-Dapp.identity.anonymous=${CHAT_ANON:=1} -Dapp.identity.admin=${CHAT_ADMIN:=1}"
 
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
 # TODO: difference between '-D' and '--'
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dspring.profiles.active=${SPRING_PROFILE} \
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${IDENTITIES} -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dapp.service.core.key -Dapp.primary=init -Dapp.client.protocol=rsocket \
 -Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
