@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
+import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Operators
@@ -59,10 +60,5 @@ class BaseApp {
             runApplication<BaseApp>(*args)
 
         }
-    }
-    @ShellComponent
-    class ShelltestConfig {
-        @ShellMethod("test")
-        fun test() = "test"
     }
 }

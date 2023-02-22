@@ -15,7 +15,6 @@ import reactor.core.publisher.Mono
 class InitOnceCommands<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
-    private val authenticationManager: AuthenticationManager,
     private val bootstrapProperties: BootstrapProperties,
     private val typeUtil: TypeUtil<T>
 ) : CommandsUtil<T>(typeUtil){

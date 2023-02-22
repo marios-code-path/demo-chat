@@ -24,23 +24,16 @@ import reactor.core.publisher.Mono
 @Profile("shell")
 class LoginCommands<T>(
     val userService: ChatUserService<T>,
-    val passwdStore: SecretsStore<T>,
     val authenticationManager: AuthenticationManager,
     val typeUtil: TypeUtil<T>
 ) : CommandsUtil<T>(typeUtil){
 
-    @ShellMethod("Secret")
-    @Secured("SHELL")       // expand capabilities to check current calling method, and data involved in the call
-    fun secret(): String {
-        return "SECRET STRINGS"
-    }
-
     @ShellMethod("whoami")
     @ShellMethodAvailability("isAuthenticated")
-    fun identity(): String? {
-        val idOf: T = typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
+    fun whoami(): String? {
 
-        return userService.findByUserId(ByIdRequest(idOf))
+        return userService
+            .findByUserId(ByIdRequest(identity("_")))
             .map { user ->
                 "${user.key.id} : ${user.handle} | ${user.name} | ${user.imageUri}"
             }

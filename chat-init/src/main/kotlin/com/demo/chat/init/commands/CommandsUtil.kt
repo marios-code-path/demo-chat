@@ -11,12 +11,9 @@ open class CommandsUtil<T> (private var typeUtil: TypeUtil<T>) {
         else -> typeUtil.fromString(uid)
     }
 
-    companion object {
-        fun isAuthenticated(): Availability =
-            when (SecurityContextHolder.getContext().authentication.isAuthenticated) {
-                true -> Availability.available()
-                else -> Availability.unavailable("not logged in")
-            }
-    }
-
+    open fun isAuthenticated(): Availability =
+        when (SecurityContextHolder.getContext().authentication) {
+            null -> Availability.unavailable("not logged in")
+            else -> Availability.available()
+        }
 }

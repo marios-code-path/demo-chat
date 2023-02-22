@@ -253,7 +253,8 @@ open class TopicControllerTests : RSocketControllerTestBase() {
                         membershipInd,
                         { "" },
                         Function { i -> mapOf(Pair(TopicIndexService.NAME, i.name)) },
-                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, UUIDUtil().toString(i.id))) }
+                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, UUIDUtil().toString(i.id))) },
+                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBER, UUIDUtil().toString(i.uid)))}
                 )
     }
 }

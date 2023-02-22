@@ -78,14 +78,14 @@ class UserCommands<T>(
     @ShellMethod("Change User Password")
     fun passwd(
         @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption passwd: String
+        @ShellOption password: String
     ): String {
         userService.findByUserId(ByIdRequest(identity(userId)))
             .doOnNext {
                 println("user: ${it.key.id}: ${it.handle}")
             }
             .switchIfEmpty(Mono.error(NotFoundException))
-            .flatMap { passwdStore.addCredential(KeyCredential(it.key, passwd)) }
+            .flatMap { passwdStore.addCredential(KeyCredential(it.key, password)) }
             .doFinally {
                 println("Password Changed.")
             }

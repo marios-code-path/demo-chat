@@ -42,21 +42,25 @@ class TopicCommands<T>(
     fun addTopic(
         @ShellOption(defaultValue = "_") userId: String,
         @ShellOption name: String
-    ) = topicService
-        .addRoom(ByNameRequest(name))
-        .flatMap { topicKey ->
-            authorizationService
-                .authorize(
-                    AuthMetadata.create(
-                        Key.funKey(keyGenerator.nextKey()),
-                        Key.funKey(identity(userId)),
-                        topicKey,
-                        "*",
-                        1
-                    ), true
-                )
-        }
-        .block()
+    ) {
+        val identity = identity(userId)
+
+        topicService
+            .addRoom(ByNameRequest(name))
+            .flatMap { topicKey ->
+                authorizationService
+                    .authorize(
+                        AuthMetadata.create(
+                            Key.funKey(keyGenerator.nextKey()),
+                            Key.funKey(identity),
+                            topicKey,
+                            "*",
+                            1
+                        ), true
+                    )
+            }
+            .block()
+    }
 
     @ShellMethod("Subscribe to a topic")
     fun join(
