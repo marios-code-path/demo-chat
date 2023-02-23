@@ -6,6 +6,7 @@ import com.demo.chat.domain.knownkey.AdminKey
 import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
@@ -28,12 +29,16 @@ class UserCommands<T>(
     private val typeUtil: TypeUtil<T>,
     private val anonKey: Supplier<AnonymousKey<T>>,
     private val adminKey: Supplier<AdminKey<T>>,
-    private val keyGen: IKeyGenerator<T>
+    private val keyGen: IKeyGenerator<T>,
+    private val keyService: IKeyService<T>
 ) : CommandsUtil<T>(typeUtil){
 
     @ShellMethod("Create a Key")
-    fun key(): T {
-        return keyGen.nextKey()
+    fun key(@ShellOption(defaultValue = "false") local: String): T {
+        return when(local) {
+            "true" -> return keyGen.nextKey()
+            else -> return keyService.key(Key::class.java).block()!!.id
+        }
     }
 
     @ShellMethod("Add A User")
@@ -99,10 +104,11 @@ class UserCommands<T>(
     fun getPermissionsForUser(
         @ShellOption(defaultValue = "_") userId: String,
     ) {
+        println("ID | actor -> target | permission | expiration Timestamp (past mean")
         authorizationService
             .getAuthorizationsForPrincipal(Key.funKey(identity(userId)))
             .doOnNext { auth ->
-                println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
+                println("${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
             }
             .blockLast()
     }

@@ -57,37 +57,39 @@ open class TopicControllerTests : RSocketControllerTestBase() {
     val randomTopicId: UUID = UUID.randomUUID()
 
     val room = TestChatMessageTopic(
-            TestChatRoomKey(randomTopicId, randomRoomName),
-            true)
+        TestChatRoomKey(randomTopicId, randomRoomName),
+        true
+    )
 
     val roomWithMembers = TestChatMessageTopic(
-            TestChatRoomKey(randomTopicId, randomRoomName),
-            true)
+        TestChatRoomKey(randomTopicId, randomRoomName),
+        true
+    )
 
     @Test
     fun `should receive list of rooms`() {
         BDDMockito
-                .given(topicPersistence.all())
-                .willReturn(Flux.just(room))
+            .given(topicPersistence.all())
+            .willReturn(Flux.just(room))
 
         StepVerifier
-                .create(
-                        requester
-                                .route("topic-list")
-                                .data(ByIdRequest(UUID.randomUUID()))
-                                .retrieveFlux(TestChatMessageTopic::class.java)
-                )
-                .expectSubscription()
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrProperty("key")
-                            .extracting("key")
-                            .hasFieldOrPropertyWithValue("name", randomRoomName)
-                            .hasFieldOrPropertyWithValue("id", randomTopicId)
-                }
-                .verifyComplete()
+            .create(
+                requester
+                    .route("topic-list")
+                    .data(ByIdRequest(UUID.randomUUID()))
+                    .retrieveFlux(TestChatMessageTopic::class.java)
+            )
+            .expectSubscription()
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrProperty("key")
+                    .extracting("key")
+                    .hasFieldOrPropertyWithValue("name", randomRoomName)
+                    .hasFieldOrPropertyWithValue("id", randomTopicId)
+            }
+            .verifyComplete()
     }
 
     @Test
@@ -170,15 +172,15 @@ open class TopicControllerTests : RSocketControllerTestBase() {
             .willReturn(Mono.empty())
 
         StepVerifier
-                .create(
-                        requester
-                                .route("topic-join")
-                                .data(MembershipRequest(randomUserId, randomTopicId))
-                                .retrieveMono(Void::class.java)
-                )
-                .expectSubscription()
-                .expectError(ApplicationErrorException::class.java)
-                .verify()
+            .create(
+                requester
+                    .route("topic-join")
+                    .data(MembershipRequest(randomUserId, randomTopicId))
+                    .retrieveMono(Void::class.java)
+            )
+            .expectSubscription()
+            .expectError(ApplicationErrorException::class.java)
+            .verify()
     }
 
     @Test // TODO TopicMembership<T> does not decode/encode - I switched to a String return
@@ -186,51 +188,60 @@ open class TopicControllerTests : RSocketControllerTestBase() {
         val membershipId = UUID.randomUUID()
 
         BDDMockito
-                .given(userPersistence.get(TestBase.anyObject()))
-                .willReturn(Mono.just(User.create(
+            .given(userPersistence.get(TestBase.anyObject()))
+            .willReturn(
+                Mono.just(
+                    User.create(
                         Key.funKey(randomUserId), "NAME", randomUserHandle, "http://imageURI"
-                )))
+                    )
+                )
+            )
 
         BDDMockito
-                .given(membershipPersistence.byIds(TestBase.anyObject()))
-                .willReturn(Flux.just(TopicMembership.create(
+            .given(membershipPersistence.byIds(TestBase.anyObject()))
+            .willReturn(
+                Flux.just(
+                    TopicMembership.create(
                         membershipId,
                         randomTopicId,
-                        randomUserId)))
+                        randomUserId
+                    )
+                )
+            )
 
         BDDMockito
-                .given(membershipIndex.findBy(TestBase.anyObject()))
-                .willReturn(Flux.just(Key.funKey(membershipId)))
+            .given(membershipIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.just(Key.funKey(membershipId)))
 
         StepVerifier
-                .create(
-                        requester
-                                .route("topic-members")
-                                .data(ByIdRequest(randomTopicId))
-                                .retrieveMono(TopicMemberships::class.java)
-                )
-                .expectSubscription()
-                .assertNext {
-                    Assertions
-                            .assertThat(it)
-                            .hasNoNullFieldsOrProperties()
+            .create(
+                requester
+                    .route("topic-members")
+                    .data(ByIdRequest(randomTopicId))
+                    .retrieveMono(TopicMemberships::class.java)
+            )
+            .expectSubscription()
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .hasNoNullFieldsOrProperties()
 
-                    Assertions
-                            .assertThat(it.members)
-                            .isNotEmpty
+                Assertions
+                    .assertThat(it.members)
+                    .isNotEmpty
 
-                    val member = it.members.first()
+                val member = it.members.first()
 
-                    Assertions
-                            .assertThat(member)
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("uid", randomUserId.toString())
-                            .hasFieldOrPropertyWithValue("handle", randomUserHandle)
-                            .extracting("uid")
-                            .isInstanceOf(String::class.java)
+                Assertions
+                    .assertThat(member)
+                    .hasNoNullFieldsOrProperties()
+                    .hasFieldOrPropertyWithValue("uid", randomUserId.toString())
+                    .hasFieldOrPropertyWithValue("handle", randomUserHandle)
+                    .extracting("uid")
+                    .isInstanceOf(String::class.java)
 
-                }
-                .verifyComplete()
+            }
+            .verifyComplete()
     }
 
     @TestConfiguration
@@ -244,17 +255,28 @@ open class TopicControllerTests : RSocketControllerTestBase() {
             membershipP: MembershipPersistence<UUID>,
             membershipInd: MembershipIndexService<UUID, Map<String, String>>,
         ) :
-                TopicServiceController<UUID, String, Map<String, String>>(
-                        topicP,
-                        topicInd,
-                        pubsub,
-                        userP,
-                        membershipP,
-                        membershipInd,
-                        { "" },
-                        Function { i -> mapOf(Pair(TopicIndexService.NAME, i.name)) },
-                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, UUIDUtil().toString(i.id))) },
-                        Function { i -> mapOf(Pair(MembershipIndexService.MEMBER, UUIDUtil().toString(i.uid)))}
-                )
+            TopicServiceController<UUID, String, Map<String, String>>(
+                topicP,
+                topicInd,
+                pubsub,
+                userP,
+                membershipP,
+                membershipInd,
+                { "" },
+                Function { i -> mapOf(Pair(TopicIndexService.NAME, i.name)) },
+                Function { i -> mapOf(Pair(MembershipIndexService.MEMBEROF, UUIDUtil().toString(i.id))) },
+                Function { i ->
+                    mapOf(
+                        Pair(
+                            MembershipIndexService.MEMBER, "" +
+                                    "${UUIDUtil().toString(i.uid)} AND ${MembershipIndexService.MEMBEROF}:${
+                                        UUIDUtil().toString(
+                                            i.roomId
+                                        )
+                                    }"
+                        )
+                    )
+                }
+            )
     }
 }

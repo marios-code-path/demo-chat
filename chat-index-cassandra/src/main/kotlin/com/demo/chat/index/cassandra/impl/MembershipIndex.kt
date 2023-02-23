@@ -57,9 +57,12 @@ class MembershipIndex<T>(
 //    override fun remMember(topicMembership: TopicMembership<T>): Mono<Void> = rem(Key.funKey(topicMembership.key))
 
     override fun findBy(query: Map<String, String>): Flux<Key<T>> =
-            when (val queryBy = query.keys.first()) {
+        //iterate the keys and return the flux of the first match
+                 when (val queryBy = query.keys.first()) {
                 MEMBER -> byMemberRepo.findByMember(stringToKey.apply(query[queryBy] ?: error("missing Member")))
                 MEMBEROF -> byMemberOfRepo.findByMemberOf(stringToKey.apply(query[queryBy] ?: error("missing memberOf")))
+                // TODO : add support for other queries such as when querying 2 fields, such as member and memberOf
+
                 else -> Flux.empty()
             }
                     .map {

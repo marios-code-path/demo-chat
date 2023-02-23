@@ -30,5 +30,6 @@ open class TopicControllerConfiguration<T>(
     emptyDataCodec = { "" },
     topicNameToQuery = { r -> IndexSearchRequest(TopicIndexService.NAME, r.name, 100) },
     memberOfIdToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBEROF, t.toString(req.id), 100) },
-    memberWithTopicToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBER, t.toString(req.uid), 100) },
+    memberWithTopicToQuery = { req -> IndexSearchRequest(MembershipIndexService.MEMBER,
+        "${t.toString(req.uid)} AND ${MembershipIndexService.MEMBEROF}:${t.toString(req.roomId)}", 100) },
 )

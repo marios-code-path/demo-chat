@@ -55,7 +55,7 @@ class TopicCommands<T>(
                             Key.funKey(identity),
                             topicKey,
                             "*",
-                            1
+                            Long.MAX_VALUE
                         ), true
                     )
             }
