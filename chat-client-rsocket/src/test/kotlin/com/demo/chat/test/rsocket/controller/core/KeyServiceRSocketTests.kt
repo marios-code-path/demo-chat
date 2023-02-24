@@ -25,7 +25,7 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocket::class,
-    KeyServiceRSocketTests.KeyPersistenceTestConfiguration::class
+    KeyServiceRSocketTests.KeyControllerTestConfiguration::class
 )
 class KeyServiceRSocketTests : RSocketTestBase() {
 
@@ -94,7 +94,7 @@ class KeyServiceRSocketTests : RSocketTestBase() {
     }
 
     @TestConfiguration
-    class KeyPersistenceTestConfiguration {
+    class KeyControllerTestConfiguration {
         @Controller
         @MessageMapping("key")
         class TestKeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)
