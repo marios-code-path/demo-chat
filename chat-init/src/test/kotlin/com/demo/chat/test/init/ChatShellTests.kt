@@ -1,14 +1,14 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.init.BaseApp
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [BaseApp::class, TestConfigurationRSocket::class])
+@SpringBootTest(classes = [BaseApp::class, TestConfigurationRSocketServer::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [

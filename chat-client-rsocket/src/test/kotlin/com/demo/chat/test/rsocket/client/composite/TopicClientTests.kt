@@ -7,7 +7,7 @@ import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
 import com.demo.chat.test.TestChatRoomKey
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import com.demo.chat.test.rsocket.controller.composite.RSocketControllerTestBase
 import com.demo.chat.test.rsocket.controller.composite.TopicControllerTests
@@ -30,7 +30,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocket::class,
+    TestConfigurationRSocketServer::class,
     MockCoreServicesConfiguration::class,
     TopicControllerTests.TestTopicControllerConfiguration::class
 )

@@ -7,7 +7,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.core.MessageIndexRSocketTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -25,7 +25,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocket::class,
+    TestConfigurationRSocketServer::class,
         MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
 class IndexTests : RSocketTestBase() {
     @MockBean

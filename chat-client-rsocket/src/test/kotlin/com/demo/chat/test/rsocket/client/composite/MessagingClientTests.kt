@@ -9,7 +9,7 @@ import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.rsocket.RSocketTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.composite.MessagingControllerTests
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.AssertionsForClassTypes
@@ -30,7 +30,8 @@ import java.util.stream.Stream
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(TestConfigurationRSocket::class,
+@Import(
+    TestConfigurationRSocketServer::class,
         MockCoreServicesConfiguration::class,
         MessagingControllerTests.EdgeMessagingTestConfiguration::class
 )

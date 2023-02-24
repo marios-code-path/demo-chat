@@ -6,7 +6,7 @@ import com.demo.chat.client.rsocket.clients.composite.UserClient
 import com.demo.chat.domain.Key
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.composite.UserControllerTests
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.Assertions
@@ -25,7 +25,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocket::class,
+    TestConfigurationRSocketServer::class,
     MockCoreServicesConfiguration::class,
     UserControllerTests.TestConfiguration::class
 )

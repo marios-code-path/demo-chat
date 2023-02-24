@@ -9,7 +9,7 @@ import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import com.demo.chat.test.rsocket.RSocketTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocket
+import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -29,7 +29,7 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocket::class,
+    TestConfigurationRSocketServer::class,
     UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class
 )
 class UserPersistenceRSocketTests : RSocketTestBase() {

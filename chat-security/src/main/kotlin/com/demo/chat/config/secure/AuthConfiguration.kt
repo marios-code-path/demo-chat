@@ -21,7 +21,6 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.function.Supplier
 
-// TODO UPGRADE TO Spring Security 5.0x
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
 class AuthConfiguration<T>(

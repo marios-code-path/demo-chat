@@ -1,6 +1,5 @@
 package com.demo.chat.test.rsocket
 
-import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
 import io.rsocket.RSocket
@@ -31,9 +30,8 @@ class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverte
     RSocketStrategiesAutoConfiguration::class,
     RSocketMessagingAutoConfiguration::class
 )
-class TestConfigurationRSocket {
+class TestConfigurationRSocketServer {
     init {
-        println("TESTCONFIGURATION")
         Hooks.onOperatorDebug()
     }
 
@@ -58,11 +56,6 @@ class TestConfigurationRSocket {
         .rsocketStrategies(strategies)
         .connectTcp("localhost", server.address().port)
         .block()!!
-
-    @Bean
-    fun requesterFactory(requester: RSocketRequester): RequesterFactory {
-        return TestRequesterFactory(requester)
-    }
 
     private lateinit var socket: RSocket
 
