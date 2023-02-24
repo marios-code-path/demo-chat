@@ -8,7 +8,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [BaseApp::class, TestConfigurationRSocket::class, TestDummyControllerServices::class])
+@SpringBootTest(classes = [BaseApp::class, TestConfigurationRSocket::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [

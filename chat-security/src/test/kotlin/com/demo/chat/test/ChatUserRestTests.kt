@@ -23,8 +23,8 @@ import java.util.function.Function
     MockPersistenceResolver::class,
     MockIndexResolver::class
 )
-@Import(EdgeUserRestControllerTests.TestConfiguration::class)
-open class EdgeUserRestControllerTests {
+@Import(CompositeUserRestControllerTests.TestConfiguration::class)
+open class CompositeUserRestControllerTests {
 
     @Configuration
     class TestConfiguration {

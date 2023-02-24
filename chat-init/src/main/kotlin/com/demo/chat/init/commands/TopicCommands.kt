@@ -25,8 +25,6 @@ class TopicCommands<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
     private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: Supplier<AnonymousKey<T>>,
-    private val adminKey: Supplier<AdminKey<T>>,
     private val keyGenerator: IKeyGenerator<T>
 ) : CommandsUtil<T>(typeUtil){
 

@@ -22,7 +22,6 @@ import org.springframework.context.annotation.Configuration
 import java.util.function.Supplier
 
 // TODO UPGRADE TO Spring Security 5.0x
-//@EnableGlobalMethodSecurity(securedEnabled = true, prePostEnabled = true)
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
 class AuthConfiguration<T>(

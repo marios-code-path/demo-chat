@@ -18,7 +18,7 @@ import org.springframework.test.context.TestPropertySource
 import reactor.test.StepVerifier
 
 
-@SpringBootTest(classes = [TestConfig::class, KeyControllersConfiguration::class])
+@SpringBootTest(classes = [TestConfig::class, KeyControllersConfiguration::class, KeyControllerAuthorizationTests.CoreKeyServices::class])
 @TestPropertySource(properties = ["app.controller.key","spring.rsocket.server.port=11111"])
 class KeyControllerAuthorizationTests {
 
@@ -52,12 +52,12 @@ class KeyControllerAuthorizationTests {
             }
             .verify()
     }
-}
 
 
-@TestConfiguration
-class CoreKeyServices() : KeyServiceBeans<Long> {
-    @Bean
-    override fun keyService(): IKeyService<Long> =
-        DummyKeyService()
+    @TestConfiguration
+    class CoreKeyServices() : KeyServiceBeans<Long> {
+        @Bean
+        override fun keyService(): IKeyService<Long> =
+            DummyKeyService()
+    }
 }

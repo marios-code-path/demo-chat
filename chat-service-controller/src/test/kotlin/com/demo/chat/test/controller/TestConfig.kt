@@ -31,7 +31,6 @@ class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverte
     RSocketMessagingAutoConfiguration::class,
     RSocketServerAutoConfiguration::class,
     RSocketRequesterAutoConfiguration::class,
-    CoreKeyServices::class
 )
 class TestConfig {
     @Bean

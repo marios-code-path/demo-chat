@@ -108,9 +108,7 @@ open class TopicServiceController<T, V, Q>(
         membershipIndex.findBy(memberOfIdToQuery.apply(req))
             .collectList()
             .flatMapMany { membershipList ->
-                membershipPersistence.byIds(membershipList).doOnNext {
-                    println("${it.key} ${it.member} : ${it.memberOf}")
-                }
+                membershipPersistence.byIds(membershipList)
             }
             .flatMap { membership ->
                 userPersistence
