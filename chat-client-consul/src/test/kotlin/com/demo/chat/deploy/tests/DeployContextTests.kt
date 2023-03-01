@@ -1,9 +1,8 @@
 package com.demo.chat.deploy.tests
 
-import com.demo.chat.config.TypeUtilConfiguration
+import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.client.rsocket.ClientConfiguration
 import com.demo.chat.config.client.rsocket.ConsulDiscoveryRequesterFactory
-import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.config.secure.TransportConfiguration
 import com.ecwid.consul.v1.ConsulClient
 import org.junit.jupiter.api.BeforeAll
@@ -24,7 +23,6 @@ import org.testcontainers.containers.Network
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Duration
-import java.util.Arrays
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -35,7 +33,7 @@ import java.util.Arrays
         TransportConfiguration::class,
         RSocketStrategiesAutoConfiguration::class, RSocketRequesterAutoConfiguration::class,
         TestConfigs::class,
-        TypeUtilConfiguration::class
+        BaseDomainConfiguration::class
     ]
 )
 @TestPropertySource(

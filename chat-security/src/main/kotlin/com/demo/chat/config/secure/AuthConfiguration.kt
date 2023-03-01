@@ -4,6 +4,7 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
 import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
@@ -25,7 +26,7 @@ import java.util.function.Supplier
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
 class AuthConfiguration<T>(
     private val keyTypeUtil: TypeUtil<T>,
-    private val anonKeySupplier: Supplier<AnonymousKey<T>>,
+    private val anonKeySupplier: Supplier<AnonymousKey<T>>
 ) {
     @Bean
     fun authorizationService(

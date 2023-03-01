@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono
 
 
 /**
- * A service that determins when entity given Key<T> has Authorizations [M && N] where
+ * A service that determines when entity given Key<T> has Authorizations [M && N] where
  * T = Key Type
  * M = Authorization Type (out bound)
  * N = Authorization Type (in bound)

@@ -5,6 +5,7 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.domain.knownkey.AdminKey
 import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.domain.knownkey.RootKeys
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -13,7 +14,7 @@ import java.util.*
 import java.util.function.Supplier
 
 @Configuration
-open class TypeUtilConfiguration {
+open class BaseDomainConfiguration {
 
     @Bean("TypeUtil")
     @ConditionalOnProperty("app.key.type", havingValue = "uuid")
@@ -28,6 +29,9 @@ open class TypeUtilConfiguration {
 
     @Value("\${app.identity.admin:0}")
     private lateinit var adminId: String
+
+    @Bean
+    open fun <T> rootKeys(typeUtil: TypeUtil<T>): RootKeys<T> = RootKeys()
 
     @Bean
     open fun <T> anonymousKey(typeUtil: TypeUtil<T>): Supplier<AnonymousKey<T>> =

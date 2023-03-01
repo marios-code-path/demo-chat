@@ -11,7 +11,7 @@ import java.util.function.Function
 open class InMemoryPersistence<T, E>(
     private val keyService: IKeyService<T>,
     private val entityClass: Class<*>,
-    private val keyFromEntity: Function<E, Key<T>>
+    private val keyFromEntity: Function<E, Key<T>>,
 ) : PersistenceStore<T, E> {
     val map = ConcurrentHashMap<T, E>()
 

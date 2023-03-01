@@ -31,9 +31,9 @@ import java.util.stream.Stream
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocketServer::class,
+        TestConfigurationRSocketServer::class,
         MockCoreServicesConfiguration::class,
-        MessagingControllerTests.EdgeMessagingTestConfiguration::class
+        MessagingControllerTests.CompositeMessagingTestConfiguration::class
 )
 class MessagingClientTests : RSocketTestBase() {
     @Autowired

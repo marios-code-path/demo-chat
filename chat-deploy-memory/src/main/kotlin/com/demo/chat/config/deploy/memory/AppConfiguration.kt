@@ -1,6 +1,6 @@
 package com.demo.chat.config.deploy.memory
 
-import com.demo.chat.config.TypeUtilConfiguration
+import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.controller.*
 import com.demo.chat.config.controller.composite.MessagingControllerConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Import
     RSocketStrategiesAutoConfiguration::class,
     RSocketMessagingAutoConfiguration::class,
     // TYPES
-    TypeUtilConfiguration::class,
+    BaseDomainConfiguration::class,
     // Transport Security
     TransportConfiguration::class,
     // Services

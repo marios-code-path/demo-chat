@@ -25,14 +25,13 @@ class DefaultRequesterFactory(
 
     override fun requester(serviceKey: String): RSocketRequester {
         val pair = getServicePair(serviceKey)
-        if(!perHostRequester.containsKey(pair)) {
+        if (!perHostRequester.containsKey(pair)) {
             perHostRequester[pair] = builder
-                .connect(connection.tcpClientTransport(pair.first, pair.second))
-                .log()
-                .block()!!
+                .transport(connection.tcpClientTransport(pair.first, pair.second))
         }
         return perHostRequester[pair]!!
     }
 
-    override fun serviceDestination(serviceKey: String): String = clientProps.getServiceConfig(serviceKey)?.dest!!//properties[serviceKey]?.dest!!
+    override fun serviceDestination(serviceKey: String): String =
+        clientProps.getServiceConfig(serviceKey)?.dest!!//properties[serviceKey]?.dest!!
 }

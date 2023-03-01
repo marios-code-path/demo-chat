@@ -1,6 +1,6 @@
 package com.demo.chat.config.deploy.cassandra
 
-import com.demo.chat.config.TypeUtilConfiguration
+import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.controller.IndexControllersConfiguration
 import com.demo.chat.config.controller.KeyControllersConfiguration
 import com.demo.chat.config.controller.PersistenceControllersConfiguration
@@ -31,7 +31,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
     RSocketStrategiesAutoConfiguration::class,
     RSocketMessagingAutoConfiguration::class,
     // TYPES
-    TypeUtilConfiguration::class,
+    BaseDomainConfiguration::class,
     // Transport Security
     TransportConfiguration::class,
     // Services

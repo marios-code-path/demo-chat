@@ -10,6 +10,8 @@ interface KeyBearer<T> {
 
 interface NoKey<T>: Key<T>
 
+object Empty
+
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("key")
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))

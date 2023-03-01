@@ -1,8 +1,8 @@
 package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.controller.composite.MessagingController
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
-import com.demo.chat.controller.composite.MessagingController
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
@@ -31,7 +31,7 @@ import java.util.stream.Stream
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 @Import(MockCoreServicesConfiguration::class,
-        MessagingControllerTests.EdgeMessagingTestConfiguration::class)
+        MessagingControllerTests.CompositeMessagingTestConfiguration::class)
 class MessagingControllerTests : RSocketControllerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
@@ -109,7 +109,7 @@ class MessagingControllerTests : RSocketControllerTestBase() {
     }
 
     @TestConfiguration
-    class EdgeMessagingTestConfiguration {
+    class CompositeMessagingTestConfiguration {
         @Bean
         fun msgIdx(t: MessageIndexService<UUID, String, Map<String, String>>) = t
 

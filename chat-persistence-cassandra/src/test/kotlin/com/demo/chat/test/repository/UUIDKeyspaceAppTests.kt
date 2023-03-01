@@ -1,6 +1,6 @@
 package com.demo.chat.test.repository
 
-import com.demo.chat.config.TypeUtilConfiguration
+import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.config.persistence.cassandra.CoreKeyServices
@@ -26,7 +26,7 @@ import java.util.*
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
     classes = [
         RepositoryTestConfiguration::class,
-        TypeUtilConfiguration::class,
+        BaseDomainConfiguration::class,
         KeyGenConfiguration::class,
         CoreKeyServices::class,
         CorePersistenceServices::class

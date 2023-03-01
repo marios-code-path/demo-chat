@@ -16,7 +16,7 @@ import java.util.function.Supplier
 import kotlin.random.Random
 
 @ExtendWith(MockPersistenceResolver::class, MockIndexResolver::class)
-class AuthorizationMetadataServiceTests(
+open class AuthorizationMetadataServiceTests(
     authMetaPersistence: PersistenceStore<Long, AuthMetadata<Long>>,
     authMetaIndex: IndexService<Long, AuthMetadata<Long>, IndexSearchRequest>
 ) : AuthorizationServiceTests<Long>(

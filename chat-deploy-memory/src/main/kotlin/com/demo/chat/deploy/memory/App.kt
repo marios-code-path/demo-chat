@@ -13,7 +13,7 @@ import reactor.core.publisher.Hooks
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
 @Profile("exec-chat")
-open class App {
+class App {
 
     companion object {
         @JvmStatic
@@ -26,7 +26,7 @@ open class App {
 
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean
-    open fun commandRunner(): ApplicationRunner = ApplicationRunner {
+    fun commandRunner(): ApplicationRunner = ApplicationRunner {
         println("Consul Discovery Persistence/Index/Messaging/Controllers App.")
     }
 }

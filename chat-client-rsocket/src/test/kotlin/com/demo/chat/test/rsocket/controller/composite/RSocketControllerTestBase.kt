@@ -3,6 +3,7 @@ package com.demo.chat.test.rsocket.controller.composite
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.rsocket.TargetIdentifierInterceptor
 import com.demo.chat.service.core.IKeyService
 import io.rsocket.RSocket
 import io.rsocket.core.RSocketServer
@@ -14,7 +15,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.rsocket.server.RSocketServerCustomizer
 import org.springframework.context.ApplicationContext
+import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
@@ -48,14 +51,13 @@ open class RSocketControllerTestBase {
     @BeforeEach
     fun setUp(context: ApplicationContext) {
         val messageHandler = context.getBean(RSocketMessageHandler::class.java)
+        val strategies = context.getBean(RSocketStrategies::class.java)
 
         server = RSocketServer
             .create(messageHandler.responder())
             .payloadDecoder(PayloadDecoder.ZERO_COPY)
+            .interceptors { it.forResponder(TargetIdentifierInterceptor(strategies)) }
             .bindNow(TcpServerTransport.create("localhost", 0))
-
-
-        val strategies = context.getBean(RSocketStrategies::class.java)
 
         requester = RSocketRequester
             .builder()
