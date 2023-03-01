@@ -27,6 +27,16 @@ class ChatAuthenticationManager<T>(
         val credential = authen.credentials.toString()
         val targetId: Key<T> = Key.funKey(typeUtil.assignFrom(authen.details))
 
+        Mono
+            .deferContextual<Void> { ctx ->
+                if(ctx.hasKey("target")) {
+                    println("Target Found")
+                } else {
+                    println("Target Not Found")
+                }
+                Mono.empty()
+            }.block()
+
         return authenticationS
             .authenticate(authen.name, credential)
             .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }

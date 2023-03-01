@@ -4,25 +4,29 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 
-data class ByHandleRequest(val handle: String)
-data class ByNameRequest(val name: String)
-data class ByIdRequest<T>(val id: T)
+@JsonTypeInfo(include = JsonTypeInfo.As.PROPERTY, use = JsonTypeInfo.Id.NAME, property="type")
+sealed class RequestResponse<T>
+
+@JsonTypeName("ByHandleRequest")
+data class ByHandleRequest(val handle: String) : RequestResponse<Any>()
+
+@JsonTypeName("ByNameRequest")
+data class ByNameRequest(val name: String) : RequestResponse<Any>()
+
+@JsonTypeName("ByIdRequest")
+data class ByIdRequest<T>(val id: T) : RequestResponse<T>()
 
 @JsonTypeName("MembershipRequest")
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class MembershipRequest<T>(val uid: T, val roomId: T)
+data class MembershipRequest<T>(val uid: T, val roomId: T) : RequestResponse<T>()
 
 @JsonTypeName("MessageSendRequest")
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T)
+data class MessageSendRequest<T, V>(val msg: V, val from: T, val dest: T) : RequestResponse<T>()
 
 @JsonTypeName("UserCreateRequest")
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class UserCreateRequest(val name: String, val handle: String, val imgUri: String)
+data class UserCreateRequest(val name: String, val handle: String, val imgUri: String) : RequestResponse<Any>()
 
 @JsonTypeName("MemberTopicRequest")
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-data class MemberTopicRequest<T>(val member: T, val topic: T)
+data class MemberTopicRequest<T>(val member: T, val topic: T) : RequestResponse<T>()
 
 data class ChatMessage<T, V>(
         override val key: ChatMessageKey<T>,

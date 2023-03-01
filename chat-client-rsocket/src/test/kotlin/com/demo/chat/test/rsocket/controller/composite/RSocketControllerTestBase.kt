@@ -1,8 +1,6 @@
 package com.demo.chat.test.rsocket.controller.composite
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.*
 import com.demo.chat.rsocket.TargetIdentifierInterceptor
 import com.demo.chat.service.core.IKeyService
 import io.rsocket.RSocket
@@ -17,6 +15,7 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.rsocket.server.RSocketServerCustomizer
 import org.springframework.context.ApplicationContext
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
@@ -29,6 +28,8 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 open class RSocketControllerTestBase {
     private lateinit var socket: RSocket
+
+    private fun typeUtil(): TypeUtil<UUID> = UUIDUtil()
 
     lateinit var requester: RSocketRequester
 
@@ -53,10 +54,11 @@ open class RSocketControllerTestBase {
         val messageHandler = context.getBean(RSocketMessageHandler::class.java)
         val strategies = context.getBean(RSocketStrategies::class.java)
 
+        println("Binding server")
         server = RSocketServer
             .create(messageHandler.responder())
             .payloadDecoder(PayloadDecoder.ZERO_COPY)
-            .interceptors { it.forResponder(TargetIdentifierInterceptor(strategies)) }
+            .interceptors { it.forResponder(TargetIdentifierInterceptor(strategies, typeUtil())) }
             .bindNow(TcpServerTransport.create("localhost", 0))
 
         requester = RSocketRequester
