@@ -9,9 +9,9 @@ import org.springframework.security.core.userdetails.ReactiveUserDetailsService
 import org.springframework.security.core.userdetails.User
 
 
-@SpringBootConfiguration
-@EnableReactiveMethodSecurity
-@EnableRSocketSecurity
+//@SpringBootConfiguration
+//@EnableReactiveMethodSecurity
+//@EnableRSocketSecurity
 class TestConfigurationAuthorizationServices {
 
     @Bean

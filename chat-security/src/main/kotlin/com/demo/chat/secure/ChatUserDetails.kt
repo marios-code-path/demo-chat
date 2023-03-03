@@ -17,9 +17,9 @@ data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) 
 
     override fun getUsername(): String = user.handle
 
-    override fun isAccountNonExpired(): Boolean = false
+    override fun isAccountNonExpired(): Boolean = true
 
-    override fun isAccountNonLocked(): Boolean = false
+    override fun isAccountNonLocked(): Boolean = true
 
     override fun isCredentialsNonExpired(): Boolean = true
 

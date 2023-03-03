@@ -5,7 +5,6 @@ import com.demo.chat.init.domain.BootstrapProperties
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
-import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import reactor.core.publisher.Mono
@@ -14,7 +13,7 @@ import reactor.core.publisher.Mono
 @Profile("shell")
 class InitOnceCommands<T>(
     private val userService: ChatUserService<T>,
-    private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val bootstrapProperties: BootstrapProperties,
     private val typeUtil: TypeUtil<T>
 ) : CommandsUtil<T>(typeUtil){
@@ -39,7 +38,7 @@ class InitOnceCommands<T>(
                 .defaultIfEmpty(emptyKey)
                 .onErrorResume {
                     userService
-                        .findByUsername(ByHandleRequest(thisUser.handle))
+                        .findByUsername(ByStringRequest(thisUser.handle))
                         .map { u -> u.key }
                         .last()
                 }

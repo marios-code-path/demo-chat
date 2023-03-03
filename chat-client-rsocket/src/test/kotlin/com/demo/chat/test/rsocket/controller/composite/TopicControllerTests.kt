@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket.controller.composite
 
 
-import com.demo.chat.controller.composite.TopicServiceController
+import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
 import com.demo.chat.service.core.*
@@ -114,7 +114,7 @@ open class TopicControllerTests : RSocketControllerTestBase() {
 
         StepVerifier.create(
             requester.route("topic-add")
-                .data(ByNameRequest(randomRoomName))
+                .data(ByStringRequest(randomRoomName))
                 .retrieveMono(Void::class.java)
         )
             .expectSubscription()
@@ -247,7 +247,7 @@ open class TopicControllerTests : RSocketControllerTestBase() {
     @TestConfiguration
     class TestTopicControllerConfiguration {
         @Controller
-        class TestTopicController(
+        class TestTopicImpl(
             topicP: TopicPersistence<UUID>,
             topicInd: TopicIndexService<UUID, Map<String, String>>,
             pubsub: TopicPubSubService<UUID, String>,
@@ -255,7 +255,7 @@ open class TopicControllerTests : RSocketControllerTestBase() {
             membershipP: MembershipPersistence<UUID>,
             membershipInd: MembershipIndexService<UUID, Map<String, String>>,
         ) :
-            TopicServiceController<UUID, String, Map<String, String>>(
+            TopicServiceImpl<UUID, String, Map<String, String>>(
                 topicP,
                 topicInd,
                 pubsub,

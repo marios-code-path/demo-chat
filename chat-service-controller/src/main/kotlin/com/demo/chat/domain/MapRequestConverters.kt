@@ -6,7 +6,7 @@ import com.demo.chat.service.core.UserIndexService
 
 
 class MapRequestConverters<T> : RequestToQueryConverters<T, Map<String, String>> {
-    override fun topicNameToQuery(req: ByNameRequest) = mapOf(
+    override fun topicNameToQuery(req: ByStringRequest) = mapOf(
             Pair(TopicIndexService.NAME, req.name),
             Pair("SAMPLE_SIZE", "100")
     )
@@ -16,8 +16,8 @@ class MapRequestConverters<T> : RequestToQueryConverters<T, Map<String, String>>
             Pair("SAMPLE_SIZE", "100")
     )
 
-    override fun userHandleToQuery(req: ByHandleRequest) = mapOf(
-            Pair(UserIndexService.HANDLE, req.handle)
+    override fun userHandleToQuery(req: ByStringRequest) = mapOf(
+            Pair(UserIndexService.HANDLE, req.name)
     )
 
     override fun membershipIdToQuery(req: ByIdRequest<T>) = mapOf(

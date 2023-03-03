@@ -7,11 +7,8 @@ import java.time.Instant
 @JsonTypeInfo(include = JsonTypeInfo.As.PROPERTY, use = JsonTypeInfo.Id.NAME, property="type")
 sealed class RequestResponse<T>
 
-@JsonTypeName("ByHandleRequest")
-data class ByHandleRequest(val handle: String) : RequestResponse<Any>()
-
 @JsonTypeName("ByNameRequest")
-data class ByNameRequest(val name: String) : RequestResponse<Any>()
+data class ByStringRequest(val name: String) : RequestResponse<Any>()
 
 @JsonTypeName("ByIdRequest")
 data class ByIdRequest<T>(val id: T) : RequestResponse<T>()

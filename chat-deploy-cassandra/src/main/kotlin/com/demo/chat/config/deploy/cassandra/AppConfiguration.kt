@@ -1,9 +1,9 @@
 package com.demo.chat.config.deploy.cassandra
 
 import com.demo.chat.config.BaseDomainConfiguration
-import com.demo.chat.config.controller.IndexControllersConfiguration
-import com.demo.chat.config.controller.KeyControllersConfiguration
-import com.demo.chat.config.controller.PersistenceControllersConfiguration
+import com.demo.chat.config.controller.core.IndexControllersConfiguration
+import com.demo.chat.config.controller.core.KeyControllersConfiguration
+import com.demo.chat.config.controller.core.PersistenceControllersConfiguration
 import com.demo.chat.config.deploy.cassandra.dse.AstraConfiguration
 import com.demo.chat.config.deploy.cassandra.dse.CassandraConfiguration
 import com.demo.chat.config.deploy.cassandra.dse.ContactPointConfiguration

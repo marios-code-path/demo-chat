@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.composite
 
-import com.demo.chat.controller.composite.MessagingController
+import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
 import com.demo.chat.service.core.MessageIndexService
@@ -31,8 +31,8 @@ import java.util.stream.Stream
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(SpringExtension::class)
 @Import(MockCoreServicesConfiguration::class,
-        MessagingControllerTests.CompositeMessagingTestConfiguration::class)
-class MessagingControllerTests : RSocketControllerTestBase() {
+        MessagingServiceImplTests.CompositeMessagingTestConfiguration::class)
+class MessagingServiceImplTests : RSocketControllerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
@@ -120,11 +120,11 @@ class MessagingControllerTests : RSocketControllerTestBase() {
         fun msging(t: TopicPubSubService<UUID, String>): TopicPubSubService<UUID, String> = t
 
         @Controller
-        class TestMessagingController(
+        class TestMessagingServiceImpl(
             messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
             msgPersist: MessagePersistence<UUID, String>,
             messaging: TopicPubSubService<UUID, String>,
-        ) : MessagingController<UUID, String, Map<String, String>>(
+        ) : MessagingServiceImpl<UUID, String, Map<String, String>>(
                 messageIdx,
                 msgPersist,
                 messaging,

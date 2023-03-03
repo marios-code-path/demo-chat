@@ -10,6 +10,7 @@ interface TypeUtil<T> {
     fun fromString(t: String): T
     fun assignFrom(t: Any): T
     fun parameterizedType(): ParameterizedTypeReference<T>
+    fun empty(): T
 
     companion object LongUtil : TypeUtil<Long> {
         override fun compare(a: Long, b: Long): Int = a.compareTo(b)
@@ -28,6 +29,8 @@ interface TypeUtil<T> {
 
         override fun parameterizedType(): ParameterizedTypeReference<Long> =
             ParameterizedTypeReference.forType(Long::class.java)
+
+        override fun empty(): Long = 0L
     }
 }
 
@@ -48,6 +51,8 @@ class LongUtil : TypeUtil<Long> {
 
     override fun parameterizedType(): ParameterizedTypeReference<Long> =
         ParameterizedTypeReference.forType(Long::class.java)
+
+    override fun empty(): Long = 0L
 }
 
 class UUIDUtil : TypeUtil<UUID> {
@@ -67,6 +72,8 @@ class UUIDUtil : TypeUtil<UUID> {
 
     override fun parameterizedType(): ParameterizedTypeReference<UUID> =
         ParameterizedTypeReference.forType(UUID::class.java)
+
+    override fun empty(): UUID = UUID(0, 0)
 }
 
 class StringUtil: TypeUtil<String> {
@@ -84,5 +91,5 @@ class StringUtil: TypeUtil<String> {
     override fun parameterizedType(): ParameterizedTypeReference<String> =
         ParameterizedTypeReference.forType(String::class.java)
 
-
+    override fun empty(): String = ""
 }

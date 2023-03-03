@@ -1,7 +1,7 @@
-package com.demo.chat.controller.composite
+package com.demo.chat.service.composite.impl
 
-import com.demo.chat.controller.composite.mapping.ChatTopicServiceMapping
 import com.demo.chat.domain.*
+import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.core.*
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -11,7 +11,7 @@ import java.util.function.Function
 import java.util.function.Supplier
 
 
-open class TopicServiceController<T, V, Q>(
+open class TopicServiceImpl<T, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
     private val topicIndex: TopicIndexService<T, Q>,
     private val pubsub: TopicPubSubService<T, V>,
@@ -19,13 +19,13 @@ open class TopicServiceController<T, V, Q>(
     private val membershipPersistence: MembershipPersistence<T>,
     private val membershipIndex: MembershipIndexService<T, Q>,
     private val emptyDataCodec: Supplier<V>,
-    private val topicNameToQuery: Function<ByNameRequest, Q>,
+    private val topicNameToQuery: Function<ByStringRequest, Q>,
     private val memberOfIdToQuery: Function<ByIdRequest<T>, Q>,
     private val memberWithTopicToQuery: Function<MembershipRequest<T>, Q>
-) : ChatTopicServiceMapping<T, V> {
+) : ChatTopicService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
-    override fun addRoom(req: ByNameRequest): Mono<out Key<T>> =
+    override fun addRoom(req: ByStringRequest): Mono<out Key<T>> =
         topicPersistence
             .key()
             .map { key -> MessageTopic.create(key, req.name) }
@@ -56,7 +56,7 @@ open class TopicServiceController<T, V, Q>(
         topicPersistence
             .get(Key.funKey(req.id))
 
-    override fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>> =
+    override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>> =
         topicIndex
             .findBy(topicNameToQuery.apply(req))
             .single()

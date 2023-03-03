@@ -2,7 +2,7 @@ package com.demo.chat.config.deploy.memory
 
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.controller.*
-import com.demo.chat.config.controller.composite.MessagingControllerConfiguration
+import com.demo.chat.config.controller.core.*
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.index.lucene.config.LuceneIndexBeans
 import com.demo.chat.config.persistence.memory.CoreKeyServices
@@ -41,8 +41,8 @@ import org.springframework.context.annotation.Import
     IndexControllersConfiguration::class,
     PersistenceControllersConfiguration::class,
     PubSubControllerConfiguration::class,
-    MessagingControllerConfiguration::class,
-    SecretsStoreControllerConfiguration::class
+    SecretsStoreControllerConfiguration::class,
+    CompositeControllersConfiguration::class
 )
 @Configuration
 open class AppConfiguration

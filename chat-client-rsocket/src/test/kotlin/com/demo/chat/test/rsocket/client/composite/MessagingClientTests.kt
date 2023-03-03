@@ -10,7 +10,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
-import com.demo.chat.test.rsocket.controller.composite.MessagingControllerTests
+import com.demo.chat.test.rsocket.controller.composite.MessagingServiceImplTests
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
@@ -33,7 +33,7 @@ import java.util.stream.Stream
 @Import(
         TestConfigurationRSocketServer::class,
         MockCoreServicesConfiguration::class,
-        MessagingControllerTests.CompositeMessagingTestConfiguration::class
+        MessagingServiceImplTests.CompositeMessagingTestConfiguration::class
 )
 class MessagingClientTests : RSocketTestBase() {
     @Autowired

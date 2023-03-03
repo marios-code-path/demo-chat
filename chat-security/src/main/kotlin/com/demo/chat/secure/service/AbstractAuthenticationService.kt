@@ -28,6 +28,7 @@ open class AbstractAuthenticationService<T, U, Q>(
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
         userIndex
             .findUnique(userNameToQuery.apply(n))
+            .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
             .flatMap { userKey ->
                 secretsStore
                     .getStoredCredentials(userKey)
@@ -36,5 +37,4 @@ open class AbstractAuthenticationService<T, U, Q>(
                         userKey
                     }
             }
-            .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
 }

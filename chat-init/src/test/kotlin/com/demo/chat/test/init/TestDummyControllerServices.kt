@@ -1,6 +1,6 @@
 package com.demo.chat.test.init
 
-import com.demo.chat.controller.composite.UserServiceController
+import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.AuthMetadata
@@ -31,7 +31,7 @@ class TestDummyControllerServices {
 
     @Controller
     @MessageMapping("user")
-    class TestUserController<T> : UserServiceController<T, Map<String, String>>(
+    class TestUserImpl<T> : UserServiceImpl<T, Map<String, String>>(
         DummyUserPersistence(DummyPersistenceStore()),
         DummyUserIndex(DummyIndexService()),
         java.util.function.Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })

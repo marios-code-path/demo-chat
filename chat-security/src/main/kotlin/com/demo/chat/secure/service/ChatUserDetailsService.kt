@@ -15,7 +15,7 @@ open class ChatUserDetailsService<T, Q>(
     private val persist: PersistenceStore<T, User<T>>,
     private val index: IndexService<T, User<T>, Q>,
     private val auth: AuthenticationService<T>,
-    private val authZ: AuthorizationService<T, String, String>,
+    private val authZ: AuthorizationService<T, String>,
     val usernameQuery: (String) -> Q
 ) : ReactiveUserDetailsService, ReactiveUserDetailsPasswordService {
     override fun findByUsername(username: String): Mono<UserDetails> =

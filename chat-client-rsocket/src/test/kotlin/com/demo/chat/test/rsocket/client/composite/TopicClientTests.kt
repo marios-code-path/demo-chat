@@ -98,7 +98,7 @@ class TopicClientTests : RSocketControllerTestBase() {
             .given(topicIndex.add(anyObject()))
             .willReturn(Mono.empty())
 
-        StepVerifier.create(client.addRoom(ByNameRequest(randomRoomName)))
+        StepVerifier.create(client.addRoom(ByStringRequest(randomRoomName)))
             .expectSubscription()
             .assertNext { key ->
 
@@ -160,7 +160,7 @@ class TopicClientTests : RSocketControllerTestBase() {
             .given(membershipPersistence.add(anyObject()))
             .willReturn(Mono.empty())
 
-        StepVerifier.create(client.addRoom(ByNameRequest(randomRoomName)))
+        StepVerifier.create(client.addRoom(ByStringRequest(randomRoomName)))
             .expectSubscription()
             .assertNext { key ->
 

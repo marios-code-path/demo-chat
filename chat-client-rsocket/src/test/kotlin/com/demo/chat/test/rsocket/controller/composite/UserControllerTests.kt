@@ -2,7 +2,7 @@ package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.controller.composite.UserServiceController
+import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
@@ -124,10 +124,10 @@ open class UserControllerTests : RSocketControllerTestBase() {
     class TestConfiguration {
 
         @Controller
-        class TestUserController(
+        class TestUserImpl(
             persistence: UserPersistence<UUID>,
             index: UserIndexService<UUID, Map<String, String>>,
-        ) : UserServiceController<UUID, Map<String, String>>(persistence,
+        ) : UserServiceImpl<UUID, Map<String, String>>(persistence,
                 index,
                 Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
     }

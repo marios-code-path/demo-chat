@@ -12,7 +12,6 @@ import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.context.annotation.Profile
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
@@ -25,17 +24,17 @@ class UserCommands<T>(
     private val userService: ChatUserService<T>,
     private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val passwdStore: SecretsStore<T>,
-    private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
     private val anonKey: Supplier<AnonymousKey<T>>,
     private val adminKey: Supplier<AdminKey<T>>,
     private val keyGen: IKeyGenerator<T>,
     private val keyService: IKeyService<T>
-) : CommandsUtil<T>(typeUtil){
+) : CommandsUtil<T>(typeUtil) {
 
     @ShellMethod("Create a Key")
     fun key(@ShellOption(defaultValue = "false") local: String): T {
-        return when(local) {
+        return when (local) {
             "true" -> return keyGen.nextKey()
             else -> return keyService.key(Key::class.java).block()!!.id
         }
@@ -74,7 +73,7 @@ class UserCommands<T>(
 
     @ShellMethod("Get a user")
     fun getUser(@ShellOption handle: String): String? = userService
-        .findByUsername(ByHandleRequest(handle))
+        .findByUsername(ByStringRequest(handle))
         .map { user ->
             "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
         }
@@ -134,13 +133,13 @@ class UserCommands<T>(
         keySvc
             .key(AuthMetadata::class.java)
             .map { metadataKey ->
-                    StringRoleAuthorizationMetadata(
-                        metadataKey,
-                        Key.funKey(identity(userId)),
-                        Key.funKey(typeUtil.fromString(targetUserId)),
-                        role,
-                        expiryTime
-                    )
+                StringRoleAuthorizationMetadata(
+                    metadataKey,
+                    Key.funKey(identity(userId)),
+                    Key.funKey(typeUtil.fromString(targetUserId)),
+                    role,
+                    expiryTime
+                )
             }
             .doOnNext { auth ->
                 println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")

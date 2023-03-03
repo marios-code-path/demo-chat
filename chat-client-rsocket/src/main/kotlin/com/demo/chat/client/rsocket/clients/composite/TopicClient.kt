@@ -1,7 +1,7 @@
 package com.demo.chat.client.rsocket.clients.composite
 
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.domain.Key
@@ -17,7 +17,7 @@ class TopicClient<T, V>(
         private val prefix: String,
         private val requester: RSocketRequester,
 ) : ChatTopicService<T, V> {
-    override fun addRoom(req: ByNameRequest): Mono<out Key<T>> = requester
+    override fun addRoom(req: ByStringRequest): Mono<out Key<T>> = requester
             .route("${prefix}topic-add")
             .data(req)
             .retrieveMono(ParameterizedTypeReference.forType(Key::class.java))
@@ -36,7 +36,7 @@ class TopicClient<T, V>(
             .data(req)
             .retrieveMono(ParameterizedTypeReference.forType(MessageTopic::class.java))
 
-    override fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>> = requester
+    override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>> = requester
             .route("${prefix}topic-by-name")
             .data(req)
             .retrieveMono(ParameterizedTypeReference.forType(MessageTopic::class.java))

@@ -4,10 +4,10 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.AnonymousKey
-import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
 import com.demo.chat.secure.AuthMetadataTargetKeySearch
 import com.demo.chat.secure.AuthSummarizer
+import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.secure.service.AbstractAuthenticationService
 import com.demo.chat.secure.service.AuthorizationMetadataService
 import com.demo.chat.secure.service.ChatAuthenticationManager
@@ -32,7 +32,7 @@ class AuthConfiguration<T>(
     fun authorizationService(
         authPersist: AuthMetaPersistence<T>,
         authIndex: AuthMetaIndex<T, IndexSearchRequest>
-    ): AuthorizationService<T, AuthMetadata<T>, IndexSearchRequest> =
+    ): AuthorizationService<T, AuthMetadata<T>> =
         AuthorizationMetadataService(
             authPersist,
             authIndex,
@@ -60,7 +60,7 @@ class AuthConfiguration<T>(
         userIndex: UserIndexService<T, IndexSearchRequest>,
         secretStore: SecretsStore<T>,
         userPersistence: UserPersistence<T>,
-        authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
+        authorizationService: AuthorizationService<T, AuthMetadata<T>>
     ) =
         ChatAuthenticationManager(
             keyTypeUtil,
@@ -68,4 +68,7 @@ class AuthConfiguration<T>(
             userPersistence,
             authorizationService
         )
+
+    @Bean
+    fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authMan)
 }

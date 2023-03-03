@@ -1,7 +1,7 @@
 package com.demo.chat.controller.composite.mapping
 
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
@@ -11,9 +11,9 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface ChatTopicServiceMapping<T, V>: ChatTopicService<T, V> {
+interface TopicServiceControllerMapping<T, V>: ChatTopicService<T, V> {
     @MessageMapping("topic-add")
-    override fun addRoom(req: ByNameRequest): Mono<out Key<T>>
+    override fun addRoom(req: ByStringRequest): Mono<out Key<T>>
     @MessageMapping("topic-rem")
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void>
     @MessageMapping("topic-list")
@@ -21,7 +21,7 @@ interface ChatTopicServiceMapping<T, V>: ChatTopicService<T, V> {
     @MessageMapping("topic-by-id")
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>>
     @MessageMapping("topic-by-name")
-    override fun getRoomByName(req: ByNameRequest): Mono<out MessageTopic<T>>
+    override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
     @MessageMapping("topic-join")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void>
     @MessageMapping("topic-leave")

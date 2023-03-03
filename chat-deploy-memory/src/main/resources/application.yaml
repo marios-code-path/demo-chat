@@ -1,10 +1,10 @@
 logging:
   level:
     root: INFO
+#    io.rsocket.FrameLogger: DEBUG
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
-#  level:
-#    io.rsocket.FrameLogger: DEBUG
+
 
 management:
   info:

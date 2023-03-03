@@ -1,7 +1,7 @@
-package com.demo.chat.controller.composite
+package com.demo.chat.service.composite.impl
 
-import com.demo.chat.controller.composite.mapping.ChatUserServiceMapping
 import com.demo.chat.domain.*
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import org.slf4j.Logger
@@ -12,11 +12,11 @@ import reactor.core.publisher.Mono
 import java.util.function.Function
 import java.util.stream.Collectors
 
-open class UserServiceController<T, Q>(
+open class UserServiceImpl<T, Q>(
     val userPersistence: UserPersistence<T>,
     private val userIndex: UserIndexService<T, Q>,
-    private val userHandleToQuery: Function<ByHandleRequest, Q>,
-) : ChatUserServiceMapping<T> {
+    private val userHandleToQuery: Function<ByStringRequest, Q>,
+) : ChatUserService<T> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =
@@ -36,7 +36,7 @@ open class UserServiceController<T, Q>(
                     .then(Mono.just(it))
             }
 
-    override fun findByUsername(req: ByHandleRequest): Flux<out User<T>> = userIndex
+    override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))
         .flatMap(userPersistence::get)
 

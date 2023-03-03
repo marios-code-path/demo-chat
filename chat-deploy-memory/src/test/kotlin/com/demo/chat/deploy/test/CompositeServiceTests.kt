@@ -1,8 +1,8 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.controller.composite.MessagingController
-import com.demo.chat.controller.composite.TopicServiceController
-import com.demo.chat.controller.composite.UserServiceController
+import com.demo.chat.service.composite.impl.MessagingServiceImpl
+import com.demo.chat.service.composite.impl.TopicServiceImpl
+import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.deploy.memory.App
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.*
@@ -40,18 +40,18 @@ import java.util.*
 class CompositeServiceTests {
 
     @Autowired
-    lateinit var topicController: TopicServiceController<Long, MessageTopic<Long>, Map<String, String>>
+    lateinit var topicController: TopicServiceImpl<Long, MessageTopic<Long>, Map<String, String>>
 
     @Autowired
-    lateinit var userController: UserServiceController<Long, Map<String, String>>
+    lateinit var userController: UserServiceImpl<Long, Map<String, String>>
 
     @Autowired
-    lateinit var messagingController: MessagingController<Long, String, Map<String, String>>
+    lateinit var messagingServiceImpl: MessagingServiceImpl<Long, String, Map<String, String>>
 
     @Test
     fun `create rooms and receive list`() {
-        val requestA = ByNameRequest(randomAlphaNumeric(4) + "Room")
-        val requestB = ByNameRequest(randomAlphaNumeric(4) + "Room")
+        val requestA = ByStringRequest(randomAlphaNumeric(4) + "Room")
+        val requestB = ByStringRequest(randomAlphaNumeric(4) + "Room")
 
         val roomStream = topicController
             .addRoom(requestA)
@@ -69,7 +69,7 @@ class CompositeServiceTests {
         Hooks.onOperatorDebug()
 
         val roomName = randomAlphaNumeric(4) + "Room"
-        val roomCreateReq = ByNameRequest(roomName)
+        val roomCreateReq = ByStringRequest(roomName)
 
         val roomCreated = topicController.addRoom(roomCreateReq).doOnNext { println(" ROOM : ${it.id}") }
         val userCreated = userController.addUser(UserCreateRequest("user", "testuser", "http://"))
@@ -85,7 +85,7 @@ class CompositeServiceTests {
             .verifyComplete()
 
         val roomMembers = topicController
-            .getRoomByName(ByNameRequest(roomName))
+            .getRoomByName(ByStringRequest(roomName))
             .flatMapMany { topicController.roomMembers(ByIdRequest(it.key.id)) }
 
         StepVerifier
@@ -108,7 +108,7 @@ class CompositeServiceTests {
         Hooks.onOperatorDebug()
 
         val roomName = randomAlphaNumeric(4) + "Room"
-        val roomCreateReq = ByNameRequest(roomName)
+        val roomCreateReq = ByStringRequest(roomName)
 
         val roomCreated = topicController.addRoom(roomCreateReq).block()!!
         val user1 = userController.addUser(UserCreateRequest("user", "testuser", "http://")).block()!!
@@ -120,10 +120,10 @@ class CompositeServiceTests {
 
         val message = MessageSendRequest("Hello World", user1.id, roomCreated.id)
 
-        messagingController.send(message).block()
+        messagingServiceImpl.send(message).block()
 
         StepVerifier
-            .create(messagingController
+            .create(messagingServiceImpl
                 .listenTopic(ByIdRequest(roomCreated.id))
                 .take(1)
             )

@@ -1,4 +1,4 @@
-package com.demo.chat.config.controller
+package com.demo.chat.config.controller.core
 
 import com.demo.chat.controller.core.TopicPubSubServiceController
 import com.demo.chat.service.core.TopicPubSubService

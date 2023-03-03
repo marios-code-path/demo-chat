@@ -1,7 +1,6 @@
 package com.demo.chat.secure.service
 
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
@@ -14,48 +13,28 @@ import org.springframework.security.authentication.InternalAuthenticationService
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import reactor.core.publisher.Mono
-import java.util.stream.Collectors
 
 class ChatAuthenticationManager<T>(
     private val typeUtil: TypeUtil<T>,
     private val authenticationS: AuthenticationService<T>,
     private val userPersistence: PersistenceStore<T, User<T>>,
-    private val authorizationS: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>
+    private val authorizationS: AuthorizationService<T, AuthMetadata<T>>
 ) :
-    AuthenticationManager { // authentication details will hold an ID
+    AuthenticationManager {
     override fun authenticate(authen: Authentication): Authentication {
         val credential = authen.credentials.toString()
-        val targetId: Key<T> = Key.funKey(typeUtil.assignFrom(authen.details))
-
-        Mono
-            .deferContextual<Void> { ctx ->
-                if(ctx.hasKey("target")) {
-                    println("Target Found")
-                } else {
-                    println("Target Not Found")
-                }
-                Mono.empty()
-            }.block()
 
         return authenticationS
             .authenticate(authen.name, credential)
             .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }
             .flatMap(userPersistence::get)
-            .flatMap { user ->
-                authorizationS
-                    .getAuthorizationsAgainst(user.key, targetId)
-                    .map { authMeta -> authMeta.permission }
-                    .collect(Collectors.toList())
-                    .map { authorizations ->
-                        val userDetails = ChatUserDetails(user, authorizations)
-                        UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            authen.credentials,
-                            userDetails.authorities
-                        ).apply {
-                            details = authen.details
-                        }
-                    }
+            .map { user ->
+                val userDetails = ChatUserDetails(user, listOf())
+                UsernamePasswordAuthenticationToken(
+                    userDetails,
+                    authen.credentials,
+                    userDetails.authorities
+                )
             }
             .switchIfEmpty(Mono.error(BadCredentialsException("Invalid Credentials")))
             .block()!!

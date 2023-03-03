@@ -1,7 +1,7 @@
-package com.demo.chat.controller.composite
+package com.demo.chat.service.composite.impl
 
-import com.demo.chat.controller.composite.mapping.ChatMessageServiceMapping
 import com.demo.chat.domain.*
+import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
@@ -11,12 +11,12 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-open class MessagingController<T, V, Q>(
+open class MessagingServiceImpl<T, V, Q>(
     private val messageIndex: MessageIndexService<T, V, Q>,
     private val messagePersistence: MessagePersistence<T, V>,
     private val topicMessaging: TopicPubSubService<T, V>,
     private val topicIdToQuery: Function<ByIdRequest<T>, Q>,
-) : ChatMessageServiceMapping<T, V> {
+) : ChatMessageService<T, V> {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 

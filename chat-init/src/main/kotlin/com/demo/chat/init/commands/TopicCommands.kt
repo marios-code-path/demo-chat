@@ -1,22 +1,17 @@
 package com.demo.chat.init.commands
 
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.ByNameRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
-import com.demo.chat.domain.knownkey.AdminKey
-import com.demo.chat.domain.knownkey.AnonymousKey
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.shell.Availability
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
-import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
@@ -44,7 +39,7 @@ class TopicCommands<T>(
         val identity = identity(userId)
 
         topicService
-            .addRoom(ByNameRequest(name))
+            .addRoom(ByStringRequest(name))
             .flatMap { topicKey ->
                 authorizationService
                     .authorize(

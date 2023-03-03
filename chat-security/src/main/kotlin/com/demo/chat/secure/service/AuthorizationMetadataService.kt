@@ -26,7 +26,7 @@ class AuthorizationMetadataService<T, Q>(
     private val anonKey: Supplier<out Key<T>>,
     private val keyFromAuthorization: Function<AuthMetadata<T>, Key<T>>,
     private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>
-) : AuthorizationService<T, AuthMetadata<T>, Q> {
+) : AuthorizationService<T, AuthMetadata<T>> {
     override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> = when (auth.key.empty) {
         true -> authPersist
             .key()

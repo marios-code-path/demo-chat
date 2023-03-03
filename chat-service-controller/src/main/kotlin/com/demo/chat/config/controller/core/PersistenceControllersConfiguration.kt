@@ -1,4 +1,4 @@
-package com.demo.chat.config.controller
+package com.demo.chat.config.controller.core
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.core.PersistenceServiceController

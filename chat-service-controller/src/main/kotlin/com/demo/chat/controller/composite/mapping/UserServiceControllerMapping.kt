@@ -1,20 +1,16 @@
 package com.demo.chat.controller.composite.mapping
 
-import com.demo.chat.domain.ByHandleRequest
-import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
+import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface ChatUserServiceMapping<T> : ChatUserService<T> {
+interface UserServiceControllerMapping<T> : ChatUserService<T> {
     @MessageMapping("user-add")
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>>
     @MessageMapping("user-by-handle")
-    override fun findByUsername(req: ByHandleRequest): Flux<out User<T>>
+    override fun findByUsername(req: ByStringRequest): Flux<out User<T>>
     @MessageMapping("user-by-id")
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>>
 }

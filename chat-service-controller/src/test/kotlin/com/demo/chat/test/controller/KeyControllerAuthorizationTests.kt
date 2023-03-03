@@ -2,20 +2,18 @@ package com.demo.chat.test.controller
 
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.BaseDomainConfiguration
-import com.demo.chat.config.controller.KeyControllersConfiguration
+import com.demo.chat.config.controller.core.KeyControllersConfiguration
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.dummy.DummyKeyService
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.security.test.context.support.WithMockUser
 import org.springframework.test.context.TestPropertySource
 import reactor.test.StepVerifier
 
