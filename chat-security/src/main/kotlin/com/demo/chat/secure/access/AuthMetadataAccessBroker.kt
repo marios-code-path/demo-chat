@@ -29,7 +29,10 @@ class AuthMetadataAccessBroker<T>(
             }
     }
 
-    override fun getAccess(principal: Mono<Key<T>>, target: Key<T>, perm: String): Mono<Void> = principal
+    override fun getAccess(principal: Key<T>, key: Key<T>, action: String): Mono<Void> =
+        collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(principal, key), action)
+
+    override fun getAccessFromPublisher(principal: Mono<Key<T>>, target: Key<T>, perm: String): Mono<Void> = principal
         .flatMap { pKey ->
             collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(pKey, target), perm)
         }

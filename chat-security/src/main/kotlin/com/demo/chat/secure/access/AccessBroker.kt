@@ -4,5 +4,6 @@ import com.demo.chat.domain.Key
 import reactor.core.publisher.Mono
 
 interface AccessBroker<T> {
-    fun getAccess(principal: Mono<Key<T>>, key: Key<T>, action: String): Mono<Void>
+    fun getAccessFromPublisher(principal: Mono<Key<T>>, key: Key<T>, action: String): Mono<Void>
+    fun getAccess(principal: Key<T>, key: Key<T>, action: String): Mono<Void>
 }

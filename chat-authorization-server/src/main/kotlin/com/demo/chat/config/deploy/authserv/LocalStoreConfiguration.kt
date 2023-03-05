@@ -17,7 +17,7 @@ class ChatConfiguration {
         persist: UserPersistence<T>,
         index: UserIndexService<T, IndexSearchRequest>,
         auth: AuthenticationService<T>,
-        authZ: AuthorizationService<T, String, String>,
+        authZ: AuthorizationService<T, String>,
     ): ChatUserDetailsService<T, IndexSearchRequest> = ChatUserDetailsService(
         persist, index, auth, authZ
     ) { name ->

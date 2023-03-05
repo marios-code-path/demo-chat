@@ -1,17 +1,14 @@
-package com.demo.chat.test.rsocket.client.composite
+package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.controller.composite.mapping.MessageServiceControllerMapping
+import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.client.rsocket.clients.composite.MessagingClient
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.ChatMessage
+import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
-import com.demo.chat.test.rsocket.RSocketTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
-import com.demo.chat.test.rsocket.controller.composite.MessagingServiceImplTests
-import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -20,22 +17,24 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.messaging.rsocket.retrieveFlux
+import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import java.util.function.Function
 import java.util.stream.Stream
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-        TestConfigurationRSocketServer::class,
-        MockCoreServicesConfiguration::class,
-        MessagingServiceImplTests.CompositeMessagingTestConfiguration::class
-)
-class MessagingClientTests : RSocketTestBase() {
+@ExtendWith(SpringExtension::class)
+@Import(MockCoreServicesConfiguration::class,
+        MessageControllerTests.CompositeMessagingTestConfiguration::class)
+class MessageControllerTests : RSocketControllerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
@@ -45,19 +44,18 @@ class MessagingClientTests : RSocketTestBase() {
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
-    private val svcPrefix = ""
-
     @Test
     fun `should fetch a single message`() {
         BDDMockito
                 .given(messagePersistence.get(TestBase.anyObject()))
                 .willReturn(Mono.just(randomMessage()))
 
-        val client = MessagingClient<UUID, String>(svcPrefix, requester)
-
         StepVerifier
                 .create(
-                        client.messageById(ByIdRequest(UUID.randomUUID()))
+                        requester
+                                .route("message-by-id")
+                                .data(ByIdRequest(UUID.randomUUID()))
+                                .retrieveMono(ChatMessage::class.java)
                 )
                 .expectSubscription()
                 .assertNext {
@@ -70,7 +68,6 @@ class MessagingClientTests : RSocketTestBase() {
                 }
                 .verifyComplete()
     }
-
 
     @Test
     fun `should receive messages from a random topic`() {
@@ -86,10 +83,13 @@ class MessagingClientTests : RSocketTestBase() {
                 .given(messageIndex.findBy(TestBase.anyObject()))
                 .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(5)))
 
-        val client = MessagingClient<UUID, String>(svcPrefix, requester)
+        val receiverFlux = requester
+                .route("message-listen-topic")
+                .data(ByIdRequest(UUID.randomUUID()))
+                .retrieveFlux<ChatMessage<UUID, String>>()
 
         StepVerifier
-                .create(client.listenTopic(ByIdRequest(UUID.randomUUID())))
+                .create(receiverFlux)
                 .expectSubscription()
                 .expectNextCount(10)
                 .thenConsumeWhile({
@@ -110,15 +110,33 @@ class MessagingClientTests : RSocketTestBase() {
                 .verify()
     }
 
+    @TestConfiguration
+    class CompositeMessagingTestConfiguration {
+        @Bean
+        fun msgIdx(t: MessageIndexService<UUID, String, Map<String, String>>) = t
 
-    private var counter = Random().nextInt()
+        @Bean
+        fun msgPersist(t: MessagePersistence<UUID, String>): MessagePersistence<UUID, String> = t
 
-    fun randomMessage(): Message<UUID, String> {
-        val userId = UUID.randomUUID()
-        val roomId = UUID.randomUUID()
-        val messageId = UUID.randomUUID()
-        counter++
+        @Bean
+        fun msging(t: TopicPubSubService<UUID, String>): TopicPubSubService<UUID, String> = t
 
-        return Message.create(MessageKey.create(messageId, roomId, userId), "Hello $counter !", true)
+
+        @Bean
+        fun testMessagingServiceImpl(
+            messageIdx: MessageIndexService<UUID, String, Map<String, String>>,
+            msgPersist: MessagePersistence<UUID, String>,
+            messaging: TopicPubSubService<UUID, String>,
+        ) = MessagingServiceImpl<UUID, String, Map<String, String>>(
+            messageIdx,
+            msgPersist,
+            messaging,
+            Function { i -> mapOf(Pair(MessageIndexService.TOPIC, i.id.toString())) }
+        )
+
+        @Controller
+        class MessagingServiceServiceController(b: MessagingServiceImpl<UUID, String, Map<String, String>>) :
+            MessageServiceControllerMapping<UUID, String>, ChatMessageService<UUID, String> by b
+
     }
 }

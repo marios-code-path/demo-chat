@@ -1,9 +1,14 @@
 package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.controller.composite.mapping.MessageServiceControllerMapping
+import com.demo.chat.controller.composite.mapping.UserServiceControllerMapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.domain.Key
+import com.demo.chat.service.composite.ChatMessageService
+import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase
@@ -15,6 +20,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.retrieveFlux
@@ -123,12 +129,17 @@ open class UserControllerTests : RSocketControllerTestBase() {
     @Configuration
     class TestConfiguration {
 
-        @Controller
-        class TestUserImpl(
+        @Bean
+        fun testUserImpl(
             persistence: UserPersistence<UUID>,
             index: UserIndexService<UUID, Map<String, String>>,
-        ) : UserServiceImpl<UUID, Map<String, String>>(persistence,
+        ) = UserServiceImpl<UUID, Map<String, String>>(persistence,
                 index,
-                Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
+                Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.name)) })
+
+        @Controller
+        class TestUserServiceController(b: UserServiceImpl<UUID, Map<String, String>>) :
+            UserServiceControllerMapping<UUID>, ChatUserService<UUID> by b
+
     }
 }

@@ -12,7 +12,7 @@ import java.util.function.Supplier
 
 @Disabled
 open class AuthorizationServiceTests<T>(
-    private val authSvc: AuthorizationService<T, AuthMetadata<T>, IndexSearchRequest>,
+    private val authSvc: AuthorizationService<T, AuthMetadata<T>>,
     private val authMetaSupplier: Supplier<AuthMetadata<T>>
 ) {
 

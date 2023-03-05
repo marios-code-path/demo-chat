@@ -40,10 +40,12 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
     CorePersistenceServices::class,
     IndexServiceConfiguration::class,
     AuthConfiguration::class,
+
     // Controllers
     KeyControllersConfiguration::class,
     IndexControllersConfiguration::class,
     PersistenceControllersConfiguration::class,
+    CompositeServiceConfiguration::class
 )
 @EnableReactiveCassandraRepositories(
     basePackages = [

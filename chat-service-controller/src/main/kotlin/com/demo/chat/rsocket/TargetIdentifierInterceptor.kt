@@ -13,6 +13,10 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/*
+   This strategy attempts to decode payload, then set a 'targetId' property on the context
+   for later use by the PayloadInterceptor
+ */
 class TargetIdentifierInterceptor<T>(private val strategies: RSocketStrategies, typeUtil: TypeUtil<T>) :
     RSocketInterceptor, Ordered {
 

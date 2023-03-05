@@ -17,7 +17,7 @@ import org.springframework.shell.standard.ShellOption
 @ShellComponent
 class TopicCommands<T>(
     private val topicService: ChatTopicService<T, String>,
-    private val authorizationService: AuthorizationService<T, AuthMetadata<T>, AuthMetadata<T>>,
+    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
     private val keyGenerator: IKeyGenerator<T>

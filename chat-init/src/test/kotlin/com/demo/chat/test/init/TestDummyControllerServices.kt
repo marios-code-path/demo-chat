@@ -34,7 +34,7 @@ class TestDummyControllerServices {
     class TestUserImpl<T> : UserServiceImpl<T, Map<String, String>>(
         DummyUserPersistence(DummyPersistenceStore()),
         DummyUserIndex(DummyIndexService()),
-        java.util.function.Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.handle)) })
+        java.util.function.Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.name)) })
 
     class DummyAuthMetadataPersistence<T>(that: PersistenceStore<T, AuthMetadata<T>>) :
         PersistenceStore<T, AuthMetadata<T>> by that

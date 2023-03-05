@@ -8,7 +8,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface MessageControllerMapping<T, V> : ChatMessageService<T, V> {
+interface MessageServiceControllerMapping<T, V> : ChatMessageService<T, V> {
     @MessageMapping("message-listen-topic")
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>>
     @MessageMapping("message-by-id")

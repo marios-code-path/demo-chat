@@ -17,7 +17,7 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder
 
 @Configuration
 @ConditionalOnProperty("app.service.composite")
-class CompositeControllersConfiguration {
+class CompositeServiceConfiguration {
 
     @Bean
     fun <T> compositeServiceBeans(
@@ -25,15 +25,15 @@ class CompositeControllersConfiguration {
         indexServiceBeans: IndexServiceBeans<T, String, IndexSearchRequest>,
         topicPubSubService: TopicPubSubService<T, String>,
         typeUtil: TypeUtil<T>,
-    ): CompositeServiceBeansDefinition<T, String, IndexSearchRequest> =
+    ): CompositeServiceBeans<T, String> =
         CompositeServiceBeansDefinition(
             s = persistenceServiceBeans,
             x = indexServiceBeans,
             p = topicPubSubService,
             t = typeUtil,
             emptyMessageSupplier = { "" },
-            topicIdQueryFunction = { r -> IndexSearchRequest(MessageIndexService.TOPIC, typeUtil.toString(r.id), 100) },
-            topicNameQueryFunction = { r -> IndexSearchRequest(TopicIndexService.NAME, r.name, 100) },
+            topicIdQueryFunction = { req -> IndexSearchRequest(MessageIndexService.TOPIC, typeUtil.toString(req.id), 100) },
+            topicNameQueryFunction = { req -> IndexSearchRequest(TopicIndexService.NAME, req.name, 100) },
             membershipOfIdQueryFunction = { req -> IndexSearchRequest(MembershipIndexService.MEMBEROF, typeUtil.toString(req.id), 100) },
             membershipRequestQueryFunction = { req ->
                 IndexSearchRequest(
@@ -42,10 +42,11 @@ class CompositeControllersConfiguration {
                     100
                 )
             },
-            handleQueryFunction = { r -> IndexSearchRequest(UserIndexService.HANDLE, r.name, 100) }
+            handleQueryFunction = { req -> IndexSearchRequest(UserIndexService.HANDLE, req.name, 100) }
         )
 
     @Bean
+    @ConditionalOnProperty("app.service.composite.security")
     fun <T> springSecurityCompositeServiceAccessBeans(
         accessBroker: AccessBroker<T>,
         rootKeys: RootKeys<T>,

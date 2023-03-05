@@ -1,9 +1,11 @@
 package com.demo.chat.test.rsocket.controller.composite
 
 
-import com.demo.chat.service.composite.impl.TopicServiceImpl
+import com.demo.chat.controller.composite.mapping.TopicServiceControllerMapping
 import com.demo.chat.domain.*
 import com.demo.chat.service.*
+import com.demo.chat.service.composite.ChatTopicService
+import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
@@ -17,6 +19,7 @@ import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -246,15 +249,15 @@ open class TopicControllerTests : RSocketControllerTestBase() {
 
     @TestConfiguration
     class TestTopicControllerConfiguration {
-        @Controller
-        class TestTopicImpl(
+        @Bean
+        fun testTopicImpl(
             topicP: TopicPersistence<UUID>,
             topicInd: TopicIndexService<UUID, Map<String, String>>,
             pubsub: TopicPubSubService<UUID, String>,
             userP: UserPersistence<UUID>,
             membershipP: MembershipPersistence<UUID>,
             membershipInd: MembershipIndexService<UUID, Map<String, String>>,
-        ) :
+        ) =
             TopicServiceImpl<UUID, String, Map<String, String>>(
                 topicP,
                 topicInd,
@@ -278,5 +281,10 @@ open class TopicControllerTests : RSocketControllerTestBase() {
                     )
                 }
             )
+
+        @Controller
+        class MessagingServiceServiceController(b: TopicServiceImpl<UUID, String, Map<String, String>>) :
+            TopicServiceControllerMapping<UUID, String>, ChatTopicService<UUID, String> by b
+
     }
 }
