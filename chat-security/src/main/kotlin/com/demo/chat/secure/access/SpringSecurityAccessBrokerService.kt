@@ -14,7 +14,7 @@ open class SpringSecurityAccessBrokerService<T>(val access: AccessBroker<T>) {
                 .map { it.authentication.principal as ChatUserDetails<T> }
                 .map { it.user.key },
             target, perm
-        ).map { true }
+        )
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 }

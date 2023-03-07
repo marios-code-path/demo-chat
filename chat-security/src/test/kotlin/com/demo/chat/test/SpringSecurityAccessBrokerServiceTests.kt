@@ -9,6 +9,7 @@ import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.test.key.MockKeyGeneratorResolver
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -21,29 +22,24 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
-@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
-class LongSSAccesBrokerServiceTests(k: IKeyGenerator<Long>) : SSAccessBrokerServiceTests<Long>(k)
-
+class SpringSecurityAccessBrokerServiceLongKeyTests(k: IKeyGenerator<Long>) :
+    SpringSecurityAccessBrokerServiceTests<Long>(k)
 
 @Disabled
-open class SSAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
+@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
+open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
 
     val user = User.create(keyGen.nextKey(), "TEST USER", "SOMENAME", "http://test/image.png")
-    private fun roles() = listOf("WRITE", "READ")
+    private val targetKey = keyGen.nextKey()
+
+    private fun roles(): List<String> = emptyList()
     private fun grantedAuthorities() = roles().map { SimpleGrantedAuthority("ROLE_$it") }
 
     @MockBean
     lateinit var authSvc: AuthorizationService<T, AuthMetadata<T>>
 
-    @Test
-    fun `has access will allow`() {
-        val auth =
-            UsernamePasswordAuthenticationToken.authenticated(ChatUserDetails(user, roles()), "", grantedAuthorities())
-
-        // ReactorContextTestExecutionListener will set the context on the Hooks.onLastOperator call
-        SecurityContextHolder.getContext().authentication = auth
-
-        val targetKey = keyGen.nextKey()
+    @BeforeEach
+    fun setUp() {
         val authMetadataAgainstData = Flux.just(
             AuthMetadata.create(
                 key = keyGen.nextKey(),
@@ -60,13 +56,46 @@ open class SSAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
         BDDMockito
             .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject()))
             .willReturn(authMetadataAgainstData)
+    }
+
+    @Test
+    fun `has no access disallow`() {
+        val auth =
+            UsernamePasswordAuthenticationToken.authenticated(ChatUserDetails(user, roles()), "", grantedAuthorities())
+
+        // ReactorContextTestExecutionListener will set the context on the Hooks.onLastOperator call
+        SecurityContextHolder.getContext().authentication = auth
+
+        val broker = AuthMetadataAccessBroker(authSvc)
+
+        val accessService = SpringSecurityAccessBrokerService(broker)
+
+        val p = accessService.hasAccessFor(targetKey, "TEST1")
+
+        StepVerifier
+            .create(p)
+            .assertNext {
+                Assertions
+                    .assertThat(it)
+                    .isNotNull
+                    .isFalse()
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `has access will allow`() {
+        val auth =
+            UsernamePasswordAuthenticationToken.authenticated(ChatUserDetails(user, roles()), "", grantedAuthorities())
+
+        // ReactorContextTestExecutionListener will set the context on the Hooks.onLastOperator call
+        SecurityContextHolder.getContext().authentication = auth
 
         val broker = AuthMetadataAccessBroker(authSvc)
 
         val accessService = SpringSecurityAccessBrokerService(broker)
 
         val p = accessService.hasAccessFor(targetKey, "TEST")
-
 
         StepVerifier
             .create(p)
@@ -77,6 +106,5 @@ open class SSAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
                     .isTrue()
             }
             .verifyComplete()
-
     }
 }
