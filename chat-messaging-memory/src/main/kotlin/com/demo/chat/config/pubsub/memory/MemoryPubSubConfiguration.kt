@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Primary
 
 @Configuration
-class PubSubConfig {
+class MemoryPubSubConfiguration {
     @Bean
     @Primary
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])

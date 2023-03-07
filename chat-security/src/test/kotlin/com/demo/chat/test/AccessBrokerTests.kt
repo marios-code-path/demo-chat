@@ -27,7 +27,7 @@ open class AccessBrokerTests<T>(
     lateinit var authSvc: AuthorizationService<T, AuthMetadata<T>>
 
     @Test
-    fun `Empty authMetadata disallows access`() {
+    fun `empty authMetadata disallows access`() {
         val myPrincipal = keyGenerator.nextKey()
         val objectForAccess = keyGenerator.nextKey()
 

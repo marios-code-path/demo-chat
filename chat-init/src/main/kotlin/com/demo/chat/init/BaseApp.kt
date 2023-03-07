@@ -7,7 +7,7 @@ import com.demo.chat.config.client.rsocket.CompositeClientsConfiguration
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
-import com.demo.chat.config.secure.AuthConfiguration
+import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.init.domain.BootstrapProperties
@@ -38,7 +38,7 @@ import reactor.core.publisher.Hooks
     ClientConfiguration::class,
     CoreClientsConfiguration::class,
     CompositeClientsConfiguration::class,
-    AuthConfiguration::class
+    CompositeAuthConfiguration::class
 )
 class BaseApp {
 

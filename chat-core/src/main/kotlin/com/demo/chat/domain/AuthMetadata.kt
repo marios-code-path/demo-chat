@@ -1,7 +1,7 @@
 package com.demo.chat.domain
 
-interface AuthMetadata<T> {
-    val key: Key<T>
+interface AuthMetadata<T> : KeyBearer<T> {
+    override val key: Key<T>
     val principal: Key<T>
     val target: Key<T>
     val permission: String

@@ -12,7 +12,7 @@ import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.config.persistence.cassandra.CoreKeyServices
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.config.persistence.cassandra.KeyGenConfiguration
-import com.demo.chat.config.secure.AuthConfiguration
+import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
@@ -39,7 +39,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
     CoreKeyServices::class,
     CorePersistenceServices::class,
     IndexServiceConfiguration::class,
-    AuthConfiguration::class,
+    CompositeAuthConfiguration::class,
 
     // Controllers
     KeyControllersConfiguration::class,

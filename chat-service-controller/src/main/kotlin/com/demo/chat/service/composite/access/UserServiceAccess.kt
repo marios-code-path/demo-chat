@@ -8,7 +8,7 @@ import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class UserServiceAccess<T>(
+open class UserServiceAccess<T>(
     private val authMetadataAccessBroker: AccessBroker<T>,
     private val principalSupplier: () -> Publisher<Key<T>>,
     private val rootKeys: RootKeys<T>,

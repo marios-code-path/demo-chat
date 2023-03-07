@@ -10,7 +10,7 @@ import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class MessagingServiceAccess<T, V> (
+open class MessagingServiceAccess<T, V> (
     private val authMetadataAccessBroker: AccessBroker<T>,
     private val principalPublisher: () -> Publisher<Key<T>>,
     private val that: ChatMessageService<T, V>

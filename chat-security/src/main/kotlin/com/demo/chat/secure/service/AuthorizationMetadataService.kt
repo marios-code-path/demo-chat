@@ -24,7 +24,6 @@ class AuthorizationMetadataService<T, Q>(
     private val queryForPrinciple: Function<in Key<T>, Q>,
     private val queryForTarget: Function<in Key<T>, Q>,
     private val anonKey: Supplier<out Key<T>>,
-    private val keyFromAuthorization: Function<AuthMetadata<T>, Key<T>>,
     private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>
 ) : AuthorizationService<T, AuthMetadata<T>> {
     override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> = when (auth.key.empty) {
@@ -38,8 +37,8 @@ class AuthorizationMetadataService<T, Q>(
                 true -> authPersist
                     .add(authorization)
                     .then(authIndex.add(authorization))
-                else -> authPersist.rem(keyFromAuthorization.apply(authorization))
-                    .flatMap { authIndex.rem(keyFromAuthorization.apply(authorization)) }
+                else -> authPersist.rem(authorization.key)
+                    .flatMap { authIndex.rem(authorization.key) }
             }
         }
 
