@@ -32,7 +32,7 @@ import java.util.*
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
         "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
-        "spring.cloud.consul.host=127.0.0.1",
+        "spring.cloud.consul.host=127.0.0.1", "spring.rsocket.server.port=0",
     ]
 )
 @ActiveProfiles("exec-chat")
