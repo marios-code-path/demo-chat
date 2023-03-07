@@ -36,9 +36,9 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -64,9 +64,9 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -95,9 +95,9 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )

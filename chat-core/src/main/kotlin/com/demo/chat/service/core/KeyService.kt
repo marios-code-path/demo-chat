@@ -10,5 +10,6 @@ interface  IKeyService <T> {
 }
 
 interface IKeyGenerator <T> {
-    open fun nextKey(): T
+    fun nextId(): T
+    fun nextKey(): Key<T> = Key.funKey(nextId())
 }

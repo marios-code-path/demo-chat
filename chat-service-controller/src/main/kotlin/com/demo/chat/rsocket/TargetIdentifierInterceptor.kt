@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono
 class TargetIdentifierInterceptor<T>(private val strategies: RSocketStrategies, typeUtil: TypeUtil<T>) :
     RSocketInterceptor, Ordered {
 
-    private val targetTypeClass = Class.forName(typeUtil.parameterizedType().type.typeName)
+    private val idType = ResolvableType.forType(typeUtil.parameterizedType())
 
     override fun apply(rSocket: RSocket): RSocket {
         val r = object : RSocket {
@@ -60,7 +60,7 @@ class TargetIdentifierInterceptor<T>(private val strategies: RSocketStrategies, 
 
         try {
             if (payload.data.hasRemaining()) {
-                val resolution = ResolvableType.forClassWithGenerics(RequestResponse::class.java, targetTypeClass)
+                val resolution = ResolvableType.forClassWithGenerics(RequestResponse::class.java, idType)
                 val data = DefaultDataBufferFactory().wrap(payload.data)
                 val decoder = strategies.decoder<RequestResponse<*>>(resolution, MediaType.APPLICATION_CBOR)
                 val decoded: RequestResponse<*> = decoder.decode(

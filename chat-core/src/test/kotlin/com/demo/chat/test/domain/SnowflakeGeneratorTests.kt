@@ -13,7 +13,7 @@ class SnowflakeGeneratorTests {
         val generator = SnowflakeGenerator()
 
         val publisher = Flux.create<Long> { sink ->
-            sink.next(generator.nextKey())
+            sink.next(generator.nextId())
             sink.complete()
         }
             .repeat(10)

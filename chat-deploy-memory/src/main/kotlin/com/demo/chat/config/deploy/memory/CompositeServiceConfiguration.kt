@@ -8,7 +8,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.access.AccessBroker
 import com.demo.chat.service.composite.CompositeServiceBeans
-import com.demo.chat.service.composite.access.CompositeServiceAccessBeansConfiguration
+import com.demo.chat.config.controller.composite.CompositeServiceAccessBeansConfiguration
 import com.demo.chat.service.core.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -27,10 +27,10 @@ class CompositeServiceConfiguration {
         typeUtil: TypeUtil<T>,
     ): CompositeServiceBeans<T, String> =
         CompositeServiceBeansDefinition(
-            s = persistenceServiceBeans,
-            x = indexServiceBeans,
-            p = topicPubSubService,
-            t = typeUtil,
+            persistenceBeans = persistenceServiceBeans,
+            indexBeans = indexServiceBeans,
+            pubsub = topicPubSubService,
+            typeUtil = typeUtil,
             emptyMessageSupplier = { "" },
             topicIdQueryFunction = { req -> IndexSearchRequest(MessageIndexService.TOPIC, typeUtil.toString(req.id), 100) },
             topicNameQueryFunction = { req -> IndexSearchRequest(TopicIndexService.NAME, req.name, 100) },

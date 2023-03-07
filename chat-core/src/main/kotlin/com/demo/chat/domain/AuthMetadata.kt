@@ -8,14 +8,14 @@ interface AuthMetadata<T> {
     val expires: Long
 
     companion object Factory {
-        fun <T> create(k: Key<T>, ppl: Key<T>, targ: Key<T>, perm: String, exp: Long): AuthMetadata<T> =
+        fun <T> create(key: Key<T>, principal: Key<T>, target: Key<T>, perm: String, exp: Long): AuthMetadata<T> =
             object : AuthMetadata<T> {
                 override val key: Key<T>
-                    get() = k
+                    get() = key
                 override val principal: Key<T>
-                    get() = ppl
+                    get() = principal
                 override val target: Key<T>
-                    get() = targ
+                    get() = target
                 override val permission: String
                     get() = perm
                 override val expires: Long

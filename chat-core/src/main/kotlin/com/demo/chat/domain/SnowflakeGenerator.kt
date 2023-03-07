@@ -48,7 +48,7 @@ class SnowflakeGenerator : IKeyGenerator<Long> {
     private var sequence = 0L
 
     @Synchronized
-    override fun nextKey(): Long{
+    override fun nextId(): Long{
         var currentTimestamp = timestamp()
         check(currentTimestamp >= lastTimestamp) { "Invalid System Clock!" }
         if (currentTimestamp == lastTimestamp) {

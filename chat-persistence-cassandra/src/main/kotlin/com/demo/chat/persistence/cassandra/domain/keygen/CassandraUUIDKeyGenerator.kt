@@ -5,5 +5,5 @@ import com.demo.chat.service.core.IKeyGenerator
 import java.util.*
 
 class CassandraUUIDKeyGenerator : IKeyGenerator<UUID> {
-    override fun nextKey(): UUID = Uuids.timeBased()
+    override fun nextId(): UUID = Uuids.timeBased()
 }

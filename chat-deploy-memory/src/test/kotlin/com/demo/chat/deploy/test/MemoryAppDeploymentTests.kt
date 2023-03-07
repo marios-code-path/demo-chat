@@ -18,11 +18,11 @@ import org.springframework.test.context.TestPropertySource
         "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=long",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
         "app.service.core.secrets",
-        "app.service.composite",
+
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
-        "app.controller.user", "app.controller.topic", "app.controller.message",
+
         "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
-        "spring.cloud.consul.host=127.0.0.1",
+        "spring.cloud.consul.host=127.0.0.1", "spring.rsocket.server.port=6790"
     ]
 )
 @ActiveProfiles("exec-chat")

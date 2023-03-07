@@ -1,10 +1,12 @@
-package com.demo.chat.service.composite.access
+package com.demo.chat.config.controller.composite
 
-import com.demo.chat.config.controller.composite.CompositeServiceBeansDefinition
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.access.AccessBroker
+import com.demo.chat.service.composite.access.MessagingServiceAccess
+import com.demo.chat.service.composite.access.TopicServiceControllerAccess
+import com.demo.chat.service.composite.access.UserServiceAccess
 import org.reactivestreams.Publisher
 
 class CompositeServiceAccessBeansConfiguration<T, V, Q>(

@@ -32,9 +32,9 @@ class AuthMetadataPersistenceTests {
     private val keyService = TestUUIDKeyService()
 
     private val testAuthMetadata = AuthMetadataById(
-        AuthMetadataIdKey(keyService.nextKey()),
-        keyService.nextKey(),
-        keyService.nextKey(),
+        AuthMetadataIdKey(keyService.nextId()),
+        keyService.nextId(),
+        keyService.nextId(),
         "TEST",
         System.currentTimeMillis()
     )

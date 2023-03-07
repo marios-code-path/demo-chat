@@ -44,7 +44,7 @@ class TopicCommands<T>(
                 authorizationService
                     .authorize(
                         AuthMetadata.create(
-                            Key.funKey(keyGenerator.nextKey()),
+                            Key.funKey(keyGenerator.nextId()),
                             Key.funKey(identity),
                             topicKey,
                             "*",

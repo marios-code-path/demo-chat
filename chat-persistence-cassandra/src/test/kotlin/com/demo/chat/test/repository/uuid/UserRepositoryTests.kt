@@ -44,8 +44,8 @@ class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Test
     fun `should find many by UUIDs`() {
-        val id1 = keyGenerator.nextKey()
-        val id2 = keyGenerator.nextKey()
+        val id1 = keyGenerator.nextId()
+        val id2 = keyGenerator.nextId()
 
         val chatUsers = Flux.just(
             ChatUser(ChatUserKey(id1), "eddie", "vedder", "http://path_to_file", Instant.now()),
@@ -72,7 +72,7 @@ class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Test
     fun `should pass simple state assertions`() {
-        val uuid = keyGenerator.nextKey()
+        val uuid = keyGenerator.nextId()
         val user = ChatUser(
             ChatUserKey(uuid), "Eddie",
             "EddiesHandle", "http://path_to_file", Instant.now()
@@ -97,7 +97,7 @@ class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Test
     fun `should save and find single by ID`() {
-        val userId = keyGenerator.nextKey()
+        val userId = keyGenerator.nextId()
 
         val chatUser = ChatUser(
             ChatUserKey(userId),
@@ -126,7 +126,7 @@ class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     fun `should truncate and save`() {
         val chatUsers = Flux.just(
             ChatUser(
-                ChatUserKey(keyGenerator.nextKey()),
+                ChatUserKey(keyGenerator.nextId()),
                 "eddie",
                 "vedder",
                 "http://path_to_file",

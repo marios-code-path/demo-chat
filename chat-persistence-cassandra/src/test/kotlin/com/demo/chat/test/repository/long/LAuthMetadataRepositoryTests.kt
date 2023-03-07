@@ -8,7 +8,6 @@ import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -34,9 +33,9 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -62,9 +61,9 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -93,9 +92,9 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
         Hooks.onOperatorDebug()
 
         val authmeta = AuthMetadataById(
-            AuthMetadataIdKey(keyGenerator.nextKey()),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            AuthMetadataIdKey(keyGenerator.nextId()),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )

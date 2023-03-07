@@ -31,7 +31,7 @@ class MembershipPersistenceTests {
 
     private val keyService = TestUUIDKeyService()
 
-    private val testChatMembership = TopicMembershipByKey(keyService.nextKey(), keyService.nextKey(), keyService.nextKey())
+    private val testChatMembership = TopicMembershipByKey(keyService.nextId(), keyService.nextId(), keyService.nextId())
 
     @BeforeEach
     fun setUp() {

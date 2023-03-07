@@ -11,7 +11,10 @@ interface Summarizer<M, T> {
 }
 
 class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : Summarizer<AuthMetadata<T>, Key<T>> {
-    override fun computeAggregates(elements: Flux<AuthMetadata<T>>, targetIds: Sequence<Key<T>>): Flux<AuthMetadata<T>> =
+    override fun computeAggregates(
+        elements: Flux<AuthMetadata<T>>,
+        targetIds: Sequence<Key<T>>
+    ): Flux<AuthMetadata<T>> =
         elements
             .filter { meta ->
                 val principalId = meta.principal
@@ -22,6 +25,6 @@ class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : S
             }
             .groupBy { g -> g.permission }
             .flatMap { g -> g.sort(comparator).last() }
-            .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) }
+            .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) } // removing 0L allows us to overlay negative permission (+CREATE == Long.MAX_VALUE,  -CREATE = Long.MIN_VALUE)
 
 }

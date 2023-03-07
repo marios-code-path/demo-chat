@@ -9,5 +9,5 @@ class LongKeyGenerator(nodeId: Int) : IKeyGenerator<Long> {
         else -> SnowflakeGenerator(nodeId)
     }
 
-    override fun nextKey(): Long = idGenerator.nextKey()
+    override fun nextId(): Long = idGenerator.nextId()
 }

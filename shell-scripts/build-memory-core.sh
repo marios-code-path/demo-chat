@@ -57,7 +57,7 @@ export MAVEN_PROFILE=-Pdeploy
 export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index -Dapp.service.core.persistence -Dapp.service.core.secrets"
 export CORE_CONTROLLERS="-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets"
 export COMPOSITE_CONTROLLERS="-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
-export COMPOSITE_SERVICES="-Dapp.service.composite.user -Dapp.service.composite.topic -Dapp.service.composite.message"
+export COMPOSITE_SERVICES="-Dapp.service.composite"
 #-Dapp.service.composite.auth"
 
 # makes no use of cloud configuration or config-maps
@@ -81,4 +81,4 @@ ${COMPOSITE_CONTROLLERS} \
 mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE -DskipTests
 
 # [[ $RUN_MAVEN_ARG == "rundocker" ]] && echo docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION -f

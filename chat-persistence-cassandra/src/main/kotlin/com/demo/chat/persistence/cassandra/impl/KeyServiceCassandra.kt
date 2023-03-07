@@ -21,7 +21,7 @@ class KeyServiceCassandra<T>(
         template.exists(CSKey(key.id, ""), CSKey::class.java)
 
     override fun <K> key(kind: Class<K>): Mono<out Key<T>> = template
-        .insert(CSKey(keyGen.nextKey(), kind.simpleName))
+        .insert(CSKey(keyGen.nextId(), kind.simpleName))
         .retryWhen(Retry.backoff(5, Duration.ofMillis(100L)))
     // TODO Cassandra keyGen error states
 }

@@ -16,7 +16,7 @@ class CoreKeyServices<T>(
 
     @Bean
     override fun keyService(): IKeyService<T> =
-        KeyServiceInMemory { keyGenerator.nextKey() }
+        KeyServiceInMemory { keyGenerator.nextId() }
 }
 
 

@@ -10,7 +10,7 @@ class UUIDKeyGenerator(nodeId: Int) : IKeyGenerator<UUID> {
         else -> SnowflakeGenerator(nodeId)
     }
 
-    override fun nextKey(): UUID =
-        UUID.nameUUIDFromBytes(idGenerator.nextKey().toString().encodeToByteArray())
+    override fun nextId(): UUID =
+        UUID.nameUUIDFromBytes(idGenerator.nextId().toString().encodeToByteArray())
 
 }

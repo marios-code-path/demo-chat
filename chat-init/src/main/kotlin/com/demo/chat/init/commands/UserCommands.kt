@@ -35,7 +35,7 @@ class UserCommands<T>(
     @ShellMethod("Create a Key")
     fun key(@ShellOption(defaultValue = "false") local: String): T {
         return when (local) {
-            "true" -> return keyGen.nextKey()
+            "true" -> return keyGen.nextId()
             else -> return keyService.key(Key::class.java).block()!!.id
         }
     }

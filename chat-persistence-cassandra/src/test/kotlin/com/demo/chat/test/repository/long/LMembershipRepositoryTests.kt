@@ -33,7 +33,7 @@ class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerato
 
     @Test
     fun `should save, find all`() {
-        val membership = TopicMembershipByKey(keyGenerator.nextKey(), keyGenerator.nextKey(), keyGenerator.nextKey())
+        val membership = TopicMembershipByKey(keyGenerator.nextId(), keyGenerator.nextId(), keyGenerator.nextId())
 
         val membershipSave = repo
             .save(membership)
@@ -52,8 +52,8 @@ class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerato
 
     @Test
     fun `should save, find by key id`() {
-        val keyId = Key.funKey(keyGenerator.nextKey())
-        val membership = TopicMembershipByKey(keyId.id, keyGenerator.nextKey(), keyGenerator.nextKey())
+        val keyId = Key.funKey(keyGenerator.nextId())
+        val membership = TopicMembershipByKey(keyId.id, keyGenerator.nextId(), keyGenerator.nextId())
 
         val membershipSave = repo
             .save(membership)
@@ -73,13 +73,13 @@ class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerato
     @Test
     fun `should save, delete one, find remaining one by all`() {
         val memberships = mutableSetOf<TopicMembershipByKey<Long>>()
-        val streamOfMemberships = Flux.generate<Long> { s -> s.next(keyGenerator.nextKey()) }
+        val streamOfMemberships = Flux.generate<Long> { s -> s.next(keyGenerator.nextId()) }
             .take(2)
             .map { key ->
                 val i = TopicMembershipByKey(
                     key,
-                    keyGenerator.nextKey(),
-                    keyGenerator.nextKey()
+                    keyGenerator.nextId(),
+                    keyGenerator.nextId()
                 )
 
                 memberships.add(i)
@@ -109,7 +109,7 @@ class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerato
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
-            Key.funKey(keyGenerator.nextKey())
+            Key.funKey(keyGenerator.nextId())
         }.limit(5).collect(Collectors.toList())
 
         val keyIdsList = keyList.stream().map { it.id }.collect(Collectors.toList())
@@ -117,8 +117,8 @@ class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerato
             {
                 TopicMembershipByKey(
                     it.id,
-                    keyGenerator.nextKey(),
-                    keyGenerator.nextKey()
+                    keyGenerator.nextId(),
+                    keyGenerator.nextId()
                 )
             })
 

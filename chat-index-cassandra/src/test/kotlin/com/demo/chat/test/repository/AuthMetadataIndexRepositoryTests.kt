@@ -45,9 +45,9 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
     @Test
     fun `byPrincipal should not return all`() {
         val authMeta = AuthMetadataByPrincipal(
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -69,11 +69,11 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
     @Test
     fun `byPrincipalRepo should save, find by Principal`() {
-        val keyId = Key.funKey(keyGenerator.nextKey())
+        val keyId = Key.funKey(keyGenerator.nextId())
         val authMeta = AuthMetadataByPrincipal(
             keyId.id,
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )
@@ -95,11 +95,11 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
     @Test
     fun `byTargetRepo should save, find by Target`() {
-        val keyId = Key.funKey(keyGenerator.nextKey())
+        val keyId = Key.funKey(keyGenerator.nextId())
         val authMeta = AuthMetadataByTarget(
             keyId.id,
-            keyGenerator.nextKey(),
-            keyGenerator.nextKey(),
+            keyGenerator.nextId(),
+            keyGenerator.nextId(),
             "TEST",
             System.currentTimeMillis()
         )

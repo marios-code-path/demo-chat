@@ -5,4 +5,4 @@ interface CoreServices<T, V, Q> :
     PersistenceServiceBeans<T, V>,
     IndexServiceBeans<T, V, Q>,
     PubSubServiceBeans<T, V>,
-    SecurityServiceBeans<T>
+    SecretsStoreBeans<T>

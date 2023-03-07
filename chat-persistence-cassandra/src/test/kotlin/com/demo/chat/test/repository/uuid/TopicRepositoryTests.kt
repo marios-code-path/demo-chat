@@ -37,7 +37,7 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Test
     fun `inactive rooms dont appear`() {
-        val roomId = keyGenerator.nextKey()
+        val roomId = keyGenerator.nextId()
         val room = MessageTopic.create(Key.funKey(roomId), ROOMNAME)
 
         val saveFlux = repo.add(room)
@@ -64,7 +64,7 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Test
     fun `should fail to find room`() {
         val queryFlux = repo
-            .findByKeyId(keyGenerator.nextKey())
+            .findByKeyId(keyGenerator.nextId())
             .switchIfEmpty (Mono.error(TestBase.NotFoundException()))
 
 
@@ -80,8 +80,8 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
         StepVerifier
             .create(
                 Flux.just(
-                    ChatTopicKey(keyGenerator.nextKey()),
-                    ChatTopicKey(keyGenerator.nextKey())
+                    ChatTopicKey(keyGenerator.nextId()),
+                    ChatTopicKey(keyGenerator.nextId())
                 )
                     .map {
                         ChatTopic(it, TestBase.randomAlphaNumeric(6), true)

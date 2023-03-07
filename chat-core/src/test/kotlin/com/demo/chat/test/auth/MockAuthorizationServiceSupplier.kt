@@ -1,7 +1,7 @@
 package com.demo.chat.test.auth
 
 import com.demo.chat.service.security.AuthorizationService
-import com.nhaarman.mockitokotlin2.mock
+import org.mockito.kotlin.mock
 
 class MockAuthorizationServiceSupplier {
     fun <T, M> get(): AuthorizationService<T, M> = mock()
