@@ -1,12 +1,16 @@
 package com.demo.chat.init.commands
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.init.domain.BootstrapProperties
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @ShellComponent
@@ -15,8 +19,32 @@ class InitOnceCommands<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val bootstrapProperties: BootstrapProperties,
+    private val keyService: IKeyService<T>,
     private val typeUtil: TypeUtil<T>
 ) : CommandsUtil<T>(typeUtil) {
+
+    fun generateRootKeys() {
+        val rootKeys = RootKeys<T>()
+        // Create key for each Domain Type
+        Flux.just(
+            User::class.java, Message::class.java, MessageTopic::class.java,
+            TopicMembership::class.java, AuthMetadata::class.java
+        )
+            .flatMap { domain ->
+                keyService.key(domain)
+                    .map { key ->
+                        rootKeys.addRootKey(domain, key)
+                    }
+            }
+            .blockLast()
+
+
+        // Assign ALL permission for SuperUser to each Root Key
+
+        // Assign READ permission for each Root Key to Anonymous User
+
+    }
+
     @ShellMethod("Bootstrap the system")
     fun bootstrap() {
         val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
