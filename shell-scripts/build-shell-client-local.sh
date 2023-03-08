@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-cd ../chat-init
+cd ../chat-shell
 source ../shell-scripts/ports.sh
 
 while getopts ":scgk:b:n:p:" o; do
@@ -40,12 +40,12 @@ CATZ
   esac
 done
 
-export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_init}
+export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_shell}
 export DOCKER_CNAME="--name ${DEPLOYMENT_NAME}"
 
 # how to auto-discover consul using dns alone!
-export APP_PRIMARY="init"
-export APP_IMAGE_NAME="chat-init"
+export APP_PRIMARY="shell"
+export APP_IMAGE_NAME="chat-shell"
 export APP_MAIN_CLASS="com.demo.chat.init.BaseApp"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE
@@ -55,7 +55,7 @@ export IDENTITIES="-Dapp.identity.anonymous=${CHAT_ANON:=1} -Dapp.identity.admin
 # That leading space is IMPORTANT ! DONT remove!
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${IDENTITIES} -Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.key.type=${KEYSPACE_TYPE} -Dapp.service.core.key -Dapp.primary=init -Dapp.client.protocol=rsocket \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.service.core.key -Dapp.primary=shell -Dapp.client.protocol=rsocket \
 -Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
