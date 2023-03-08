@@ -36,6 +36,7 @@ class AuthMetadataPersistenceTests {
         keyService.nextId(),
         keyService.nextId(),
         "TEST",
+        false,
         System.currentTimeMillis()
     )
 

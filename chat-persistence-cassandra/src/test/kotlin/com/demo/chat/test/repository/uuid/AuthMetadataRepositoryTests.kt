@@ -40,6 +40,7 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 
@@ -68,6 +69,7 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 
@@ -99,6 +101,7 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 

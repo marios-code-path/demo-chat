@@ -9,6 +9,7 @@ interface AuthMetadata<T> : KeyBearer<T> {
     val expires: Long
 
     companion object Factory {
+        @Deprecated("Use muted constructor instead")
         fun <T> create(key: Key<T>, principal: Key<T>, target: Key<T>, perm: String, exp: Long): AuthMetadata<T> =
             object : AuthMetadata<T> {
                 override val key: Key<T>
@@ -20,7 +21,22 @@ interface AuthMetadata<T> : KeyBearer<T> {
                 override val permission: String
                     get() = perm
                 override val mute: Boolean
-                    get() = mute
+                    get() = false
+                override val expires: Long
+                    get() = exp
+            }
+        fun <T> create(key: Key<T>, principal: Key<T>, target: Key<T>, perm: String, muted: Boolean, exp: Long): AuthMetadata<T> =
+            object : AuthMetadata<T> {
+                override val key: Key<T>
+                    get() = key
+                override val principal: Key<T>
+                    get() = principal
+                override val target: Key<T>
+                    get() = target
+                override val permission: String
+                    get() = perm
+                override val mute: Boolean
+                    get() = muted
                 override val expires: Long
                     get() = exp
             }

@@ -14,6 +14,7 @@ import com.demo.chat.config.persistence.memory.MemorySecretsStoreServiceBeans
 import com.demo.chat.config.pubsub.memory.MemoryPubSubConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
+import com.demo.chat.deploy.bootstrap.BootstrappingService
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
@@ -48,7 +49,9 @@ import org.springframework.context.annotation.Import
     // Composite Controllers
     MessageServiceController::class,
     TopicServiceController::class,
-    UserServiceController::class
+    UserServiceController::class,
+
+    BootstrappingService::class
 )
 @Configuration
 open class AppConfiguration

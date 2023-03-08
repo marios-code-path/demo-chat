@@ -108,6 +108,7 @@ CREATE TABLE chat_uuid.auth_metadata
     principal   UUID,
     target      UUID,
     permission  varchar,
+    mute        Boolean,
     expires bigint,
     PRIMARY KEY (id)
 );
@@ -118,6 +119,7 @@ CREATE TABLE chat_uuid.auth_metadata_principal
     principal   UUID,
     target      UUID,
     permission  varchar,
+    mute        Boolean,
     expires bigint,
     PRIMARY KEY (principal)
 );
@@ -128,6 +130,7 @@ CREATE TABLE chat_uuid.auth_metadata_target
     principal   UUID,
     target      UUID,
     permission  varchar,
+    mute        Boolean,
     expires bigint,
     PRIMARY KEY (target)
 );

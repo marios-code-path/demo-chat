@@ -1,8 +1,10 @@
 package com.demo.chat.deploy.bootstrap
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.bind.ConstructorBinding
 
+@ConditionalOnProperty("app.bootstrap.init")
 @ConfigurationProperties("app.init")
 data class BootstrapProperties @ConstructorBinding constructor(
     val roles: BootstrapRoles,

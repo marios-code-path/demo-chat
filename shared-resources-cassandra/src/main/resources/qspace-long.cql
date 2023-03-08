@@ -108,6 +108,7 @@ CREATE TABLE chat_long.auth_metadata
     principal   BIGINT,
     target      BIGINT,
     permission  varchar,
+    mute        Boolean,
     expires BIGINT,
     PRIMARY KEY (id)
 );
@@ -118,6 +119,7 @@ CREATE TABLE chat_long.auth_metadata_principal
     principal   BIGINT,
     target      BIGINT,
     permission  varchar,
+    mute        Boolean,
     expires BIGINT,
     PRIMARY KEY (principal)
 );
@@ -128,6 +130,7 @@ CREATE TABLE chat_long.auth_metadata_target
     principal   BIGINT,
     target      BIGINT,
     permission  varchar,
+    mute        Boolean,
     expires BIGINT,
     PRIMARY KEY (target)
 );

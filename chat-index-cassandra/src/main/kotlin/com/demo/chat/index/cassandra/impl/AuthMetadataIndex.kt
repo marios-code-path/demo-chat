@@ -25,6 +25,7 @@ class AuthMetadataIndex<T>(
                 entity.target.id,
                 entity.principal.id,
                 entity.permission,
+                entity.mute,
                 entity.expires
             )
         )
@@ -35,6 +36,7 @@ class AuthMetadataIndex<T>(
                         entity.target.id,
                         entity.principal.id,
                         entity.permission,
+                        entity.mute,
                         entity.expires
                     )
                 )

@@ -44,6 +44,7 @@ class AuthMetadataIndexTests {
             keyGenerator(),
             keyGenerator(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 
@@ -52,6 +53,7 @@ class AuthMetadataIndexTests {
             authMetaPrincipal.targetId,
             authMetaPrincipal.principalId,
             authMetaPrincipal.permission,
+            false,
             authMetaPrincipal.expires
         )
 

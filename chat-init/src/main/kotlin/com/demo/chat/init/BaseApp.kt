@@ -9,7 +9,6 @@ import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
-import com.demo.chat.deploy.bootstrap.BootstrapProperties
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -21,7 +20,7 @@ import org.springframework.context.annotation.Import
 import reactor.core.publisher.Hooks
 
 @SpringBootApplication()
-@EnableConfigurationProperties(BootstrapProperties::class, RSocketClientProperties::class)
+@EnableConfigurationProperties(RSocketClientProperties::class)
 @Import(
     // Serialization
     JacksonAutoConfiguration::class,

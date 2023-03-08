@@ -7,9 +7,16 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthorizationService
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+@Configuration
+@ConditionalOnProperty("app.bootstrap.init")
+@EnableConfigurationProperties(BootstrapProperties::class)
 class BootstrappingService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
@@ -17,7 +24,7 @@ class BootstrappingService<T>(
     private val keyService: IKeyService<T>,
     private val typeUtil: TypeUtil<T>
 ) {
-    private val rootKeys: RootKeys<T> = RootKeys()
+
     private val knownRootKeys: Set<Class<*>> = setOf(
         User::class.java,
         Message::class.java,
@@ -28,19 +35,23 @@ class BootstrappingService<T>(
         Admin::class.java
     )
 
-    private fun rootKeySummary(): String {
+    fun rootKeySummary(rootKeys: RootKeys<T>): String {
         val sb = StringBuilder()
 
         sb.append("Root Keys: \n")
         for (rootKey in knownRootKeys) {
             if (rootKeys.hasRootKey(rootKey))
-                sb.append("app.key.${rootKey.simpleName}=${rootKeys.getRootKey(rootKey)}\n")
+                sb.append("${rootKey.simpleName}=${rootKeys.getRootKey(rootKey)}\n")
         }
 
         return sb.toString()
     }
 
-    private fun generateRootKeys() {
+    @Bean
+    fun bootstrapUsers(): RootKeys<T> {
+
+        val rootKeys: RootKeys<T> = RootKeys()
+
         // Create key for each Domain Type
         Flux.just(
             User::class.java, Message::class.java, MessageTopic::class.java,
@@ -53,17 +64,12 @@ class BootstrappingService<T>(
                     }
             }
             .blockLast()
-    }
-
-    fun bootstrapUsers(): String {
-
-        generateRootKeys()
 
         val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
         val identityKeys = mutableMapOf<String, Key<T>>()
 
         if (!(bootstrapProperties.users.containsKey(Admin::class.java.simpleName) &&
-            bootstrapProperties.users.containsKey(Anon::class.java.simpleName))
+                    bootstrapProperties.users.containsKey(Anon::class.java.simpleName))
         ) {
             throw RuntimeException("Admin and Anon users must be defined")
         }
@@ -122,9 +128,7 @@ class BootstrappingService<T>(
                 authorizationService.authorize(authMeta, true)
             }.blockLast()
 
-        return """Initial User Setup Complete
-            |${rootKeySummary()}
-            |""".trimMargin()
+        return rootKeys
     }
 
 }

@@ -16,6 +16,8 @@ data class AuthMetadataByPrincipal<T>(
     val principalId: T,
     @field:Column("permission")
     override val permission: String,
+    @field:Column("mute")
+    override val mute: Boolean,
     @field:Column("expires")
     override val expires: Long
 ) : AuthMetadata<T> {
@@ -37,6 +39,8 @@ data class AuthMetadataByTarget<T>(
     val principalId: T,
     @field:Column("permission")
     override val permission: String,
+    @field:Column("mute")
+    override val mute: Boolean,
     @field:Column("expires")
     override val expires: Long
 ) : AuthMetadata<T> {

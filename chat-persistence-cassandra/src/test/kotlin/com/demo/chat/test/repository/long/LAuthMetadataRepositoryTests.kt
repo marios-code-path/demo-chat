@@ -37,6 +37,7 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 
@@ -65,6 +66,7 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 
@@ -96,6 +98,7 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             "TEST",
+            false,
             System.currentTimeMillis()
         )
 

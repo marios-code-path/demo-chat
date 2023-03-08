@@ -26,6 +26,7 @@ open class AuthMetaPersistenceCassandra<T>(
             ent.target.id,
             ent.principal.id,
             ent.permission,
+            ent.mute,
             ent.expires
         )
     ).then()

@@ -70,12 +70,13 @@ open class RootKeyTests<T>(
 
         val service = BootstrappingService(userService, authorizationService, properties, keyService, typeUtil)
         val complete = service.bootstrapUsers()
+        val summary = service.rootKeySummary(complete)
 
         Assertions
-            .assertThat(complete)
+            .assertThat(summary)
             .isNotNull
             .hasSizeGreaterThan("Root Keys: \n".length)
 
-        println(complete)
+        println(summary)
     }
 }
