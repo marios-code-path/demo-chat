@@ -8,9 +8,9 @@
         <version>0.0.1</version>
     </parent>
     <groupId>com.demo</groupId>
-    <artifactId>chat-init</artifactId>
+    <artifactId>chat-shell</artifactId>
     <version>0.0.1</version>
-    <name>chat-init</name>
+    <name>chat-shell</name>
     <description>Chat Application Initialization</description>
     <properties>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>

@@ -2,9 +2,12 @@
 cd ../chat-deploy-memory
 source ../shell-scripts/ports.sh
 
-while getopts :ecdon:k:b: o; do
+while getopts :eicdon:k:b: o; do
   echo "$o is $OPTARG"
   case "$o" in
+    i)
+      export INIT_ARGS="-Dapp.bootstrap.init"
+      ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
@@ -57,12 +60,13 @@ export MAVEN_PROFILE=-Pdeploy
 export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index -Dapp.service.core.persistence -Dapp.service.core.secrets"
 export CORE_CONTROLLERS="-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets"
 export COMPOSITE_CONTROLLERS="-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
-export COMPOSITE_SERVICES="-Dapp.service.composite"
-#-Dapp.service.composite.auth"
+export COMPOSITE_SERVICES="-Dapp.service.composite -Dapp.service.composite.auth"
+
 
 # makes no use of cloud configuration or config-maps
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} -Dserver.port=$((CORE_PORT+1)) \
+${INIT_ARGS} \
 -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT} \
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=${KEYSPACE_TYPE} \
 ${CORE_SERVICES} \

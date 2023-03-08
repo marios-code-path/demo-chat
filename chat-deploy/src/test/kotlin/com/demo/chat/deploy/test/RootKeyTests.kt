@@ -69,7 +69,7 @@ open class RootKeyTests<T>(
         )
 
         val service = BootstrappingService(userService, authorizationService, properties, keyService, typeUtil)
-        val complete = service.bootstrapUsers()
+        val complete = service.bootstrap()
         val summary = service.rootKeySummary(complete)
 
         Assertions

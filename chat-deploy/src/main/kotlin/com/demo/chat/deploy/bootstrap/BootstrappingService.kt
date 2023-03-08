@@ -8,7 +8,9 @@ import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import reactor.core.publisher.Flux
@@ -48,7 +50,12 @@ class BootstrappingService<T>(
     }
 
     @Bean
-    fun bootstrapUsers(): RootKeys<T> {
+    fun eventListener(root: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> = ApplicationListener { evt ->
+        println(rootKeySummary(root))
+    }
+
+    @Bean
+    fun bootstrap(): RootKeys<T> {
 
         val rootKeys: RootKeys<T> = RootKeys()
 

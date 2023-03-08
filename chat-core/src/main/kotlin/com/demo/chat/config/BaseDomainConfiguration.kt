@@ -7,6 +7,7 @@ import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -31,6 +32,7 @@ open class BaseDomainConfiguration {
     private lateinit var adminId: String
 
     @Bean
+    @ConditionalOnMissingBean
     open fun <T> rootKeys(typeUtil: TypeUtil<T>): RootKeys<T> = RootKeys()
 
     @Bean
