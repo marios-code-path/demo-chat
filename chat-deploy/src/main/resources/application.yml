@@ -1,0 +1,31 @@
+# Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
+#logging.level.org.springframework: DEBUG
+#logging.level.io.rsocket.FrameLogger: DEBUG
+
+app:
+  init:
+    roles:
+      rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
+      wildcard: "*"
+      initialRoles:
+        - { user: Admin, target: Admin, role: ALL }
+        - { user: Anon, target: User, role: READ }
+        - { user: Anon, target: User, role: CREATE }
+        - { user: Anon, target: Message, role: READ }
+        - { user: Anon, target: MessageTopic, role: READ }
+        - { user: User, target: User, role: READ }
+        - { user: User, target: Message, role: READ }
+        - { user: User, target: Message, role: CREATE }
+        - { user: User, target: MessageTopic, role: JOIN }
+        - { user: User, target: MessageTopic, role: SEND }
+        - { user: User, target: MessageTopic, role: READ }
+
+    users:
+      Anon:
+        handle: Anon
+        name: "ANY USER"
+        imageUri: chatimg://anon.png,
+      Admin:
+        handle: Admin
+        name: "SUPER USER"
+        imageUri: chatimg://plaid.png

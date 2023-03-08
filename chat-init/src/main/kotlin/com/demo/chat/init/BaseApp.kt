@@ -9,8 +9,8 @@ import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
+import com.demo.chat.deploy.bootstrap.BootstrapProperties
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.init.domain.BootstrapProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration

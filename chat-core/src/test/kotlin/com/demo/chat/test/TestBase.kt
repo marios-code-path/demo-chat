@@ -62,6 +62,7 @@ open class TestBase {
 }
 
 fun <T> anyObject(): T = TestBase.anyObject()
+fun anyBoolean(): Boolean = Mockito.anyBoolean()
 
 private fun <T> uninitialized(): T = null as T
 

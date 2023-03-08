@@ -5,7 +5,7 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.secure.Summarizer
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.secure.service.AbstractAuthenticationService
@@ -19,7 +19,7 @@ import java.util.function.Supplier
 open class BaseAuthConfiguration<T, V, Q>(
     private val indexServices: IndexServiceBeans<T, V, Q>,
     private val persistServices: PersistenceServiceBeans<T, V>,
-    private val anonKeySupplier: Supplier<AnonymousKey<T>>,
+    private val anonKeySupplier: Supplier<Anon<T>>,
     private val secretsStoreBeans: SecretsStoreBeans<T>,
     private val authSummarizer: Summarizer<AuthMetadata<T>, Key<T>>,
     private val authMetaPrincipalSearch: (Key<T>) -> Q,

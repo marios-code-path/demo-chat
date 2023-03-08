@@ -2,8 +2,8 @@ package com.demo.chat.init.commands
 
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
-import com.demo.chat.domain.knownkey.AdminKey
-import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.domain.knownkey.Admin
+import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
@@ -26,8 +26,8 @@ class UserCommands<T>(
     private val passwdStore: SecretsStore<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: Supplier<AnonymousKey<T>>,
-    private val adminKey: Supplier<AdminKey<T>>,
+    private val anonKey: Supplier<Anon<T>>,
+    private val adminKey: Supplier<Admin<T>>,
     private val keyGen: IKeyGenerator<T>,
     private val keyService: IKeyService<T>
 ) : CommandsUtil<T>(typeUtil) {

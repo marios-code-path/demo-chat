@@ -1,4 +1,4 @@
-package com.demo.chat.init.domain
+package com.demo.chat.deploy.bootstrap
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.bind.ConstructorBinding
@@ -11,17 +11,18 @@ data class BootstrapProperties @ConstructorBinding constructor(
 
 data class BootstrapRoles @ConstructorBinding constructor(
     val rolesAllowed: Array<String>,
-    val wildcard: String
+    val wildcard: String,
+    val initialRoles: Array<RoleDefinition>
 )
 
 data class BootstrapUser @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,
-    val roles: Array<RoleDefinition>
 )
 
 data class RoleDefinition @ConstructorBinding constructor(
+    val user: String,
+    val target: String,
     val role: String,
-    val user: String
 )

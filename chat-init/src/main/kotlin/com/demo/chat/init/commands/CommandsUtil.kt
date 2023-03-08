@@ -7,12 +7,10 @@ import org.springframework.shell.Availability
 
 open class CommandsUtil<T> (private var typeUtil: TypeUtil<T>) {
 
-    //        "_" -> typeUtil.fromString(SecurityContextHolder.getContext().authentication.details.toString())
     open fun identity(uid: String): T = when (uid) {
         "_" -> ReactiveSecurityContextHolder
             .getContext()
             .map {ctx ->
-                println(ctx.authentication?.principal.toString())
                 typeUtil.fromString(ctx.authentication.details.toString())
             }
             .block()!!

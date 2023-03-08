@@ -1,52 +1,30 @@
-# Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
-#logging.level.org.springframework: DEBUG
-#logging.level.io.rsocket.FrameLogger: DEBUG
-
 spring:
   application:
     name: shell
-app:
-  init:
-    roles:
-      rolesAllowed: [ "READ", "WRITE", "SEND", "MODIFY" ]
-      wildcard: "*"
-    users:
-      anonymous:
-        handle: ANONYMOUS
-        name: "ANY USER"
-        imageUri: chatimg://anon.png,
-        roles:
-          - { role: READ, user: anonymous }
-      root:
-        handle: PLAID
-        name: "SUPER USER"
-        imageUri: chatimg://plaid.png
-        roles:
-          - { role: "*", user: anonymous }
-  rsocket:
-    client:
-      config:
-        pubsub:
-          dest: "127.0.0.1:6790"
-          prefix: pubsub.
-        index:
-          dest: "127.0.0.1:6790"
-          prefix: index.
-        persistence:
-          dest: "127.0.0.1:6790"
-          prefix: persist.
-        key:
-          dest: "127.0.0.1:6790"
-          prefix: key.
-        message:
-          dest: "127.0.0.1:6790"
-          prefix: message.
-        secrets:
-          dest: "127.0.0.1:6790"
-          prefix: secrets.
-        topic:
-          dest: "127.0.0.1:6790"
-          prefix: topic.
-        user:
-          dest: "127.0.0.1:6790"
-          prefix: user.
+rsocket:
+  client:
+    config:
+      pubsub:
+        dest: "127.0.0.1:6790"
+        prefix: pubsub.
+      index:
+        dest: "127.0.0.1:6790"
+        prefix: index.
+      persistence:
+        dest: "127.0.0.1:6790"
+        prefix: persist.
+      key:
+        dest: "127.0.0.1:6790"
+        prefix: key.
+      message:
+        dest: "127.0.0.1:6790"
+        prefix: message.
+      secrets:
+        dest: "127.0.0.1:6790"
+        prefix: secrets.
+      topic:
+        dest: "127.0.0.1:6790"
+        prefix: topic.
+      user:
+        dest: "127.0.0.1:6790"
+        prefix: user.

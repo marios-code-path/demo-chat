@@ -3,8 +3,8 @@ package com.demo.chat.config
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UUIDUtil
-import com.demo.chat.domain.knownkey.AdminKey
-import com.demo.chat.domain.knownkey.AnonymousKey
+import com.demo.chat.domain.knownkey.Admin
+import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -34,10 +34,10 @@ open class BaseDomainConfiguration {
     open fun <T> rootKeys(typeUtil: TypeUtil<T>): RootKeys<T> = RootKeys()
 
     @Bean
-    open fun <T> anonymousKey(typeUtil: TypeUtil<T>): Supplier<AnonymousKey<T>> =
-        Supplier { AnonymousKey(typeUtil.fromString(anonymousId)) }
+    open fun <T> anonymousKey(typeUtil: TypeUtil<T>): Supplier<Anon<T>> =
+        Supplier { Anon(typeUtil.fromString(anonymousId)) }
 
     @Bean
-    open fun <T> adminKey(typeUtil: TypeUtil<T>): Supplier<AdminKey<T>> =
-        Supplier { AdminKey(typeUtil.fromString(adminId)) }
+    open fun <T> adminKey(typeUtil: TypeUtil<T>): Supplier<Admin<T>> =
+        Supplier { Admin(typeUtil.fromString(adminId)) }
 }
