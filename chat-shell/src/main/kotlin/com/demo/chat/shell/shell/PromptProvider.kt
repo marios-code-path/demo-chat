@@ -1,20 +1,24 @@
-package com.demo.chat.init.shell
+package com.demo.chat.shell.shell
 
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.User
+import com.demo.chat.shell.SpringSecurityRequesterFactory
 import org.jline.utils.AttributedString
-import org.springframework.context.ApplicationEvent
-import org.springframework.context.annotation.Bean
 import org.springframework.shell.jline.PromptProvider
 import org.springframework.stereotype.Component
 import java.util.*
 
 @Component
 class PromptProvider<T>(val typeUtil: TypeUtil<T>) : PromptProvider {
-    var loggedInUser: Optional<String> = Optional.empty()
+
+    fun getLoggedIn(): String =
+        SpringSecurityRequesterFactory.authMetadata
+            .map { auth ->
+                auth.name
+            }
+            .orElse("anonymous")
 
     override fun getPrompt(): AttributedString =
-        AttributedString("chat-init:${loggedInUser.orElse("anonymous")} :> ")
+        AttributedString("chat-init:${getLoggedIn()} :> ")
 
 }
 

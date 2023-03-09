@@ -1,6 +1,6 @@
 package com.demo.chat
 
-import com.demo.chat.deploy.authserv.App
+import com.demo.chat.deploy.authserv.AuthServiceApp
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.secure.service.ChatUserDetailsService
@@ -9,12 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	classes = [App::class],
+	classes = [AuthServiceApp::class],
 	properties = [
 		"management.endpoints.enabled-by-default=false",
 		"app.service.core.key", "app.key.type=long",
 		"app.service.core.index","app.service.core.persistence","app.service.composite.auth",
-		"app.service.core.secrets", // add clients
+		"app.service.core.secrets", "app.composite.service.auth", "app.composite.service.user",// add clients
 		"spring.cloud.consul.enabled=false","spring.cloud.consul.config.enabled=false",
 		"spring.cloud.config.enabled=false", "spring.cloud.config.import-check.enabled=false"])
 class AuthorizationServerDeployTests {

@@ -1,6 +1,9 @@
 logging:
   level:
-    root: INFO
+    root: DEBUG
+    io:
+      rsocket:
+        FrameLogger: DEBUG
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
 #  level:

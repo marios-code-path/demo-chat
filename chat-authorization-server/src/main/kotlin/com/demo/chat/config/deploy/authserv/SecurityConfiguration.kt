@@ -69,10 +69,6 @@ class SecurityConfiguration {
     }
 
     @Bean
-    fun <T, Q> userDetailsService(reactiveUDS: ChatUserDetailsService<T, Q>): UserDetailsService =
-        UserDetailsService { reactiveUDS.findByUsername(it).block() }
-
-    @Bean
     fun registeredClientRepository(): RegisteredClientRepository {
         val registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
             .clientId("chat-client")

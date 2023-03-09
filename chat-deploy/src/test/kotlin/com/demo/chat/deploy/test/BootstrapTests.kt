@@ -2,14 +2,12 @@ package com.demo.chat.deploy.test
 
 import com.demo.chat.deploy.bootstrap.*
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthorizationService
-import com.demo.chat.test.TestLongKeyGenerator
-import com.demo.chat.test.TestLongKeyService
+import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyBoolean
 import com.demo.chat.test.anyObject
 import org.assertj.core.api.Assertions
@@ -22,8 +20,6 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
-
-class LongRootKeyTests : RootKeyTests<Long>(LongUtil(), TestLongKeyGenerator(), TestLongKeyService())
 
 @Disabled
 @ExtendWith(MockitoExtension::class)
@@ -39,8 +35,15 @@ open class RootKeyTests<T>(
     @Mock
     private lateinit var authorizationService: AuthorizationService<T, AuthMetadata<T>>
 
+    @Mock
+    private lateinit var secretsStore: SecretsStore<T>
+
     @BeforeEach
     fun setUp() {
+        BDDMockito
+            .given(secretsStore.addCredential(anyObject()))
+            .willReturn(Mono.empty())
+
         BDDMockito
             .given(userService.addUser(anyObject()))
             .willReturn(Mono.defer {
@@ -68,7 +71,7 @@ open class RootKeyTests<T>(
             )
         )
 
-        val service = BootstrappingService(userService, authorizationService, properties, keyService, typeUtil)
+        val service = BootstrappingService(userService, authorizationService, secretsStore, properties, keyService, typeUtil)
         val complete = service.bootstrap()
         val summary = service.rootKeySummary(complete)
 

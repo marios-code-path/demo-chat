@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.deploy.memory.App
+import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -10,14 +10,15 @@ import org.springframework.stereotype.Controller
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [App::class],
+@SpringBootTest(classes = [MemoryDeploymentApp::class],
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(
     properties = [
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
         "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=long",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets",
+        "app.service.core.secrets", "app.service.composite.auth", "app.service.composite.user",
+        "app.service.composite.message","app.service.composite.topic",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
         "spring.cloud.consul.host=127.0.0.1", "spring.rsocket.server.port=0"
@@ -28,7 +29,6 @@ class MemoryAppDeploymentTests {
 
     @Autowired
     private lateinit var context: ReactiveWebApplicationContext
-
 
     @Test
     fun memoryPubSubExists() {

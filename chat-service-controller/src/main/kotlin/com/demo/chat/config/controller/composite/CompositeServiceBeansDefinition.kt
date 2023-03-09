@@ -11,6 +11,7 @@ import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.service.core.TopicPubSubService
+import org.springframework.context.annotation.Bean
 
 class CompositeServiceBeansDefinition<T, V, Q>(
     val persistenceBeans: PersistenceServiceBeans<T, V>,
@@ -25,6 +26,7 @@ class CompositeServiceBeansDefinition<T, V, Q>(
     private val handleQueryFunction: (ByStringRequest) -> Q,
 ) : CompositeServiceBeans<T, V> {
 
+    @Bean
     override fun messageService() = MessagingServiceImpl(
         messageIndex = indexBeans.messageIndex(),
         messagePersistence = persistenceBeans.messagePersistence(),
@@ -32,6 +34,7 @@ class CompositeServiceBeansDefinition<T, V, Q>(
         topicIdToQuery = topicIdQueryFunction
     )
 
+    @Bean
     override fun topicService() = TopicServiceImpl(
         topicPersistence = persistenceBeans.topicPersistence(),
         topicIndex = indexBeans.topicIndex(),
@@ -45,6 +48,7 @@ class CompositeServiceBeansDefinition<T, V, Q>(
         memberWithTopicToQuery = membershipRequestQueryFunction
     )
 
+    @Bean
     override fun userService() = UserServiceImpl<T, Q>(
         userPersistence = persistenceBeans.userPersistence(),
         userIndex = indexBeans.userIndex(),

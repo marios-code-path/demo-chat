@@ -1,1 +1,1 @@
-./build-shell-client-local.sh -k long -n chat_init -b runlocal -s -p shell
+./build-shell-client-local.sh -k long -n chat_init -b runlocal -s -p shell $@

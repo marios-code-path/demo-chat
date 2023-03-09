@@ -1,26 +1,38 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.config.controller.composite.MessageServiceController
 import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
-import com.demo.chat.deploy.memory.App
+import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
+import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*
+import com.demo.chat.service.security.KeyCredential
+import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.randomAlphaNumeric
+import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
+import org.springframework.util.MimeTypeUtils
 import reactor.core.publisher.Hooks
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 
 
 @SpringBootTest(
-    classes = [App::class],
+    classes = [MemoryDeploymentApp::class],
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
 @TestPropertySource(
@@ -47,6 +59,56 @@ class CompositeServiceTests {
 
     @Autowired
     lateinit var messagingService: MessageServiceController<Long, String>
+
+    @Autowired
+    private lateinit var builder: RSocketRequester.Builder
+
+    //@get:LocalRSocketServerPort
+    //private var port by Delegates.notNull<Int>()
+//    init {
+//        port = 0
+//    }
+
+    @Value("\${local.rsocket.server.port}")
+    private lateinit var port: String
+
+    @Test
+    fun portOf() {
+        Assertions
+            .assertThat(port.toInt())
+            .isNotNull
+            .isGreaterThan(0)
+    }
+
+    @Autowired
+    lateinit var passEncoder: PasswordEncoder
+
+    @Test
+    fun `should request key`(@Autowired userService: CompositeServiceBeans<Long, String>, @Autowired  secretsStore: SecretsStoreBeans<Long>) {
+        val key: Key<Long> = userService.userService()
+            .addUser(UserCreateRequest("test", "user", "test"))
+            .block()!!
+
+        secretsStore.secretsStore().addCredential(KeyCredential(key, "changeme")).block()
+
+        val requester = builder
+            .setupMetadata(UsernamePasswordMetadata("user", "changeme"), MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string))
+            .tcp("localhost", port.toInt())
+
+        val keyRequest: Mono<Key<*>> = requester
+            .route("key.key")
+            .data(User::class.java)
+            .retrieveMono(Key::class.java)
+
+        StepVerifier.create(keyRequest)
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+            }
+            .verifyComplete()
+
+    }
 
     @Test
     fun `create rooms and receive list`() {

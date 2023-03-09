@@ -8,6 +8,7 @@ import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
 class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
+
     private val secureMap = ConcurrentHashMap<T, String>()
 
     override fun getStoredCredentials(key: Key<T>): Mono<String> =
@@ -15,7 +16,7 @@ class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
             if (secureMap.containsKey(key.id))
                 sink.success(secureMap[key.id])
             else
-                sink.error(AuthenticationException("Cannot Find Credential for  ${key.id}."))
+                sink.error(AuthenticationException("Cannot Find Credential for ${key.id}."))
         }
 
     override fun addCredential(keyCredential: KeyCredential<T>): Mono<Void> =

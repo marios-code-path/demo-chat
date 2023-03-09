@@ -2,8 +2,11 @@
 cd ../chat-shell
 source ../shell-scripts/ports.sh
 
-while getopts ":scgk:b:n:p:" o; do
+while getopts ":sdcgk:b:n:p:" o; do
   case $o in
+    d)
+      export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
+      ;;
     p)
       export SPRING_PROFILE=${OPTARG}
       ;;
@@ -60,7 +63,7 @@ export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${IDENTITIES} -Dspring.profiles.a
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic -Dapp.service.composite.auth \
--Dapp.client.rsocket.discovery.default -Dspring.cloud.service-registry.auto-registration.enabled=false \
+-Dapp.client.rsocket.discovery.springsecurity -Dspring.cloud.service-registry.auto-registration.enabled=false \
 -Dspring.cloud.consul.config.enabled=false -Dserver.port=0 \
 -Dspring.shell.interactive.enabled=${SHELL_ACTIVE:=false} -Dmanagement.endpoints.enabled-by-default=false"
 

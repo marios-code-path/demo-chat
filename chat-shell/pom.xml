@@ -14,7 +14,7 @@
     <description>Chat Application Initialization</description>
     <properties>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.init.BaseApp</mainClass>
+        <mainClass>com.demo.chat.shell.ShellApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
 				<spring-shell.version>3.0.0</spring-shell.version>
     </properties>
@@ -35,6 +35,18 @@
             <groupId>org.springframework.shell</groupId>
             <artifactId>spring-shell-starter</artifactId>
             <version>${spring-shell.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-rsocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>

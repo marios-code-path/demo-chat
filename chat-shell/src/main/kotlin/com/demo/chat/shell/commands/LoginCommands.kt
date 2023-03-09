@@ -1,10 +1,11 @@
-package com.demo.chat.init.commands
+package com.demo.chat.shell.commands
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.shell.SpringSecurityRequesterFactory
 import org.springframework.context.annotation.Profile
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.core.context.SecurityContextHolder
@@ -13,13 +14,14 @@ import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellMethodAvailability
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
+import java.util.*
 
 @ShellComponent
 @Profile("shell")
 class LoginCommands<T>(
     val userService: ChatUserService<T>,
-    val authenticationManager: AuthenticationManager,
-    val typeUtil: TypeUtil<T>
+    val authenticationManager: ReactiveAuthenticationManager,
+    typeUtil: TypeUtil<T>
 ) : CommandsUtil<T>(typeUtil) {
 
     @ShellMethod("whoami")
@@ -42,8 +44,10 @@ class LoginCommands<T>(
     ) {
         try {
             val request = UsernamePasswordAuthenticationToken(username, password)
-            val result = authenticationManager.authenticate(request)
+            val result = authenticationManager.authenticate(request).block()
             SecurityContextHolder.getContext().authentication = result
+            SpringSecurityRequesterFactory.authMetadata = Optional.of(request)
+            // load authentication into clients
         } catch (e: AuthenticationException) {
             println("Authentication failed :" + e.message)
         } catch (e: AccessDeniedException) {

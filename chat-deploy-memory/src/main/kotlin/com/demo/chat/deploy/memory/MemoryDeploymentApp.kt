@@ -12,22 +12,15 @@ import reactor.core.publisher.Hooks
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config"], proxyBeanMethods = false)
 @Profile("exec-chat")
-class App {
+class MemoryDeploymentApp {
 
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
             Hooks.onOperatorDebug()
-            runApplication<App>(*args)
+            runApplication<MemoryDeploymentApp>(*args)
         }
     }
-
-//    @Configuration
-//    class ServerCustomize<T> (private val strategies: RSocketStrategies, private val typeUtil: TypeUtil<T>) : RSocketServerCustomizer {
-//        override fun customize(rSocketServer: RSocketServer) {
-//            rSocketServer.interceptors { it.forResponder(TargetIdentifierInterceptor(strategies, typeUtil)) }
-//        }
-//    }
 
     @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
     @Bean

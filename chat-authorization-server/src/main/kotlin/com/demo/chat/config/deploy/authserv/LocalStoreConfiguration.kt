@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class ChatConfiguration {
 
-    @Bean
+   // @Bean
     fun <T> chatUserDetailsService(
         persist: UserPersistence<T>,
         index: UserIndexService<T, IndexSearchRequest>,

@@ -7,6 +7,8 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.KeyCredential
+import com.demo.chat.service.security.SecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -22,6 +24,7 @@ import reactor.core.publisher.Mono
 class BootstrappingService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
+    private val secretsStore: SecretsStore<T>,
     private val bootstrapProperties: BootstrapProperties,
     private val keyService: IKeyService<T>,
     private val typeUtil: TypeUtil<T>
@@ -80,9 +83,13 @@ class BootstrappingService<T>(
         ) {
             throw RuntimeException("Admin and Anon users must be defined")
         }
+
+        println("Bootstrapping Users")
         // add users
         bootstrapProperties.users.keys.forEach { identity ->
             val thisUser = bootstrapProperties.users[identity]!!
+
+            println("Adding User: ${thisUser.handle}")
 
             val thisUserKey = Mono.from(
                 userService.addUser(
@@ -100,13 +107,21 @@ class BootstrappingService<T>(
                         .map { u -> u.key }
                         .last()
                 }
-                ?.block()
+                .block()
 
             identityKeys[identity] = thisUserKey!!
         }
 
         val anonKey = identityKeys["Anon"]!!
         val adminKey = identityKeys["Admin"]!!
+
+        secretsStore
+            .addCredential(KeyCredential(adminKey, "changeme"))
+            .block()
+
+        secretsStore
+            .addCredential(KeyCredential(anonKey, "nopass"))
+            .block()
 
         rootKeys.addRootKey(Admin::class.java, adminKey)
         rootKeys.addRootKey(Anon::class.java, anonKey)

@@ -25,7 +25,6 @@ open class KeyClient<T>(private val prefix: String, private val requester: RSock
             .retrieveMono()
 }
 
-
 interface KeyClientProxy<T>: IKeyService<T> {
     @RSocketExchange("key.key")
     override fun <S> key(@Payload kind: Class<S>): Mono<out Key<T>>

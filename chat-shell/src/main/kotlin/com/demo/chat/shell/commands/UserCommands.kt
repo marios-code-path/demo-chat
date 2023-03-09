@@ -1,4 +1,4 @@
-package com.demo.chat.init.commands
+package com.demo.chat.shell.commands
 
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*

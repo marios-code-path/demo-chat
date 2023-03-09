@@ -17,6 +17,7 @@ open class UserServiceImpl<T, Q>(
     private val userIndex: UserIndexService<T, Q>,
     private val userHandleToQuery: Function<ByStringRequest, Q>,
 ) : ChatUserService<T> {
+
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =

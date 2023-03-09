@@ -33,7 +33,8 @@ class RequesterFactoryTests {
     fun `requesterFactory should Construct`() {
         val factory = DefaultRequesterFactory(
             RSocketRequester.builder(),
-            InsecureConnection(), clientProperties
+            InsecureConnection(), clientProperties,
+            { Any() }
         )
 
         Assertions
@@ -45,7 +46,8 @@ class RequesterFactoryTests {
     fun `fetch One from RequesterFactory`() {
         val factory = DefaultRequesterFactory(
             RSocketRequester.builder(),
-            InsecureConnection(), clientProperties
+            InsecureConnection(), clientProperties,
+            { Any()}
         )
 
         val connectionProperty = factory.serviceDestination("user")

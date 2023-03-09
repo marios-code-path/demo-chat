@@ -6,11 +6,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
 @EnableWebSecurity
-open class App {
+open class AuthServiceApp {
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            runApplication<App>(*args)
+            runApplication<AuthServiceApp>(*args)
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.demo.chat.init.commands
+package com.demo.chat.shell.commands
 
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MessageSendRequest

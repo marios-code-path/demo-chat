@@ -5,16 +5,19 @@ import com.demo.chat.secure.transport.TransportFactory
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
+import java.util.concurrent.ConcurrentHashMap
+
 
 @Configuration
 @ConditionalOnProperty("app.client.rsocket.discovery.default")
 class DefaultRequesterFactory(
     private val builder: RSocketRequester.Builder,
     private val connection: TransportFactory,
-    private val clientProps: RSocketClientProperties
+    private val clientProps: RSocketClientProperties,
+    private val metadataProvider: () -> Any = { Any() }
 ) : RequesterFactory {
 
-    private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = LinkedHashMap()
+    private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = ConcurrentHashMap()
 
     private fun getServicePair(serviceKey: String): Pair<String, Int> =
         serviceDestination(serviceKey)
@@ -29,9 +32,9 @@ class DefaultRequesterFactory(
             perHostRequester[pair] = builder
                 .transport(connection.tcpClientTransport(pair.first, pair.second))
         }
-        return perHostRequester[pair]!!
+        return MyRequesterWrapper(perHostRequester[pair]!!, metadataProvider)
     }
 
     override fun serviceDestination(serviceKey: String): String =
-        clientProps.getServiceConfig(serviceKey)?.dest!!//properties[serviceKey]?.dest!!
+        clientProps.getServiceConfig(serviceKey)?.dest!!
 }

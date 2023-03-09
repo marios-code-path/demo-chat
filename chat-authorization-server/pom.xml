@@ -15,7 +15,7 @@
 
 	<properties>
 		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-		<mainClass>com.demo.chat.deploy.authserv.App</mainClass>
+		<mainClass>com.demo.chat.deploy.authserv.AuthServiceApp</mainClass>
 		<appMainClass>${mainClass}</appMainClass>
 	</properties>
 	<profiles>

@@ -7,6 +7,7 @@ import com.demo.chat.service.security.AuthenticationService
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.InternalAuthenticationServiceException
+import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import reactor.core.publisher.Mono
@@ -15,8 +16,8 @@ class ChatAuthenticationManager<T>(
     private val authenticationS: AuthenticationService<T>,
     private val userPersistence: PersistenceStore<T, User<T>>,
 ) :
-    AuthenticationManager {
-    override fun authenticate(authen: Authentication): Authentication {
+    ReactiveAuthenticationManager {
+    override fun authenticate(authen: Authentication): Mono<Authentication> {
         val credential = authen.credentials.toString()
 
         return authenticationS
@@ -29,9 +30,9 @@ class ChatAuthenticationManager<T>(
                     userDetails,
                     authen.credentials,
                     userDetails.authorities
-                )
+                )as Authentication
             }
             .switchIfEmpty(Mono.error(BadCredentialsException("Invalid Credentials")))
-            .block()!!
+
     }
 }
