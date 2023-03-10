@@ -6,16 +6,13 @@ import org.springframework.shell.jline.PromptProvider
 import org.springframework.stereotype.Component
 
 @Component
-class PromptProvider<T>() : PromptProvider {
+class ShellPromptProvider() : PromptProvider {
 
     fun getLoggedIn(): String =
-        ShellStateConfiguration.simpleAuthToken
-            .map { auth ->
-                auth.name
-            }
+        ShellStateConfiguration.loginMetadata
+            .map { auth -> auth.username }
             .orElse("anonymous")
 
     override fun getPrompt(): AttributedString =
         AttributedString("chat-init:${getLoggedIn()} :> ")
-
 }

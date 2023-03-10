@@ -1,7 +1,6 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.shell.BaseApp
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -13,11 +12,10 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Duration
 
-
 @SpringBootTest(classes = [BaseApp::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
-    properties = [
+    properties = [ // TODO: Consul still being contacted.... will need to unregister
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=test",
         "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
@@ -30,7 +28,7 @@ import java.time.Duration
 )
 @ActiveProfiles("shell")
 @Testcontainers
-open class ShellIntegrationTests {
+open class ShellIntegrationTestBase {
 
     companion object {
         val imageName = "core-services:0.0.1"

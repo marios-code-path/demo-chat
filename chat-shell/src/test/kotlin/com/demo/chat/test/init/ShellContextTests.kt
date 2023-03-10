@@ -22,7 +22,7 @@ import org.springframework.test.context.TestPropertySource
     ]
 )
 @ActiveProfiles("shell")
-class ChatShellTests {
+class ShellContextTests {
 
     @Test
     fun contextLoads() {

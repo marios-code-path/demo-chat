@@ -1,5 +1,6 @@
 package com.demo.chat.test.init
 
+import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.shell.commands.LoginCommands
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -13,7 +14,7 @@ class LongLoginCommandsTests : ShellLoginCommandsTests<Long>()
 
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-class ShellLoginCommandsTests<T>() : ShellIntegrationTests() {
+class ShellLoginCommandsTests<T>() : ShellIntegrationTestBase() {
 
     @Autowired
     private lateinit var loginCommands: LoginCommands<T>
@@ -24,6 +25,13 @@ class ShellLoginCommandsTests<T>() : ShellIntegrationTests() {
         Assertions.assertThat(loginCommands.whoami())
             .isNotNull
             .hasSizeGreaterThan(4)
+    }
+
+    @Test
+    @Order(2)
+    fun `unavailable commands`() {
+        loginCommands.isAuthenticated()
+            .let { Assertions.assertThat(it.isAvailable).isFalse }
     }
 
     @Test
@@ -42,7 +50,7 @@ class ShellLoginCommandsTests<T>() : ShellIntegrationTests() {
         Assertions.assertThat(loginCommands.whoami())
             .isNotNull
             .isNotBlank
-            .contains("Anon")
+            .contains(Anon::class.java.simpleName)
     }
 
 }

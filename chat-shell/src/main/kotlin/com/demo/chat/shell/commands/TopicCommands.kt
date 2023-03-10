@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
+import reactor.core.publisher.Flux
 
 @Profile("shell")
 @ShellComponent
@@ -22,13 +23,14 @@ class TopicCommands<T>(
     rootKeys: RootKeys<T>
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
+    fun topicToString(topic: MessageTopic<T>): String = "${topic.key.id} | ${topic.data}\n"
+
     @ShellMethod("show topics")
-    fun showTopics() = topicService
+    fun showTopics(): String? = topicService
         .listRooms()
-        .doOnNext { topic ->
-            println("${topic.key.id} | ${topic.data}")
-        }
-        .blockLast()
+        .map(::topicToString)
+        .reduce { t, u -> t + u }
+        .block()
 
     @ShellMethod("Create a topic")
     fun addTopic(
@@ -54,20 +56,42 @@ class TopicCommands<T>(
             .block()
     }
 
+    @ShellMethod("Topic by Name")
+    fun topicByName(
+        @ShellOption(defaultValue = "_") userId: String,
+        @ShellOption name: String
+    ): String? = topicService
+        .getRoomByName(ByStringRequest(name))
+        .map(::topicToString)
+        .block()
+
     @ShellMethod("Subscribe to a topic")
     fun join(
         @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption topicId: String
+        @ShellOption topicName: String
     ) = topicService
-        .joinRoom(MembershipRequest(identity(userId), typeUtil.assignFrom(topicId)))
+        .getRoomByName(ByStringRequest(topicName))
+        .flatMap { topic ->
+            topicService
+                .joinRoom(
+                    MembershipRequest(
+                        identity(userId),
+                        topic.key.id
+                    )
+                )
+        }
         .block()
 
     @ShellMethod("unSubscribe to a topic")
     fun leave(
         @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption topicId: String
+        @ShellOption topicName: String
     ) = topicService
-        .leaveRoom(MembershipRequest(identity(userId), typeUtil.assignFrom(topicId)))
+        .getRoomByName(ByStringRequest(topicName))
+        .flatMap { topic ->
+            topicService
+                .leaveRoom(MembershipRequest(identity(userId), topic.key.id))
+        }
         .block()
 
     @ShellMethod("Show what topics user is subscribed to")
@@ -80,12 +104,20 @@ class TopicCommands<T>(
         .reduce { t, u -> "${t}\n${u}" }
         .block()
 
+    fun topicMembershipToString(membership: TopicMembership<T>): String =
+        "${membership.member} | ${membership.memberOf}\n"
+
+    fun topicMemberToString(member: TopicMember): String = "${member.uid} | ${member.handle} | ${member.imgUri}\n"
+
     @ShellMethod("Show Subscribers on a topic")
     fun listMembers(
-        @ShellOption topicId: String
-    ): TopicMemberships? {
-        return topicService
-            .roomMembers(ByIdRequest(typeUtil.assignFrom(topicId)))
-            .block()
-    }
+        @ShellOption topicName: String
+    ): String? = topicService
+        .getRoomByName(ByStringRequest(topicName))
+        .flatMap { topic -> topicService.roomMembers(ByIdRequest(topic.key.id)) }
+        .flatMapMany { s -> Flux.fromIterable(s.members) }
+        .map(::topicMemberToString)
+        .reduce { t, u -> t + u }
+        .block()
+
 }

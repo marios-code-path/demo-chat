@@ -16,6 +16,7 @@ import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Supplier
 
@@ -33,12 +34,14 @@ class UserCommands<T>(
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("Create a Key")
-    fun key(@ShellOption(defaultValue = "false") local: String): T {
-        return when (local) {
-            "true" -> return keyGen.nextId()
-            else -> return keyService.key(Key::class.java).block()!!.id
+    fun key(@ShellOption(defaultValue = "false") local: String): T =
+        when (local) {
+            "true" -> keyGen.nextId()
+            else -> keyService.key(Key::class.java).block()!!.id
         }
-    }
+
+
+    fun userToString(user: User<T>): String = "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
 
     @ShellMethod("Add A User")
     fun addUser(
@@ -54,70 +57,66 @@ class UserCommands<T>(
     @ShellMethod("All Users")
     fun users(): String? {
         return serviceBeans.userPersistenceClient().all()
-            .map<String> { user ->
-                "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
-            }
+            .map(::userToString)
             .reduce { t, u -> t + u }
             .block()
     }
 
     @ShellMethod("Find a user")
-    fun findUser(@ShellOption handle: String) = serviceBeans
+    fun findUser(@ShellOption handle: String): String? = serviceBeans
         .userIndexClient()
         .findBy(IndexSearchRequest(UserIndexService.HANDLE, handle, 100)).take(1)
         .flatMap(serviceBeans.userPersistenceClient()::get)
-        .doOnNext { user ->
-            println("USER: ${user.key.id} / ${user.handle}")
-        }
-        .blockLast()
+        .map(::userToString)
+        .reduce { t, u -> t + u }
+        .block()
 
     @ShellMethod("Get a user")
     fun getUser(@ShellOption handle: String): String? = userService
         .findByUsername(ByStringRequest(handle))
-        .map { user ->
-            "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
-        }
-        .blockLast()
+        .map(::userToString)
+        .reduce { t, u -> t + u }
+        .block()
 
     @ShellMethod("Change User Password")
     fun passwd(
         @ShellOption(defaultValue = "_") userId: String,
         @ShellOption password: String
-    ): String {
-        userService.findByUserId(ByIdRequest(identity(userId)))
-            .doOnNext {
-                println("user: ${it.key.id}: ${it.handle}")
-            }
+    ): String? {
+        return userService
+            .findByUserId(ByIdRequest(identity(userId)))
             .switchIfEmpty(Mono.error(NotFoundException))
             .flatMap { passwdStore.addCredential(KeyCredential(it.key, password)) }
-            .doFinally {
-                println("Password Changed.")
-            }
+            .map { "Password Changed." }
             .block()
-
-
-        return "OK"
     }
+
+    private fun authMetaToString(auth: AuthMetadata<T>): String =
+        "${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | ${auth.mute} | expires ${auth.expires}\n"
+
+    val authMetaHeader = "ID | actor -> target | permission | muted | Timestamp \n"
 
     @ShellMethod("Gets user Permissions")
-    fun getPermissionsForUser(
-        @ShellOption(defaultValue = "_") userId: String,
-    ) {
-        println("ID | actor -> target | permission | expiration Timestamp (past mean")
-        authorizationService
-            .getAuthorizationsForPrincipal(Key.funKey(identity(userId)))
-            .doOnNext { auth ->
-                println("${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
-            }
-            .blockLast()
-    }
+    fun getPermissionsForUser(@ShellOption(defaultValue = "_") userId: String): String? = Flux
+        .concat(
+            Mono.just(authMetaHeader),
+            authorizationService
+                .getAuthorizationsForPrincipal(Key.funKey(identity(userId)))
+                .map(::authMetaToString)
+        )
+        .reduce { t, u -> t + u }
+        .block()
 
     @ShellMethod("Get all Perms")
-    fun allPermissions() = serviceBeans.authMetadataPersistenceClient().all()
-        .doOnNext { auth ->
-            println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
-        }
-        .blockLast()
+    fun allPermissions(): String? = Flux
+        .concat(
+            Mono.just(authMetaHeader),
+            serviceBeans
+                .authMetadataPersistenceClient().all()
+                .map(::authMetaToString)
+        )
+        .reduce { t, u -> t + u }
+        .block()
 
     // e.g. userA -> topicB : "SEND_MESSAGE"
     @ShellMethod("Add a User Permission")
@@ -140,9 +139,6 @@ class UserCommands<T>(
                     role,
                     expiryTime
                 )
-            }
-            .doOnNext { auth ->
-                println("ID: ${auth.key.id} | ${auth.principal.id} -> ${auth.target.id} | ${auth.permission} | expires ${auth.expires}")
             }
             .flatMap { auth ->
                 authorizationService.authorize(auth, true)

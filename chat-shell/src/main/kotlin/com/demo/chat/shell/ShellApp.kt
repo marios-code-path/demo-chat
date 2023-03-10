@@ -8,22 +8,16 @@ import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
 import com.demo.chat.deploy.actuator.RootKey
-import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.transport.TransportFactory
-import com.demo.chat.service.composite.ChatUserService
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.rsocket.metadata.WellKnownMimeType
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
@@ -39,7 +33,6 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
@@ -88,15 +81,16 @@ class ShellStateConfiguration {
 
     companion object {
         var loggedInUser: Optional<Any> = Optional.empty()
-        var simpleAuthToken: Optional<UsernamePasswordAuthenticationToken> = Optional
-            .of(UsernamePasswordAuthenticationToken(Anon::class.java.simpleName, ""))
+        var loginMetadata: Optional<UsernamePasswordMetadata> = Optional.empty()
     }
 
     @Bean
-    fun <T> captureRootKeys(@Value("\${app.management.server.port}") port: String,
-                            typeUtil: TypeUtil<T>,
-                            mapper: ObjectMapper,
-                            rootKeys: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> =
+    fun <T> captureRootKeys(
+        @Value("\${app.management.server.port}") port: String,
+        typeUtil: TypeUtil<T>,
+        mapper: ObjectMapper,
+        rootKeys: RootKeys<T>
+    ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             val exchangeStrategies = ExchangeStrategies.builder()
                 .codecs { configurer ->
@@ -117,7 +111,7 @@ class ShellStateConfiguration {
                 .block()!!
 
             result.keys.forEach { key ->
-                if(result.containsKey(key)) {
+                if (result.containsKey(key)) {
                     val domain = result[key]!!
                     rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
                 }
@@ -133,9 +127,9 @@ class ShellStateConfiguration {
         builder, connection, clientProps
     ) {
         RequestMetadata(
-            simpleAuthToken
-                .map { UsernamePasswordMetadata(it.name, it.credentials.toString()) }
-                .get(),
+            loginMetadata
+                .map { UsernamePasswordMetadata(it.username, it.password) }
+                .orElseGet { UsernamePasswordMetadata(Anon::class.java.simpleName, "") },
             MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
         )
     }
