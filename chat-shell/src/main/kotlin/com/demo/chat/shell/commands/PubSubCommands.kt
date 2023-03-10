@@ -3,21 +3,20 @@ package com.demo.chat.shell.commands
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.knownkey.Admin
-import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
-import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
 class PubSubCommands<T>(
     private val messageService: ChatMessageService<T, String>,
-    private val typeUtil: TypeUtil<T>
-    ) : CommandsUtil<T>(typeUtil) {
+    private val typeUtil: TypeUtil<T>,
+    rootKeys: RootKeys<T>,
+) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("Send a Message")
     fun send(

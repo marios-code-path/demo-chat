@@ -7,7 +7,10 @@ import com.demo.chat.config.client.rsocket.*
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
+import com.demo.chat.deploy.actuator.RootKey
 import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
@@ -15,7 +18,10 @@ import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.transport.TransportFactory
 import com.demo.chat.service.composite.ChatUserService
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.rsocket.metadata.WellKnownMimeType
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
@@ -28,6 +34,9 @@ import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.core.ParameterizedTypeReference
+import org.springframework.http.codec.json.Jackson2JsonDecoder
+import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -35,6 +44,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.util.MimeTypeUtils
+import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 import reactor.core.publisher.Hooks
@@ -71,39 +81,48 @@ class BaseApp {
 
         }
     }
-
-
-    @Bean // TODO fetch rootkeys from server
-    fun <T> anonymousUser(userService: ChatUserService<T>): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-            val anon = userService.findByUsername(ByStringRequest(Anon::class.java.simpleName)).blockLast()
-            ShellStateConfiguration.loggedInUser = Optional.of(anon?.key?.id as Any)
-        }
-
-    @Bean
-    fun captureRootKeys(): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-           val client = WebClient.create("http://localhost:8080")
-            val rootKeys = client.get()
-                .uri("/actuator/rootkeys")
-                .retrieve()
-                .bodyToMono(Map::class.java)
-                .block()
-
-           //ShellStateConfiguration.rootKeys = Optional.ofNullable(rootKeys)
-           ShellStateConfiguration.rootKeys = Optional.of(RootKeys())
-        }
 }
 
 @Configuration
 class ShellStateConfiguration {
 
     companion object {
-        var rootKeys: Optional<RootKeys<Any>> = Optional.empty()
         var loggedInUser: Optional<Any> = Optional.empty()
         var simpleAuthToken: Optional<UsernamePasswordAuthenticationToken> = Optional
             .of(UsernamePasswordAuthenticationToken(Anon::class.java.simpleName, ""))
     }
+
+    @Bean
+    fun <T> captureRootKeys(@Value("\${app.management.server.port}") port: String,
+                            typeUtil: TypeUtil<T>,
+                            mapper: ObjectMapper,
+                            rootKeys: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> =
+        ApplicationListener { _ ->
+            val exchangeStrategies = ExchangeStrategies.builder()
+                .codecs { configurer ->
+                    configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))
+                    configurer.defaultCodecs().jackson2JsonDecoder(Jackson2JsonDecoder(mapper))
+                }
+                .build()
+
+            val client = WebClient.builder()
+                .exchangeStrategies(exchangeStrategies)
+                .baseUrl("http://localhost:${port}")
+                .build()
+
+            val result = client.get()
+                .uri("/actuator/rootkeys")
+                .retrieve()
+                .bodyToMono(object : ParameterizedTypeReference<Map<String, RootKey>>() {})
+                .block()!!
+
+            result.keys.forEach { key ->
+                if(result.containsKey(key)) {
+                    val domain = result[key]!!
+                    rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
+                }
+            }
+        }
 
     @Bean
     fun securityRequesterFactory(
@@ -118,7 +137,6 @@ class ShellStateConfiguration {
                 .map { UsernamePasswordMetadata(it.name, it.credentials.toString()) }
                 .get(),
             MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
-
         )
     }
 }

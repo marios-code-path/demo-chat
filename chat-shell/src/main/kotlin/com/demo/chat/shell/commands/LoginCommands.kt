@@ -1,6 +1,7 @@
 package com.demo.chat.shell.commands
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.shell.ShellStateConfiguration
@@ -17,10 +18,10 @@ import java.util.*
 @ShellComponent
 @Profile("shell")
 class LoginCommands<T>(
-    val keyService: IKeyService<T>,
     val userService: ChatUserService<T>,
-    typeUtil: TypeUtil<T>
-) : CommandsUtil<T>(typeUtil) {
+    rootKeys: RootKeys<T>,
+    typeUtil: TypeUtil<T>,
+) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("whoami")
     fun whoami(): String? {

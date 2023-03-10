@@ -1,12 +1,10 @@
 package com.demo.chat.shell.commands
 
-import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.ByStringRequest
-import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
-import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatTopicService
+import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
@@ -20,8 +18,9 @@ class TopicCommands<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
-    private val keyGenerator: IKeyGenerator<T>
-) : CommandsUtil<T>(typeUtil){
+    private val keyGenerator: IKeyGenerator<T>,
+    rootKeys: RootKeys<T>
+) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("show topics")
     fun showTopics() = topicService

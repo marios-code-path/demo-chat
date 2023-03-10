@@ -4,6 +4,7 @@ import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
@@ -27,8 +28,9 @@ class UserCommands<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
     private val keyGen: IKeyGenerator<T>,
-    private val keyService: IKeyService<T>
-) : CommandsUtil<T>(typeUtil) {
+    private val keyService: IKeyService<T>,
+    rootKeys: RootKeys<T>
+) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("Create a Key")
     fun key(@ShellOption(defaultValue = "false") local: String): T {
