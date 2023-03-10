@@ -25,6 +25,7 @@ class ChatAuthenticationManager<T>(
             .onErrorMap { thr -> InternalAuthenticationServiceException(thr.message, thr) }
             .flatMap(userPersistence::get)
             .map { user ->
+                println("WHAAAT")
                 val userDetails = ChatUserDetails(user, listOf())
                 UsernamePasswordAuthenticationToken(
                     userDetails,

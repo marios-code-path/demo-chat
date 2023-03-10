@@ -27,7 +27,8 @@ class BootstrappingService<T>(
     private val secretsStore: SecretsStore<T>,
     private val bootstrapProperties: BootstrapProperties,
     private val keyService: IKeyService<T>,
-    private val typeUtil: TypeUtil<T>
+    private val typeUtil: TypeUtil<T>,
+    private val rootKeys: RootKeys<T>,
 ) {
 
     private val knownRootKeys: Set<Class<*>> = setOf(
@@ -39,6 +40,13 @@ class BootstrappingService<T>(
         Anon::class.java,
         Admin::class.java
     )
+
+
+    @Bean
+    fun eventListener(root: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> = ApplicationListener { evt ->
+        bootstrap()
+        println(rootKeySummary(root))
+    }
 
     fun rootKeySummary(rootKeys: RootKeys<T>): String {
         val sb = StringBuilder()
@@ -52,16 +60,7 @@ class BootstrappingService<T>(
         return sb.toString()
     }
 
-    @Bean
-    fun eventListener(root: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> = ApplicationListener { evt ->
-        println(rootKeySummary(root))
-    }
-
-    @Bean
-    fun bootstrap(): RootKeys<T> {
-
-        val rootKeys: RootKeys<T> = RootKeys()
-
+    fun bootstrap() {
         // Create key for each Domain Type
         Flux.just(
             User::class.java, Message::class.java, MessageTopic::class.java,
@@ -119,10 +118,6 @@ class BootstrappingService<T>(
             .addCredential(KeyCredential(adminKey, "changeme"))
             .block()
 
-        secretsStore
-            .addCredential(KeyCredential(anonKey, "nopass"))
-            .block()
-
         rootKeys.addRootKey(Admin::class.java, adminKey)
         rootKeys.addRootKey(Anon::class.java, anonKey)
 
@@ -150,7 +145,6 @@ class BootstrappingService<T>(
                 authorizationService.authorize(authMeta, true)
             }.blockLast()
 
-        return rootKeys
     }
 
 }

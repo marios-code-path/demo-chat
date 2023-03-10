@@ -6,6 +6,7 @@ import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
@@ -21,8 +22,10 @@ class CompositeAuthConfiguration<T, V>(
     persistServices: PersistenceServiceBeans<T, V>,
     anonKeySupplier: Supplier<Anon<T>>,
     secretsStoreBeans: SecretsStoreBeans<T>,
+    rootKeys: RootKeys<T>,
     //authSummarizer: Summarizer<AuthMetadata<T>, Key<T>>,
-) : BaseAuthConfiguration<T, V, IndexSearchRequest>(indexServices,
+) : BaseAuthConfiguration<T, V, IndexSearchRequest>(rootKeys,
+    indexServices,
     persistServices,
     anonKeySupplier,
     secretsStoreBeans,

@@ -17,7 +17,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
 @TestConfiguration
-class TestDummyControllerServices {
+class TestDummyControllerServicesConfiguration {
 
     class DummyUserIndex<T, Q>(that: IndexService<T, User<T>, Q>) : UserIndexService<T, Q>,
         IndexService<T, User<T>, Q> by that

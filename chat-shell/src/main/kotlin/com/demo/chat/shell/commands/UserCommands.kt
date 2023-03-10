@@ -26,8 +26,6 @@ class UserCommands<T>(
     private val passwdStore: SecretsStore<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    private val anonKey: Supplier<Anon<T>>,
-    private val adminKey: Supplier<Admin<T>>,
     private val keyGen: IKeyGenerator<T>,
     private val keyService: IKeyService<T>
 ) : CommandsUtil<T>(typeUtil) {

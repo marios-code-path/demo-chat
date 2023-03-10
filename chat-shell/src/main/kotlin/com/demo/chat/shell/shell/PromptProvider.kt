@@ -1,7 +1,7 @@
 package com.demo.chat.shell.shell
 
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.shell.SpringSecurityRequesterFactory
+import com.demo.chat.shell.ShellStateConfiguration
 import org.jline.utils.AttributedString
 import org.springframework.shell.jline.PromptProvider
 import org.springframework.stereotype.Component
@@ -11,7 +11,7 @@ import java.util.*
 class PromptProvider<T>(val typeUtil: TypeUtil<T>) : PromptProvider {
 
     fun getLoggedIn(): String =
-        SpringSecurityRequesterFactory.authMetadata
+        ShellStateConfiguration.simpleAuthToken
             .map { auth ->
                 auth.name
             }

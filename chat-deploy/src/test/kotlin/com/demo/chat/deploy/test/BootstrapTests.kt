@@ -3,6 +3,7 @@ package com.demo.chat.deploy.test
 import com.demo.chat.deploy.bootstrap.*
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.beans.factory.annotation.Autowired
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 
@@ -58,6 +60,8 @@ open class RootKeyTests<T>(
 
     @Test
     fun `test root key`() {
+        val rootKeys = RootKeys<T>()
+
         Hooks.onOperatorDebug()
         val properties = BootstrapProperties(
             BootstrapRoles(arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
@@ -71,9 +75,9 @@ open class RootKeyTests<T>(
             )
         )
 
-        val service = BootstrappingService(userService, authorizationService, secretsStore, properties, keyService, typeUtil)
-        val complete = service.bootstrap()
-        val summary = service.rootKeySummary(complete)
+        val service = BootstrappingService(userService, authorizationService, secretsStore, properties, keyService, typeUtil, rootKeys)
+        service.bootstrap()
+        val summary = service.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)

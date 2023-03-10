@@ -16,8 +16,6 @@ import java.util.function.Supplier
 @ShellComponent
 class PubSubCommands<T>(
     private val messageService: ChatMessageService<T, String>,
-    private val anonKey: Supplier<Anon<T>>,
-    private val adminKey: Supplier<Admin<T>>,
     private val typeUtil: TypeUtil<T>
     ) : CommandsUtil<T>(typeUtil) {
 

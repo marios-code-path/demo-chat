@@ -21,7 +21,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: info,health,shutdown
+        include: info,health,shutdown,rootkeys
 
 spring:
 #  config:

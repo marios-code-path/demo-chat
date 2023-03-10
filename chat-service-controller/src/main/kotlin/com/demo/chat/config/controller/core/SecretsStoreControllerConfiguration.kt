@@ -8,8 +8,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 
 
-//@Controller
+@Controller
 @ConditionalOnProperty(prefix = "app.controller", name = ["secrets"])
-//@MessageMapping("secrets")
+@MessageMapping("secrets")
 class SecretsStoreControllerConfiguration<T>(beans: SecretsStoreBeans<T>) : SecretsStoreMapping<T>,
     SecretsStore<T> by beans.secretsStore()

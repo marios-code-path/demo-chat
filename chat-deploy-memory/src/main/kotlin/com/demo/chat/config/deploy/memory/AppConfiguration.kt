@@ -12,6 +12,7 @@ import com.demo.chat.config.persistence.memory.MemorySecretsStoreServiceBeans
 import com.demo.chat.config.pubsub.memory.MemoryPubSubConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
+import com.demo.chat.deploy.actuator.RootKeyEndpoint
 import com.demo.chat.deploy.bootstrap.BootstrappingService
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -39,10 +40,12 @@ import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity
+import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
+import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @Import(
@@ -75,7 +78,8 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
     TopicServiceController::class,
     UserServiceController::class,
 
-    BootstrappingService::class
+    BootstrappingService::class,
+    RootKeyEndpoint::class
 )
 @EnableRSocketSecurity
 @EnableReactiveMethodSecurity
@@ -91,6 +95,26 @@ open class AppConfiguration {
     ): ChatUserDetailsService<T, IndexSearchRequest> = ChatUserDetailsService(
         persist, index, auth, authZ
     ) { name -> IndexSearchRequest(UserIndexService.HANDLE, name, 100) }
+
+
+    @Configuration(proxyBeanMethods = false)
+    class MyWebSecurityConfiguration {
+
+        @Bean
+        fun securityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
+            http
+                .csrf().disable()
+                .formLogin().disable()
+                .httpBasic().disable()
+            http
+                .authorizeExchange()
+                .pathMatchers("/actuator/**").permitAll()
+                .anyExchange().authenticated()
+
+            return http.build()
+        }
+
+    }
 
     @Bean
     fun simpleSecurityAuthentication(security: RSocketSecurity)

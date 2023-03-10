@@ -24,7 +24,7 @@ while getopts :eicdon:k:b: o; do
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
     d)
-      export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp"
+      export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp --expose 6792 -p 6792:6792/tcp --expose 6791 -p 6791:6791/tcp"
       ;;
     *)
       cat << CATZ
@@ -54,7 +54,7 @@ export DOCKER_ARGS="${DOCKER_ARGS} --name ${DEPLOYMENT_NAME}"
 export SPRING_PROFILE="exec-chat"
 export APP_PRIMARY="core"
 export APP_IMAGE_NAME="core-services"
-export APP_MAIN_CLASS="com.demo.chat.deploy.memory.App"
+export APP_MAIN_CLASS="com.demo.chat.deploy.memory.MemoryDeploymentApp"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy
 export CORE_SERVICES="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index -Dapp.service.core.persistence -Dapp.service.core.secrets"
@@ -85,4 +85,4 @@ ${COMPOSITE_CONTROLLERS} \
 mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE -DskipTests
 
 # [[ $RUN_MAVEN_ARG == "rundocker" ]] && echo docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION -f
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION -f

@@ -1,36 +1,28 @@
 package com.demo.chat.shell.commands
 
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.secure.ChatUserDetails
-import org.springframework.security.core.context.ReactiveSecurityContextHolder
+import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.shell.ShellStateConfiguration
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.shell.Availability
-import reactor.core.publisher.Mono
 
-open class CommandsUtil<T>(private var typeUtil: TypeUtil<T>) {
+open class CommandsUtil<T>(
+    private var typeUtil: TypeUtil<T>
+) {
 
-    open fun identity(uid: String): T = when (uid) {
+    open fun identity(uId: String): T = when (uId) {
         "_" -> {
-            Mono.just(SecurityContextHolder.getContext().authentication)
-                .contextWrite(
-                    ReactiveSecurityContextHolder
-                        .withAuthentication(SecurityContextHolder.getContext().authentication)
-                )
-                .map { auth ->
-                    auth.principal as ChatUserDetails<T>
-                }
-                .map { user ->
-                    user.user.key.id
-                }
-                .block()!!
+            ShellStateConfiguration.loggedInUser
+                .map { typeUtil.assignFrom(it) }
+                .orElseThrow { IllegalArgumentException("No user logged in") }
         }
 
-        else -> typeUtil.fromString(uid)
+        else -> typeUtil.fromString(uId)
     }
 
     open fun isAuthenticated(): Availability =
-        when (SecurityContextHolder.getContext().authentication) {
-            null -> Availability.unavailable("not logged in")
+        when (ShellStateConfiguration.simpleAuthToken.get().name) {
+            Anon::class.java.simpleName -> Availability.unavailable("not logged in")
             else -> Availability.available()
         }
 }

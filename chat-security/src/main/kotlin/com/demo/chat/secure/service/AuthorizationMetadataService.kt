@@ -56,7 +56,6 @@ class AuthorizationMetadataService<T, Q>(
             sequenceOf(anonKey.get(), uid)
         )
 
-
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             getAuthorizationsForTarget(uidB),

@@ -12,9 +12,10 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 
+
+
 @Configuration
 @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
-@EnableConfigurationProperties(RSocketClientProperties::class)
 class ClientConfiguration {
 
     @Bean

@@ -6,6 +6,7 @@ import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.Summarizer
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.secure.service.AbstractAuthenticationService
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Bean
 import java.util.function.Supplier
 
 open class BaseAuthConfiguration<T, V, Q>(
+    private val rootKeys: RootKeys<T>,
     private val indexServices: IndexServiceBeans<T, V, Q>,
     private val persistServices: PersistenceServiceBeans<T, V>,
     private val anonKeySupplier: Supplier<Anon<T>>,
@@ -43,7 +45,8 @@ open class BaseAuthConfiguration<T, V, Q>(
         indexServices.userIndex(),
         secretsStoreBeans.secretsStore(),
         passwordValidator,
-        userHandleSearch
+        userHandleSearch,
+        rootKeys
     )
 
     @Bean

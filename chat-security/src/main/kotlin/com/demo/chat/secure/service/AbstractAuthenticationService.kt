@@ -2,6 +2,8 @@ package com.demo.chat.secure.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
+import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.KeyCredential
@@ -20,21 +22,25 @@ open class AbstractAuthenticationService<T, U, Q>(
     private val userIndex: IndexService<T, U, Q>,
     private val secretsStore: SecretsStore<T>,
     private val passwordValidator: BiFunction<String, String, Boolean>,
-    private val userNameToQuery: Function<String, Q>
+    private val userNameToQuery: Function<String, Q>,
+    private val rootKeys: RootKeys<T>,
 ) : AuthenticationService<T> {
-    override fun setAuthentication(pKey: Key<T>, pw: String): Mono<Void> =
-        secretsStore.addCredential(KeyCredential(pKey, pw))
+    override fun setAuthentication(uid: Key<T>, pw: String): Mono<Void> =
+        secretsStore.addCredential(KeyCredential(uid, pw))
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
         userIndex
             .findUnique(userNameToQuery.apply(n))
             .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
-            .flatMap { userKey ->
-                secretsStore
-                    .getStoredCredentials(userKey)
-                    .map { secure ->
-                        if (!passwordValidator.apply(pw, secure)) throw UsernamePasswordAuthenticationException
-                        userKey
-                    }
+            .flatMap { userKey ->  // this should only happen when rootKeys is there!!!
+                if (rootKeys.hasRootKey(Anon::class.java, userKey))
+                    Mono.just(userKey)
+                else
+                    secretsStore
+                        .getStoredCredentials(userKey)
+                        .map { secure ->
+                            if (!passwordValidator.apply(pw, secure)) throw UsernamePasswordAuthenticationException
+                            userKey
+                        }
             }
 }
