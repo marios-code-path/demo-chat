@@ -16,7 +16,7 @@ class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
     @Order(1)
     fun `should add topic and list at least one`() {
         topicCommands.addTopic("_", "test")
-        topicCommands.addTopic("_", "test2")
+        topicCommands.addTopic("_", "testABC")
 
 
         val rawTopics = topicCommands.showTopics()
@@ -35,9 +35,10 @@ class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
     @Test
     @Order(2)
     fun `should join and get members for at least 1 `() {
-        topicCommands.join("_", "test")
+        topicCommands.addTopic("_", "test2")
+        topicCommands.join("_", "test2")
 
-        val rawMembers = topicCommands.listMembers("test")
+        val rawMembers = topicCommands.listMembers("test2")
         val members = rawMembers?.split("\n")
 
         Assertions.assertThat(members)
@@ -49,11 +50,11 @@ class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
             .isNotBlank
     }
 
-
     @Test
     @Order(3)
     fun `should join and get memberOf `() {
-        topicCommands.join("_", "test")
+        topicCommands.addTopic("_", "test3")
+        topicCommands.join("_", "test3")
 
         val rawMembers = topicCommands.memberOf("_")
         val members = rawMembers?.split("\n")
@@ -67,4 +68,39 @@ class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
             .isNotBlank
     }
 
+    @Test
+    @Order(4)
+    fun `should join leave having no memberships for user`() {
+        topicCommands.addTopic("_", "test4")
+
+        topicCommands.join("_", "test4")
+
+
+        val rawMembers = topicCommands.memberOf("_")
+        val members = rawMembers?.split("\n")
+        val memberOfCount = members?.size
+
+        topicCommands.leave("_", "test4")
+
+        val newMemberOfCount = topicCommands.memberOf("_")?.split("\n")?.size
+
+        Assertions.assertThat(newMemberOfCount)
+            .isNotNull
+            .isLessThan(memberOfCount)
+    }
+
+    @Test
+    @Order(5)
+    fun `should join leave and have no members in room`() {
+        topicCommands.addTopic("_", "test5")
+
+        topicCommands.join("_", "test5")
+        topicCommands.leave("_", "test5")
+
+        val rawMembers = topicCommands.listMembers("test5")
+        val members = rawMembers?.split("\n")
+
+        Assertions.assertThat(members)
+            .isNullOrEmpty()
+    }
 }
