@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.deploy.bootstrap.*
+import com.demo.chat.config.deploy.bootstrap.*
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
@@ -19,13 +19,12 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.beans.factory.annotation.Autowired
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 
 @Disabled
 @ExtendWith(MockitoExtension::class)
-open class RootKeyTests<T>(
+open class BootstrapTests<T>(
     private val typeUtil: TypeUtil<T>,
     private val keyGenerator: IKeyGenerator<T>,
     private val keyService: IKeyService<T>
@@ -56,7 +55,6 @@ open class RootKeyTests<T>(
             .given(authorizationService.authorize(anyObject(), anyBoolean()))
             .willReturn(Mono.empty())
     }
-
 
     @Test
     fun `test root key`() {

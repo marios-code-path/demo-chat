@@ -7,7 +7,7 @@ import com.demo.chat.config.client.rsocket.*
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
-import com.demo.chat.deploy.actuator.RootKey
+import com.demo.chat.config.deploy.actuator.RootKey
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
@@ -83,40 +83,6 @@ class ShellStateConfiguration {
         var loggedInUser: Optional<Any> = Optional.empty()
         var loginMetadata: Optional<UsernamePasswordMetadata> = Optional.empty()
     }
-
-    @Bean
-    fun <T> captureRootKeys(
-        @Value("\${app.management.server.port}") port: String,
-        typeUtil: TypeUtil<T>,
-        mapper: ObjectMapper,
-        rootKeys: RootKeys<T>
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-            val exchangeStrategies = ExchangeStrategies.builder()
-                .codecs { configurer ->
-                    configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))
-                    configurer.defaultCodecs().jackson2JsonDecoder(Jackson2JsonDecoder(mapper))
-                }
-                .build()
-
-            val client = WebClient.builder()
-                .exchangeStrategies(exchangeStrategies)
-                .baseUrl("http://localhost:${port}")
-                .build()
-
-            val result = client.get()
-                .uri("/actuator/rootkeys")
-                .retrieve()
-                .bodyToMono(object : ParameterizedTypeReference<Map<String, RootKey>>() {})
-                .block()!!
-
-            result.keys.forEach { key ->
-                if (result.containsKey(key)) {
-                    val domain = result[key]!!
-                    rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
-                }
-            }
-        }
 
     @Bean
     fun securityRequesterFactory(

@@ -15,7 +15,8 @@ while getopts :eicdon:k:b: o; do
       export NOBUILD=true
       ;;
     c)
-      export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT}"
+      export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} \
+-Dspring.config.import=optional:consul:"
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -73,7 +74,7 @@ ${CORE_SERVICES} \
 ${COMPOSITE_SERVICES} \
 ${CORE_CONTROLLERS} \
 ${COMPOSITE_CONTROLLERS} \
--Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS} -Dspring.config.import=optional:consul:"
+-Dapp.rsocket.client.requester.factory=default ${DISCOVERY_ARGS}"
 
 #set -x
 

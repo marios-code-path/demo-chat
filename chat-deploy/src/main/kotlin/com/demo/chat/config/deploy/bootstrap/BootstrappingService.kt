@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.bootstrap
+package com.demo.chat.config.deploy.bootstrap
 
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.Admin

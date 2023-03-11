@@ -3,6 +3,7 @@ package com.demo.chat.deploy.tests
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.client.rsocket.ClientConfiguration
 import com.demo.chat.config.client.rsocket.ConsulDiscoveryRequesterFactory
+import com.demo.chat.config.client.rsocket.RSocketPropertyConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
 import com.ecwid.consul.v1.ConsulClient
 import org.junit.jupiter.api.BeforeAll
@@ -33,7 +34,8 @@ import java.time.Duration
         TransportConfiguration::class,
         RSocketStrategiesAutoConfiguration::class, RSocketRequesterAutoConfiguration::class,
         TestConfigs::class,
-        BaseDomainConfiguration::class
+        BaseDomainConfiguration::class,
+        RSocketPropertyConfiguration::class
     ]
 )
 @TestPropertySource(

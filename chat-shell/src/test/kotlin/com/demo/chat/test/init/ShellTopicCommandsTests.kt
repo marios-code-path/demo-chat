@@ -6,8 +6,11 @@ import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
 
 @Disabled
+class LongShellTopicCommandsTests : ShellTopicCommandsTests<Long>()
+
+@Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
-class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
+open class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
 
     @Autowired
     private lateinit var topicCommands: TopicCommands<T>
