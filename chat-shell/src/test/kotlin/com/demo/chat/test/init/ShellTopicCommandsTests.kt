@@ -5,7 +5,6 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*
 import org.springframework.beans.factory.annotation.Autowired
 
-@Disabled
 class LongShellTopicCommandsTests : ShellTopicCommandsTests<Long>()
 
 @Disabled

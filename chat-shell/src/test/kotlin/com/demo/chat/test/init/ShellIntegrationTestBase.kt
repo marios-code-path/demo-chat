@@ -28,13 +28,12 @@ import java.time.Duration
     ]
 )
 @ActiveProfiles("shell")
-@Testcontainers
+//@SingletonContainers: https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/#singleton-containers
 open class ShellIntegrationTestBase {
 
     companion object {
-        val imageName = "core-services:0.0.1"
+        val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
 
-        @Container
         val container = GenericContainer(imageName).withExposedPorts(6790, 6791, 6792)
             .apply {
                 start()
@@ -44,6 +43,7 @@ open class ShellIntegrationTestBase {
                         .withTimes(1)
                         .withStartupTimeout(Duration.ofSeconds(30))
                 )
+                withReuse(true)
             }
 
         @JvmStatic
@@ -66,6 +66,8 @@ open class ShellIntegrationTestBase {
             }
             registry.add("app.rootkey.capture.port") { container.getMappedPort(6792).toString() }
             registry.add("app.rootkey.capture.host") { container.host.toString() }
+            println("IN THIS TEST THE HOST IS ${container.getMappedPort(6790).toString()}")
+            println("IN THIS TEST THE ACTUATOR IS: ${container.getMappedPort(6792).toString()}")
         }
     }
 
