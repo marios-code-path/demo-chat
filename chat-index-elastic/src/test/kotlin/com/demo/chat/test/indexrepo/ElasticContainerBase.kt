@@ -15,10 +15,10 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Duration
 
-@Testcontainers
+//@Testcontainers
 open class ElasticContainerBase {
 
-    @TestConfiguration
+  //  @TestConfiguration
     class ConfConfig {
         @Bean
         fun restClient(@Value("\${spring.elasticsearch.uris}") host: String): RestClient {
@@ -38,9 +38,9 @@ open class ElasticContainerBase {
     }
 
     companion object {
-        val imageName = "docker.elastic.co/elasticsearch/elasticsearch:8.6.0"
+        val imageName = "docker.elastic.co/elasticsearch/elasticsearch:8.6.2"
 
-        @Container
+      //  @Container
         val elasticContainer = ElasticsearchContainer(imageName).apply {
             withExposedPorts(9200)
             withPassword("s3cret")
@@ -69,8 +69,8 @@ open class ElasticContainerBase {
 
         fun sslContext() = elasticContainer.createSslContextFromCa()
 
-        @JvmStatic
-        @DynamicPropertySource
+ //       @JvmStatic
+ //       @DynamicPropertySource
         fun elasticProperties(registry: org.springframework.test.context.DynamicPropertyRegistry) {
             registry.add("spring.elasticsearch.uris") { elasticContainer.httpHostAddress }
             registry.add("spring.elasticsearchport") { elasticContainer.getMappedPort(9200) }

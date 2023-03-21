@@ -3,52 +3,19 @@ logging:
     root: info
 
 spring:
-  main:
-    web-application-type: none
   application:
-    name: test-client
+  config:
+    import: "optional:consul:"
   cloud:
-    consul:
-      service-registry:
-        enabled: true
+    discovery:
       enabled: true
+    consul:
+      config:
+        watch:
+          enabled: true
+        enabled: true
+        format: YAML
+        data-key: data
       discovery:
         enabled: true
-        instance-id: foobar123
-    discovery:
-      reactive:
-        enabled: true
-
-management:
-  endpoints:
-    enabled-by-default: false
-
-
-app:
-  rsocket:
-    client:
-      config:
-        pubsub:
-          dest: core-service-rsocket
-          prefix: pubsub.
-        index:
-          dest: core-service-rsocket
-          prefix: index.
-        persistence:
-          dest: core-service-rsocket
-          prefix: persist.
-        key:
-          dest: core-service-rsocket
-          prefix: key.
-        message:
-          dest: core-service-rsocket
-          prefix: message.
-        topic:
-          dest: core-service-rsocket
-          prefix: topic.
-        user:
-          dest: core-service-rsocket
-          prefix: user.
-        secrets:
-          dest: core-service-rsocket
-          prefix: secrets.
+        default-query-tag: rsocket,${app.key.type}

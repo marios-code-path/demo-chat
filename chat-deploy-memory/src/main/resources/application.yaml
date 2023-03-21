@@ -5,7 +5,6 @@ logging:
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
 
-
 management:
   info:
     git:
@@ -34,8 +33,13 @@ spring:
     consul:
       discovery:
         enabled: true
-        tags: rsocket.port=${spring.rsocket.server.port}
+        tags: rsocket
+        port: ${spring.rsocket.server.port}
+        metadata:
+          rsocketPort: ${spring.rsocket.server.port}
+          keyType: ${app.key.type}
         instance-id: "${spring.application.name}:${random.value}"
+        management-port: ${management.server.port}
       config:
         enabled: true
         format: YAML

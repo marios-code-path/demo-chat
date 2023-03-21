@@ -15,15 +15,13 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfi
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient
+import org.springframework.cloud.client.loadbalancer.LoadBalanced
 import org.springframework.cloud.consul.ConsulAutoConfiguration
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
-import org.springframework.test.context.DynamicPropertySource
+import org.springframework.context.annotation.Bean
 import org.springframework.test.context.TestPropertySource
-import org.testcontainers.consul.ConsulContainer
-import org.testcontainers.containers.Network
-import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
-import java.time.Duration
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -52,39 +50,7 @@ import java.time.Duration
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Testcontainers
-class DeployContextTests {
-    companion object {
-        val imageName = "consul:1.14.4"
-
-        @Container
-        val consulContainer = ConsulContainer(imageName).apply {
-            withExposedPorts(8500)
-            withReuse(true)
-            //withLogConsumer(ContainerUtils.containerLogsConsumer(log))
-            withNetwork(Network.SHARED)
-            withStartupTimeout(Duration.ofSeconds(60))
-            start()
-        }
-
-        @JvmStatic
-        @DynamicPropertySource
-        fun consulProperties(registry: org.springframework.test.context.DynamicPropertyRegistry) {
-            registry.add("spring.cloud.consul.host") { consulContainer.host }
-            registry.add("spring.cloud.consul.port") { consulContainer.getMappedPort(8500) }
-
-            val client = ConsulClient(consulContainer.host, consulContainer.getMappedPort(8500))
-
-            client.agentServiceRegister(
-                com.ecwid.consul.v1.agent.model.NewService().apply {
-                    name = "core-service-rsocket"
-                    address = "localhost"
-                    port = 7901
-                    id = "core-service-rsocket"
-                    tags = listOf("core-service-rsocket")
-                }
-            )
-        }
-    }
+class DeployContextTests : ConsulContainerSetup() {
 
     @Autowired
     private lateinit var consulClient: ConsulClient

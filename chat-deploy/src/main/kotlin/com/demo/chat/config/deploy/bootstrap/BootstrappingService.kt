@@ -12,6 +12,9 @@ import com.demo.chat.service.security.SecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.ApplicationEvent
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.ApplicationEventPublisherAware
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -19,7 +22,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Configuration
-@ConditionalOnProperty("app.bootstrap.init")
+@ConditionalOnProperty("app.bootstrap", havingValue = "rootkeys")
 @EnableConfigurationProperties(BootstrapProperties::class)
 class BootstrappingService<T>(
     private val userService: ChatUserService<T>,
@@ -29,7 +32,7 @@ class BootstrappingService<T>(
     private val keyService: IKeyService<T>,
     private val typeUtil: TypeUtil<T>,
     private val rootKeys: RootKeys<T>,
-) {
+) : ApplicationEventPublisherAware {
 
     private val knownRootKeys: Set<Class<*>> = setOf(
         User::class.java,
@@ -41,10 +44,11 @@ class BootstrappingService<T>(
         Admin::class.java
     )
 
-
     @Bean
     fun eventListener(root: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> = ApplicationListener { evt ->
         bootstrap()
+        publisher.publishEvent(BootstrapEvent(root))
+
         println(rootKeySummary(root))
     }
 
@@ -83,12 +87,9 @@ class BootstrappingService<T>(
             throw RuntimeException("Admin and Anon users must be defined")
         }
 
-        println("Bootstrapping Users")
         // add users
         bootstrapProperties.users.keys.forEach { identity ->
             val thisUser = bootstrapProperties.users[identity]!!
-
-            println("Adding User: ${thisUser.handle}")
 
             val thisUserKey = Mono.from(
                 userService.addUser(
@@ -147,4 +148,12 @@ class BootstrappingService<T>(
 
     }
 
+    override fun setApplicationEventPublisher(applicationEventPublisher: ApplicationEventPublisher) {
+        this.publisher = applicationEventPublisher
+    }
+
+    lateinit var publisher: ApplicationEventPublisher
 }
+
+
+class BootstrapEvent(val rootKeys: RootKeys<*>) : ApplicationEvent(rootKeys)

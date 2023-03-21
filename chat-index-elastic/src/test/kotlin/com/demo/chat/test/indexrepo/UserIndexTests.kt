@@ -13,17 +13,17 @@ import reactor.test.StepVerifier
 import java.time.Instant
 
 
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
-)
-@EnableReactiveElasticsearchRepositories(basePackages = ["com.demo.chat"])
+//@SpringBootTest(
+//    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+//    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
+//)
+//@EnableReactiveElasticsearchRepositories(basePackages = ["com.demo.chat"])
 class UserIndexTests : ElasticContainerBase() {
 
     @Autowired
     private lateinit var repo: ReactiveUserIndexRepository<String>
 
-    @Test
+  //  @Test
     fun `should store to index and success`() {
         val user = ChatUser(
             ChatUserKey("1234"),

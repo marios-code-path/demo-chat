@@ -15,7 +15,7 @@ import reactor.core.publisher.Hooks
 @Profile("exec-chat")
 @Import(
     RSocketServerConfiguration::class,
-    WebSecurityConfiguration::class
+    ActuatorWebSecurityConfiguration::class
 )
 class MemoryDeploymentApp {
 

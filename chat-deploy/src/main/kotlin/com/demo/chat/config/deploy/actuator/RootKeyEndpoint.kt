@@ -14,6 +14,5 @@ class RootKeyEndpoint<T>(private val rootKeys: RootKeys<T>) {
 
     @ReadOperation
     @Bean
-    @Scope("prototype")
-    fun actuateRootKeys(): Map<String, Key<T>> = rootKeys.keys()
+    fun actuateRootKeys(): Map<String, Key<T>> = rootKeys.getMapOfKeyMap()
 }

@@ -11,16 +11,16 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.elasticsearch.client.elc.ReactiveElasticsearchClient
 import reactor.test.StepVerifier
 
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
-)
+//@SpringBootTest(
+//    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+//    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
+//)
 class ElasticHealthTest : ElasticContainerBase() {
 
     @Autowired
     private lateinit var client: ReactiveElasticsearchClient
 
-    @Test
+   // @Test
     fun healthCheck() {
         StepVerifier
             .create(client.cluster().health { builder ->

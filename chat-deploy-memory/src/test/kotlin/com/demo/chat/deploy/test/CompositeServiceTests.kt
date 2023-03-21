@@ -6,11 +6,9 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
-import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.KeyCredential
-import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.randomAlphaNumeric
 import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions
@@ -19,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
@@ -40,7 +37,7 @@ import java.util.*
         "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
         "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=long",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets","app.service.composite", "app.service.composite.auth",
+        "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
         "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
@@ -63,12 +60,6 @@ class CompositeServiceTests {
     @Autowired
     private lateinit var builder: RSocketRequester.Builder
 
-    //@get:LocalRSocketServerPort
-    //private var port by Delegates.notNull<Int>()
-//    init {
-//        port = 0
-//    }
-
     @Value("\${local.rsocket.server.port}")
     private lateinit var port: String
 
@@ -80,11 +71,11 @@ class CompositeServiceTests {
             .isGreaterThan(0)
     }
 
-    @Autowired
-    lateinit var passEncoder: PasswordEncoder
-
     @Test
-    fun `should request key`(@Autowired userService: CompositeServiceBeans<Long, String>, @Autowired  secretsStore: SecretsStoreBeans<Long>) {
+    fun `should request key`(
+        @Autowired userService: CompositeServiceBeans<Long, String>,
+        @Autowired secretsStore: SecretsStoreBeans<Long>
+    ) {
         val key: Key<Long> = userService.userService()
             .addUser(UserCreateRequest("test", "user", "test"))
             .block()!!
@@ -92,7 +83,10 @@ class CompositeServiceTests {
         secretsStore.secretsStore().addCredential(KeyCredential(key, "changeme")).block()
 
         val requester = builder
-            .setupMetadata(UsernamePasswordMetadata("user", "changeme"), MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string))
+            .setupMetadata(
+                UsernamePasswordMetadata("user", "changeme"),
+                MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
+            )
             .tcp("localhost", port.toInt())
 
         val keyRequest: Mono<Key<*>> = requester
@@ -185,9 +179,10 @@ class CompositeServiceTests {
         messagingService.send(message).block()
 
         StepVerifier
-            .create(messagingService
-                .listenTopic(ByIdRequest(roomCreated.id))
-                .take(1)
+            .create(
+                messagingService
+                    .listenTopic(ByIdRequest(roomCreated.id))
+                    .take(1)
             )
             .assertNext { msg ->
                 Assertions

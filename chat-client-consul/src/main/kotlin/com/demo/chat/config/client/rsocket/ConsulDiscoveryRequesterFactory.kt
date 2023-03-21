@@ -34,9 +34,7 @@ class ConsulDiscoveryRequesterFactory(
                 Optional.ofNullable(instance.metadata["rsocket.port"])
                     .map {
                         builder
-                            .connect(connection.tcpClientTransport(instance.host, it.toInt()))
-                            .log()
-                            .block()!!
+                            .transport(connection.tcpClientTransport(instance.host, it.toInt()))
                     }
                     .orElseThrow { DiscoveryException(serviceKey) }
             }
