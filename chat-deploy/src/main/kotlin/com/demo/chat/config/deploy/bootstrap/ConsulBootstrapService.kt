@@ -1,8 +1,9 @@
 package com.demo.chat.config.deploy.bootstrap
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyDataPair
 import com.demo.chat.domain.knownkey.RootKeys
-import com.ecwid.consul.v1.ConsulClient
+import com.demo.chat.service.core.KeyValueStore
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -15,43 +16,34 @@ import java.util.*
 @ConditionalOnProperty("spring.cloud.consul.discovery.enabled", havingValue = "true")
 @Configuration
 class ConsulBootstrapService(
-    val client: ConsulClient,
+    val kvStore: KeyValueStore<String, String>,
     val mapper: ObjectMapper
 ) {
 
     @Bean
     @ConditionalOnProperty("app.bootstrap", havingValue = "rootkeys")
-    fun listenForBootstrapEvent(@Value("app.rootkeys.consul.key") consulKey: String): ApplicationListener<BootstrapEvent> =
+    fun writeRootKeysOnBootstrap(@Value("app.rootkeys.discovery.key") keyPath: String): ApplicationListener<BootstrapEvent> =
         ApplicationListener { event ->
-            writeToConsul(event.rootKeys, consulKey)
+            writeRootKeys(event.rootKeys, keyPath).subscribe()
         }
 
     @Bean
     @ConditionalOnProperty("app.bootstrap", havingValue = "read")
-    fun readRootKeysOnStart(
+    fun mergeRootKeysOnStart(
         rootKeys: RootKeys<Any>,
         @Value("app.rootkeys.consul.key") consulKey: String
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
-            readFromConsul(rootKeys, consulKey)
+            mergeRootKeys(rootKeys, consulKey).subscribe()
         }
 
-    fun readFromConsul(rootKeys: RootKeys<Any>, consulKey: String) {
-        val kvGet = client.getKVValue(consulKey).value
+    fun mergeRootKeys(rootKeys: RootKeys<Any>, consulKey: String) = kvStore
+        .get(Key.funKey(consulKey))
+        .doOnNext {
+            val map = mapper.readValue(it.data, Map::class.java)
+            rootKeys.merge(map as Map<String, Key<Any>>)
+        }
 
-        Optional.ofNullable(kvGet.value)
-            .map {
-                mapper.readValue(
-                    Base64.getDecoder().decode(it),
-                    Map::class.java
-                )
-            }
-            .ifPresent {
-                rootKeys.merge(it as Map<String, Key<Any>>)
-            }
-    }
-
-    fun <T> writeToConsul(rootKeys: RootKeys<T>, consulKey: String) {
-        client.setKVValue(consulKey, mapper.writeValueAsString(rootKeys.getMapOfKeyMap()))
-    }
+    fun writeRootKeys(rootKeys: RootKeys<*>, consulKey: String) = kvStore
+        .add(KeyDataPair.create(Key.funKey(consulKey), mapper.writeValueAsString(rootKeys.getMapOfKeyMap())))
 }

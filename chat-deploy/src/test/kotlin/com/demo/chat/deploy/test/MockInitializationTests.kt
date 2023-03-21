@@ -24,7 +24,7 @@ import reactor.core.publisher.Mono
 
 @Disabled
 @ExtendWith(MockitoExtension::class)
-open class BootstrapTests<T>(
+open class MockInitializationTests<T>(
     private val typeUtil: TypeUtil<T>,
     private val keyGenerator: IKeyGenerator<T>,
     private val keyService: IKeyService<T>
@@ -61,19 +61,19 @@ open class BootstrapTests<T>(
         val rootKeys = RootKeys<T>()
 
         Hooks.onOperatorDebug()
-        val properties = BootstrapProperties(
-            BootstrapRoles(arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
+        val properties = InitializationProperties(
+            InitalRoles(arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
                 RoleDefinition("Admin", "Admin", "*"),
                 RoleDefinition( "User", "User", "READ"),
                 RoleDefinition("User", "MessageTopic", "READ")
             )),
             mapOf(
-                Pair("Admin", BootstrapUser("Admin", "AdminUser", "http://foo.bar.img")),
-                Pair("Anon", BootstrapUser("Anon", "Anonymous", "http://anon.img"))
+                Pair("Admin", InitialUser("Admin", "AdminUser", "http://foo.bar.img")),
+                Pair("Anon", InitialUser("Anon", "Anonymous", "http://anon.img"))
             )
         )
 
-        val service = BootstrappingService(userService, authorizationService, secretsStore, properties, keyService, typeUtil, rootKeys)
+        val service = RootKeyGeneratorService(userService, authorizationService, secretsStore, properties, keyService, typeUtil, rootKeys)
         service.bootstrap()
         val summary = service.rootKeySummary(rootKeys)
 

@@ -23,12 +23,12 @@ import reactor.core.publisher.Mono
 
 @Configuration
 @ConditionalOnProperty("app.bootstrap", havingValue = "rootkeys")
-@EnableConfigurationProperties(BootstrapProperties::class)
-class BootstrappingService<T>(
+@EnableConfigurationProperties(InitializationProperties::class)
+class RootKeyGeneratorService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val secretsStore: SecretsStore<T>,
-    private val bootstrapProperties: BootstrapProperties,
+    private val initializationProperties: InitializationProperties,
     private val keyService: IKeyService<T>,
     private val typeUtil: TypeUtil<T>,
     private val rootKeys: RootKeys<T>,
@@ -81,15 +81,15 @@ class BootstrappingService<T>(
         val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
         val identityKeys = mutableMapOf<String, Key<T>>()
 
-        if (!(bootstrapProperties.users.containsKey(Admin::class.java.simpleName) &&
-                    bootstrapProperties.users.containsKey(Anon::class.java.simpleName))
+        if (!(initializationProperties.initialUsers.containsKey(Admin::class.java.simpleName) &&
+                    initializationProperties.initialUsers.containsKey(Anon::class.java.simpleName))
         ) {
             throw RuntimeException("Admin and Anon users must be defined")
         }
 
         // add users
-        bootstrapProperties.users.keys.forEach { identity ->
-            val thisUser = bootstrapProperties.users[identity]!!
+        initializationProperties.initialUsers.keys.forEach { identity ->
+            val thisUser = initializationProperties.initialUsers[identity]!!
 
             val thisUserKey = Mono.from(
                 userService.addUser(
@@ -125,7 +125,7 @@ class BootstrappingService<T>(
         val initialRoles: MutableSet<AuthMetadata<T>> = mutableSetOf()
 
         // get role definitions
-        bootstrapProperties.roles.initialRoles.forEach { permission ->
+        initializationProperties.initialRoles.roles.forEach { permission ->
             if (rootKeys.hasKey(permission.target) && rootKeys.hasKey(permission.user)) {
                 initialRoles.add(
                     StringRoleAuthorizationMetadata(

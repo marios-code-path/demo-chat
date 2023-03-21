@@ -1,6 +1,8 @@
 package com.demo.chat.deploy.tests
 
 import org.junit.jupiter.api.AfterAll
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.consul.ConsulContainer
 import org.testcontainers.containers.Network
 import org.testcontainers.junit.jupiter.Container
@@ -33,5 +35,11 @@ open class ConsulContainerSetup {
             start()
         }
 
+        @JvmStatic
+        @DynamicPropertySource
+        fun setDynamicProps(propertySource: DynamicPropertyRegistry) {
+            propertySource.add("spring.cloud.consul.host") { consulContainer.host }
+            propertySource.add("spring.cloud.consul.port") { consulContainer.getMappedPort(8500) }
+        }
     }
 }

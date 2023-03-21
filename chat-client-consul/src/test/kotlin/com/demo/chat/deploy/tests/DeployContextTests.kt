@@ -15,11 +15,8 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfi
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.cloud.client.discovery.EnableDiscoveryClient
-import org.springframework.cloud.client.loadbalancer.LoadBalanced
 import org.springframework.cloud.consul.ConsulAutoConfiguration
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
-import org.springframework.context.annotation.Bean
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.junit.jupiter.Testcontainers
 

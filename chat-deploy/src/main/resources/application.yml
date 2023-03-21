@@ -4,10 +4,10 @@
 
 app:
   init:
-    roles:
+    initialRoles:
       rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
       wildcard: "*"
-      initialRoles:
+      roles:
         - { user: Admin, target: Admin, role: "*" }
         - { user: Anon, target: User, role: READ }
         - { user: Anon, target: User, role: CREATE }
@@ -19,7 +19,7 @@ app:
         - { user: User, target: MessageTopic, role: JOIN }
         - { user: User, target: MessageTopic, role: SEND }
         - { user: User, target: MessageTopic, role: READ }
-    users:
+    initialUsers:
       Anon:
         handle: Anon
         name: "ANY USER"

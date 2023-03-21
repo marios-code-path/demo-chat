@@ -6,18 +6,18 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 @ConditionalOnProperty("app.bootstrap.init")
 @ConfigurationProperties("app.init")
-data class BootstrapProperties @ConstructorBinding constructor(
-    val roles: BootstrapRoles,
-    val users: Map<String, BootstrapUser>
+data class InitializationProperties @ConstructorBinding constructor(
+    val initialRoles: InitalRoles,
+    val initialUsers: Map<String, InitialUser>
 )
 
-data class BootstrapRoles @ConstructorBinding constructor(
+data class InitalRoles @ConstructorBinding constructor(
     val rolesAllowed: Array<String>,
     val wildcard: String,
-    val initialRoles: Array<RoleDefinition>
+    val roles: Array<RoleDefinition>
 )
 
-data class BootstrapUser @ConstructorBinding constructor(
+data class InitialUser @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,

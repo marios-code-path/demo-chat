@@ -6,7 +6,7 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.config.controller.core.*
 import com.demo.chat.config.deploy.actuator.RootKeyEndpoint
-import com.demo.chat.config.deploy.bootstrap.BootstrappingService
+import com.demo.chat.config.deploy.bootstrap.RootKeyGeneratorService
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.persistence.memory.MemoryCorePersistenceServices
 import com.demo.chat.config.persistence.memory.MemoryKeyServices
@@ -61,7 +61,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     TopicServiceController::class,
     UserServiceController::class,
 
-    BootstrappingService::class,
+    RootKeyGeneratorService::class,
     RootKeyEndpoint::class
 )
 @EnableRSocketSecurity

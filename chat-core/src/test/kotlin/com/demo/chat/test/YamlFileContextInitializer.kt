@@ -1,8 +1,6 @@
 package com.demo.chat.test
 
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.env.YamlPropertySourceLoader
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.ApplicationContextInitializer
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.core.io.Resource
