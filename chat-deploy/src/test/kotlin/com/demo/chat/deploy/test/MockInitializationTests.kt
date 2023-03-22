@@ -74,7 +74,7 @@ open class MockInitializationTests<T>(
         )
 
         val service = RootKeyGeneratorService(userService, authorizationService, secretsStore, properties, keyService, typeUtil, rootKeys)
-        service.bootstrap()
+        service.initializeChatSystem()
         val summary = service.rootKeySummary(rootKeys)
 
         Assertions

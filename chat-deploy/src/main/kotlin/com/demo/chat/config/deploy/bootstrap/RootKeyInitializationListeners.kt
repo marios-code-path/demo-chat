@@ -15,7 +15,7 @@ import java.util.*
 
 @ConditionalOnProperty("spring.cloud.consul.discovery.enabled", havingValue = "true")
 @Configuration
-class ConsulBootstrapService(
+class RootKeyInitializationListeners(
     val kvStore: KeyValueStore<String, String>,
     val mapper: ObjectMapper
 ) {

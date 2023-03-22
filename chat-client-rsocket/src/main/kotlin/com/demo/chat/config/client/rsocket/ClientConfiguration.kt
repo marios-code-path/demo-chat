@@ -5,6 +5,7 @@ import com.demo.chat.client.rsocket.clients.CompositeRSocketClients
 import com.demo.chat.client.rsocket.clients.CoreRSocketClients
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
@@ -19,6 +20,7 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 class ClientConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean
     fun requesterBuilder(strategies: RSocketStrategies): RSocketRequester.Builder =
         RSocketRequester.builder().rsocketStrategies(strategies)
 

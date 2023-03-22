@@ -46,7 +46,7 @@ class RootKeyGeneratorService<T>(
 
     @Bean
     fun eventListener(root: RootKeys<T>): ApplicationListener<ApplicationStartedEvent> = ApplicationListener { evt ->
-        bootstrap()
+        initializeChatSystem()
         publisher.publishEvent(BootstrapEvent(root))
 
         println(rootKeySummary(root))
@@ -64,7 +64,7 @@ class RootKeyGeneratorService<T>(
         return sb.toString()
     }
 
-    fun bootstrap() {
+    fun initializeChatSystem() {
         // Create key for each Domain Type
         Flux.just(
             User::class.java, Message::class.java, MessageTopic::class.java,
@@ -154,6 +154,5 @@ class RootKeyGeneratorService<T>(
 
     lateinit var publisher: ApplicationEventPublisher
 }
-
 
 class BootstrapEvent(val rootKeys: RootKeys<*>) : ApplicationEvent(rootKeys)
