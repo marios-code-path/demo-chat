@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.config.deploy.bootstrap.InitializationProperties
+import com.demo.chat.config.deploy.init.InitializationProperties
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test

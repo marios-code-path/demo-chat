@@ -1,14 +1,16 @@
-package com.demo.chat.config.deploy.bootstrap
+package com.demo.chat.config.deploy.init
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.context.properties.bind.ConstructorBinding
 
-@ConditionalOnProperty("app.bootstrap.init")
+@ConditionalOnProperty("app.bootstrap", havingValue = "init")
+@EnableConfigurationProperties(InitializationProperties::class)
 @ConfigurationProperties("app.init")
 data class InitializationProperties @ConstructorBinding constructor(
     val initialRoles: InitalRoles,
-    val initialUsers: Map<String, InitialUser>
+    val initialUsers: Map<String, UserDefinition>
 )
 
 data class InitalRoles @ConstructorBinding constructor(
@@ -17,7 +19,7 @@ data class InitalRoles @ConstructorBinding constructor(
     val roles: Array<RoleDefinition>
 )
 
-data class InitialUser @ConstructorBinding constructor(
+data class UserDefinition @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,

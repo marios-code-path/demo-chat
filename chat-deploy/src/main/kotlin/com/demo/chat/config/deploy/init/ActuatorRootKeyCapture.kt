@@ -1,8 +1,9 @@
-package com.demo.chat.config.deploy.actuator
+package com.demo.chat.config.deploy.init
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.actuator.RootKey
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -16,8 +17,9 @@ import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 
-@Configuration
-@ConditionalOnProperty(name = ["app.rootkey.capture.source"], havingValue = "actuator")
+//@Configuration
+//@ConditionalOnProperty(name = ["app.rootkey.capture.source"], havingValue = "actuator")
+@Deprecated("Use ConsulKVStoreConfiguration")
 class ActuatorRootKeyCapture {
 
     @Bean

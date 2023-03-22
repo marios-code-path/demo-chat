@@ -1,18 +1,22 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.config.deploy.bootstrap.*
+import com.demo.chat.config.deploy.init.*
+import com.demo.chat.deploy.KnownRootKeys.Companion.knownRootKeys
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.KeyValueStore
+import com.demo.chat.service.init.InitialUsersService
+import com.demo.chat.service.init.RootKeyService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyBoolean
 import com.demo.chat.test.anyObject
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -39,8 +43,33 @@ open class MockInitializationTests<T>(
     @Mock
     private lateinit var secretsStore: SecretsStore<T>
 
-    @BeforeEach
-    fun setUp() {
+    @Mock
+    private lateinit var kvStore: KeyValueStore<String, String>
+
+    private val mapper = ObjectMapper()
+
+    @Test
+    fun `should create rootkeys and summary`() {
+        val rootKeyService = RootKeyService(keyService, kvStore, mapper, "rootKeys")
+        val rootKeys = RootKeys<T>()
+
+        rootKeys.merge(rootKeyService.createDomainKeys())
+        val summary = rootKeyService.rootKeySummary(rootKeys)
+
+        Assertions
+            .assertThat(summary)
+            .isNotNull
+            .hasSizeGreaterThan("Root Keys: \n".length)
+
+        knownRootKeys.forEach {
+            Assertions
+                .assertThat(rootKeys.getMapOfKeyMap())
+                .containsKey(it.simpleName)
+        }
+    }
+
+    @Test
+    fun `test user init`() {
         BDDMockito
             .given(secretsStore.addCredential(anyObject()))
             .willReturn(Mono.empty())
@@ -54,34 +83,47 @@ open class MockInitializationTests<T>(
         BDDMockito
             .given(authorizationService.authorize(anyObject(), anyBoolean()))
             .willReturn(Mono.empty())
-    }
 
-    @Test
-    fun `test root key`() {
         val rootKeys = RootKeys<T>()
 
         Hooks.onOperatorDebug()
         val properties = InitializationProperties(
-            InitalRoles(arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
-                RoleDefinition("Admin", "Admin", "*"),
-                RoleDefinition( "User", "User", "READ"),
-                RoleDefinition("User", "MessageTopic", "READ")
-            )),
+            InitalRoles(
+                arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
+                    RoleDefinition("Admin", "Admin", "*"),
+                    RoleDefinition("User", "User", "READ"),
+                    RoleDefinition("User", "MessageTopic", "READ")
+                )
+            ),
             mapOf(
-                Pair("Admin", InitialUser("Admin", "AdminUser", "http://foo.bar.img")),
-                Pair("Anon", InitialUser("Anon", "Anonymous", "http://anon.img"))
+                Pair("Admin", UserDefinition("Admin", "AdminUser", "http://foo.bar.img")),
+                Pair("Anon", UserDefinition("Anon", "Anonymous", "http://anon.img"))
             )
         )
 
-        val service = RootKeyGeneratorService(userService, authorizationService, secretsStore, properties, keyService, typeUtil, rootKeys)
-        service.initializeChatSystem()
-        val summary = service.rootKeySummary(rootKeys)
+
+        val rootKeyService = RootKeyService(keyService, kvStore, mapper, "rootKeys")
+            .apply {
+                rootKeys.merge(createDomainKeys())
+            }
+
+        InitialUsersService(userService, authorizationService, secretsStore, properties, typeUtil)
+            .apply {
+                rootKeys.merge(
+                    initializeUsers(rootKeys)
+                )
+            }
+
+        val summary = rootKeyService.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)
             .isNotNull
             .hasSizeGreaterThan("Root Keys: \n".length)
 
-        println(summary)
+        Assertions
+            .assertThat(summary)
+            .contains("Admin")
+            .contains("Anon")
     }
 }
