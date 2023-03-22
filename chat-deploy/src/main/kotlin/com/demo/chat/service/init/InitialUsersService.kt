@@ -61,6 +61,8 @@ class InitialUsersService<T>(
         mapOfKeys[Admin::class.java.simpleName] = adminKey
         mapOfKeys[Anon::class.java.simpleName] = anonKey
 
+        rootKeys.merge(mapOfKeys)
+
         val initialRoles: MutableSet<AuthMetadata<T>> = mutableSetOf()
 
         // get role definitions
