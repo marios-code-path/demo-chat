@@ -11,6 +11,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
@@ -52,9 +53,10 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
 
     @Test
     fun `should add then remove key`() {
+        Hooks.onOperatorDebug()
         val kvProcess = kvStore
-            .add(KeyDataPair.create(Key.funKey("test/1"), "test"))
-            .then(kvStore.rem(Key.funKey("test/1")))
+            .add(KeyDataPair.create(Key.funKey("test1"), "test"))
+            .then(kvStore.rem(Key.funKey("test1")))
             .thenMany(kvStore.all())
 
         StepVerifier

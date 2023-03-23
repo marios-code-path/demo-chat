@@ -7,6 +7,7 @@ import com.ecwid.consul.v1.ConsulClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.charset.Charset
+import java.util.Optional
 
 class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: String) : KeyValueStore<String, String> {
 
@@ -15,8 +16,8 @@ class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: St
     override fun key(): Mono<out Key<String>> = Mono.empty()
 
     override fun all(): Flux<out KeyDataPair<String, String>> = Flux.defer {
-        client.getKVKeysOnly(pathPrefix)
-            .value
+        Optional.ofNullable(client.getKVKeysOnly(pathPrefix).value)
+            .orElseGet { emptyList() }
             .map { key -> KeyDataPair.create(Key.funKey(key), "") }
             .let { Flux.fromIterable(it) }
     }

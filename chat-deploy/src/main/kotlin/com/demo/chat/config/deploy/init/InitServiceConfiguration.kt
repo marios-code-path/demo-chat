@@ -16,11 +16,11 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-class InitServiceConfiguration<T> {
+class InitServiceConfiguration {
 
     @Bean
     @ConditionalOnProperty("app.bootstrap", havingValue = "init")
-    fun initializeUsersService(
+    fun <T> initializeUsersService(
         userService: ChatUserService<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>>,
         secretsStore: SecretsStore<T>,
@@ -32,10 +32,10 @@ class InitServiceConfiguration<T> {
 
     @Bean
     @ConditionalOnProperty("app.bootstrap")
-    fun rootKeysService(
+    fun <T> rootKeysService(
         keyService: IKeyService<T>,
         kvStore: KeyValueStore<String, String>,
         mapper: ObjectMapper,
-        @Value("\${app.rootkey.key}") key: String,
+        @Value("\${app.rootkeys.key}") key: String,
     ) = RootKeyService<T>(keyService, kvStore, mapper, key)
 }

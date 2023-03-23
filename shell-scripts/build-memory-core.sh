@@ -2,14 +2,14 @@
 cd ../chat-deploy-memory
 source ../shell-scripts/ports.sh
 
-while getopts :esicdon:k:b: o; do
+while getopts :esdicon:k:b: o; do
   echo "$o is $OPTARG"
   case "$o" in
     s)
       export SECURITY_FLAGS="-Dapp.security.enabled"
       ;;
     i)
-      export BOOTSTRAP_FLAGS="-Dapp.bootstrap=rootkeys app.rootkeys.consul.key=/chat/rootkeys"
+      export BOOTSTRAP_FLAGS="-Dapp.bootstrap=init -Dapp.kv.consul.prefix=/chat -Dapp.rootkeys.key=rootkeys"
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}

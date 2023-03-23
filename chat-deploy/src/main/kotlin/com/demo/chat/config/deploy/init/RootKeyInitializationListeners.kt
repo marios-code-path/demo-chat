@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
+@ConditionalOnProperty("app.bootstrap")
 class RootKeyInitializationListeners<T>(
     val rootKeyService: RootKeyService<T>
 ) : ApplicationEventPublisherAware {
