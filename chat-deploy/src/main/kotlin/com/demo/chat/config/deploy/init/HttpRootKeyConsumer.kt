@@ -16,16 +16,15 @@ import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
+import java.net.URI
 
-//@Configuration
-//@ConditionalOnProperty(name = ["app.rootkey.capture.source"], havingValue = "actuator")
-@Deprecated("Use ConsulKVStoreConfiguration")
-class ActuatorRootKeyCapture {
+@Configuration
+@ConditionalOnProperty(name = ["app.rootkeys.consume.scheme"], havingValue = "http")
+class HttpRootKeyConsumer {
 
     @Bean
     fun <T> captureRootKeys(
-        @Value("\${app.rootkey.capture.host}") host: String,
-        @Value("\${app.rootkey.capture.port}") port: String,
+        @Value("\${app.rootkeys.consume.source}") hostURI: String,
         typeUtil: TypeUtil<T>,
         mapper: ObjectMapper,
         rootKeys: RootKeys<T>
@@ -37,6 +36,10 @@ class ActuatorRootKeyCapture {
                     configurer.defaultCodecs().jackson2JsonDecoder(Jackson2JsonDecoder(mapper))
                 }
                 .build()
+
+            val uri = URI(hostURI)
+            val host = uri.host
+            val port = uri.port
 
             val client = WebClient.builder()
                 .exchangeStrategies(exchangeStrategies)

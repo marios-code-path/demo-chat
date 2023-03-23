@@ -11,6 +11,7 @@ import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.init.InitialUsersService
 import com.demo.chat.service.init.RootKeyService
+import com.demo.chat.service.init.RootKeysSupplier
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyBoolean
@@ -50,10 +51,11 @@ open class MockInitializationTests<T>(
 
     @Test
     fun `should create rootkeys and summary`() {
-        val rootKeyService = RootKeyService(keyService, kvStore, mapper, "rootKeys")
+        val rootKeyCreator = RootKeysSupplier(keyService)
+        val rootKeyService = RootKeyService(kvStore, mapper, "rootKeys")
         val rootKeys = RootKeys<T>()
 
-        rootKeys.merge(rootKeyService.createDomainKeys())
+        rootKeys.merge(rootKeyCreator.get())
         val summary = rootKeyService.rootKeySummary(rootKeys)
 
         Assertions
@@ -102,9 +104,10 @@ open class MockInitializationTests<T>(
         )
 
 
-        val rootKeyService = RootKeyService(keyService, kvStore, mapper, "rootKeys")
+        val rootKeyService = RootKeyService(kvStore, mapper, "rootKeys")
+        val rootKeyCreator = RootKeysSupplier(keyService)
             .apply {
-                rootKeys.merge(createDomainKeys())
+                rootKeys.merge(get())
             }
 
         InitialUsersService(userService, authorizationService, secretsStore, properties, typeUtil)

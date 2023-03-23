@@ -1,10 +1,20 @@
-# How to scratch local deployments and use Kubernetes
+# Bootstrap & Initialization
 
-Typically I find that small scripts can help in deploying my microservices and infrastructure for easy-access
-verification - without writing a suite of integration tests that ultimately do the same. This represents the
-old model of deployment in which each resource domain is shared amongst other resources.  For example, 
-the following diagram describes pre-cloud deployments of infrastructure and apps.
+The application requires a set of 'root keys' - domain and static user
+specific keys to define the simplest operations. This means, the first
+instance of service deployment will produce these keys, then publish them
+to the configuration server. An actuator endpoint will also expose these
+keys.
 
-(http://foo)[image of this]
+Here are the configurations specific to initialization.
 
-Now, I want to evolve to production in a kubernetes environment.  
+| Property                    | detail                                  | values               |
+|-----------------------------|-----------------------------------------|----------------------|
+| app.users.create            | Create Initial set of users?            | Bool                 |
+| app.rootkeys.create         | Create Root Keys?                       | Bool                 |
+| app.rootkeys.consume.scheme | Consume for Root Keys method            | http / KV            |
+| app.rootkeys.consume.source | Source URL for consuming RootKeys       | localhost:admin-port |
+| app.rootkeys.publish.scheme | Publish Root Keys delivery method       | KV                   |
+| app.kv.prefix               | PATH Prefix for KV                      | e.g. /config/app     |
+| app.kv.rootkeys             | name of DataKey to obtain rootkeys data | e.g. 'rootkeys'      |
+

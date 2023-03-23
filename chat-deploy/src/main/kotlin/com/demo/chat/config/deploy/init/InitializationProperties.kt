@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.context.properties.bind.ConstructorBinding
 
-@ConditionalOnProperty("app.bootstrap", havingValue = "init")
+@ConditionalOnProperty("app.users.create", havingValue = "true")
 @EnableConfigurationProperties(InitializationProperties::class)
 @ConfigurationProperties("app.init")
 data class InitializationProperties @ConstructorBinding constructor(

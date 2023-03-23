@@ -23,7 +23,7 @@ class LoadInitializationPropertyTests {
 
     @Test
     fun `should load yml into initializationProperties`() {
-        println("props = " + props)
+
         Assertions
             .assertThat(props.initialRoles.roles)
             .isNotNull

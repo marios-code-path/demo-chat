@@ -4,7 +4,7 @@ import com.demo.chat.client.rsocket.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.client.rsocket.*
-import com.demo.chat.config.deploy.init.ActuatorRootKeyCapture
+import com.demo.chat.config.deploy.init.HttpRootKeyConsumer
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.config.secure.TransportConfiguration
@@ -50,7 +50,7 @@ import java.util.*
     CoreClientsConfiguration::class,
     CompositeClientsConfiguration::class,
     CompositeAuthConfiguration::class,
-    ActuatorRootKeyCapture::class
+    HttpRootKeyConsumer::class
 )
 @EnableRSocketSecurity
 class BaseApp {

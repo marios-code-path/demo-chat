@@ -26,3 +26,5 @@ interface MembershipPersistence<T> : PersistenceStore<T, TopicMembership<T>>
 interface MessagePersistence<T, V> : PersistenceStore<T, Message<T, V>>
 
 interface KeyValueStore<T, V> : PersistenceStore<T, KeyDataPair<T, V>>
+
+interface InitializingKVStore : KeyValueStore<String, String>

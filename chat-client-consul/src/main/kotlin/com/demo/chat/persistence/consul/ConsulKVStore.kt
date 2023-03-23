@@ -2,14 +2,15 @@ package com.demo.chat.persistence.consul
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyDataPair
-import com.demo.chat.service.core.KeyValueStore
+import com.demo.chat.service.core.InitializingKVStore
 import com.ecwid.consul.v1.ConsulClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.charset.Charset
-import java.util.Optional
+import java.util.*
 
-class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: String) : KeyValueStore<String, String> {
+class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: String) :
+    InitializingKVStore {
 
     private fun prefixedId(key: Key<String>): String = "$pathPrefix/${key.id}"
 

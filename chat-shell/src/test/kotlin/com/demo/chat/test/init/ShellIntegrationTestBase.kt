@@ -17,7 +17,7 @@ import java.time.Duration
 @TestPropertySource(
     properties = [ // TODO: Consul still being contacted.... will need to unregister
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=test",
-        "app.rootkey.capture.source=actuator",
+        "app.rootkeys.consume.scheme=http",
         "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",
@@ -64,10 +64,8 @@ open class ShellIntegrationTestBase {
             )) {
                 registry.add("$configPrefix.$service.dest") { hostPort }
             }
-            registry.add("app.rootkey.capture.port") { container.getMappedPort(6792).toString() }
-            registry.add("app.rootkey.capture.host") { container.host.toString() }
-            println("IN THIS TEST THE HOST IS ${container.getMappedPort(6790).toString()}")
-            println("IN THIS TEST THE ACTUATOR IS: ${container.getMappedPort(6792).toString()}")
+
+            registry.add("app.rootkeys.consume.source") { "http://${container.host}:${container.getMappedPort(6792)}" }
         }
     }
 
