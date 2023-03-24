@@ -1,3 +1,6 @@
+app:
+  proto: rsocket
+
 logging:
   level:
     root: DEBUG
@@ -42,36 +45,6 @@ spring:
         enabled: false
         format: YAML
         data-key: data
-
-app:
-  client:
-    protocol: rsocket
-  rsocket:
-    config:
-      core:
-        pubsub:
-          dest: core-service-rsocket
-          prefix: pubsub.
-        index:
-          dest: core-service-rsocket
-          prefix: index.
-        persistence:
-          dest: core-service-rsocket
-          prefix: persist.
-        key:
-          dest: core-service-rsocket
-          prefix: key.
-      edge:
-        message:
-          dest: core-service-rsocket
-          prefix: message.
-        topic:
-          dest: core-service-rsocket
-          prefix: topic.
-        user:
-          dest: core-service-rsocket
-          prefix: user.
-
 
 #spring:
 #  rsocket:

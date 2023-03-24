@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration
 
 
 @Configuration
+@ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
 class CompositeClientsConfiguration<T>(
     val compositeClients: CompositeRSocketClients<T>
 ) {

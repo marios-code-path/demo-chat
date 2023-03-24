@@ -2,8 +2,8 @@ package com.demo.chat.test.rsocket
 
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.secure.transport.UnprotectedConnection
 import io.rsocket.core.RSocketServer
+import io.rsocket.transport.netty.client.TcpClientTransport
 import io.rsocket.transport.netty.server.CloseableChannel
 import io.rsocket.transport.netty.server.TcpServerTransport
 import org.springframework.beans.factory.annotation.Value
@@ -19,6 +19,7 @@ import org.springframework.context.event.EventListener
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
 import reactor.core.publisher.Hooks
+import reactor.netty.tcp.TcpClient
 
 
 class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
@@ -52,8 +53,11 @@ class TestConfigurationRSocketServer {
     fun rSocketRequester(server: CloseableChannel, builder: RSocketRequester.Builder): RSocketRequester =
         builder
             .transport(
-                UnprotectedConnection()
-                    .tcpClientTransport("localhost", server.address().port)
+                TcpClientTransport.create(
+                    TcpClient.create()
+                        .host("localhost")
+                        .port(server.address().port)
+                )
             )
 
     private lateinit var server: CloseableChannel

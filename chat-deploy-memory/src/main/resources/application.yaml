@@ -1,7 +1,7 @@
 logging:
   level:
     root: INFO
-#    io.rsocket.FrameLogger: DEBUG
+  #    io.rsocket.FrameLogger: DEBUG
   pattern:
     console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
 
@@ -23,8 +23,8 @@ management:
         include: info,health,shutdown,rootkeys
 
 spring:
-#  config:
-#    import: "optional:consul:"
+  #  config:
+  #    import: "optional:consul:"
   main:
     web-application-type: reactive
   application:
@@ -44,35 +44,6 @@ spring:
         enabled: true
         format: YAML
         data-key: data
-
-app:
-  proto: rsocket
-  rsocket:
-    config:
-      core:
-        pubsub:
-          dest: core-service-rsocket
-          prefix: pubsub.
-        index:
-          dest: core-service-rsocket
-          prefix: index.
-        persistence:
-          dest: core-service-rsocket
-          prefix: persist.
-        key:
-          dest: core-service-rsocket
-          prefix: key.
-      edge:
-        message:
-          dest: core-service-rsocket
-          prefix: message.
-        topic:
-          dest: core-service-rsocket
-          prefix: topic.
-        user:
-          dest: core-service-rsocket
-          prefix: user.
-
 
 #spring:
 #  rsocket:

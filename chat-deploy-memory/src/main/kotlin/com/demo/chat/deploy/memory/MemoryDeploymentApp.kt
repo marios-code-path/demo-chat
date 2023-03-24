@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.memory
 
 import com.demo.chat.config.controller.core.PersistenceControllersConfiguration
+import com.demo.chat.config.deploy.DeployConfigs
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
@@ -11,12 +12,9 @@ import org.springframework.context.annotation.Profile
 import reactor.core.publisher.Hooks
 
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.config"], proxyBeanMethods = false)
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.deploy"],
+    proxyBeanMethods = false)
 @Profile("exec-chat")
-@Import(
-    RSocketServerConfiguration::class,
-    ActuatorWebSecurityConfiguration::class
-)
 class MemoryDeploymentApp {
 
     companion object {

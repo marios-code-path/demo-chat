@@ -1,6 +1,6 @@
 package com.demo.chat.client.rsocket.clients
 
-import com.demo.chat.client.rsocket.RSocketProperty
+import com.demo.chat.service.client.ClientProperty
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.core.KeyClient
 import com.demo.chat.client.rsocket.clients.core.TopicPubSubClient
@@ -22,7 +22,7 @@ class CoreRSocketClients<T, V, Q>(
     private val typeUtil: TypeUtil<T>,
 ) : CoreServices<T, V, Q> {
 
-    private fun serviceKey(key: String): RSocketProperty = clientProperties.getServiceConfig(key)
+    private fun serviceKey(key: String): ClientProperty = clientProperties.getServiceConfig(key)
 
     private val secretsProps = serviceKey("secrets")
     private val persistenceProps = serviceKey("persistence")
@@ -30,11 +30,11 @@ class CoreRSocketClients<T, V, Q>(
     private val pubSubProps = serviceKey("pubsub")
     private val keyProps = serviceKey("key")
 
-    private fun persistenceRequester() = requesterFactory.requester("persistence")
-    private fun indexRequester() = requesterFactory.requester("index")
-    private fun keyRequester() = requesterFactory.requester("key")
-    private fun pubSubRequester() = requesterFactory.requester("pubsub")
-    private fun secretsRequester() = requesterFactory.requester("secrets")
+    private fun persistenceRequester() = requesterFactory.getClient("persistence")
+    private fun indexRequester() = requesterFactory.getClient("index")
+    private fun keyRequester() = requesterFactory.getClient("key")
+    private fun pubSubRequester() = requesterFactory.getClient("pubsub")
+    private fun secretsRequester() = requesterFactory.getClient("secrets")
 
     override fun keyService(): IKeyService<T> =
         KeyClient("${keyProps.prefix}", keyRequester())

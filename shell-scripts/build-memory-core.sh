@@ -9,7 +9,8 @@ while getopts :esdicon:k:b: o; do
       export SECURITY_FLAGS="-Dapp.security.enabled"
       ;;
     i)
-      export BOOTSTRAP_FLAGS="-Dapp.bootstrap=init -Dapp.kv.consul.prefix=/chat -Dapp.rootkeys.key=rootkeys"
+      export BOOTSTRAP_FLAGS="-Dapp.bootstrap=init -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
+-Dapp.users.create=true -Dapp.rootkeys.create=true -Dapp.rootkeys.publish.scheme=kv"
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}

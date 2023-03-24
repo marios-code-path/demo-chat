@@ -95,6 +95,13 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-client-consul</artifactId>
+            <version>0.0.1</version>
+            <optional>true</optional>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
         </dependency>

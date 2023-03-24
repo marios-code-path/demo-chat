@@ -6,9 +6,11 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 @ConditionalOnProperty("app.users.create", havingValue = "true")
-@EnableConfigurationProperties(InitializationProperties::class)
+@EnableConfigurationProperties(UserInitializationProperties::class)
+class UserInitPropertiesConfiguration
+
 @ConfigurationProperties("app.init")
-data class InitializationProperties @ConstructorBinding constructor(
+data class UserInitializationProperties @ConstructorBinding constructor(
     val initialRoles: InitalRoles,
     val initialUsers: Map<String, UserDefinition>
 )

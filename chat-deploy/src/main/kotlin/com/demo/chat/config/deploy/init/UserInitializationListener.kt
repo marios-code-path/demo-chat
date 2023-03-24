@@ -23,7 +23,7 @@ class UserInitializationListener<T> : ApplicationEventPublisherAware {
         userService: ChatUserService<T>,
         authorizationService: AuthorizationService<T, AuthMetadata<T>>,
         secretsStore: SecretsStore<T>,
-        initializationProperties: InitializationProperties,
+        initializationProperties: UserInitializationProperties,
         typeUtil: TypeUtil<T>,
     ) = InitialUsersService(userService, authorizationService, secretsStore, initializationProperties, typeUtil)
 
@@ -31,6 +31,7 @@ class UserInitializationListener<T> : ApplicationEventPublisherAware {
     fun initUsersOnRootKeyInitialized(initialUserService: InitialUsersService<T>): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
         ApplicationListener { evt ->
             initialUserService.initializeUsers(evt.rootKeys)
+            println("Initialized Users")
             //publisher.publishEvent(UsersInitializedEvent())
         }
 

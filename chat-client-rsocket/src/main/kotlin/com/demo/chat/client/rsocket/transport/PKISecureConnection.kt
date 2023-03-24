@@ -1,4 +1,4 @@
-package com.demo.chat.secure.transport
+package com.demo.chat.client.rsocket.transport
 
 import io.netty.handler.ssl.SslContextBuilder
 import io.rsocket.transport.netty.client.TcpClientTransport
@@ -11,7 +11,7 @@ import javax.net.ssl.TrustManagerFactory
 
 class PKISecureConnection(private val trustFile: File,
                           private val keyFile: File,
-                          private val jksPass: String) : TransportFactory {
+                          private val jksPass: String) : RSocketClientTransportFactory {
 
     override fun tcpClientTransport(host: String, port: Int): TcpClientTransport {
 

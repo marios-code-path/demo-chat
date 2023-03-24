@@ -2,16 +2,17 @@ package com.demo.chat.shell
 
 import com.demo.chat.client.rsocket.DefaultRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
+import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.client.rsocket.*
 import com.demo.chat.config.deploy.init.HttpRootKeyConsumer
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
-import com.demo.chat.config.secure.TransportConfiguration
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.secure.transport.TransportFactory
+import com.demo.chat.service.client.transport.ClientTransportFactory
 import io.rsocket.metadata.WellKnownMimeType
+import io.rsocket.transport.ClientTransport
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
@@ -42,7 +43,7 @@ import java.util.*
     // TYPES
     BaseDomainConfiguration::class,
     // Transport Security
-    TransportConfiguration::class,
+    RSocketClientTransportConfiguration::class,
     // Services
     KeyGenConfiguration::class,
     DefaultRequesterFactory::class,
@@ -76,7 +77,7 @@ class ShellStateConfiguration {
     @Bean
     fun securityRequesterFactory(
         builder: RSocketRequester.Builder,
-        connection: TransportFactory,
+        connection: RSocketClientTransportFactory,
         clientProps: RSocketClientProperties,
     ): DefaultRequesterFactory = DefaultRequesterFactory(
         builder, connection, clientProps

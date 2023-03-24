@@ -1,6 +1,6 @@
 package com.demo.chat.service.init
 
-import com.demo.chat.config.deploy.init.InitializationProperties
+import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
@@ -16,7 +16,7 @@ class InitialUsersService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val secretsStore: SecretsStore<T>,
-    private val initializationProperties: InitializationProperties,
+    private val initializationProperties: UserInitializationProperties,
     private val typeUtil: TypeUtil<T>,
 ) {
 

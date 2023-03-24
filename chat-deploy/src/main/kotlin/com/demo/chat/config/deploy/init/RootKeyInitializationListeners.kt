@@ -23,12 +23,18 @@ class RootKeyInitializationListeners<T>: ApplicationEventPublisherAware {
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
+    fun rootKeyGenerator(keyService: IKeyService<T>): RootKeysSupplier<T> =
+        RootKeysSupplier(keyService)
+
+    @Bean
+    @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
     fun initializeRootKeys(rootKeys: RootKeys<T>,
                      rootKeyGen: RootKeysSupplier<T>
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             rootKeys.merge(rootKeyGen.get())
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
+            println("Root Keys Initialized")
         }
 
     @Bean

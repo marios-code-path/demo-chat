@@ -89,7 +89,7 @@ open class MockInitializationTests<T>(
         val rootKeys = RootKeys<T>()
 
         Hooks.onOperatorDebug()
-        val properties = InitializationProperties(
+        val properties = UserInitializationProperties(
             InitalRoles(
                 arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
                     RoleDefinition("Admin", "Admin", "*"),

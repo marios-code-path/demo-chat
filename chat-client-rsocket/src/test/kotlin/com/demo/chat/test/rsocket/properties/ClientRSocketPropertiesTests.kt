@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket.properties
 
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
-import com.demo.chat.config.client.rsocket.RSocketPropertyValue
+import com.demo.chat.config.client.rsocket.RSocketClientProperty
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -29,7 +29,7 @@ class ClientRSocketPropertiesTests {
     @Test
     fun `service property loaded`() {
         Assertions.assertThat(clientProperties.getServiceConfig("key"))
-            .isInstanceOf(RSocketPropertyValue::class.java)
+            .isInstanceOf(RSocketClientProperty::class.java)
             .hasFieldOrPropertyWithValue("dest", "127.0.0.1:6790")
             .hasFieldOrPropertyWithValue("prefix", "key.")
     }

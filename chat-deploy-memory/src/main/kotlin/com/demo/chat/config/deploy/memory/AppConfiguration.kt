@@ -5,19 +5,19 @@ import com.demo.chat.config.controller.composite.MessageServiceController
 import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.config.controller.core.*
-import com.demo.chat.service.actuator.RootKeyEndpoint
-import com.demo.chat.config.deploy.init.UserInitializationListener
+import com.demo.chat.config.deploy.DeployConfigs
+import com.demo.chat.config.init.ConsulKVStoreConfiguration
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.persistence.memory.MemoryCorePersistenceServices
 import com.demo.chat.config.persistence.memory.MemoryKeyServices
 import com.demo.chat.config.persistence.memory.MemorySecretsStoreServiceBeans
 import com.demo.chat.config.pubsub.memory.MemoryPubSubConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
-import com.demo.chat.config.secure.TransportConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.index.lucene.config.LuceneIndexBeans
 import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.service.actuator.RootKeyEndpoint
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.security.AuthenticationService
@@ -39,8 +39,6 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     RSocketMessagingAutoConfiguration::class,
     // TYPES
     BaseDomainConfiguration::class,
-    // Transport Security
-    TransportConfiguration::class,
     // Services
     KeyGenConfiguration::class,
     MemoryKeyServices::class,
@@ -61,7 +59,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     TopicServiceController::class,
     UserServiceController::class,
 
-    UserInitializationListener::class,
+    DeployConfigs::class,
     RootKeyEndpoint::class
 )
 @EnableRSocketSecurity

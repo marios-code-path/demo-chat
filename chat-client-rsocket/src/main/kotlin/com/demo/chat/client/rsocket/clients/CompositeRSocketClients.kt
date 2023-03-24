@@ -12,11 +12,11 @@ class CompositeRSocketClients<T>(
     val clientProperties: RSocketClientProperties
 ){
     fun userService(): ChatUserService<T> =
-        UserClient(clientProperties.config["user"]?.prefix!!, requesterFactory.requester("user"))
+        UserClient(clientProperties.config["user"]?.prefix!!, requesterFactory.getClient("user"))
 
     fun messagingService(): MessagingClient<T, String> =
-        MessagingClient(clientProperties.config["message"]?.prefix!!, requesterFactory.requester("message"))
+        MessagingClient(clientProperties.config["message"]?.prefix!!, requesterFactory.getClient("message"))
 
     fun topicService(): TopicClient<T, String> =
-        TopicClient(clientProperties.config["topic"]?.prefix!!, requesterFactory.requester("topic"))
+        TopicClient(clientProperties.config["topic"]?.prefix!!, requesterFactory.getClient("topic"))
 }

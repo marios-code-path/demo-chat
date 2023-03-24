@@ -13,18 +13,18 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 
-
-
 @Configuration
 @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
 class ClientConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun requesterBuilder(strategies: RSocketStrategies): RSocketRequester.Builder =
         RSocketRequester.builder().rsocketStrategies(strategies)
 
     @Bean
+    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun <T>coreClientBeans(
         requesterFactory: RequesterFactory,
         clientProps: RSocketClientProperties,
@@ -36,9 +36,9 @@ class ClientConfiguration {
     )
 
     @Bean
+    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun <T> compositeClientBeans(
         requesterFactory: RequesterFactory,
         clientProps: RSocketClientProperties
     ) = CompositeRSocketClients<T>(requesterFactory, clientProps)
-
 }

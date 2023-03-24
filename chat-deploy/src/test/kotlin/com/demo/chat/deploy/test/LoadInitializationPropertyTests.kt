@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.config.deploy.init.InitializationProperties
+import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.test.YamlFileContextInitializer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -19,7 +19,7 @@ class LoadInitializationPropertyTests {
     class TestProperties : YamlFileContextInitializer("classpath:application.yml")
 
     @Autowired
-    private lateinit var props: InitializationProperties
+    private lateinit var props: UserInitializationProperties
 
     @Test
     fun `should load yml into initializationProperties`() {
@@ -32,5 +32,5 @@ class LoadInitializationPropertyTests {
 }
 
 @TestConfiguration
-@EnableConfigurationProperties(InitializationProperties::class)
+@EnableConfigurationProperties(UserInitializationProperties::class)
 class LoadInitializationPropertyTestsConfig
