@@ -6,7 +6,6 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.config.controller.core.*
 import com.demo.chat.config.deploy.DeployConfigs
-import com.demo.chat.config.init.ConsulKVStoreConfiguration
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.persistence.memory.MemoryCorePersistenceServices
 import com.demo.chat.config.persistence.memory.MemoryKeyServices
@@ -39,6 +38,8 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     RSocketMessagingAutoConfiguration::class,
     // TYPES
     BaseDomainConfiguration::class,
+    DeployConfigs::class,
+
     // Services
     KeyGenConfiguration::class,
     MemoryKeyServices::class,
@@ -59,7 +60,6 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     TopicServiceController::class,
     UserServiceController::class,
 
-    DeployConfigs::class,
     RootKeyEndpoint::class
 )
 @EnableRSocketSecurity

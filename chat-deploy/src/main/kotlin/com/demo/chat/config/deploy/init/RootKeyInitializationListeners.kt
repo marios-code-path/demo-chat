@@ -39,16 +39,15 @@ class RootKeyInitializationListeners<T>: ApplicationEventPublisherAware {
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    @ConditionalOnBean(RootKeyService::class)
     fun publishRootKeysOnRootKeyInitializedEvent(rootKeyService: RootKeyService): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
         ApplicationListener { evt ->
             rootKeyService.publishRootKeys(evt.rootKeys)
             rootKeyService.rootKeySummary(evt.rootKeys)
+            println("Root Keys Published")
         }
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    @ConditionalOnBean(InitializingKVStore::class)
     fun <T> rootKeysPublishService(
         keyService: IKeyService<T>,
         kvStore: InitializingKVStore,
@@ -58,7 +57,6 @@ class RootKeyInitializationListeners<T>: ApplicationEventPublisherAware {
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.consume.scheme", havingValue = "kv")
-    @ConditionalOnBean(RootKeyService::class)
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
         rootKeyService: RootKeyService

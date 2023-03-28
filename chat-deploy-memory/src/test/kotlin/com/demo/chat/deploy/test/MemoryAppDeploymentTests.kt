@@ -21,7 +21,6 @@ import org.springframework.test.context.TestPropertySource
         "app.service.composite.message","app.service.composite.topic", "app.service.composite",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user",
-        //"app.bootstrap.init",  // TODO : bootstrapProperties required. seperate into different test
         "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
         "spring.cloud.consul.host=127.0.0.1", "spring.rsocket.server.port=0"
     ]

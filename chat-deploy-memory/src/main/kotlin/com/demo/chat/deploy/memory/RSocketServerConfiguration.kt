@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.memory
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.context.annotation.Bean
@@ -13,6 +14,7 @@ import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @Configuration
+@ConditionalOnProperty("app.proto", havingValue = "rsocket")
 class RSocketServerConfiguration {
 
     @Bean
@@ -27,7 +29,6 @@ class RSocketServerConfiguration {
                 .permitAll()
                 .anyExchange()
                 .permitAll()
-
         }
         .build()
 

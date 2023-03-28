@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty("app.kv.prefix")
+@ConditionalOnProperty("app.kv.store", havingValue = "consul")
 class ConsulKVStoreConfiguration {
 
     @Value("\${app.kv.prefix}")
@@ -16,5 +16,4 @@ class ConsulKVStoreConfiguration {
 
     @Bean
     fun consulKVStore(client: ConsulClient) = ConsulKVStore(client, kvPrefix)
-
 }

@@ -23,8 +23,6 @@ management:
         include: info,health,shutdown,rootkeys
 
 spring:
-  #  config:
-  #    import: "optional:consul:"
   main:
     web-application-type: reactive
   application:

@@ -6,6 +6,7 @@ import com.demo.chat.domain.KeyDataPair
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.KeyValueStore
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 
 class RootKeyService(
     private val kvStore: KeyValueStore<String, String>,
@@ -16,7 +17,7 @@ class RootKeyService(
     fun <T> consumeRootKeys(rootKeys: RootKeys<T>) = kvStore
         .get(Key.funKey(dataKey))
         .doOnNext {
-            val map = mapper.readValue(it.data, Map::class.java)
+            val map = ObjectMapper(YAMLFactory()).readValue(it.data, Map::class.java)
             rootKeys.merge(map as Map<String, Key<T>>)
         }.block()
 
@@ -24,7 +25,7 @@ class RootKeyService(
         .add(
             KeyDataPair.create(
                 Key.funKey(dataKey),
-                mapper.writeValueAsString(rootKeys.getMapOfKeyMap())
+                ObjectMapper(YAMLFactory()).writeValueAsString(rootKeys.getMapOfKeyMap())
             )
         ).block()
 

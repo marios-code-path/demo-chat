@@ -2,15 +2,13 @@
 cd ../chat-deploy-memory
 source ../shell-scripts/ports.sh
 
-while getopts :esdicon:k:b: o; do
+while getopts :edicon:k:b: o; do
   echo "$o is $OPTARG"
   case "$o" in
-    s)
-      export SECURITY_FLAGS="-Dapp.security.enabled"
-      ;;
     i)
-      export BOOTSTRAP_FLAGS="-Dapp.bootstrap=init -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
--Dapp.users.create=true -Dapp.rootkeys.create=true -Dapp.rootkeys.publish.scheme=kv"
+      export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
+-Dapp.users.create=true -Dapp.rootkeys.create=true -Dapp.rootkeys.publish.scheme=kv \
+-Dspring.config.location=classpath:/application.yml,classpath:/userinit.yml"
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
@@ -65,7 +63,7 @@ export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy
 
 export MAIN_FLAGS="-Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.primary=${APP_PRIMARY_NAME} -Dapp.key.type=${KEYSPACE_TYPE} \
+-Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} -Dapp.key.type=${KEYSPACE_TYPE} \
 -Dapp.rsocket.client.requester.factory=none -Dspring.shell.interactive.enabled=false"
 export PORTS_FLAGS="-Dserver.port=$((CORE_PORT+1)) -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT}"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
