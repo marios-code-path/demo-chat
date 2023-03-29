@@ -41,7 +41,7 @@ open class ConsulContainerSetup {
         @DynamicPropertySource
         fun setDynamicProps(propertySource: DynamicPropertyRegistry) {
             propertySource.add("spring.cloud.consul.host") { consulContainer.host }
-            propertySource.add("spring.cloud.consul.port") { consulContainer.getMappedPort(8500) }
+            propertySource.add("spring.cloud.consul.port") { 8500 } //consulContainer.getMappedPort(8500) }
 
             val client = ConsulClient(consulContainer.host, consulContainer.getMappedPort(8500))
 
@@ -53,6 +53,7 @@ open class ConsulContainerSetup {
                     id = "core-service-rsocket"
                     tags = listOf("core-service-rsocket")
                 }
+
             )
         }
     }

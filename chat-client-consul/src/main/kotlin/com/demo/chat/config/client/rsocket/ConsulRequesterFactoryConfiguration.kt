@@ -5,6 +5,7 @@ import com.demo.chat.service.client.ClientProperties
 import com.demo.chat.service.client.ClientProperty
 import com.demo.chat.service.client.transport.ClientTransportFactory
 import io.rsocket.transport.ClientTransport
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
 import org.springframework.context.annotation.Bean
@@ -16,6 +17,7 @@ import org.springframework.messaging.rsocket.RSocketRequester
     "app.rsocket.client.requester.factory",
     havingValue = "consul"
 )
+@ConditionalOnBean(RSocketRequester.Builder::class)
 class ConsulRequesterFactoryConfiguration {
 
     @Bean

@@ -1,5 +1,6 @@
 package com.demo.chat.service.client
 
+import org.springframework.cloud.client.ServiceInstance
 import reactor.core.publisher.Mono
 
 interface ClientFactory<C> {
@@ -7,6 +8,6 @@ interface ClientFactory<C> {
     fun serviceDestination(serviceKey: String): String
 }
 
-interface ClientDiscovery<C> {
-    fun serviceDestination(serviceKey: String): Mono<C>
+interface ClientDiscovery{
+    fun serviceDestination(serviceKey: String): Mono<ServiceInstance>
 }

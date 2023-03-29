@@ -80,7 +80,7 @@ ${BOOTSTRAP_FLAGS} \
 ${SECURITY_FLAGS} \
 ${SERVICE_FLAGS} \
 ${CONTROLLER_FLAGS} \
-${DISCOVERY_FLAGS}"
+${DISCOVERY_FLAGS} -Dspring.cloud.consul.discovery.preferIpAddress=true"
 
 #set -x
 
