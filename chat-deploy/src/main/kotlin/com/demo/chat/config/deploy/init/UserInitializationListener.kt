@@ -1,22 +1,22 @@
 package com.demo.chat.config.deploy.init
 
-import com.demo.chat.service.init.InitialUsersService
+import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
+import com.demo.chat.deploy.event.StartupAnnouncementEvent
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.service.init.InitialUsersService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.ApplicationEventPublisherAware
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
 @ConditionalOnProperty("app.users.create", havingValue = "true")
-class UserInitializationListener<T> : ApplicationEventPublisherAware {
+class UserInitializationListener<T>(val eventPublisher: DeploymentEventPublisher) {
 
     @Bean
     fun <T> initializeUsersService(
@@ -31,13 +31,6 @@ class UserInitializationListener<T> : ApplicationEventPublisherAware {
     fun initUsersOnRootKeyInitialized(initialUserService: InitialUsersService<T>): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
         ApplicationListener { evt ->
             initialUserService.initializeUsers(evt.rootKeys)
-            println("Initialized Users")
-            //publisher.publishEvent(UsersInitializedEvent())
+            eventPublisher.publishEvent(StartupAnnouncementEvent("Initialized Users"))
         }
-
-    override fun setApplicationEventPublisher(applicationEventPublisher: ApplicationEventPublisher) {
-        this.publisher = applicationEventPublisher
-    }
-
-    lateinit var publisher: ApplicationEventPublisher
 }

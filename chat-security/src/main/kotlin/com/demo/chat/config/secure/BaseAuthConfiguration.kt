@@ -15,13 +15,11 @@ import com.demo.chat.secure.service.ChatAuthenticationManager
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
-import java.util.function.Supplier
 
 open class BaseAuthConfiguration<T, V, Q>(
     private val rootKeys: RootKeys<T>,
     private val indexServices: IndexServiceBeans<T, V, Q>,
     private val persistServices: PersistenceServiceBeans<T, V>,
-    private val anonKeySupplier: Supplier<Anon<T>>,
     private val secretsStoreBeans: SecretsStoreBeans<T>,
     private val authSummarizer: Summarizer<AuthMetadata<T>, Key<T>>,
     private val authMetaPrincipalSearch: (Key<T>) -> Q,
@@ -36,7 +34,7 @@ open class BaseAuthConfiguration<T, V, Q>(
             indexServices.authMetadataIndex(),
             authMetaPrincipalSearch,
             authMetaTargetSearch,
-            anonKeySupplier,
+            { rootKeys.getRootKey(Anon::class.java) },
             authSummarizer,
         )
 

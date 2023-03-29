@@ -85,6 +85,11 @@
 	<dependencies>
 		<dependency>
 			<groupId>com.demo</groupId>
+			<artifactId>chat-deploy</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
 			<artifactId>chat-security</artifactId>
 			<version>0.0.1</version>
 		</dependency>

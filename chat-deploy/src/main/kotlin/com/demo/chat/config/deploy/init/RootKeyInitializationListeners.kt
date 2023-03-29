@@ -1,25 +1,25 @@
 package com.demo.chat.config.deploy.init
 
+import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
+import com.demo.chat.deploy.event.StartupAnnouncementEvent
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.InitializingKVStore
-import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.init.RootKeysSupplier
 import com.demo.chat.service.init.RootKeyService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
-import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.ApplicationEventPublisherAware
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-class RootKeyInitializationListeners<T>: ApplicationEventPublisherAware {
+class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
+    val typeUtil: TypeUtil<T>){
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
@@ -33,41 +33,34 @@ class RootKeyInitializationListeners<T>: ApplicationEventPublisherAware {
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             rootKeys.merge(rootKeyGen.get())
+            publisher.publishEvent(StartupAnnouncementEvent("Root Keys Initialized"))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
-            println("Root Keys Initialized")
         }
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    fun publishRootKeysOnRootKeyInitializedEvent(rootKeyService: RootKeyService): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
+    fun publishRootKeysOnRootKeyInitializedEvent(rootKeyService: RootKeyService<T>): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
         ApplicationListener { evt ->
             rootKeyService.publishRootKeys(evt.rootKeys)
-            rootKeyService.rootKeySummary(evt.rootKeys)
-            println("Root Keys Published")
+            publisher.publishEvent(StartupAnnouncementEvent("Root Keys Published"))
+            publisher.publishEvent(StartupAnnouncementEvent(RootKeyService.rootKeySummary(evt.rootKeys)))
         }
 
     @Bean
-    @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    fun <T> rootKeysPublishService(
+    @ConditionalOnProperty("app.kv.rootkeys")
+    fun rootKeysService(
         keyService: IKeyService<T>,
         kvStore: InitializingKVStore,
-        mapper: ObjectMapper,
         @Value("\${app.kv.rootkeys}") key: String,
-    ) = RootKeyService(kvStore, mapper, key)
+    ) = RootKeyService(kvStore, typeUtil, key)
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.consume.scheme", havingValue = "kv")
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
-        rootKeyService: RootKeyService
+        rootKeyService: RootKeyService<T>
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             rootKeyService.consumeRootKeys(rootKeys)
         }
-
-    override fun setApplicationEventPublisher(applicationEventPublisher: ApplicationEventPublisher) {
-        this.publisher = applicationEventPublisher
-    }
-
-    lateinit var publisher: ApplicationEventPublisher
 }

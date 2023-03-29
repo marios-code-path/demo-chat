@@ -5,14 +5,12 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.AuthSummarizer
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
-import java.util.function.Supplier
 
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
@@ -20,14 +18,12 @@ class CompositeAuthConfiguration<T, V>(
     typeUtil: TypeUtil<T>,
     indexServices: IndexServiceBeans<T, V, IndexSearchRequest>,
     persistServices: PersistenceServiceBeans<T, V>,
-    anonKeySupplier: Supplier<Anon<T>>,
     secretsStoreBeans: SecretsStoreBeans<T>,
     rootKeys: RootKeys<T>,
     //authSummarizer: Summarizer<AuthMetadata<T>, Key<T>>,
 ) : BaseAuthConfiguration<T, V, IndexSearchRequest>(rootKeys,
     indexServices,
     persistServices,
-    anonKeySupplier,
     secretsStoreBeans,
     AuthSummarizer { a, b -> typeUtil.compare(a.key.id, b.key.id) },
     //authSummarizer,

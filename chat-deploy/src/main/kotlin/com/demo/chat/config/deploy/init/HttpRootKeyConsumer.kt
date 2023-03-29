@@ -1,5 +1,7 @@
 package com.demo.chat.config.deploy.init
 
+import com.demo.chat.config.deploy.event.DeploymentEventPublisher
+import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
@@ -20,7 +22,7 @@ import java.net.URI
 
 @Configuration
 @ConditionalOnProperty(name = ["app.rootkeys.consume.scheme"], havingValue = "http")
-class HttpRootKeyConsumer {
+class HttpRootKeyConsumer(val publisher: DeploymentEventPublisher) {
 
     @Bean
     fun <T> captureRootKeys(
@@ -58,5 +60,7 @@ class HttpRootKeyConsumer {
                     rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
                 }
             }
+
+            publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }
 }

@@ -3,3 +3,5 @@ server:
 spring:
   application:
     name: chat-authorization-server
+  main:
+    web-application-type: reactive

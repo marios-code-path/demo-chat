@@ -52,11 +52,10 @@ open class MockInitializationTests<T>(
     @Test
     fun `should create rootkeys and summary`() {
         val rootKeyCreator = RootKeysSupplier(keyService)
-        val rootKeyService = RootKeyService(kvStore, mapper, "rootKeys")
         val rootKeys = RootKeys<T>()
 
         rootKeys.merge(rootKeyCreator.get())
-        val summary = rootKeyService.rootKeySummary(rootKeys)
+        val summary = RootKeyService.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)
@@ -104,7 +103,7 @@ open class MockInitializationTests<T>(
         )
 
 
-        val rootKeyService = RootKeyService(kvStore, mapper, "rootKeys")
+        val rootKeyService = RootKeyService(kvStore, typeUtil,"rootKeys")
         val rootKeyCreator = RootKeysSupplier(keyService)
             .apply {
                 rootKeys.merge(get())
@@ -117,7 +116,7 @@ open class MockInitializationTests<T>(
                 )
             }
 
-        val summary = rootKeyService.rootKeySummary(rootKeys)
+        val summary = RootKeyService.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)

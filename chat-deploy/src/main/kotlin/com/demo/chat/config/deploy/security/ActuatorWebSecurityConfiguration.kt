@@ -1,12 +1,15 @@
-package com.demo.chat.deploy.memory
+package com.demo.chat.config.deploy.security
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.server.SecurityWebFilterChain
 
 @Configuration(proxyBeanMethods = false)
+@ConditionalOnBean(ServerHttpSecurity::class)
 class ActuatorWebSecurityConfiguration {
 
     @Bean
@@ -15,17 +18,19 @@ class ActuatorWebSecurityConfiguration {
             .authenticationManager(ActuatorAuthenticationManager())
             .csrf().disable()
             .formLogin().disable()
-            .httpBasic()
-            .and()
+            //.httpBasic()
+            //.and()
             .authorizeExchange()
             .pathMatchers("/actuator/**")
-            .hasRole("ADMIN")
+            .permitAll()
+            //.hasRole("ADMIN")
             .anyExchange()
-            .hasRole("ADMIN")
+            .permitAll()
+            //.hasRole("ADMIN")
 
         return http.build()
     }
 
     @Bean
-    fun passwordEncoder() = PasswordEncoderFactories.createDelegatingPasswordEncoder()
+    fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 }

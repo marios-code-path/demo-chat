@@ -1,4 +1,4 @@
-package com.demo.chat.deploy.memory
+package com.demo.chat.config.deploy.security
 
 import org.springframework.security.authentication.AbstractUserDetailsReactiveAuthenticationManager
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
@@ -6,7 +6,7 @@ import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import reactor.core.publisher.Mono
 
-class ActuatorAuthenticationManager() : AbstractUserDetailsReactiveAuthenticationManager() {
+class ActuatorAuthenticationManager : AbstractUserDetailsReactiveAuthenticationManager() {
 
     private val userDetailService = MapReactiveUserDetailsService(
         User.withUsername("actuator")

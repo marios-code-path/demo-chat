@@ -16,11 +16,9 @@ while getopts ":sdcgk:b:n:p:" o; do
     n)
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
-    s)
-      export SHELL_ACTIVE=true
-      ;;
     c)
       export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT}"
+      export MAVEN_PROFILES="discovery-consul"
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -51,21 +49,34 @@ export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export APP_MAIN_CLASS="com.demo.chat.init.BaseApp"
 export APP_VERSION=0.0.1
-export MAVEN_PROFILE
-export IDENTITIES="-Dapp.identity.anonymous=${CHAT_ANON:=1} -Dapp.identity.admin=${CHAT_ADMIN:=1}"
+export MAVEN_PROFILE="-P ${MAVEN_PROFILES}"
+# Say when discovery_consul is deactivated, we don't want to pass in the consul host and port, or configure discovery
+# and KV store
+
+export MAIN_FLAGS="-Dspring.profiles.active=${SPRING_PROFILE} -Dspring.shell.interactive.enabled=true \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=shell -Dmanagement.endpoints.enabled-by-default=false"
+export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
+-Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key -Dapp.client.config=properties \
+-Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
+-Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
+-Dapp.client.rsocket.composite.topic"
+export DISCOVERY_FLAGS="${DISCOVERY_ARGS} -Dspring.cloud.service-registry.auto-registration.enabled=false \
+-Dspring.cloud.consul.config.enabled=false -Dspring.cloud.consul.discovery.enabled=true"
+export SERVICE_FLAGS="-Dapp.service.core.key  -Dapp.service.composite.auth"
+export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
+-Dapp.rsocket.client.requester.factory=consul -Dapp.rootkeys.consume.scheme=kv"
+export PORTS_FLAGS="-Dserver.port=0"
 
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
 # TODO: difference between '-D' and '--'
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} ${IDENTITIES} -Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.key.type=${KEYSPACE_TYPE} -Dapp.service.core.key -Dapp.primary=shell -Dapp.client.protocol=rsocket \
--Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key -Dapp.client.config=properties \
--Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
--Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
--Dapp.client.rsocket.composite.topic -Dapp.service.composite.auth \
--Dapp.client.rsocket.discovery.springsecurity -Dspring.cloud.service-registry.auto-registration.enabled=false \
--Dspring.cloud.consul.config.enabled=false -Dserver.port=0 \
--Dspring.shell.interactive.enabled=${SHELL_ACTIVE:=false} -Dmanagement.endpoints.enabled-by-default=false"
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS}  \
+${MAIN_FLAGS} \
+${PORTS_FLAGS} \
+${BOOTSTRAP_FLAGS} \
+${DISCOVERY_FLAGS} \
+${CLIENT_FLAGS} \
+${SERVICE_FLAGS}"
 
 set -x
 

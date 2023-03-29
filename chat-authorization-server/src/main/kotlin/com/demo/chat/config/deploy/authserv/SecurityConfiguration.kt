@@ -1,6 +1,5 @@
 package com.demo.chat.config.deploy.authserv
 
-import com.demo.chat.secure.service.ChatUserDetailsService
 import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
@@ -11,7 +10,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.Order
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.core.oidc.OidcScopes
@@ -31,7 +29,7 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.util.*
 
-@Configuration
+//@Configuration
 class SecurityConfiguration {
 
     @Throws(Exception::class)

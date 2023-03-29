@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
-class MemoryCorePersistenceServices<T, V>(private val keyService: IKeyService<T>) :
+class MemoryPersistenceServices<T, V>(private val keyService: IKeyService<T>) :
     PersistenceServiceBeans<T, V> {
 
     @Bean

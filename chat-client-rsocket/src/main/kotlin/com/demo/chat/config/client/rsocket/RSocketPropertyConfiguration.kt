@@ -14,8 +14,8 @@ class RSocketPropertyConfiguration
 
 @ConfigurationProperties("app.rsocket.client")
 data class RSocketClientProperties
- constructor(val config: Map<String, RSocketClientProperty>) : ClientProperties<RSocketClientProperty> {
-    override fun getServiceConfig(str: String): RSocketClientProperty = config[str]!!
+ constructor(val config: Map<String, RSocketClientProperty>) : ClientProperties<ClientProperty> {
+    override fun getServiceConfig(str: String): ClientProperty = config[str]!!
 }
 
 data class RSocketClientProperty

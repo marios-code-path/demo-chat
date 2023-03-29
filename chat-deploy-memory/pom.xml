@@ -89,11 +89,6 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-security</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-core</artifactId>
             <type>test-jar</type>
             <version>0.0.1</version>
@@ -102,26 +97,6 @@
             <groupId>com.demo</groupId>
             <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-rsocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-messaging</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

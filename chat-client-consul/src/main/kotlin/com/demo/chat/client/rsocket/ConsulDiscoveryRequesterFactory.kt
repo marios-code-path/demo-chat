@@ -1,23 +1,17 @@
-package com.demo.chat.config.client.rsocket
+package com.demo.chat.client.rsocket
 
+import com.demo.chat.config.client.rsocket.DiscoveryException
 import com.demo.chat.service.client.ClientFactory
 import com.demo.chat.service.client.ClientProperties
 import com.demo.chat.service.client.ClientProperty
 import com.demo.chat.service.client.transport.ClientTransportFactory
 import io.rsocket.transport.ClientTransport
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
-import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Mono
 import java.util.*
 
 
-@Configuration
-@ConditionalOnProperty(
-    "app.rsocket.client.requester.factory",
-    havingValue = "consul"
-)
 class ConsulDiscoveryRequesterFactory(
     private val builder: RSocketRequester.Builder,
     private val discovery: ConsulReactiveDiscoveryClient,
@@ -28,7 +22,7 @@ class ConsulDiscoveryRequesterFactory(
     override fun getClient(serviceKey: String): RSocketRequester = discovery
         .getInstances(serviceDestination(serviceKey))
         .map { instance ->
-            Optional.ofNullable(instance.metadata["rsocket.port"])
+            Optional.ofNullable(instance.metadata["rsocketPort"])
                 .map {
                     builder
                         .transport(connection.tcpClientTransport(instance.host, it.toInt()))

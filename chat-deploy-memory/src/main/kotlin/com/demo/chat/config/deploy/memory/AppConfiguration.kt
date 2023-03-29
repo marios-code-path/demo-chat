@@ -7,7 +7,7 @@ import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.config.controller.core.*
 import com.demo.chat.config.deploy.DeployConfigs
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
-import com.demo.chat.config.persistence.memory.MemoryCorePersistenceServices
+import com.demo.chat.config.persistence.memory.MemoryPersistenceServices
 import com.demo.chat.config.persistence.memory.MemoryKeyServices
 import com.demo.chat.config.persistence.memory.MemorySecretsStoreServiceBeans
 import com.demo.chat.config.pubsub.memory.MemoryPubSubConfiguration
@@ -43,7 +43,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
     // Services
     KeyGenConfiguration::class,
     MemoryKeyServices::class,
-    MemoryCorePersistenceServices::class,
+    MemoryPersistenceServices::class,
     LuceneIndexBeans::class,
     MemorySecretsStoreServiceBeans::class,
     MemoryPubSubConfiguration::class,

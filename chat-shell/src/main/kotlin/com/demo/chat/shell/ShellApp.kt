@@ -10,9 +10,8 @@ import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.service.client.transport.ClientTransportFactory
 import io.rsocket.metadata.WellKnownMimeType
-import io.rsocket.transport.ClientTransport
+import org.springframework.boot.autoconfigure.AutoConfigureBefore
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
@@ -32,7 +31,7 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 import reactor.core.publisher.Hooks
 import java.util.*
 
-@SpringBootApplication()
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config","com.demo.chat.shell.commands"])
 @Import(
     RSocketPropertyConfiguration::class,
     // Serialization
@@ -46,12 +45,11 @@ import java.util.*
     RSocketClientTransportConfiguration::class,
     // Services
     KeyGenConfiguration::class,
-    DefaultRequesterFactory::class,
     ClientConfiguration::class,
     CoreClientsConfiguration::class,
     CompositeClientsConfiguration::class,
     CompositeAuthConfiguration::class,
-    HttpRootKeyConsumer::class
+    HttpRootKeyConsumer::class,
 )
 @EnableRSocketSecurity
 class BaseApp {

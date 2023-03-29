@@ -1,22 +1,19 @@
 package com.demo.chat.client.rsocket
 
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
+import com.demo.chat.service.client.ClientFactory
 import com.demo.chat.service.client.transport.ClientTransportFactory
 import io.rsocket.transport.ClientTransport
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import java.util.concurrent.ConcurrentHashMap
 
 
-@Configuration
-@ConditionalOnProperty("app.client.rsocket.discovery.default")
 class DefaultRequesterFactory(
     private val builder: RSocketRequester.Builder,
     private val connection: ClientTransportFactory<ClientTransport>,
     private val clientProps: RSocketClientProperties,
     private val metadataProvider: () -> Any = { Any() }
-) : RequesterFactory {
+) : ClientFactory<RSocketRequester> {
 
     private val perHostRequester: MutableMap<Pair<String, Int>, RSocketRequester> = ConcurrentHashMap()
 

@@ -17,7 +17,7 @@
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
         <mainClass>com.demo.chat.shell.ShellApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
-				<spring-shell.version>3.0.0</spring-shell.version>
+        <spring-shell.version>3.0.0</spring-shell.version>
     </properties>
     <profiles>
         <profile>
@@ -152,19 +152,24 @@
             <version>2.9.5</version>
             <scope>compile</scope>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.cloud</groupId>-->
+<!--            <artifactId>spring-cloud-starter-consul-config</artifactId>-->
+<!--            <version>${spring-cloud.version}</version>-->
+<!--        </dependency>-->
     </dependencies>
 
-  <dependencyManagement>
-    <dependencies>
-      <dependency>
-        <groupId>org.springframework.shell</groupId>
-        <artifactId>spring-shell-dependencies</artifactId>
-        <version>${spring-shell.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
-    </dependencies>
-  </dependencyManagement>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.shell</groupId>
+                <artifactId>spring-shell-dependencies</artifactId>
+                <version>${spring-shell.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <build>
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>

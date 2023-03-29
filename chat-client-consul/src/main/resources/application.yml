@@ -18,4 +18,4 @@ spring:
         data-key: data
       discovery:
         enabled: true
-        default-query-tag: rsocket,${app.key.type}
+#        default-query-tag: rsocket
