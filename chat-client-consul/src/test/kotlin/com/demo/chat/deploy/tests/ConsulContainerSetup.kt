@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.tests
 
+import com.ecwid.consul.v1.ConsulClient
 import org.junit.jupiter.api.AfterAll
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -35,11 +36,24 @@ open class ConsulContainerSetup {
             start()
         }
 
+
         @JvmStatic
         @DynamicPropertySource
         fun setDynamicProps(propertySource: DynamicPropertyRegistry) {
             propertySource.add("spring.cloud.consul.host") { consulContainer.host }
             propertySource.add("spring.cloud.consul.port") { consulContainer.getMappedPort(8500) }
+
+            val client = ConsulClient(consulContainer.host, consulContainer.getMappedPort(8500))
+
+            client.agentServiceRegister(
+                com.ecwid.consul.v1.agent.model.NewService().apply {
+                    name = "core-service-rsocket"
+                    address = "localhost"
+                    port = 7901
+                    id = "core-service-rsocket"
+                    tags = listOf("core-service-rsocket")
+                }
+            )
         }
     }
 }

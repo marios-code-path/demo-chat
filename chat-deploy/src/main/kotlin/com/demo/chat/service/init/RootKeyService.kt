@@ -5,19 +5,10 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyDataPair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.domain.serializers.DefaultChatJacksonModules
-import com.demo.chat.service.actuator.RootKey
 import com.demo.chat.service.core.KeyValueStore
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.module.kotlin.KotlinModule
-import org.springframework.boot.context.properties.ConfigurationProperties
-import org.springframework.boot.context.properties.bind.ConstructorBinding
-import org.springframework.cloud.context.config.annotation.RefreshScope
-import org.springframework.context.annotation.Profile
-import org.springframework.core.ParameterizedTypeReference
-
 
 
 open class KVRootKey {

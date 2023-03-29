@@ -108,6 +108,11 @@
             <version>2.9.5</version>
             <scope>compile</scope>
         </dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-commons</artifactId>
+			<version>${spring-cloud.version}</version>
+		</dependency>
     </dependencies>
 
 	<build>
