@@ -8,14 +8,13 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.TestPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
-import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Duration
 
 @SpringBootTest(classes = [BaseApp::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
-    properties = [ // TODO: Consul still being contacted.... will need to unregister
+    properties = [
+        // TODO: Consul still being contacted.... will need to unregister
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=test",
         "app.rootkeys.consume.scheme=http", "app.client.discovery=local",
         "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
@@ -49,7 +48,11 @@ open class ShellIntegrationTestBase {
         @JvmStatic
         @DynamicPropertySource
         fun clientPropertySetup(registry: org.springframework.test.context.DynamicPropertyRegistry) {
-            val hostPort = container.host.toString() + ":" + container.getMappedPort(6790).toString()
+            val servicePort = container.getMappedPort(6790).toString()
+            val actuatorPort = container.getMappedPort(6792).toString()
+            val host = container.host
+            val serviceHostAndPort = "$host:$servicePort"
+
             val configPrefix = "app.client.discovery.config"
             for (service in listOf(
                 "key",
@@ -62,10 +65,12 @@ open class ShellIntegrationTestBase {
                 "topic",
                 "auth"
             )) {
-                registry.add("$configPrefix.$service.dest") { hostPort }
+                registry.add("$configPrefix.$service.dest") { serviceHostAndPort }
             }
 
-            registry.add("app.rootkeys.consume.source") { "http://${container.host}:${container.getMappedPort(6792)}" }
+            registry.add("app.rootkeys.consume.source") { "http://$host:$actuatorPort" }
+            registry.add("app.client.discovery.local.host") { host }
+            registry.add("app.client.discovery.local.port") { servicePort }
         }
     }
 

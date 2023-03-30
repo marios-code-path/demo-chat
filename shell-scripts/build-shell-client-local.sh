@@ -62,7 +62,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.composite.topic"
 export DISCOVERY_FLAGS="${DISCOVERY_ARGS} -Dspring.cloud.service-registry.auto-registration.enabled=false \
 -Dspring.cloud.consul.config.enabled=false -Dspring.cloud.consul.discovery.enabled=true \
--Dapp.client.discovery=local"
+-Dapp.client.discovery=properties"
 export SERVICE_FLAGS="-Dapp.service.core.key  -Dapp.service.composite.auth"
 export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
 -Dapp.rootkeys.consume.scheme=kv"
