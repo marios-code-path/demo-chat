@@ -22,6 +22,7 @@
             <id>test-build</id>
             <activation><activeByDefault>true</activeByDefault></activation>
             <build>
+                <defaultGoal>spring-boot:build-image</defaultGoal>
                 <plugins>
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
@@ -33,14 +34,14 @@
                                 <cleanCache>false</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.profiles.active=exec-chat -Dserver.port=6791
+                                        -Dapp.proto=rsocket
                                         -Dapp.rootkeys.create=true -Dmanagement.server.port=6792 -Dspring.rsocket.server.port=6790
                                         -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
                                         -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index
                                         -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite
-                                        -Dapp.service.composite.auth -Dapp.controller.persistence -Dapp.controller.index
+                                        -Dapp.controller.persistence -Dapp.controller.index
                                         -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
                                         -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
-                                        -Dapp.rsocket.client.requester.factory=default
                                         -Dspring.cloud.consul.config.enabled=false
                                         -Dspring.cloud.consul.discovery.enabled=false
                                         -Dspring.cloud.consul.enabled=false</BPE_APPEND_JAVA_TOOL_OPTIONS>

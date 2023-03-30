@@ -1,5 +1,4 @@
 spring:
-  application:
   cloud:
     discovery:
       enabled: true
@@ -13,8 +12,8 @@ spring:
         enabled: true
         default-query-tag: rsocket
 app:
-  rsocket:
-    client:
+  client:
+    discovery:
       config:
         pubsub:
           dest: core-service-rsocket

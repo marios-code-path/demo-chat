@@ -1,17 +1,20 @@
 package com.demo.chat.shell
 
-import com.demo.chat.client.rsocket.DefaultRequesterFactory
+import com.demo.chat.client.discovery.PropertiesBasedDiscovery
+import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.client.rsocket.*
+import com.demo.chat.config.client.discovery.ClientDiscoveryConfiguration
 import com.demo.chat.config.deploy.init.HttpRootKeyConsumer
 import com.demo.chat.config.persistence.memory.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.service.client.ClientDiscovery
+import com.demo.chat.service.client.ClientFactory
 import io.rsocket.metadata.WellKnownMimeType
-import org.springframework.boot.autoconfigure.AutoConfigureBefore
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
@@ -31,7 +34,7 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 import reactor.core.publisher.Hooks
 import java.util.*
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.config","com.demo.chat.shell.commands"])
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell.commands"])
 @Import(
     RSocketPropertyConfiguration::class,
     // Serialization
@@ -45,11 +48,12 @@ import java.util.*
     RSocketClientTransportConfiguration::class,
     // Services
     KeyGenConfiguration::class,
-    ClientConfiguration::class,
+    RSocketClientConfiguration::class,
     CoreClientsConfiguration::class,
     CompositeClientsConfiguration::class,
     CompositeAuthConfiguration::class,
     HttpRootKeyConsumer::class,
+    ClientDiscoveryConfiguration::class
 )
 @EnableRSocketSecurity
 class BaseApp {
@@ -73,12 +77,16 @@ class ShellStateConfiguration {
     }
 
     @Bean
+    fun propertiesBasedDiscovery(clientProps: RSocketClientProperties): ClientDiscovery =
+        PropertiesBasedDiscovery(clientProps)
+
+    @Bean
     fun securityRequesterFactory(
         builder: RSocketRequester.Builder,
         connection: RSocketClientTransportFactory,
-        clientProps: RSocketClientProperties,
-    ): DefaultRequesterFactory = DefaultRequesterFactory(
-        builder, connection, clientProps
+        discovery: ClientDiscovery,
+    ): ClientFactory<RSocketRequester> = RSocketRequesterFactory(
+        discovery, builder, connection
     ) {
         RequestMetadata(
             loginMetadata

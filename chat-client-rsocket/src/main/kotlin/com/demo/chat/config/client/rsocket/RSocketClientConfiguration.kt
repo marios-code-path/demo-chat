@@ -1,14 +1,14 @@
 package com.demo.chat.config.client.rsocket
 
-import com.demo.chat.client.rsocket.DefaultRequesterFactory
+import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.CompositeRSocketClients
 import com.demo.chat.client.rsocket.clients.CoreRSocketClients
+import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.service.client.ClientFactory
-import com.demo.chat.service.client.transport.ClientTransportFactory
-import io.rsocket.transport.ClientTransport
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -18,15 +18,14 @@ import org.springframework.messaging.rsocket.RSocketStrategies
 
 @Configuration
 @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
-class ClientConfiguration {
+class RSocketClientConfiguration {
 
     @Bean
-    @ConditionalOnProperty("app.rsocket.client.requester.factory", havingValue = "default")
     fun requesterFactory(
         builder: RSocketRequester.Builder,
-        connection: ClientTransportFactory<ClientTransport>,
-        clientProps: RSocketClientProperties,
-    ): ClientFactory<RSocketRequester> = DefaultRequesterFactory(builder, connection, clientProps)
+        connection: RSocketClientTransportFactory,
+        discovery: ClientDiscovery,
+    ): RequesterFactory = RSocketRequesterFactory(discovery, builder, connection)
 
     @Bean
     @ConditionalOnMissingBean

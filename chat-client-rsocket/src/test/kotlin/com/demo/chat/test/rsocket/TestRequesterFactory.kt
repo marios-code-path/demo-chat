@@ -5,7 +5,5 @@ import org.springframework.messaging.rsocket.RSocketRequester
 
 
 class TestRequesterFactory(private val req: RSocketRequester) : RequesterFactory {
-    override fun getClient(serviceKey: String): RSocketRequester = req
-
-    override fun serviceDestination(serviceKey: String): String = ""
+    override fun getClientForService(serviceName: String): RSocketRequester = req
 }

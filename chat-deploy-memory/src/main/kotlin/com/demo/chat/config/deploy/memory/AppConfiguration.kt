@@ -16,7 +16,7 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.serializers.DefaultChatJacksonModules
 import com.demo.chat.index.lucene.config.LuceneIndexBeans
 import com.demo.chat.secure.service.ChatUserDetailsService
-import com.demo.chat.service.actuator.RootKeyEndpoint
+import com.demo.chat.config.deploy.actuator.RootKeyEndpoint
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.security.AuthenticationService
@@ -24,7 +24,6 @@ import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
@@ -67,7 +66,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 @Configuration
 open class AppConfiguration {
 
-    @Bean
+    //@Bean
     fun <T> chatUserDetailsService(
         persist: UserPersistence<T>,
         index: UserIndexService<T, IndexSearchRequest>,

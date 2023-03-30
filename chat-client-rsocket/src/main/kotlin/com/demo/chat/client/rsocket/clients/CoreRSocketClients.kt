@@ -31,11 +31,11 @@ class CoreRSocketClients<T, V, Q>(
     private val pubSubProps = serviceKey("pubsub")
     private val keyProps = serviceKey("key")
 
-    private fun persistenceRequester() = requesterFactory.getClient("persistence")
-    private fun indexRequester() = requesterFactory.getClient("index")
-    private fun keyRequester() = requesterFactory.getClient("key")
-    private fun pubSubRequester() = requesterFactory.getClient("pubsub")
-    private fun secretsRequester() = requesterFactory.getClient("secrets")
+    private fun persistenceRequester() = requesterFactory.getClientForService("persistence")
+    private fun indexRequester() = requesterFactory.getClientForService("index")
+    private fun keyRequester() = requesterFactory.getClientForService("key")
+    private fun pubSubRequester() = requesterFactory.getClientForService("pubsub")
+    private fun secretsRequester() = requesterFactory.getClientForService("secrets")
 
     override fun keyService(): IKeyService<T> =
         KeyClient("${keyProps.prefix}", keyRequester())

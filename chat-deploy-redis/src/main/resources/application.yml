@@ -17,16 +17,5 @@ management:
     web:
       exposure:
         include: health,info,shutdown
-
-  cloud:
-    consul:
-      config:
-        enabled: true
-        format: YAML
-        data-key: data
-        discovery:
-          enabled: true
-          tags: rsocket.port=${spring.rsocket.server.port}
-          instance-id: ${spring.application.name}:${random.value}}
   main:
     web-application-type: REACTIVE

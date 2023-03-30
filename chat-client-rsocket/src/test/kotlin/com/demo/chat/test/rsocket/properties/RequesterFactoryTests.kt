@@ -1,6 +1,7 @@
 package com.demo.chat.test.rsocket.properties
 
-import com.demo.chat.client.rsocket.DefaultRequesterFactory
+import com.demo.chat.client.discovery.PropertiesBasedDiscovery
+import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.transport.InsecureConnection
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.test.YamlFileContextInitializer
@@ -30,11 +31,21 @@ class RequesterFactoryTests {
     }
 
     @Test
+    fun `discovery should Construct`() {
+        val discovery = PropertiesBasedDiscovery(clientProperties)
+
+        Assertions.assertThat(discovery)
+            .isNotNull
+    }
+
+    @Test
     fun `requesterFactory should Construct`() {
-        val factory = DefaultRequesterFactory(
+        val discovery = PropertiesBasedDiscovery(clientProperties)
+
+        val factory = RSocketRequesterFactory(
+            discovery,
             RSocketRequester.builder(),
-            InsecureConnection(), clientProperties,
-            { Any() }
+            InsecureConnection()
         )
 
         Assertions
@@ -43,14 +54,10 @@ class RequesterFactoryTests {
     }
 
     @Test
-    fun `fetch One from RequesterFactory`() {
-        val factory = DefaultRequesterFactory(
-            RSocketRequester.builder(),
-            InsecureConnection(), clientProperties,
-            { Any()}
-        )
+    fun `fetch an instance from discovery`() {
+        val discovery = PropertiesBasedDiscovery(clientProperties)
 
-        val connectionProperty = factory.serviceDestination("user")
+        val connectionProperty = discovery.getServiceInstance("user").block()!!
         val prefix = clientProperties.config["user"]?.prefix
 
         Assertions
@@ -62,7 +69,7 @@ class RequesterFactoryTests {
         Assertions
             .assertThat(connectionProperty)
             .isNotNull
-            .isNotEmpty
-            .isEqualTo("127.0.0.1:6790")
+            .hasFieldOrPropertyWithValue("host", "127.0.0.1")
+            .hasFieldOrPropertyWithValue("port", 6790)
     }
 }

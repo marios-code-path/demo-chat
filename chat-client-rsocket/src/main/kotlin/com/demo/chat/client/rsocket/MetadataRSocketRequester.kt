@@ -5,7 +5,7 @@ import org.springframework.util.MimeType
 
 data class RequestMetadata(val value: Any, val mimeType: MimeType)
 
-class MyRequesterWrapper(
+class MetadataRSocketRequester(
     private val r: RSocketRequester,
     private val metadataProvider: () -> Any
 ) : RSocketRequester by r {

@@ -1,21 +1,19 @@
 package com.demo.chat.deploy.tests
 
-import com.demo.chat.config.client.rsocket.ConsulRequesterFactoryConfiguration
-import com.demo.chat.config.client.rsocket.DiscoveryClientConfiguration
-import com.demo.chat.service.client.transport.ClientTransportFactory
-import com.ecwid.consul.v1.ConsulClient
-import io.rsocket.transport.ClientTransport
+import com.demo.chat.config.client.discovery.DiscoveryClientConfiguration
+import com.demo.chat.service.client.ClientProperties
+import com.demo.chat.service.client.ClientProperty
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.cloud.consul.ConsulAutoConfiguration
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties
 import org.springframework.cloud.consul.discovery.reactive.ConsulReactiveDiscoveryClient
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -25,12 +23,14 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     ConsulAutoConfiguration::class,
-    ConsulRequesterFactoryConfiguration::class,
     DiscoveryClientConfiguration::class)
 @EnableConfigurationProperties(ConsulDiscoveryProperties::class)
-@TestPropertySource(properties = ["app.rsocket.client.requester.factory=consul",
+@TestPropertySource(properties = ["app.client.discovery=consul",
     "spring.cloud.consul.discovery.enabled=true" ])
-class ConsulRequesterTests {  //} : ConsulContainerSetup(){
+class ConsulDiscoveryTests {  //} : ConsulContainerSetup(){
+
+    @MockBean
+    lateinit var clientProps: ClientProperties<ClientProperty>
 
     @Autowired
     private lateinit var discovery: ConsulReactiveDiscoveryClient
@@ -40,4 +40,10 @@ class ConsulRequesterTests {  //} : ConsulContainerSetup(){
 
 
     }
+}
+
+@TestConfiguration
+class DiscoveryTestConfiguration {
+//    @Bean
+//    fun clientProperties() = ClientProperties<ClientProperty>()
 }

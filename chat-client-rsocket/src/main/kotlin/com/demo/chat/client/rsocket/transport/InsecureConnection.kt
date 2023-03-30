@@ -7,7 +7,7 @@ import reactor.netty.tcp.TcpClient
 
 open class InsecureConnection : RSocketClientTransportFactory {
 
-    override fun tcpClientTransport(host: String, port: Int): TcpClientTransport =
+    override fun getClientTransport(host: String, port: Int): TcpClientTransport =
         TcpClientTransport.create(
             TcpClient.create()
                 .host(host)

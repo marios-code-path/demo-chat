@@ -59,6 +59,9 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
             .then(kvStore.rem(Key.funKey("test1")))
             .thenMany(kvStore.all())
 
+        kvProcess
+            .doOnNext{println("------$it")}
+            .blockLast()
         StepVerifier
             .create(kvProcess)
             .expectNextCount(0)

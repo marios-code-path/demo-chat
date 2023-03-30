@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class RSocketPropertyConfiguration
 
-@ConfigurationProperties("app.rsocket.client")
+@ConfigurationProperties("app.client.discovery")
 data class RSocketClientProperties
  constructor(val config: Map<String, RSocketClientProperty>) : ClientProperties<ClientProperty> {
     override fun getServiceConfig(str: String): ClientProperty = config[str]!!

@@ -17,7 +17,7 @@ import java.time.Duration
 @TestPropertySource(
     properties = [ // TODO: Consul still being contacted.... will need to unregister
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=test",
-        "app.rootkeys.consume.scheme=http", "app.rsocket.client.requester.factory=default",
+        "app.rootkeys.consume.scheme=http", "app.client.discovery=local",
         "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",
@@ -50,7 +50,7 @@ open class ShellIntegrationTestBase {
         @DynamicPropertySource
         fun clientPropertySetup(registry: org.springframework.test.context.DynamicPropertyRegistry) {
             val hostPort = container.host.toString() + ":" + container.getMappedPort(6790).toString()
-            val configPrefix = "app.rsocket.client.config"
+            val configPrefix = "app.client.discovery.config"
             for (service in listOf(
                 "key",
                 "persistence",

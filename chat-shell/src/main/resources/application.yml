@@ -2,8 +2,8 @@ spring:
   application:
     name: shell
 app:
-  rsocket:
-    client:
+  client:
+    discovery:
       config:
         pubsub:
           dest: "127.0.0.1:6790"

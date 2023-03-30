@@ -22,6 +22,12 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
     val typeUtil: TypeUtil<T>){
 
     @Bean
+    fun listenForRootKeyInitialized(): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
+        ApplicationListener { evt ->
+            publisher.publishEvent(StartupAnnouncementEvent(RootKeyService.rootKeySummary(evt.rootKeys)))
+        }
+
+    @Bean
     @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
     fun rootKeyGenerator(keyService: IKeyService<T>): RootKeysSupplier<T> =
         RootKeysSupplier(keyService)
@@ -43,7 +49,6 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
         ApplicationListener { evt ->
             rootKeyService.publishRootKeys(evt.rootKeys)
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Published"))
-            publisher.publishEvent(StartupAnnouncementEvent(RootKeyService.rootKeySummary(evt.rootKeys)))
         }
 
     @Bean

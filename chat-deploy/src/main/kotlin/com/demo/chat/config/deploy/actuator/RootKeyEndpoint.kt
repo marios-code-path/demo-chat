@@ -1,4 +1,4 @@
-package com.demo.chat.service.actuator
+package com.demo.chat.config.deploy.actuator
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys

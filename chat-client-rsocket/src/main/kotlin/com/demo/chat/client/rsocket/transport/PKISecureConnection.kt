@@ -13,7 +13,7 @@ class PKISecureConnection(private val trustFile: File,
                           private val keyFile: File,
                           private val jksPass: String) : RSocketClientTransportFactory {
 
-    override fun tcpClientTransport(host: String, port: Int): TcpClientTransport {
+    override fun getClientTransport(host: String, port: Int): TcpClientTransport {
 
         val keyManager =  KeyManagerFactory
             .getInstance(KeyManagerFactory.getDefaultAlgorithm())

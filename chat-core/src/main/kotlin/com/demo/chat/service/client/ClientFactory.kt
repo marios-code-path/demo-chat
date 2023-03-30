@@ -4,10 +4,11 @@ import org.springframework.cloud.client.ServiceInstance
 import reactor.core.publisher.Mono
 
 interface ClientFactory<C> {
-    fun getClient(serviceKey: String): C
-    fun serviceDestination(serviceKey: String): String
+    fun getClientForService(serviceName: String): C
 }
 
 interface ClientDiscovery{
-    fun serviceDestination(serviceKey: String): Mono<ServiceInstance>
+    fun getServiceInstance(serviceName: String): Mono<ServiceInstance>
 }
+
+data class DiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")

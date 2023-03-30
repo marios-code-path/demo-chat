@@ -1,18 +1,14 @@
 package com.demo.chat.deploy.memory
 
-import com.demo.chat.config.controller.core.PersistenceControllersConfiguration
-import com.demo.chat.config.deploy.DeployConfigs
-import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
+import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
+import org.springframework.context.event.EventListener
 import reactor.core.publisher.Hooks
 
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.deploy"],
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config"],
     proxyBeanMethods = false)
 @Profile("exec-chat")
 class MemoryDeploymentApp {
@@ -25,9 +21,8 @@ class MemoryDeploymentApp {
         }
     }
 
-    @ConditionalOnBean(PersistenceControllersConfiguration.UserPersistenceController::class)
-    @Bean
-    fun commandRunner(): ApplicationRunner = ApplicationRunner {
+    @EventListener
+    fun readyListener(event: ApplicationReadyEvent) {
         println("In-Memory Deployment Started.")
     }
 }

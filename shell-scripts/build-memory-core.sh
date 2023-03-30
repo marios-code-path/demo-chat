@@ -64,7 +64,7 @@ export MAVEN_PROFILE=-Pdeploy
 
 export MAIN_FLAGS="-Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} -Dapp.key.type=${KEYSPACE_TYPE} \
--Dapp.rsocket.client.requester.factory=none -Dspring.shell.interactive.enabled=false"
+-Dspring.shell.interactive.enabled=false"
 export PORTS_FLAGS="-Dserver.port=$((CORE_PORT+1)) -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT}"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth"

@@ -1,21 +1,3 @@
 logging:
   level:
     root: info
-
-spring:
-  application:
-  config:
-    import: "optional:consul:"
-  cloud:
-    discovery:
-      enabled: true
-    consul:
-      config:
-        watch:
-          enabled: true
-        enabled: true
-        format: YAML
-        data-key: data
-      discovery:
-        enabled: true
-#        default-query-tag: rsocket
