@@ -24,6 +24,7 @@ import com.demo.chat.service.security.AuthorizationService
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
@@ -66,7 +67,8 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 @Configuration
 open class AppConfiguration {
 
-    //@Bean
+    @Bean
+    //@ConditionOn....
     fun <T> chatUserDetailsService(
         persist: UserPersistence<T>,
         index: UserIndexService<T, IndexSearchRequest>,
