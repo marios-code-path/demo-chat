@@ -1,6 +1,5 @@
-package com.demo.chat.index.lucene.config
+package com.demo.chat.config
 
-import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil

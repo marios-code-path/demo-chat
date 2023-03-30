@@ -8,8 +8,6 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
 import org.springframework.context.annotation.Bean
 
-open class DefaultChatJacksonModules() : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
-
 open class JacksonModules(
     private val keyConverter: Converter<JsonNode, out Any>,
     private val dataConverter: Converter<JsonNode, out Any>

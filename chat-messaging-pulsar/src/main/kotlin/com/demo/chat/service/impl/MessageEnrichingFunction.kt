@@ -1,7 +1,7 @@
 package com.demo.chat.service.impl
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.config.DefaultChatJacksonModules
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import java.util.function.Function

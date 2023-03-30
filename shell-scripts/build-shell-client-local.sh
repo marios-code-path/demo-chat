@@ -2,13 +2,14 @@
 cd ../chat-shell
 source ../shell-scripts/ports.sh
 
+export DISCOVERY_ARGS="-Dapp.client.discovery=properties"
+export SPRING_PROFILE="shell"
+export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
+
 while getopts ":sdcgk:b:n:p:" o; do
   case $o in
-    d)
-      export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
-      ;;
     p)
-      export SPRING_PROFILE=${OPTARG}
+      export SPRING_PROFILE="${SPRING_PROFILE},${OPTARG}"
       ;;
     g)
       export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
@@ -17,8 +18,11 @@ while getopts ":sdcgk:b:n:p:" o; do
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
     c)
-      export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT}"
-      export MAVEN_PROFILES="discovery-consul"
+      export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} \
+-Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul"
+      export MAVEN_PROFILES="-P discovery-consul"
+      export SPRING_PROFILE="${SPRING_PROFILE},consul"
+      export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -44,12 +48,10 @@ done
 export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_shell}
 export DOCKER_CNAME="--name ${DEPLOYMENT_NAME}"
 
-# how to auto-discover consul using dns alone!
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export APP_MAIN_CLASS="com.demo.chat.init.BaseApp"
 export APP_VERSION=0.0.1
-export MAVEN_PROFILE="-P ${MAVEN_PROFILES}"
 # Say when discovery_consul is deactivated, we don't want to pass in the consul host and port, or configure discovery
 # and KV store
 
@@ -61,11 +63,9 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic"
 export DISCOVERY_FLAGS="${DISCOVERY_ARGS} -Dspring.cloud.service-registry.auto-registration.enabled=false \
--Dspring.cloud.consul.config.enabled=false -Dspring.cloud.consul.discovery.enabled=true \
--Dapp.client.discovery=properties"
-export SERVICE_FLAGS="-Dapp.service.core.key  -Dapp.service.composite.auth"
-export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
--Dapp.rootkeys.consume.scheme=kv"
+-Dspring.cloud.consul.config.enabled=false"
+export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
+export BOOTSTRAP_FLAGS="${INIT_CONFIG}"
 export PORTS_FLAGS="-Dserver.port=0"
 
 # makes no use of cloud configuration or config-maps
@@ -86,6 +86,6 @@ set -x
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && MAVEN_ARG="spring-boot:build-image"
 [[ $RUN_MAVEN_ARG == "runlocal" ]] && MAVEN_ARG="spring-boot:run"
 
-mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE -DskipTests
+mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILES -DskipTests
 
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION

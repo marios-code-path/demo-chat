@@ -4,7 +4,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.User
-import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.config.DefaultChatJacksonModules
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.pulsar.client.api.AuthenticationFactory
 import org.apache.pulsar.client.api.PulsarClient

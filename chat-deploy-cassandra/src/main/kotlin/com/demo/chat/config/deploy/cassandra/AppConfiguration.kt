@@ -12,7 +12,7 @@ import com.demo.chat.config.persistence.cassandra.CoreKeyServices
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.config.persistence.cassandra.KeyGenConfiguration
 import com.demo.chat.config.secure.CompositeAuthConfiguration
-import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.config.DefaultChatJacksonModules
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration

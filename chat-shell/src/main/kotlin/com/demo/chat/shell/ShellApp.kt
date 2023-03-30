@@ -4,14 +4,9 @@ import com.demo.chat.client.discovery.PropertiesBasedDiscovery
 import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
-import com.demo.chat.config.BaseDomainConfiguration
-import com.demo.chat.config.client.rsocket.*
-import com.demo.chat.config.client.discovery.ClientDiscoveryConfiguration
-import com.demo.chat.config.deploy.init.HttpRootKeyConsumer
-import com.demo.chat.config.persistence.memory.KeyGenConfiguration
-import com.demo.chat.config.secure.CompositeAuthConfiguration
+import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import com.demo.chat.domain.knownkey.Anon
-import com.demo.chat.domain.serializers.DefaultChatJacksonModules
+import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.service.client.ClientFactory
 import io.rsocket.metadata.WellKnownMimeType
@@ -36,24 +31,24 @@ import java.util.*
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell.commands"])
 @Import(
-    RSocketPropertyConfiguration::class,
+   // RSocketPropertyConfiguration::class,
     // Serialization
-    JacksonAutoConfiguration::class,
-    DefaultChatJacksonModules::class,
-    RSocketStrategiesAutoConfiguration::class,
-    RSocketMessagingAutoConfiguration::class,
+//    JacksonAutoConfiguration::class,
+//    DefaultChatJacksonModules::class,
+//    RSocketStrategiesAutoConfiguration::class,
+//    RSocketMessagingAutoConfiguration::class,
     // TYPES
-    BaseDomainConfiguration::class,
-    // Transport Security
-    RSocketClientTransportConfiguration::class,
-    // Services
-    KeyGenConfiguration::class,
-    RSocketClientConfiguration::class,
-    CoreClientsConfiguration::class,
-    CompositeClientsConfiguration::class,
-    CompositeAuthConfiguration::class,
-    HttpRootKeyConsumer::class,
-    ClientDiscoveryConfiguration::class
+//    BaseDomainConfiguration::class,
+//    // Transport Security
+//    RSocketClientTransportConfiguration::class,
+//    // Services
+//    KeyGenConfiguration::class,
+//    RSocketClientConfiguration::class,
+//    CoreClientsConfiguration::class,
+//    CompositeClientsConfiguration::class,
+//    CompositeAuthConfiguration::class,
+//    HttpRootKeyConsumer::class,
+//    ClientDiscoveryConfiguration::class
 )
 @EnableRSocketSecurity
 class BaseApp {
@@ -63,7 +58,6 @@ class BaseApp {
         fun main(args: Array<String>) {
             Hooks.onOperatorDebug()
             runApplication<BaseApp>(*args)
-
         }
     }
 }
@@ -75,10 +69,6 @@ class ShellStateConfiguration {
         var loggedInUser: Optional<Any> = Optional.empty()
         var loginMetadata: Optional<UsernamePasswordMetadata> = Optional.empty()
     }
-
-    @Bean
-    fun propertiesBasedDiscovery(clientProps: RSocketClientProperties): ClientDiscovery =
-        PropertiesBasedDiscovery(clientProps)
 
     @Bean
     fun securityRequesterFactory(
