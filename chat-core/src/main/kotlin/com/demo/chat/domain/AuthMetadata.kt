@@ -25,6 +25,7 @@ interface AuthMetadata<T> : KeyBearer<T> {
                 override val expires: Long
                     get() = exp
             }
+
         fun <T> create(key: Key<T>, principal: Key<T>, target: Key<T>, perm: String, muted: Boolean, exp: Long): AuthMetadata<T> =
             object : AuthMetadata<T> {
                 override val key: Key<T>

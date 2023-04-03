@@ -1,6 +1,6 @@
 spring:
   application:
-    name: shell
+    name: chat-shell
 app:
   client:
     discovery:

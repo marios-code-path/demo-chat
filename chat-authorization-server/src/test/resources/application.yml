@@ -34,9 +34,9 @@ management:
 
 spring:
   main:
-    web-application-type: reactive
+    web-application-type: servlet
   application:
-    name: "${app.primary}-service-${app.proto}"
+    name: "chat-authorization-server"
   cloud:
     consul:
       enabled: false

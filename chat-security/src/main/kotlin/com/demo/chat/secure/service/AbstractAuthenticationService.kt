@@ -25,6 +25,7 @@ open class AbstractAuthenticationService<T, U, Q>(
     private val userNameToQuery: Function<String, Q>,
     private val rootKeys: RootKeys<T>,
 ) : AuthenticationService<T> {
+
     override fun setAuthentication(uid: Key<T>, pw: String): Mono<Void> =
         secretsStore.addCredential(KeyCredential(uid, pw))
 

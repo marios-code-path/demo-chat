@@ -6,6 +6,7 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
+import com.demo.chat.secure.service.ChatUserDetailsService
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.KeyCredential
@@ -15,7 +16,6 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
@@ -35,17 +35,17 @@ import java.util.*
 )
 @TestPropertySource(
     properties = [
-        "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
-        "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=long",
+        "server.port=0", "spring.rsocket.server.port=0",
+        "app.rootkeys.create=true",
+        "app.service.core.key", "app.service.security.userdetails",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
-        "spring.cloud.config.enabled=false", "spring.cloud.consul.enabled=false",
-        "spring.cloud.consul.host=127.0.0.1", "spring.rsocket.server.port=0",
+        "spring.config.location=classpath:/application.yml"
     ]
 )
-@ActiveProfiles("exec-chat")
+@ActiveProfiles("memory")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CompositeServiceTests {
 
@@ -61,6 +61,9 @@ class CompositeServiceTests {
     @Autowired
     private lateinit var builder: RSocketRequester.Builder
 
+    @Autowired
+    private lateinit var uds: ChatUserDetailsService<Long, IndexSearchRequest>
+
     @Value("\${local.rsocket.server.port}")
     private lateinit var port: String
 
@@ -74,14 +77,14 @@ class CompositeServiceTests {
 
     @Test
     fun `should request key`(
-        @Autowired userService: CompositeServiceBeans<Long, String>,
+        @Autowired services: CompositeServiceBeans<Long, String>,
         @Autowired secretsStore: SecretsStoreBeans<Long>
     ) {
-        val key: Key<Long> = userService.userService()
+        val key: Key<Long> = services.userService()
             .addUser(UserCreateRequest("test", "user", "test"))
             .block()!!
 
-        secretsStore.secretsStore().addCredential(KeyCredential(key, "changeme")).block()
+        secretsStore.secretsStore().addCredential(KeyCredential(key, "{noop}changeme")).block()
 
         val requester = builder
             .setupMetadata(

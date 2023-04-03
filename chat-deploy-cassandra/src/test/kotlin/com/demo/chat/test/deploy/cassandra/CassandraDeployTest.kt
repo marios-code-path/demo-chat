@@ -20,10 +20,9 @@ import java.util.*
 )
 @TestPropertySource(
     properties = [
-        "app.primary=core", "server.port=0", "management.endpoints.enabled-by-default=false",
-        "spring.shell.interactive.enabled=false", "app.service.core.key", "app.key.type=uuid",
+        "server.port=0","spring.config.location=classpath:/application.yml",
+        "app.service.core.key",
         "app.service.core.persistence", "app.service.core.secrets", "app.service.core.index",
-        //"app.service.core.pubsub", "app.service.composite", // We dont depend on pubsub in this project yet
         "app.controller.persistence", "app.controller.index", "app.controller.key",
         "app.controller.secrets", "app.controller.message",
     ]

@@ -16,7 +16,7 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @Configuration
 @ConditionalOnProperty("app.proto", havingValue = "rsocket")
-@ConditionalOnBean(RSocketSecurity::class)
+@ConditionalOnBean(RSocketSecurity::class)  //TODO: Bad idea, but it works
 class RSocketServerConfiguration {
 
     @Bean

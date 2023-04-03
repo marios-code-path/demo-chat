@@ -7,13 +7,40 @@ import org.springframework.security.core.userdetails.UserDetails
 import java.util.stream.Collectors
 
 
-data class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
+class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
+
+    private var passwd: String? = null
+
+    fun setPassword(password: String) {
+        passwd = password
+    }
+
+    override fun getPassword(): String = passwd!!
+
+    override fun getUsername(): String = user.handle
+
+    override fun isAccountNonExpired(): Boolean = true
+
+    override fun isAccountNonLocked(): Boolean = true
+
+    override fun isCredentialsNonExpired(): Boolean = true
+
+    override fun isEnabled(): Boolean = true
+
     override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
         roles.stream()
             .map { role -> SimpleGrantedAuthority(role) }
             .collect(Collectors.toList())
 
-    override fun getPassword(): String = ""
+}
+
+data class EChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
+    override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
+        roles.stream()
+            .map { role -> SimpleGrantedAuthority(role) }
+            .collect(Collectors.toList())
+
+    override fun getPassword(): String = "changeme"
 
     override fun getUsername(): String = user.handle
 

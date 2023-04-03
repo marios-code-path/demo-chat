@@ -21,7 +21,7 @@ open class MembershipLuceneIndex<T>(
         val indexSearcher = IndexSearcher(indexReader)
 
         val hit = indexSearcher.search(QueryParser(query.first, analyzer)
-            .parse(query.second), query.third)
+            .parse(query.second), query.config)
             .totalHits
         sink.success(hit.value)
     }

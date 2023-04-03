@@ -33,7 +33,9 @@
                                 <name>${appImageName}</name>
                                 <cleanCache>false</cleanCache>
                                 <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.profiles.active=exec-chat -Dserver.port=6791
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.main.application.name=chat-integration-test
+                                        -Dspring.profiles.active=memory,main -Dserver.port=6791
+                                        -Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
                                         -Dapp.proto=rsocket -Dapp.users.create=true
                                         -Dspring.config.location=classpath:/application.yml,classpath:/userinit.yml
                                         -Dapp.rootkeys.create=true -Dmanagement.server.port=6792 -Dspring.rsocket.server.port=6790

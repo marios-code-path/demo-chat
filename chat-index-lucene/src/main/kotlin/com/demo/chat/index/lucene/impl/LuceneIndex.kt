@@ -68,7 +68,7 @@ open class LuceneIndex<T, E>(
         val indexSearcher = IndexSearcher(indexReader)
 
         val doc =
-            indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.third).scoreDocs
+            indexSearcher.search(QueryParser(query.first, analyzer).parse(query.second), query.config).scoreDocs
                 .map {
                     indexSearcher
                         .doc(it.doc)

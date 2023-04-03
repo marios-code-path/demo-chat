@@ -1,0 +1,32 @@
+logging:
+  level:
+    org:
+      springframework:
+        data:
+          cassandra: INFO
+
+app:
+  proto: rsocket
+  primary: core
+  key:
+    type: uuid
+
+spring:
+  cassandra:
+    keyspace-name: chat_${app.key.type}
+    contact-points: localhost
+    port: 9042
+    local-datacenter: datacenter1
+    schema-action: create_if_not_exists
+    request:
+      consistency: one
+      serial-consistency: any
+    base-packages: com.demo.chat.persistence.cassandra
+  main:
+    web-application-type: reactive
+  application:
+    name: "${app.primary}-service-${app.proto}"
+
+management:
+  endpoints:
+    enabled-by-default: false

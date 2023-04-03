@@ -16,6 +16,8 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.http.codec.json.Jackson2JsonEncoder
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction
+import org.springframework.web.reactive.function.client.ExchangeFilterFunctions
 import org.springframework.web.reactive.function.client.ExchangeStrategies
 import org.springframework.web.reactive.function.client.WebClient
 import java.net.URI
@@ -45,6 +47,7 @@ class HttpRootKeyConsumer(val publisher: DeploymentEventPublisher) {
 
             val client = WebClient.builder()
                 .exchangeStrategies(exchangeStrategies)
+                .filter(ExchangeFilterFunctions.basicAuthentication("actuator","actuator"))
                 .baseUrl("http://${host}:${port}")
                 .build()
 

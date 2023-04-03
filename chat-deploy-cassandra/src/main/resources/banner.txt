@@ -19,4 +19,5 @@
 | \_____ ( ( | ||___ ||___ |( ( | || | | |( (_| || |    ( ( | |
  \______) \_||_|(___/ (___/  \_||_||_| |_| \____||_|     \_||_|
 
-:: Built with Spring Boot :: ${spring-boot.version}
+${application.title} ${application.version}
+Powered by Spring Boot ${spring-boot.version}

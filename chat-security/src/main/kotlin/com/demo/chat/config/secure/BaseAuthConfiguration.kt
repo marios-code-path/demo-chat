@@ -11,10 +11,12 @@ import com.demo.chat.secure.Summarizer
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.secure.service.AbstractAuthenticationService
 import com.demo.chat.secure.service.AuthorizationMetadataService
-import com.demo.chat.secure.service.ChatAuthenticationManager
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
+import org.springframework.security.crypto.factory.PasswordEncoderFactories
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
 
 open class BaseAuthConfiguration<T, V, Q>(
     private val rootKeys: RootKeys<T>,
@@ -27,6 +29,7 @@ open class BaseAuthConfiguration<T, V, Q>(
     private val userHandleSearch: (String) -> Q,
     private val passwordValidator: (String, String) -> Boolean //{ input, secure -> input == secure }
 ) {
+
     @Bean
     open fun authorizationService(): AuthorizationService<T, AuthMetadata<T>> =
         AuthorizationMetadataService(
@@ -48,14 +51,16 @@ open class BaseAuthConfiguration<T, V, Q>(
     )
 
     @Bean
-    // This is going to be deprecated on the fact that we
-    // can use an authorization server instead.
-    open fun authenticationManager(authenticationService: AuthenticationService<T>) =
-        ChatAuthenticationManager(
-            authenticationService,
-            persistServices.userPersistence(),
-        )
+    open fun encFactory(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
     @Bean
     open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authMan)
+
+    // Deprecated because AbstractUserDetailsReactiveAuthenticationManager already takes care of this with
+    // the ChatUserDetailsService
+//    open fun authenticationManager(authenticationService: AuthenticationService<T>) =
+//        ChatAuthenticationManager(
+//            authenticationService,
+//            persistServices.userPersistence(),
+//        )
 }

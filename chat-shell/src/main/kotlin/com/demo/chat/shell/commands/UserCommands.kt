@@ -74,6 +74,9 @@ class UserCommands<T>(
     @ShellMethod("Get a user")
     fun getUser(@ShellOption handle: String): String? = userService
         .findByUsername(ByStringRequest(handle))
+        .doOnNext {
+            println("KEY = ${it}")
+        }
         .map(::userToString)
         .reduce { t, u -> t + u }
         .block()

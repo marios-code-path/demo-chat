@@ -1,0 +1,7 @@
+spring:
+  cassandra:
+    schema-action: create_if_not_exists
+    request:
+      consistency: one
+      serial-consistency: any
+    base-packages: com.demo.chat.persistence.cassandra.repository

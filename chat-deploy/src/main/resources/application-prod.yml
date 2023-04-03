@@ -31,7 +31,7 @@ spring:
     consul:
       discovery:
         enabled: true
-        tags: rsocket
+        tags: ${app.proto}
         port: ${spring.rsocket.server.port}
         metadata:
           rsocketPort: ${spring.rsocket.server.port}
@@ -42,12 +42,3 @@ spring:
         enabled: true
         format: YAML
         data-key: data
-
-#spring:
-#  rsocket:
-#    server:
-#      transport: websocket
-#      mapping-path: /rsocket
-
-#app:
-#  suffix: ${git.commit.id.abbrev}-${git.branch}

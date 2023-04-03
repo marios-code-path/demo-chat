@@ -44,12 +44,12 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
             AuthMetadata.create(
                 key = keyGen.nextKey(),
                 principal = user.key,
-                target = targetKey, perm = "TEST", exp = Long.MAX_VALUE
+                target = targetKey, perm = "TEST", exp = Long.MAX_VALUE, muted = false
             ),
             AuthMetadata.create(
                 key = keyGen.nextKey(),
                 principal = user.key,
-                target = targetKey, perm = "TEST2", exp = Long.MAX_VALUE
+                target = targetKey, perm = "TEST2", exp = Long.MAX_VALUE, muted = false
             )
         )
 

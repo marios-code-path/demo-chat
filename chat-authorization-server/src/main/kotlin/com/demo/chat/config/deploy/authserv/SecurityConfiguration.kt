@@ -29,7 +29,7 @@ import java.security.interfaces.RSAPrivateKey
 import java.security.interfaces.RSAPublicKey
 import java.util.*
 
-//@Configuration
+@Configuration
 class SecurityConfiguration {
 
     @Throws(Exception::class)

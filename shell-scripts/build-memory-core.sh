@@ -8,7 +8,8 @@ while getopts :edicon:k:b: o; do
     i)
       export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
 -Dapp.users.create=true -Dapp.rootkeys.create=true -Dapp.rootkeys.publish.scheme=kv \
--Dspring.config.location=classpath:/application.yml,classpath:/userinit.yml"
+-Dspring.config.location=classpath:/application.yml,classpath:/userinit.yml \
+-Dspring.cloud.consul.discovery.health-check-headers[0]='Authorization: Basic QXV0aG9yaXphdGlvbjogQmFzaWMg'"
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
@@ -62,9 +63,9 @@ export APP_MAIN_CLASS="com.demo.chat.deploy.memory.MemoryDeploymentApp"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy
 
-export MAIN_FLAGS="-Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} -Dapp.key.type=${KEYSPACE_TYPE} \
--Dspring.shell.interactive.enabled=false"
+export MAIN_FLAGS="-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR \
+-Dspring.profiles.active=${SPRING_PROFILE} -Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dspring.shell.interactive.enabled=false -Dendpoints.health.sensitive=true"
 export PORTS_FLAGS="-Dserver.port=$((CORE_PORT+1)) -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT}"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth"
