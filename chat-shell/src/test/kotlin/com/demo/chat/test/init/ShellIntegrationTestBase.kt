@@ -33,14 +33,14 @@ open class ShellIntegrationTestBase {
     companion object {
         val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
 
-        val container = GenericContainer(imageName).withExposedPorts(6790, 6791, 6792)
+        val container = GenericContainer(imageName).withExposedPorts(6790, 6792)
             .apply {
                 start()
                 setWaitStrategy(
                     LogMessageWaitStrategy()
-                        .withRegEx("^In-Memory Deployment Started.*") //Netty started on port
+                        .withRegEx("*Netty RSocket started*") //Netty started on port
                         .withTimes(1)
-                        .withStartupTimeout(Duration.ofSeconds(30))
+                        .withStartupTimeout(Duration.ofSeconds(5))
                 )
                 withReuse(true)
             }
@@ -73,5 +73,4 @@ open class ShellIntegrationTestBase {
             registry.add("app.client.discovery.local.port") { servicePort }
         }
     }
-
 }
