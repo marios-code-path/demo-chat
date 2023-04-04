@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 	classes = [AuthServiceApp::class],
 	properties = [
+		"spring.config.location=classpath:application-test.yml",
 		"app.service.core.key", "app.service.security.userdetails",
 		"app.service.core.index","app.service.core.persistence","app.service.composite.auth",
 		"app.service.core.secrets", "app.composite.service.auth", "app.composite.service.user",// add clients
