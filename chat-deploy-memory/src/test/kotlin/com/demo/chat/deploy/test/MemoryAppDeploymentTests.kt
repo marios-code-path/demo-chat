@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.web.reactive.context.ReactiveWebApplicationContext
 import org.springframework.stereotype.Controller
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 
 @SpringBootTest(classes = [MemoryDeploymentApp::class],
@@ -23,7 +22,6 @@ import org.springframework.test.context.TestPropertySource
         "app.controller.user","spring.config.location=classpath:/application.yml"
     ]
 )
-@ActiveProfiles("memory")
 class MemoryAppDeploymentTests {
 
     @Autowired

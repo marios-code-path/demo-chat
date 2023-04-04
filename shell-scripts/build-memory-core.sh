@@ -8,7 +8,7 @@ while getopts :edicon:k:b: o; do
     i)
       export BOOTSTRAP_FLAGS="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
 -Dapp.users.create=true -Dapp.rootkeys.create=true -Dapp.rootkeys.publish.scheme=kv \
--Dspring.config.location=classpath:/application.yml,classpath:/userinit.yml \
+-Dspring.config.additional-location=classpath:/config/userinit.yml \
 -Dspring.cloud.consul.discovery.health-check-headers[0]='Authorization: Basic QXV0aG9yaXphdGlvbjogQmFzaWMg'"
       ;;
     n)
@@ -56,7 +56,7 @@ export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=core_services}
 export DOCKER_ARGS="${DOCKER_ARGS} --name ${DEPLOYMENT_NAME}"
 
 # how to auto-discover consul using dns alone!
-export SPRING_PROFILE="exec-chat"
+export SPRING_PROFILE="prod,consul"
 export APP_PRIMARY_NAME="core"
 export APP_IMAGE_NAME="memory-${APP_PRIMARY_NAME}-services-rsocket"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.MemoryDeploymentApp"
@@ -66,7 +66,7 @@ export MAVEN_PROFILE=-Pdeploy
 export MAIN_FLAGS="-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR \
 -Dspring.profiles.active=${SPRING_PROFILE} -Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dspring.shell.interactive.enabled=false -Dendpoints.health.sensitive=true"
-export PORTS_FLAGS="-Dserver.port=$((CORE_PORT+1)) -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT}"
+export PORTS_FLAGS="-Dserver.port=$((CORE_PORT+2)) -Dmanagement.server.port=$((CORE_PORT+2)) -Dspring.rsocket.server.port=${CORE_PORT}"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth"
 export CONTROLLER_FLAGS="-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \

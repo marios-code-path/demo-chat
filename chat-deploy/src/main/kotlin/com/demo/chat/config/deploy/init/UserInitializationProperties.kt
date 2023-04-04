@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 @ConditionalOnProperty("app.users.create", havingValue = "true")
 @EnableConfigurationProperties(UserInitializationProperties::class)
-class UserInitPropertiesConfiguration
+open class UserInitPropertiesConfiguration
 
 @ConfigurationProperties("app.init")
 data class UserInitializationProperties @ConstructorBinding constructor(

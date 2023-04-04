@@ -16,7 +16,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 @SpringJUnitConfig(initializers = [LoadInitializationPropertyTests.TestProperties::class])
 @Import(LoadInitializationPropertyTestsConfig::class)
 class LoadInitializationPropertyTests {
-    class TestProperties : YamlFileContextInitializer("classpath:/config/userinit.yml")
+    class TestProperties : YamlFileContextInitializer("classpath:/userinit.yml")
 
     @Autowired
     private lateinit var props: UserInitializationProperties

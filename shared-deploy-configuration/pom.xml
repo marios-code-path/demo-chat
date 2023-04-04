@@ -13,15 +13,18 @@
     <name>shared-deploy-configuration</name>
     <description>Shared resources for configuration properties</description>
     <build>
+
         <resources>
             <resource>
-                <directory>.</directory>
+                <directory>src/main/config</directory>
                 <includes>
-                    <include>config/**/*.yml</include>
+                    <include>**/*</include>
                 </includes>
                 <filtering>false</filtering>
+                <targetPath>config</targetPath>
             </resource>
         </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

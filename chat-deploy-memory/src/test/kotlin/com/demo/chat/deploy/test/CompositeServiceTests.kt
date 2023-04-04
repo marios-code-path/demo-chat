@@ -20,7 +20,6 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
-import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.TestPropertySource
 import org.springframework.util.MimeTypeUtils
 import reactor.core.publisher.Hooks
@@ -45,7 +44,6 @@ import java.util.*
         "spring.config.location=classpath:/application.yml"
     ]
 )
-@ActiveProfiles("memory")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CompositeServiceTests {
 
