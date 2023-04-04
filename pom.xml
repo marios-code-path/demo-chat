@@ -56,6 +56,7 @@
         <module>chat-messaging-pulsar</module>
 
         <module>chat-client-consul</module>
+        <module>shared-deploy-configuration</module>
         <module>chat-deploy</module>
         <module>chat-deploy-memory</module>
         <module>chat-deploy-redis</module>

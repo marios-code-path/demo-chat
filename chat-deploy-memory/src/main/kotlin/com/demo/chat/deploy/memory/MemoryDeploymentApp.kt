@@ -1,5 +1,6 @@
 package com.demo.chat.deploy.memory
 
+import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.runApplication
@@ -17,6 +18,7 @@ class MemoryDeploymentApp {
         fun main(args: Array<String>) {
             Hooks.onOperatorDebug()
             runApplication<MemoryDeploymentApp>(*args)
+            SpringApplication.run(MemoryDeploymentApp::class.java, *args)
         }
     }
 
