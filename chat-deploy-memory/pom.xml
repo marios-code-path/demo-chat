@@ -48,6 +48,24 @@
             </build>
         </profile>
         <profile>
+            <id>consul</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-client-consul</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-consul-config</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>default</id>
             <activation><activeByDefault>true</activeByDefault></activation>
             <build><plugins>
@@ -62,11 +80,6 @@
         </profile>
     </profiles>
     <dependencies>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-client-consul</artifactId>
-            <version>0.0.1</version>
-        </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-index-lucene</artifactId>
@@ -109,10 +122,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-reflect</artifactId>
         </dependency>
@@ -124,10 +133,6 @@
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

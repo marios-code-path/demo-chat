@@ -61,7 +61,7 @@ export APP_PRIMARY_NAME="core"
 export APP_IMAGE_NAME="memory-${APP_PRIMARY_NAME}-services-rsocket"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.MemoryDeploymentApp"
 export APP_VERSION=0.0.1
-export MAVEN_PROFILE=-Pdeploy
+export MAVEN_PROFILE=-Pdeploy,consul
 
 export MAIN_FLAGS="-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR \
 -Dspring.profiles.active=${SPRING_PROFILE} -Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} \
