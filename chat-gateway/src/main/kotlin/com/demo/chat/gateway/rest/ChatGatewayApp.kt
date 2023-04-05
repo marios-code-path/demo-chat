@@ -1,7 +1,11 @@
-package com.demo.chat
+package com.demo.chat.gateway.rest
 
+import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
+import org.springframework.web.reactive.config.EnableWebFlux
 
+@SpringBootApplication
+@EnableWebFlux
 class ChatGatewayApp {
     companion object {
         @JvmStatic
@@ -10,3 +14,5 @@ class ChatGatewayApp {
         }
     }
 }
+
+

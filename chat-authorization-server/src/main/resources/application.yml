@@ -5,12 +5,9 @@ spring:
     name: chat-authorization-server
   main:
     web-application-type: servlet
-  cloud:
-    consul:
-      enabled: false
-      discovery:
-        enabled: false
-      config:
-        enabled: false
-        format: YAML
-        data-key: data
+
+app:
+  primary: auth
+  proto: rsocket
+  key:
+    type: long

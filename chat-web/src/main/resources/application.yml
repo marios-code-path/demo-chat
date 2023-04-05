@@ -1,0 +1,47 @@
+server:
+  port: 6700
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO
+#    org.springframework.boot.autoconfigure: DEBUG
+
+spring:
+  thymeleaf:
+    cache: false
+  security:
+    oauth2:
+      client:
+        registration:
+          chat-client-oidc:
+            provider: spring
+            client-id: chat-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/{registrationId}"
+            scope: openid, profile
+            client-name: chat-client-oidc
+          chat-client-authorization-code:
+            provider: spring
+            client-id: chat-client
+            client-secret: secret
+            authorization-grant-type: authorization_code
+            redirect-uri: "http://127.0.0.1:8080/authorized"
+            scope: chat.listen,chat.signup,chat.signin
+            client-name: chat-client-authorization-code
+          chat-client-client-credentials:
+            provider: spring
+            client-id: messaging-client
+            client-secret: secret
+            authorization-grant-type: client_credentials
+            scope: chat.listen,chat.signup
+            client-name: chat-client-client-credentials
+        provider:
+          spring:
+            issuer-uri: http://localhost:9000
+
+users:
+  base-uri: http://127.0.0.1:8090/chat/users

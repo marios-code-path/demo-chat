@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest
 	classes = [AuthServiceApp::class],
 	properties = [
 	//	"spring.config.location=classpath:application.yml",
-		"app.service.core.key", "app.service.security.userdetails",
+		"app.service.core.key", "app.service.security.userdetails", "app.service.security.userdetails",
 		"app.service.core.index","app.service.core.persistence","app.service.composite.auth",
 		"app.service.core.secrets", "app.composite.service.auth", "app.composite.service.user",// add clients
 		])

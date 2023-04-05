@@ -28,7 +28,7 @@ while getopts :edicon:k:b: o; do
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
     d)
-      export DOCKER_ARGS="${DOCKER_ARGS} --expose 6790 -p 6790:6790/tcp --expose 6792 -p 6792:6792/tcp --expose 6791 -p 6791:6791/tcp"
+      export DOCKER_ARGS="${DOCKER_ARGS} -d --expose 6790 -p 6790:6790/tcp --expose 6792 -p 6792:6792/tcp --expose 6791 -p 6791:6791/tcp"
       ;;
     *)
       cat << CATZ

@@ -8,13 +8,13 @@
         <version>0.0.1</version>
     </parent>
 
-    <artifactId>chat-gateway</artifactId>
+    <artifactId>chat-web</artifactId>
     <version>0.0.1</version>
-    <name>chat-gateway</name>
-    <description>Spring Cloud Gateway to Chat services</description>
+    <name>chat-web</name>
+    <description>WEB-UI to Chat services</description>
     <properties>
-        <appImageName>docker.io/library/chat-gateway:${project.version}</appImageName>
-        <mainClass>com.demo.chat.gateway.rest.ChatGatewayApp</mainClass>
+        <appImageName>docker.io/library/chat-web:${project.version}</appImageName>
+        <mainClass>com.demo.chat.ui.ChatWebApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>
@@ -71,6 +71,30 @@
             <artifactId>chat-core</artifactId>
             <version>0.0.1</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>webjars-locator-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>bootstrap</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>jquery</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
@@ -78,10 +102,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
