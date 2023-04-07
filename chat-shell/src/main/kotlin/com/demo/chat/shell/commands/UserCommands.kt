@@ -2,8 +2,6 @@ package com.demo.chat.shell.commands
 
 import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
 import com.demo.chat.domain.*
-import com.demo.chat.domain.knownkey.Admin
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
@@ -18,7 +16,6 @@ import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.function.Supplier
 
 @Profile("shell")
 @ShellComponent
@@ -89,7 +86,7 @@ class UserCommands<T>(
         return userService
             .findByUserId(ByIdRequest(identity(userId)))
             .switchIfEmpty(Mono.error(NotFoundException))
-            .flatMap { passwdStore.addCredential(KeyCredential(it.key, password)) }
+            .flatMap { passwdStore.addCredential(KeyCredential(it.key, "{noop}"+password)) }
             .map { "Password Changed." }
             .block()
     }

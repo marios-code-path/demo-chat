@@ -3,7 +3,6 @@ package com.demo.chat.shell.commands
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
-import com.demo.chat.service.init.RootKeyService
 import com.demo.chat.shell.ShellStateConfiguration.Companion.loggedInUser
 import com.demo.chat.shell.ShellStateConfiguration.Companion.loginMetadata
 import org.springframework.context.annotation.Profile
@@ -24,7 +23,7 @@ class LoginCommands<T>(
 
     @ShellMethod("rootkeys")
     fun rootKeys(): String {
-        return RootKeyService.rootKeySummary(rootKeys)
+        return RootKeys.rootKeySummary(rootKeys)
     }
 
     @ShellMethod("whoami")

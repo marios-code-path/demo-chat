@@ -1,6 +1,6 @@
 package com.demo.chat.service.init
 
-import com.demo.chat.deploy.KnownRootKeys
+import com.demo.chat.domain.KnownRootKeys
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
 import java.util.function.Supplier

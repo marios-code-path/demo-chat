@@ -1,6 +1,7 @@
 package com.demo.chat.domain.knownkey
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KnownRootKeys
 import java.util.concurrent.ConcurrentHashMap
 
 class RootKeys<T> {
@@ -28,6 +29,20 @@ class RootKeys<T> {
         }
         else {
             false
+        }
+    }
+
+    companion object {
+        fun <T> rootKeySummary(rootKeys: RootKeys<T>): String {
+            val sb = StringBuilder()
+
+            sb.append("Root Keys: \n")
+            for (rootKey in KnownRootKeys.knownRootKeys) {
+                if (rootKeys.hasRootKey(rootKey))
+                    sb.append("${rootKey.simpleName}=${rootKeys.getRootKey(rootKey)}\n")
+            }
+
+            return sb.toString()
         }
     }
 }

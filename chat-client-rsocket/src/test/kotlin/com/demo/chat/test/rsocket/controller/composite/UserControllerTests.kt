@@ -1,14 +1,11 @@
 package com.demo.chat.test.rsocket.controller.composite
 
-import com.demo.chat.controller.composite.mapping.MessageServiceControllerMapping
 import com.demo.chat.controller.composite.mapping.UserServiceControllerMapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.domain.Key
-import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
-import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase

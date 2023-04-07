@@ -1,8 +1,8 @@
 package com.demo.chat.deploy.test
 
 import com.demo.chat.config.deploy.init.*
-import com.demo.chat.deploy.KnownRootKeys.Companion.knownRootKeys
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.KnownRootKeys.Companion.knownRootKeys
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
@@ -55,7 +55,7 @@ open class MockInitializationTests<T>(
         val rootKeys = RootKeys<T>()
 
         rootKeys.merge(rootKeyCreator.get())
-        val summary = RootKeyService.rootKeySummary(rootKeys)
+        val summary = RootKeys.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)
@@ -116,7 +116,7 @@ open class MockInitializationTests<T>(
                 )
             }
 
-        val summary = RootKeyService.rootKeySummary(rootKeys)
+        val summary = RootKeys.rootKeySummary(rootKeys)
 
         Assertions
             .assertThat(summary)

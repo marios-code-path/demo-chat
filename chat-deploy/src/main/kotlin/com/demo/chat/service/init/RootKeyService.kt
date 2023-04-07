@@ -1,6 +1,5 @@
 package com.demo.chat.service.init
 
-import com.demo.chat.deploy.KnownRootKeys.Companion.knownRootKeys
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyDataPair
 import com.demo.chat.domain.TypeUtil
@@ -49,18 +48,4 @@ class RootKeyService<T>(
                 ObjectMapper(YAMLFactory()).writeValueAsString(rootKeys.getMapOfKeyMap())
             )
         ).block()
-
-    companion object {
-        fun <T> rootKeySummary(rootKeys: RootKeys<T>): String {
-            val sb = StringBuilder()
-
-            sb.append("Root Keys: \n")
-            for (rootKey in knownRootKeys) {
-                if (rootKeys.hasRootKey(rootKey))
-                    sb.append("${rootKey.simpleName}=${rootKeys.getRootKey(rootKey)}\n")
-            }
-
-            return sb.toString()
-        }
-    }
 }

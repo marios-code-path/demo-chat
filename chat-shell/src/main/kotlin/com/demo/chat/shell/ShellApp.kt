@@ -23,7 +23,6 @@ import reactor.core.publisher.Hooks
 import java.util.*
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell.commands"])
-
 @EnableRSocketSecurity
 class BaseApp {
 

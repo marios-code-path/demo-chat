@@ -16,12 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-security</artifactId>
+            <artifactId>chat-core</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>

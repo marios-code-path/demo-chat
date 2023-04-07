@@ -28,12 +28,6 @@ class DefaultSecurityConfig {
         return http.build()
     }
 
-    @Bean fun userDetailManager() = InMemoryUserDetailsManager(
-        User.withDefaultPasswordEncoder()
-        .username("user")
-        .password("password")
-        .roles("USER", "LISTEN").build())
-
     @Bean fun sessionRegistry() = SessionRegistryImpl()
 
     @Bean fun httpSessionEvenPublisher() = HttpSessionEventPublisher()

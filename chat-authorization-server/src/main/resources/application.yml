@@ -1,16 +1,6 @@
-server:
-  port: 9000
 spring:
   application:
     name: chat-authorization-server
-  main:
-    web-application-type: servlet
-
-app:
-  primary: auth
-  proto: rsocket
-  key:
-    type: long
 
 logging:
   level:

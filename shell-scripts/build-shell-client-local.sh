@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-cd ../chat-shell
 source ../shell-scripts/ports.sh
 
-export DISCOVERY_ARGS="-Dapp.client.discovery=properties -Dspring.config.additional-location=classpath:/client-local.yml"
-export SPRING_PROFILE="shell"
+export DISCOVERY_ARGS="-Dapp.client.discovery=properties -Dspring.config.additional-location=classpath:/config/client-local.yml"
 export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
 
-while getopts ":sdcgk:b:n:p:" o; do
+while getopts ":sdcgm:k:b:n:p:" o; do
   case $o in
+    m)
+      export MODULE=${OPTARG}
+      ;;
     p)
-      export SPRING_PROFILE="${SPRING_PROFILE},${OPTARG}"
+      export SPRING_PROFILE="${OPTARG}"
       ;;
     g)
       export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS} -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
@@ -19,9 +20,8 @@ while getopts ":sdcgk:b:n:p:" o; do
       ;;
     c)
       export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} \
--Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul -Dspring.config.additional-location=classpath:/client-consul.yml"
+-Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul -Dspring.config.additional-location=classpath:/config/client-consul.yml"
       export MAVEN_PROFILES="-P discovery-consul"
-      export SPRING_PROFILE="${SPRING_PROFILE},consul"
       export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"
       ;;
     k)
@@ -45,28 +45,19 @@ CATZ
   esac
 done
 
-export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_shell}
-export DOCKER_CNAME="--name ${DEPLOYMENT_NAME}"
+cd ../$MODULE
 
-export APP_PRIMARY="shell"
-export APP_IMAGE_NAME="chat-shell"
-export APP_MAIN_CLASS="com.demo.chat.init.BaseApp"
+export DEPLOYMENT_NAME=${DEPLOYMENT_NAME:=chat_client_deploy}
+export DOCKER_CNAME="--name ${DEPLOYMENT_NAME}"
 export APP_VERSION=0.0.1
 # Say when discovery_consul is deactivated, we don't want to pass in the consul host and port, or configure discovery
 # and KV store
 
-export MAIN_FLAGS="-Dspring.profiles.active=${SPRING_PROFILE} -Dspring.shell.interactive.enabled=true \
--Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=shell -Dmanagement.endpoints.enabled-by-default=false"
-export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
--Dapp.rsocket.transport.unprotected -Dapp.client.rsocket.core.key -Dapp.client.config=properties \
--Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
--Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
--Dapp.client.rsocket.composite.topic"
+export MAIN_FLAGS="${MAIN_FLAGS} -Dspring.profiles.active=${SPRING_PROFILE} \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} -Dmanagement.endpoints.enabled-by-default=false"
 export DISCOVERY_FLAGS="${DISCOVERY_ARGS} -Dspring.cloud.service-registry.auto-registration.enabled=false \
 -Dspring.cloud.consul.config.enabled=false"
-export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
 export BOOTSTRAP_FLAGS="${INIT_CONFIG}"
-export PORTS_FLAGS="-Dserver.port=0"
 
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
@@ -86,6 +77,6 @@ set -x
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && MAVEN_ARG="spring-boot:build-image"
 [[ $RUN_MAVEN_ARG == "runlocal" ]] && MAVEN_ARG="spring-boot:run"
 
-mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILES -DskipTests
+mvn -DimageName=${APP_IMAGE_NAME} $MAVEN_PROFILES -DskipTests $MAVEN_ARG
 
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm -d $APP_IMAGE_NAME:$APP_VERSION

@@ -28,7 +28,7 @@ class RootKeysKVTests {
 
         svc.consumeRootKeys(rootKeys)
 
-        println(RootKeyService.rootKeySummary(rootKeys))
+        println(RootKeys.rootKeySummary(rootKeys))
     }
 }
 

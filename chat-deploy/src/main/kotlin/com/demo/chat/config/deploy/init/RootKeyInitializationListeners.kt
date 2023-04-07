@@ -24,7 +24,7 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
     @Bean
     fun listenForRootKeyInitialized(): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
         ApplicationListener { evt ->
-            publisher.publishEvent(StartupAnnouncementEvent(RootKeyService.rootKeySummary(evt.rootKeys)))
+            publisher.publishEvent(StartupAnnouncementEvent(RootKeys.rootKeySummary(evt.rootKeys)))
         }
 
     @Bean

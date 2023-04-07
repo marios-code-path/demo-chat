@@ -78,6 +78,21 @@
 			</dependencies>
 		</profile>
 		<profile>
+			<id>client-local</id>
+			<dependencies>
+				<dependency>
+					<groupId>com.demo</groupId>
+					<artifactId>chat-deploy</artifactId>
+					<version>0.0.1</version>
+				</dependency>
+				<dependency>
+					<groupId>com.demo</groupId>
+					<artifactId>chat-service-rsocket</artifactId>
+					<version>0.0.1</version>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
 			<id>client-consul</id>
 			<dependencies>
 				<dependency>
@@ -113,6 +128,11 @@
 		<dependency>
 			<groupId>com.demo</groupId>
 			<artifactId>chat-core</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>shared-deploy-configuration</artifactId>
 			<version>0.0.1</version>
 		</dependency>
 		<dependency>

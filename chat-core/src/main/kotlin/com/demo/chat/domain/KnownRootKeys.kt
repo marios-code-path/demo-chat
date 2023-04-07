@@ -1,6 +1,5 @@
-package com.demo.chat.deploy
+package com.demo.chat.domain
 
-import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
 
