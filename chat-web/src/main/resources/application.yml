@@ -4,11 +4,18 @@ server:
 logging:
   level:
     root: INFO
-    org.springframework.web: INFO
+    org.springframework.web: TRACE
     org.springframework.security: INFO
-    org.springframework.security.oauth2: INFO
+    org.springframework.security.oauth2: TRACE
 #    org.springframework.boot.autoconfigure: DEBUG
 
+org:
+  springframework:
+    web:
+      reactive:
+        result:
+          view:
+            RedirectView: TRACE
 spring:
   thymeleaf:
     cache: false

@@ -31,6 +31,9 @@ class SecurityConfiguration(val clientRegistrationRepository: ReactiveClientRegi
             .authorizeExchange {
                 it.anyExchange().authenticated()
             }
+            .exceptionHandling { exc ->
+                exc.authenticationEntryPoint(RedirectServerAuthenticationEntryPoint("/oauth2/authorization/chat-client-oidc"))
+            }
             .oauth2Login { oauth2: ServerHttpSecurity.OAuth2LoginSpec ->
                 oauth2
                     .authorizationRequestResolver(authorizationRequestResolver())
