@@ -1,0 +1,6 @@
+FROM maven:3-openjdk-11-slim
+WORKDIR /sample
+COPY src /sample/src
+COPY pom.xml /sample
+
+# Tests DEMO-CHAT in a Docker Container.

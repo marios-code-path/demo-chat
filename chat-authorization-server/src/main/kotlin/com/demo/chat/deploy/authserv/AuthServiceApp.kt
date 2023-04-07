@@ -6,7 +6,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 
 @SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
-@EnableWebSecurity
 open class AuthServiceApp {
     companion object {
         @JvmStatic

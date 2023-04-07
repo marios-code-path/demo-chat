@@ -17,6 +17,8 @@
 		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
 		<mainClass>com.demo.chat.deploy.authserv.AuthServiceApp</mainClass>
 		<appMainClass>${mainClass}</appMainClass>
+		<spring-security.version>6.1.0-M2</spring-security.version>
+
 	</properties>
 	<profiles>
 		<profile>
@@ -98,14 +100,19 @@
 	</profiles>
 
 	<dependencies>
+<!--		<dependency>-->
+<!--			<groupId>com.demo</groupId>-->
+<!--			<artifactId>chat-deploy</artifactId>-->
+<!--			<version>0.0.1</version>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--			<groupId>com.demo</groupId>-->
+<!--			<artifactId>chat-security</artifactId>-->
+<!--			<version>0.0.1</version>-->
+<!--		</dependency>-->
 		<dependency>
 			<groupId>com.demo</groupId>
-			<artifactId>chat-deploy</artifactId>
-			<version>0.0.1</version>
-		</dependency>
-		<dependency>
-			<groupId>com.demo</groupId>
-			<artifactId>chat-security</artifactId>
+			<artifactId>chat-core</artifactId>
 			<version>0.0.1</version>
 		</dependency>
 		<dependency>
@@ -119,7 +126,7 @@
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-oauth2-authorization-server</artifactId>
-			<version>1.0.0</version>
+			<version>1.0.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

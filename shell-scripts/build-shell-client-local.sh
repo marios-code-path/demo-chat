@@ -2,7 +2,7 @@
 cd ../chat-shell
 source ../shell-scripts/ports.sh
 
-export DISCOVERY_ARGS="-Dapp.client.discovery=properties"
+export DISCOVERY_ARGS="-Dapp.client.discovery=properties -Dspring.config.additional-location=classpath:/client-local.yml"
 export SPRING_PROFILE="shell"
 export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
 
@@ -19,7 +19,7 @@ while getopts ":sdcgk:b:n:p:" o; do
       ;;
     c)
       export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} \
--Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul"
+-Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul -Dspring.config.additional-location=classpath:/client-consul.yml"
       export MAVEN_PROFILES="-P discovery-consul"
       export SPRING_PROFILE="${SPRING_PROFILE},consul"
       export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"

@@ -1,5 +1,5 @@
 server:
-  port: 6700
+  port: 8080
 
 logging:
   level:
@@ -22,7 +22,7 @@ spring:
             client-secret: secret
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/{registrationId}"
-            scope: openid, profile
+            scope: openid, profile, message, topic, membership
             client-name: chat-client-oidc
           chat-client-authorization-code:
             provider: spring
@@ -30,18 +30,18 @@ spring:
             client-secret: secret
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/authorized"
-            scope: chat.listen,chat.signup,chat.signin
+            scope: openid, profile, message, topic, membership
             client-name: chat-client-authorization-code
-          chat-client-client-credentials:
+          chat-client-credentials:
             provider: spring
-            client-id: messaging-client
+            client-id: chat-client
             client-secret: secret
             authorization-grant-type: client_credentials
-            scope: chat.listen,chat.signup
-            client-name: chat-client-client-credentials
+            scope: openid, profile, message, topic, membership
+            client-name: chat-client-credentials
         provider:
           spring:
             issuer-uri: http://localhost:9000
 
 users:
-  base-uri: http://127.0.0.1:8090/chat/users
+  base-uri: http://127.0.0.1:6702/chat/users

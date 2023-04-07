@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 9000
 spring:
   application:
     name: chat-authorization-server
@@ -11,3 +11,10 @@ app:
   proto: rsocket
   key:
     type: long
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: TRACE
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE
