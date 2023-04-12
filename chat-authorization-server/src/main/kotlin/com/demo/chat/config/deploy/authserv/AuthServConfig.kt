@@ -1,36 +1,35 @@
 package com.demo.chat.config.deploy.authserv
 
+import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
-import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.io.Resource
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
-import org.springframework.security.oauth2.core.AuthorizationGrantType
-import org.springframework.security.oauth2.core.ClientAuthenticationMethod
-import org.springframework.security.oauth2.core.oidc.OidcScopes
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.authorization.*
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
-import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.util.*
 
 @Configuration
-class AuthServConfig {
+class AuthServConfig() {
+
+    @Value("\${app.oauth2.entrypoint-path}")
+    private lateinit var entrypointPath: String
 
     @Throws(Exception::class)
     @Bean
@@ -42,7 +41,7 @@ class AuthServConfig {
         http.exceptionHandling { exceptions ->
             exceptions
                 .authenticationEntryPoint(
-                    LoginUrlAuthenticationEntryPoint("/login")
+                    LoginUrlAuthenticationEntryPoint(entrypointPath)
                 )
         }
             .oauth2ResourceServer { it.jwt() }
@@ -50,41 +49,32 @@ class AuthServConfig {
         return http.build()
     }
 
-    @Bean
-    fun registeredClientRepository(): RegisteredClientRepository {
-        val registeredClient = RegisteredClient.withId(UUID.randomUUID().toString())
-            .clientId("chat-client")
-            .clientSecret("{noop}secret") //TODO enhance
-            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-            .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-            .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-            .redirectUri("http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc")
-            .redirectUri("http://127.0.0.1:8080/authorized")
-            .scope(OidcScopes.OPENID)
-            .scope(OidcScopes.PROFILE)
-            .scope("message")
-            .scope("topic")
-            .scope("membership")
-            .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-            .build()
-
-        return InMemoryRegisteredClientRepository(registeredClient)
-    }
+    @Value("\${app.oauth2.jwk.path}")
+    private lateinit var resource: String
 
     @Bean
-    fun jwkSource(): JWKSource<SecurityContext> {
-        val keyPair = generateRsaKey()
-        val publicKey = keyPair.getPublic() as RSAPublicKey
-        val privateKey = keyPair.getPrivate() as RSAPrivateKey
-        val rsaKey = RSAKey.Builder(publicKey)
-            .privateKey(privateKey)
-            .keyID(UUID.randomUUID().toString())
-            .build()
+    fun jwkSetSource(): JWKSource<SecurityContext> {
+        //val jwkContent: String = resource.inputStream.bufferedReader().use { it.readText() }
+        val jwkContent: String = Files.readAllBytes(Paths.get(resource)).toString(Charsets.UTF_8)
+        val jwk = JWK.parse(jwkContent)
+        val jwkSet = JWKSet(jwk)
 
-        val jwkSet = JWKSet(rsaKey)
         return ImmutableJWKSet(jwkSet)
     }
+//
+//    @Bean
+//    fun jwkSource(): JWKSource<SecurityContext> {
+//        val keyPair = generateRsaKey()
+//        val publicKey = keyPair.getPublic() as RSAPublicKey
+//        val privateKey = keyPair.getPrivate() as RSAPrivateKey
+//        val rsaKey = RSAKey.Builder(publicKey)
+//            .privateKey(privateKey)
+//            .keyID(UUID.randomUUID().toString())
+//            .build()
+//
+//        val jwkSet = JWKSet(rsaKey)
+//        return ImmutableJWKSet(jwkSet)
+//    }
 
     @Bean
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
@@ -101,7 +91,7 @@ class AuthServConfig {
     }
 
     @Bean
-    fun authorizationServersettings(): AuthorizationServerSettings =
+    fun authorizationServerSettings(): AuthorizationServerSettings =
         AuthorizationServerSettings.builder().build()
 
     companion object {

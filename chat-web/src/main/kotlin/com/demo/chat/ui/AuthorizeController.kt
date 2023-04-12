@@ -20,6 +20,7 @@ class AuthorizeController {
     ): Mono<String> {
         val messages = arrayOf("clientA", "clientB", "clientC34")
         model.addAttribute("users", messages)
+
         return Mono.just(authorizedClient.accessToken)
             .thenReturn("index")
     }

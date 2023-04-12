@@ -32,7 +32,6 @@ class UserDetailsServiceConfiguration {
         return object : UserDetailsService, UserDetailsPasswordService {
             override fun loadUserByUsername(username: String): org.springframework.security.core.userdetails.UserDetails? {
                 return uds.findByUsername(username).block()
-
             }
 
             override fun updatePassword(user: UserDetails, newPassword: String): UserDetails? {

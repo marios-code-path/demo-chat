@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 source ../shell-scripts/ports.sh
 
-export DISCOVERY_ARGS="-Dapp.client.discovery=properties -Dspring.config.additional-location=classpath:/config/client-local.yml"
+export DISCOVERY_ARGS="-Dapp.client.discovery=properties \
+-Dspring.config.additional-location=classpath:/config/client-local.yml \
+-Dspring.cloud.service-registry.auto-registration.enabled=false \
+-Dspring.cloud.consul.config.enabled=false"
 export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
 
 while getopts ":sdcgm:k:b:n:p:" o; do
@@ -54,10 +57,9 @@ export APP_VERSION=0.0.1
 # and KV store
 
 export MAIN_FLAGS="${MAIN_FLAGS} -Dspring.profiles.active=${SPRING_PROFILE} \
--Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} -Dmanagement.endpoints.enabled-by-default=false \
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} -Dmanagement.endpoints.enabled-by-default=true \
 -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
-export DISCOVERY_FLAGS="${DISCOVERY_ARGS} -Dspring.cloud.service-registry.auto-registration.enabled=false \
--Dspring.cloud.consul.config.enabled=false"
+export DISCOVERY_FLAGS="${DISCOVERY_ARGS}"
 export BOOTSTRAP_FLAGS="${INIT_CONFIG}"
 
 # makes no use of cloud configuration or config-maps
@@ -82,4 +84,4 @@ set -x
 
 mvn -DimageName=${APP_IMAGE_NAME} $MAVEN_PROFILES -DskipTests $MAVEN_ARG
 
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
+# [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION

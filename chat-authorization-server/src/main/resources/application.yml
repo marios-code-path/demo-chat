@@ -2,9 +2,24 @@ spring:
   application:
     name: chat-authorization-server
 
+app:
+  oauth2:
+    jwk:
+      path: /Users/grayma/workspace/demo-chat/shell-scripts/dckeys22097/server_keycert.jwk
+    entrypoint-path: /login
+    client:
+      id: chat-client
+      key: 31649af5-0154-4be5-8695-fda9d18b7981
+      secret: "{noop}secret"
+      redirect-uri-prefix: http://localhost:8080
+      additional-scopes:
+        - topic.*
+        - user.create
+        - user.signin
+
 logging:
   level:
     root: INFO
-    org.springframework.web: TRACE
-    org.springframework.security: TRACE
-    org.springframework.security.oauth2: TRACE
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: INFO

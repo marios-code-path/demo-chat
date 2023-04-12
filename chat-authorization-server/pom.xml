@@ -17,7 +17,7 @@
 		<appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
 		<mainClass>com.demo.chat.deploy.authserv.AuthServiceApp</mainClass>
 		<appMainClass>${mainClass}</appMainClass>
-		<spring-security.version>6.1.0-M2</spring-security.version>
+<!--		<spring-security.version>6.1.0-M2</spring-security.version>-->
 
 	</properties>
 	<profiles>
@@ -50,6 +50,19 @@
 			</build>
 		</profile>
 		<profile>
+			<id>register-consul</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework.cloud</groupId>
+					<artifactId>spring-cloud-starter-consul-discovery</artifactId>
+				</dependency>
+				<dependency>
+					<groupId>org.springframework.cloud</groupId>
+					<artifactId>spring-cloud-starter-consul-config</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
 			<id>noartifact</id>
 			<activation><activeByDefault>true</activeByDefault></activation>
 			<build>
@@ -65,29 +78,11 @@
 			</build>
 		</profile>
 		<profile>
-			<id>memory</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-			<dependencies>
-				<dependency>
-					<groupId>com.demo</groupId>
-					<artifactId>chat-deploy-memory</artifactId>
-					<version>0.0.1</version>
-				</dependency>
-			</dependencies>
-		</profile>
-		<profile>
 			<id>client-local</id>
 			<dependencies>
 				<dependency>
 					<groupId>com.demo</groupId>
 					<artifactId>chat-deploy</artifactId>
-					<version>0.0.1</version>
-				</dependency>
-				<dependency>
-					<groupId>com.demo</groupId>
-					<artifactId>chat-service-rsocket</artifactId>
 					<version>0.0.1</version>
 				</dependency>
 			</dependencies>
@@ -113,18 +108,21 @@
 			</dependencies>
 		</profile>
 	</profiles>
-
 	<dependencies>
-<!--		<dependency>-->
-<!--			<groupId>com.demo</groupId>-->
-<!--			<artifactId>chat-deploy</artifactId>-->
-<!--			<version>0.0.1</version>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>com.demo</groupId>-->
-<!--			<artifactId>chat-security</artifactId>-->
-<!--			<version>0.0.1</version>-->
-<!--		</dependency>-->
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>chat-service-rsocket</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>com.demo</groupId>
+			<artifactId>shared-deploy-configuration</artifactId>
+			<version>0.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>com.demo</groupId>
 			<artifactId>chat-core</artifactId>
@@ -132,7 +130,7 @@
 		</dependency>
 		<dependency>
 			<groupId>com.demo</groupId>
-			<artifactId>shared-deploy-configuration</artifactId>
+			<artifactId>chat-security</artifactId>
 			<version>0.0.1</version>
 		</dependency>
 		<dependency>

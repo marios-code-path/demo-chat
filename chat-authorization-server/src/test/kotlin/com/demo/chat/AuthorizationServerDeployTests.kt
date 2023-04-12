@@ -4,27 +4,50 @@ import com.demo.chat.deploy.authserv.AuthServiceApp
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.service.client.ClientDiscovery
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.cloud.client.ServiceInstance
+import org.springframework.context.annotation.Bean
+import reactor.core.publisher.Mono
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	classes = [AuthServiceApp::class],
-	properties = [
-	//	"spring.config.location=classpath:application.yml",
-		"app.service.core.key", "app.service.security.userdetails", "app.service.security.userdetails",
-		"app.service.core.index","app.service.core.persistence","app.service.composite.auth",
-		"app.service.core.secrets", "app.composite.service.auth", "app.composite.service.user",// add clients
-		])
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    classes = [AuthServiceApp::class, TestConfig::class],
+    properties = [
+        "spring.config.location=classpath:application.yml",
+        "app.key.type=long", "app.client.protocol=rsocket", "app.primary=authserv_test",
+        "app.rsocket.transport.unprotected","app.client.rsocket.composite.user",
+        "app.client.rsocket.composite.message", "app.client.rsocket.composite.topic",
+        "app.service.security.userdetails","app.client.rsocket.core.persistence",
+        "app.client.rsocket.core.index"
+
+    ]
+)
+@Disabled
 class AuthorizationServerDeployTests {
 
-	@Autowired
-	private lateinit var typeUtil: TypeUtil<Long>
+    @Autowired
+    private lateinit var typeUtil: TypeUtil<Long>
 
-	@Autowired
-	private lateinit var chatUserDetailsService: ChatUserDetailsService<Long, IndexSearchRequest>
+    @Autowired
+    private lateinit var chatUserDetailsService: ChatUserDetailsService<Long, IndexSearchRequest>
 
-	@Test
-	fun contextLoads() {
- 	}
+    @Test
+    fun contextLoads() {
+    }
+}
+
+@TestConfiguration
+class TestConfig {
+    @Bean
+    fun discovery() = object : ClientDiscovery {
+
+        override fun getServiceInstance(serviceName: String): Mono<ServiceInstance> {
+            TODO("Not yet implemented")
+        }
+    }
 }

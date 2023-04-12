@@ -42,6 +42,7 @@ class SecurityConfiguration(val clientRegistrationRepository: ReactiveClientRegi
             .logout { logout ->
                 logout.logoutSuccessHandler(oidcLogoutSuccessHandler())
             }
+
         return http.build()
     }
 

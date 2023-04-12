@@ -3,6 +3,25 @@ app:
   proto: rsocket
   key:
     type: long
+  client:
+    discovery:
+      config:
+        pubsub:
+          prefix: pubsub.
+        index:
+          prefix: index.
+        persistence:
+          prefix: persist.
+        key:
+          prefix: key.
+        message:
+          prefix: message.
+        secrets:
+          prefix: secrets.
+        topic:
+          prefix: topic.
+        user:
+          prefix: user.
 
 logging:
   level:
