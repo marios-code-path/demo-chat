@@ -33,3 +33,6 @@ astra
 
 ### VS Code ###
 .vscode/
+
+### encryption keys ###
+encrypt-keys

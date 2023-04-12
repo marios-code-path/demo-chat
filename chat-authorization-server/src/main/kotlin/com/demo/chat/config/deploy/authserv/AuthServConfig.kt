@@ -19,10 +19,6 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
-import java.nio.file.Files
-import java.nio.file.Paths
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.util.*
 
 @Configuration
@@ -50,31 +46,16 @@ class AuthServConfig() {
     }
 
     @Value("\${app.oauth2.jwk.path}")
-    private lateinit var resource: String
+    private lateinit var resource: Resource
 
     @Bean
     fun jwkSetSource(): JWKSource<SecurityContext> {
-        //val jwkContent: String = resource.inputStream.bufferedReader().use { it.readText() }
-        val jwkContent: String = Files.readAllBytes(Paths.get(resource)).toString(Charsets.UTF_8)
+        val jwkContent: String = resource.inputStream.bufferedReader().use { it.readText() }
         val jwk = JWK.parse(jwkContent)
         val jwkSet = JWKSet(jwk)
 
         return ImmutableJWKSet(jwkSet)
     }
-//
-//    @Bean
-//    fun jwkSource(): JWKSource<SecurityContext> {
-//        val keyPair = generateRsaKey()
-//        val publicKey = keyPair.getPublic() as RSAPublicKey
-//        val privateKey = keyPair.getPrivate() as RSAPrivateKey
-//        val rsaKey = RSAKey.Builder(publicKey)
-//            .privateKey(privateKey)
-//            .keyID(UUID.randomUUID().toString())
-//            .build()
-//
-//        val jwkSet = JWKSet(rsaKey)
-//        return ImmutableJWKSet(jwkSet)
-//    }
 
     @Bean
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
@@ -93,14 +74,4 @@ class AuthServConfig() {
     @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings =
         AuthorizationServerSettings.builder().build()
-
-    companion object {
-        @JvmStatic
-        @Throws(Exception::class)
-        fun generateRsaKey(): KeyPair {
-            val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-            keyPairGenerator.initialize(2048)
-            return keyPairGenerator.generateKeyPair()
-        }
-    }
 }

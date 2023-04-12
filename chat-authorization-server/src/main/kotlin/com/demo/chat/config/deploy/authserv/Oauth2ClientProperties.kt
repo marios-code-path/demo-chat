@@ -11,4 +11,5 @@ open class Oauth2ClientProperties {
     var redirectUriPrefix: String = ""
     var additionalScopes: List<String> = listOf()
     var clientSecret: String = ""
+    var redirectUris: List<String> = listOf()
 }

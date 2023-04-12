@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Using Elipctical Curve Cryptography (ECC) to generate a key pair
+https://wiki.openssl.org/index.php/Command_Line_Elliptic_Curve_Operations
+#
 export PASSWORD=$1; shift
 
 TMPDIR=/tmp/dckeys$$
@@ -38,4 +41,4 @@ eckles server_pub.pem > server.jwk
 CERT=$(sed /-/d server.cer | tr -d \\n)
 jq ".+{\"x5c\":[\"$CERT\"]}" server.jwk > server_keycert.jwk
 
-
+mv $TMPDIR ../encrypt-keys
