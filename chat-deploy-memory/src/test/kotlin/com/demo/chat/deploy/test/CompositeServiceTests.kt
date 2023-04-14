@@ -6,22 +6,17 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
-import com.demo.chat.secure.service.ChatUserDetailsService
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*
-import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.test.randomAlphaNumeric
-import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
-import org.springframework.util.MimeTypeUtils
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -38,7 +33,7 @@ import java.util.*
         "app.rootkeys.create=true",
         "app.service.core.key", "app.service.security.userdetails",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
+        "app.service.core.secrets", "app.service.composite",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
         "spring.config.location=classpath:/application.yml"
@@ -59,9 +54,6 @@ class CompositeServiceTests {
     @Autowired
     private lateinit var builder: RSocketRequester.Builder
 
-    @Autowired
-    private lateinit var uds: ChatUserDetailsService<Long, IndexSearchRequest>
-
     @Value("\${local.rsocket.server.port}")
     private lateinit var port: String
 
@@ -78,17 +70,7 @@ class CompositeServiceTests {
         @Autowired services: CompositeServiceBeans<Long, String>,
         @Autowired secretsStore: SecretsStoreBeans<Long>
     ) {
-        val key: Key<Long> = services.userService()
-            .addUser(UserCreateRequest("test", "user", "test"))
-            .block()!!
-
-        secretsStore.secretsStore().addCredential(KeyCredential(key, "{noop}changeme")).block()
-
         val requester = builder
-            .setupMetadata(
-                UsernamePasswordMetadata("user", "changeme"),
-                MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
-            )
             .tcp("localhost", port.toInt())
 
         val keyRequest: Mono<Key<*>> = requester

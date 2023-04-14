@@ -22,10 +22,10 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import java.util.*
 
 @Configuration
-class AuthServConfig() {
-
-    @Value("\${app.oauth2.entrypoint-path}")
-    private lateinit var entrypointPath: String
+class AuthServConfig(
+    @Value("\${app.oauth2.jwk.path}") val resource: Resource,
+    @Value("\${app.oauth2.entrypoint-path}") val entrypointPath: String
+) {
 
     @Throws(Exception::class)
     @Bean
@@ -44,9 +44,6 @@ class AuthServConfig() {
 
         return http.build()
     }
-
-    @Value("\${app.oauth2.jwk.path}")
-    private lateinit var resource: Resource
 
     @Bean
     fun jwkSetSource(): JWKSource<SecurityContext> {

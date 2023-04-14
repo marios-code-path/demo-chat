@@ -33,6 +33,7 @@
                                 <cleanCache>false</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>
                             </image>
                         </configuration>

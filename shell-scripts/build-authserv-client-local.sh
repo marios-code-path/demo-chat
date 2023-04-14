@@ -2,9 +2,12 @@
 source ../shell-scripts/ports.sh
 
 export DISCOVERY_ARGS="-Dapp.client.discovery=properties \
+-Dspring.cloud.consul.enabled=false \
 -Dspring.config.additional-location=classpath:/config/client-local.yml \
 -Dspring.cloud.service-registry.auto-registration.enabled=false \
--Dspring.cloud.consul.config.enabled=false"
+-Dspring.cloud.consul.config.enabled=false \
+-Dspring.cloud.consul.config.watch.enabled=false \
+-Dspring.cloud.consul.discovery.enabled=false"
 export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
 
 while getopts ":sdcgm:k:b:n:p:" o; do
@@ -84,4 +87,4 @@ set -x
 
 mvn -DimageName=${APP_IMAGE_NAME} $MAVEN_PROFILES -DskipTests $MAVEN_ARG
 
-# [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION

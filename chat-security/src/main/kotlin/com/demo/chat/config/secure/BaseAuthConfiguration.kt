@@ -56,8 +56,8 @@ open class BaseAuthConfiguration<T, V, Q>(
     @Bean
     open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authMan)
 
-    // Deprecated because AbstractUserDetailsReactiveAuthenticationManager already takes care of this with
-    // the ChatUserDetailsService
+    // Deprecated because AbstractUserDetailsReactiveAuthenticationManager already takes
+    // care of this with the ChatUserDetailsService
 //    open fun authenticationManager(authenticationService: AuthenticationService<T>) =
 //        ChatAuthenticationManager(
 //            authenticationService,

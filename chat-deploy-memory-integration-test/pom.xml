@@ -49,6 +49,7 @@
                                         -Dspring.cloud.consul.discovery.enabled=false
                                         -Dspring.cloud.consul.enabled=false</BPE_APPEND_JAVA_TOOL_OPTIONS>
                                     <BPE_DELIM_JAVA_TOOL_OPTIONS xml:space="preserve"> </BPE_DELIM_JAVA_TOOL_OPTIONS>
+				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>
                             </image>
                         </configuration>

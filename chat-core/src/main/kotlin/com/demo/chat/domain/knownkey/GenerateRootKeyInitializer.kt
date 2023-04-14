@@ -8,7 +8,7 @@ import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import com.demo.chat.service.core.IKeyGenerator
 
-class DefaultRootKeyInitializer <T>(private val keyGen: IKeyGenerator<T> ) {
+class GenerateRootKeyInitializer <T>(private val keyGen: IKeyGenerator<T> ) {
 
     fun initRootKeys(rootKeys: RootKeys<T>) {
         rootKeys.addRootKey(MessageTopic::class.java, keyGen.nextKey())
