@@ -12,7 +12,8 @@ export PORTS_FLAGS="-Dserver.port=9000"
 export CONSUL_CONTAINER=`docker ps -aqf "name=consul"`
 export CONSUL_HOST=`./docker-what-is-consul-ip.sh ${CONSUL_CONTAINER}`
 export CONSUL_PORT=8500
+export KEY_VOLUME=data
 
-export DOCKER_ARGS="--expose 9000 -p 9000:9000/tcp"
+export DOCKER_ARGS="--expose 9000 -p 9000:9000/tcp -v ${KEY_VOLUME}:/etc/keys"
 ./build-authserv-client-local.sh -m chat-authorization-server -k long -n chat_authserv -b runlocal $@
 # add -c for consul

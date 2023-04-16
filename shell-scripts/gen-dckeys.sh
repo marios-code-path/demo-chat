@@ -42,3 +42,13 @@ CERT=$(sed /-/d server.cer | tr -d \\n)
 jq ".+{\"x5c\":[\"$CERT\"]}" server.jwk > server_keycert.jwk
 
 mv $TMPDIR ../encrypt-keys
+
+cd ../encrypt-keys
+
+docker volume create demo-chat-encrypt-keys
+
+docker run -d --rm --name temp-container -v demo-chat-encrypt-keys:/etc/keys alpine:latest tail -f /dev/null
+
+docker cp ./*.cer temp-container:/etc/keys
+docker cp ./*jwk temp-container:/etc/keys
+
