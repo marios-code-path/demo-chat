@@ -53,7 +53,7 @@
 
         <module>chat-index-elastic</module>
         <module>chat-persistence-xstream</module>
-        <module>chat-messaging-pulsar</module>
+<!--        <module>chat-messaging-pulsar</module> -->
 
         <module>chat-client-consul</module>
         <module>chat-gateway</module>
