@@ -8,7 +8,7 @@ function cert_gen() {
 # https://wiki.openssl.org/index.php/Command_Line_Elliptic_Curve_Operations
 #
 PREFIX=$1; shift
-
+VOLUME_NAME="demo-chat-server-keys"
 # Server Key
 openssl ecparam -name prime256v1 -genkey -noout -out ${PREFIX}_key.pem
 
@@ -43,9 +43,9 @@ function ca_gen() {
 function docker_volume_gen() {
   cd ../encrypt-keys
 
-  docker volume create demo-chat-server-keys
+  docker volume create ${VOLUME_NAME}
 
-  docker run -d --rm --name temp-container -v demo-chat-server-keys:/etc/keys alpine:latest tail -f /dev/null
+  docker run -d --rm --name temp-container -v ${VOLUME_NAME}:/etc/keys alpine:latest tail -f /dev/null
 
   docker cp ./server*.p12 temp-container:/etc/keys
   docker cp ./server*.cer temp-container:/etc/keys

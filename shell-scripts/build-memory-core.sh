@@ -2,7 +2,7 @@
 cd ../chat-deploy-memory
 source ../shell-scripts/ports.sh
 
-while getopts :edicon:k:b: o; do
+while getopts :edicos:n:k:b: o; do
   echo "$o is $OPTARG"
   case "$o" in
     i)
@@ -31,6 +31,10 @@ while getopts :edicon:k:b: o; do
       export DOCKER_ARGS="${DOCKER_ARGS} -d --expose 6790 -p 6790:6790/tcp --expose 6792 -p 6792:6792/tcp --expose 6791 -p 6791:6791/tcp"
       ;;
     s)
+      if [[ -z ${TLS_PASSWORD} ]]; then
+        echo TLS_PASSWORD must be set.
+        exit 1
+      fi
       export SSL_FLAGS="-Dspring.rsocket.server.ssl.enabled=true \
 -Dspring.rsocket.server.ssl.client-auth=none -Dspring.rsocket.server.ssl.protocol=TLS \
 -Dspring.rsocket.server.ssl.enabled-protocols=TLSv1.2 \
@@ -103,4 +107,4 @@ ${DISCOVERY_FLAGS} -Dspring.cloud.consul.discovery.preferIpAddress=true"
 mvn -DimageName=${APP_IMAGE_NAME} -DmainClass=${APP_MAIN_CLASS} $MAVEN_ARG $MAVEN_PROFILE -DskipTests
 
 # [[ $RUN_MAVEN_ARG == "rundocker" ]] && echo docker run ${DOCKER_CNAME} ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION -f
+[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --volume demo-chat-server-keys:/etc/keys --rm $APP_IMAGE_NAME:$APP_VERSION -f
