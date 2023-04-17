@@ -30,6 +30,14 @@ while getopts :edicon:k:b: o; do
     d)
       export DOCKER_ARGS="${DOCKER_ARGS} -d --expose 6790 -p 6790:6790/tcp --expose 6792 -p 6792:6792/tcp --expose 6791 -p 6791:6791/tcp"
       ;;
+    s)
+      export SSL_FLAGS="-Dspring.rsocket.server.ssl.enabled=true \
+-Dspring.rsocket.server.ssl.client-auth=none -Dspring.rsocket.server.ssl.protocol=TLS \
+-Dspring.rsocket.server.ssl.enabled-protocols=TLSv1.2 \
+-Dspring.rsocket.server.ssl.key-store=${OPTARG}/server_keystore.p12 \
+-Dspring.rsocket.server.ssl.key-store-type=PKCS12 \
+-Dspring.rsocket.server.ssl.key-store-password=${TLS_PASSWORD}"
+      ;;
     *)
       cat << CATZ
       specify:
@@ -62,6 +70,7 @@ export APP_IMAGE_NAME="memory-${APP_PRIMARY_NAME}-services-rsocket"
 export APP_MAIN_CLASS="com.demo.chat.deploy.memory.MemoryDeploymentApp"
 export APP_VERSION=0.0.1
 export MAVEN_PROFILE=-Pdeploy,consul
+
 
 export MAIN_FLAGS="-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR \
 -Dspring.profiles.active=${SPRING_PROFILE} -Dapp.proto=rsocket -Dapp.primary=${APP_PRIMARY_NAME} \

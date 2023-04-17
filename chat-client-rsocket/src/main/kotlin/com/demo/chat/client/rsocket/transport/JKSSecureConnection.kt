@@ -2,14 +2,10 @@ package com.demo.chat.client.rsocket.transport
 
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
-import io.rsocket.transport.netty.client.TcpClientTransport
-import jdk.internal.org.jline.utils.Colors.s
-import reactor.netty.tcp.TcpClient
 import java.io.File
 import java.io.FileInputStream
 import java.security.KeyStore
 import javax.net.ssl.KeyManagerFactory
-import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 
 class JKSSecureConnection(
