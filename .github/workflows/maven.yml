@@ -17,5 +17,5 @@ jobs:
         distribution: 'adopt'
 
     - name: Maven clean compile
-      run: mvn clean compile -D skipTests
+      run: mvn clean test-compile
 
