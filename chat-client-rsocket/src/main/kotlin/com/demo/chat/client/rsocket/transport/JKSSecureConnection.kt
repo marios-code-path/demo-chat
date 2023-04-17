@@ -1,21 +1,25 @@
 package com.demo.chat.client.rsocket.transport
 
+import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
 import io.rsocket.transport.netty.client.TcpClientTransport
+import jdk.internal.org.jline.utils.Colors.s
 import reactor.netty.tcp.TcpClient
 import java.io.File
 import java.io.FileInputStream
 import java.security.KeyStore
 import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 
-class PKISecureConnection(private val trustFile: File,
-                          private val keyFile: File,
-                          private val jksPass: String) : RSocketClientTransportFactory {
+class JKSSecureConnection(
+    private val trustFile: File,
+    private val keyFile: File,
+    private val jksPass: String
+) : SSLClientTransportFactory {
 
-    override fun getClientTransport(host: String, port: Int): TcpClientTransport {
-
-        val keyManager =  KeyManagerFactory
+    override fun getSSLContext(): SslContext {
+        val keyManager = KeyManagerFactory
             .getInstance(KeyManagerFactory.getDefaultAlgorithm())
             .apply {
                 val keyStore = KeyStore.getInstance("JKS").apply {
@@ -33,19 +37,11 @@ class PKISecureConnection(private val trustFile: File,
                 this.init(ks)
             }
 
-        return TcpClientTransport.create(
-            TcpClient.create()
-                .host(host)
-                .port(port)
-                .secure { s ->
-                    s.sslContext(
-                        SslContextBuilder
-                            .forClient()
-                            .keyStoreType("JKS")
-                            .keyManager(keyManager)
-                            .trustManager(trustManager)
-                            .build()
-                    )
-                })
+        return SslContextBuilder
+            .forClient()
+            .keyStoreType("JKS")
+            .keyManager(keyManager)
+            .trustManager(trustManager)
+            .build()
     }
 }

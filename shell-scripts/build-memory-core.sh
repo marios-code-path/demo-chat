@@ -36,7 +36,7 @@ while getopts :edicon:k:b: o; do
       -b build_arg (!!) == one of [build, runlocal, image, rundocker]
       -k key_type (!!) == one of [long, uuid]
       -n name == Name of container
-      -s == enable endpoint security
+      -s path/to/tls/keystore == use TLS
       -c == enables Discovery with consul
       -d == export rsocket TCP to localhost
       -o == disables the build step
@@ -77,6 +77,7 @@ export CONTROLLER_FLAGS="-Dapp.controller.persistence -Dapp.controller.index -Da
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS=" ${MAIN_FLAGS} \
 ${PORTS_FLAGS} \
+${SSL_FLAGS} \
 ${BOOTSTRAP_FLAGS} \
 ${SECURITY_FLAGS} \
 ${SERVICE_FLAGS} \

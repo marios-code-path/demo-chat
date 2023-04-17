@@ -1,7 +1,7 @@
 package com.demo.chat.config.client.rsocket
 
 import com.demo.chat.client.rsocket.transport.InsecureConnection
-import com.demo.chat.client.rsocket.transport.PKISecureConnection
+import com.demo.chat.client.rsocket.transport.JKSSecureConnection
 import com.demo.chat.client.rsocket.transport.UnprotectedConnection
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -21,10 +21,19 @@ class RSocketClientTransportConfiguration {
     fun insecureTransport() = InsecureConnection()
 
     @Bean
-    @ConditionalOnProperty("app.rsocket.transport.secure")
-    fun secureTransport(
+    @ConditionalOnProperty("app.rsocket.transport.jks")
+    fun jksSecureTransport(
         @Value("\${app.rsocket.transport.secure.truststore.path}") trustFile: File,
         @Value("\${app.rsocket.transport.secure.keystore.path}") keyFile: File,
         @Value("\${app.rsocket.transport.secure.keyfile.pass}") pass: String
-    ) = PKISecureConnection(trustFile, keyFile, pass)
+    ) = JKSSecureConnection(trustFile, keyFile, pass)
+
+    @Bean
+    @ConditionalOnProperty("app.rsocket.transport.pem")
+    fun pemSecureTransport(
+        @Value("\${app.rsocket.transport.secure.truststore.path}") trustFile: File,
+        @Value("\${app.rsocket.transport.secure.keystore.path}") keyFile: File,
+        @Value("\${app.rsocket.transport.secure.keyfile.pass}") pass: String
+    ) = JKSSecureConnection(trustFile, keyFile, pass)
+
 }
