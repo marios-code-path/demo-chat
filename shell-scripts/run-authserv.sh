@@ -13,7 +13,7 @@ source ./util.sh
 
 find_consul
 
-export DOCKER_ARGS="--expose 9000 -p 9000:9000/tcp -v ${KEY_VOLUME}:/etc/keys"
+export DOCKER_ARGS="--expose 9000 -p 9000:9000/tcp --expose 9001 -p 9001:9001/tcp -v ${KEY_VOLUME}:/etc/keys"
 #./build-shell-client-local.sh -m chat-authorization-server -k long -n chat_authserv -b runlocal -l -s /tmp/dc-keys $@
 
 ./build-shell-client-local.sh -m chat-authorization-server -k long -n chat_authserv -d -b rundocker -s /etc/keys $@

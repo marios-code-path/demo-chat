@@ -25,7 +25,8 @@ while getopts ":dlgs:m:k:b:n:p:" o; do
       export DISCOVERY_ARGS="-Dspring.cloud.consul.host=${CONSUL_HOST} -Dspring.cloud.consul.port=${CONSUL_PORT} \
 -Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul \
 -Dspring.config.additional-location=classpath:/config/client-consul.yml,\
-classpath:/config/application-http-consul.yml"
+classpath:/config/application-http-consul.yml \
+-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR"
 
       export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat \
 -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv \
@@ -103,7 +104,7 @@ fi
 
 export MAIN_FLAGS="${MAIN_FLAGS} -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} -Dmanagement.endpoints.enabled-by-default=true \
--Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration \"
+-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 export DISCOVERY_FLAGS="${DISCOVERY_ARGS}"
 export BOOTSTRAP_FLAGS="${INIT_CONFIG}"
 export MAVEN_PROFILES="-P"$(join_by "," ${BUILD_PROFILES[@]})
