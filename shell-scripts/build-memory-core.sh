@@ -97,7 +97,8 @@ ${SERVICE_FLAGS} \
 ${CONTROLLER_FLAGS} \
 ${DISCOVERY_FLAGS} -Dspring.cloud.consul.discovery.preferIpAddress=true"
 
-#set -x
+set -x
+set -e
 
 [[ $RUN_MAVEN_ARG == "" ]] && exit
 [[ $RUN_MAVEN_ARG == "build" ]] && MAVEN_ARG="spring-boot:build-image"

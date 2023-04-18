@@ -47,9 +47,9 @@ function docker_volume_gen() {
 
   docker run -d --rm --name temp-container -v ${VOLUME_NAME}:/etc/keys alpine:latest tail -f /dev/null
 
-  docker cp ./server*.p12 temp-container:/etc/keys
-  docker cp ./server*.cer temp-container:/etc/keys
-  docker cp ./server*jwk temp-container:/etc/keys
+  docker cp ./server_keystore.p12 temp-container:/etc/keys
+  docker cp ./server_truststore.p12 temp-container:/etc/keys
+  docker cp ./server_keycert.jwk temp-container:/etc/keys
 }
 
 export PASSWORD=$1; shift
