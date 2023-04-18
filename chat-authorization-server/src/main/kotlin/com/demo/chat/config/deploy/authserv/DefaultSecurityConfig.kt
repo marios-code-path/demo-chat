@@ -21,9 +21,9 @@ class DefaultSecurityConfig {
         http
             .authorizeHttpRequests { authorizeRequests ->
                 authorizeRequests
-                    .anyRequest().authenticated()
+                    .anyRequest().permitAll() //.authenticated()
             }
-            .formLogin(Customizer.withDefaults())
+            //.formLogin(Customizer.withDefaults())
 
         return http.build()
     }
@@ -33,3 +33,33 @@ class DefaultSecurityConfig {
     @Bean fun httpSessionEvenPublisher() = HttpSessionEventPublisher()
 
 }
+/**
+ *     @Bean
+ *     fun securityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
+ *         http
+ *             .authenticationManager(UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService()))
+ *             .csrf().disable()
+ *             .formLogin().disable()
+ *             .httpBasic()
+ *             .and()
+ *             .authorizeExchange()
+ *             .pathMatchers("/actuator/health").permitAll()
+ *             .pathMatchers("/actuator/**")
+ *             .hasRole("ACTUATOR")
+ *             .anyExchange()
+ *             .hasRole("ACTUATOR")
+ *
+ *         return http.build()
+ *     }
+ *
+ *     fun userDetailsService() = MapReactiveUserDetailsService(
+ *         org.springframework.security.core.userdetails.User
+ *             .withUsername(actuatorUser)
+ *             .password(passwordEncoder().encode(actuatorPasswd))
+ *             .roles("ACTUATOR")
+ *             .build()
+ *     )
+ *
+ *     @Bean
+ *     fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
+ */
