@@ -95,7 +95,7 @@
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-client-consul</artifactId>
+                    <artifactId>chat-client-consul</artifactId>
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>

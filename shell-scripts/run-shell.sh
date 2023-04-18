@@ -9,5 +9,4 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
 export PORTS_FLAGS="-Dserver.port=0"
 
-./build-shell-client-local.sh -m chat-shell -k long -p shell -n chat_init -b runlocal -s /tmp/dc-keys $@
-# add -c for consul
+./build-shell-client-local.sh -m chat-shell -k long -p shell -n chat_init -b runlocal -l -s /tmp/dc-keys $@

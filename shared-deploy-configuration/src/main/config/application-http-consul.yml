@@ -1,0 +1,15 @@
+spring:
+  cloud:
+    consul:
+      discovery:
+        enabled: true
+        tags: http
+        port: ${server.port}
+        metadata:
+          keyType: ${app.key.type}
+        instance-id: "${spring.application.name}:${random.value}"
+        management-port: ${management.server.port}
+      config:
+        enabled: true
+        format: YAML
+        data-key: data

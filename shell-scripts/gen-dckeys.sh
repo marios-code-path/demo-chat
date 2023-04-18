@@ -24,7 +24,7 @@ eckles server_pub.pem > server.jwk
 CERT=$(sed /-/d server.cer | tr -d \\n)
 jq ".+{\"x5c\":[\"$CERT\"]}" server.jwk > server_keycert.jwk
 
-## Now the same for the client.
+## Now the same for the client. sans jwk
 
 cert_gen client
 
