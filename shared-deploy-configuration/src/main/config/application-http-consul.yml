@@ -7,7 +7,7 @@ spring:
         port: ${server.port}
         metadata:
           keyType: ${app.key.type}
-        instance-id: "${spring.application.name}:${random.value}"
+        instance-id: "${spring.application.name}"
         management-port: ${management.server.port}
       config:
         enabled: true

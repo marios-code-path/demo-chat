@@ -26,7 +26,8 @@ while getopts ":dlgs:m:k:b:n:p:" o; do
 -Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul \
 -Dspring.config.additional-location=classpath:/config/client-consul.yml,\
 classpath:/config/application-http-consul.yml \
--Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR"
+-Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR \
+-Dspring.cloud.consul.discovery.preferIpAddress=true"
 
       export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat \
 -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv \
