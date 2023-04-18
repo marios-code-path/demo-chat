@@ -8,6 +8,9 @@ astra
 ### Key Stores ###
 *.jks
 
+### Shell Logs ###
+*.log
+
 ### STS ###
 .apt_generated
 .classpath

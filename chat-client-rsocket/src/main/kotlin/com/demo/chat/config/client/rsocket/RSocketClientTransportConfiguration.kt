@@ -30,7 +30,7 @@ class RSocketClientTransportConfiguration {
 
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.pkcs12")
-    fun pemSecureTransport(
+    fun pkcs12SecureTransport(
         @Value("\${app.rsocket.transport.secure.truststore.path}") trustFile: File,
         @Value("\${app.rsocket.transport.secure.keystore.path}") keyFile: File,
         @Value("\${app.rsocket.transport.secure.keyfile.pass}") pass: String

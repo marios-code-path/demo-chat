@@ -4,7 +4,7 @@ source ../shell-scripts/ports.sh
 export DISCOVERY_ARGS="-Dapp.client.discovery=properties -Dspring.config.additional-location=classpath:/config/client-local.yml"
 export INIT_CONFIG="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http -Dapp.rootkeys.consume.source=http://localhost:6792"
 
-while getopts ":sdcgm:k:b:n:p:" o; do
+while getopts ":dcgs:m:k:b:n:p:" o; do
   case $o in
     m)
       export MODULE=${OPTARG}
@@ -23,6 +23,16 @@ while getopts ":sdcgm:k:b:n:p:" o; do
 -Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul -Dspring.config.additional-location=classpath:/config/client-consul.yml,classpath:/config/application-consul.yml"
       export MAVEN_PROFILES="${MAVEN_PROFILES:=-P}register-consul"
       export INIT_CONFIG="-Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"
+      ;;
+    s)
+      if [[ -z ${KEYSTORE_PASS} ]]; then
+        echo "KEYSTORE_PASS is not set"
+        exit 1
+      fi
+      export TLS_FLAGS="-Dapp.rsocket.transport.pkcs12 \
+-Dapp.rsocket.transport.secure.truststore.path=${OPTARG}/client_truststore.p12 \
+-Dapp.rsocket.transport.secure.keystore.path=${OPTARG}/client_keystore.p12 \
+-Dapp.rsocket.transport.secure.keyfile.pass=${KEYSTORE_PASS}"
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -53,6 +63,9 @@ export APP_VERSION=0.0.1
 # Say when discovery_consul is deactivated, we don't want to pass in the consul host and port, or configure discovery
 # and KV store
 
+if [[ -z ${TLS_FLAGS} ]]; then
+  export TLS_FLAGS="-Dapp.rsocket.transport.insecure"
+fi
 export MAIN_FLAGS="${MAIN_FLAGS} -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} -Dmanagement.endpoints.enabled-by-default=false \
 -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
@@ -65,6 +78,7 @@ export BOOTSTRAP_FLAGS="${INIT_CONFIG}"
 # TODO: difference between '-D' and '--'
 export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS}  \
 ${MAIN_FLAGS} \
+${TLS_FLAGS} \
 ${PORTS_FLAGS} \
 ${BOOTSTRAP_FLAGS} \
 ${DISCOVERY_FLAGS} \
