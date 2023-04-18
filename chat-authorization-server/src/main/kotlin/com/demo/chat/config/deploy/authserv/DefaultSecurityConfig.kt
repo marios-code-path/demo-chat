@@ -21,9 +21,10 @@ class DefaultSecurityConfig {
         http
             .authorizeHttpRequests { authorizeRequests ->
                 authorizeRequests
-                    .anyRequest().permitAll() //.authenticated()
+                    .requestMatchers("/actuator/**").permitAll()
+                    .anyRequest().authenticated()
             }
-            //.formLogin(Customizer.withDefaults())
+            .formLogin(Customizer.withDefaults())
 
         return http.build()
     }
