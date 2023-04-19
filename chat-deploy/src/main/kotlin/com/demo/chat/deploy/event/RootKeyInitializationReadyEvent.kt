@@ -4,3 +4,4 @@ import com.demo.chat.domain.knownkey.RootKeys
 import org.springframework.context.ApplicationEvent
 
 class RootKeyInitializationReadyEvent<T>(val rootKeys: RootKeys<T>) : ApplicationEvent(rootKeys)
+class RootKeyUpdatedEvent<T>(val rootKeys: RootKeys<T>) : ApplicationEvent(rootKeys)

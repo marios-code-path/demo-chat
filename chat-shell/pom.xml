@@ -21,7 +21,46 @@
     </properties>
     <profiles>
         <profile>
-            <id>discovery-consul</id>
+            <id>deploy</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-webflux</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-actuator</artifactId>
+                </dependency>
+            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <mainClass>${appMainClass}</mainClass>
+                            <image>
+                                <name>${appImageName}</name>
+                                <cleanCache>false</cleanCache>
+                                <env>
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
+                                </env>
+                            </image>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>build-info</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>client-consul</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
@@ -44,10 +83,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-rsocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>

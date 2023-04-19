@@ -15,7 +15,7 @@ import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @Configuration
-@ConditionalOnProperty("app.proto", havingValue = "rsocket")
+@ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
 @ConditionalOnBean(RSocketSecurity::class)  //TODO: Bad idea, but it works
 class RSocketServerConfiguration {
 

@@ -1,3 +1,8 @@
-add-user --name estelle --handle belle --image-uri https
-add-user --name mario --handle darkbit --image-uri http
-add-permission --user-id 6923816998592879035 --target-user-id 6923816998592879034 --role SEND_MESSAGE --expire-time 1
+-Djava.security.properties=/layers/paketo-buildpacks_bellsoft-liberica/java-security-properties/java-security.properties -XX:+ExitOnOutOfMemoryError  -Dmanagement.endpoints.enabled-by-default=false -Dspring.profiles.active=shell -Dmanagement.endpoint.shutdown.enabled=true -Dmanagement.endpoint.health.enabled=true  -Dapp.key.type=long -Dapp.primary=shell -Dapp.rsocket.transport.pkcs12 -Dapp.rsocket.transport.secure.truststore.path=/etc/keys/client_truststore.p12 -Dapp.rsocket.transport.secure.keystore.path=/etc/keys/client_keystore.p12 -Dapp.rsocket.transport.secure.keyfile.pass=111111
+-Dserver.port=0
+-Dmanagement.server.port=9001
+-Dapp.kv.store=consul
+-Dapp.kv.prefix=/chat
+-Dapp.kv.rootkeys=rootkeys
+-Dapp.rootkeys.consume.scheme=kv
+-Dspring.cloud.consul.discovery.health-check-headers[0]='Authorization: Basic QXV0aG9yaXphdGlvbjogQmFzaWMg' -Dspring.cloud.consul.host=172.17.0.2 -Dspring.cloud.consul.port=8500 -Dspring.cloud.consul.discovery.enabled=true -Dapp.client.discovery=consul -Dspring.config.additional-location=classpath:/config/client-consul.yml,classpath:/config/application-http-consul.yml -Dspring.security.user.name=actuator -Dspring.security.user.password=actuator -Dspring.security.user.roles=ACTUATOR -Dspring.cloud.consul.discovery.preferIpAddress=true -Dapp.client.protocol=rsocket -Dapp.client.rsocket.core.key -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message -Dapp.client.rsocket.composite.topic -Dapp.service.core.key -Dapp.service.composite.auth -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration -XX:ActiveProcessorCount=8 -XX:MaxDirectMemorySize=10M -Xmx5664391K -XX:MaxMetaspaceSize=140008K -XX:ReservedCodeCacheSize=240M -Xss1M -XX:+UnlockDiagnosticVMOptions -XX:NativeMemoryTracking=summary -XX:+PrintNMTStatistics -Dorg.springframework.cloud.bindings.boot.enable=true

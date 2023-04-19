@@ -3,7 +3,7 @@ spring:
     consul:
       discovery:
         enabled: true
-        tags: ${app.proto}
+        tags: ${app.server.proto}
         port: ${spring.rsocket.server.port}
         metadata:
           rsocketPort: ${spring.rsocket.server.port}

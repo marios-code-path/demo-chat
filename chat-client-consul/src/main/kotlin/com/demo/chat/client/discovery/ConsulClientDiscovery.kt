@@ -14,7 +14,7 @@ class ConsulClientDiscovery(
 ) : ClientDiscovery {
     override fun getServiceInstance(serviceName: String): Mono<ServiceInstance> =
         discovery
-            .getInstances(configProps.getServiceConfig(serviceName).dest!!)
+            .getInstances(configProps.getServiceConfig(serviceName).dest)
             .next()
-            .switchIfEmpty(Mono.error(DiscoveryException("No instances found for service $serviceName")))
+            .switchIfEmpty(Mono.error(DiscoveryException("$serviceName via ${configProps.getServiceConfig(serviceName).dest}")))
 }

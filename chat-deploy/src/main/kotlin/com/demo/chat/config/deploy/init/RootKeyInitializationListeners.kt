@@ -2,6 +2,7 @@ package com.demo.chat.config.deploy.init
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
+import com.demo.chat.deploy.event.RootKeyUpdatedEvent
 import com.demo.chat.deploy.event.StartupAnnouncementEvent
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
@@ -45,10 +46,10 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    fun publishRootKeysOnRootKeyInitializedEvent(rootKeyService: RootKeyService<T>): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
+    fun publishRootKeysOnUpdate(rootKeyService: RootKeyService<T>) : ApplicationListener<RootKeyUpdatedEvent<T>> =
         ApplicationListener { evt ->
             rootKeyService.publishRootKeys(evt.rootKeys)
-            publisher.publishEvent(StartupAnnouncementEvent("Root Keys Published"))
+            publisher.publishEvent(StartupAnnouncementEvent("Root Keys Update Published"))
         }
 
     @Bean
@@ -67,5 +68,7 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             rootKeyService.consumeRootKeys(rootKeys)
+            publisher.publishEvent(RootKeyUpdatedEvent(rootKeys))
+            publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }
 }

@@ -2,24 +2,6 @@ spring:
   application:
     name: chat-authorization-server
 
-app:
-  oauth2:
-    jwk:
-      path: classpath:server_keycert.jwk
-    entrypoint-path: /login
-    client:
-      id: chat-client
-      key: 31649af5-0154-4be5-8695-fda9d18b7981
-      secret: "{noop}secret"
-      redirect-uris:
-        - http://localhost:8080/login/oauth2/code/chat-client-oidc
-        - http://localhost:8080/authorized
-      redirect-uri-prefix: http://localhost:8080
-      additional-scopes:
-        - topic.*
-        - user.create
-        - user.signin
-
 logging:
   level:
     root: INFO

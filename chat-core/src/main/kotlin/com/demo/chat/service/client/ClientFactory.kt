@@ -11,4 +11,4 @@ interface ClientDiscovery{
     fun getServiceInstance(serviceName: String): Mono<ServiceInstance>
 }
 
-data class DiscoveryException(val servicePrefix: String) : RuntimeException("Cannot discover $servicePrefix Service")
+data class DiscoveryException(val errorBy: String) : RuntimeException("Service Discovery Error: $errorBy")

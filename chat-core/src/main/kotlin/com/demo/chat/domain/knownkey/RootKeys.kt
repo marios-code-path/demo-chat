@@ -37,9 +37,8 @@ class RootKeys<T> {
             val sb = StringBuilder()
 
             sb.append("Root Keys: \n")
-            for (rootKey in KnownRootKeys.knownRootKeys) {
-                if (rootKeys.hasRootKey(rootKey))
-                    sb.append("${rootKey.simpleName}=${rootKeys.getRootKey(rootKey)}\n")
+            for (rootKey in rootKeys.keyMap.keys) {
+                sb.append("${rootKey}=${rootKeys.getRootKey(rootKey)}\n")
             }
 
             return sb.toString()

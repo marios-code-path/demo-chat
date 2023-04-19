@@ -12,8 +12,6 @@ class KnownRootKeys {
             TopicMembership::class.java,
             AuthMetadata::class.java,
             KeyDataPair::class.java,
-            Anon::class.java,
-            Admin::class.java
         )
     }
 }

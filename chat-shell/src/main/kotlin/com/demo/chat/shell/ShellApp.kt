@@ -18,19 +18,21 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.util.MimeTypeUtils
+import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 import reactor.core.publisher.Hooks
 import java.util.*
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell.commands"])
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell"])
 @EnableRSocketSecurity
-class BaseApp {
+@EnableWebFlux
+class ShellApp {
 
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
             Hooks.onOperatorDebug()
-            runApplication<BaseApp>(*args)
+            runApplication<ShellApp>(*args)
         }
     }
 }

@@ -1,6 +1,6 @@
 package com.demo.chat.test.init
 
-import com.demo.chat.shell.BaseApp
+import com.demo.chat.shell.ShellApp
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -10,7 +10,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import java.time.Duration
 
-@SpringBootTest(classes = [BaseApp::class])
+@SpringBootTest(classes = [ShellApp::class])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(
     properties = [

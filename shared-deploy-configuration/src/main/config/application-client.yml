@@ -19,10 +19,8 @@ management:
     enabled-by-default: false
     web:
       exposure:
-        include: info,health,shutdown,rootkeys
+        include: info,health,shutdown
 
 spring:
-  main:
-    web-application-type: reactive
   application:
-    name: "${app.primary}-service-${app.server.proto}"
+    name: "${app.primary}-client"

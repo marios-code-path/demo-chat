@@ -2,6 +2,7 @@ package com.demo.chat.config.deploy.init
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
+import com.demo.chat.deploy.event.RootKeyUpdatedEvent
 import com.demo.chat.deploy.event.StartupAnnouncementEvent
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
@@ -32,5 +33,6 @@ class UserInitializationListener<T>(val eventPublisher: DeploymentEventPublisher
         ApplicationListener { evt ->
             initialUserService.initializeUsers(evt.rootKeys)
             eventPublisher.publishEvent(StartupAnnouncementEvent("Initialized Users"))
+            eventPublisher.publishEvent(RootKeyUpdatedEvent(evt.rootKeys))
         }
 }
