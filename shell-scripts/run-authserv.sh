@@ -11,15 +11,17 @@ export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoco
 -Dspring.main.web-application-type=servlet"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/oauth2-client.yml,"
+
+
 function authserv_local() {
-  ./build-client.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
+  ./build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
 }
 
 function authserv_docker() {
   export KEY_VOLUME="demo-chat-server-keys"
   export DOCKER_ARGS="--expose 9000 -p 9000:9000/tcp --expose 9001 -p 9001:9001/tcp -v ${KEY_VOLUME}:/etc/keys"
 
- ./build-client.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+ ./build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
  exit 0
 }
 

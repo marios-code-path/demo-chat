@@ -25,4 +25,4 @@ spring:
   main:
     web-application-type: reactive
   application:
-    name: "${app.primary}-service-${app.server.proto}"
+    name: "${app.primary}-${app.server.proto}"

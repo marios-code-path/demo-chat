@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ../shell-scripts/ports.sh
+
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export MAIN_FLAGS="-Dspring.shell.interactive.enabled=true"
@@ -16,7 +18,7 @@ export ADDITIONAL_CONFIGS="classpath:/config/application-client.yml,"
 
 function shell_local() {
   set -x
-  ./build-client.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local -c /tmp/dc-keys $@
+  ./build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local -c /tmp/dc-keys $@
   exit 0
 }
 
@@ -25,7 +27,7 @@ function shell_docker() {
   export KEY_VOLUME="demo-chat-server-keys"
   export DOCKER_ARGS="-it -v ${KEY_VOLUME}:/etc/keys"
 
-  ./build-client.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+  ./build-app.sh -m chat-shell -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
   exit 0
 }
 
