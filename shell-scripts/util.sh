@@ -21,7 +21,7 @@ function join_by {
 
 function find_consul {
   export CONSUL_CONTAINER=`docker ps -aqf "name=consul"`
-  export CONSUL_HOST=`./docker-what-is-consul-ip.sh ${CONSUL_CONTAINER}`
+  export CONSUL_HOST=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONSUL_CONTAINER})
   export CONSUL_PORT=8500
 }
 

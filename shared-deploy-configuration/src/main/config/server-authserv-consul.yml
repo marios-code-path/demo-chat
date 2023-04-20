@@ -2,7 +2,7 @@ spring:
   cloud:
     consul:
       discovery:
-        tags: ${app.server.proto}
+        tags: HTTP, OAUTH
         port: ${server.port}
         metadata:
           keyType: ${app.key.type}

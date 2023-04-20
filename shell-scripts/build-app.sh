@@ -26,6 +26,10 @@ if [[ -z ${KEY_VOLUME} ]]; then
   export KEY_VOLUME="demo-chat-server-keys"
 fi
 
+if [[ -z ${ROOTKEY_SOURCE_URI} ]]; then
+  export ROOTKEY_SOURCE_URI=${ROOTKEY_SOURCE_URI:="http://${CORE_HOST:=127.0.0.1}:${CORE_MGMT_PORT}"}
+fi
+
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
 while getopts ":d:lxgsc:m:i:k:b:n:p:" o; do
@@ -160,7 +164,7 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
 # Consume Rootkeys when not creating Rootkeys in a local discovery scenario
   if [[  ${INIT_PHASES} != *"rootkeys"* ]]; then
     INIT_FLAGS+="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http \
--Dapp.rootkeys.consume.source=http://localhost:${HTTP_PORT}"
+-Dapp.rootkeys.consume.source=${ROOTKEY_SOURCE_URI}"
   fi
 
   export DISCOVERY_FLAGS="-Dspring.cloud.consul.enabled=false \
