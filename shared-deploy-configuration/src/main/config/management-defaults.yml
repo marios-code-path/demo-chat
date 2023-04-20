@@ -1,0 +1,7 @@
+management:
+  info:
+    git:
+      mode: full
+    web:
+      exposure:
+        include: info,health,shutdown

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -e
-
 source ../shell-scripts/util.sh
+
+set -e
 
 export APP_VERSION=0.0.1
 export TLS_FLAGS
@@ -22,7 +22,13 @@ if [[ -z ${MANAGEMENT_ENDPOINTS} ]]; then
   export MANAGEMENT_ENDPOINTS=""
 fi
 
-while getopts ":d:lgsc:m:i:k:b:n:p:" o; do
+if [[ -z ${KEY_VOLUME} ]]; then
+  export KEY_VOLUME="demo-chat-server-keys"
+fi
+
+ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
+
+while getopts ":d:lxgsc:m:i:k:b:n:p:" o; do
   case $o in
     i)
       export INIT_PHASES=${OPTARG}
@@ -51,6 +57,9 @@ while getopts ":d:lgsc:m:i:k:b:n:p:" o; do
     d)
       export DISCOVERY_TYPE=${OPTARG}
       ;;
+    x)
+      export SHOW_OPTIONS=1
+      ;;
     *)
       cat << CATZ
       specify:
@@ -75,8 +84,12 @@ if [[ ${BUILD_PROFILES} == *"client-local"* &&
   exit 1
 fi
 
+if [[ -z ${CERT_BASEPATH} ]]; then
+  echo "You must specify a certificate base-path with the -c option"
+fi
+
 if [[ -z ${KEYSTORE_PASS} ]]; then
-  echo "KEYSTORE_PASS is not set"
+  echo "env KEYSTORE_PASS is not set"
   exit 1
 fi
 
@@ -130,7 +143,7 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
 -Dspring.security.user.roles=ACTUATOR"
 
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
-    ADDITIONAL_CONFIGS+="classpath:/config/client-consul.yml,"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-consul.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
     BUILD_PROFILES+="client-consul,"
   fi
@@ -157,7 +170,7 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
 -Dspring.cloud.consul.discovery.enabled=false"
 
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
-    ADDITIONAL_CONFIGS+="classpath:/config/client-local.yml,"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-local.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=properties"
     BUILD_PROFILES+="client-local,"
   fi
@@ -173,10 +186,12 @@ export APP_SPRING_PROFILES="-Dspring.profiles.active=${SPRING_ACTIVE_PROFILES%,}
 export MAVEN_PROFILES="-P${BUILD_PROFILES%,}"
 
 export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
--Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY}"
+-Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} \
+-Dspring.application.name=${DEPLOYMENT_NAME}"
+
 
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"
-DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME}"
+DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME} -v ${KEY_VOLUME}:/etc/keys"
 
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
@@ -189,6 +204,11 @@ ${DISCOVERY_FLAGS} \
 ${CLIENT_FLAGS} \
 ${SERVICE_FLAGS} \
 ${OPT_FLAGS}"
+
+if [[ ${SHOW_OPTIONS} == 1 ]]; then
+  echo $JAVA_TOOL_OPTIONS
+  exit 0
+fi
 
 set -x
 

@@ -2,7 +2,6 @@ spring:
   cloud:
     consul:
       discovery:
-        enabled: true
         tags: ${app.server.proto}
         port: ${spring.rsocket.server.port}
         metadata:
@@ -10,7 +9,3 @@ spring:
           keyType: ${app.key.type}
         instance-id: "${spring.application.name}"
         management-port: ${management.server.port}
-      config:
-        enabled: true
-        format: YAML
-        data-key: data

@@ -43,3 +43,26 @@ function expand_delimited {
 
   printf "%b" "$RESULT"
 }
+
+function help_message() {
+  echo No help message defined.
+  exit 1
+}
+
+function std_exec() {
+  RUN_CMD=$1; shift
+
+  if [[ -z $RUN_CMD ]]; then
+    echo "No command specified"
+    help_message
+    exit 1
+  fi
+
+  if declare -F "$RUN_CMD" > /dev/null; then
+    $RUN_CMD $@
+    exit 0
+  else
+    echo "Unknown command: $RUN_CMD"
+    help_message
+  fi
+}
