@@ -1,7 +1,9 @@
 package com.demo.chat.secure.service
 
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
@@ -13,35 +15,28 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import reactor.core.publisher.Mono
 
-open class ChatUserDetailsService<T, Q>(
-    private val userPersist: PersistenceStore<T, User<T>>,
-    private val userIndex: IndexService<T, User<T>, Q>,
-    private val auth: AuthenticationService<T>,
-    private val authZ: AuthorizationService<T, String>,
+class ChatUserDetailsService<T>(
+    private val userService: ChatUserService<T>,
     private val secretsStore: SecretsStore<T>,
-    val usernameQuery: (String) -> Q
+    private val auth: AuthenticationService<T>,
 ) : ReactiveUserDetailsService, ReactiveUserDetailsPasswordService {
 
     override fun findByUsername(username: String): Mono<UserDetails> =
-        userIndex.findUnique(usernameQuery(username))
-            .switchIfEmpty(Mono.error { UsernameNotFoundException(username) })
-            .flatMap(userPersist::get)
-            .flatMap { user ->
-                authZ.getAuthorizationsForPrincipal(user.key)
-                    .collectList()
-                    .map { authorizations -> ChatUserDetails(user, authorizations) }
-            }
+        userService.findByUsername(ByStringRequest(username))
+            .switchIfEmpty(Mono.error(UsernameNotFoundException("User $username not found")))
+            .map { ChatUserDetails(it, listOf("ROLE_USER")) }
+            .next()
             .flatMap { user ->
                 secretsStore
                     .getStoredCredentials(user.user.key)
-                    .map { user.setPassword(it) }
+                    .doOnNext { user.setPassword(it) }
                     .thenReturn(user)
             }
 
     override fun updatePassword(userDetails: UserDetails, newPassword: String): Mono<UserDetails> =
-        userIndex.findUnique(usernameQuery(userDetails.username))
+        userService.findByUsername(ByStringRequest(userDetails.username))
             .switchIfEmpty(Mono.error { UsernameNotFoundException(userDetails.username) })
-            .flatMap(userPersist::get)
+            .next()
             .flatMap { user ->
                 auth.setAuthentication(user.key, newPassword)
                     .map { userDetails }

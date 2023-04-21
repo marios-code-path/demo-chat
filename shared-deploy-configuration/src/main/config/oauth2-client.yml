@@ -12,6 +12,7 @@ app:
         - http://localhost:8080/authorized
       redirect-uri-prefix: http://localhost:8080
       additional-scopes:
-        - topic.*
-        - user.create
-        - user.signin
+        - topic
+        - user
+        - openid
+        - profile

@@ -29,7 +29,7 @@ spring:
             client-secret: secret
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/login/oauth2/code/{registrationId}"
-            scope: openid, profile, message, topic, membership
+            scope: openid, profile
             client-name: chat-client-oidc
           chat-client-authorization-code:
             provider: spring
@@ -37,14 +37,14 @@ spring:
             client-secret: secret
             authorization-grant-type: authorization_code
             redirect-uri: "http://127.0.0.1:8080/authorized"
-            scope: openid, profile, message, topic, membership
+            scope: openid, profile
             client-name: chat-client-authorization-code
           chat-client-credentials:
             provider: spring
             client-id: chat-client
             client-secret: secret
             authorization-grant-type: client_credentials
-            scope: openid, profile, message, topic, membership
+            scope: openid, profile
             client-name: chat-client-credentials
         provider:
           spring:

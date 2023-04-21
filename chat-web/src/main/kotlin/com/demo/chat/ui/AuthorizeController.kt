@@ -18,11 +18,10 @@ class AuthorizeController {
         @RegisteredOAuth2AuthorizedClient("chat-client-authorization-code")
         authorizedClient: OAuth2AuthorizedClient
     ): Mono<String> {
-        val messages = arrayOf("clientA", "clientB", "clientC34")
+        val messages = arrayOf("clientA", "clientB", "clientC34", authorizedClient.accessToken.tokenValue)
         model.addAttribute("users", messages)
 
-        return Mono.just(authorizedClient.accessToken)
-            .thenReturn("index")
+        return Mono.just("index")
     }
 
     @GetMapping("/authorized", params = [OAuth2ParameterNames.ERROR])

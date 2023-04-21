@@ -38,7 +38,7 @@ class ClientRepositoryConfiguration {
             .clientSettings(
                 ClientSettings
                     .builder()
-                    .requireAuthorizationConsent(false)
+                    .requireAuthorizationConsent(true)
                     .build()
             )
             .build()

@@ -10,7 +10,7 @@ import java.util.function.Supplier
 
 @Disabled
 open class UserDetailsServiceTests<T, Q>(
-    private val svc: ChatUserDetailsService<T, Q>,
+    private val svc: ChatUserDetailsService<T>,
     private val uNameSupplier: Supplier<String>,
     private val userSupplier: Supplier<UserDetails>,
     private val pwSupplier: Supplier<String>

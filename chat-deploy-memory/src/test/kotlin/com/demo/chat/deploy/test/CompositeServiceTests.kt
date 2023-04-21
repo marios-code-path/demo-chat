@@ -8,15 +8,19 @@ import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*
+import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.test.randomAlphaNumeric
+import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
+import org.springframework.util.MimeTypeUtils
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -29,11 +33,11 @@ import java.util.*
 )
 @TestPropertySource(
     properties = [
-        "server.port=0", "spring.rsocket.server.port=0",
+        "server.port=0", "spring.rsocket.server.port=0","app.server.proto=rsocket",
         "app.rootkeys.create=true",
         "app.service.core.key", "app.service.security.userdetails",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets", "app.service.composite",
+        "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
         "spring.config.location=classpath:/application.yml"
@@ -65,12 +69,25 @@ class CompositeServiceTests {
             .isGreaterThan(0)
     }
 
-    @Test
-    fun `should request key`(
+    @Test  // Although, currently security states 'permitAll' for all requests.
+    fun `created user, authenticated rsocket requests for key`(
         @Autowired services: CompositeServiceBeans<Long, String>,
         @Autowired secretsStore: SecretsStoreBeans<Long>
     ) {
+        val key: Key<Long> = services.userService()
+            .addUser(UserCreateRequest("test", "user", "test"))
+            .block()!!
+
+        secretsStore
+            .secretsStore()
+            .addCredential(KeyCredential(key, "{noop}changeme"))
+            .block()
+
         val requester = builder
+            .setupMetadata(
+                UsernamePasswordMetadata("user", "changeme"),
+                MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
+            )
             .tcp("localhost", port.toInt())
 
         val keyRequest: Mono<Key<*>> = requester
@@ -85,7 +102,6 @@ class CompositeServiceTests {
                     .isNotNull
             }
             .verifyComplete()
-
     }
 
     @Test

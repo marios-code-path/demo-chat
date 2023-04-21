@@ -34,7 +34,7 @@ class AuthorizationServerDeployTests {
     private lateinit var typeUtil: TypeUtil<Long>
 
     @Autowired
-    private lateinit var chatUserDetailsService: ChatUserDetailsService<Long, IndexSearchRequest>
+    private lateinit var chatUserDetailsService: ChatUserDetailsService<Long>
 
     @Test
     fun contextLoads() {
