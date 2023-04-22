@@ -3,9 +3,10 @@
 source ../shell-scripts/util.sh
 source ../shell-scripts/ports.sh
 
-export DOCKER_ARGS=" --expose ${RSOCKET_PORT} -p ${RSOCKET_PORT}:${RSOCKET_PORT}/tcp \
+export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${CORE_RSOCKET_PORT}/tcp \
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
-export PORTS_FLAGS="-Dserver.port=${HTTP_PORT} -Dmanagement.server.port=${HTTP_PORT} -Dspring.rsocket.server.port=${RSOCKET_PORT}"
+export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
+-Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
 export SERVICE_FLAGS="-Dapp.server.proto=rsocket -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
@@ -15,6 +16,7 @@ export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
 export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 
 function memory() {
+  DOCKER_ARGS+=" -it -d"
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 

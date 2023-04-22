@@ -21,6 +21,7 @@ eckles server_pub.pem > server.jwk
 
 # THanks to https://darutk.medium.com/jwk-representing-self-signed-certificate-65276d70021b
 # Create Both key and cert  JWK
+# add key id (kid) value to the JWK
 CERT=$(sed /-/d server.cer | tr -d \\n)
 jq ".+{\"x5c\":[\"$CERT\"]}" server.jwk > server_keycert.jwk
 

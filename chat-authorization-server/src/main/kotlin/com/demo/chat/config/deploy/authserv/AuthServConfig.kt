@@ -1,7 +1,6 @@
 package com.demo.chat.config.deploy.authserv
 
-import com.nimbusds.jose.jwk.JWK
-import com.nimbusds.jose.jwk.JWKSet
+import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
@@ -19,7 +18,12 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.interfaces.RSAPrivateKey
+import java.security.interfaces.RSAPublicKey
 import java.util.*
+
 
 @Configuration
 class AuthServConfig(
@@ -45,13 +49,40 @@ class AuthServConfig(
         return http.build()
     }
 
-    @Bean
-    fun jwkSetSource(): JWKSource<SecurityContext> {
-        val jwkContent: String = resource.inputStream.bufferedReader().use { it.readText() }
-        val jwk = JWK.parse(jwkContent)
-        val jwkSet = JWKSet(jwk)
+      @Bean
+    fun jwkSetSourceRSA(): JWKSource<SecurityContext> {
+        val keyPair = generateRsaKey()
+        val publicKey = keyPair.getPublic() as RSAPublicKey
+        val privateKey = keyPair.getPrivate() as RSAPrivateKey
+        val rsaKey = RSAKey.Builder(publicKey)
+            .privateKey(privateKey)
+            .keyID(UUID.randomUUID().toString())
+            .build()
 
+        val jwkSet = JWKSet(rsaKey)
         return ImmutableJWKSet(jwkSet)
+    }
+//
+//    @Bean
+//    fun jwkSetSource(): JWKSource<SecurityContext> {
+//        val jwkContent: String = resource
+//            .inputStream
+//            .bufferedReader().use { it.readText() }
+//        val jwk = JWK.parse(jwkContent)
+//
+//        val jwkSet = JWKSet(jwk)
+//
+//        return ImmutableJWKSet(jwkSet)
+//    }
+
+    companion object {
+        @JvmStatic
+        @Throws(Exception::class)
+        fun generateRsaKey(): KeyPair {
+            val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
+            keyPairGenerator.initialize(2048)
+            return keyPairGenerator.generateKeyPair()
+        }
     }
 
     @Bean

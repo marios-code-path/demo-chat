@@ -22,7 +22,6 @@ function local() {
 }
 
 function docker() {
-  export KEY_VOLUME="demo-chat-server-keys"
   export DOCKER_ARGS="-d --expose ${AUTHSERV_HTTP_PORT} -p ${AUTHSERV_HTTP_PORT}:${AUTHSERV_HTTP_PORT}/tcp \
 --expose ${AUTHSERV_MGMT_PORT} -p ${AUTHSERV_MGMT_PORT}:${AUTHSERV_MGMT_PORT}/tcp"
 
