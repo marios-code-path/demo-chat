@@ -1,4 +1,6 @@
 management:
+  endpoints:
+    enabled-by-default: false
   info:
     git:
       mode: full

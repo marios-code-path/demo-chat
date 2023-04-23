@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source ../shell-scripts/util.sh
-
+source ../shell-scripts/ports.sh
 set -e
 
 export APP_VERSION=0.0.1
@@ -45,6 +45,9 @@ while getopts ":d:lxgsc:m:i:k:b:n:p:" o; do
       ;;
     g)
       OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
+#-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
+
+      DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
@@ -155,7 +158,7 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   BUILD_PROFILES+="register-consul,"
 
   if [[ ! $MANAGEMENT_ENDPOINTS == *"health"* ]]; then
-    MANAGEMENT_ENDPOINTS=${MANAGEMENT_ENDPOINTS}",health"
+    MANAGEMENT_ENDPOINTS+=",health"
   fi
 fi
 
@@ -182,6 +185,7 @@ fi
 
 if [[ ! -z ${MANAGEMENT_ENDPOINTS} ]]; then
   export ENDPOINT_FLAGS=$(expand_delimited "${MANAGEMENT_ENDPOINTS}" "-Dmanagement.endpoint.__.enabled=true ")
+  ENDPOINT_FLAGS+=" -Dmanagement.endpoints.web.exposure.include=${MANAGEMENT_ENDPOINTS}"
 fi
 
 cd ../$MODULE
@@ -210,7 +214,7 @@ ${SERVICE_FLAGS} \
 ${OPT_FLAGS}"
 
 if [[ ${SHOW_OPTIONS} == 1 ]]; then
-  echo $JAVA_TOOL_OPTIONS
+  echo JAVA_TOOL_OPTIONS
   exit 0
 fi
 

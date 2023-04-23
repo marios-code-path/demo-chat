@@ -1,7 +1,5 @@
 app:
   oauth2:
-    jwk:
-      path: file:/etc/keys/server_keycert.jwk
     entrypoint-path: /login
     client:
       id: chat-client

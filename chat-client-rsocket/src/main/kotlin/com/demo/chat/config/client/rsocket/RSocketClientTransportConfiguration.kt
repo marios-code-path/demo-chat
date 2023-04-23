@@ -2,6 +2,7 @@ package com.demo.chat.config.client.rsocket
 
 import com.demo.chat.client.rsocket.transport.InsecureConnection
 import com.demo.chat.client.rsocket.transport.JKSSecureConnection
+import com.demo.chat.client.rsocket.transport.PKCS12ClientConnection
 import com.demo.chat.client.rsocket.transport.UnprotectedConnection
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

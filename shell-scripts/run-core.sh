@@ -14,6 +14,7 @@ export SERVICE_FLAGS="-Dapp.server.proto=rsocket -Dapp.service.core.key -Dapp.se
 export BUILD_PROFILES="consul,"
 export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
 export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
+export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 
 function memory() {
   DOCKER_ARGS+=" -it -d"

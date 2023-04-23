@@ -1,6 +1,5 @@
-package com.demo.chat.config.client.rsocket
+package com.demo.chat.client.rsocket.transport
 
-import com.demo.chat.client.rsocket.transport.SSLClientTransportFactory
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
 import java.io.File
@@ -21,8 +20,11 @@ class PKCS12ClientConnection(
             .apply {
                 val keyStore = KeyStore.getInstance("PKCS12").apply {
                     this.load(FileInputStream(keyFile), storePass.toCharArray())
+
                 }
+                keyStore.getKey("1", storePass.toCharArray())
                 this.init(keyStore, storePass.toCharArray())
+
             }
 
         val trustManager = TrustManagerFactory
