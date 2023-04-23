@@ -23,11 +23,6 @@ import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import java.security.KeyPair
 import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.cert.X509Certificate
-import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.RSAPrivateKey
-import java.security.interfaces.RSAPublicKey
 import java.util.*
 
 
@@ -55,21 +50,6 @@ class AuthServConfig(
         return http.build()
     }
 
-    //@Bean
-    fun jwkSetSourceRSA(): JWKSource<SecurityContext> {
-        val keyPair = generateRsaKey()
-        val publicKey = keyPair.getPublic() as RSAPublicKey
-        val privateKey = keyPair.getPrivate() as RSAPrivateKey
-        val rsaKey = RSAKey
-            .Builder(publicKey)
-            .privateKey(privateKey)
-            .keyID("1")//UUID.randomUUID().toString())
-            .build()
-
-        val jwkSet = JWKSet(rsaKey)
-        return ImmutableJWKSet(jwkSet)
-    }
-
     @Bean
     fun jwtCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> {
         return OAuth2TokenCustomizer { context ->
@@ -87,29 +67,6 @@ class AuthServConfig(
 
         return ImmutableJWKSet(jwkSet)
     }
-
-    //@Bean
-    fun jwkSet(
-        @Value("\${keycert}") keyCert: Resource,
-        @Value("111111") storePass: String
-    ): JWKSource<SecurityContext> {
-        val keyStore = KeyStore.getInstance("PKCS12").apply {
-            this.load(keyCert.inputStream, storePass.toCharArray())
-        }
-        val key = keyStore.getKey("localhost", storePass.toCharArray())
-        val cert = keyStore.getCertificate("localhost") as X509Certificate
-        val ecJWK = com.nimbusds.jose.jwk.ECKey.parse(cert)
-        val jwk = com.nimbusds.jose.jwk.ECKey.Builder(ecJWK)
-            .keyUse(KeyUse.SIGNATURE)
-            .keyID("1")
-            .privateKey(key as ECPrivateKey)
-            .keyStore(keyStore)
-            .build()
-        val jwkSet = JWKSet(jwk)
-
-        return ImmutableJWKSet(jwkSet)
-    }
-
 
     @Bean
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
