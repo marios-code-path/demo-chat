@@ -195,7 +195,7 @@ export MAVEN_PROFILES="-P${BUILD_PROFILES%,}"
 
 export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} \
--Dspring.application.name=${DEPLOYMENT_NAME}"
+-Dspring.application.name=${DEPLOYMENT_NAME} -Djava.security.egd=file:/dev/./urandom"
 
 
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"

@@ -47,6 +47,8 @@
         <module>chat-messaging-memory</module>
         <module>chat-index-lucene</module>
 
+        <module>chat-messaging-kafka</module>
+
         <module>shared-resources-cassandra</module>
         <module>chat-persistence-cassandra</module>
     	<module>chat-index-cassandra</module>

@@ -21,10 +21,7 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
-import java.security.KeyPair
-import java.security.KeyPairGenerator
 import java.util.*
-
 
 @Configuration
 class AuthServConfig(
@@ -85,15 +82,4 @@ class AuthServConfig(
     @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings =
         AuthorizationServerSettings.builder().build()
-
-
-    companion object {
-        @JvmStatic
-        @Throws(Exception::class)
-        fun generateRsaKey(): KeyPair {
-            val keyPairGenerator = KeyPairGenerator.getInstance("RSA")
-            keyPairGenerator.initialize(2048)
-            return keyPairGenerator.generateKeyPair()
-        }
-    }
 }
