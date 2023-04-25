@@ -32,8 +32,11 @@ fi
 
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
-while getopts ":d:lxgsc:m:i:k:b:n:p:" o; do
+while getopts ":d:laxgsc:m:i:k:b:n:p:" o; do
   case $o in
+    a)
+      export NATIVE_BUILD=true
+      ;;
     i)
       export INIT_PHASES=${OPTARG}
       ;;
@@ -44,10 +47,7 @@ while getopts ":d:lxgsc:m:i:k:b:n:p:" o; do
       SPRING_ACTIVE_PROFILES+="${OPTARG},"
       ;;
     g)
-      OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
-#-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
-
-      DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
+      export DEBUG_ENABLED=true
       ;;
     n)
       export DEPLOYMENT_NAME=${OPTARG}
@@ -188,14 +188,31 @@ if [[ ! -z ${MANAGEMENT_ENDPOINTS} ]]; then
   ENDPOINT_FLAGS+=" -Dmanagement.endpoints.web.exposure.include=${MANAGEMENT_ENDPOINTS}"
 fi
 
+if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
+      OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
+      if [[ ${$RUN_MAVEN_ARG} == "rundocker" ]]; then
+        DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
+      else
+        OPT_FLAGS+=" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
+      fi
+fi
+
+if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
+  #BUILD_PROFILES+="native,"
+  echo "Native Builds are not supported at this time"
+  echo "Use of @Profile, @Conditional... not supported"
+  exit 1
+fi
+
 cd ../$MODULE
 
+export SECURE_RANDOM="-Djava.security.egd=file:/dev/./urandom"
 export APP_SPRING_PROFILES="-Dspring.profiles.active=${SPRING_ACTIVE_PROFILES%,}"
 export MAVEN_PROFILES="-P${BUILD_PROFILES%,}"
 
 export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
 -Dapp.key.type=${KEYSPACE_TYPE} -Dapp.primary=${APP_PRIMARY} \
--Dspring.application.name=${DEPLOYMENT_NAME} -Djava.security.egd=file:/dev/./urandom"
+-Dspring.application.name=${DEPLOYMENT_NAME} ${SECURE_RANDOM}"
 
 
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"

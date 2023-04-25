@@ -1,6 +1,8 @@
 spring:
   application:
     name: chat-authorization-server
+  main:
+    web-application-type: servlet
 
 logging:
   level:

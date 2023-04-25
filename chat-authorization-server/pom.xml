@@ -15,10 +15,9 @@
 
     <properties>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.deploy.authserv.AuthServiceApp</mainClass>
-        <appMainClass>${mainClass}</appMainClass>
-        <!--		<spring-security.version>6.1.0-M2</spring-security.version>-->
-
+                <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>
+                <appMainClass>${mainClass}</appMainClass>
+        		<spring-security.version>6.1.0-M2</spring-security.version>
     </properties>
     <profiles>
         <profile>
@@ -34,8 +33,9 @@
                                 <name>${appImageName}</name>
                                 <cleanCache>false</cleanCache>
                                 <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-				   <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
+                                    </BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>
                             </image>
                         </configuration>
@@ -53,6 +53,10 @@
         <profile>
             <id>register-consul</id>
             <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter-bootstrap</artifactId>
+                </dependency>
                 <dependency>
                     <groupId>org.springframework.cloud</groupId>
                     <artifactId>spring-cloud-starter-consul-discovery</artifactId>
@@ -82,6 +86,10 @@
         </profile>
         <profile>
             <id>client-local</id>
+            <build>
+                <plugins>
+                </plugins>
+            </build>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
@@ -135,10 +143,6 @@
             <groupId>com.demo</groupId>
             <artifactId>chat-security</artifactId>
             <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-bootstrap</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
