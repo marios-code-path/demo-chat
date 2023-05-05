@@ -1,6 +1,7 @@
 package com.demo.chat.deploy.authserv
 
 import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
+import com.demo.chat.domain.TopicMember
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -33,7 +34,7 @@ class HttpServletRuntimeHints : RuntimeHintsRegistrar {
         proxies.registerJdkProxy(HttpServlet::class.java)
         proxies.registerJdkProxy(HttpServletRequest::class.java)
         proxies.registerJdkProxy(HttpServletResponse::class.java)
-        proxies.registerJdkProxy(ServletWebServerFactory::class.java)
+        proxies.registerJdkProxy(TopicMember::class.java)
     }
 
 }

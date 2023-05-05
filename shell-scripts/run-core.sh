@@ -3,6 +3,7 @@
 source ../shell-scripts/util.sh
 source ../shell-scripts/ports.sh
 
+export CERT_DIR=${CERT_DIR:=/etc/keys}
 export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${CORE_RSOCKET_PORT}/tcp \
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
@@ -16,13 +17,26 @@ export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
 export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 
+function memorylocal() {
+    export DOCKER_ARGS=
+    export BUILD_PROFILES=
+    export DISCOVERY_FLAGS=
+    export ADDITIONAL_CONFIGS=
+
+    export APP_PRIMARY="core-service"
+    export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
+
+    ./build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
+  -d local -b build -c file:${CERT_DIR} -i users,rootkeys $@
+}
+
 function memory() {
   DOCKER_ARGS+=" -it -d"
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
   ./build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
--b rundocker -c file:/etc/keys -i users,rootkeys $@
+-b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra() {
@@ -33,7 +47,7 @@ function cassandra() {
     BUILD_PROFILES+="cassandra,"
 
     ./build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
--b rundocker -c file:/etc/keys -i users,rootkeys $@
+-b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra_astra() {
@@ -45,7 +59,7 @@ function cassandra_astra() {
     BUILD_PROFILES+="cassandra-astra,"
 
     ./build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
--b rundocker -c file:/etc/keys -i users,rootkeys $@
+-b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
 function help_message {

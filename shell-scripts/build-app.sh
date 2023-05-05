@@ -92,7 +92,7 @@ if [[ ${BUILD_PROFILES} == *"client-local"* &&
 fi
 
 if [[ -z ${CERT_BASEPATH} ]]; then
-  echo "You must specify a certificate base-path with the -c option"
+  echo "You must specify a certificate base-path with the -c option or CERT_BASEPATH env."
 fi
 
 if [[ -z ${KEYSTORE_PASS} ]]; then
@@ -230,8 +230,8 @@ ${CLIENT_FLAGS} \
 ${SERVICE_FLAGS} \
 ${OPT_FLAGS}"
 
-if [[ ${SHOW_OPTIONS} == 1 ]]; then
-  echo JAVA_TOOL_OPTIONS
+if [[ ! -z ${SHOW_OPTIONS} ]]; then
+  echo $JAVA_TOOL_OPTIONS
   exit 0
 fi
 
