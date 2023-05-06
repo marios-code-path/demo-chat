@@ -1,7 +1,9 @@
 #!/bin/bash
 
-source ../shell-scripts/util.sh
-source ../shell-scripts/ports.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source $DIR/util.sh
+source $DIR/ports.sh
 set -e
 
 export APP_VERSION=0.0.1
@@ -204,7 +206,7 @@ if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
   exit 1
 fi
 
-cd ../$MODULE
+cd $DIR/../$MODULE
 
 export SECURE_RANDOM="-Djava.security.egd=file:/dev/./urandom"
 export APP_SPRING_PROFILES="-Dspring.profiles.active=${SPRING_ACTIVE_PROFILES%,}"
@@ -229,6 +231,8 @@ ${DISCOVERY_FLAGS} \
 ${CLIENT_FLAGS} \
 ${SERVICE_FLAGS} \
 ${OPT_FLAGS}"
+
+echo $JAVA_TOOL_OPTIONS > $DIR/${APP_IMAGE_NAME}.env
 
 if [[ ! -z ${SHOW_OPTIONS} ]]; then
   echo $JAVA_TOOL_OPTIONS

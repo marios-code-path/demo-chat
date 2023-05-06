@@ -8,6 +8,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.actuator.RootKey
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
@@ -31,8 +32,8 @@ class HttpRootKeyConsumer(val publisher: DeploymentEventPublisher) {
         typeUtil: TypeUtil<T>,
         mapper: ObjectMapper,
         rootKeys: RootKeys<T>
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
+    ): ApplicationRunner =
+        ApplicationRunner { _ ->
             val exchangeStrategies = ExchangeStrategies.builder()
                 .codecs { configurer ->
                     configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))

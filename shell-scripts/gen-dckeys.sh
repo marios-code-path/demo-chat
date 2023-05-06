@@ -1,6 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
-source ./key_functions.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+source $DIR/key_functions.sh
+
 set -x
 set -e
 
@@ -8,8 +12,7 @@ export PASSWORD=$1; shift
 
 TMPDIR=/tmp/dckeys$$
 
-mkdir $TMPDIR
-here=`pwd`
+mkdir $TMPDIR`
 cd $TMPDIR
 
 ca_gen
@@ -29,6 +32,6 @@ jq ".+{\"x5c\":[\"$CERT\"]}" server.jwk > server_keycert.jwk
 
 cert_gen client
 
-cd $here
+cd $DIR
 
-mv $TMPDIR ../encrypt-keys
+mv $TMPDIR $DIR/../encrypt-keys

@@ -22,7 +22,7 @@ spec:
           secret:
             secretName: chat-server-keystore
       containers:
-      - image: localhost:5001/memory-core-service-rsocket:0.0.2
+      - image: localhost:5001/memory-core-service-rsocket:latest
         name: memory-core-service-rsocket
         resources: {}
         volumeMounts:

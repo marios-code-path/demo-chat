@@ -1,7 +1,9 @@
 #!/bin/bash
 
-source ../shell-scripts/util.sh
-source ../shell-scripts/ports.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source $DIR/util.sh
+source $DIR/ports.sh
 
 export CERT_DIR=${CERT_DIR:=/etc/keys}
 export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${CORE_RSOCKET_PORT}/tcp \
@@ -26,7 +28,7 @@ function memorylocal() {
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
-    ./build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
+    $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
   -d local -b build -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
@@ -35,30 +37,30 @@ function memory() {
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
-  ./build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
+  $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
 -b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra() {
-    source ../shell-scripts/cassandra-options.sh
+    source $DIR/cassandra-options.sh
 
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="cassandra-${APP_PRIMARY}-rsocket"
     BUILD_PROFILES+="cassandra,"
 
-    ./build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
+    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
 -b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra_astra() {
     #../astra/rw-token.json ../astra/secure-connect-demochat.zip
-    source ../shell-scripts/astra-options.sh
+    source $DIR/astra-options.sh
 
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="astra-${APP_PRIMARY}-rsocket"
     BUILD_PROFILES+="cassandra-astra,"
 
-    ./build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
+    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
 -b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
 }
 

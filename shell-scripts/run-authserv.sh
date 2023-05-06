@@ -1,7 +1,9 @@
 #!/bin/bash
 
-source ../shell-scripts/util.sh
-source ../shell-scripts/ports.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+source $DIR/util.sh
+source $DIR/ports.sh
 
 export APP_PRIMARY="authserv"
 export APP_IMAGE_NAME="chat-authserv"
@@ -20,7 +22,7 @@ export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpat
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:/tmp/dc-keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/tmp/dc-keys/server_keycert.jwk"
 
-  ./build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
 }
 
 function docker() {
@@ -29,13 +31,13 @@ function docker() {
   export DOCKER_ARGS="--expose ${AUTHSERV_HTTP_PORT} -p ${AUTHSERV_HTTP_PORT}:${AUTHSERV_HTTP_PORT}/tcp \
 --expose ${AUTHSERV_MGMT_PORT} -p ${AUTHSERV_MGMT_PORT}:${AUTHSERV_MGMT_PORT}/tcp"
 
- ./build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+ $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
 }
 
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:/tmp/dc-keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/tmp/dc-keys/server_keycert.jwk"
 
-  ./build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
 }
 
 

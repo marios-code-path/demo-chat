@@ -12,6 +12,7 @@ import com.demo.chat.service.init.RootKeysSupplier
 import com.demo.chat.service.init.RootKeyService
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
@@ -35,10 +36,10 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
-    fun initializeRootKeys(rootKeys: RootKeys<T>,
+    fun initializeRootKeysRunner(rootKeys: RootKeys<T>,
                      rootKeyGen: RootKeysSupplier<T>
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
+    ): ApplicationRunner =
+        ApplicationRunner { _ ->
             rootKeys.merge(rootKeyGen.get())
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Initialized"))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
@@ -65,8 +66,8 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
         rootKeyService: RootKeyService<T>
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
+    ): ApplicationRunner =
+        ApplicationRunner { _ ->
             rootKeyService.consumeRootKeys(rootKeys)
             publisher.publishEvent(RootKeyUpdatedEvent(rootKeys))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))

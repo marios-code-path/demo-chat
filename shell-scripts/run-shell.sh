@@ -1,6 +1,9 @@
 #!/bin/bash
 
-source ../shell-scripts/util.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
+source $DIR/util.sh
 
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
@@ -17,7 +20,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health"
 
 function local() {
   set -e
-  ./build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local -c /tmp/dc-keys $@
   exit 0
 }
 
@@ -25,7 +28,7 @@ function docker() {
   set -e
   export DOCKER_ARGS="-it"
 
-  ./build-app.sh -m chat-shell -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+  $DIR/build-app.sh -m chat-shell -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
   exit 0
 }
 
