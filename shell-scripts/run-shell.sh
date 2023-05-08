@@ -20,7 +20,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health"
 
 function local() {
   set -e
-  $DIR/build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local $@
   exit 0
 }
 

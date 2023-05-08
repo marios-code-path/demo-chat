@@ -55,7 +55,7 @@ while getopts ":d:laxgsc:m:i:k:b:n:p:" o; do
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
     c)
-      export CERT_BASEPATH=${OPTARG}
+      export CERT_DIR=${OPTARG}
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -93,11 +93,12 @@ if [[ ${BUILD_PROFILES} == *"client-local"* &&
   exit 1
 fi
 
-if [[ -z ${CERT_BASEPATH} ]]; then
-  echo "You must specify a certificate base-path with the -c option or CERT_BASEPATH env."
+if [[ -z "${CERT_DIR}" ]]; then
+  echo "You must specify a certificate base-path with the -c option or CERT_DIR env."
+  exit 1
 fi
 
-if [[ -z ${KEYSTORE_PASS} ]]; then
+if [[ -z "${KEYSTORE_PASS}" ]]; then
   echo "env KEYSTORE_PASS is not set"
   exit 1
 fi
@@ -116,15 +117,15 @@ if [[ ! -z ${SERVICE_FLAGS} ]]; then
 -Dspring.rsocket.server.ssl.client-auth=none \
 -Dspring.rsocket.server.ssl.protocol=TLS \
 -Dspring.rsocket.server.ssl.enabled-protocols=TLSv1.2 \
--Dspring.rsocket.server.ssl.key-store=${CERT_BASEPATH}/server_keystore.p12 \
+-Dspring.rsocket.server.ssl.key-store=${CERT_DIR}/server_keystore.p12 \
 -Dspring.rsocket.server.ssl.key-store-type=PKCS12 \
 -Dspring.rsocket.server.ssl.key-store-password=${KEYSTORE_PASS}"
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
   TLS_FLAGS+=" -Dapp.rsocket.transport.pkcs12 \
--Dapp.rsocket.transport.secure.truststore.path=${CERT_BASEPATH}/client_truststore.p12 \
--Dapp.rsocket.transport.secure.keystore.path=${CERT_BASEPATH}/client_keystore.p12 \
+-Dapp.rsocket.transport.secure.truststore.path=${CERT_DIR}/client_truststore.p12 \
+-Dapp.rsocket.transport.secure.keystore.path=${CERT_DIR}/client_keystore.p12 \
 -Dapp.rsocket.transport.secure.keyfile.pass=${KEYSTORE_PASS}"
 fi
 

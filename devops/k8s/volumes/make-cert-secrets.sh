@@ -1,9 +1,12 @@
 #!/bin/bash
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+
 set -x
 
 export CHAT_ROOT=$1; shift
-export CHAT_ROOT=${CHAT_ROOT:="../../../encrypt-keys"}
+export CHAT_ROOT=${CHAT_ROOT:="${DIR}../../../encrypt-keys"}
 
 export SECRET_NAME=${SECRET_NAME:="chat-server-keystore"}
 

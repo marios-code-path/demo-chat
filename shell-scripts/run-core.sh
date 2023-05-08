@@ -2,6 +2,30 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+export EXEC=$1; shift
+
+function help_message {
+cat << EOF
+Usage: $0 [execution-strategy] [deployment-profile] [options]
+Available execution-strategy:
+    build
+    rundocker
+    runlocal
+
+Available deployment-profiles:
+  memory
+  memory_local
+  cassandra
+  cassandra_astra
+EOF
+exit 1
+}
+
+if [[ -z $EXEC ]]; then
+    help_message
+    exit 1
+fi
+
 source $DIR/util.sh
 source $DIR/ports.sh
 
@@ -19,7 +43,7 @@ export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
 export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 
-function memorylocal() {
+function memory_local() {
     export DOCKER_ARGS=
     export BUILD_PROFILES=
     export DISCOVERY_FLAGS=
@@ -29,7 +53,7 @@ function memorylocal() {
     export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
     $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
-  -d local -b build -c file:${CERT_DIR} -i users,rootkeys $@
+  -d local -b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
 function memory() {
@@ -38,7 +62,7 @@ function memory() {
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
   $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
--b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra() {
@@ -49,7 +73,7 @@ function cassandra() {
     BUILD_PROFILES+="cassandra,"
 
     $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
--b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra_astra() {
@@ -61,19 +85,10 @@ function cassandra_astra() {
     BUILD_PROFILES+="cassandra-astra,"
 
     $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
--b rundocker -c file:${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
-function help_message {
-cat << EOF
-Usage: $0 [deployment-profile] [options]
-Available deployment-profiles:
-  memory
-  cassandra
-  cassandra_astra
-EOF
-exit 1
-}
+
 # ---- main() ----
 
 std_exec $@

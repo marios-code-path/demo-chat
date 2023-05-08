@@ -40,15 +40,15 @@ metadata:
   name: demo-chat
 spec:
   ports:
-  - name: 6790-6790
+  - name: rsocket
     port: 6790
     protocol: TCP
     targetPort: 6790
-  - name: 6791-6791
+  - name: actuator
     port: 6791
     protocol: TCP
     targetPort: 6791
-  - name: 6792-6792
+  - name: websocket
     port: 6792
     protocol: TCP
     targetPort: 6792
