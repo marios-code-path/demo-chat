@@ -14,9 +14,12 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
-export PORTS_FLAGS="-Dserver.port=9001 -Dmanagement.server.port=9001"
 export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
-export MANAGEMENT_ENDPOINTS="shutdown,health"
+
+if [[ ! -z ${DEBUG} ]]; then
+OPT_FLAGS+="-Dlogging.level.com.demo.chat.client.rsocket=debug \
+-Dlogging.level.reactor.netty.http.client=DEBUG"
+fi
 
 function local() {
   set -e
@@ -27,6 +30,8 @@ function local() {
 function docker() {
   set -e
   export DOCKER_ARGS="-it"
+  export PORTS_FLAGS="-Dserver.port=9001 -Dmanagement.server.port=9001"
+  export MANAGEMENT_ENDPOINTS="shutdown,health"
 
   $DIR/build-app.sh -m chat-shell -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
   exit 0

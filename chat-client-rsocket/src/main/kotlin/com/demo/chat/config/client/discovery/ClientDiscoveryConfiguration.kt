@@ -18,7 +18,7 @@ class ClientDiscoveryConfiguration {
     @Bean
     @ConditionalOnProperty("app.client.discovery", havingValue = "local")
     fun localhostDiscovery(
-        @Value("\${app.client.discovery.local.host:8080}") host: String,
-        @Value("\${app.client.discovery.local.port:8080}") port: Int,
+        @Value("\${app.client.discovery.local.host}") host: String,
+        @Value("\${app.client.discovery.local.port}") port: Int,
     ) = LocalhostDiscovery(host, port)
 }

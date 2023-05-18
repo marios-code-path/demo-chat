@@ -34,8 +34,11 @@ fi
 
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
-while getopts ":d:laxgsc:m:i:k:b:n:p:" o; do
+while getopts ":d:laoxgsc:m:i:k:b:n:p:" o; do
   case $o in
+    o)
+      export BAKE_OPTIONS=true
+      ;;
     a)
       export NATIVE_BUILD=true
       ;;
@@ -112,7 +115,7 @@ if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
   INIT_FLAGS+=" -Dapp.rootkeys.create=true"
 fi
 
-if [[ ! -z ${SERVICE_FLAGS} ]]; then
+if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
   TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \
 -Dspring.rsocket.server.ssl.client-auth=none \
 -Dspring.rsocket.server.ssl.protocol=TLS \
@@ -123,11 +126,17 @@ if [[ ! -z ${SERVICE_FLAGS} ]]; then
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
+  if [[ -z ${NO_SEC} ]]; then
   TLS_FLAGS+=" -Dapp.rsocket.transport.pkcs12 \
 -Dapp.rsocket.transport.secure.truststore.path=${CERT_DIR}/client_truststore.p12 \
 -Dapp.rsocket.transport.secure.keystore.path=${CERT_DIR}/client_keystore.p12 \
 -Dapp.rsocket.transport.secure.keyfile.pass=${KEYSTORE_PASS}"
+  else
+  TLS_FLAGS+=" -Dapp.rsocket.transport.unprotected"
+  fi
 fi
+
+
 
 if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   # Publish Root Keys TO Consul KV if we are initializing them here
@@ -233,11 +242,22 @@ ${CLIENT_FLAGS} \
 ${SERVICE_FLAGS} \
 ${OPT_FLAGS}"
 
-echo $JAVA_TOOL_OPTIONS > $DIR/${APP_IMAGE_NAME}.env
+export ENV_FILE=/tmp/${APP_IMAGE_NAME}-$$.env
+
+echo "ENV_FILE=${ENV_FILE}"
+
+cat > $ENV_FILE << EOF
+JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
+EOF
 
 if [[ ! -z ${SHOW_OPTIONS} ]]; then
   echo $JAVA_TOOL_OPTIONS
   exit 0
+fi
+
+if [[ ! -z ${BAKE_OPTIONS} ]]; then
+  export JAVA_TOOL_OPTIONS=
+  DOCKER_ARGS+=" --env-file ${ENV_FILE}"
 fi
 
 set -x

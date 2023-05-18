@@ -33,7 +33,7 @@ open class ShellIntegrationTestBase {
     companion object {
         val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
 
-        val container = GenericContainer(imageName).withExposedPorts(6790, 6792)
+        val container = GenericContainer(imageName).withExposedPorts(6790, 6791)
             .apply {
                 start()
                 setWaitStrategy(
@@ -49,7 +49,7 @@ open class ShellIntegrationTestBase {
         @DynamicPropertySource
         fun clientPropertySetup(registry: org.springframework.test.context.DynamicPropertyRegistry) {
             val servicePort = container.getMappedPort(6790).toString()
-            val actuatorPort = container.getMappedPort(6792).toString()
+            val actuatorPort = container.getMappedPort(6791).toString()
             val host = container.host
             val serviceHostAndPort = "$host:$servicePort"
 

@@ -1,7 +1,7 @@
-scripts_dir="../../shell-scripts"
+scripts_dir="../shell-scripts"
 os.putenv('KEYSTORE_PASS', '111111')
 
 local_resource('build-app', scripts_dir + '/run-core.sh build memory_local')
 
-k8s_yaml('../k8s/chat-service-memory.yaml')
+k8s_yaml('../devops/k8s/chat-service-memory.yaml')
 k8s_resource('demo-chat', port_forwards=['6790:6790', '6791:6791', '6792:6792'])

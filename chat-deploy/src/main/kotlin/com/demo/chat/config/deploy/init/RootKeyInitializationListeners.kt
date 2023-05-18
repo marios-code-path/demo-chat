@@ -8,11 +8,9 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.InitializingKVStore
-import com.demo.chat.service.init.RootKeysSupplier
 import com.demo.chat.service.init.RootKeyService
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.demo.chat.service.init.RootKeysSupplier
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
@@ -20,11 +18,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
-    val typeUtil: TypeUtil<T>){
+class RootKeyInitializationListeners<T>(
+    val publisher: DeploymentEventPublisher,
+    val typeUtil: TypeUtil<T>
+) {
 
     @Bean
-    fun listenForRootKeyInitialized(): ApplicationListener<RootKeyInitializationReadyEvent<T>> =
+    fun listenForRootKeyInitialized(): ApplicationListener<RootKeyUpdatedEvent<T>> =
         ApplicationListener { evt ->
             publisher.publishEvent(StartupAnnouncementEvent(RootKeys.rootKeySummary(evt.rootKeys)))
         }
@@ -36,10 +36,11 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.create", havingValue = "true")
-    fun initializeRootKeysRunner(rootKeys: RootKeys<T>,
-                     rootKeyGen: RootKeysSupplier<T>
-    ): ApplicationRunner =
-        ApplicationRunner { _ ->
+    fun initializeRootKeys(
+        rootKeys: RootKeys<T>,
+        rootKeyGen: RootKeysSupplier<T>
+    ): ApplicationListener<ApplicationStartedEvent> =
+        ApplicationListener { _ ->
             rootKeys.merge(rootKeyGen.get())
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Initialized"))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
@@ -47,7 +48,7 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
-    fun publishRootKeysOnUpdate(rootKeyService: RootKeyService<T>) : ApplicationListener<RootKeyUpdatedEvent<T>> =
+    fun publishRootKeysOnUpdate(rootKeyService: RootKeyService<T>): ApplicationListener<RootKeyUpdatedEvent<T>> =
         ApplicationListener { evt ->
             rootKeyService.publishRootKeys(evt.rootKeys)
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Update Published"))
@@ -66,8 +67,8 @@ class RootKeyInitializationListeners<T>(val publisher: DeploymentEventPublisher,
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
         rootKeyService: RootKeyService<T>
-    ): ApplicationRunner =
-        ApplicationRunner { _ ->
+    ): ApplicationListener<ApplicationStartedEvent> =
+        ApplicationListener { _ ->
             rootKeyService.consumeRootKeys(rootKeys)
             publisher.publishEvent(RootKeyUpdatedEvent(rootKeys))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))

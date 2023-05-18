@@ -24,6 +24,9 @@ spec:
       containers:
       - image: localhost:5001/memory-core-service-rsocket:latest
         name: memory-core-service-rsocket
+        envFrom:
+          - secretRef:
+              name: chat-server-keystore-pass
         resources: {}
         volumeMounts:
         - name: chat-certs
