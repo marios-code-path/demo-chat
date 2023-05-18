@@ -102,7 +102,7 @@ if [[ -z "${CERT_DIR}" ]]; then
   exit 1
 fi
 
-if [[ -z "${KEYSTORE_PASS}" ]]; then
+if [[ -z "${KEYSTORE_PASS}" && -z "${NO_SEC}" ]]; then
   echo "env KEYSTORE_PASS is not set"
   exit 1
 fi
@@ -117,13 +117,18 @@ if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
 fi
 
 if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
-  TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \
+  if [[ -z ${NO_SEC} ]]; then
+    TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \
 -Dspring.rsocket.server.ssl.client-auth=none \
 -Dspring.rsocket.server.ssl.protocol=TLS \
 -Dspring.rsocket.server.ssl.enabled-protocols=TLSv1.2 \
 -Dspring.rsocket.server.ssl.key-store=${CERT_DIR}/server_keystore.p12 \
 -Dspring.rsocket.server.ssl.key-store-type=PKCS12 \
 -Dspring.rsocket.server.ssl.key-store-password=${KEYSTORE_PASS}"
+  else
+    TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=false"
+  fi
+
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
