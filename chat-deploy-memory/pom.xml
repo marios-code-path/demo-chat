@@ -14,7 +14,7 @@
     <description>Deployment for in-memory components</description>
 
     <properties>
-        <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+        <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
         <mainClass>com.demo.chat.deploy.memory.MemoryDeploymentApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>

@@ -8,6 +8,7 @@ set -e
 
 export APP_VERSION=0.0.1
 export TLS_FLAGS
+export IMAGE_REPO_PREFIX=${IMAGE_REPO_PREFIX:="docker.io/library"}
 
 if [[ -z ${SPRING_ACTIVE_PROFILES} ]]; then
   export SPRING_ACTIVE_PROFILES=""

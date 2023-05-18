@@ -14,10 +14,10 @@
     <description>Chat Authorization Server</description>
 
     <properties>
-        <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-                <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>
-                <appMainClass>${mainClass}</appMainClass>
-        		<spring-security.version>6.1.0-M2</spring-security.version>
+        <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
+        <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>
+        <appMainClass>${mainClass}</appMainClass>
+        <spring-security.version>6.1.0-M2</spring-security.version>
     </properties>
     <profiles>
         <profile>

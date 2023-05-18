@@ -16,6 +16,7 @@
     <name>Demo Chat Parent</name>
 
     <properties>
+        <image.repo>${env.IMAGE_REPO_PREFIX}</image.repo>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>

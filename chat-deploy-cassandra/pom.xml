@@ -13,7 +13,7 @@
     <name>chat-deploy-cassandra</name>
     <description>Deployment details for cassandra backed services</description>
     <properties>
-        <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+        <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
         <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
