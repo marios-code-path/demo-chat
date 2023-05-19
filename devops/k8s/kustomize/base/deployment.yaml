@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: demo-chat
+  name: demo-chat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-chat
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: demo-chat
+    spec:
+      containers:
+      - image: memory-core-service-rsocket:0.0.1
+        name: memory-core-service-rsocket
+        resources: {}
+status: {}

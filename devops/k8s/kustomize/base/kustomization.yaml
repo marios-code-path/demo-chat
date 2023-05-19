@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- deployment.yaml
+- clusterip.yaml
+
+patches:
+- path: patch_add_keystore_volume.yaml
+- path: patch_apply_keystore.yaml

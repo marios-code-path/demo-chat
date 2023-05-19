@@ -1,0 +1,6 @@
+resources:
+- ../base
+namePrefix: local-
+images:
+- name: memory-core-service-rsocket
+  newName: localhost:5001/memory-core-service-rsocket
