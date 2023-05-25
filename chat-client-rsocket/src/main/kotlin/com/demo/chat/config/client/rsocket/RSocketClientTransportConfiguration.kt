@@ -13,13 +13,16 @@ import java.io.File
 @Configuration
 class RSocketClientTransportConfiguration {
 
+    @Value("\${app.rsocket.transport.websocket.enabled:false}")
+    private val websocketEnabled: Boolean = false
+
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.unprotected")
-    fun unprotectedConnection() = UnprotectedConnection()
+    fun unprotectedConnection() = UnprotectedConnection(websocketEnabled)
 
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.insecure")
-    fun insecureTransport() = InsecureConnection()
+    fun insecureTransport() = InsecureConnection(websocketEnabled)
 
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.jks")
@@ -27,7 +30,7 @@ class RSocketClientTransportConfiguration {
         @Value("\${app.rsocket.transport.secure.truststore.path}") trustFile: File,
         @Value("\${app.rsocket.transport.secure.keystore.path}") keyFile: File,
         @Value("\${app.rsocket.transport.secure.keyfile.pass}") pass: String
-    ) = JKSSecureConnection(trustFile, keyFile, pass)
+    ) = JKSSecureConnection(trustFile, keyFile, pass, websocketEnabled)
 
     @Bean
     @ConditionalOnProperty("app.rsocket.transport.pkcs12")
@@ -35,6 +38,6 @@ class RSocketClientTransportConfiguration {
         @Value("\${app.rsocket.transport.secure.truststore.path}") trustFile: File,
         @Value("\${app.rsocket.transport.secure.keystore.path}") keyFile: File,
         @Value("\${app.rsocket.transport.secure.keyfile.pass}") pass: String
-    ) = PKCS12ClientConnection(trustFile, keyFile, pass)
+    ) = PKCS12ClientConnection(trustFile, keyFile, pass, websocketEnabled)
 
 }

@@ -11,8 +11,9 @@ import javax.net.ssl.TrustManagerFactory
 class JKSSecureConnection(
     private val trustFile: File,
     private val keyFile: File,
-    private val jksPass: String
-) : SSLClientTransportFactory {
+    private val jksPass: String,
+    override val webSocket: Boolean = false
+) : SecureRSocketClientTransportFactory {
 
     override fun getSSLContext(): SslContext {
         val keyManager = KeyManagerFactory

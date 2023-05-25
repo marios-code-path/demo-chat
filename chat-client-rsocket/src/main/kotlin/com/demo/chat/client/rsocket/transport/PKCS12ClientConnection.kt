@@ -11,8 +11,9 @@ import javax.net.ssl.TrustManagerFactory
 class PKCS12ClientConnection(
     private val trustFile: File,
     private val keyFile: File,
-    private val storePass: String
-) : SSLClientTransportFactory {
+    private val storePass: String,
+    override val webSocket: Boolean = false
+) : SecureRSocketClientTransportFactory {
 
     override fun getSSLContext(): SslContext {
         val keyManager = KeyManagerFactory

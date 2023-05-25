@@ -129,6 +129,10 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
     TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=false"
   fi
 
+  if [[ ! -z ${WEBSOCKET} ]]; then
+    SERVICE_FLAGS+=" -Dspring.rsocket.server.transport=websocket"
+    SERVICE_FLAGS+=" -Dspring.rsocket.server.mapping-path=/"
+  fi
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
@@ -139,6 +143,10 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
 -Dapp.rsocket.transport.secure.keyfile.pass=${KEYSTORE_PASS}"
   else
   TLS_FLAGS+=" -Dapp.rsocket.transport.unprotected"
+  fi
+
+  if [[ ! -z ${WEBSOCKET} ]]; then
+    CLIENT_FLAGS+=" -Dapp.rsocket.transport.websocket.enabled=true"
   fi
 fi
 
