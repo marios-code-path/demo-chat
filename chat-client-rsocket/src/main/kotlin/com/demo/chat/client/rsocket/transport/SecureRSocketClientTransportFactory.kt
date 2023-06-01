@@ -20,7 +20,6 @@ interface SecureRSocketClientTransportFactory : RSocketClientTransportFactory {
         return if(webSocket) {
             WebsocketClientTransport.create(tcpClient)
         } else {
-
             TcpClientTransport.create(tcpClient)
         }
     }

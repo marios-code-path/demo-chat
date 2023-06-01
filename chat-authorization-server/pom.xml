@@ -15,11 +15,22 @@
 
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>
+<!--        <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>-->
         <appMainClass>${mainClass}</appMainClass>
         <spring-security.version>6.1.0-M2</spring-security.version>
     </properties>
     <profiles>
+        <profile>
+            <id>native</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.graalvm.buildtools</groupId>
+                        <artifactId>native-maven-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>deploy</id>
             <build>
@@ -77,9 +88,9 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
+<!--                        <configuration>-->
+<!--                            <skip>true</skip>-->
+<!--                        </configuration>-->
                     </plugin>
                 </plugins>
             </build>

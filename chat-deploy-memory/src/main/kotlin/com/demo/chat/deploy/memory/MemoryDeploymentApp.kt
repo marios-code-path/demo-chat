@@ -4,12 +4,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.runApplication
 import org.springframework.context.event.EventListener
+import org.springframework.web.reactive.config.EnableWebFlux
 import reactor.core.publisher.Hooks
 
 @SpringBootApplication(
     scanBasePackages = ["com.demo.chat.config"],
     proxyBeanMethods = false
 )
+@EnableWebFlux
 class MemoryDeploymentApp {
 
     companion object {

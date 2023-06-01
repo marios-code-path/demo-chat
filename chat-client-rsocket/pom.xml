@@ -13,7 +13,21 @@
     <version>0.0.1</version>
     <name>chat-service-rsocket</name>
     <description>RSocket extensions to services</description>
-
+    <profiles>
+        <profile>
+        <id>websocket</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-webflux</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-websocket</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>

@@ -29,12 +29,11 @@ fi
 source $DIR/util.sh
 source $DIR/ports.sh
 
-export CERT_DIR=${CERT_DIR:=/etc/keys}
 export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${CORE_RSOCKET_PORT}/tcp \
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
 -Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
-export SERVICE_FLAGS="-Dapp.server.proto=rsocket -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
 -Dapp.controller.pubsub -Dapp.controller.secrets -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
@@ -57,6 +56,7 @@ function memory_local() {
 }
 
 function memory() {
+  export CERT_DIR=${CERT_DIR:=/etc/keys}
   DOCKER_ARGS+=" -it -d"
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"

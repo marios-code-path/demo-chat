@@ -35,8 +35,11 @@ fi
 
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
-while getopts ":d:laoxgsc:m:i:k:b:n:p:" o; do
+while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
   case $o in
+    w)
+      export WEBSOCKET=true
+      ;;
     o)
       export BAKE_OPTIONS=true
       ;;
@@ -137,12 +140,12 @@ fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
   if [[ -z ${NO_SEC} ]]; then
-  TLS_FLAGS+=" -Dapp.rsocket.transport.pkcs12 \
--Dapp.rsocket.transport.secure.truststore.path=${CERT_DIR}/client_truststore.p12 \
--Dapp.rsocket.transport.secure.keystore.path=${CERT_DIR}/client_keystore.p12 \
--Dapp.rsocket.transport.secure.keyfile.pass=${KEYSTORE_PASS}"
+  TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=pkcs12 \
+-Dapp.rsocket.transport.security.truststore.path=${CERT_DIR}/client_truststore.p12 \
+-Dapp.rsocket.transport.security.keystore.path=${CERT_DIR}/client_keystore.p12 \
+-Dapp.rsocket.transport.security.keyfile.pass=${KEYSTORE_PASS}"
   else
-  TLS_FLAGS+=" -Dapp.rsocket.transport.unprotected"
+  TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=unprotected"
   fi
 
   if [[ ! -z ${WEBSOCKET} ]]; then
@@ -195,12 +198,16 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
     INIT_FLAGS+="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http \
 -Dapp.rootkeys.consume.source=${ROOTKEY_SOURCE_URI}"
   fi
-
+ls /
   export DISCOVERY_FLAGS="-Dspring.cloud.consul.enabled=false \
 -Dspring.cloud.service-registry.auto-registration.enabled=false \
 -Dspring.cloud.consul.config.enabled=false \
 -Dspring.cloud.consul.config.watch.enabled=false \
--Dspring.cloud.consul.discovery.enabled=false"
+-Dspring.cloud.consul.discovery.enabled=false
+-Dspring.security.user.name=actuator \
+-Dspring.security.user.password=actuator \
+-Dspring.security.user.roles=ACTUATOR
+"
 
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
     ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-local.yml,"

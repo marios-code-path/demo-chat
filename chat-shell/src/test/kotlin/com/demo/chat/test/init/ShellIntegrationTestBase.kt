@@ -17,7 +17,7 @@ import java.time.Duration
         // TODO: Consul still being contacted.... will need to unregister
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=test",
         "app.rootkeys.consume.scheme=http", "app.client.discovery=local",
-        "app.rsocket.transport.unprotected", "app.client.rsocket.core.key",
+        "app.rsocket.transport.security.type=unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",
         "app.client.rsocket.composite.topic", "app.service.composite.auth",

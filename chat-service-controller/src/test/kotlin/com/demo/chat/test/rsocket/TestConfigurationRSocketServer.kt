@@ -3,9 +3,13 @@ package com.demo.chat.test.rsocket
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.serializers.JacksonModules
 import io.rsocket.core.RSocketServer
+import io.rsocket.transport.ClientTransport
+import io.rsocket.transport.ServerTransport
 import io.rsocket.transport.netty.client.TcpClientTransport
+import io.rsocket.transport.netty.client.WebsocketClientTransport
 import io.rsocket.transport.netty.server.CloseableChannel
 import io.rsocket.transport.netty.server.TcpServerTransport
+import io.rsocket.transport.netty.server.WebsocketServerTransport
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
@@ -30,9 +34,10 @@ class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverte
     JacksonAutoConfiguration::class,
     RSocketStrategiesAutoConfiguration::class,
     RSocketMessagingAutoConfiguration::class,
-    RSocketRequesterAutoConfiguration::class
+    RSocketRequesterAutoConfiguration::class,
 )
-class TestConfigurationRSocketServer {
+open class TestConfigurationRSocketServer(private val isWebSocketEnabled: Boolean = false) {
+
     init {
         Hooks.onOperatorDebug()
     }
@@ -44,24 +49,38 @@ class TestConfigurationRSocketServer {
     fun rSocketServer(handler: RSocketMessageHandler): RSocketServer = RSocketServer
         .create(handler.responder())
 
+    fun getServerTransport(webSocket: Boolean = false): ServerTransport<CloseableChannel> {
+        return if (webSocket)
+            WebsocketServerTransport.create("localhost", serverPort.toInt())
+        else
+            TcpServerTransport.create("localhost", serverPort.toInt())
+    }
+
+    fun getClientTransport(tcpClient: TcpClient, webSocket: Boolean = false): ClientTransport {
+        return if (webSocket)
+            WebsocketClientTransport.create(tcpClient)
+        else
+            TcpClientTransport.create(tcpClient)
+    }
+
     @Bean
     fun rSocketConnectedServer(rs: RSocketServer): CloseableChannel =
-        rs.bind(TcpServerTransport.create("localhost", serverPort.toInt())).block()!!
+        rs.bind(getServerTransport(isWebSocketEnabled)).block()!!
             .apply { server = this }
 
     @Bean
     fun rSocketRequester(server: CloseableChannel, builder: RSocketRequester.Builder): RSocketRequester =
         builder
             .transport(
-                TcpClientTransport.create(
+                getClientTransport(
                     TcpClient.create()
                         .host("localhost")
-                        .port(server.address().port)
+                        .port(server.address().port),
+                    isWebSocketEnabled
                 )
             )
 
     private lateinit var server: CloseableChannel
-
 
     @EventListener
     fun handleClosedEvent(event: ContextClosedEvent) {

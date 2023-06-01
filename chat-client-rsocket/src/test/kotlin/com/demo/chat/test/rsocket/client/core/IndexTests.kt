@@ -29,7 +29,7 @@ import java.util.*
 @Import(
     TestConfigurationRSocketServer::class,
         MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
-class IndexTests : RSocketTestBase() {
+open class IndexTests : RSocketTestBase() {
     @MockBean
     private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 
