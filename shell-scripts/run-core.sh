@@ -61,8 +61,12 @@ function memory() {
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
-  $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
+  $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long  \
 -b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
+
+
+  # $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
+#-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra() {

@@ -153,8 +153,6 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
   fi
 fi
 
-
-
 if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   # Publish Root Keys TO Consul KV if we are initializing them here
   # Otherwise, consume them from Consul
@@ -184,7 +182,7 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
     BUILD_PROFILES+="client-consul,"
   fi
 
-  BUILD_PROFILES+="register-consul,"
+  BUILD_PROFILES+="consul,"
 
   if [[ ! $MANAGEMENT_ENDPOINTS == *"health"* ]]; then
     MANAGEMENT_ENDPOINTS+=",health"
