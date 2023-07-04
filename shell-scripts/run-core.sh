@@ -64,7 +64,6 @@ function memory() {
   $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long  \
 -b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 
-
   # $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
 #-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }

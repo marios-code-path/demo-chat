@@ -135,6 +135,7 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
   if [[ ! -z ${WEBSOCKET} ]]; then
     SERVICE_FLAGS+=" -Dspring.rsocket.server.transport=websocket"
     SERVICE_FLAGS+=" -Dspring.rsocket.server.mapping-path=/"
+    BUILD_PROFILES+="websocket,"
   fi
 fi
 
@@ -150,6 +151,7 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
 
   if [[ ! -z ${WEBSOCKET} ]]; then
     CLIENT_FLAGS+=" -Dapp.rsocket.transport.websocket.enabled=true"
+    BUILD_PROFILES+="websocket,"
   fi
 fi
 
@@ -196,7 +198,7 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
     INIT_FLAGS+="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http \
 -Dapp.rootkeys.consume.source=${ROOTKEY_SOURCE_URI}"
   fi
-ls /
+
   export DISCOVERY_FLAGS="-Dspring.cloud.consul.enabled=false \
 -Dspring.cloud.service-registry.auto-registration.enabled=false \
 -Dspring.cloud.consul.config.enabled=false \
@@ -221,11 +223,11 @@ fi
 
 if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
-      if [[ ${$RUN_MAVEN_ARG} == "rundocker" ]]; then
-        DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
-      else
-        OPT_FLAGS+=" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
-      fi
+#      if [[ ${RUN_MAVEN_ARG} == "rundocker" ]]; then
+#        DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
+#      else
+#        OPT_FLAGS+=" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
+#      fi
 fi
 
 if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
