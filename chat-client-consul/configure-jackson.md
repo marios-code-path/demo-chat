@@ -11,9 +11,15 @@ normal application configuration.
 class MyApplicationClasss { ... }
 ```
 
-By importing this class into the configuration of the application,
-we can expect that the Jackson Modules will also get consumed and enabled
-for further execution within the application.
+Jackson is usually on the classpath and will get configured accordingly.
+You really do not need to do anything more to ser/deser your POJO's or POKO's ( Plain Old Kotlin Objects).
+
+However, in this app we are using interfaces and static constructors to create instances
+of objects. Additinally we have subclassed entities that will have specific construction
+logic along with nested hierarchies.  
+
+Jackson alone wont be able to ser/deser these kinds of objects.  For that, there are 
+custom Deserializers.
 
 # Jackson JsonDeserializer
 

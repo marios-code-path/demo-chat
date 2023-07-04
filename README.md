@@ -36,17 +36,21 @@ Technically, the chat-core defines 4 service strategies:
 * Messaging - exchange entities of V in a topic T 
 * Security - authorization, authentication, secrets stores
 
+The following sections should describe fundamental goals of each module. This is a work
+in progress, and as such it is subject to change without notice or reflection in this
+document.
+
 ## chat-service-controller
 
-This module's objective is to turn any of the chat-core domain-services into REST/Rsocket controllers. 
-
-Additionally, this module provides an 'edge' package which specifies chat-specific operations that defines
-the chat application as seen by an end user (at the edge). It is most likely that 
+Implement interfaces as controllers over Messaging APIS such as R-Socket, STOMP,
+or something else entirely. Currently, R-Socket is capable of fulfilling all requirements for inter-process
+communication with speed and efficiency. There is no real plan to use something else
+unless we really want to demonstrate messaging through STOMP or maybe even gRPC?
 
 ## chat-service-rsocket
 
-This module turns the chat-core domain services into R-socket clients. Because this is technology-specific module,
-we have the opportunity to test the client against real R-socket controllers with mocked resources.
+The client component to the service contracts. This should be implemented with
+underlaying protocol - RSocket in this case.
 
 ## chat-persistence-cassandra
 
