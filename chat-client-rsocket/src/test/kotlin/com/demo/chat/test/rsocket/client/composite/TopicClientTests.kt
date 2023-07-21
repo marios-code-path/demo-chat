@@ -9,7 +9,7 @@ import com.demo.chat.test.TestChatRoomKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
-import com.demo.chat.test.rsocket.controller.composite.RSocketControllerTestBase
+import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
 import com.demo.chat.test.rsocket.controller.composite.TopicControllerTests
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
@@ -34,7 +34,7 @@ import java.util.*
     MockCoreServicesConfiguration::class,
     TopicControllerTests.TestTopicControllerConfiguration::class
 )
-class TopicClientTests : RSocketControllerTestBase() {
+class TopicClientTests : RSocketServerTestBase() {
     lateinit var client: TopicClient<UUID, String>
     private val svcPrefix = ""
 

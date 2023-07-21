@@ -4,4 +4,4 @@ import com.demo.chat.test.rsocket.TestConfigurationTcpRSocketServer
 import org.springframework.context.annotation.Import
 
 @Import(TestConfigurationTcpRSocketServer::class)
-class MessageIndexTcpTests : MessageIndexRSocketTests()
+class MessageIndexTcpTests : MessageIndexRequesterTests()

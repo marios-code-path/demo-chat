@@ -16,11 +16,6 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
 export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 
-if [[ ! -z ${DEBUG} ]]; then
-OPT_FLAGS+="-Dlogging.level.com.demo.chat.client.rsocket=debug \
--Dlogging.level.reactor.netty.http.client=DEBUG"
-fi
-
 function local() {
   set -e
   $DIR/build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local $@

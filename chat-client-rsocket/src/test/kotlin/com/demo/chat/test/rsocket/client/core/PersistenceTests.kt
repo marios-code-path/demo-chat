@@ -9,9 +9,9 @@ import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
-import com.demo.chat.test.rsocket.controller.core.UserPersistenceRSocketTests
+import com.demo.chat.test.rsocket.controller.core.UserPersistenceRequesterTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -30,9 +30,9 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocketServer::class,
-    UserPersistenceRSocketTests.UserPersistenceTestConfiguration::class
+    UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class
 )
-class PersistenceTests : RSocketTestBase() {
+class PersistenceTests : RequesterTestBase() {
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
 

@@ -32,8 +32,10 @@ open class AbstractAuthenticationService<T, U, Q>(
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
         userIndex
             .findUnique(userNameToQuery.apply(n))
+            .doOnNext { println("Found a USER!!! " + it.id) }
             .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
             .flatMap { userKey ->  // this should only happen when rootKeys is there!!!
+                println("ROOTKEY FOR ANON: " + rootKeys.hasRootKey(Anon::class.java, userKey) )
                 if (rootKeys.hasRootKey(Anon::class.java, userKey))
                     Mono.just(userKey)
                 else

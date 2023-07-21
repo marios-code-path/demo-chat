@@ -1,8 +1,9 @@
-package com.demo.chat.test.rsocket.controller.composite
+package com.demo.chat.test.rsocket.controller
 
 import com.demo.chat.domain.*
 import com.demo.chat.rsocket.TargetIdentifierInterceptor
 import com.demo.chat.service.core.IKeyService
+import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import io.rsocket.RSocket
 import io.rsocket.core.RSocketServer
 import io.rsocket.frame.decoder.PayloadDecoder
@@ -13,20 +14,18 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.rsocket.server.RSocketServerCustomizer
 import org.springframework.context.ApplicationContext
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
 import org.springframework.messaging.rsocket.annotation.support.RSocketMessageHandler
+import org.springframework.security.rsocket.core.SecuritySocketAcceptorInterceptor
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
-open class RSocketControllerTestBase {
+open class RSocketServerTestBase {
     private lateinit var socket: RSocket
 
     private fun typeUtil(): TypeUtil<UUID> = UUIDUtil()
@@ -54,11 +53,15 @@ open class RSocketControllerTestBase {
         val messageHandler = context.getBean(RSocketMessageHandler::class.java)
         val strategies = context.getBean(RSocketStrategies::class.java)
 
-        println("Binding server")
+        val socketAuth: SecuritySocketAcceptorInterceptor = context.getBean(SecuritySocketAcceptorInterceptor::class.java)
+
         server = RSocketServer
             .create(messageHandler.responder())
             .payloadDecoder(PayloadDecoder.ZERO_COPY)
-            .interceptors { it.forResponder(TargetIdentifierInterceptor(strategies, typeUtil())) }
+            .interceptors { it
+                .forResponder(TargetIdentifierInterceptor(strategies, typeUtil()))
+                .forSocketAcceptor(socketAuth)
+            }
             .bindNow(TcpServerTransport.create("localhost", 0))
 
         requester = RSocketRequester

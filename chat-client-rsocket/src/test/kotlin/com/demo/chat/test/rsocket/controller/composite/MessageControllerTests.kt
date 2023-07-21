@@ -9,6 +9,7 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
+import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -34,7 +35,7 @@ import java.util.stream.Stream
 @ExtendWith(SpringExtension::class)
 @Import(MockCoreServicesConfiguration::class,
         MessageControllerTests.CompositeMessagingTestConfiguration::class)
-class MessageControllerTests : RSocketControllerTestBase() {
+class MessageControllerTests : RSocketServerTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 

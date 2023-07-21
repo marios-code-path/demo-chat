@@ -10,6 +10,7 @@ import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
 import com.demo.chat.test.TestChatRoomKey
+import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -32,7 +33,7 @@ import java.util.function.Function
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(MockCoreServicesConfiguration::class, TopicControllerTests.TestTopicControllerConfiguration::class)
-open class TopicControllerTests : RSocketControllerTestBase() {
+open class TopicControllerTests : RSocketServerTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
     @Autowired

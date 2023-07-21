@@ -6,9 +6,9 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
-import com.demo.chat.test.rsocket.controller.core.MessageIndexRSocketTests
+import com.demo.chat.test.rsocket.controller.core.MessageIndexRequesterTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -16,8 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
-import org.springframework.test.context.TestPropertySource
-import org.springframework.test.context.TestPropertySources
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -28,8 +26,8 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocketServer::class,
-        MessageIndexRSocketTests.MessageIndexTestConfiguration::class)
-open class IndexTests : RSocketTestBase() {
+        MessageIndexRequesterTests.MessageIndexTestConfiguration::class)
+open class IndexTests : RequesterTestBase() {
     @MockBean
     private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 

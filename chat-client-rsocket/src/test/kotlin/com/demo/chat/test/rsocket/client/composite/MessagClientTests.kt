@@ -8,7 +8,7 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.composite.MessageControllerTests
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
@@ -35,7 +35,7 @@ import java.util.stream.Stream
         MockCoreServicesConfiguration::class,
         MessageControllerTests.CompositeMessagingTestConfiguration::class
 )
-class MessagClientTests : RSocketTestBase() {
+class MessagClientTests : RequesterTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 

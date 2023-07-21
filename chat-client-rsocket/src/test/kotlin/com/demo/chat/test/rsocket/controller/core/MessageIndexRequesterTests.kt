@@ -8,7 +8,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessageIndexService.Companion.TOPIC
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -29,9 +29,9 @@ import java.util.*
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    MessageIndexRSocketTests.MessageIndexTestConfiguration::class
+    MessageIndexRequesterTests.MessageIndexTestConfiguration::class
 )
-open class MessageIndexRSocketTests : RSocketTestBase() {
+open class MessageIndexRequesterTests : RequesterTestBase() {
     @MockBean
     private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 

@@ -21,3 +21,10 @@ app:
           prefix: topic.
         user:
           prefix: user.
+logging:
+  level:
+    com.demo.chat.client.rsocket: DEBUG
+    reactor.netty.http.client: DEBUG
+    io:
+      rsocket:
+        FrameLogger: DEBUG

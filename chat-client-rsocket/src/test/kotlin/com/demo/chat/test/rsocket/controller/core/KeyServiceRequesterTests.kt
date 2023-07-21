@@ -4,7 +4,7 @@ import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -25,9 +25,9 @@ import java.util.*
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
     TestConfigurationRSocketServer::class,
-    KeyServiceRSocketTests.KeyControllerTestConfiguration::class
+    KeyServiceRequesterTests.KeyControllerTestConfiguration::class
 )
-class KeyServiceRSocketTests : RSocketTestBase() {
+class KeyServiceRequesterTests : RequesterTestBase() {
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

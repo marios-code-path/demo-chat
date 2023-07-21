@@ -100,7 +100,7 @@ if [[ ${BUILD_PROFILES} == *"client-local"* &&
   exit 1
 fi
 
-if [[ -z "${CERT_DIR}" ]]; then
+if [[ -z "${CERT_DIR}" && -z "${NO_SEC}" ]]; then
   echo "You must specify a certificate base-path with the -c option or CERT_DIR env."
   exit 1
 fi
@@ -135,7 +135,7 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
   if [[ ! -z ${WEBSOCKET} ]]; then
     SERVICE_FLAGS+=" -Dspring.rsocket.server.transport=websocket"
     SERVICE_FLAGS+=" -Dspring.rsocket.server.mapping-path=/"
-    BUILD_PROFILES+="websocket,"
+    # BUILD_PROFILES+="websocket,"
   fi
 fi
 
@@ -152,6 +152,11 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
   if [[ ! -z ${WEBSOCKET} ]]; then
     CLIENT_FLAGS+=" -Dapp.rsocket.transport.websocket.enabled=true"
     BUILD_PROFILES+="websocket,"
+  fi
+
+  if [[ ! -z ${DEBUG} ]]; then
+    OPT_FLAGS+="-Dlogging.level.com.demo.chat.client.rsocket=DEBUG \
+-Dlogging.level.reactor.netty.http.client=DEBUG"
   fi
 fi
 

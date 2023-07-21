@@ -5,7 +5,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import com.demo.chat.test.rsocket.controller.core.SecretsControllerTests
 import org.assertj.core.api.Assertions
@@ -24,7 +24,7 @@ import reactor.test.StepVerifier
 @Import(
     TestConfigurationRSocketServer::class,
     SecretsControllerTests.TestSecretsControllerConfiguration::class)
-class SecretsTests : RSocketTestBase() {
+class SecretsTests : RequesterTestBase() {
     @MockBean
     private lateinit var secretStore: SecretsStore<Long>
     private val svcPrefix = ""

@@ -11,6 +11,7 @@ import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
+import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -33,7 +34,7 @@ import java.util.function.Function
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(MockCoreServicesConfiguration::class, UserControllerTests.TestConfiguration::class)
-open class UserControllerTests : RSocketControllerTestBase() {
+open class UserControllerTests : RSocketServerTestBase() {
     @Autowired
     lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 

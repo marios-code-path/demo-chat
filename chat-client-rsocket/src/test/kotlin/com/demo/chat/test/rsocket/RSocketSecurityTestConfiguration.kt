@@ -1,19 +1,18 @@
-package com.demo.chat.config.deploy.security
+package com.demo.chat.test.rsocket
 
-import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import org.springframework.messaging.handler.invocation.reactive.HandlerMethodArgumentResolver
 import org.springframework.security.config.Customizer
+import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity
-import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
+import org.springframework.security.core.userdetails.User
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor
 import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
-@Configuration
-class RSocketServerConfiguration {
+@EnableRSocketSecurity
+class RSocketSecurityTestConfiguration {
 
     @Bean
     fun rsocketSecurityAuthentication(security: RSocketSecurity)
@@ -22,7 +21,7 @@ class RSocketServerConfiguration {
         .authorizePayload { authorize ->
             authorize
                 .setup()
-                .permitAll()
+                .authenticated()
                 .anyExchange()
                 .authenticated()
                 .anyRequest()
@@ -32,18 +31,21 @@ class RSocketServerConfiguration {
         .build()
 
     @Bean
+    fun authentication(): MapReactiveUserDetailsService {
+        val user = User.withDefaultPasswordEncoder()
+            .username("user")
+            .password("password")
+            .roles("TEST")
+            .build()
+        return MapReactiveUserDetailsService(user)
+    }
+
+    @Bean
     fun rSocketStrategiesCustomizer(): RSocketStrategiesCustomizer =
         RSocketStrategiesCustomizer { strategies ->
             strategies.apply {
                 encoder(SimpleAuthenticationEncoder())
                 routeMatcher(PathPatternRouteMatcher())
             }
-        }
-
-    @Bean
-    fun messageHandlerCustomizer(): RSocketMessageHandlerCustomizer =
-        RSocketMessageHandlerCustomizer { messageHandler ->
-            val ar: HandlerMethodArgumentResolver = AuthenticationPrincipalArgumentResolver()
-            messageHandler.argumentResolverConfigurer.addCustomResolver(ar)
         }
 }

@@ -5,7 +5,7 @@ import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -26,7 +26,7 @@ import reactor.test.StepVerifier
     TestConfigurationRSocketServer::class,
     SecretsControllerTests.TestSecretsControllerConfiguration::class
 )
-class SecretsControllerTests : RSocketTestBase() {
+class SecretsControllerTests : RequesterTestBase() {
 
     @MockBean
     private lateinit var secretStore: SecretsStore<Long>

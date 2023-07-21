@@ -5,7 +5,7 @@ import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.test.rsocket.RequesterTestBase
 import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -28,7 +28,7 @@ import java.util.*
     TestConfigurationRSocketServer::class,
     KeyTests.KeyPersistenceTestConfiguration::class
 )
-class KeyTests : RSocketTestBase() {
+class KeyTests : RequesterTestBase() {
     @MockBean
     private lateinit var keyService: IKeyService<UUID>
 
