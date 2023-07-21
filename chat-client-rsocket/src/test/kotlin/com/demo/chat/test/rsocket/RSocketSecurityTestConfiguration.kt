@@ -21,7 +21,7 @@ class RSocketSecurityTestConfiguration {
         .authorizePayload { authorize ->
             authorize
                 .setup()
-                .authenticated()
+                .permitAll() // This 'setup' access works on connect!
                 .anyExchange()
                 .authenticated()
                 .anyRequest()

@@ -17,5 +17,4 @@ import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfi
     RSocketMessagingAutoConfiguration::class,
     RSocketRequesterAutoConfiguration::class,
 )
-class RSocketServerTestConfiguration {
-}
+class RSocketServerTestConfiguration
