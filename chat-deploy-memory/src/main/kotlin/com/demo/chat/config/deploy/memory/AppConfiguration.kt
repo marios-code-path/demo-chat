@@ -10,6 +10,4 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 @EnableRSocketSecurity
 @EnableReactiveMethodSecurity
 @Configuration
-open class AppConfiguration {
-
-}
+open class AppConfiguration

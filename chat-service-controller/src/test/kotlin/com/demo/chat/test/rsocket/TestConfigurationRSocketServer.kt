@@ -48,46 +48,4 @@ open class TestConfigurationRSocketServer(private val isWebSocketEnabled: Boolea
         Hooks.onOperatorDebug()
     }
 
-//
-//    @Bean
-//    fun rSocketServer(handler: RSocketMessageHandler): RSocketServer = RSocketServer
-//        .create(handler.responder())
-//
-//    fun getServerTransport(webSocket: Boolean = false): ServerTransport<CloseableChannel> {
-//        return if (webSocket)
-//            WebsocketServerTransport.create("localhost", serverPort.toInt())
-//        else
-//            TcpServerTransport.create("localhost", serverPort.toInt())
-//    }
-//
-    fun getClientTransport(tcpClient: TcpClient, webSocket: Boolean = false): ClientTransport {
-        return if (webSocket)
-            WebsocketClientTransport.create(tcpClient)
-        else
-            TcpClientTransport.create(tcpClient)
-    }
-
-//    @Bean
-//    fun rSocketConnectedServer(rs: RSocketServer): CloseableChannel =
-//        rs.bind(getServerTransport(isWebSocketEnabled)).block()!!
-//            .apply { server = this }
-
-//    @Bean
-//    fun rSocketRequester(server: CloseableChannel, builder: RSocketRequester.Builder): RSocketRequester =
-//        builder
-//            .transport(
-//                getClientTransport(
-//                    TcpClient.create()
-//                        .host("localhost")
-//                        .port(server.address().port),
-//                    isWebSocketEnabled
-//                )
-//            )
-//
-//    private lateinit var server: CloseableChannel
-//
-//    @EventListener
-//    fun handleClosedEvent(event: ContextClosedEvent) {
-//        server.dispose()
-//    }
 }

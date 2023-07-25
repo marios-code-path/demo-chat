@@ -7,34 +7,32 @@ import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
 import com.demo.chat.test.TestChatRoomKey
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
+import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
-import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
 import com.demo.chat.test.rsocket.controller.composite.TopicControllerTests
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 
-@ExtendWith(SpringExtension::class)
+
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-    TestConfigurationRSocketServer::class,
-    MockCoreServicesConfiguration::class,
-    TopicControllerTests.TestTopicControllerConfiguration::class
+@SpringJUnitConfig(
+    classes = [
+        MockCoreServicesConfiguration::class,
+        TopicControllerTests.TestTopicControllerConfiguration::class
+    ]
 )
-class TopicClientTests : RSocketServerTestBase() {
+class TopicClientTests : RSocketTestBase() {
     lateinit var client: TopicClient<UUID, String>
     private val svcPrefix = ""
 

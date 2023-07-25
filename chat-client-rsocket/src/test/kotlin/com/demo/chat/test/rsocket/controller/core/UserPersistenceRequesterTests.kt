@@ -14,8 +14,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
-import org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
-import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.stereotype.Controller
@@ -28,13 +26,12 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringJUnitConfig(
-    initializers = [RSocketPortInfoApplicationContextInitializer::class],
     classes = [UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class,
         RSocketSecurityTestConfiguration::class,
         RSocketSecurityAutoConfiguration::class,
     ]
 )
-class UserPersistenceRequesterTests : RequesterTestBase() {
+class UserPersistenceRequesterTests : RSocketTestBase() {
 
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>

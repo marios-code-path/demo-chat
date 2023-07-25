@@ -32,7 +32,8 @@ class RSocketSecurityTestConfiguration {
 
     @Bean
     fun authentication(): MapReactiveUserDetailsService {
-        val user = User.withDefaultPasswordEncoder()
+        val user = User.
+            withDefaultPasswordEncoder()
             .username("user")
             .password("password")
             .roles("TEST")

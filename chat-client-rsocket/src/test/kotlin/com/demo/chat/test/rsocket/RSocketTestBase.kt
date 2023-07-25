@@ -5,27 +5,23 @@ import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.domain.knownkey.Anon
 import io.rsocket.metadata.WellKnownMimeType
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
 import org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.rsocket.server.LocalRSocketServerPort
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
-import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import org.springframework.util.MimeTypeUtils
-import java.util.*
 import java.util.function.Supplier
 
 @SpringBootTest(classes = [RSocketServerTestConfiguration::class])
-open class RequesterTestBase {
+@SpringJUnitConfig( initializers = [RSocketPortInfoApplicationContextInitializer::class])
+open class RSocketTestBase(var username: String = "user", var password: String = "password") {
 
     lateinit var requester: RSocketRequester
+    // TODO make wsRequester in tests
+    // lateinit var wsRequester: RSocketRequester
     lateinit var metadataRequester: MetadataRSocketRequester
 
     fun requestMetadataProvider(
@@ -45,8 +41,7 @@ open class RequesterTestBase {
         @LocalRSocketServerPort port: Int,
     ) {
         requester = builder.tcp("localhost", port)
-        metadataRequester = MetadataRSocketRequester(requester, requestMetadataProvider("user","password"))
+
+        metadataRequester = MetadataRSocketRequester(requester, requestMetadataProvider(username, password))
     }
-
-
 }

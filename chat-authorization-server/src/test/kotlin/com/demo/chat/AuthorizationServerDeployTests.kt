@@ -1,9 +1,8 @@
 package com.demo.chat
 
 import com.demo.chat.deploy.authserv.AuthServiceApp
-import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.secure.service.CoreUserDetailsService
 import com.demo.chat.service.client.ClientDiscovery
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -34,7 +33,7 @@ class AuthorizationServerDeployTests {
     private lateinit var typeUtil: TypeUtil<Long>
 
     @Autowired
-    private lateinit var chatUserDetailsService: ChatUserDetailsService<Long>
+    private lateinit var coreUserDetailsService: CoreUserDetailsService<Long>
 
     @Test
     fun contextLoads() {

@@ -5,26 +5,24 @@ import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RequesterTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
+import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.core.SecretsControllerTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-    TestConfigurationRSocketServer::class,
-    SecretsControllerTests.TestSecretsControllerConfiguration::class)
-class SecretsTests : RequesterTestBase() {
+@SpringJUnitConfig(
+    classes = [
+        SecretsControllerTests.TestSecretsControllerConfiguration::class
+    ]
+)
+class SecretsTests : RSocketTestBase() {
     @MockBean
     private lateinit var secretStore: SecretsStore<Long>
     private val svcPrefix = ""

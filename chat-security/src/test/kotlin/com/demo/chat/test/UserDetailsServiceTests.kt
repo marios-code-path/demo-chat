@@ -1,6 +1,6 @@
 package com.demo.chat.test
 
-import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.secure.service.CoreUserDetailsService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -10,7 +10,7 @@ import java.util.function.Supplier
 
 @Disabled
 open class UserDetailsServiceTests<T, Q>(
-    private val svc: ChatUserDetailsService<T>,
+    private val svc: CoreUserDetailsService<T>,
     private val uNameSupplier: Supplier<String>,
     private val userSupplier: Supplier<UserDetails>,
     private val pwSupplier: Supplier<String>

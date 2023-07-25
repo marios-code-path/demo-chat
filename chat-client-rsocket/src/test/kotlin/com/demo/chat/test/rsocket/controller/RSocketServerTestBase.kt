@@ -24,6 +24,8 @@ import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import java.util.*
 
+// This test base attempts
+@Deprecated("Use RSocketServerTestConfiguration instead")
 @ExtendWith(SpringExtension::class)
 open class RSocketServerTestBase {
     private lateinit var socket: RSocket

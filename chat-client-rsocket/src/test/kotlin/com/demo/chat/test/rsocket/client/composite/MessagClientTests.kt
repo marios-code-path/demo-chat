@@ -1,15 +1,14 @@
 package com.demo.chat.test.rsocket.client.composite
 
-import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.client.rsocket.clients.composite.MessagingClient
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
-import com.demo.chat.test.rsocket.RequesterTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
+import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.composite.MessageControllerTests
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
 import org.assertj.core.api.AssertionsForClassTypes
@@ -17,25 +16,23 @@ import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 import java.util.stream.Stream
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-        TestConfigurationRSocketServer::class,
+@SpringJUnitConfig(
+    classes = [
+        MessageControllerTests.CompositeMessagingTestConfiguration::class,
         MockCoreServicesConfiguration::class,
-        MessageControllerTests.CompositeMessagingTestConfiguration::class
+    ]
 )
-class MessagClientTests : RequesterTestBase() {
+class MessagClientTests : RSocketTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 

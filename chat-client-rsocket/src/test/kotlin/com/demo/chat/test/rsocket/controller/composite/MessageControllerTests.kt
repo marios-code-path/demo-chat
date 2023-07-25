@@ -1,15 +1,17 @@
 package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.controller.composite.mapping.MessageServiceControllerMapping
-import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.composite.ChatMessageService
+import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestBase
-import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
+import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.AssertionsForClassTypes
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -35,7 +37,7 @@ import java.util.stream.Stream
 @ExtendWith(SpringExtension::class)
 @Import(MockCoreServicesConfiguration::class,
         MessageControllerTests.CompositeMessagingTestConfiguration::class)
-class MessageControllerTests : RSocketServerTestBase() {
+class MessageControllerTests : RSocketTestBase() {
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
@@ -44,6 +46,17 @@ class MessageControllerTests : RSocketServerTestBase() {
 
     @Autowired
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
+
+    private var counter = Random().nextInt()
+
+    fun randomMessage(): Message<UUID, String> {
+        val userId = UUID.randomUUID()
+        val roomId = UUID.randomUUID()
+        val messageId = UUID.randomUUID()
+        counter++
+
+        return Message.create(MessageKey.create(messageId, roomId, userId), "Hello $counter !", true)
+    }
 
     @Test
     fun `should fetch a single message`() {

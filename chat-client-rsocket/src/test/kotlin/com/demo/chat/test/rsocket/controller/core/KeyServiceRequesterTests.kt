@@ -4,30 +4,25 @@ import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.rsocket.RequesterTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
+import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
-import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
-    TestConfigurationRSocketServer::class,
     KeyServiceRequesterTests.KeyControllerTestConfiguration::class
 )
-class KeyServiceRequesterTests : RequesterTestBase() {
+class KeyServiceRequesterTests : RSocketTestBase() {
 
     @MockBean
     private lateinit var keyService: IKeyService<UUID>

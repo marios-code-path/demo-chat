@@ -1,13 +1,9 @@
 package com.demo.chat.secure.service
 
 import com.demo.chat.domain.ByStringRequest
-import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.composite.ChatUserService
-import com.demo.chat.service.core.IndexService
-import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
-import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.security.core.userdetails.ReactiveUserDetailsPasswordService
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService
@@ -15,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import reactor.core.publisher.Mono
 
-class ChatUserDetailsService<T>(
+class CoreUserDetailsService<T>(
     private val userService: ChatUserService<T>,
     private val secretsStore: SecretsStore<T>,
     private val auth: AuthenticationService<T>,

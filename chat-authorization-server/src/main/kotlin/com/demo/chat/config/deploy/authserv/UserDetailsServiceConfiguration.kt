@@ -1,6 +1,6 @@
 package com.demo.chat.config.deploy.authserv
 
-import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.secure.service.CoreUserDetailsService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.core.userdetails.UserDetails
@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService
 class UserDetailsServiceConfiguration {
 
     @Bean
-    fun <T> standardUserDetailsService(uds: ChatUserDetailsService<T>): UserDetailsService {
+    fun <T> standardUserDetailsService(uds: CoreUserDetailsService<T>): UserDetailsService {
         return object : UserDetailsService, UserDetailsPasswordService {
             override fun loadUserByUsername(username: String): org.springframework.security.core.userdetails.UserDetails? {
                 return uds.findByUsername(username).block()

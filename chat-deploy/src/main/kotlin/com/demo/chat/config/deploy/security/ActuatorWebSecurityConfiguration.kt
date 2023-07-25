@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.security.authentication.AbstractUserDetailsReactiveAuthenticationManager
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
@@ -23,7 +22,7 @@ class ActuatorWebSecurityConfiguration(
     @Bean
     fun securityFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain {
         http
-            .authenticationManager(UserDetailsRepositoryReactiveAuthenticationManager(userDetailsService()))
+            .authenticationManager(UserDetailsRepositoryReactiveAuthenticationManager(actuatorUserDetailService()))
             .csrf().disable()
             .formLogin().disable()
             .httpBasic()
@@ -38,7 +37,7 @@ class ActuatorWebSecurityConfiguration(
         return http.build()
     }
 
-    fun userDetailsService() = MapReactiveUserDetailsService(
+    fun actuatorUserDetailService() = MapReactiveUserDetailsService(
         org.springframework.security.core.userdetails.User
             .withUsername(actuatorUser)
             .password(passwordEncoder().encode(actuatorPasswd))

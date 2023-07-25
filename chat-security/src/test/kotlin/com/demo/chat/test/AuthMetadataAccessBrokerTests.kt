@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test
 
 class AuthMetadataAccessBrokerTests(authMetaPersistence: PersistenceStore<Long, AuthMetadata<Long>>,
                                     authMetaIndex: IndexService<Long, AuthMetadata<Long>, IndexSearchRequest>)
- : AuthorizationMetadataServiceTests(authMetaPersistence, authMetaIndex) {
+ : CoreReactiveAuthorizationServiceTests(authMetaPersistence, authMetaIndex) {
 
      @Test
      fun `should not authorize for EXEC`() {

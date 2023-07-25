@@ -1,7 +1,7 @@
 package com.demo.chat.config.secure
 
 import com.demo.chat.config.SecretsStoreBeans
-import com.demo.chat.secure.service.ChatUserDetailsService
+import com.demo.chat.secure.service.CoreUserDetailsService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthenticationService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -18,5 +18,5 @@ class UserDetailsConfiguration {
         userService: ChatUserService<T>,
         secretsBeans: SecretsStoreBeans<T>,
         auth: AuthenticationService<T>,
-    ): ReactiveUserDetailsService = ChatUserDetailsService(userService, secretsBeans.secretsStore(), auth)
+    ): ReactiveUserDetailsService = CoreUserDetailsService(userService, secretsBeans.secretsStore(), auth)
 }

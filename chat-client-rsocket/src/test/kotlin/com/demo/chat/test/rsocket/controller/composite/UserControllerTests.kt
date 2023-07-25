@@ -2,39 +2,41 @@ package com.demo.chat.test.rsocket.controller.composite
 
 import com.demo.chat.controller.composite.mapping.UserServiceControllerMapping
 import com.demo.chat.domain.ByIdRequest
-import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.service.composite.impl.UserServiceImpl
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
-import com.demo.chat.test.rsocket.controller.RSocketServerTestBase
+import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Import
 import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 import java.util.function.Function
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(MockCoreServicesConfiguration::class, UserControllerTests.TestConfiguration::class)
-open class UserControllerTests : RSocketServerTestBase() {
+@SpringJUnitConfig(
+    classes = [
+        MockCoreServicesConfiguration::class,
+        UserControllerTests.TestConfiguration::class
+    ]
+)
+open class UserControllerTests : RSocketTestBase() {
     @Autowired
     lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 

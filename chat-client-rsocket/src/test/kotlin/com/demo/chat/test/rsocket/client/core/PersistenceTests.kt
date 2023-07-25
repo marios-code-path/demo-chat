@@ -9,30 +9,27 @@ import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
-import com.demo.chat.test.rsocket.RequesterTestBase
-import com.demo.chat.test.rsocket.TestConfigurationRSocketServer
+import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.core.UserPersistenceRequesterTests
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
 import java.util.*
 
-@ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-    TestConfigurationRSocketServer::class,
-    UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class
+@SpringJUnitConfig(
+    classes = [
+        UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class
+    ]
 )
-class PersistenceTests : RequesterTestBase() {
+class PersistenceTests : RSocketTestBase() {
     @MockBean
     private lateinit var userPersistence: UserPersistence<UUID>
 

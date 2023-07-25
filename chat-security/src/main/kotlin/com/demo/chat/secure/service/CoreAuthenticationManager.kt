@@ -4,7 +4,6 @@ import com.demo.chat.domain.User
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
-import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.InternalAuthenticationServiceException
 import org.springframework.security.authentication.ReactiveAuthenticationManager
@@ -13,7 +12,7 @@ import org.springframework.security.core.Authentication
 import reactor.core.publisher.Mono
 
 // Sample authentication manager that uses a user service to authenticate a user.
-class ChatAuthenticationManager<T>(
+class CoreAuthenticationManager<T>(
     private val authenticationS: AuthenticationService<T>,
     private val userPersistence: PersistenceStore<T, User<T>>,
 ) :

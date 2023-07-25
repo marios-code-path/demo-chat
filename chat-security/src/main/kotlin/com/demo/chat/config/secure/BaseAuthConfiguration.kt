@@ -9,13 +9,12 @@ import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.Summarizer
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
-import com.demo.chat.secure.service.AbstractAuthenticationService
-import com.demo.chat.secure.service.AuthorizationMetadataService
+import com.demo.chat.secure.service.CoreAuthenticationService
+import com.demo.chat.secure.service.CoreReactiveAuthorizationService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
-import org.springframework.security.crypto.password.DelegatingPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 
 open class BaseAuthConfiguration<T, V, Q>(
@@ -32,7 +31,7 @@ open class BaseAuthConfiguration<T, V, Q>(
 
     @Bean
     open fun authorizationService(): AuthorizationService<T, AuthMetadata<T>> =
-        AuthorizationMetadataService(
+        CoreReactiveAuthorizationService(
             persistServices.authMetaPersistence(),
             indexServices.authMetadataIndex(),
             authMetaPrincipalSearch,
@@ -42,7 +41,7 @@ open class BaseAuthConfiguration<T, V, Q>(
         )
 
     @Bean
-    open fun authenticationService(): AuthenticationService<T> = AbstractAuthenticationService(
+    open fun authenticationService(): AuthenticationService<T> = CoreAuthenticationService(
         indexServices.userIndex(),
         secretsStoreBeans.secretsStore(),
         passwordValidator,

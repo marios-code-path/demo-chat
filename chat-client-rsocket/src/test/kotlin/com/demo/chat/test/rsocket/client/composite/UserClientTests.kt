@@ -22,13 +22,6 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
 
-@ExtendWith(SpringExtension::class)
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(
-    TestConfigurationRSocketServer::class,
-    MockCoreServicesConfiguration::class,
-    UserControllerTests.TestConfiguration::class
-)
 class UserClientTests : UserControllerTests() {
     private lateinit var client: UserClient<UUID>
     private val svcPrefix = ""
