@@ -22,6 +22,11 @@ jobs:
         path: |
           ~/.m2/repository
           ~/.m2/wrapper
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
     - name: Maven clean compile
       run: mvn clean test-compile
 
