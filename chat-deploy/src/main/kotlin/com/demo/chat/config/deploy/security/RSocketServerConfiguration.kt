@@ -27,7 +27,6 @@ class RSocketServerConfiguration {
                 .authenticated()
                 .anyRequest()
                 .authenticated()
-
         }
         .build()
 

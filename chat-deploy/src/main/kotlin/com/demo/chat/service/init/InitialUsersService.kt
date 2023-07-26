@@ -55,7 +55,11 @@ class InitialUsersService<T>(
         val adminKey = identityKeys["Admin"]!!
 
         secretsStore
-            .addCredential(KeyCredential(adminKey, "changeme"))
+            .addCredential(KeyCredential(anonKey, "{noop}_"))
+            .block()
+
+        secretsStore
+            .addCredential(KeyCredential(adminKey, "{noop}changeme"))
             .block()
 
         mapOfKeys[Admin::class.java.simpleName] = adminKey

@@ -35,7 +35,7 @@
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.application.name=chat-integration-test
                                         -Dspring.profiles.active=prod -Dserver.port=6791
-                                        -Dspring.rsocket.server.ssl.enabled=false
+                                        -Dspring.rsocket.server.ssl.enabled=false -Dapp.service.security.userdetails
                                         -Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
                                         -Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
                                         -Dapp.server.proto=rsocket -Dapp.users.create=true

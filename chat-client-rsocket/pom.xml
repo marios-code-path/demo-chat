@@ -50,13 +50,7 @@
             <version>0.0.1</version>
             <type>test-jar</type>
         </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
-            <version>0.0.1</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-rsocket</artifactId>

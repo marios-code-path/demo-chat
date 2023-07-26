@@ -42,7 +42,7 @@ class ShellStateConfiguration {
         val metadata = RequestMetadata(
             loginMetadata
                 .map { UsernamePasswordMetadata(it.username, it.password) }
-                .orElseGet { UsernamePasswordMetadata(Anon::class.java.simpleName, "") },
+                .orElseGet { UsernamePasswordMetadata(Anon::class.java.simpleName, "_") },
             MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
         )
         metadata

@@ -13,11 +13,10 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
-import org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -25,11 +24,8 @@ import java.time.Instant
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringJUnitConfig(
-    classes = [UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class,
-        RSocketSecurityTestConfiguration::class,
-        RSocketSecurityAutoConfiguration::class,
-    ]
+@Import(
+    UserPersistenceRequesterTests.UserPersistenceTestConfiguration::class
 )
 class UserPersistenceRequesterTests : RSocketTestBase() {
 
@@ -55,7 +51,7 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
 
         StepVerifier
             .create(
-                metadataRequester
+                requester
                     .route("add")
                     .data(Mono.just(randomUser), TestChatUser::class.java)
                     .retrieveMono(Void::class.java)
@@ -74,7 +70,7 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
 
         StepVerifier
             .create(
-                metadataRequester
+                requester
                     .route("all")
                     .retrieveFlux(TestChatUser::class.java)
             )
@@ -107,7 +103,7 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
 
         StepVerifier
             .create(
-                metadataRequester
+                requester
                     .route("get")
                     .data(Mono.just(Key.funKey(userKey.id)))
                     .retrieveMono(TestChatUser::class.java)
@@ -126,7 +122,6 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
                     .hasFieldOrPropertyWithValue("id", randomUserId)
             }
             .verifyComplete()
-
     }
 
     @TestConfiguration

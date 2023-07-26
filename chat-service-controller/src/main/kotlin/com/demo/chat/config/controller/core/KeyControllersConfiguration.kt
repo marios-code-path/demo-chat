@@ -12,7 +12,6 @@ class KeyControllersConfiguration {
     @Controller
     @MessageMapping("key")
     @ConditionalOnProperty(prefix = "app.controller", name = ["key"])
-    //@Scope(proxyMode = ScopedProxyMode.TARGET_CLASS)
     class KeyController<T>(factory: KeyServiceBeans<T>) :
             KeyServiceController<T>(factory.keyService())
 }
