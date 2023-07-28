@@ -89,6 +89,7 @@ open class MockInitializationTests<T>(
 
         Hooks.onOperatorDebug()
         val properties = UserInitializationProperties(
+            "noop",
             InitalRoles(
                 arrayOf("CREATE", "READ"), "*", arrayOf<RoleDefinition>(
                     RoleDefinition("Admin", "Admin", "*"),
@@ -97,8 +98,8 @@ open class MockInitializationTests<T>(
                 )
             ),
             mapOf(
-                Pair("Admin", UserDefinition("Admin", "AdminUser", "http://foo.bar.img")),
-                Pair("Anon", UserDefinition("Anon", "Anonymous", "http://anon.img"))
+                Pair("Admin", UserDefinition("Admin", "AdminUser", "http://foo.bar.img","changeme")),
+                Pair("Anon", UserDefinition("Anon", "Anonymous", "http://anon.img","_"))
             )
         )
 

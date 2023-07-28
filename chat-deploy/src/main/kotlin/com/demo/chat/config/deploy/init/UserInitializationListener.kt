@@ -36,4 +36,3 @@ class UserInitializationListener(val publisher: DeploymentEventPublisher) {
             publisher.publishEvent(RootKeyUpdatedEvent(evt.rootKeys))
         }
 }
-

@@ -2,8 +2,6 @@ package com.demo.chat.service.init
 
 import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.*
-import com.demo.chat.domain.knownkey.Admin
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
