@@ -16,6 +16,17 @@ jobs:
         java-version: '17'
         distribution: 'adopt'
 
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.m2/repository
+          ~/.m2/wrapper
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
     - name: Maven clean compile
       run: mvn clean test-compile
 
