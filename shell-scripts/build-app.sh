@@ -62,6 +62,10 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
     c)
+      if [[ -z ${CERT_DIR} ]]; then
+        echo "CERT_DIR is not set"
+        exit 1
+      fi
       export CERT_DIR=${OPTARG}
       ;;
     k)
@@ -76,6 +80,9 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
     x)
       export SHOW_OPTIONS=1
       ;;
+    s)
+      export NO_SEC=true
+      ;;
     *)
       cat << CATZ
       specify:
@@ -88,6 +95,10 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       -s == use TLS
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
+
+      Additional Environment Variables:
+      KEYSTORE_PASS = password for keystore when using TLS
+      CERT_DIR = directory where certs are stored
 CATZ
       exit
       ;;
@@ -120,6 +131,8 @@ if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
 fi
 
 if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
+  OPT_FLAGS+=" -Dapp.service.security.userdetails"
+
   if [[ -z ${NO_SEC} ]]; then
     TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \
 -Dspring.rsocket.server.ssl.client-auth=none \

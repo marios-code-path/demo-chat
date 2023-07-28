@@ -3,6 +3,7 @@
 #logging.level.io.rsocket.FrameLogger: DEBUG
 app:
   init:
+    passwordEncoder: noop
     initialRoles:
       rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
       wildcard: "*"
@@ -22,8 +23,10 @@ app:
       Anon:
         handle: Anon
         name: "ANY USER"
-        imageUri: chatimg://anon.png,
+        imageUri: chatimg://anon.png
+        password: _
       Admin:
         handle: Admin
         name: "SUPER USER"
         imageUri: chatimg://plaid.png
+        password: changeme

@@ -44,27 +44,19 @@ class InitialUsersService<T>(
                         .map { u -> u.key }
                         .last()
                 }
-                .block()
+                .block()!!
 
-            identityKeys[identity] = thisUserKey!!
+            identityKeys[identity] = thisUserKey
+
+            val passwordEncoder = "{${initializationProperties.passwordEncoder}}"
+            val thisCredential =  KeyCredential(thisUserKey, "${passwordEncoder}${thisUser.password}")
+
+            secretsStore
+                .addCredential(thisCredential)
+                .block()
         }
 
-        val mapOfKeys = mutableMapOf<String, Key<T>>()
-
-        val anonKey = identityKeys["Anon"]!!
-        val adminKey = identityKeys["Admin"]!!
-
-        secretsStore
-            .addCredential(KeyCredential(anonKey, "{noop}_"))
-            .block()
-
-        secretsStore
-            .addCredential(KeyCredential(adminKey, "{noop}changeme"))
-            .block()
-
-        mapOfKeys[Admin::class.java.simpleName] = adminKey
-        mapOfKeys[Anon::class.java.simpleName] = anonKey
-        rootKeys.merge(mapOfKeys)
+        rootKeys.merge(identityKeys)
 
         val initialRoles: MutableSet<AuthMetadata<T>> = mutableSetOf()
 
@@ -90,6 +82,6 @@ class InitialUsersService<T>(
                 authorizationService.authorize(authMeta, true)
             }.blockLast()
 
-        return mapOfKeys
+        return identityKeys
     }
 }

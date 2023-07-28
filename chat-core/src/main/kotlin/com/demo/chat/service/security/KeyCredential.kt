@@ -5,3 +5,4 @@ import com.demo.chat.domain.KeyDataPair
 import org.springframework.boot.context.properties.bind.ConstructorBinding
 
 data class KeyCredential<T> @ConstructorBinding constructor(override val key: Key<T>, override val data: String) : KeyDataPair<T, String>
+data class ContextCredential<T> @ConstructorBinding constructor(override val key: Key<T>, val type: String, override val data: String) : KeyDataPair<T, String>

@@ -11,6 +11,7 @@ open class UserInitPropertiesConfiguration
 
 @ConfigurationProperties("app.init")
 data class UserInitializationProperties @ConstructorBinding constructor(
+    val passwordEncoder: String,
     val initialRoles: InitalRoles,
     val initialUsers: Map<String, UserDefinition>
 )
@@ -25,6 +26,7 @@ data class UserDefinition @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,
+    val password: String
 )
 
 data class RoleDefinition @ConstructorBinding constructor(

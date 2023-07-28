@@ -5,6 +5,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.service.security.AuthorizationService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Duration
 import java.util.stream.Collectors
 
 class AuthMetadataAccessBroker<T>(
@@ -15,8 +16,8 @@ class AuthMetadataAccessBroker<T>(
         return meta
             .map { authMeta -> authMeta.permission }
             .collect(Collectors.toList())
+            .cache(Duration.ofMillis(1000))
             .map { permissions -> permissions.contains(perm) }
-            //.cache(Duration.ofMillis(1000))
             .flatMap { canProceed ->
                 when (canProceed) {
                     true -> Mono.just(true)

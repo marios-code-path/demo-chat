@@ -51,7 +51,7 @@ function memory_local() {
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
-    $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
+   $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
   -d local -b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
