@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cassandra-schema-loader
+spec:
+  template:
+    spec:
+      containers:
+      - name: cassandra-schema-loader
+        image: docker.io/bitnami/cassandra:4.1.3-debian-11-r0
+        command: ["cqlsh"]
+        args:
+        - "-u"
+        - "cassandra"
+        - "-p"
+        - "$(CASSANDRA_PASSWORD)"
+        - "-f"
+        - "/schemas/schema.cql"
+        - "my-release-cassandra:9042"
+        env:
+        - name: CASSANDRA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: demo-chat-cassandra-user
+              key: password
+        volumeMounts:
+        - name: schema-volume
+          mountPath: /schemas
+      restartPolicy: Never
+      volumes:
+      - name: schema-volume
+        configMap:
+          name:  demo-chat-cql-schema
+  backoffLimit: 1
