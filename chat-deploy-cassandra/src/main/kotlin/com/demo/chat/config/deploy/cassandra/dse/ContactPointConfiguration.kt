@@ -17,7 +17,7 @@ class ContactPointConfiguration(
                 sessionBuilder
                         .withAuthCredentials(props.username, props.password)
                         .addContactPoint(InetSocketAddress(props.contactPoints[0], props.port))
-                        //.withLocalDatacenter(props.localDatacenter)
+                        .withLocalDatacenter(props.localDatacenter)
             }
 
     override fun getKeyspaceName(): String {

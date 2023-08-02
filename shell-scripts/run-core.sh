@@ -71,12 +71,24 @@ function memory() {
 function cassandra() {
     source $DIR/cassandra-options.sh
 
+    export DOCKER_ARGS=
+    export BUILD_PROFILES=
+    export DISCOVERY_FLAGS=
+    export ADDITIONAL_CONFIGS=
+
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="cassandra-${APP_PRIMARY}-rsocket"
     BUILD_PROFILES+="cassandra,"
 
-    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
+    cassandra_options localhost chat_long demochat
+
+    export OPT_FLAGS="${CASSANDRA_OPTIONS}"
+
+    $DIR/build-app.sh -m chat-deploy-cassandra -p cassandra-default -n core-service-rsocket -k long \
 -b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
+
+#    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
+#-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
 }
 
 function cassandra_astra() {

@@ -97,7 +97,11 @@
             <version>1.17.6</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>shared-deploy-configuration</artifactId>
+            <version>0.0.1</version>
+        </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>shared-resources-cassandra</artifactId>
