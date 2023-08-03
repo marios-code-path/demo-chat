@@ -16,10 +16,10 @@ import org.springframework.test.context.TestPropertySource
         "server.port=0", "spring.rsocket.server.port=0",
         "app.service.core.key",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets", "app.service.composite.auth", "app.service.composite.user",
-        "app.service.composite.message","app.service.composite.topic", "app.service.composite",
+        "app.service.core.secrets", "app.service.composite",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
-        "app.controller.user","spring.config.location=classpath:/application.yml"
+        "app.controller.user", "app.controller.message","app.controller.topic", "app.controller.pubsub",
+        "spring.config.location=classpath:/application.yml"
     ]
 )
 class MemoryAppDeploymentTests {
@@ -29,7 +29,7 @@ class MemoryAppDeploymentTests {
 
     @Test
     fun memoryPubSubExists() {
-        Assertions.assertThat(context.containsBean("memoryPubSub"))
+        Assertions.assertThat(context.containsBean("memoryPubSubBeans"))
             .isTrue
     }
 

@@ -2,6 +2,7 @@ package com.demo.chat.config.deploy.memory
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.controller.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.CompositeServiceBeans
@@ -14,12 +15,12 @@ import org.springframework.context.annotation.Configuration
 class CompositeServiceConfiguration<T>(
     persistenceServiceBeans: PersistenceServiceBeans<T, String>,
     indexServiceBeans: IndexServiceBeans<T, String, IndexSearchRequest>,
-    topicPubSubService: TopicPubSubService<T, String>,
+    pubsubBeans: PubSubServiceBeans<T, String>,
     typeUtil: TypeUtil<T>,
 ) : CompositeServiceBeans<T, String> by CompositeServiceBeansDefinition(
     persistenceBeans = persistenceServiceBeans,
     indexBeans = indexServiceBeans,
-    pubsub = topicPubSubService,
+    pubsub = pubsubBeans.pubSubService(),
     typeUtil = typeUtil,
     emptyMessageSupplier = { "" },
     topicIdQueryFunction = { req -> IndexSearchRequest(MessageIndexService.TOPIC, typeUtil.toString(req.id), 100) },

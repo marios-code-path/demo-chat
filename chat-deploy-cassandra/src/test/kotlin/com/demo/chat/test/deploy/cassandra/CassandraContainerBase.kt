@@ -1,5 +1,6 @@
 package com.demo.chat.test.deploy.cassandra
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
@@ -10,6 +11,9 @@ import java.time.Duration
 
 @Testcontainers
 open class CassandraContainerBase {
+
+    @Value("\${app.key.type:uuid}")
+    private lateinit var keyType: String
 
     companion object {
         val imageName = "cassandra:3.11.8"
@@ -22,7 +26,7 @@ open class CassandraContainerBase {
             withNetwork(Network.SHARED)
             withConfigurationOverride("cassandra")
             withStartupTimeout(Duration.ofSeconds(60))
-            withInitScript("keyspace-uuid.cql")
+            withInitScript("keyspace-long.cql")
 
             start()
         }

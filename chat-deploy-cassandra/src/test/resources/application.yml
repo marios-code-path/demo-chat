@@ -8,15 +8,13 @@ logging:
 app:
   proto: rsocket
   primary: core
-  key:
-    type: uuid
 
 spring:
   cassandra:
     keyspace-name: chat_${app.key.type}
     contact-points: localhost
     port: 9042
-    local-datacenter: datacenter1
+    local-datacenter: DC1
     schema-action: create_if_not_exists
     request:
       consistency: one
