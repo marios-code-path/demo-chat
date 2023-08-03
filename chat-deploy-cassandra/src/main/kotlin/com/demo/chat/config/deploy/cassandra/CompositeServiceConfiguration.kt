@@ -2,6 +2,7 @@ package com.demo.chat.config.deploy.cassandra
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.controller.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
@@ -24,13 +25,13 @@ class CompositeServiceConfiguration {
     fun <T> compositeServiceBeans(
         persistenceServiceBeans: PersistenceServiceBeans<T, String>,
         indexServiceBeans: IndexServiceBeans<T, String, Map<String, String>>,
-        topicPubSubService: TopicPubSubService<T, String>,
+        pubsubBeans: PubSubServiceBeans<T, String>,
         typeUtil: TypeUtil<T>,
     ): CompositeServiceBeans<T, String> =
         CompositeServiceBeansDefinition(
             persistenceBeans = persistenceServiceBeans,
             indexBeans = indexServiceBeans,
-            pubsub = topicPubSubService,
+            pubsub = pubsubBeans.pubSubService(),
             typeUtil = typeUtil,
             emptyMessageSupplier = { "" },
             topicIdQueryFunction = { req -> mapOf(Pair(MessageIndexService.TOPIC, typeUtil.toString(req.id))) },

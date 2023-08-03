@@ -12,3 +12,4 @@ Truncate Table chat_uuid.chat_user_handle;
 Truncate Table chat_uuid.auth_metadata;
 Truncate Table chat_uuid.auth_metadata_principal;
 Truncate Table chat_uuid.auth_metadata_target;
+Truncate Table chat_uuid.chat_secret;

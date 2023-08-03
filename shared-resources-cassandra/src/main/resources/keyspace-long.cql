@@ -35,6 +35,12 @@ CREATE TABLE chat_long.topic_membership_by_member_of
     PRIMARY KEY (member_of)
 );
 
+CREATE TABLE chat_long.chat_secret (
+    id BIGINT,
+    data varchar,
+    kind varchar,
+    PRIMARY KEY (id)
+);
 
 CREATE TABLE chat_long.chat_message_id (
     msg_id TIMESTAMP,

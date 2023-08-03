@@ -1,12 +1,21 @@
 package com.demo.chat.deploy.cassandra
 
-import com.demo.chat.config.deploy.cassandra.AppConfiguration
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Import
+import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.springframework.web.reactive.config.EnableWebFlux
 
-@SpringBootApplication
-@Import(AppConfiguration::class)
+@SpringBootApplication(
+    scanBasePackages = ["com.demo.chat.config"],
+    proxyBeanMethods = false
+)
+@EnableReactiveCassandraRepositories(
+    basePackages = [
+        "com.demo.chat.persistence.cassandra.repository",
+        "com.demo.chat.index.cassandra.repository"
+    ]
+)
+@EnableWebFlux
 class App {
 
     companion object {

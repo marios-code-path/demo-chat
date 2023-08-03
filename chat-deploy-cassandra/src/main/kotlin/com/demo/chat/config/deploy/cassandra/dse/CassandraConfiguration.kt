@@ -7,9 +7,9 @@ import org.springframework.context.annotation.DependsOn
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
 import org.springframework.data.cassandra.config.SchemaAction
 
-@Configuration
-@DependsOn("KeyGenerator", "TypeUtil")
-@EnableConfigurationProperties(CassandraProperties::class)
+//@Configuration
+//@DependsOn("KeyGenerator", "TypeUtil")
+//@EnableConfigurationProperties(CassandraProperties::class)
 class CassandraConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
 
     override fun getLocalDataCenter(): String {

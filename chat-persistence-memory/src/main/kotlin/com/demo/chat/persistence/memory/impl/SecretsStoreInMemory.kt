@@ -7,6 +7,7 @@ import com.demo.chat.service.security.UserCredentialSecretsStore
 import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 
+// TODO secrets should be implicitly encrypted
 class SecretsStoreInMemory<T> : UserCredentialSecretsStore<T> {
 
     private val secureMap = ConcurrentHashMap<T, String>()

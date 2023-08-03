@@ -7,8 +7,8 @@ import org.springframework.data.cassandra.config.AbstractCassandraConfiguration
 import org.springframework.data.cassandra.config.SessionBuilderConfigurer
 import java.net.InetSocketAddress
 
-@Configuration
-@Profile("cassandra-default", "default")
+//@Configuration
+//@Profile("cassandra-default", "default")
 class ContactPointConfiguration(
         val props: CassandraProperties,
 ) : AbstractCassandraConfiguration() {

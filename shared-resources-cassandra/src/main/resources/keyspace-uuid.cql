@@ -35,6 +35,13 @@ CREATE TABLE chat_uuid.topic_membership_by_member_of
     PRIMARY KEY (member_of)
 );
 
+CREATE TABLE chat_uuid.chat_secret (
+                                       id UUID,
+                                       data varchar,
+                                       kind varchar,
+                                       PRIMARY KEY (id)
+);
+
 
 CREATE TABLE chat_uuid.chat_message_id (
                                       msg_id TIMEUUID,

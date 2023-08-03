@@ -26,3 +26,4 @@ open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
     override fun byIds(keys: List<Key<T>>): Flux<out User<T>> =
             userRepo.findByKeyIdIn(keys.stream().map { it.id }.collect(Collectors.toList()))
 }
+

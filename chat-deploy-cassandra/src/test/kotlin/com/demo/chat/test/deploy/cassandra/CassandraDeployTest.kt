@@ -19,9 +19,9 @@ import java.util.*
     classes = [App::class]
 )
 @TestPropertySource(
-    properties = [
+    properties = [ "app.key.type=uuid",
         "server.port=0","spring.config.location=classpath:/application.yml",
-        "app.service.core.key",
+        "app.service.core.key","app.service.composite", "app.service.core.pubsub",
         "app.service.core.persistence", "app.service.core.secrets", "app.service.core.index",
         "app.controller.persistence", "app.controller.index", "app.controller.key",
         "app.controller.secrets", "app.controller.message",

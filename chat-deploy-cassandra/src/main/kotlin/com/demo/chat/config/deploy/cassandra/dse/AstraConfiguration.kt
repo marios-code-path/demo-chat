@@ -11,8 +11,8 @@ import org.springframework.data.cassandra.config.AbstractCassandraConfiguration
 import org.springframework.data.cassandra.config.SessionBuilderConfigurer
 import java.nio.file.Paths
 
-@Configuration
-@Profile("cassandra-astra")
+//@Configuration
+//@Profile("cassandra-astra")
 class AstraConfiguration(
     val props: CassandraProperties,
     @Value("\${astra.secure-connect-bundle}")

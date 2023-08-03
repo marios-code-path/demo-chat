@@ -15,7 +15,4 @@ class CorePersistenceServices<T>(
     messageRepo: ChatMessageRepository<T>,
     membershipRepo: TopicMembershipRepository<T>,
     authmetaRepo: AuthMetadataRepository<T>
-) : CassandraPersistenceServices<T>(keyService, userRepo, topicRepo, messageRepo, membershipRepo, authmetaRepo) {
-
-
-}
+) : CassandraPersistenceServices<T>(keyService, userRepo, topicRepo, messageRepo, membershipRepo, authmetaRepo)
