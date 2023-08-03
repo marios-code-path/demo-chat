@@ -16,7 +16,7 @@ open class CommandsUtil<T>(
             "_" -> {
                 loggedInUser
                     .map { typeUtil.assignFrom(it) }
-                    .orElseGet { rootKeys.getRootKey(Anon::class.java).id }
+                    .orElseGet { rootKeys.getRootKey(Anon::class.java.simpleName).id }
             }
 
             else -> typeUtil.fromString(uId)
@@ -26,7 +26,7 @@ open class CommandsUtil<T>(
     open fun isAuthenticated(): Availability {
         return when (
             loggedInUser
-                .map { typeUtil.assignFrom(it) != rootKeys.getRootKey(Anon::class.java).id }
+                .map { typeUtil.assignFrom(it) != rootKeys.getRootKey(Anon::class.java.simpleName).id }
                 .orElseGet { false }
         ) {
             true -> Availability.available()

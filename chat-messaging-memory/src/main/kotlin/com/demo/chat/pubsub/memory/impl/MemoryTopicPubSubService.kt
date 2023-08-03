@@ -2,6 +2,7 @@ package com.demo.chat.pubsub.memory.impl
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
+import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -16,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
  * This service handles the behaviour of topic record keeping and
  * message distribution using memory as storage.
  *
+ * TODO rewrite ti incorporate topicIndex/topicPersistence !
  * */
 class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
     private val streamMgr: ExampleReactiveStreamManager<T, V> = ExampleReactiveStreamManager()
