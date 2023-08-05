@@ -23,13 +23,11 @@ import org.springframework.test.context.TestPropertySource
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic", "app.controller.pubsub",
-        "app.service.security.userdetails",
-        "spring.cassandra.username=demochat", "spring.cassandra.password=c0mm0d0r3",
-        "spring.cassandra.contact-points=localhost", "spring.cassandra.local-datacenter=datacenter1",
+        "app.service.security.userdetails"
     ]
 )
 @ActiveProfiles("cassandra-contact-point")
-class CassandraDeployTest {//} : CassandraContainerBase() {
+class CassandraDeployTest : CassandraContainerBase() {
     @Autowired
     private lateinit var repo: ChatUserRepository<Long>
 
