@@ -18,11 +18,7 @@ spring:
     keyspace-name: chat_${app.key.type}
     contact-points: localhost
     port: 9042
-    local-datacenter: DC1
-    schema-action: create_if_not_exists
-    request:
-      consistency: one
-      serial-consistency: any
+    local-datacenter: datacenter1
     base-packages: com.demo.chat.persistence.cassandra
   main:
     web-application-type: reactive
