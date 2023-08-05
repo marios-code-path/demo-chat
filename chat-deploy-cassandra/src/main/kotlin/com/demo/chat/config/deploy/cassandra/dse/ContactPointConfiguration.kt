@@ -22,9 +22,6 @@ class ContactPointConfiguration(private val props: CassandraProperties) : Abstra
             sessionBuilder
                 .withAuthCredentials(props.username, props.password)
                 .addContactPoint(InetSocketAddress(props.contactPoints[0], props.port))
-            //.withLocalDatacenter(props.localDatacenter)
         }
-    override fun getEntityBasePackages(): Array<String> {
-        return arrayOf("com.demo.chat.persistence.cassandra")
-    }
+
 }

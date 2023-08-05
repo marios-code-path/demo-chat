@@ -23,6 +23,7 @@ import org.springframework.messaging.rsocket.retrieveFlux
 import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
@@ -50,6 +51,30 @@ open class UserControllerTests : RSocketTestBase() {
     val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
 
     @Test
+    fun `let no dups pass`() {
+        BDDMockito.given(userPersistence.key())
+            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+
+        BDDMockito.given(userPersistence.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito.given(userIndex.add(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        BDDMockito.given(userIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.just(Key.funKey(UUID.randomUUID())))
+
+        StepVerifier
+            .create(
+                requester
+                    .route("user-add")
+                    .data(UserCreateRequest(randomName, randomHandle, defaultImgUri))
+                    .retrieveMono(Key::class.java)
+            )
+            .verifyError()
+    }
+
+    @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.key())
                 .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
@@ -59,6 +84,9 @@ open class UserControllerTests : RSocketTestBase() {
 
         BDDMockito.given(userIndex.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
+
+        BDDMockito.given(userIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.empty())
 
         StepVerifier
                 .create(

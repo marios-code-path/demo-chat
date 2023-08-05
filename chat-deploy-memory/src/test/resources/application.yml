@@ -3,6 +3,10 @@ app:
   proto: rsocket
   key:
     type: long
+  users:
+    create: true
+  rootkeys:
+    create: true
 
 logging:
   level:

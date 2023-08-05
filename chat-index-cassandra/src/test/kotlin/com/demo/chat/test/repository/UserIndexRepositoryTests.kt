@@ -41,7 +41,7 @@ class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
     }
 
     @Test
-    fun `should search and find single user after insert many`() {
+    fun `should add then search single user`() {
         val users = Flux.just(
             ChatUserHandle(
                 ChatUserHandleKey(UUID.randomUUID(), "vedder"),
@@ -57,7 +57,7 @@ class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
             )
         )
             .flatMap {
-                handleRepo.save(it)
+                handleRepo.add(it)
             }
 
         val find = handleRepo.findByKeyHandle("darkbit")

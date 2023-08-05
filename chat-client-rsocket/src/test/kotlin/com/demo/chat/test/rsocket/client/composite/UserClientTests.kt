@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito
 import org.springframework.messaging.rsocket.retrieveFlux
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
@@ -35,6 +36,9 @@ class UserClientTests : UserControllerTests() {
 
         BDDMockito.given(userIndex.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
+
+        BDDMockito.given(userIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.empty())
 
         StepVerifier
             .create(client.addUser(UserCreateRequest(randomName, randomHandle, defaultImgUri)))

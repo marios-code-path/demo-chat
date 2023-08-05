@@ -16,7 +16,7 @@ open class CassandraContainerBase {
     private lateinit var keyType: String
 
     companion object {
-        val imageName = "cassandra:3.11.8"
+        val imageName = "cassandra:4.1.3"
 
         @Container
         val cassandraContainer = CassandraContainer(imageName).apply {
@@ -24,8 +24,7 @@ open class CassandraContainerBase {
             withReuse(true)
             //withLogConsumer(ContainerUtils.containerLogsConsumer(log))
             withNetwork(Network.SHARED)
-            withConfigurationOverride("cassandra")
-            withStartupTimeout(Duration.ofSeconds(60))
+            withStartupTimeout(Duration.ofSeconds(120))
             withInitScript("keyspace-long.cql")
 
             start()

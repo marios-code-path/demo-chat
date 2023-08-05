@@ -36,14 +36,12 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
             .isNotNull
             .hasFieldOrPropertyWithValue("readable", true)
 
-        val container = CassandraContainer<Nothing>("cassandra:3.11.8").apply {
+        val container = CassandraContainer<Nothing>("cassandra:4.1.3").apply {
             log.debug("Testcontainer-Cassandra is on port:  ${props.port}")
-            //withConfigurationOverride("cassandra.yaml")
             withExposedPorts(props.port)
             withReuse(true)
             withLogConsumer(ContainerUtils.containerLogsConsumer(log))
             withNetwork(Network.SHARED)
-            withConfigurationOverride("cassandra")
             withStartupTimeout(Duration.ofSeconds(60))
             withInitScript(ddlResource)
             //ContainerUtils.startAndLogTime(this)

@@ -40,7 +40,9 @@ import java.util.*
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.topic", "app.controller.message",
-        "spring.config.location=classpath:/application.yml"
+        "spring.config.location=classpath:/application.yml",
+        "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml"
+
     ]
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)

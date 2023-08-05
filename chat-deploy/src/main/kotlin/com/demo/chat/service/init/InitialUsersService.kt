@@ -25,7 +25,6 @@ class InitialUsersService<T>(
         // add users
         initializationProperties.initialUsers.keys.forEach { identity ->
             val thisUser = initializationProperties.initialUsers[identity]!!
-
             val thisUserKey = Mono.from(
                 userService.addUser(
                     UserCreateRequest(
@@ -35,19 +34,20 @@ class InitialUsersService<T>(
                     )
                 )
             )
-                .defaultIfEmpty(emptyKey)
                 .onErrorResume {
                     userService
                         .findByUsername(ByStringRequest(thisUser.handle))
                         .map { u -> u.key }
-                        .last()
+                        .switchIfEmpty(Mono.error(ChatException("Cannot Initialize User ${thisUser.handle}")))
+                        .single()
                 }
+                .defaultIfEmpty(emptyKey)
                 .block()!!
 
             identityKeys[identity] = thisUserKey
 
             val passwordEncoder = "{${initializationProperties.passwordEncoder}}"
-            val thisCredential =  KeyCredential(thisUserKey, "${passwordEncoder}${thisUser.password}")
+            val thisCredential = KeyCredential(thisUserKey, "${passwordEncoder}${thisUser.password}")
 
             secretsStore
                 .addCredential(thisCredential)

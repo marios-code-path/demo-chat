@@ -21,21 +21,25 @@ open class UserServiceImpl<T, Q>(
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =
-        userPersistence
-            .key()
-            .flatMap {
-                val user = User.create(
-                    Key.funKey(it.id),
-                    userReq.name,
-                    userReq.handle,
-                    userReq.imgUri
-                )
-                Flux.concat(
-                    userPersistence.add(user),
-                    userIndex.add(user)
-                )
-                    .then(Mono.just(it))
-            }
+        findByUsername(ByStringRequest(userReq.handle))
+            .doOnNext { throw DuplicateException }
+            .then (
+                userPersistence
+                    .key()
+                    .flatMap {
+                        val user = User.create(
+                            Key.funKey(it.id),
+                            userReq.name,
+                            userReq.handle,
+                            userReq.imgUri
+                        )
+                        Flux.concat(
+                            userPersistence.add(user),
+                            userIndex.add(user)
+                        )
+                            .then(Mono.just(it))
+                    }
+            )
 
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))

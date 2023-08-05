@@ -16,10 +16,11 @@ import org.springframework.test.context.TestPropertySource
         "server.port=0", "spring.rsocket.server.port=0",
         "app.service.core.key",
         "app.service.core.pubsub", "app.service.core.index", "app.service.core.persistence",
-        "app.service.core.secrets", "app.service.composite",
+        "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message","app.controller.topic", "app.controller.pubsub",
-        "spring.config.location=classpath:/application.yml"
+        "spring.config.location=classpath:/application.yml",
+        "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml"
     ]
 )
 class MemoryAppDeploymentTests {

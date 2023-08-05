@@ -19,7 +19,7 @@ open class CassandraIndexServices<T>(
     private val targetRepo: AuthMetadataByTargetRepository<T>,
     private val typeUtil: TypeUtil<T>
 ) : IndexServiceBeans<T, String, Map<String, String>> {
-    override fun userIndex() = UserIndex(userHandleRepo, cassandra)
+    override fun userIndex() = UserIndex(userHandleRepo)
 
     override fun topicIndex() = TopicIndex(nameRepo)
 

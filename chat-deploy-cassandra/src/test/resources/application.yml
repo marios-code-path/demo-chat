@@ -8,6 +8,10 @@ logging:
 app:
   proto: rsocket
   primary: core
+  users:
+    create: true
+  rootkeys:
+    create: true
 
 spring:
   cassandra:
