@@ -1,4 +1,4 @@
-package com.demo.chat.shell.shell
+package com.demo.chat.shell.components
 
 import com.demo.chat.shell.ShellStateConfiguration
 import org.jline.utils.AttributedString

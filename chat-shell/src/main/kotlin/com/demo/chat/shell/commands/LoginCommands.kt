@@ -7,11 +7,13 @@ import com.demo.chat.shell.ShellStateConfiguration.Companion.loggedInUser
 import com.demo.chat.shell.ShellStateConfiguration.Companion.loginMetadata
 import org.springframework.context.annotation.Profile
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
+import org.springframework.shell.command.annotation.ExceptionResolver
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
 import java.util.*
+import kotlin.system.exitProcess
 
 @ShellComponent
 @Profile("shell")
@@ -20,6 +22,17 @@ class LoginCommands<T>(
     val rootKeys: RootKeys<T>,
     typeUtil: TypeUtil<T>,
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
+
+
+    @ExceptionResolver(ChatException::class)
+    fun exitRequest() {
+        exitProcess(0)
+    }
+
+    @ShellMethod("bye")
+    fun bye(): Unit {
+        throw ChatException("bye")
+    }
 
     @ShellMethod("rootkeys")
     fun rootKeys(): String {
