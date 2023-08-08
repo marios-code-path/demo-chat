@@ -3,7 +3,7 @@
 #logging.level.io.rsocket.FrameLogger: DEBUG
 app:
   init:
-    passwordEncoder: noop
+    passwordEncoder: bcrypt
     initialRoles:
       rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
       wildcard: "*"

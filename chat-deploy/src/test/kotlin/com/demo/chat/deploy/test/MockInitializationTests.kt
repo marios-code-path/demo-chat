@@ -24,6 +24,9 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.springframework.security.crypto.password.DelegatingPasswordEncoder
+import org.springframework.security.crypto.password.NoOpPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 
@@ -37,6 +40,9 @@ open class MockInitializationTests<T>(
 
     @Mock
     private lateinit var userService: ChatUserService<T>
+
+    @Mock
+    private lateinit var passwordEncoder: PasswordEncoder
 
     @Mock
     private lateinit var authorizationService: AuthorizationService<T, AuthMetadata<T>>
@@ -85,6 +91,10 @@ open class MockInitializationTests<T>(
             .given(authorizationService.authorize(anyObject(), anyBoolean()))
             .willReturn(Mono.empty())
 
+        BDDMockito
+            .given(passwordEncoder.encode(anyObject()))
+            .willReturn("{noop}password")
+
         val rootKeys = RootKeys<T>()
 
         Hooks.onOperatorDebug()
@@ -103,14 +113,13 @@ open class MockInitializationTests<T>(
             )
         )
 
-
         val rootKeyService = RootKeyService(kvStore, typeUtil,"rootKeys")
         val rootKeyCreator = RootKeysSupplier(keyService)
             .apply {
                 rootKeys.merge(get())
             }
 
-        InitialUsersService(userService, authorizationService, secretsStore, properties, typeUtil)
+        InitialUsersService(userService, authorizationService, secretsStore, properties, passwordEncoder, typeUtil)
             .apply {
                 rootKeys.merge(
                     initializeUsers(rootKeys)

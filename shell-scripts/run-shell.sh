@@ -14,7 +14,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic"
 export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
-export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
+export OPT_FLAGS="-Dmanagement.server.port=-1 -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 
 function local() {
   set -e

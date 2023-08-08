@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.crypto.password.PasswordEncoder
 
 @Configuration
 @ConditionalOnProperty("app.users.create", havingValue = "true")
@@ -25,8 +26,9 @@ class UserInitializationListener(val publisher: DeploymentEventPublisher) {
         authorizationService: AuthorizationService<T, AuthMetadata<T>>,
         secretsStore: SecretsStore<T>,
         initializationProperties: UserInitializationProperties,
+        passwordEncoder: PasswordEncoder,
         typeUtil: TypeUtil<T>,
-    ) = InitialUsersService(userService, authorizationService, secretsStore, initializationProperties, typeUtil)
+    ) = InitialUsersService(userService, authorizationService, secretsStore, initializationProperties, passwordEncoder, typeUtil)
 
     @Bean
     fun <T> initUsersOnRootKeyInitialized(initialUserService: InitialUsersService<T>): ApplicationListener<RootKeyInitializationReadyEvent<T>> =

@@ -7,6 +7,7 @@ import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
+import org.springframework.security.crypto.password.PasswordEncoder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
@@ -15,6 +16,7 @@ class InitialUsersService<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val secretsStore: SecretsStore<T>,
     private val initializationProperties: UserInitializationProperties,
+    private val passwordDecoder: PasswordEncoder,
     private val typeUtil: TypeUtil<T>,
 ) {
 
@@ -46,8 +48,8 @@ class InitialUsersService<T>(
 
             identityKeys[identity] = thisUserKey
 
-            val passwordEncoder = "{${initializationProperties.passwordEncoder}}"
-            val thisCredential = KeyCredential(thisUserKey, "${passwordEncoder}${thisUser.password}")
+            var encodedPassword = passwordDecoder.encode(thisUser.password)
+            val thisCredential = KeyCredential(thisUserKey, "${encodedPassword}")
 
             secretsStore
                 .addCredential(thisCredential)

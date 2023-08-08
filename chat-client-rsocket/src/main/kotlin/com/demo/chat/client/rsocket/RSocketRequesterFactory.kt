@@ -35,5 +35,6 @@ class RSocketRequesterFactory(
                 }
                 MetadataRSocketRequester(perHostRequester[instance]!!, metadataProvider)
             }
+            .onErrorComplete()
             .block()!!
 }
