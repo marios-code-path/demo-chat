@@ -1,6 +1,4 @@
 # Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
-#logging.level.org.springframework: DEBUG
-#logging.level.io.rsocket.FrameLogger: DEBUG
 app:
   init:
     passwordEncoder: bcrypt

@@ -9,6 +9,7 @@ set -e
 export APP_VERSION=0.0.1
 export TLS_FLAGS
 export IMAGE_REPO_PREFIX=${IMAGE_REPO_PREFIX:="docker.io/library"}
+export NO_SEC=false
 
 if [[ -z ${SPRING_ACTIVE_PROFILES} ]]; then
   export SPRING_ACTIVE_PROFILES=""
@@ -62,11 +63,11 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
     c)
-      if [[ -z ${CERT_DIR} ]]; then
-        echo "CERT_DIR is not set"
-        exit 1
+      if [[ ${OPTARG} == *"notls"* ]]; then
+        NO_SEC=true
+      else
+        export CERT_DIR=${OPTARG}
       fi
-      export CERT_DIR=${OPTARG}
       ;;
     k)
       export KEYSPACE_TYPE=${OPTARG}
@@ -80,9 +81,6 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
     x)
       export SHOW_OPTIONS=1
       ;;
-    s)
-      export NO_SEC=true
-      ;;
     *)
       cat << CATZ
       specify:
@@ -95,6 +93,7 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       -s == use TLS
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
+      -c CERT_DIR placeholder == set location of certificate profiles
 
       Additional Environment Variables:
       KEYSTORE_PASS = password for keystore when using TLS
@@ -111,12 +110,13 @@ if [[ ${BUILD_PROFILES} == *"client-local"* &&
   exit 1
 fi
 
-if [[ -z "${CERT_DIR}" && -z "${NO_SEC}" ]]; then
+if [[ -z "${CERT_DIR}" && ${NO_SEC} == *"false"* ]]; then
   echo "You must specify a certificate base-path with the -c option or CERT_DIR env."
+  echo "You can turn off tls by setting -c notls."
   exit 1
 fi
 
-if [[ -z "${KEYSTORE_PASS}" && -z "${NO_SEC}" ]]; then
+if [[ -z "${KEYSTORE_PASS}" && ${NO_SEC} == *"false"* ]]; then
   echo "env KEYSTORE_PASS is not set"
   exit 1
 fi
@@ -153,7 +153,7 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
-  if [[ -z ${NO_SEC} ]]; then
+  if [[ ${NO_SEC} == *"false"* ]]; then
   TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=pkcs12 \
 -Dapp.rsocket.transport.security.truststore.path=${CERT_DIR}/client_truststore.p12 \
 -Dapp.rsocket.transport.security.keystore.path=${CERT_DIR}/client_keystore.p12 \

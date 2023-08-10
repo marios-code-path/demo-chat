@@ -18,5 +18,5 @@ class UserDetailsConfiguration {
         userService: ChatUserService<T>,
         secretsBeans: SecretsStoreBeans<T>,
         auth: AuthenticationService<T>,
-    ): ReactiveUserDetailsService = CoreUserDetailsService(userService, secretsBeans.secretsStore(), auth)
+    ): CoreUserDetailsService<T> = CoreUserDetailsService(userService, secretsBeans.secretsStore(), auth)
 }

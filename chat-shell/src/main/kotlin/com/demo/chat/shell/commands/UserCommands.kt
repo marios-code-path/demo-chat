@@ -11,6 +11,7 @@ import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.context.annotation.Profile
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.shell.standard.ShellComponent
 import org.springframework.shell.standard.ShellMethod
 import org.springframework.shell.standard.ShellOption
@@ -27,7 +28,8 @@ class UserCommands<T>(
     private val typeUtil: TypeUtil<T>,
     private val keyGen: IKeyGenerator<T>,
     private val keyService: IKeyService<T>,
-    rootKeys: RootKeys<T>
+    rootKeys: RootKeys<T>,
+    private val passwordEncoder: PasswordEncoder
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     @ShellMethod("Create a Key")
@@ -86,7 +88,7 @@ class UserCommands<T>(
         return userService
             .findByUserId(ByIdRequest(identity(userId)))
             .switchIfEmpty(Mono.error(NotFoundException))
-            .flatMap { passwdStore.addCredential(KeyCredential(it.key, "{noop}"+password)) }
+            .flatMap { passwdStore.addCredential(KeyCredential(it.key, passwordEncoder.encode(password))) }
             .map { "Password Changed." }
             .block()
     }

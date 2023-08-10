@@ -41,6 +41,7 @@ export BUILD_PROFILES="consul,"
 export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
 export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
+OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 
 function memory_local() {
     export DOCKER_ARGS=

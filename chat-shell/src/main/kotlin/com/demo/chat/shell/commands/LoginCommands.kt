@@ -23,15 +23,9 @@ class LoginCommands<T>(
     typeUtil: TypeUtil<T>,
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
-
-    @ExceptionResolver(ChatException::class)
-    fun exitRequest() {
-        exitProcess(0)
-    }
-
     @ShellMethod("bye")
     fun bye(): Unit {
-        throw ChatException("bye")
+        exitProcess(0)
     }
 
     @ShellMethod("rootkeys")

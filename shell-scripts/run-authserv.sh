@@ -18,9 +18,10 @@ export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoco
 -Dspring.main.web-application-type=servlet"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
+export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
 
 function local() {
-    OPT_FLAGS+=" -Dkeycert=file:/tmp/dc-keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/tmp/dc-keys/server_keycert.jwk"
+    OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
   $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
 }
@@ -35,7 +36,7 @@ function docker() {
 }
 
 function docker_image() {
-    OPT_FLAGS+=" -Dkeycert=file:/tmp/dc-keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/tmp/dc-keys/server_keycert.jwk"
+    OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
   $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
 }
