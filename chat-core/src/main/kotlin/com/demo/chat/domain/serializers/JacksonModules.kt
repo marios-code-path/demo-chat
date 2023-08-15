@@ -15,7 +15,7 @@ open class JacksonModules(
 
     @Bean
     open fun keyDataPairModule() = SimpleModule("KeyDataPairModule", Version.unknownVersion()).apply {
-        addDeserializer(KeyDataPair::class.java, KeyDataPairDeserializer(keyConverter, dataConverter))
+        addDeserializer(KeyValuePair::class.java, KeyValuePairDeserializer(keyConverter, dataConverter))
     }
 
     @Bean
@@ -48,4 +48,14 @@ open class JacksonModules(
     open fun authMetadataModule() = SimpleModule("AuthMetadataModule", Version.unknownVersion()).apply {
         addDeserializer(AuthMetadata::class.java, AuthMetadataDeserializer(JsonNodeToAnyConverter))
     }
+
+    fun allModules() = listOf(
+        authMetadataModule(),
+        keyDataPairModule(),
+        keyModule(),
+        userModule(),
+        topicModule(),
+        messageModule(),
+        membershipModule()
+    )
 }

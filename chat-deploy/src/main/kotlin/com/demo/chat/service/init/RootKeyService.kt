@@ -1,7 +1,7 @@
 package com.demo.chat.service.init
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyDataPair
+import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.KeyValueStore
@@ -43,7 +43,7 @@ class RootKeyService<T>(
 
     fun <T> publishRootKeys(rootKeys: RootKeys<T>) = kvStore
         .add(
-            KeyDataPair.create(
+            KeyValuePair.create(
                 Key.funKey(dataKey),
                 ObjectMapper(YAMLFactory()).writeValueAsString(rootKeys.getMapOfKeyMap())
             )

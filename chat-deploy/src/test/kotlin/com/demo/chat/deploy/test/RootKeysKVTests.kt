@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.test
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyDataPair
+import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.KeyValueStore
@@ -40,12 +40,12 @@ class RootKeysKVTestsConfig {
 class TestKVStore : KeyValueStore<String, String> {
     override fun key(): Mono<out Key<String>> = Mono.just(Key.funKey("foo"))
 
-    override fun all(): Flux<out KeyDataPair<String, String>> {
+    override fun all(): Flux<out KeyValuePair<String, String>> {
         TODO("Not yet implemented")
     }
 
-    override fun get(key: Key<String>): Mono<out KeyDataPair<String, String>> =Mono.just(
-        KeyDataPair.create(
+    override fun get(key: Key<String>): Mono<out KeyValuePair<String, String>> =Mono.just(
+        KeyValuePair.create(
             key,
                 "User:\n" +
                     "  id: 1090429277138866176\n" +
@@ -78,7 +78,7 @@ class TestKVStore : KeyValueStore<String, String> {
         TODO("Not yet implemented")
     }
 
-    override fun add(ent: KeyDataPair<String, String>): Mono<Void> {
+    override fun add(ent: KeyValuePair<String, String>): Mono<Void> {
         TODO("Not yet implemented")
     }
 

@@ -50,7 +50,7 @@ interface MessageKey<T> : Key<T> {
     JsonSubTypes.Type(value = JoinAlert::class, name = "JoinAlert"),
     JsonSubTypes.Type(value = LeaveAlert::class, name = "LeaveAlert"),
 )
-interface Message<T,  out E> : KeyDataPair<T, E> {
+interface Message<T,  out E> : KeyValuePair<T, E> {
     val record: Boolean
     override val key: MessageKey<T>
     override val data: E

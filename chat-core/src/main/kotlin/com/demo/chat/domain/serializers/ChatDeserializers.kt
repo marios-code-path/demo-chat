@@ -74,13 +74,13 @@ class MessageDeserializer<T, E>(
     }
 }
 
-class KeyDataPairDeserializer<T, E>(
+class KeyValuePairDeserializer<T, E>(
     keyCodec: Converter<JsonNode, T>,
     private val dataCodec: Converter<JsonNode, E>
-) : JsonDeserializer<KeyDataPair<T, E>>() {
+) : JsonDeserializer<KeyValuePair<T, E>>() {
     private val kd = KeyDeserializer(keyCodec)
 
-    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyDataPair<T, E> {
+    override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyValuePair<T, E> {
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
@@ -91,7 +91,7 @@ class KeyDataPairDeserializer<T, E>(
         var key: Key<T> = kd.deserialize(keyNode.first().traverse(oc), ctxt)
 
         return when (key) {
-            is Key<T> -> KeyDataPair.create(key, decoded)
+            is Key<T> -> KeyValuePair.create(key, decoded)
             else -> throw ChatException("Invalid Key Data pair.")
         }
     }

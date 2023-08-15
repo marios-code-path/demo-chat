@@ -6,19 +6,18 @@ import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 
-@Table("chat_secret")
-data class KeyCredentialById<T>(
+@Table("kv_pair")
+data class CSKeyValuePair<T>(
     @PrimaryKey
-    override val key: CredKey<T>,
-    @field:Column("data")
+    override val key: KVKey<T>,
+    @field:Column("vdata")
     override val data: String
-) : KeyValuePair<T, String>
+) : KeyValuePair<T, Any>
 
 @PrimaryKeyClass
-data class CredKey<T>(
+data class KVKey<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val id: T,
-    val kind: String
+    override val id: T
 ) : Key<T> {
     @Transient
     override val empty: Boolean = false

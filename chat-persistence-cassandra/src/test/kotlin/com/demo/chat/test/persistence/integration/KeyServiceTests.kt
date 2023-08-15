@@ -1,8 +1,8 @@
-package com.demo.chat.test.persistence
+package com.demo.chat.test.persistence.integration
 
 import com.demo.chat.domain.User
-import com.demo.chat.service.core.IKeyService
 import com.demo.chat.persistence.cassandra.impl.KeyServiceCassandra
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
@@ -10,7 +10,6 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -27,12 +26,8 @@ import java.util.*
 class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
 
-    @Value("\${app.key.type:uuid}")
-    private lateinit var keyType: String
-
     @BeforeAll
     fun setUp() {
-        println("THE KEYTYPE FOR KeyServiceTests IS ${keyType}")
         this.svc = KeyServiceCassandra(template, keyGenerator)
     }
 

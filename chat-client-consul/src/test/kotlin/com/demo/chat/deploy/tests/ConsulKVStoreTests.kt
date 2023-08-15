@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.tests
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyDataPair
+import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.persistence.consul.ConsulKVStore
 import com.ecwid.consul.v1.ConsulClient
 import org.assertj.core.api.Assertions
@@ -33,16 +33,16 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
     @Test
     fun `should set key`() {
         StepVerifier
-            .create(kvStore.add(KeyDataPair.create(Key.funKey("test"), "test")))
+            .create(kvStore.add(KeyValuePair.create(Key.funKey("test"), "test")))
             .verifyComplete()
     }
 
     @Test
     fun `should set keys and list`() {
         val kvKeys = kvStore
-            .add(KeyDataPair.create(Key.funKey("test/1"), "test"))
-            .then(kvStore.add(KeyDataPair.create(Key.funKey("test/1"), "test")))
-            .then(kvStore.add(KeyDataPair.create(Key.funKey("test/2"), "test")))
+            .add(KeyValuePair.create(Key.funKey("test/1"), "test"))
+            .then(kvStore.add(KeyValuePair.create(Key.funKey("test/1"), "test")))
+            .then(kvStore.add(KeyValuePair.create(Key.funKey("test/2"), "test")))
             .thenMany(kvStore.all())
 
         StepVerifier
@@ -55,7 +55,7 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
     fun `should add then remove key`() {
         Hooks.onOperatorDebug()
         val kvProcess = kvStore
-            .add(KeyDataPair.create(Key.funKey("test1"), "test"))
+            .add(KeyValuePair.create(Key.funKey("test1"), "test"))
             .then(kvStore.rem(Key.funKey("test1")))
             .thenMany(kvStore.all())
 
@@ -71,7 +71,7 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
     @Test
     fun `should get Key and validate contents`() {
         val kvProcess = kvStore
-            .add(KeyDataPair.create(Key.funKey("test/1"), "test"))
+            .add(KeyValuePair.create(Key.funKey("test/1"), "test"))
             .then(kvStore.get(Key.funKey("test/1")))
 
         StepVerifier

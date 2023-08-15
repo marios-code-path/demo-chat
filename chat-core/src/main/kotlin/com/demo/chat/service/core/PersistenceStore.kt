@@ -4,7 +4,7 @@ import com.demo.chat.domain.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface EnricherPersistenceStore<T, V, E>: PersistenceStore<T, E> {
+interface EnricherPersistenceStore<T, V, E> : PersistenceStore<T, E> {
     fun addEnriched(data: V): Mono<E>
 }
 
@@ -25,6 +25,10 @@ interface MembershipPersistence<T> : PersistenceStore<T, TopicMembership<T>>
 
 interface MessagePersistence<T, V> : PersistenceStore<T, Message<T, V>>
 
-interface KeyValueStore<T, V> : PersistenceStore<T, KeyDataPair<T, V>>
+interface KeyValueStore<T, V> : PersistenceStore<T, KeyValuePair<T, V>> {
+    fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T,E>> = Mono.empty()
+    fun <E> typedAll(typeArgument: Class<E>): Flux<KeyValuePair<T,E>> = Flux.empty()
+    fun <E> typedByIds(ids: List<Key<T>>, typedArgument: Class<E>): Flux<KeyValuePair<T,E>> = Flux.empty()
+}
 
 interface InitializingKVStore : KeyValueStore<String, String>

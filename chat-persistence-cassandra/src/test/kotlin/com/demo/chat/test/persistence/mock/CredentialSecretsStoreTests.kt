@@ -1,4 +1,4 @@
-package com.demo.chat.test.persistence
+package com.demo.chat.test.persistence.mock
 
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith

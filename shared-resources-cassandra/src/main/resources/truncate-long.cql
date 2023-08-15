@@ -13,3 +13,4 @@ Truncate Table chat_long.auth_metadata;
 Truncate Table chat_long.auth_metadata_principal;
 Truncate Table chat_long.auth_metadata_target;
 Truncate Table chat_long.chat_secret;
+Truncate Table chat_long.kv_pair;

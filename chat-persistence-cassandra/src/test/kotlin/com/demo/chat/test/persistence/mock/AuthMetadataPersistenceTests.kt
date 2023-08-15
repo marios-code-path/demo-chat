@@ -1,4 +1,4 @@
-package com.demo.chat.test.persistence
+package com.demo.chat.test.persistence.mock
 
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey

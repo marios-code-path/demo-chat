@@ -10,6 +10,12 @@ CREATE TABLE chat_uuid.keys(
                           kind varchar ,
                           PRIMARY KEY(id) );
 
+CREATE TABLE chat_uuid.kv_pair(
+                                  id UUID,
+                                  vdata text,
+                                  PRIMARY KEY(id)
+);
+
 
 CREATE TABLE chat_uuid.topic_membership
 (

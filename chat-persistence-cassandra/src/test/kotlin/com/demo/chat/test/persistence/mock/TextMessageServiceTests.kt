@@ -1,4 +1,4 @@
-package com.demo.chat.test.persistence
+package com.demo.chat.test.persistence.mock
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -37,7 +37,7 @@ class TextMessageServiceTests {
 
     private val MSGTEXT = "SUP TEST"
 
-    lateinit var msgSvc: MessagePersistenceCassandra<UUID>
+    lateinit var persistence: MessagePersistenceCassandra<UUID>
 
     @MockBean
     lateinit var msgRepo: ChatMessageRepository<UUID>
@@ -59,12 +59,12 @@ class TextMessageServiceTests {
                 .given(msgRepo.findAll())
                 .willReturn(Flux.just(newMessage))
 
-        msgSvc = MessagePersistenceCassandra(keyService, msgRepo)
+        persistence = MessagePersistenceCassandra(keyService, msgRepo)
     }
 
     @Test
     fun `should find all messages`() {
-        val messages = msgSvc.all()
+        val messages = persistence.all()
                 .doOnNext {
                     logger.info("A message found: ${it}")
                 }
@@ -87,7 +87,7 @@ class TextMessageServiceTests {
 
         val messages = keyService.key(Message::class.java)
                 .flatMap {
-                    msgSvc.add(
+                    persistence.add(
                             Message.create(
                                     MessageKey.create(it.id, roomId, userId),
                                     MSGTEXT,
@@ -95,7 +95,7 @@ class TextMessageServiceTests {
                             )
                     )
                 }
-                .thenMany(msgSvc.all().collectList())
+                .thenMany(persistence.all().collectList())
 
         StepVerifier
                 .create(messages)

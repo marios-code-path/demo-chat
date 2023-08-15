@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
+import java.nio.file.Files
 import java.time.Duration
 import java.util.*
 
@@ -35,6 +36,9 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
             .assertThat(resource)
             .isNotNull
             .hasFieldOrPropertyWithValue("readable", true)
+        Files.readString(resource.file.toPath()).let {
+            log.info("DDL: {}", it)
+        }
 
         val container = CassandraContainer<Nothing>("cassandra:4.1.3").apply {
             withExposedPorts(props.port)

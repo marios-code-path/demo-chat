@@ -53,17 +53,17 @@ interface Key<T> {
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("keyData")
+@JsonTypeName("keyValue")
 @JsonSubTypes(
     JsonSubTypes.Type(value = Message::class, name = "Message")
 )
-interface KeyDataPair<T, out E> : KeyBearer<T> {
+interface KeyValuePair<T, out E> : KeyBearer<T> {
     val data: E
 
     companion object Factory {
         @JvmStatic
-        fun <T, E> create(key: Key<T>, data: E): KeyDataPair<T, E> =
-            @com.fasterxml.jackson.annotation.JsonTypeName("keyData") object : KeyDataPair<T, E> {
+        fun <T, E> create(key: Key<T>, data: E): KeyValuePair<T, E> =
+            @com.fasterxml.jackson.annotation.JsonTypeName("keyValue") object : KeyValuePair<T, E> {
                 override val key: Key<T>
                     get() = key
                 override val data: E

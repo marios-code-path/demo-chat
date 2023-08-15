@@ -1,5 +1,6 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -20,9 +21,8 @@ class UserSerliazerTests : TestBase() {
     @Test
     fun `Any User deserialize`() {
         mapper.apply {
-            registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
-                addDeserializer(User::class.java, UserDeserializer(JsonNodeToAnyConverter))
-            })
+            registerModules(DefaultChatJacksonModules().allModules())
+
         }
 
         val userJsons = Flux.just(

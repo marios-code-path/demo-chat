@@ -10,6 +10,11 @@ id BIGINT,
 kind varchar ,
 PRIMARY KEY(id) );
 
+CREATE TABLE chat_long.kv_pair(
+    id BIGINT,
+    vdata text,
+    PRIMARY KEY(id)
+);
 
 CREATE TABLE chat_long.topic_membership
 (
