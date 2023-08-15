@@ -54,6 +54,28 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
     }
 
     @Test
+    fun `should byIds`() {
+        val key1 = Key.funKey(1L)
+        val key2 = Key.funKey(2L)
+        val userObject = User.create(key1, "test", "test", "test")
+        val userObject2 = User.create(key2, "test1", "test1", "test1")
+
+        val addOp = persistence.add(KeyValuePair.create(Key.funKey(1L), userObject))
+            .then(persistence.add(KeyValuePair.create(Key.funKey(2L), userObject2)))
+
+        StepVerifier
+            .create(addOp)
+            .expectSubscription()
+            .verifyComplete()
+
+        StepVerifier.create(
+            persistence.typedByIds(listOf(key1, key2), User::class.java)
+        )
+            .expectNextCount(2)
+            .verifyComplete()
+    }
+
+    @Test
     fun `should store findAll`() {
         val userObject = User.create(Key.funKey(1L), "test", "test", "test")
         val userObject2 = User.create(Key.funKey(2L), "test1", "test1", "test1")
@@ -79,7 +101,6 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
             }
             .expectNextCount(1)
             .verifyComplete()
-
 
         StepVerifier.create(persistence.all())
             .assertNext {

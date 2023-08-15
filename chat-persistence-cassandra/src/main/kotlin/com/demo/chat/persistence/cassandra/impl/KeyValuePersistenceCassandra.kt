@@ -59,7 +59,7 @@ class KeyValuePersistenceCassandra<T>(
     override fun byIds(keys: List<Key<T>>): Flux<out KeyValuePair<T, Any>> = typedByIds(keys, Any::class.java)
 
     override fun <E> typedByIds(ids: List<Key<T>>, typedArgument: Class<E>): Flux<KeyValuePair<T, E>> =
-        repo.findAllById(ids.map { it.id })
+        repo.findByKeyIdIn(ids.map { it.id })
             .map { kv ->
                 val obj = mapper.readValue(kv.data, typedArgument)
                 KeyValuePair.create(kv.key, obj)
