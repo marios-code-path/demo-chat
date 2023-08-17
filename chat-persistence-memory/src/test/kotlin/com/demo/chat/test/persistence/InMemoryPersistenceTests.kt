@@ -21,6 +21,8 @@ class PersistenceMembershipTests : KeyAwarePersistenceTestBase<String, TopicMemb
 class PersistenceAuthmetadataTests : KeyAwarePersistenceTestBase<String, AuthMetadata<String>>
     (TestAuthMetaSupplier, AuthMetaPersistenceInMemory(TestStringKeyService()) { t -> t.key }, {t -> t.key })
 
+class PersistenceKeyValueTests : KeyAwarePersistenceTestBase<String, KeyValuePair<String, Any>>
+    (TestKeyValuePairSupplier, InMemoryKeyValueStore(TestStringKeyService()) { t -> t.key }, {t -> t.key })
 //@ExtendWith(MockPersistenceResolver::class)
 //class MockPersistenceTests(persistence: PersistenceStore<Number, Any>):
 //        PersistenceTestBase<Number, Any>(TestAnySupplier, persistence)

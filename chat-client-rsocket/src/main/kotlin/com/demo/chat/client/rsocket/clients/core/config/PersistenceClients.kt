@@ -2,10 +2,7 @@ package com.demo.chat.client.rsocket.clients.core.config
 
 import com.demo.chat.client.rsocket.clients.core.PersistenceClient
 import com.demo.chat.domain.*
-import com.demo.chat.service.core.MembershipPersistence
-import com.demo.chat.service.core.MessagePersistence
-import com.demo.chat.service.core.TopicPersistence
-import com.demo.chat.service.core.UserPersistence
+import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaPersistence
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester

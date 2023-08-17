@@ -33,4 +33,8 @@ class MemoryPersistenceServices<T, V>(private val keyService: IKeyService<T>) :
     @Bean
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
         AuthMetaPersistenceInMemory(keyService) { t -> t.key }
+
+    @Bean
+    override fun keyValuePersistence(): KeyValueStore<T, Any> =
+        InMemoryKeyValueStore(keyService) { t -> t.key }
 }

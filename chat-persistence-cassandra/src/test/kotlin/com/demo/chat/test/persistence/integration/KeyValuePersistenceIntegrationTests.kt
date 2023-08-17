@@ -3,6 +3,7 @@ package com.demo.chat.test.persistence.integration
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.User
+import com.demo.chat.persistence.cassandra.impl.KeyServiceCassandra
 import com.demo.chat.persistence.cassandra.impl.KeyValuePersistenceCassandra
 import com.demo.chat.persistence.cassandra.repository.KeyValuePairRepository
 import com.demo.chat.service.core.KeyValueStore
@@ -39,7 +40,7 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @BeforeAll
     fun setUp() {
-        this.persistence = KeyValuePersistenceCassandra(template, repo, mapper, keyGenerator)
+        this.persistence = KeyValuePersistenceCassandra( KeyServiceCassandra(template, keyGenerator), repo, mapper)
     }
 
     fun kvAsserts(kv: KeyValuePair<Long, Any>) {

@@ -40,4 +40,10 @@ open class PersistenceControllersConfiguration {
     @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
     class AuthMetaPersistenceController<T, V>(s: PersistenceServiceBeans<T, V>) :
         PersistenceServiceController<T, AuthMetadata<T>>(s.authMetaPersistence())
+
+    @Controller
+    @MessageMapping("persist.keyvalue")
+    @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
+    class KeyValuePersistenceController<T, V>(s: PersistenceServiceBeans<T, V>) :
+        PersistenceServiceController<T, KeyValuePair<T, Any>>(s.keyValuePersistence())
 }

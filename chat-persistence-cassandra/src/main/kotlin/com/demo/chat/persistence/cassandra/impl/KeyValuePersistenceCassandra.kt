@@ -7,6 +7,7 @@ import com.demo.chat.persistence.cassandra.domain.CSKeyValuePair
 import com.demo.chat.persistence.cassandra.domain.KVKey
 import com.demo.chat.persistence.cassandra.repository.KeyValuePairRepository
 import com.demo.chat.service.core.IKeyGenerator
+import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.KeyValueStore
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
@@ -16,15 +17,12 @@ import reactor.util.retry.Retry
 import java.time.Duration
 
 class KeyValuePersistenceCassandra<T>(
-    private val template: ReactiveCassandraTemplate,
+    private val keyService: IKeyService<T>,
     private val repo: KeyValuePairRepository<T>,
     private val mapper: ObjectMapper,
-    private val keyGen: IKeyGenerator<T>,
 ) : KeyValueStore<T, Any> {
 
-    override fun key(): Mono<out Key<T>> = template
-        .insert(CSKey(keyGen.nextId(), KeyValuePair::class.java.simpleName))
-        .retryWhen(Retry.backoff(5, Duration.ofMillis(100L)))
+    override fun key(): Mono<out Key<T>> = keyService.key(KeyValuePair::class.java)
 
     override fun all(): Flux<out KeyValuePair<T, Any>> = repo.findAll()
 

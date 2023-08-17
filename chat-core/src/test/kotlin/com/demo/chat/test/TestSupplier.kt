@@ -30,6 +30,10 @@ object TestAuthMetaSupplier : Supplier<AuthMetadata<String>> {
         Key.funKey(randomAlphaNumeric(10)), "TEST", Long.MAX_VALUE)
 }
 
+object TestKeyValuePairSupplier : Supplier<KeyValuePair<String, Any>> {
+    override fun get() = KeyValuePair.create(Key.funKey(randomAlphaNumeric(10)), "TEST")
+}
+
 object TestAnySupplier : Supplier<Any> {
     override fun get() = "TEST"
 }

@@ -79,7 +79,7 @@ class KeyValuePersistenceTests {
             .given(mapper.readValue(Mockito.anyString(), Mockito.any(Class::class.java)))
             .willReturn("test")
 
-        persistence = KeyValuePersistenceCassandra(template, repo, mapper, keyService)
+        persistence = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
     }
 
     @Test
@@ -135,5 +135,4 @@ class KeyValuePersistenceTests {
             }
             .verifyComplete()
     }
-
 }
