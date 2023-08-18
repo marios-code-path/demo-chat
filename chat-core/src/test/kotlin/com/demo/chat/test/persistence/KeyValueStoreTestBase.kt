@@ -32,7 +32,9 @@ open class KeyValueStoreTestBase<K, V>(
 
     @Test
     fun `add, all, typedByIds`() {
-        val byIds = store.add(valCodec.get())
+        val thing = valCodec.get()
+        val byIds = store
+            .add(thing)
             .thenMany(store.all())
             .collectList()
             .flatMapMany { list ->
@@ -41,14 +43,17 @@ open class KeyValueStoreTestBase<K, V>(
             }
 
         StepVerifier.create(byIds)
-            .expectNextCount(1)
+            .assertNext {
+                Assertions.assertThat(it).isEqualTo(thing)
+            }
             .verifyComplete()
     }
 
     @Test
     fun `add, typedAll`() {
+        val thing = valCodec.get()
         val saveNFind = store
-            .add(valCodec.get())
+            .add(thing)
             .thenMany(store.typedAll(valType.get()))
 
         StepVerifier.create(saveNFind)
@@ -56,6 +61,7 @@ open class KeyValueStoreTestBase<K, V>(
             .assertNext {
                 Assertions.assertThat(it)
                     .isNotNull
+                    .isEqualTo(thing)
             }
             .verifyComplete()
     }

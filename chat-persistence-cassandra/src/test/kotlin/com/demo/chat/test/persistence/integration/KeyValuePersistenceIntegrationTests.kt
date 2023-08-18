@@ -7,8 +7,7 @@ import com.demo.chat.persistence.cassandra.impl.KeyServiceCassandra
 import com.demo.chat.persistence.cassandra.impl.KeyValuePersistenceCassandra
 import com.demo.chat.persistence.cassandra.repository.KeyValuePairRepository
 import com.demo.chat.service.core.KeyValueStore
-import com.demo.chat.test.CassandraSchemaTest
-import com.demo.chat.test.TestLongKeyService
+import com.demo.chat.test.*
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
@@ -21,6 +20,7 @@ import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.test.StepVerifier
 import java.util.*
+
 
 @ExtendWith(SpringExtension::class)
 @SpringBootTest(
@@ -40,7 +40,7 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @BeforeAll
     fun setUp() {
-        this.persistence = KeyValuePersistenceCassandra( KeyServiceCassandra(template, keyGenerator), repo, mapper)
+        this.persistence = KeyValuePersistenceCassandra(KeyServiceCassandra(template, keyGenerator), repo, mapper)
     }
 
     fun kvAsserts(kv: KeyValuePair<Long, Any>) {

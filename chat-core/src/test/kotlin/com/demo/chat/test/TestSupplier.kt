@@ -34,6 +34,10 @@ object TestKeyValuePairSupplier : Supplier<KeyValuePair<String, Any>> {
     override fun get() = KeyValuePair.create(Key.funKey(randomAlphaNumeric(10)), "TEST")
 }
 
+object TestLongKeyValuePairSupplier : Supplier<KeyValuePair<Long, Any>> {
+    override fun get() = KeyValuePair.create(Key.funKey(1L), "TEST")
+}
+
 object TestAnySupplier : Supplier<Any> {
     override fun get() = "TEST"
 }

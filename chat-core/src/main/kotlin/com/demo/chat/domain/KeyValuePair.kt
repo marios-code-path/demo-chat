@@ -31,10 +31,7 @@ interface Key<T> {
             }
 
             override fun equals(k2: Any?): Boolean =
-                (k2 != null
-                        && k2::class == this::class) &&
-                        (k2 is Key<*> &&
-                                k2.id == this.id)
+                (k2 != null && (k2 is Key<*>) && k2.id == this.id)
         }
 
         fun <T> emptyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : NoKey<T> {

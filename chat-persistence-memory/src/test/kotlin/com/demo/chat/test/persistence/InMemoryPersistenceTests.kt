@@ -30,6 +30,7 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<String, Any>
     (TestKeyValuePairSupplier,
      Supplier { String::class.java },
     InMemoryKeyValueStore(TestStringKeyService()) { t -> t.key }, {t -> t.key })
+
 //@ExtendWith(MockPersistenceResolver::class)
 //class MockPersistenceTests(persistence: PersistenceStore<Number, Any>):
 //        PersistenceTestBase<Number, Any>(TestAnySupplier, persistence)
