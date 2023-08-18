@@ -118,8 +118,9 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
     @Test
     fun `should store find`() {
         val userObject = User.create(Key.funKey(1L), "test", "test", "test")
+        val testKv = KeyValuePair.create(Key.funKey(1L), userObject)
 
-        val addOp = persistence.add(KeyValuePair.create(Key.funKey(1L), userObject))
+        val addOp = persistence.add(testKv)
 
         StepVerifier
             .create(addOp)
@@ -132,6 +133,9 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
             .create(findOp)
             .assertNext {
                 kvAsserts(it)
+                Assertions
+                    .assertThat(it.data)
+                    .isEqualTo(userObject)
             }
             .verifyComplete()
 
@@ -143,6 +147,12 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
                     .isNotNull
                     .extracting("data")
                     .isInstanceOf(String::class.java)
+
+                val nwObj = mapper.readValue(it.data as String, User::class.java)
+
+                Assertions
+                    .assertThat(userObject)
+                    .isEqualTo(nwObj)
             }
             .verifyComplete()
     }

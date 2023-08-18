@@ -4,6 +4,8 @@ import com.demo.chat.domain.*
 import com.demo.chat.persistence.memory.impl.*
 import com.demo.chat.test.*
 import org.junit.jupiter.api.TestInstance
+import org.springframework.core.ParameterizedTypeReference
+import java.util.function.Supplier
 
 
 class PersistenceUserTests : KeyAwarePersistenceTestBase<String, User<String>>
@@ -21,8 +23,13 @@ class PersistenceMembershipTests : KeyAwarePersistenceTestBase<String, TopicMemb
 class PersistenceAuthmetadataTests : KeyAwarePersistenceTestBase<String, AuthMetadata<String>>
     (TestAuthMetaSupplier, AuthMetaPersistenceInMemory(TestStringKeyService()) { t -> t.key }, {t -> t.key })
 
-class PersistenceKeyValueTests : KeyAwarePersistenceTestBase<String, KeyValuePair<String, Any>>
+class PersistenceKeyValueStoreTests : KeyAwarePersistenceTestBase<String, KeyValuePair<String, Any>>
     (TestKeyValuePairSupplier, InMemoryKeyValueStore(TestStringKeyService()) { t -> t.key }, {t -> t.key })
+
+class TypedKeyValueStoreTests : KeyValueStoreTestBase<String, Any>
+    (TestKeyValuePairSupplier,
+     Supplier { String::class.java },
+    InMemoryKeyValueStore(TestStringKeyService()) { t -> t.key }, {t -> t.key })
 //@ExtendWith(MockPersistenceResolver::class)
 //class MockPersistenceTests(persistence: PersistenceStore<Number, Any>):
 //        PersistenceTestBase<Number, Any>(TestAnySupplier, persistence)

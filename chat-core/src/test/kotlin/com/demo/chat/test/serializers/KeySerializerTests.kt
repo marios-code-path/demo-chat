@@ -30,39 +30,63 @@ class KeySerializerTests : TestBase() {
         val publisher = TestPublisher.create<Key<out Any>>()
 
         val keysSerialized = listOf(
-                Key.funKey(1L),
-                MessageKey.create("a", "a", "1")
+            Key.funKey(1L),
+            MessageKey.create("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
         StepVerifier
-                .create(publisher)
-                .expectSubscription()
-                .then {
-                    publisher.next(mapper.readValue(keysSerialized.first()))
-                    publisher.next(mapper.readValue(keysSerialized.last()))
-                }
-                .assertNext { key ->
-                    Assertions
-                            .assertThat(key)
-                            .isNotNull
-                            .hasFieldOrPropertyWithValue("id", 1L)
-                            .extracting("id")
-                            .isInstanceOf(Number::class.java)
-                }
-                .assertNext { key ->
-                    Assertions
-                            .assertThat(key)
-                            .isNotNull
-                            .hasFieldOrProperty("dest")
-                            .hasFieldOrPropertyWithValue("id", "a")
-                            .extracting("id")
-                            .isInstanceOf(String::class.java)
-                }
-                .then {
-                    publisher.complete()
-                }
-                .expectComplete()
-                .verify(Duration.ofMillis(500))
+            .create(publisher)
+            .expectSubscription()
+            .then {
+                publisher.next(mapper.readValue(keysSerialized.first()))
+                publisher.next(mapper.readValue(keysSerialized.last()))
+            }
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", 1L)
+                    .extracting("id")
+                    .isInstanceOf(Number::class.java)
+            }
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrProperty("dest")
+                    .hasFieldOrPropertyWithValue("id", "a")
+                    .extracting("id")
+                    .isInstanceOf(String::class.java)
+            }
+            .then {
+                publisher.complete()
+            }
+            .expectComplete()
+            .verify(Duration.ofMillis(500))
+    }
+
+    @Test
+    fun `equality tests`() {
+        mapper.apply {
+            registerModules(SimpleModule("CustomDeser", Version.unknownVersion()).apply {
+                addDeserializer(Key::class.java, KeyDeserializer(JsonNodeToAnyConverter))
+            })
+        }
+
+        val keys = listOf(
+            Key.funKey(1L),
+            Key.funKey("a"),
+            Key.funKey(UUID.randomUUID())
+        )
+
+        keys.forEach { key ->
+            val json = mapper.writeValueAsString(key)
+            val newKey = mapper.readValue(json, Key::class.java)
+
+            Assertions
+                .assertThat(newKey)
+                .isEqualTo(key)
+        }
     }
 
     @Test
@@ -74,40 +98,40 @@ class KeySerializerTests : TestBase() {
         }
 
         val keyJsons = Flux.just(
-                Key.funKey(1L),
-                Key.funKey("a"),
-                Key.funKey(UUID.randomUUID())
+            Key.funKey(1L),
+            Key.funKey("a"),
+            Key.funKey(UUID.randomUUID())
         )
-                .map(mapper::writeValueAsString)
-                .map<Key<out Any>>(mapper::readValue)
+            .map(mapper::writeValueAsString)
+            .map<Key<out Any>>(mapper::readValue)
 
         StepVerifier
-                .create(keyJsons)
-                .expectSubscription()
-                .assertNext { key ->
-                    Assertions
-                            .assertThat(key)
-                            .isNotNull
-                            .hasFieldOrPropertyWithValue("id", 1L)
-                            .extracting("id")
-                            .isInstanceOf(Number::class.java)
-                }
-                .assertNext { key ->
-                    Assertions
-                            .assertThat(key)
-                            .isNotNull
-                            .hasFieldOrPropertyWithValue("id", "a")
-                            .extracting("id")
-                            .isInstanceOf(String::class.java)
-                }
-                .assertNext { key ->
-                    Assertions
-                            .assertThat(key)
-                            .isNotNull
-                            .extracting("id")
-                            .isInstanceOf(UUID::class.java)
-                }
-                .expectComplete()
-                .verify(Duration.ofMillis(500))
+            .create(keyJsons)
+            .expectSubscription()
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", 1L)
+                    .extracting("id")
+                    .isInstanceOf(Number::class.java)
+            }
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", "a")
+                    .extracting("id")
+                    .isInstanceOf(String::class.java)
+            }
+            .assertNext { key ->
+                Assertions
+                    .assertThat(key)
+                    .isNotNull
+                    .extracting("id")
+                    .isInstanceOf(UUID::class.java)
+            }
+            .expectComplete()
+            .verify(Duration.ofMillis(500))
     }
 }

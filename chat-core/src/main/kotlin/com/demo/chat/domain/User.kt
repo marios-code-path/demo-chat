@@ -26,6 +26,15 @@ interface User<T> : KeyBearer<T> {
                 get() = imageUri
             override val timestamp: Instant
                 get() = Instant.now()
+
+            override fun equals(k2: Any?): Boolean =
+                (k2 != null && k2::class == this::class) &&
+                        (k2 is User<*> &&
+                                k2.key == this.key &&
+                                k2.name == this.name &&
+                                k2.handle == this.handle &&
+                                k2.imageUri == this.imageUri)
+
         }
     }
 }

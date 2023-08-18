@@ -24,11 +24,21 @@ class KeyTests : TestBase() {
     @Test
     fun `key equality should be different`() {
         val k1 = Key.funKey(1L)
-        val k2 = Key.funKey(2L)
+        val k2 = Key.funKey(1)
 
         Assertions
             .assertThat(k1)
             .isNotEqualTo(k2)
+
+        val k3 = Key.funKey("1".toLong())
+
+        Assertions
+            .assertThat(k1)
+            .isEqualTo(k3)
+
+        Assertions
+            .assertThat(k1 == k3)
+            .isTrue
     }
 
     @Test

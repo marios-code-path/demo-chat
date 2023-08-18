@@ -41,7 +41,9 @@ class KeyValuePersistenceCassandra<T>(
         repo.findByKeyId(key.id)
             .map { kv ->
                 val obj = mapper.readValue(kv.data, typeArgument)
-                KeyValuePair.create(kv.key, obj)
+                val newKv = KeyValuePair.create(kv.key, obj)
+
+                newKv
             }
 
     override fun rem(key: Key<T>): Mono<Void> =
@@ -49,8 +51,10 @@ class KeyValuePersistenceCassandra<T>(
 
     override fun add(ent: KeyValuePair<T, Any>): Mono<Void> {
         val dataString = mapper.writeValueAsString(ent.data)
+        val sData = CSKeyValuePair(KVKey(ent.key.id), dataString)
+
         return repo
-            .save(CSKeyValuePair(KVKey(ent.key.id), dataString))
+            .save(sData)
             .then()
     }
 

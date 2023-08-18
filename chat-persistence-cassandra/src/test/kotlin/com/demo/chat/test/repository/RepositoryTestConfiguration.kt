@@ -17,18 +17,22 @@ import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
 
 
 @Configuration
 @EnableReactiveCassandraRepositories(basePackages = ["com.demo.chat.persistence.cassandra.repository"])
-class RepositoryTestConfiguration(props: CassandraProperties) : CassandraTestContainerConfiguration(props) {
+@Import(TestObjectMapperConfiguration::class)
+class RepositoryTestConfiguration(props: CassandraProperties) : CassandraTestContainerConfiguration(props)
+
+
+open class TestObjectMapperConfiguration {
     @Bean
     fun objectMapper() = ObjectMapper().registerModule(KotlinModule.Builder().build()).apply {
         propertyNamingStrategy = PropertyNamingStrategies.LOWER_CAMEL_CASE
         setSerializationInclusion(JsonInclude.Include.NON_NULL)
         findAndRegisterModules()
         registerModules(DefaultChatJacksonModules().allModules())
-        enableDefaultTyping()
     }!!
 }
