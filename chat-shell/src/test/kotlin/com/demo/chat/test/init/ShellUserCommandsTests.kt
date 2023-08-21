@@ -17,6 +17,30 @@ open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
     @Autowired lateinit var userCommands: UserCommands<T>
 
     @Test
+    fun `should create kv`() {
+        Assertions.assertThat(userCommands.kv("data")).isNotNull
+    }
+
+    @Test
+    fun `should add and get`() {
+        val newKey = userCommands.kv("data2")
+        val getKv = userCommands.getKV(newKey!!.id)
+
+        Assertions
+            .assertThat(getKv)
+            .isNotNull
+
+        Assertions
+            .assertThat(getKv?.contains(newKey!!.id.toString()))
+            .isNotNull
+
+        Assertions
+            .assertThat(getKv?.contains("data2"))
+            .isNotNull
+            .isEqualTo("data2")
+    }
+
+    @Test
     fun `should get key`() {
         Assertions.assertThat(userCommands.key("false")).isNotNull
     }

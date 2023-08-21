@@ -39,6 +39,10 @@ open class CoreClientsConfiguration<T, V, Q>(
     @Bean
     open fun authMetadataPersistenceClient() = services.authMetaPersistence()
 
+    @ConditionalOnProperty(prefix="app.client.rsocket.core", name=["persistence"])
+    @Bean
+    fun keyValueStoreClient() = services.keyValuePersistence()
+
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["index"])
     @Bean
     open fun userIndexClient() = services.userIndex()

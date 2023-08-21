@@ -90,7 +90,6 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       -n name == Name of container
       -d == enables Discovery with consul
       -l == discover locally
-      -s == use TLS
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
       -c CERT_DIR placeholder == set location of certificate profiles

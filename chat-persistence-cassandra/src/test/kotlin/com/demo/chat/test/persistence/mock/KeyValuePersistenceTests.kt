@@ -62,7 +62,7 @@ class KeyValuePersistenceTests {
         BDDMockito
             .given(repo.findByKeyIdIn(TestBase.anyObject()))
             .willReturn(Flux.just(testCSData))
-        
+
         BDDMockito
             .given(repo.findAllById(Mockito.anyList()))
             .willReturn(Flux.just(testCSData))

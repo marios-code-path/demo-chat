@@ -32,6 +32,36 @@ class UserCommands<T>(
     private val passwordEncoder: PasswordEncoder
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
+    @ShellMethod("Create a KeyValue")
+    fun kv(@ShellOption value: String): Key<T>? =
+         serviceBeans
+             .keyClient()
+             .key(KeyValuePair::class.java)
+             .flatMap{ key ->
+                 serviceBeans
+                     .keyValueStoreClient()
+                     .add(com.demo.chat.domain.KeyValuePair.create(key, value))
+                     .thenReturn(key)
+             }
+             .block()
+
+    @ShellMethod("Get a KeyValue by Key ID")
+    fun getKV(@ShellOption key: T): String? =
+        serviceBeans
+            .keyValueStoreClient()
+            .get(Key.funKey(key))
+            .map { kv -> "${kv.key.id} -> ${kv.data}"}
+            .block()
+
+    @ShellMethod("Get all KV")
+    fun allKV(): MutableList<String>? =
+        serviceBeans
+            .keyValueStoreClient()
+            .all()
+            .map { kv -> "${kv.key.id} -> ${kv.data}" }
+            .collectList()
+            .block()
+
     @ShellMethod("Create a Key")
     fun key(@ShellOption(defaultValue = "false") local: String): T =
         when (local) {

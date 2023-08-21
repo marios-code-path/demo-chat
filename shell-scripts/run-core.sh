@@ -86,7 +86,7 @@ function cassandra() {
     export OPT_FLAGS="${CASSANDRA_OPTIONS}"
 
     $DIR/build-app.sh -m chat-deploy-cassandra -p cassandra-contact-point -n core-service-rsocket -k long \
--b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -i users,rootkeys $@
 
 #    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
 #-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
@@ -101,7 +101,7 @@ function cassandra_astra() {
     BUILD_PROFILES+="cassandra-astra,"
 
     $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod,consul -n ${APP_IMAGE_NAME} -k long -d consul \
--b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -i users,rootkeys $@
 }
 
 

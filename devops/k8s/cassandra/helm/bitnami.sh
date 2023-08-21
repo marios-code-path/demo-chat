@@ -18,10 +18,14 @@ source $SCRIPT_PATH/util.sh
 
 if [[ -z $SCHEMA_SELECT ]]; then
   cat <<EOF
-  Usage: $0 <schema>
+  Usage: $0 <schema> <ddl_strategy>
   Where <schema> is one of:
     - uuid
     - long
+  And <ddl_strategy> is one of:
+    - secret
+    - configmap
+  **  CASSANDRA_PASSWORD must be set in the environment
 EOF
   exit 1
 fi
