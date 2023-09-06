@@ -47,9 +47,8 @@ class IKeyRestTests {
             .post()
             .uri("/key/new")
             .bodyValue(KindRequest("java.lang.String"))
-            //  .accept(MediaType.APPLICATION_JSON)//MediaType("text", "plain", StandardCharsets.UTF_8))
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isCreated
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
@@ -60,10 +59,46 @@ class IKeyRestTests {
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-//            .consumeWith { res ->
-//                document<EntityExchangeResult<ByteArray>>("foo", SpringCloudContractRestDocs.dslContract())
-//                    .accept(res)
-//            }
+    }
+
+    @Test
+    fun `should call exists with true result`() {
+        BDDMockito
+            .given(testKeyService.exists(anyObject()))
+            .willReturn(Mono.just(true))
+
+        client
+            .get()
+            .uri("/key/exists/1001")
+            .exchange()
+            .expectStatus().isOk
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.APPLICATION_JSON_VALUE)
+            .expectBody()
+            .consumeWith(
+                document(
+                    "key exists",
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
+    }
+
+    @Test
+    fun `should remove a key`() {
+        BDDMockito
+            .given(testKeyService.rem(anyObject()))
+            .willReturn(Mono.empty())
+
+        client
+            .delete()
+            .uri("/key/rem/1001")
+            .exchange()
+            .expectStatus()
+            .isNoContent
+            .expectBody()
+            .consumeWith(document("Delete key",
+                SpringCloudContractRestDocs.dslContract()))
+            .isEmpty
     }
 }
 
@@ -74,6 +109,6 @@ class LongKeyTestConfiguration {
     @Bean
     fun keyServiceBean(tk: TestKeyService): KeyServiceBeans<Long> =
         object : KeyServiceBeans<Long> {
-            override fun keyService(): IKeyService<Long> =  tk 
+            override fun keyService(): IKeyService<Long> = tk
         }
 }
