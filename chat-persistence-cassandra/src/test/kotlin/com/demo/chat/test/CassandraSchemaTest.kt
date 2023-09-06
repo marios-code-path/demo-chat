@@ -44,10 +44,9 @@ open class CassandraSchemaTest<T>(val keyGenerator: IKeyGenerator<T>) {
             .execute(statements)
             .doOnError {
                 statements
-                    .doOnNext { println("exec: $it") }
                     .blockLast()
-                log.info("ErrCompleted: $statements.")
-                log.info("THROWN : ${it.message}")
+                log.error("Cannot complete cql: $statements.")
+                log.error("Thrown: ${it.message}")
             }
     }
 

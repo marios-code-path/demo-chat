@@ -81,7 +81,6 @@ open class TopicServiceImpl<T, V, Q>(
                                 emptyDataCodec.get()
                             )
                         )
-
                     )
             }
             .then(pubsub.subscribe(req.uid, req.roomId))
