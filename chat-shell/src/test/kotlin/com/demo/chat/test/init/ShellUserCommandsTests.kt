@@ -36,8 +36,7 @@ open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
 
         Assertions
             .assertThat(getKv?.contains("data2"))
-            .isNotNull
-            .isEqualTo("data2")
+            .isTrue
     }
 
     @Test
