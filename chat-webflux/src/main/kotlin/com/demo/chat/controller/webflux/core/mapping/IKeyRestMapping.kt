@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 
-
 interface IKeyRestMapping<T> : IKeyService<T> {
 
     @PostMapping("/new",
