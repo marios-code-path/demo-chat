@@ -16,6 +16,16 @@ spring:
       name: chat-gateway
   security:
     oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:9000
+      client:
+        provider:
+          spring:
+            issuer-uri: http://localhost:9000
+        registration:
+          spring:
+            provider: spring
+            client-id:
+            client-secret:
+            authorization-grant-type:
+            client-authentication-method:
+            redirect-uri:
+            scope:

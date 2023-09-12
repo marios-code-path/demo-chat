@@ -69,17 +69,17 @@ class AuthServConfig(
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
         OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource)
 
-    @Bean
+//    @Bean
     fun oauth2AuthorizationService(registeredClientRepository: RegisteredClientRepository): OAuth2AuthorizationService {
         return InMemoryOAuth2AuthorizationService()
     }
 
-    @Bean
+//    @Bean
     fun oauth2AuthorizationConsentService(registeredClientRepository: RegisteredClientRepository): OAuth2AuthorizationConsentService {
         return InMemoryOAuth2AuthorizationConsentService()
     }
 
-    @Bean
+//    @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings =
         AuthorizationServerSettings.builder().build()
 }

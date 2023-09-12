@@ -1,4 +1,4 @@
-package com.demo.chat.gateway.rest
+package com.demo.chat.gateway
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

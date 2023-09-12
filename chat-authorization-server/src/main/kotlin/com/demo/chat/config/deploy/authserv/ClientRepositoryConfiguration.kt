@@ -10,11 +10,11 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
 
 
-@Configuration
+//@Configuration
 class ClientRepositoryConfiguration {
 
-    @Bean
-    fun registeredClientRepository(clientProps: Oauth2ClientProperties): RegisteredClientRepository {
+//    @Bean
+    fun runtimeBindedClientRepository(clientProps: Oauth2ClientProperties): RegisteredClientRepository {
         val registeredClientBuilder = RegisteredClient.withId(clientProps.key)
             .clientId(clientProps.id)
             .clientSecret(clientProps.secret)

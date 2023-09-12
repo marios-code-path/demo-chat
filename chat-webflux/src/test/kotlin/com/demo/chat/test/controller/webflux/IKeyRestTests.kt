@@ -18,6 +18,8 @@ import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractR
 import org.springframework.context.annotation.Bean
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
+import org.springframework.restdocs.operation.preprocess.Preprocessors
+import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -56,6 +58,8 @@ class IKeyRestTests {
             .consumeWith(
                 document(
                     "new key",
+                    Preprocessors.preprocessRequest(prettyPrint()),
+                    Preprocessors.preprocessResponse(prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
@@ -78,6 +82,8 @@ class IKeyRestTests {
             .consumeWith(
                 document(
                     "key exists",
+                    Preprocessors.preprocessRequest(prettyPrint()),
+                    Preprocessors.preprocessResponse(prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
@@ -97,6 +103,8 @@ class IKeyRestTests {
             .isNoContent
             .expectBody()
             .consumeWith(document("Delete key",
+                Preprocessors.preprocessRequest(prettyPrint()),
+                Preprocessors.preprocessResponse(prettyPrint()),
                 SpringCloudContractRestDocs.dslContract()))
             .isEmpty
     }

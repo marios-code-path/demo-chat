@@ -1,9 +1,8 @@
 package com.demo.chat.test.controller.webflux
 
-import com.demo.chat.controller.webflux.UserPersistenceRestController
-import com.demo.chat.controller.webflux.core.mapping.KindRequest
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.core.*
+import com.demo.chat.service.core.IndexService
 import com.demo.chat.test.anyObject
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -22,17 +21,16 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-
 @Disabled
-@WebFluxTest(UserPersistenceRestController::class)
+@WebFluxTest
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
 @AutoConfigureRestDocs
-open class PersistenceRestTestBase<T, E : Any>(
+open class IndexRestTestBase<T, V : Any, Q : IndexSearchRequest>(
     val entityPath: String,
-    val entitySupplier: () -> E,
+    val entitySupplier: () -> V,
     val keySupplier: () -> Key<T>,
-    val requestSupplier: () -> Any,
-    val persistenceStore: PersistenceStore<T, E>
+    val requestSupplier: () -> Q,
+    val index: IndexService<T, V, Q>
 ) {
 
     @Autowired
@@ -40,21 +38,17 @@ open class PersistenceRestTestBase<T, E : Any>(
 
     @Test
     fun `should add`() {
-        BDDMockito.given(persistenceStore.add(anyObject()))
+        BDDMockito.given(index.add(anyObject()))
             .willReturn(Mono.empty())
-
-        BDDMockito.given(persistenceStore.key())
-            .willReturn(Mono.just(keySupplier()))
 
         client
             .put()
-            .uri("/persist/${entityPath}/add")
-            .bodyValue(requestSupplier())
+            .uri("/index/${entityPath}/add")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue(entitySupplier())
             .exchange()
             .expectStatus()
             .isCreated
-            .expectHeader()
-            .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
@@ -68,12 +62,12 @@ open class PersistenceRestTestBase<T, E : Any>(
 
     @Test
     fun `should remove`() {
-        BDDMockito.given(persistenceStore.rem(anyObject()))
+        BDDMockito.given(index.rem(anyObject()))
             .willReturn(Mono.empty())
 
         client
             .delete()
-            .uri("/persist/${entityPath}/rem/1001")
+            .uri("/index/${entityPath}/rem/1001")
             .exchange()
             .expectStatus()
             .isNoContent
@@ -89,13 +83,13 @@ open class PersistenceRestTestBase<T, E : Any>(
     }
 
     @Test
-    fun `should get one`() {
-        BDDMockito.given(persistenceStore.get(anyObject()))
-            .willReturn(Mono.just(entitySupplier()))
+    fun `should findUnique`() {
+        BDDMockito.given(index.findUnique(anyObject()))
+            .willReturn(Mono.just(keySupplier()))
 
         client
             .get()
-            .uri("/persist/${entityPath}/get/1001")
+            .uri("/index/${entityPath}/findUnique?first=name&second=test&config=1")
             .exchange()
             .expectStatus()
             .isOk
@@ -113,18 +107,13 @@ open class PersistenceRestTestBase<T, E : Any>(
     }
 
     @Test
-    fun `should get all`() {
-        val entities = listOf(
-            entitySupplier(),
-            entitySupplier()
-        )
-
-        BDDMockito.given(persistenceStore.all())
-            .willReturn(Flux.fromIterable(entities))
+    fun `should findBy`() {
+        BDDMockito.given(index.findBy(anyObject()))
+            .willReturn(Flux.just(keySupplier()))
 
         client
             .get()
-            .uri("/persist/${entityPath}/all")
+            .uri("/index/${entityPath}/findBy?first=name&second=test&config=1")
             .exchange()
             .expectStatus()
             .isOk
@@ -133,7 +122,7 @@ open class PersistenceRestTestBase<T, E : Any>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "all",
+                    "get",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
@@ -141,29 +130,4 @@ open class PersistenceRestTestBase<T, E : Any>(
             )
     }
 
-    @Test
-    fun `should get a new key`() {
-
-        BDDMockito.given(persistenceStore.key())
-            .willReturn(Mono.just(keySupplier()))
-
-        client
-            .post()
-            .uri("/persist/${entityPath}/key")
-            .bodyValue(KindRequest("java.lang.String"))
-            .exchange()
-            .expectStatus()
-            .isCreated
-            .expectHeader()
-            .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
-            .expectBody()
-            .consumeWith(
-                WebTestClientRestDocumentation.document(
-                    "key",
-                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
-                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
-                    SpringCloudContractRestDocs.dslContract()
-                )
-            )
-    }
 }

@@ -4,11 +4,11 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.*
 import com.demo.chat.controller.webflux.core.mapping.KVRequest
 import com.demo.chat.domain.*
-import com.demo.chat.test.controller.webflux.config.LongKeyTestPersistenceBeansConfiguration
+import com.demo.chat.test.controller.webflux.config.LongPersistenceBeans
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 
-@ContextConfiguration(classes = [LongKeyTestPersistenceBeansConfiguration::class, UserPersistenceRestController::class])
+@ContextConfiguration(classes = [LongPersistenceBeans::class, UserPersistenceRestController::class])
 class UserPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, User<Long>>(
@@ -19,7 +19,7 @@ class UserPersistenceRestTests(
     beans.userPersistence()
 )
 
-@ContextConfiguration(classes = [LongKeyTestPersistenceBeansConfiguration::class, TopicPersistenceRestController::class])
+@ContextConfiguration(classes = [LongPersistenceBeans::class, TopicPersistenceRestController::class])
 class TopicPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, MessageTopic<Long>>(
@@ -30,7 +30,7 @@ class TopicPersistenceRestTests(
     beans.topicPersistence()
 )
 
-@ContextConfiguration(classes = [LongKeyTestPersistenceBeansConfiguration::class, MessagePersistenceRestController::class])
+@ContextConfiguration(classes = [LongPersistenceBeans::class, MessagePersistenceRestController::class])
 class MessagePersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, Message<Long, String>>(
@@ -41,7 +41,7 @@ class MessagePersistenceRestTests(
     beans.messagePersistence()
 )
 
-@ContextConfiguration(classes = [LongKeyTestPersistenceBeansConfiguration::class, MembershipPersistenceRestController::class])
+@ContextConfiguration(classes = [LongPersistenceBeans::class, MembershipPersistenceRestController::class])
 class MembershipPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, TopicMembership<Long>>(
@@ -53,7 +53,7 @@ class MembershipPersistenceRestTests(
 )
 
 //KeyValueStoreRestController
-@ContextConfiguration(classes = [LongKeyTestPersistenceBeansConfiguration::class, KeyValueStoreRestController::class])
+@ContextConfiguration(classes = [LongPersistenceBeans::class, KeyValueStoreRestController::class])
 class KeyValuePersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, KeyValuePair<Long, Any>>(

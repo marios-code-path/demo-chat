@@ -23,7 +23,7 @@
         <kotlin.version>1.8.0</kotlin.version>
         <serialization.version>1.2.2</serialization.version>
         <spring-data-elastic.version>5.0.1</spring-data-elastic.version>
-
+        <spring-cloud-gateway.version>4.1.0-SNAPSHOT</spring-cloud-gateway.version>
 
         <spring-boot.version>3.1.0</spring-boot.version>
         <spring-cloud-bom.version>2022.0.0</spring-cloud-bom.version>
@@ -61,7 +61,7 @@
 
         <module>chat-client-consul</module>
         <module>chat-gateway</module>
-	<module>chat-web</module>
+	    <module>chat-web</module>
 
         <module>shared-deploy-configuration</module>
         <module>chat-deploy</module>

@@ -84,8 +84,5 @@ open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
         Assertions.assertThat(user)
             .isNotNull
             .isNotBlank
-        println(user)
     }
-
-
 }

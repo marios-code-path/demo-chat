@@ -3,6 +3,19 @@ spring:
     name: chat-authorization-server
   main:
     web-application-type: servlet
+  security:
+    oauth2:
+      authorizationserver:
+        client:
+          chatclient:
+            registration:
+              clientId:
+              client-secret:
+              client-authentication:
+              authorization-grant-types:
+              redirectUris:
+              scopes:
+            requireAuthorizationConcent: true
 
 logging:
   level:
