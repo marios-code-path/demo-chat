@@ -3,7 +3,7 @@ package com.demo.chat.config.deploy.memory
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
-import com.demo.chat.config.controller.composite.CompositeServiceBeansDefinition
+import com.demo.chat.config.service.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.core.*

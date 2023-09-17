@@ -1,12 +1,13 @@
-package com.demo.chat.config.controller.composite
+package com.demo.chat.config.service.composite.access
 
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.service.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.access.AccessBroker
+import com.demo.chat.service.composite.CompositeServiceBeans
 import com.demo.chat.service.composite.access.MessagingServiceAccess
-import com.demo.chat.service.composite.access.TopicServiceControllerAccess
+import com.demo.chat.service.composite.access.TopicServiceAccess
 import com.demo.chat.service.composite.access.UserServiceAccess
+import com.demo.chat.service.security.AccessBroker
 import org.reactivestreams.Publisher
 
 class CompositeServiceAccessBeansConfiguration<T, V, Q>(
@@ -29,7 +30,7 @@ class CompositeServiceAccessBeansConfiguration<T, V, Q>(
         that = compositeServiceBeansDefinition.userService()
     )
 
-    override fun topicService() = TopicServiceControllerAccess(
+    override fun topicService() = TopicServiceAccess(
         authMetadataAccessBroker = accessBroker,
         principalSupplier = principalKeyPublisher,
         rootKeys = rootKeys,

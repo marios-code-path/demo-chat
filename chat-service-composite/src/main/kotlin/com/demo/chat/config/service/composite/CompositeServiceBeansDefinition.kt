@@ -1,4 +1,4 @@
-package com.demo.chat.config.controller.composite
+package com.demo.chat.config.service.composite
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans

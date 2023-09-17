@@ -15,8 +15,8 @@ import reactor.core.publisher.Mono
 class PubSubRestController<T, V>(private val that: PubSubServiceBeans<T, V>) : TopicPubSubRestMapping<T, V>,
     TopicPubSubService<T, V> by that.pubSubService() {
     @PostMapping("/subscribe")
-    override fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
+    fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
 
     @PostMapping("/unsubscribe")
-    override fun unSubscribeOne(req: MemberTopicRequest<T>): Mono<Void> = unSubscribe(req.member, req.topic)
+    fun unSubscribeOne(req: MemberTopicRequest<T>): Mono<Void> = unSubscribe(req.member, req.topic)
 }

@@ -41,6 +41,8 @@
     <modules>
         <module>chat-core</module>
         <module>chat-security</module>
+        <module>chat-service-composite</module>
+
         <module>chat-service-controller</module>
         <module>chat-webflux</module>
         <module>chat-client-rsocket</module>

@@ -9,6 +9,4 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/persist/kv")
 class KeyValueStoreRestController<T, V>(s: PersistenceServiceBeans<T, V>) : KeyValueStoreRestMapping<T>,
-    KeyValueStore<T, Any> by s.keyValuePersistence() {
-
-    }
+    KeyValueStore<T, Any> by s.keyValuePersistence()

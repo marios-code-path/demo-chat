@@ -6,7 +6,6 @@ import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
@@ -48,7 +47,6 @@ open class UserServiceImpl<T, Q>(
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = userPersistence
         .get(Key.funKey(req.id))
 
-    @MessageMapping("user-by-ids")
     fun findByUserIdList(userReq: List<ByIdRequest<T>>): Flux<out User<T>> =
         userPersistence.byIds(
             userReq

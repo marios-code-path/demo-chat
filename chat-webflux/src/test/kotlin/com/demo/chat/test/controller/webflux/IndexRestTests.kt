@@ -9,7 +9,7 @@ import com.demo.chat.test.controller.webflux.config.LongIndexBeans
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 
-@ContextConfiguration(classes = [LongIndexBeans::class, UserIndexRestController::class, DefaultChatJacksonModules::class])
+@ContextConfiguration(classes = [LongIndexBeans::class, UserIndexRestController::class, WebFluxTestConfiguration::class])
 class UserIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, User<Long>, IndexSearchRequest>(
@@ -20,7 +20,7 @@ class UserIndexRestTests(
     beans.userIndex()
 )
 
-@ContextConfiguration(classes = [LongIndexBeans::class, TopicIndexRestController::class, DefaultChatJacksonModules::class])
+@ContextConfiguration(classes = [LongIndexBeans::class, TopicIndexRestController::class, WebFluxTestConfiguration::class])
 class TopicIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, MessageTopic<Long>, IndexSearchRequest>(
@@ -31,7 +31,7 @@ class TopicIndexRestTests(
     beans.topicIndex()
 )
 
-@ContextConfiguration(classes = [LongIndexBeans::class, MembershipIndexRestController::class, DefaultChatJacksonModules::class])
+@ContextConfiguration(classes = [LongIndexBeans::class, MembershipIndexRestController::class, WebFluxTestConfiguration::class])
 class TopicMembershipIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, TopicMembership<Long>, IndexSearchRequest>(
@@ -42,7 +42,7 @@ class TopicMembershipIndexRestTests(
     beans.membershipIndex()
 )
 
-@ContextConfiguration(classes = [LongIndexBeans::class, MessageIndexRestController::class, DefaultChatJacksonModules::class])
+@ContextConfiguration(classes = [LongIndexBeans::class, MessageIndexRestController::class, WebFluxTestConfiguration::class])
 class TopicMessageIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, Message<Long, String>, IndexSearchRequest>(
@@ -53,7 +53,7 @@ class TopicMessageIndexRestTests(
     beans.messageIndex()
 )
 
-@ContextConfiguration(classes = [LongIndexBeans::class, AuthMetadataIndexRestController::class, DefaultChatJacksonModules::class])
+@ContextConfiguration(classes = [LongIndexBeans::class, AuthMetadataIndexRestController::class, WebFluxTestConfiguration::class])
 class AuthMetadataIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, AuthMetadata<Long>, IndexSearchRequest>(

@@ -3,14 +3,14 @@ package com.demo.chat.config.deploy.cassandra
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
-import com.demo.chat.config.controller.composite.CompositeServiceBeansDefinition
+import com.demo.chat.config.service.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.ChatUserDetails
-import com.demo.chat.secure.access.AccessBroker
+import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.composite.CompositeServiceBeans
-import com.demo.chat.config.controller.composite.CompositeServiceAccessBeansConfiguration
+import com.demo.chat.config.service.composite.access.CompositeServiceAccessBeansConfiguration
 import com.demo.chat.service.core.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

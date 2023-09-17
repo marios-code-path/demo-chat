@@ -4,8 +4,8 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
-import com.demo.chat.secure.access.AccessBroker
 import com.demo.chat.service.composite.ChatMessageService
+import com.demo.chat.service.security.AccessBroker
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono

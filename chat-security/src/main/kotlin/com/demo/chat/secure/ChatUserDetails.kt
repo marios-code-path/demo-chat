@@ -33,22 +33,3 @@ class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : Use
             .collect(Collectors.toList())
 
 }
-
-data class EChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
-    override fun getAuthorities(): MutableCollection<out GrantedAuthority> =
-        roles.stream()
-            .map { role -> SimpleGrantedAuthority(role) }
-            .collect(Collectors.toList())
-
-    override fun getPassword(): String = "changeme"
-
-    override fun getUsername(): String = user.handle
-
-    override fun isAccountNonExpired(): Boolean = true
-
-    override fun isAccountNonLocked(): Boolean = true
-
-    override fun isCredentialsNonExpired(): Boolean = true
-
-    override fun isEnabled(): Boolean = true
-}
