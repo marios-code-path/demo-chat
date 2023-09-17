@@ -9,9 +9,9 @@
     </parent>
 
     <groupId>com.demo</groupId>
-    <artifactId>chat-service-rsocket</artifactId>
+    <artifactId>chat-client-rsocket</artifactId>
     <version>0.0.1</version>
-    <name>chat-service-rsocket</name>
+    <name>chat-client-rsocket</name>
     <description>RSocket extensions to services</description>
     <profiles>
         <profile>
