@@ -1,27 +1,26 @@
 package com.demo.chat.test.controller.webflux
 
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.webflux.IKeyRestController
 import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
+import com.demo.chat.test.controller.webflux.config.LongKeyTestConfiguration
+import com.demo.chat.test.controller.webflux.config.TestKeyService
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
-import org.springframework.context.annotation.Bean
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
 import org.springframework.restdocs.operation.preprocess.Preprocessors
 import org.springframework.restdocs.operation.preprocess.Preprocessors.prettyPrint
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation.document
 import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
@@ -30,6 +29,7 @@ import reactor.core.publisher.Mono
 @ContextConfiguration(classes = [LongKeyTestConfiguration::class, IKeyRestController::class, WebFluxTestConfiguration::class])
 @WebFluxTest(IKeyRestController::class)
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
+@TestPropertySource(properties = ["app.controller.key"])
 @AutoConfigureRestDocs
 class IKeyRestTests {
 
@@ -102,21 +102,14 @@ class IKeyRestTests {
             .expectStatus()
             .isNoContent
             .expectBody()
-            .consumeWith(document("Delete key",
-                Preprocessors.preprocessRequest(prettyPrint()),
-                Preprocessors.preprocessResponse(prettyPrint()),
-                SpringCloudContractRestDocs.dslContract()))
+            .consumeWith(
+                document(
+                    "Delete key",
+                    Preprocessors.preprocessRequest(prettyPrint()),
+                    Preprocessors.preprocessResponse(prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
-}
-
-interface TestKeyService : IKeyService<Long>
-
-@TestConfiguration
-class LongKeyTestConfiguration {
-    @Bean
-    fun keyServiceBean(tk: TestKeyService): KeyServiceBeans<Long> =
-        object : KeyServiceBeans<Long> {
-            override fun keyService(): IKeyService<Long> = tk
-        }
 }

@@ -6,6 +6,7 @@ import com.demo.chat.controller.webflux.core.mapping.PersistenceRestMapping
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.core.PersistenceStore
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -17,6 +18,7 @@ class PersistenceRestController<T, E>(private val that: PersistenceStore<T, E>) 
     PersistenceStore<T, E> by that
 
 @RequestMapping("/persist/user")
+@ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
     PersistenceRestController<T, User<T>>(s.userPersistence()) {
 
@@ -30,6 +32,7 @@ class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 }
 
 @RequestMapping("/persist/message")
+@ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
     PersistenceRestController<T, Message<T, V>>(s.messagePersistence()) {
 
@@ -43,6 +46,7 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 }
 
 @RequestMapping("/persist/topic")
+@ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
     PersistenceRestController<T, MessageTopic<T>>(s.topicPersistence()) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
@@ -55,6 +59,7 @@ class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 }
 
 @RequestMapping("/persist/membership")
+@ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
     PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence()) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])

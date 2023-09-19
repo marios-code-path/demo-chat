@@ -6,8 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import java.util.stream.Collectors
 
-
-class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
+open class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : UserDetails {
 
     private var passwd: String? = null
 
@@ -31,5 +30,4 @@ class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) : Use
         roles.stream()
             .map { role -> SimpleGrantedAuthority(role) }
             .collect(Collectors.toList())
-
 }

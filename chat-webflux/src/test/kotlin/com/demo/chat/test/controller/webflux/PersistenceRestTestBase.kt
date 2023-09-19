@@ -1,9 +1,8 @@
 package com.demo.chat.test.controller.webflux
 
-import com.demo.chat.controller.webflux.UserPersistenceRestController
 import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.service.core.*
+import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.test.anyObject
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -17,6 +16,7 @@ import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
 import org.springframework.restdocs.operation.preprocess.Preprocessors
 import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
+import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
@@ -24,8 +24,9 @@ import reactor.core.publisher.Mono
 
 
 @Disabled
-@WebFluxTest(UserPersistenceRestController::class)
+@WebFluxTest
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
+@TestPropertySource(properties = ["app.controller.persistence"])
 @AutoConfigureRestDocs
 open class PersistenceRestTestBase<T, E : Any>(
     val entityPath: String,

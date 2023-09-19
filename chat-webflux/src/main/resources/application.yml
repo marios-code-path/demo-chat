@@ -1,0 +1,5 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt.issuerUri: http://localhost:9000

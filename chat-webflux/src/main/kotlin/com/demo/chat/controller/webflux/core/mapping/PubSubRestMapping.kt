@@ -16,13 +16,14 @@ interface TopicPubSubRestMapping<T, V> : TopicPubSubService<T, V> {
 
     @PostMapping("/subscribe/{id}")
     @ResponseStatus(HttpStatus.OK)
-    fun subscribeOne(@RequestParam id: T, @AuthenticationPrincipal userDetails: ChatUserDetails<T>): Mono<Void> =
-        subscribe(userDetails.user.key.id, id)
+    fun subscribeOne(@PathVariable id: T, @AuthenticationPrincipal userDetails: ChatUserDetails<T>?): Mono<Void> {
+        return subscribe(userDetails!!.user.key.id, id)
+    }
 
     @PostMapping("/unsubscribe/{id}")
     @ResponseStatus(HttpStatus.OK)
-    fun unSubscribeOne(@ModelAttribute id: T, @AuthenticationPrincipal userDetails: ChatUserDetails<T>): Mono<Void> =
-        unSubscribe(userDetails.user.key.id, id)
+    fun unSubscribeOne(@PathVariable id: T, @AuthenticationPrincipal userDetails: ChatUserDetails<T>?): Mono<Void> =
+        unSubscribe(userDetails!!.user.key.id, id)
 
     @PostMapping("/unSubscribeAll")
     @ResponseStatus(HttpStatus.OK)
