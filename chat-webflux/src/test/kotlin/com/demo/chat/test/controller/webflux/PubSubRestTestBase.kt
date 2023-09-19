@@ -29,8 +29,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
-@ContextConfiguration(classes = [LongPubSubBeans::class, LongUserDetailsConfiguration::class, WebFluxTestConfiguration::class, PubSubRestController::class])
-class LongPubSubRestTestBase : PubSubRestTestBase<Long, String>(
+@ContextConfiguration(classes = [LongPubSubBeans::class, LongUserDetailsConfiguration::class,
+    WebFluxTestConfiguration::class, PubSubRestController::class])
+class LongPubSubRestTests : PubSubRestTestBase<Long, String>(
     { User.create(Key.funKey(1L), "Test", "Test", "Test") },
     { MessageTopic.create(Key.funKey(10L), "TestTopic") }
 )
@@ -70,4 +71,23 @@ open class PubSubRestTestBase<T, V>(
             .isEmpty
 
     }
+
+    @Test
+    @WithLongCustomChatUser(userId = 1L, roles = ["TEST"])
+    fun `should unsubscribe`() {
+        val pubsubService = beans.pubSubService()
+
+        BDDMockito
+            .given(pubsubService.unSubscribe(anyObject(), anyObject()))
+            .willReturn(Mono.empty())
+
+        client
+            .post()
+            .uri("/pubsub/unsubscribe/12345")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .isEmpty
+    }
+
 }

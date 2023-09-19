@@ -1,9 +1,6 @@
 package com.demo.chat.test.controller.webflux.config
 
-import com.demo.chat.config.IndexServiceBeans
-import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.config.PersistenceServiceBeans
-import com.demo.chat.config.PubSubServiceBeans
+import com.demo.chat.config.*
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.service.core.IKeyService
 import org.springframework.boot.test.context.TestConfiguration
@@ -39,4 +36,18 @@ class LongPubSubBeans {
 
     @Bean
     fun pubsubBeans(): PubSubServiceBeans<Long, String> = TestPubSubBeans()
+}
+
+@TestConfiguration
+class LongSecretsStoreBeans {
+
+    @Bean
+    fun secretsStoreBeans(): SecretsStoreBeans<Long> = TestSecretsStoreBeans()
+}
+
+@TestConfiguration
+class LongKeyServiceBeans {
+
+    @Bean
+    fun keyServiceBeans(): KeyServiceBeans<Long> = TestKeyServiceBeans()
 }
