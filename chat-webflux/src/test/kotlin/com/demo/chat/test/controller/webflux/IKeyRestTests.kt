@@ -1,11 +1,11 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.webflux.IKeyRestController
 import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.controller.webflux.config.LongKeyTestConfiguration
-import com.demo.chat.test.controller.webflux.config.TestKeyService
+import com.demo.chat.test.config.LongKeyServiceBeans
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
@@ -26,7 +26,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
 
-@ContextConfiguration(classes = [LongKeyTestConfiguration::class, IKeyRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [LongKeyServiceBeans::class, IKeyRestController::class, WebFluxTestConfiguration::class])
 @WebFluxTest(IKeyRestController::class)
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
 @TestPropertySource(properties = ["app.controller.key"])
@@ -36,11 +36,13 @@ class IKeyRestTests {
     @Autowired
     private lateinit var client: WebTestClient
 
-    @MockBean
-    private lateinit var testKeyService: TestKeyService
+    @Autowired
+    private lateinit var beans: KeyServiceBeans<Long>
 
     @Test
     fun `create a new key`() {
+        val testKeyService = beans.keyService()
+
         BDDMockito
             .given(testKeyService.key<Any>(anyObject()))
             .willReturn(Mono.just(Key.funKey(1001L)))
@@ -67,6 +69,8 @@ class IKeyRestTests {
 
     @Test
     fun `should call exists with true result`() {
+        val testKeyService = beans.keyService()
+
         BDDMockito
             .given(testKeyService.exists(anyObject()))
             .willReturn(Mono.just(true))
@@ -91,6 +95,8 @@ class IKeyRestTests {
 
     @Test
     fun `should remove a key`() {
+        val testKeyService = beans.keyService()
+
         BDDMockito
             .given(testKeyService.rem(anyObject()))
             .willReturn(Mono.empty())

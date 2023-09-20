@@ -1,11 +1,10 @@
 package com.demo.chat.test.controller.webflux
 
-import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.controller.webflux.*
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.MessageIndexService
-import com.demo.chat.test.controller.webflux.config.LongIndexBeans
+import com.demo.chat.test.config.LongIndexBeans
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 

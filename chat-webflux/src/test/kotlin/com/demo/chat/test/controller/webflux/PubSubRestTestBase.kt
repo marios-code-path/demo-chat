@@ -5,10 +5,8 @@ import com.demo.chat.controller.webflux.PubSubRestController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
-import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.controller.webflux.config.LongPubSubBeans
-import com.demo.chat.test.controller.webflux.context.ChatUserDetailSecurityContextFactory
+import com.demo.chat.test.config.LongPubSubBeans
 import com.demo.chat.test.controller.webflux.context.LongUserDetailsConfiguration
 import com.demo.chat.test.controller.webflux.context.WithLongCustomChatUser
 import org.junit.jupiter.api.Disabled
@@ -18,11 +16,7 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
 import org.springframework.restdocs.RestDocumentationExtension
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
-import org.springframework.security.test.context.support.WithSecurityContext
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension

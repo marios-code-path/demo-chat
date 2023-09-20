@@ -1,4 +1,4 @@
-package com.demo.chat.test.controller.webflux.config
+package com.demo.chat.test.config
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.service.core.*

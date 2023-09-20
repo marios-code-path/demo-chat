@@ -53,10 +53,10 @@ interface TopicPubSubRestMapping<T, V> : TopicPubSubService<T, V> {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     override fun close(@RequestParam topicId: T): Mono<Void>
 
-    @GetMapping("/getByUser/{uid}")
+    @GetMapping("/byUser/{uid}")
     override fun getByUser(@RequestParam uid: T): Flux<T>
 
-    @GetMapping("/getUsersBy/{topicId}")
+    @GetMapping("/usersBy/{topicId}")
     override fun getUsersBy(@RequestParam topicId: T): Flux<T>
 }
 
