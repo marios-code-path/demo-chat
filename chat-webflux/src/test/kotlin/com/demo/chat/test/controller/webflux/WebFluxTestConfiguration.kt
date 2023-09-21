@@ -1,6 +1,7 @@
 package com.demo.chat.test.controller.webflux
 
 import com.demo.chat.config.DefaultChatJacksonModules
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import

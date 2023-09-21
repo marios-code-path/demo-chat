@@ -6,6 +6,7 @@ import com.demo.chat.domain.*
 import com.fasterxml.jackson.core.Version
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.module.SimpleModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.context.annotation.Bean
 
 open class JacksonModules(
