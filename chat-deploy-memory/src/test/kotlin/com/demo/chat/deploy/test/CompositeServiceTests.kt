@@ -6,7 +6,7 @@ import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.test.randomAlphaNumeric

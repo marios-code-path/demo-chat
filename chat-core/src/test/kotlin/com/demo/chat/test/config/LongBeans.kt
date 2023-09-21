@@ -39,3 +39,10 @@ open class LongKeyServiceBeans {
     @Bean
     open fun keyServiceBeans(): KeyServiceBeans<Long> = TestKeyServiceBeans()
 }
+
+@TestConfiguration
+open class LongCompositeServiceBeans {
+
+    @Bean
+    open fun compositeServiceBeans(): CompositeServiceBeans<Long, String> = TestCompositeServiceBeans()
+}

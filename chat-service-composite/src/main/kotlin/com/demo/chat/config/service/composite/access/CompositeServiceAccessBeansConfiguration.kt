@@ -3,7 +3,7 @@ package com.demo.chat.config.service.composite.access
 import com.demo.chat.config.service.composite.CompositeServiceBeansDefinition
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.service.composite.access.MessagingServiceAccess
 import com.demo.chat.service.composite.access.TopicServiceAccess
 import com.demo.chat.service.composite.access.UserServiceAccess

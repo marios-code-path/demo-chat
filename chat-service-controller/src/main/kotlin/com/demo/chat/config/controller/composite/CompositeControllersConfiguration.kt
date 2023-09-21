@@ -6,7 +6,7 @@ import com.demo.chat.controller.composite.mapping.UserServiceControllerMapping
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.CompositeServiceBeans
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller

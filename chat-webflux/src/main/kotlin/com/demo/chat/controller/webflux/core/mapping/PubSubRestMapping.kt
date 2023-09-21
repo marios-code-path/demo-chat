@@ -2,17 +2,14 @@ package com.demo.chat.controller.webflux.core.mapping
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.http.HttpStatus
-import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.security.Principal
 
 
 interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {

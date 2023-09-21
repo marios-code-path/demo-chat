@@ -9,7 +9,7 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.service.composite.access.CompositeServiceAccessBeansConfiguration
 import com.demo.chat.service.core.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

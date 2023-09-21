@@ -6,7 +6,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.service.composite.CompositeServiceBeans
+import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.composite.impl.UserServiceImpl
