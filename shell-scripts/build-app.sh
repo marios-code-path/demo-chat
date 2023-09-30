@@ -132,7 +132,7 @@ fi
 if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
   OPT_FLAGS+=" -Dapp.service.security.userdetails"
 
-  if [[ -z ${NO_SEC} ]]; then
+  if [[ ${NO_SEC} == *"false"* ]]; then
     TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \
 -Dspring.rsocket.server.ssl.client-auth=none \
 -Dspring.rsocket.server.ssl.protocol=TLS \
