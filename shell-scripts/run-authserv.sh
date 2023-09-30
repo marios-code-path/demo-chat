@@ -20,6 +20,8 @@ export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
 export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
 
+export KEYTYPE=long
+
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
