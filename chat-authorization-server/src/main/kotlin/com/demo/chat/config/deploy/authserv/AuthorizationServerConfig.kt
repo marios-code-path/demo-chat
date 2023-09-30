@@ -1,54 +1,36 @@
 package com.demo.chat.config.deploy.authserv
 
 import com.demo.chat.auth.client.RegisteredClientFactory
-import com.nimbusds.jose.jwk.*
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.JWKSet
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Profile
 import org.springframework.core.io.Resource
-import org.springframework.security.config.Customizer
-import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
-import org.springframework.security.oauth2.jwt.*
-import org.springframework.security.oauth2.server.authorization.*
+import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationConsentService
+import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
-import org.springframework.security.web.SecurityFilterChain
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
-import java.util.*
-import javax.sql.DataSource
 
 @Configuration
-class AuthServConfig(
-    @Value("\${app.oauth2.jwk.path}") val resource: Resource,
-    @Value("\${app.oauth2.entrypoint-path}") val entrypointPath: String
-) {
-
-    @Throws(Exception::class)
-    @Bean
-    fun authorizationServerSecurityFilterChain(http: HttpSecurity): SecurityFilterChain {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http)
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer::class.java)
-            .oidc(Customizer.withDefaults())
-
-        http.exceptionHandling { exceptions ->
-            exceptions
-                .authenticationEntryPoint(
-                    LoginUrlAuthenticationEntryPoint(entrypointPath)
-                )
-        }
-            .oauth2ResourceServer { it.jwt() }
-
-        return http.build()
-    }
+class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: Resource) {
 
     @Bean
     fun jwtCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> {
@@ -72,20 +54,47 @@ class AuthServConfig(
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
         OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource)
 
+    @Profile("memory")
     @Bean
-    fun registeredClientRepo(clientProps: Oauth2ClientProperties): RegisteredClientRepository = InMemoryRegisteredClientRepository(
-        RegisteredClientFactory(clientProps)()
-    )
+    fun registeredClientRepo(clientProps: Oauth2ClientProperties): RegisteredClientRepository =
+        InMemoryRegisteredClientRepository(
+            RegisteredClientFactory(clientProps)()
+        )
 
+    @Profile("memory")
     @Bean
     fun oauth2AuthorizationService(registeredClientRepository: RegisteredClientRepository): OAuth2AuthorizationService {
         return InMemoryOAuth2AuthorizationService()
     }
 
-//    @Bean
+    @Profile("memory")
+    @Bean
     fun oauth2AuthorizationConsentService(registeredClientRepository: RegisteredClientRepository): OAuth2AuthorizationConsentService {
         return InMemoryOAuth2AuthorizationConsentService()
     }
+
+    @Profile("jdbc")
+    @Bean
+    fun registeredClientJdbcRepo(
+        clientProps: Oauth2ClientProperties,
+        template: JdbcTemplate
+    ) = JdbcRegisteredClientRepository(template)
+
+    @Profile("jdbc")
+    @Bean
+    fun oauth2AuthorizationServiceJdbc(
+        registeredClientRepository: RegisteredClientRepository,
+        template: JdbcTemplate
+    ): OAuth2AuthorizationService = JdbcOAuth2AuthorizationService(template, registeredClientRepository)
+
+
+    @Profile("jdbc")
+    @Bean
+    fun oauth2AuthorizationConsentServiceJdbc(
+        registeredClientRepository: RegisteredClientRepository,
+        template: JdbcTemplate
+    ): OAuth2AuthorizationConsentService = JdbcOAuth2AuthorizationConsentService(template, registeredClientRepository)
+
 
     @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings =
