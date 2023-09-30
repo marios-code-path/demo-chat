@@ -1,15 +1,13 @@
-package com.demo.chat.test.controller.webflux
+package com.demo.chat.test.controller.webflux.composite
 
 import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.webflux.ChatUserServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.LongCompositeServiceBeans
-import com.demo.chat.test.config.LongKeyServiceBeans
-import com.demo.chat.test.config.LongSecretsStoreBeans
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -17,15 +15,17 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
+import org.springframework.restdocs.operation.preprocess.Preprocessors
+import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.nio.charset.Charset
 
 @ContextConfiguration(
     classes = [LongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatUserServiceController::class]
@@ -65,13 +65,21 @@ open class UserRestTestBase<T>(
 
         client
             .post()
-            .uri("/user/add")
+            .uri("/user/new")
             .bodyValue(UserCreateRequest("TestName", "testHandle", "http://uri"))
             .exchange()
             .expectStatus().isCreated
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "new",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("$.key.id").isNotEmpty
     }
 
@@ -90,6 +98,14 @@ open class UserRestTestBase<T>(
             .expectStatus().isOk
             .expectBody()
             .consumeWith { req -> println("res: " + String(req.responseBodyContent!!, Charsets.UTF_8)) }
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "byHandle",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("$.[0].user.name").isNotEmpty
     }
 
@@ -108,6 +124,14 @@ open class UserRestTestBase<T>(
             .expectStatus().isOk
             .expectBody()
             .consumeWith { req -> println("res: " + String(req.responseBodyContent!!, Charsets.UTF_8)) }
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "byId",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("$.user.name").isNotEmpty
     }
 }

@@ -155,7 +155,7 @@
 					<compilerPlugins>
 						<plugin>spring</plugin>
 					</compilerPlugins>
-                    <languageVersion>1.4</languageVersion>
+                    <languageVersion>1.8</languageVersion>
                 </configuration>
 				<dependencies>
 					<dependency>

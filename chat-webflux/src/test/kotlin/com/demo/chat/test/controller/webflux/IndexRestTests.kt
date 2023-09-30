@@ -5,6 +5,7 @@ import com.demo.chat.controller.webflux.*
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.test.config.LongIndexBeans
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 
@@ -61,4 +62,15 @@ class AuthMetadataIndexRestTests(
     { Key.funKey(1001L) },
     { IndexSearchRequest("member", "120", 100) },
     beans.authMetadataIndex()
+)
+
+@ContextConfiguration(classes = [LongIndexBeans::class, KeyValueIndexRestController::class, WebFluxTestConfiguration::class])
+class KeyValueIndexRestTests(
+    @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
+) : IndexRestTestBase<Long, KeyValuePair<Long, Any>, IndexSearchRequest>(
+    "kv",
+    { KeyValuePair.create(Key.funKey(1001L), "TEST")},
+    { Key.funKey(1001L) },
+    { IndexSearchRequest("data", "test", 100) },
+    beans.KVPairIndex()
 )

@@ -13,3 +13,5 @@ interface AuthMetadataByPrincipalRepository<T> : ReactiveCassandraRepository<
 interface AuthMetadataByTargetRepository<T> : ReactiveCassandraRepository<AuthMetadataByTarget<T>, T> {
     fun findByTargetId(id: T): Flux<AuthMetadataByTarget<T>>
 }
+
+interface KeyValue

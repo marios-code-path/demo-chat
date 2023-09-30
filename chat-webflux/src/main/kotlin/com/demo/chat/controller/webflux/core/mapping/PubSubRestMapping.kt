@@ -22,18 +22,18 @@ interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {
         return subscribe(userDetails!!.user.key.id, id)
     }
 
-    @PostMapping("/unsub/{id}")
+    @DeleteMapping("/sub/{id}")
     @ResponseStatus(HttpStatus.OK)
     fun unSubscribeOne(@PathVariable id: T, @AuthenticationPrincipal userDetails: ChatUserDetails<T>?): Mono<Void> =
         unSubscribe(userDetails!!.user.key.id, id)
 
-    @PostMapping("/unsuball")
+    @DeleteMapping("/sub")
     @ResponseStatus(HttpStatus.OK)
     fun restUnSubscribeAll(@AuthenticationPrincipal userDetails: ChatUserDetails<T>): Mono<Void> =
         unSubscribeAll(userDetails.user.key.id)
 
     // kick all from room
-    @PostMapping("/drain/{topic}")
+    @DeleteMapping("/members/{topic}")
     @ResponseStatus(HttpStatus.OK)
     override fun unSubscribeAllIn(@PathVariable topic: T): Mono<Void>
 
@@ -64,17 +64,17 @@ interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {
     @GetMapping("/exists/{topic}")
     override fun exists(@PathVariable topic: T): Mono<Boolean>
 
-    @PutMapping("/open/{topicId}")
+    @PostMapping("/pub/{topicId}")
     @ResponseStatus(HttpStatus.CREATED)
     override fun open(@PathVariable topicId: T): Mono<Void>
 
-    @DeleteMapping("/close/{topicId}")
+    @DeleteMapping("/pub/{topicId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     override fun close(@PathVariable topicId: T): Mono<Void>
 
-    @GetMapping("/byuser/{uid}")
-    override fun getByUser(@PathVariable uid: T): Flux<T>
-
-    @GetMapping("/bytopic/{topicId}")
+    @GetMapping("/pub/{topicId}")
     override fun getUsersBy(@PathVariable topicId: T): Flux<T>
+
+    @GetMapping("/user/{uid}")
+    override fun getByUser(@PathVariable uid: T): Flux<T>
 }

@@ -100,7 +100,7 @@ open class IndexRestTestBase<T, V : Any, Q : IndexSearchRequest>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "get",
+                    "findOne",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
@@ -124,7 +124,7 @@ open class IndexRestTestBase<T, V : Any, Q : IndexSearchRequest>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "get",
+                    "findQuery",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()

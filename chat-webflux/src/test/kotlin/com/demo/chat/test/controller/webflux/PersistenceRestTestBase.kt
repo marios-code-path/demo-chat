@@ -105,7 +105,7 @@ open class PersistenceRestTestBase<T, E : Any>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "get",
+                    "byId",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()

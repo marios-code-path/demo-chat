@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 
 interface ChatUserServiceRestMapping<T> : ChatUserService<T> {
 
-    @PostMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping("/new", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     override fun addUser(@RequestBody userReq: UserCreateRequest): Mono<out Key<T>>
 

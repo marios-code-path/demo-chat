@@ -14,4 +14,6 @@ open class DummyIndexService<T, E, Q> : IndexService<T, E, Q> {
     override fun findBy(query: Q): Flux<out Key<T>> = Flux.empty()
 
     override fun findUnique(query: Q): Mono<out Key<T>> = empty()
+
 }
+

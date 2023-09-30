@@ -64,3 +64,8 @@ interface MessageIndexService<T, V, Q> : IndexService<T, Message<T, V>, Q> {
         const val DATA = "data"
     }
 }
+
+interface KeyValueIndexService<T, Q> : IndexService<T, KeyValuePair<T, Any>, Q>
+
+interface IndexServiceImpl<T, E, Q> : IndexService<T, E, Q>
+interface IndexServiceEndpoint<T, E, Q> : IndexService<T, E, Q>

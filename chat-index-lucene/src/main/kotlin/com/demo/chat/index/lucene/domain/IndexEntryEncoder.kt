@@ -4,10 +4,18 @@ import com.demo.chat.domain.*
 import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.security.AuthMetaIndex
+import org.springframework.core.convert.ConversionService
 import java.util.function.Function
 
+
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {
+
     companion object Factory {
+        fun <T> ofConversionService(conversionService: ConversionService): IndexEntryEncoder<KeyValuePair<T, Any>> =
+            IndexEntryEncoder { t ->
+                conversionService.convert(t, List::class.java) as List<Pair<String, String>>
+            }
+
         fun <T> ofAuthMeta(typeUtil: TypeUtil<T>): IndexEntryEncoder<AuthMetadata<T>> =
             IndexEntryEncoder { t ->
                 listOf(

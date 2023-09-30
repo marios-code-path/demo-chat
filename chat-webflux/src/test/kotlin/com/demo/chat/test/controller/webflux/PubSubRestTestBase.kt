@@ -4,14 +4,14 @@ import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.controller.webflux.PubSubRestController
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.LongKeyServiceBeans
 import com.demo.chat.test.config.LongPubSubBeans
-import com.demo.chat.test.controller.webflux.context.LongUserDetailsConfiguration
-import com.demo.chat.test.controller.webflux.context.WithLongCustomChatUser
+import com.demo.chat.test.controller.webflux.config.LongUserDetailsConfiguration
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
+import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -19,8 +19,11 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
+import org.springframework.restdocs.operation.preprocess.Preprocessors
+import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -76,6 +79,14 @@ open class PubSubRestTestBase<T: Any, V>(
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "subscribe",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
 
     }
@@ -90,11 +101,19 @@ open class PubSubRestTestBase<T: Any, V>(
             .willReturn(Mono.empty())
 
         client
-            .post()
-            .uri("/pubsub/unsub/12345")
+            .delete()
+            .uri("/pubsub/sub/12345")
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "unsubscribe",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
 
@@ -108,11 +127,19 @@ open class PubSubRestTestBase<T: Any, V>(
             .willReturn(Mono.empty())
 
         client
-            .post()
-            .uri("/pubsub/unsuball")
+            .delete()
+            .uri("/pubsub/sub")
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "unsubscribeAll",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
 
@@ -126,11 +153,19 @@ open class PubSubRestTestBase<T: Any, V>(
             .willReturn(Mono.empty())
 
         client
-            .post()
-            .uri("/pubsub/drain/12345")
+            .delete()
+            .uri("/pubsub/members/12345")
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "drain",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
 
@@ -140,13 +175,15 @@ open class PubSubRestTestBase<T: Any, V>(
         val pubsubService = beans.pubSubService()
         val keyService = keyBeans.keyService()
 
+        val key = keySupplier()
+
         BDDMockito
             .given(pubsubService.sendMessage(anyObject()))
             .willReturn(Mono.empty())
 
         BDDMockito
             .given(keyService.key<Any>(anyObject()))
-            .willReturn(Mono.just(keySupplier()))
+            .willReturn(Mono.just(key))
 
         client
             .post()
@@ -158,7 +195,15 @@ open class PubSubRestTestBase<T: Any, V>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.TEXT_PLAIN)
             .expectBody()
-            .equals(keySupplier().id.toString())
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "send",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
+            .equals(key.id.toString())
     }
 
     @Test fun `should call exists`() {
@@ -176,7 +221,16 @@ open class PubSubRestTestBase<T: Any, V>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "exists",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .equals("true")
+
     }
 
     @Test fun `should open`() {
@@ -187,11 +241,19 @@ open class PubSubRestTestBase<T: Any, V>(
             .willReturn(Mono.empty())
 
         client
-            .put()
-            .uri("/pubsub/open/12345")
+            .post()
+            .uri("/pubsub/pub/12345")
             .exchange()
             .expectStatus().isCreated
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "open",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
 
@@ -204,12 +266,21 @@ open class PubSubRestTestBase<T: Any, V>(
 
         client
             .delete()
-            .uri("/pubsub/close/12345")
+            .uri("/pubsub/pub/12345")
             .exchange()
             .expectStatus().isNoContent
+            .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "close",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
     }
 
-    @Test fun `should get by user`() {
+    @Test fun `should get topics by user`() {
         val pubsubService = beans.pubSubService()
 
         BDDMockito
@@ -218,10 +289,18 @@ open class PubSubRestTestBase<T: Any, V>(
 
         client
             .get()
-            .uri("/pubsub/byuser/1001")
+            .uri("/pubsub/user/1001")
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "topicsByUser",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .equals("1001")
     }
 
@@ -234,10 +313,18 @@ open class PubSubRestTestBase<T: Any, V>(
 
         client
             .get()
-            .uri("/pubsub/bytopic/1001")
+            .uri("/pubsub/pub/1001")
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "byTopic",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .equals("1001")
     }
 }

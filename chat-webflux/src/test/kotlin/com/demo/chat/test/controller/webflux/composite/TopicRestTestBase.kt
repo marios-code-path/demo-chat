@@ -1,12 +1,12 @@
-package com.demo.chat.test.controller.webflux
+package com.demo.chat.test.controller.webflux.composite
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatTopicServiceController
-import com.demo.chat.controller.webflux.ChatUserServiceController
 import com.demo.chat.domain.*
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.LongCompositeServiceBeans
-import com.demo.chat.test.controller.webflux.context.WithLongCustomChatUser
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
+import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -14,8 +14,11 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
+import org.springframework.restdocs.operation.preprocess.Preprocessors
+import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -64,6 +67,14 @@ open class TopicRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "new",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.key.id").isNotEmpty
     }
 
@@ -80,6 +91,15 @@ open class TopicRestTestBase<T>(
             .uri("/topic/id/12345")
             .exchange()
             .expectStatus().isNoContent
+            .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "delete",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
     }
 
     @Test
@@ -98,9 +118,14 @@ open class TopicRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
-            .consumeWith { res ->
-                println(String(res.responseBodyContent!!, Charsets.UTF_8))
-            }
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "list",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.[0].topic.data").isNotEmpty
     }
 
@@ -120,6 +145,14 @@ open class TopicRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "byId",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.topic.data").isNotEmpty
     }
 
@@ -139,7 +172,14 @@ open class TopicRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
-            .consumeWith{ res -> println("result: " + String(res.responseBodyContent!!, Charsets.UTF_8))}
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "byName",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.topic.data").isNotEmpty
     }
 
@@ -157,6 +197,15 @@ open class TopicRestTestBase<T>(
             .uri("/topic/join/112345")
             .exchange()
             .expectStatus().isOk
+            .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "join",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
     }
 
     @Test
@@ -173,6 +222,15 @@ open class TopicRestTestBase<T>(
             .uri("/topic/leave/123456")
             .exchange()
             .expectStatus().isOk
+            .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "leave",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
     }
 
     @Test
@@ -191,7 +249,14 @@ open class TopicRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "members",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.members.[0].handle").isNotEmpty
     }
-
 }

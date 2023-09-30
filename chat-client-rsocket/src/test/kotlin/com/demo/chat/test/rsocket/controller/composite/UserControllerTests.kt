@@ -11,6 +11,7 @@ import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
 import com.demo.chat.test.TestChatUserKey
+import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -24,6 +25,7 @@ import org.springframework.messaging.rsocket.retrieveMono
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
@@ -52,6 +54,11 @@ open class UserControllerTests : RSocketTestBase() {
 
     @Test
     fun `let no dups pass`() {
+        Hooks.onOperatorDebug()
+
+        BDDMockito.given(userPersistence.get(anyObject()))
+            .willReturn(Mono.just(randomUser))
+
         BDDMockito.given(userPersistence.key())
             .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
 

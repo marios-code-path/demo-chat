@@ -3,6 +3,7 @@ package com.demo.chat.client.rsocket.clients.core.config
 import com.demo.chat.client.rsocket.clients.core.IndexClient
 import com.demo.chat.client.rsocket.clients.core.MembershipIndexClient
 import com.demo.chat.domain.*
+import com.demo.chat.service.core.KeyValueIndexService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
@@ -27,3 +28,7 @@ class MembershipIndexClientImpl<T, Q>(prefix: String, requester: RSocketRequeste
 class AuthMetaIndexClient<T, Q>(prefix: String, requester: RSocketRequester) :
     IndexClient<T, AuthMetadata<T>, Q>(prefix, requester),
     AuthMetaIndex<T, Q>
+
+class KeyValueIndexClient<T, Q>(prefix: String, requester: RSocketRequester) :
+    IndexClient<T, KeyValuePair<T, Any>, Q>(prefix, requester),
+    KeyValueIndexService<T, Q>

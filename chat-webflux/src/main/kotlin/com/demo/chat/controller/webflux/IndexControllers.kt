@@ -37,6 +37,6 @@ class TopicIndexRestController<T, V, Q : IndexSearchRequest>(s: IndexServiceBean
 class AuthMetadataIndexRestController<T, V, Q : IndexSearchRequest>(s: IndexServiceBeans<T, V, Q>) :
     IndexRestController<T, AuthMetadata<T>, Q>(s.authMetadataIndex())
 
-//@RequestMapping("/index/kv")
-//class KVIndexRestController<T, V, Q: IndexSearchRequest>(s: IndexService<T, KeyValuePair<T, Any>, Q>) :
-//        IndexRestController<T, KeyValuePair<T, Any>, Q>(s)
+@RequestMapping("/index/kv")
+class KeyValueIndexRestController<T, V, Q: IndexSearchRequest>(s:IndexServiceBeans<T, V, Q>) :
+        IndexRestController<T, KeyValuePair<T, Any>, Q>(s.KVPairIndex())

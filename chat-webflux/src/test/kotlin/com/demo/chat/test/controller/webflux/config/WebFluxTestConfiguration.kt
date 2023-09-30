@@ -1,4 +1,4 @@
-package com.demo.chat.test.controller.webflux
+package com.demo.chat.test.controller.webflux.config
 
 import com.demo.chat.config.DefaultChatJacksonModules
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration

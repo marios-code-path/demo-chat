@@ -22,9 +22,9 @@ class MessageKeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T
         val fromNode = node.get("from")
 
         return MessageKey.create(
-            nodeConverter.convert(idNode),
-            nodeConverter.convert(fromNode),
-            nodeConverter.convert(destNode)
+            nodeConverter.convert(idNode)!!,
+            nodeConverter.convert(fromNode)!!,
+            nodeConverter.convert(destNode)!!
         )
     }
 }
@@ -41,12 +41,12 @@ class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : Js
             val fromNode = node.get("from")
 
             MessageKey.create(
-                nodeConverter.convert(idNode),
-                nodeConverter.convert(fromNode),
-                nodeConverter.convert(destNode)
+                nodeConverter.convert(idNode)!!,
+                nodeConverter.convert(fromNode)!!,
+                nodeConverter.convert(destNode)!!
             )
         } else
-            Key.funKey(nodeConverter.convert(idNode))
+            Key.funKey(nodeConverter.convert(idNode)!!)
     }
 }
 
@@ -60,7 +60,7 @@ class MessageDeserializer<T, E>(
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val decoded = dataCodec.convert(node.get("data"))
+        val decoded = dataCodec.convert(node.get("data"))!!
         val visible = node.get("record").asBoolean()
 
         val keyNode = node.get("key")
@@ -84,7 +84,7 @@ class KeyValuePairDeserializer<T, E>(
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val decoded = dataCodec.convert(node.get("data"))
+        val decoded = dataCodec.convert(node.get("data"))!!
 
         val keyNode = node.get("key")
 
@@ -125,9 +125,9 @@ class MembershipDeserializer<T>(val keyConverter: Converter<JsonNode, T>) : Json
         val memberOfNode = node.get("memberOf")
         val memberNode = node.get("member")
 
-        val key: T = keyConverter.convert(keyNode)
-        val mem: T = keyConverter.convert(memberNode)
-        val mof: T = keyConverter.convert(memberOfNode)
+        val key: T = keyConverter.convert(keyNode)!!
+        val mem: T = keyConverter.convert(memberNode)!!
+        val mof: T = keyConverter.convert(memberOfNode)!!
 
         return TopicMembership.create(key, mem, mof)
     }

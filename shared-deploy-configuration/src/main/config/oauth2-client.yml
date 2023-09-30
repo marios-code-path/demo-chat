@@ -3,7 +3,7 @@ app:
     entrypoint-path: /login
     client:
       id: chat-client
-      key: 31649af5-0154-4be5-8695-fda9d18b7981
+      client-id: 31649af5-0154-4be5-8695-fda9d18b7981
       secret: "{noop}secret"
       redirect-uris:
         - http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc
@@ -13,4 +13,11 @@ app:
       additional-scopes:
         - openid
         - profile
+      client-authentication-methods:
+        - client_secret_basic
+      authorization-grant-types:
+        - authorization_code
+        - refresh_token
+        - client_credentials
+      requires-authorization-concent: true
 

@@ -9,8 +9,8 @@ import kotlinx.serialization.internal.throwMissingFieldException
 
 import java.util.*
 
-fun interface Converter<F, E> {
-    fun convert(record: F): E
+interface Converter<F, E> {//} : org.springframework.core.convert.converter.Converter<F, E> {
+    fun convert(source: F): E
 }
 
 object JsonNodeToAnyConverter : Converter<JsonNode, Any> {

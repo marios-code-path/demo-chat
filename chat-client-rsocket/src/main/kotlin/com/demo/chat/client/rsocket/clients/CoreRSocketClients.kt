@@ -90,4 +90,6 @@ class CoreRSocketClients<T, V, Q>(
     override fun authMetadataIndex(): AuthMetaIndex<T, Q> =
         AuthMetaIndexClient("${indexProps.prefix}authmetadata.", indexRequester())
 
+    override fun KVPairIndex(): KeyValueIndexService<T, Q> =
+        KeyValueIndexClient("${indexProps.prefix}kv.", indexRequester())
 }

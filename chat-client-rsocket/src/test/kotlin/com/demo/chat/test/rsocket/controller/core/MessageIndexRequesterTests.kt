@@ -1,15 +1,14 @@
 package com.demo.chat.test.rsocket.controller.core
 
 import com.demo.chat.controller.core.IndexServiceController
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.*
+import com.demo.chat.service.core.KeyValueIndexService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessageIndexService.Companion.TOPIC
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.Assertions
+import org.assertj.core.data.Index
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
@@ -27,6 +26,7 @@ import java.util.*
     MessageIndexRequesterTests.MessageIndexTestConfiguration::class
 )
 open class MessageIndexRequesterTests : RSocketTestBase() {
+
     @MockBean
     private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 

@@ -21,13 +21,16 @@ open class UserServiceImpl<T, Q>(
 
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> =
         findByUsername(ByStringRequest(userReq.handle))
-            .doOnNext { throw DuplicateException }
-            .then (
+            .singleOrEmpty()
+            .flatMap {
+                Mono.error<Key<T>>(DuplicateException)
+            }
+            .switchIfEmpty (
                 userPersistence
                     .key()
-                    .flatMap {
+                    .doOnNext { key ->
                         val user = User.create(
-                            Key.funKey(it.id),
+                            Key.funKey(key.id),
                             userReq.name,
                             userReq.handle,
                             userReq.imgUri
@@ -36,9 +39,10 @@ open class UserServiceImpl<T, Q>(
                             userPersistence.add(user),
                             userIndex.add(user)
                         )
-                            .then(Mono.just(it))
                     }
             )
+
+
 
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))

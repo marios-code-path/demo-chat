@@ -6,13 +6,13 @@ import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.LongKeyServiceBeans
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension

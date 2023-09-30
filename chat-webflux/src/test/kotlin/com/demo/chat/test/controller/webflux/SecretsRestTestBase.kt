@@ -7,7 +7,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.LongKeyServiceBeans
 import com.demo.chat.test.config.LongSecretsStoreBeans
-import com.demo.chat.test.controller.webflux.context.LongUserDetailsConfiguration
+import com.demo.chat.test.controller.webflux.config.LongUserDetailsConfiguration
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -15,8 +16,11 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension
+import org.springframework.restdocs.operation.preprocess.Preprocessors
+import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -61,13 +65,21 @@ open class SecretsRestTestBase<T>(
 
         client
             .put()
-            .uri("/secrets/add")
+            .uri("/secrets/new")
             .bodyValue("SECRET")
             .exchange()
             .expectStatus().isCreated
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "new",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .jsonPath("\$.key.id").isNotEmpty
     }
 
@@ -81,11 +93,19 @@ open class SecretsRestTestBase<T>(
 
         client
             .put()
-            .uri("/secrets/add/12345")
+            .uri("/secrets/new/12345")
             .bodyValue("SECRET")
             .exchange()
             .expectStatus().isCreated
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "keyedNew",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .isEmpty
     }
 
@@ -105,6 +125,14 @@ open class SecretsRestTestBase<T>(
             .expectHeader()
             .contentTypeCompatibleWith(MediaType.TEXT_PLAIN)
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "cred",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .equals("SECRET")
     }
 
@@ -123,6 +151,14 @@ open class SecretsRestTestBase<T>(
             .exchange()
             .expectStatus().isOk
             .expectBody()
+            .consumeWith(
+                WebTestClientRestDocumentation.document(
+                    "compare",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                )
+            )
             .equals("true")
 
     }

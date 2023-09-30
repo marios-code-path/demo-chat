@@ -1,10 +1,7 @@
 package com.demo.chat.test.config
 
 import com.demo.chat.config.IndexServiceBeans
-import com.demo.chat.service.core.MembershipIndexService
-import com.demo.chat.service.core.MessageIndexService
-import com.demo.chat.service.core.TopicIndexService
-import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaIndex
 import org.mockito.BDDMockito
 
@@ -14,6 +11,7 @@ class TestIndexBeans<T, V, Q> : IndexServiceBeans<T, V, Q> {
     val topicIndex: TopicIndexService<T, Q> = BDDMockito.mock(TopicIndexService::class.java) as TopicIndexService<T, Q>
     val membershipIndex: MembershipIndexService<T, Q> = BDDMockito.mock(MembershipIndexService::class.java) as MembershipIndexService<T, Q>
     val authMetadataIndex: AuthMetaIndex<T, Q> = BDDMockito.mock(AuthMetaIndex::class.java) as AuthMetaIndex<T, Q>
+    val kvPairIndex: KeyValueIndexService<T, Q> = BDDMockito.mock(KeyValueIndexService::class.java) as KeyValueIndexService<T, Q>
 
     override fun userIndex(): UserIndexService<T, Q> = userIndex
 
@@ -24,4 +22,6 @@ class TestIndexBeans<T, V, Q> : IndexServiceBeans<T, V, Q> {
     override fun membershipIndex(): MembershipIndexService<T, Q> = membershipIndex
 
     override fun authMetadataIndex(): AuthMetaIndex<T, Q> = authMetadataIndex
+
+    override fun KVPairIndex(): KeyValueIndexService<T, Q> = kvPairIndex
 }

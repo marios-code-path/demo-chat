@@ -9,9 +9,15 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.net.URI
 
 interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
+
+    @GetMapping("/topic/{id}")
+    @ResponseStatus(HttpStatus.TEMPORARY_REDIRECT)
+    fun listen(@ModelAttribute req: ByIdRequest<T>): Mono<String>
 
     @GetMapping("/id/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.OK)

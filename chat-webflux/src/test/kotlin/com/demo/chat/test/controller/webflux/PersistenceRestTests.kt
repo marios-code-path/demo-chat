@@ -5,6 +5,7 @@ import com.demo.chat.controller.webflux.*
 import com.demo.chat.controller.webflux.core.mapping.KVRequest
 import com.demo.chat.domain.*
 import com.demo.chat.test.config.LongPersistenceBeans
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 

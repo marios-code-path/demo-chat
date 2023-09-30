@@ -20,22 +20,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc
 @SpringBootApplication(proxyBeanMethods = false,
     scanBasePackages = ["com.demo.chat.config", "com.demo.chat.config.client.discovery"])
 @EnableConfigurationProperties(Oauth2ClientProperties::class)
-//@ImportRuntimeHints(HttpServletRuntimeHints::class)
 @EnableWebMvc
 class AuthServiceApp
 
 fun main(args: Array<String>) {
     runApplication<AuthServiceApp>(*args)
 }
-//
-//class HttpServletRuntimeHints : RuntimeHintsRegistrar {
-//
-//    override fun registerHints(hints: RuntimeHints, classLoader: ClassLoader?) {
-//        val proxies = hints.proxies()
-//        proxies.registerJdkProxy(HttpServlet::class.java)
-//        proxies.registerJdkProxy(HttpServletRequest::class.java)
-//        proxies.registerJdkProxy(HttpServletResponse::class.java)
-//        proxies.registerJdkProxy(TopicMember::class.java)
-//    }
-//
-//}
