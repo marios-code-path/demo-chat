@@ -1,5 +1,6 @@
 package com.demo.chat.config.deploy.authserv
 
+import com.demo.chat.auth.client.RegisteredClientFactory
 import com.nimbusds.jose.jwk.*
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
@@ -13,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.jwt.*
 import org.springframework.security.oauth2.server.authorization.*
+import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer
@@ -70,7 +72,12 @@ class AuthServConfig(
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
         OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource)
 
-//    @Bean
+    @Bean
+    fun registeredClientRepo(clientProps: Oauth2ClientProperties): RegisteredClientRepository = InMemoryRegisteredClientRepository(
+        RegisteredClientFactory(clientProps)()
+    )
+
+    @Bean
     fun oauth2AuthorizationService(registeredClientRepository: RegisteredClientRepository): OAuth2AuthorizationService {
         return InMemoryOAuth2AuthorizationService()
     }
@@ -80,7 +87,7 @@ class AuthServConfig(
         return InMemoryOAuth2AuthorizationConsentService()
     }
 
-//    @Bean
+    @Bean
     fun authorizationServerSettings(): AuthorizationServerSettings =
         AuthorizationServerSettings.builder().build()
 }

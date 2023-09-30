@@ -8,7 +8,6 @@ app:
       redirect-uris:
         - http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc
         - http://127.0.0.1:8080/authorized
-        - {baseUrl}/login/oauth2/code/{registrationId}
       redirect-uri-prefix: http://127.0.0.1:8080
       additional-scopes:
         - openid

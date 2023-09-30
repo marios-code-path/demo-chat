@@ -15,7 +15,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.service.security.userdetails -Dapp.service.composite.auth"
 export PORTS_FLAGS="-Dserver.port=${AUTHSERV_HTTP_PORT} -Dmanagement.server.port=${AUTHSERV_MGMT_PORT}"
 export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration \
--Dspring.main.web-application-type=servlet"
+-Dspring.main.web-application-type=servlet -Dlogging.level.com.demo.chat.client.rsocket=DEBUG"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
 export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
@@ -23,7 +23,7 @@ export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker() {
