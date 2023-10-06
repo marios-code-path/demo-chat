@@ -14,12 +14,21 @@ spring:
         client:
           chatclient:
             registration:
-              clientId:
-              client-secret:
-              client-authentication-method:
+              clientId: chatClient
+              client-secret: {noop}nosecret
+              client-authentication-method: client_secret_basic
               authorization-grant-types:
+                - client_credentials
+                - authorization_code
+                - refresh_token
               redirectUris:
+                - ${app.web.oauth2.redirect}
               scopes:
+                - auth
+                - message
+                - topic
+                - user
+                - openId
             requireAuthorizationConcent: true
 
 logging:

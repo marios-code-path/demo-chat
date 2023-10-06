@@ -268,6 +268,8 @@ export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"
 DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME} -v ${KEY_VOLUME}:/etc/keys"
 
+RUN_ARGS="-Dspring-boot.run.arguments=${SPRING_RUN_ARGUMENTS}"
+
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
 export JAVA_TOOL_OPTIONS=" ${JAVA_TOOL_OPTIONS}  \
@@ -278,7 +280,8 @@ ${INIT_FLAGS} \
 ${DISCOVERY_FLAGS} \
 ${CLIENT_FLAGS} \
 ${SERVICE_FLAGS} \
-${OPT_FLAGS}"
+${OPT_FLAGS} \
+${RUN_ARGS}"
 
 export ENV_FILE=/tmp/${APP_IMAGE_NAME}-$$.env
 

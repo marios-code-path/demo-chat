@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService
 class UserDetailsServiceConfiguration {
 
     @Bean
-    fun <T> standardUserDetailsService(uds: CoreUserDetailsService<T>): UserDetailsService {
+    fun <T> authServUserDetailsService(uds: CoreUserDetailsService<T>): UserDetailsService {
         return object : UserDetailsService, UserDetailsPasswordService {
             override fun loadUserByUsername(username: String): org.springframework.security.core.userdetails.UserDetails? {
                 return uds.findByUsername(username).block()

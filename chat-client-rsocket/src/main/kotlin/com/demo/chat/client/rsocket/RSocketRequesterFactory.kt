@@ -24,17 +24,19 @@ class RSocketRequesterFactory(
         logger.debug("RSocket Requester Connection provider is: ${connection::class.java}")
     }
 
-    override fun getClientForService(serviceName: String): RSocketRequester =
-        discovery
-            .getServiceInstance(serviceName)
-            .map { instance ->
-                if (!perHostRequester.containsKey(instance)) {
-                    logger.debug("service instance for $serviceName at ${instance.host} : ${instance.port} ")
-                    perHostRequester[instance] = builder
-                        .transport(connection.getClientTransport(instance.host, instance.port))
-                }
-                MetadataRSocketRequester(perHostRequester[instance]!!, metadataProvider)
+    override fun getClientForService(serviceName: String): RSocketRequester = discovery
+        .getServiceInstance(serviceName)
+        .map { instance ->
+            if (!perHostRequester.containsKey(instance)) {
+                logger.debug("service instance for $serviceName at ${instance.host} : ${instance.port} ")
+                perHostRequester[instance] = builder
+                    .transport(connection.getClientTransport(instance.host, instance.port))
             }
-            .onErrorComplete()
-            .block()!!
+            MetadataRSocketRequester(perHostRequester[instance]!!, metadataProvider)
+        }
+        .doOnError { t ->
+            t.printStackTrace()
+        }
+        .onErrorComplete()
+        .block()!!
 }

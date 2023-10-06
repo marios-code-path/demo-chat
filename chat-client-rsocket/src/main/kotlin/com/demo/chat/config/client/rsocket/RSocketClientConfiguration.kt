@@ -34,12 +34,10 @@ class RSocketClientConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun requesterBuilder(strategies: RSocketStrategies): RSocketRequester.Builder =
         RSocketRequester.builder().rsocketStrategies(strategies)
 
     @Bean
-    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun <T> coreClientBeans(
         requesterFactory: ClientFactory<RSocketRequester>,
         clientProps: RSocketClientProperties,
@@ -51,7 +49,6 @@ class RSocketClientConfiguration {
     )
 
     @Bean
-    @ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
     fun <T> compositeClientBeans(
         requesterFactory: ClientFactory<RSocketRequester>,
         clientProps: RSocketClientProperties

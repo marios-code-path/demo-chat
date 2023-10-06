@@ -11,12 +11,13 @@ import org.springframework.messaging.rsocket.RSocketRequester
 class CompositeRSocketClients<T>(
     val requesterFactory: ClientFactory<RSocketRequester>,
     val clientProperties: RSocketClientProperties
-){
+) {
 
     fun userService(): ChatUserService<T> {
         val config = clientProperties.getServiceConfig("user").prefix!!
         val client = requesterFactory.getClientForService("user")
-     return   UserClient(config, client)
+
+        return UserClient(config, client)
     }
 
     fun messagingService(): MessagingClient<T, String> =

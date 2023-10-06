@@ -6,10 +6,12 @@ import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.KeyValueIndexService
 import com.demo.chat.service.core.KeyValueStore
+import org.springframework.context.annotation.Profile
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import reactor.core.publisher.Mono
 
+@Profile("client-kv-store")
 class KeyValueStoreRegisteredClientRepository<T>(
     val kvIndex: KeyValueIndexService<T, IndexSearchRequest>,
     val kvStore: KeyValueStore<T, Any>,

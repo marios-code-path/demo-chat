@@ -1,0 +1,24 @@
+{
+  "clientId": "ba89bb6f-8cf9-4b39-8118-2bf917b19bee",
+  "id": "1",
+  "redirectUriPrefix": "http://127.0.0.1:8080",
+  "additionalScopes": [
+    "user",
+    "topic",
+    "message"
+  ],
+  "secret": "{noop}secret",
+  "redirectUris": [
+    "http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc",
+    "http://127.0.0.1:8080/authorized"
+  ],
+  "authorizationGrantTypes": [
+    "authorization_code",
+    "refresh_token",
+    "client_credentials"
+  ],
+  "clientAuthenticationMethods": [
+    "client_secret_basic"
+  ],
+  "requiresAuthorizationConcent": true
+}
