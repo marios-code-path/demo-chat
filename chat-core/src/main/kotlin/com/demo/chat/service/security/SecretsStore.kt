@@ -5,6 +5,6 @@ import reactor.core.publisher.Mono
 
 interface SecretsStore<T> {
     fun getStoredCredentials(key: Key<T>): Mono<String>
-    fun addCredential(keyCredential: KeyCredential<T>): Mono<Void>
+    fun addCredential(keyCredential: KeyCredential<T>): Mono<Void> // should return key maybe?
     fun compareSecret(keyCredential: KeyCredential<T>): Mono<Boolean> = Mono.just(false) // should throw error when !==
 }

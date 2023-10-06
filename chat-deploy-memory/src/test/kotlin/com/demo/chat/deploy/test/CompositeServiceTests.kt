@@ -1,14 +1,14 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.config.SecretsStoreBeans
+import com.demo.chat.config.*
 import com.demo.chat.config.controller.composite.MessageServiceController
 import com.demo.chat.config.controller.composite.TopicServiceController
 import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.deploy.memory.MemoryDeploymentApp
 import com.demo.chat.domain.*
-import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.KeyCredential
+import com.demo.chat.test.config.LongCompositeServiceBeans
 import com.demo.chat.test.randomAlphaNumeric
 import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions
@@ -21,6 +21,7 @@ import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import org.springframework.util.MimeTypeUtils
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -74,15 +75,35 @@ class CompositeServiceTests {
     @Test  // Although, currently security states 'permitAll' for all requests.
     fun `created user, authenticated rsocket requests for key`(
         @Autowired services: CompositeServiceBeans<Long, String>,
-        @Autowired secretsStore: SecretsStoreBeans<Long>
+        @Autowired secretsStore: SecretsStoreBeans<Long>,
+        @Autowired coreServices: PersistenceServiceBeans<Long, User<Long>>
     ) {
-        val key: Key<Long> = services.userService()
-            .addUser(UserCreateRequest("test", "user", "test"))
+        Hooks.onOperatorDebug()
+        coreServices.userPersistence().add(User.create(coreServices.userPersistence().key().block()!!, "name", "handle", "http"))
+            .block()
+
+        val newUserKey: Key<Long> = services.userService()
+            .addUser(UserCreateRequest("user", "user", "test"))
             .block()!!
+
+        coreServices.userPersistence().all()
+            .doOnNext{
+                println("user: ${it.handle}")
+            }
+            .blockLast()
+
+        services
+            .userService().findByUserId(ByIdRequest(newUserKey.id))
+            .doOnNext {
+                    println("User : ${it.key.id} is ${it.name}.${it.handle}")
+                }
+            //.switchIfEmpty { Flux.error<ChatException>(ChatException("foo")) }
+            .block()
+
 
         secretsStore
             .secretsStore()
-            .addCredential(KeyCredential(key, "{noop}changeme"))
+            .addCredential(KeyCredential(newUserKey, "{noop}changeme"))
             .block()
 
         val requester = builder

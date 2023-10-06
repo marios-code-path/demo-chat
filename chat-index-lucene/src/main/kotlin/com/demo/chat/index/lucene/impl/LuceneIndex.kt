@@ -76,7 +76,9 @@ open class LuceneIndex<T, E>(
                 }
                 .map(keyEncoder::apply)
 
-        doc.forEach { d -> sink.next(d) }
+        doc.forEach { d ->
+            sink.next(d)
+        }
 
         sink.complete()
     }

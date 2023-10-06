@@ -38,7 +38,7 @@ open class UserServiceImpl<T, Q>(
                         Flux.concat(
                             userPersistence.add(user),
                             userIndex.add(user)
-                        )
+                        ).subscribe()
                     }
             )
 
@@ -46,7 +46,9 @@ open class UserServiceImpl<T, Q>(
 
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = userIndex
         .findBy(userHandleToQuery.apply(req))
-        .flatMap(userPersistence::get)
+        .flatMap(
+            userPersistence::get
+        )
 
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = userPersistence
         .get(Key.funKey(req.id))
