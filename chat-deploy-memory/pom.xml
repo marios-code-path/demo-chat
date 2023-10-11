@@ -13,73 +13,86 @@
     <name>chat-deploy-memory</name>
     <description>Deployment for in-memory components</description>
 
-    <properties>
-        <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.deploy.memory.MemoryDeploymentApp</mainClass>
-        <appMainClass>${mainClass}</appMainClass>
-    </properties>
-    <profiles>
-        <profile>
-            <id>deploy</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>${appMainClass}</mainClass>
-                            <image>
-                                <name>${appImageName}</name>
-                                <cleanCache>false</cleanCache>
-                                <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
-                                </env>
-                            </image>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-info</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
-            <id>consul</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-client-consul</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.springframework.cloud</groupId>
-                    <artifactId>spring-cloud-starter-consul-discovery</artifactId>
-                </dependency>
-                <dependency>
-                    <groupId>org.springframework.cloud</groupId>
-                    <artifactId>spring-cloud-starter-consul-config</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>default</id>
-            <activation><activeByDefault>true</activeByDefault></activation>
-            <build><plugins>
-                <plugin>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-maven-plugin</artifactId>
-                    <configuration>
-                        <skip>true</skip>
-                    </configuration>
-                </plugin>
-            </plugins></build>
-        </profile>
-    </profiles>
+<!--    <profiles>-->
+<!--        <profile>-->
+<!--            <id>deploy</id>-->
+<!--            <build>-->
+<!--                <plugins>-->
+<!--                    <plugin>-->
+<!--                        <groupId>org.springframework.boot</groupId>-->
+<!--                        <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--                        <configuration>-->
+<!--                            <mainClass>${appMainClass}</mainClass>-->
+<!--                            <image>-->
+<!--                                <name>${appImageName}</name>-->
+<!--                                <cleanCache>false</cleanCache>-->
+<!--                                <env>-->
+<!--                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>-->
+<!--				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>-->
+<!--                                </env>-->
+<!--                            </image>-->
+<!--                        </configuration>-->
+<!--                        <executions>-->
+<!--                            <execution>-->
+<!--                                <goals>-->
+<!--                                    <goal>build-info</goal>-->
+<!--                                </goals>-->
+<!--                            </execution>-->
+<!--                        </executions>-->
+<!--                    </plugin>-->
+<!--                </plugins>-->
+<!--            </build>-->
+<!--        </profile>-->
+<!--        <profile>-->
+<!--            <id>consul</id>-->
+<!--            <dependencies>-->
+<!--                <dependency>-->
+<!--                    <groupId>com.demo</groupId>-->
+<!--                    <artifactId>chat-client-consul</artifactId>-->
+<!--                    <version>0.0.1</version>-->
+<!--                </dependency>-->
+<!--                <dependency>-->
+<!--                    <groupId>org.springframework.cloud</groupId>-->
+<!--                    <artifactId>spring-cloud-starter-consul-discovery</artifactId>-->
+<!--                </dependency>-->
+<!--                <dependency>-->
+<!--                    <groupId>org.springframework.cloud</groupId>-->
+<!--                    <artifactId>spring-cloud-starter-consul-config</artifactId>-->
+<!--                </dependency>-->
+<!--            </dependencies>-->
+<!--        </profile>-->
+<!--        <profile>-->
+<!--            <id>rsocket</id>-->
+<!--            <dependencies>-->
+<!--                <dependency>-->
+<!--                    <groupId>com.demo</groupId>-->
+<!--                    <artifactId>chat-service-controller</artifactId>-->
+<!--                </dependency>-->
+<!--            </dependencies>-->
+<!--        </profile>-->
+<!--        <profile>-->
+<!--            <id>webflux</id>-->
+<!--            <dependencies>-->
+<!--                <dependency>-->
+<!--                    <groupId>com.demo</groupId>-->
+<!--                    <artifactId>chat-webflux</artifactId>-->
+<!--                </dependency>-->
+<!--            </dependencies>-->
+<!--        </profile>-->
+<!--        <profile>-->
+<!--            <id>default</id>-->
+<!--            <activation><activeByDefault>true</activeByDefault></activation>-->
+<!--            <build><plugins>-->
+<!--                <plugin>-->
+<!--                    <groupId>org.springframework.boot</groupId>-->
+<!--                    <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--                    <configuration>-->
+<!--                        <skip>true</skip>-->
+<!--                    </configuration>-->
+<!--                </plugin>-->
+<!--            </plugins></build>-->
+<!--        </profile>-->
+<!--    </profiles>-->
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -99,11 +112,6 @@
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-composite</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -151,10 +159,6 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-rsocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
     </dependencies>
@@ -180,6 +184,13 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
         </plugins>
     </build>

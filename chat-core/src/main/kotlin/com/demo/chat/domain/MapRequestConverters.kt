@@ -23,4 +23,9 @@ class MapRequestConverters<T> : RequestToQueryConverters<T, Map<String, String>>
     override fun membershipIdToQuery(req: ByIdRequest<T>) = mapOf(
             Pair(MembershipIndexService.MEMBEROF, req.id.toString())
     )
+
+    override fun membershipRequestToQuery(req: MembershipRequest<T>): Map<String, String> = mapOf(
+            Pair(MembershipIndexService.MEMBER, req.uid.toString()),
+            Pair(MembershipIndexService.MEMBEROF, req.roomId.toString())
+    )
 }

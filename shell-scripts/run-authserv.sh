@@ -18,7 +18,7 @@ export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoco
 -Dspring.main.web-application-type=servlet -Dlogging.level.com.demo.chat.client.rsocket=DEBUG"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
-export JWK_KEYPATH="${JWK_KEYPATH:/tmp/dc-keys}"
+export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/keys}"
 
 export KEYTYPE=long
 

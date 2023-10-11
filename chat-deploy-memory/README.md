@@ -29,7 +29,7 @@ POM.xml
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-maven-plugin</artifactId>
     <configuration>
-        <mainClass>com.demo.chat.deploy.memory.MemoryDeploymentApp</mainClass>
+        <mainClass>com.demo.chat.config.deploy.memory.ChatAppConfigurationcom.demo.chat.config.deploy.memory.ChatAppConfiguration</mainClass>
         <image>
             <name>${appImageName}</name>
             <cleanCache>false</cleanCache>

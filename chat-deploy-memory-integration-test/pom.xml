@@ -14,7 +14,7 @@
     <description>Container Image Specific to (Deploy Memory) Integration Tests</description>
     <properties>
         <appImageName>docker.io/library/chat-deploy-long-memory-integration-test:${project.version}</appImageName>
-        <mainClass>com.demo.chat.deploy.memory.MemoryDeploymentApp</mainClass>
+        <mainClass>com.demo.chat.config.deploy.memory.ChatAppConfiguration</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>

@@ -8,6 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+// TODO This is generic can remove rsocket references.
 @Configuration
 class ClientDiscoveryConfiguration {
 

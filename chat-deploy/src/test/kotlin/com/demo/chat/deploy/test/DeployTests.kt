@@ -1,6 +1,6 @@
 package com.demo.chat.deploy.test
 
-import com.demo.chat.deploy.memory.MemoryDeploymentApp
+import com.demo.chat.ChatApp
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -9,7 +9,7 @@ import org.springframework.boot.web.reactive.context.ReactiveWebApplicationConte
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.TestPropertySource
 
-@SpringBootTest(classes = [MemoryDeploymentApp::class],
+@SpringBootTest(classes = [ChatApp::class],
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(
     properties = [

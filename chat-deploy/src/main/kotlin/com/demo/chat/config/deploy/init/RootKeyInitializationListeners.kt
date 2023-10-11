@@ -17,6 +17,7 @@ import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+// TODO Refactor
 @Configuration
 class RootKeyInitializationListeners<T>(
     val publisher: DeploymentEventPublisher,

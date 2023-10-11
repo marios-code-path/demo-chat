@@ -15,14 +15,14 @@ export PORTS_FLAGS="-Dserver.port=${HTTP_PORT} -Dmanagement.server.port=${HTTP_M
 export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration \
  -Dlogging.level.com.demo.chat.client.rsocket=DEBUG"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
-export JWK_KEYPATH="${JWK_KEYPATH:~/tmp/dc-keys}"
+export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/keys}"
 
 export KEYTYPE=long
 
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-webflux -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d local -b runlocal $@
+  $DIR/build-app.sh -m chat-webflux -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker() {
@@ -37,7 +37,7 @@ function docker() {
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-webflux -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-webflux -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /etc/keys $@
 }
 
 

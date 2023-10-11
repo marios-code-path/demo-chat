@@ -15,6 +15,7 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 @Configuration
 class RSocketServerConfiguration {
 
+    // TODO: lock down!
     @Bean
     fun rsocketSecurityAuthentication(security: RSocketSecurity)
             : PayloadSocketAcceptorInterceptor = security

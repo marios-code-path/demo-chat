@@ -1,8 +1,58 @@
 # Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
 #logging.level.org.springframework: DEBUG
 #logging.level.io.rsocket.FrameLogger: DEBUG
+logging:
+  level:
+    root: DEBUG
+    io:
+      rsocket:
+        FrameLogger: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %logger.%M - %msg%n"
+#  level:
+#    io.rsocket.FrameLogger: DEBUG
+
+management:
+  info:
+    git:
+      mode: full
+  endpoint:
+    shutdown:
+      enabled: true
+    enabled-by-default: true
+    health:
+      enabled: true
+    info:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: info,health,shutdown
+
+spring:
+  main:
+    web-application-type: reactive
+  application:
+    name: "${app.primary}-service-${app.proto}"
+  cloud:
+    consul:
+      enabled: false
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        format: YAML
+        data-key: data
 
 app:
+  primary: core
+  proto: rsocket
+  key:
+    type: long
+  users:
+    create: true
+  rootkeys:
+    create: true
   init:
     initialRoles:
       rolesAllowed: [ "READ", "CREATE", "WRITE", "REMOVE", "SEND", "JOIN", "*" ]
