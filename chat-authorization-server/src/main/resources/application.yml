@@ -1,8 +1,6 @@
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/authserver
-    username: ${app.authserv.jdbc.user}
-    password: ${app.authserv.jdbc.pass}
     driver-class-name: org.postgresql.Driver
   application:
     name: chat-authorization-server
@@ -14,14 +12,15 @@ spring:
         client:
           chatclient:
             registration:
-              clientId: chatClient
-              client-secret: {noop}nosecret
-              client-authentication-method: client_secret_basic
+              client-id: chatClient
+              client-secret: nosecret
+              client-authentication-methods:
+                - client_secret_basic
               authorization-grant-types:
                 - client_credentials
                 - authorization_code
                 - refresh_token
-              redirectUris:
+              redirect-uris:
                 - ${app.web.oauth2.redirect}
               scopes:
                 - auth
@@ -29,7 +28,7 @@ spring:
                 - topic
                 - user
                 - openId
-            requireAuthorizationConcent: true
+            require-authorization-consent: true
 
 logging:
   level:

@@ -72,11 +72,11 @@ class TempTest {
         "app.rsocket.transport.unprotected", "app.client.rsocket.composite.user",
         "app.client.rsocket.composite.message", "app.client.rsocket.composite.topic",
         "app.service.security.userdetails", "app.client.rsocket.core.persistence",
-        "app.client.rsocket.core.index"
+        "app.client.rsocket.core.index "
 
     ]
 )
-@Disabled
+//@Disabled
 class AuthorizationServerDeployTests {
 
     @Autowired

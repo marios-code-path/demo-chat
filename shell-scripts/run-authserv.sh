@@ -10,7 +10,7 @@ export APP_IMAGE_NAME="chat-authserv"
 # Authorization server needs to access user accounts and secrets
 export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.key \
--Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index \
+-Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.oauth2.entrypoint-path=localhost:9090 \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user \
 -Dapp.service.security.userdetails -Dapp.service.composite.auth"
 export PORTS_FLAGS="-Dserver.port=${AUTHSERV_HTTP_PORT} -Dmanagement.server.port=${AUTHSERV_MGMT_PORT}"
@@ -18,14 +18,12 @@ export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoco
 -Dspring.main.web-application-type=servlet -Dlogging.level.com.demo.chat.client.rsocket=DEBUG"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
-export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
+export JWK_KEYPATH="${JWK_KEYPATH:/tmp/dc-keys}"
 
 export KEYTYPE=long
 
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
-    export SPRING_RUN_ARGUMENTS="--clientpath=/Users/grayma/workspace/demo-chat/client.json"
-    BUILD_PROFILES+="client-init,"
 
   $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }

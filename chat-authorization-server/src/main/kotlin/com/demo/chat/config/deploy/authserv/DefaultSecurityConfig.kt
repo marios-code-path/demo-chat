@@ -17,7 +17,7 @@ import org.springframework.security.web.session.HttpSessionEventPublisher
 @Configuration
 @EnableWebSecurity
 class DefaultSecurityConfig(
-    @Value("\${app.oauth2.entrypoint-path}") val entrypointPath: String
+    @Value("\${app.oauth2.entrypoint-path:localhost/login}") val entrypointPath: String
 ) {
 
     @Bean

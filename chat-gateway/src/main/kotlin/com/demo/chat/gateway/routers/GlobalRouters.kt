@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class GlobalRouters {
 
-    @Value("\${app.rest.port}")
+    @Value("\${app.rest.port:6792}")
     private lateinit var webApiPort: String
 
     // http://host:port/persist/user/get/12345
@@ -20,10 +20,10 @@ class GlobalRouters {
     // DELETE http://host:port/user/12345
     //
     @Bean
-    fun globalRouters(builder: RouteLocatorBuilder) = builder.routes {
+    fun wildcardRoutes(builder: RouteLocatorBuilder) = builder.routes {
         route(id = "global") {
             path("/**")
-            uri("http://chat-host:$webApiPort")
+            uri("http://localhost:$webApiPort")
         }
 
     }

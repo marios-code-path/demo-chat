@@ -5,7 +5,6 @@ import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.autoconfigure.security.oauth2.server.servlet.OAuth2AuthorizationServerProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.*
@@ -28,15 +27,9 @@ fun main(args: Array<String>) {
 
 @Profile("client-init")
 @Configuration
-class ClientInitializer(val repo: RegisteredClientRepository, val mapper: ObjectMapper) {
+class ClientInitializer(val repo: RegisteredClientRepository,
+                        val mapper: ObjectMapper) {
 
-    @Bean
-    fun whatIs(props: OAuth2AuthorizationServerProperties) {
-        println(props.issuer)
-        props.client.keys.forEach{
-            println("CLIENT: ${it}")
-        }
-    }
     @Bean
     fun loadClient(): ApplicationRunner =
         ApplicationRunner { args ->

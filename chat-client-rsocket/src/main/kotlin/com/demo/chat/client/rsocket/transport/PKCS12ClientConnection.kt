@@ -1,5 +1,6 @@
 package com.demo.chat.client.rsocket.transport
 
+import com.demo.chat.domain.ChatException
 import io.netty.handler.ssl.SslContext
 import io.netty.handler.ssl.SslContextBuilder
 import java.io.File
@@ -19,22 +20,31 @@ class PKCS12ClientConnection(
         val keyManager = KeyManagerFactory
             .getInstance(KeyManagerFactory.getDefaultAlgorithm())
             .apply {
-                val keyStore = KeyStore.getInstance("PKCS12").apply {
-                    this.load(FileInputStream(keyFile), storePass.toCharArray())
+                try {
+                    val keyStore = KeyStore.getInstance("PKCS12").apply {
+                        this.load(FileInputStream(keyFile), storePass.toCharArray())
+                    }
 
+                    keyStore.getKey("1", storePass.toCharArray())
+                    this.init(keyStore, storePass.toCharArray())
+                } catch(e: Exception) {
+                    throw ChatException("Unable to Load the PKCS12 keyfile at ${keyFile.absolutePath}.")
                 }
-                keyStore.getKey("1", storePass.toCharArray())
-                this.init(keyStore, storePass.toCharArray())
-
             }
 
         val trustManager = TrustManagerFactory
             .getInstance(TrustManagerFactory.getDefaultAlgorithm())
             .apply {
-                val ks = KeyStore.getInstance("PKCS12").apply {
-                    this.load(FileInputStream(trustFile), storePass.toCharArray())
+                try {
+                    val ks = KeyStore.getInstance("PKCS12").apply {
+                        this.load(FileInputStream(trustFile), storePass.toCharArray())
+                    }
+
+                    this.init(ks)
+                } catch(e: Exception) {
+                    throw ChatException("Unable to Load the PKCS12 trust store at ${trustFile.absolutePath}.")
                 }
-                this.init(ks)
+
             }
 
         return SslContextBuilder

@@ -1,5 +1,7 @@
+server:
+  port:
 spring:
   security:
     oauth2:
       resourceserver:
-        jwt.issuerUri: http://localhost:9000
+        jwt.issuer-uri: http://authserv:9000

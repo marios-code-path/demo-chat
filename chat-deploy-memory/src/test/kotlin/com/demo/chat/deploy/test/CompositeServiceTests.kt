@@ -75,31 +75,11 @@ class CompositeServiceTests {
     @Test  // Although, currently security states 'permitAll' for all requests.
     fun `created user, authenticated rsocket requests for key`(
         @Autowired services: CompositeServiceBeans<Long, String>,
-        @Autowired secretsStore: SecretsStoreBeans<Long>,
-        @Autowired coreServices: PersistenceServiceBeans<Long, User<Long>>
+        @Autowired secretsStore: SecretsStoreBeans<Long>
     ) {
-        Hooks.onOperatorDebug()
-        coreServices.userPersistence().add(User.create(coreServices.userPersistence().key().block()!!, "name", "handle", "http"))
-            .block()
-
         val newUserKey: Key<Long> = services.userService()
             .addUser(UserCreateRequest("user", "user", "test"))
             .block()!!
-
-        coreServices.userPersistence().all()
-            .doOnNext{
-                println("user: ${it.handle}")
-            }
-            .blockLast()
-
-        services
-            .userService().findByUserId(ByIdRequest(newUserKey.id))
-            .doOnNext {
-                    println("User : ${it.key.id} is ${it.name}.${it.handle}")
-                }
-            //.switchIfEmpty { Flux.error<ChatException>(ChatException("foo")) }
-            .block()
-
 
         secretsStore
             .secretsStore()
