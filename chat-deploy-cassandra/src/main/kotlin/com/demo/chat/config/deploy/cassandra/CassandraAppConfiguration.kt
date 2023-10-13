@@ -10,6 +10,7 @@ import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
+import org.springframework.web.reactive.config.EnableWebFlux
 
 @Configuration(proxyBeanMethods = false)
 @Import(JacksonAutoConfiguration::class)
@@ -21,6 +22,7 @@ import org.springframework.data.cassandra.repository.config.EnableReactiveCassan
 )
 @EnableConfigurationProperties(CassandraProperties::class)
 @ComponentScan("com.demo.chat.config.deploy.cassandra.dse")
+@EnableWebFlux
 class CassandraAppConfiguration {
     @Bean
     fun requestToQueryConverters(): RequestToQueryConverters<Map<String, String>> = MapRequestConverters()

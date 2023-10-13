@@ -8,7 +8,9 @@ import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.core.io.Resource
@@ -28,8 +30,12 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer
+import org.springframework.web.servlet.config.annotation.EnableWebMvc
 
-@Configuration
+@Configuration(proxyBeanMethods = false)
+@ComponentScan("com.demo.chat.config.client.discovery", excludeFilters = [])
+@EnableConfigurationProperties(Oauth2ClientProperties::class)
+@EnableWebMvc
 class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: Resource) {
 
     @Bean

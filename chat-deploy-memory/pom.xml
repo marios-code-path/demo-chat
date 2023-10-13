@@ -131,6 +131,12 @@
             <version>0.0.1</version>
         </dependency>
         <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-service-controller</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>

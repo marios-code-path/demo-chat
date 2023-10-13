@@ -16,10 +16,24 @@
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
 <!--        <mainClass>com.demo.chat.deploy.authserv.AuthServiceAppKt</mainClass>-->
-        <appMainClass>${mainClass}</appMainClass>
+        <appMainClass>com.demo.chat.ChatApp</appMainClass>
         <spring-security.version>6.1.0-M2</spring-security.version>
     </properties>
     <profiles>
+        <profile>
+            <id>jdbc</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.postgresql</groupId>
+                    <artifactId>postgresql</artifactId>
+                    <version>42.2.5</version> <!-- use the latest version -->
+                </dependency>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-jdbc</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
         <profile>
             <id>native</id>
             <build>
@@ -88,9 +102,9 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-<!--                        <configuration>-->
-<!--                            <skip>true</skip>-->
-<!--                        </configuration>-->
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
@@ -138,13 +152,14 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>shared-deploy-configuration</artifactId>
+            <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.2.5</version> <!-- use the latest version -->
+            <groupId>com.demo</groupId>
+            <artifactId>shared-deploy-configuration</artifactId>
+            <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -161,8 +176,8 @@
             <version>0.0.1</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-jdbc</artifactId>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

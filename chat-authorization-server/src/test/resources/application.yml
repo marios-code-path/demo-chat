@@ -1,4 +1,25 @@
 app:
+  oauth2:
+    entrypoint-path: /login
+    client:
+      id: chat-client
+      client-id: 31649af5-0154-4be5-8695-fda9d18b7981
+      secret: "{noop}secret"
+      redirect-uris:
+        - http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc
+        - http://127.0.0.1:8080/authorized
+      redirect-uri-prefix: http://127.0.0.1:8080
+      additional-scopes:
+        - openid
+        - profile
+      client-authentication-methods:
+        - client_secret_basic
+      authorization-grant-types:
+        - authorization_code
+        - refresh_token
+        - client_credentials
+      requires-authorization-concent: true
+
   primary: core
   proto: rsocket
   key:
