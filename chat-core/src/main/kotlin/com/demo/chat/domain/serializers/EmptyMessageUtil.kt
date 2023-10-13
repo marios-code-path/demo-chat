@@ -1,4 +1,3 @@
 package com.demo.chat.domain.serializers
 
-class EmptyMessageUtil {
-}
+interface EmptyMessageUtil<V> : () -> V

@@ -14,7 +14,7 @@
     <description>Container Image Specific to (Deploy Memory) Integration Tests</description>
     <properties>
         <appImageName>docker.io/library/chat-deploy-long-memory-integration-test:${project.version}</appImageName>
-        <mainClass>com.demo.chat.config.deploy.memory.ChatAppConfiguration</mainClass>
+        <mainClass>com.demo.chat.ChatApp</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>
@@ -34,22 +34,22 @@
                                 <cleanCache>false</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.application.name=chat-integration-test
-                                        -Dspring.profiles.active=prod -Dserver.port=6791
-                                        -Dspring.rsocket.server.ssl.enabled=false -Dapp.service.security.userdetails
-                                        -Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
-                                        -Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
-                                        -Dapp.server.proto=rsocket -Dapp.users.create=true
-                                        -Dspring.config.additional-location=classpath:/config/userinit.yml
-                                        -Dapp.rootkeys.create=true -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
-                                        -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
-                                        -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index
-                                        -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite
-                                        -Dapp.controller.persistence -Dapp.controller.index -Dapp.service.composite.auth
-                                        -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
-                                        -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
-                                        -Dspring.cloud.consul.config.enabled=false
-                                        -Dspring.cloud.consul.discovery.enabled=false
-                                        -Dspring.cloud.consul.enabled=false</BPE_APPEND_JAVA_TOOL_OPTIONS>
+-Dspring.profiles.active=prod -Dserver.port=6791
+-Dspring.rsocket.server.ssl.enabled=false -Dapp.service.security.userdetails
+-Dapp.actuator.username=actuator -Dapp.actuator.password=actuator
+-Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
+-Dapp.server.proto=rsocket -Dapp.users.create=true
+-Dspring.config.additional-location=classpath:/config/userinit.yml
+-Dapp.rootkeys.create=true -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
+-Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
+-Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index
+-Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite
+-Dapp.controller.persistence -Dapp.controller.index -Dapp.service.composite.auth
+-Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
+-Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
+-Dspring.cloud.consul.config.enabled=false
+-Dspring.cloud.consul.discovery.enabled=false
+-Dspring.cloud.consul.enabled=false</BPE_APPEND_JAVA_TOOL_OPTIONS>
                                     <BPE_DELIM_JAVA_TOOL_OPTIONS xml:space="preserve"> </BPE_DELIM_JAVA_TOOL_OPTIONS>
 				    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>

@@ -1,7 +1,8 @@
 package com.demo.chat.test.deploy.cassandra
 
+import com.demo.chat.ChatApp
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
-import com.demo.chat.deploy.cassandra.App
+import com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -11,7 +12,7 @@ import org.springframework.test.context.TestPropertySource
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
-    classes = [App::class]
+    classes = [ChatApp::class]
 )
 @TestPropertySource(
     properties = [

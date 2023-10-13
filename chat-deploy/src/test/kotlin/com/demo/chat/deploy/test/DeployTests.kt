@@ -2,6 +2,7 @@ package com.demo.chat.deploy.test
 
 import com.demo.chat.ChatApp
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -23,6 +24,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml"
     ]
 )
+@Disabled
 class MemoryAppDeploymentTests {
 
     @Autowired

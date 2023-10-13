@@ -14,7 +14,7 @@
     <description>Deployment details for cassandra backed services</description>
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.deploy.cassandra.App</mainClass>
+        <mainClass>com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>

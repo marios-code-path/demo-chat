@@ -1,16 +1,18 @@
 package com.demo.chat.config.deploy.cassandra
 
-import org.springframework.boot.autoconfigure.SpringBootApplication
+import com.demo.chat.domain.MapRequestConverters
+import com.demo.chat.domain.RequestToQueryConverters
 import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
-import org.springframework.boot.runApplication
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
+import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import org.springframework.data.cassandra.repository.config.EnableReactiveCassandraRepositories
-import org.springframework.web.reactive.config.EnableWebFlux
 
-@SpringBootApplication(
-    scanBasePackages = ["com.demo.chat.config", "com.demo.chat.config.deploy.cassandra.dse"],
-    proxyBeanMethods = false
-)
+@Configuration(proxyBeanMethods = false)
+@Import(JacksonAutoConfiguration::class)
 @EnableReactiveCassandraRepositories(
     basePackages = [
         "com.demo.chat.persistence.cassandra",
@@ -18,13 +20,8 @@ import org.springframework.web.reactive.config.EnableWebFlux
     ]
 )
 @EnableConfigurationProperties(CassandraProperties::class)
-@EnableWebFlux
-class App {
-
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            runApplication<App>(*args)
-        }
-    }
+@ComponentScan("com.demo.chat.config.deploy.cassandra.dse")
+class CassandraAppConfiguration {
+    @Bean
+    fun requestToQueryConverters(): RequestToQueryConverters<Map<String, String>> = MapRequestConverters()
 }

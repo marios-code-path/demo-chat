@@ -14,12 +14,11 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 
 @Configuration
-@ConditionalOnProperty("app.service.composite")
 class CompositeServiceConfiguration {
 
     @Bean
     @ConditionalOnProperty("app.service.composite.security")
-    fun <T> springSecurityCompositeServiceAccessBeans(
+    fun <T> serviceAccessCompositeServiceAccessBeans(
         accessBroker: AccessBroker<T>,
         rootKeys: RootKeys<T>,
         compositeServiceBeansConfiguration: CompositeServiceBeansConfiguration<T, String, IndexSearchRequest>
