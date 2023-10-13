@@ -1,4 +1,4 @@
-package com.demo.chat.config.deploy.security
+package com.demo.chat.config.rsocket
 
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer

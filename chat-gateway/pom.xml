@@ -14,7 +14,7 @@
     <description>Spring Cloud Gateway to Chat services</description>
     <properties>
         <appImageName>docker.io/library/chat-gateway:${project.version}</appImageName>
-        <mainClass>com.demo.chat.gateway.ChatGatewayApp</mainClass>
+        <mainClass>com.demo.chat.config.gateway.ChatGatewayAppConfiguration</mainClass>
         <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>

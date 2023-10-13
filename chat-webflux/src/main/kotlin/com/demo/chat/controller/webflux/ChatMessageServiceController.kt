@@ -4,8 +4,10 @@ import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.composite.mapping.ChatMessageServiceRestMapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.service.client.ClientDiscovery
+import com.demo.chat.service.client.discovery.LocalhostDiscovery
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
@@ -24,3 +26,6 @@ class ChatMessageServiceController<T>(val beans: CompositeServiceBeans<T, String
                 URI.create("${instance.scheme}://${instance.host}:${instance.port}/").toASCIIString()
             }
 }
+
+@Component
+class MyLocalDiscovery: LocalhostDiscovery("localhost", 6791)

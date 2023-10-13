@@ -24,6 +24,7 @@ export KEYTYPE=long
 
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
+    export BUILD_PROFILES="jdbc,"
 
   $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }

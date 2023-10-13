@@ -55,6 +55,10 @@
                             </execution>
                         </executions>
                     </plugin>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -68,15 +72,15 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                        <!--                        <configuration>-->
-                        <!--                            <skip>true</skip>-->
-                        <!--                        </configuration>-->
+                        <configuration>
+                            <skip>true</skip>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>
         </profile>
         <profile>
-            <id>backend-client</id>
+            <id>client-backend</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
@@ -86,16 +90,17 @@
             </dependencies>
         </profile>
         <profile>
-            <id>backend-memory</id>
+            <id>memory-backend</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
                     <artifactId>chat-deploy-memory</artifactId>
+                    <version>0.0.1</version>
                 </dependency>
             </dependencies>
         </profile>
         <profile>
-            <id>backend-cassandra</id>
+            <id>cassandra-backend</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
@@ -104,10 +109,10 @@
             </dependencies>
         </profile>
         <profile>
-            <id>backend-redis</id>
+            <id>redis-backend</id>
         </profile>
         <profile>
-            <id>expose-rest</id>
+            <id>expose-webflux</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
@@ -176,7 +181,6 @@
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
-            <type>test-jar</type>
             <version>0.0.1</version>
             <scope>test</scope>
         </dependency>
@@ -233,20 +237,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
-            <version>0.0.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-rsocket</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-messaging</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
             <version>2.14.2</version>
@@ -257,13 +247,6 @@
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
-        	<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<skip>true</skip>
-				</configuration>
-			</plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>

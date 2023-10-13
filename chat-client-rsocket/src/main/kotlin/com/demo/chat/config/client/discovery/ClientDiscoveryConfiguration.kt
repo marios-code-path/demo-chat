@@ -1,6 +1,6 @@
 package com.demo.chat.config.client.discovery
 
-import com.demo.chat.client.discovery.LocalhostDiscovery
+import com.demo.chat.service.client.discovery.LocalhostDiscovery
 import com.demo.chat.client.discovery.PropertiesBasedDiscovery
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
 import org.springframework.beans.factory.annotation.Value

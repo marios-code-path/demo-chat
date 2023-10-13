@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 
-@RestController
-class PersistenceRestController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceRestMapping<T, E>,
+open class PersistenceRestController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceRestMapping<T, E>,
     PersistenceStore<T, E> by that
 
+@RestController
 @RequestMapping("/persist/user")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
@@ -31,6 +31,7 @@ class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
         }
 }
 
+@RestController
 @RequestMapping("/persist/message")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
@@ -45,6 +46,7 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
         }
 }
 
+@RestController
 @RequestMapping("/persist/topic")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
@@ -58,6 +60,7 @@ class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
         }
 }
 
+@RestController
 @RequestMapping("/persist/membership")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :

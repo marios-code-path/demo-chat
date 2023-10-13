@@ -33,9 +33,9 @@ export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${COR
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
 -Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
-export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=http -Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
--Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
+-Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.client.discovery=local \
 -Dapp.controller.pubsub -Dapp.controller.secrets -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
 export BUILD_PROFILES="consul,"
 export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
@@ -45,14 +45,14 @@ OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 
 function memory_local() {
     export DOCKER_ARGS=
-    export BUILD_PROFILES=
+    export BUILD_PROFILES="memory-backend,expose-webflux,"
     export DISCOVERY_FLAGS=
     export ADDITIONAL_CONFIGS=
 
     export APP_PRIMARY="core-service"
-    export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
+    export APP_IMAGE_NAME="memory-${APP_PRIMARY}-webflux"
 
-   $DIR/build-app.sh -m chat-deploy-memory -p prod -n core-service-rsocket -k long \
+   $DIR/build-app.sh -m chat-deploy -p prod -n core-service-rsocket -k long \
 -d local -b ${EXEC} -i users,rootkeys $@
 }
 

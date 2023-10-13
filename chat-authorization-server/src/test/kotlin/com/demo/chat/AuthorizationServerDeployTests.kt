@@ -1,6 +1,6 @@
 package com.demo.chat
 
-import com.demo.chat.client.discovery.LocalhostDiscovery
+import com.demo.chat.service.client.discovery.LocalhostDiscovery
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.secure.service.CoreUserDetailsService
 import com.demo.chat.service.client.ClientDiscovery

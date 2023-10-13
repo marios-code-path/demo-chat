@@ -24,7 +24,16 @@
             <artifactId>chat-security</artifactId>
             <version>0.0.1</version>
         </dependency>
-<!--        <dependency>-->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-rsocket</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-messaging</artifactId>
+        </dependency>
+
+        <!--        <dependency>-->
 <!--            <groupId>org.springframework.security</groupId>-->
 <!--            <artifactId>spring-security-rsocket</artifactId>-->
 <!--        </dependency>-->
@@ -73,7 +82,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-rsocket</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

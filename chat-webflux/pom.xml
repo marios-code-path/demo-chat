@@ -11,7 +11,7 @@
     <artifactId>chat-webflux</artifactId>
     <version>0.0.1</version>
     <name>chat-webflux</name>
-    <description>Spring WebFlux Endpoints</description>
+    <description>Chat WebFlux Endpoints</description>
 
     <dependencies>
         <dependency>

@@ -1,11 +1,11 @@
-package com.demo.chat.client.discovery
+package com.demo.chat.service.client.discovery
 
 import com.demo.chat.service.client.ClientDiscovery
 import org.springframework.cloud.client.DefaultServiceInstance
 import org.springframework.cloud.client.ServiceInstance
 import reactor.core.publisher.Mono
 
-class LocalhostDiscovery(val host: String, val port: Int) : ClientDiscovery {
+open class LocalhostDiscovery(val host: String, val port: Int) : ClientDiscovery {
     override fun getServiceInstance(serviceName: String): Mono<ServiceInstance> =
         Mono.create { sink ->
             sink.success(

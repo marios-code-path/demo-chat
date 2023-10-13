@@ -21,8 +21,8 @@ export KEYTYPE=long
 
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
-
-  $DIR/build-app.sh -m chat-webflux -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
+    export BUILD_PROFILES="expose-webflux,client-backend"
+  $DIR/build-app.sh -m chat-deploy -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker() {
@@ -31,13 +31,13 @@ function docker() {
   export DOCKER_ARGS="--expose ${HTTP_PORT} -p ${HTTP_PORT}:${HTTP_PORT}/tcp \
 --expose ${HTTP_MGMT_PORT} -p ${HTTP_MGMT_PORT}:${HTTP_MGMT_PORT}/tcp"
 
- $DIR/build-app.sh -m chat-webflux -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+ $DIR/build-app.sh -m chat-deploy -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
 }
 
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-webflux -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /etc/keys $@
+  $DIR/build-app.sh -m chat-deploy -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /etc/keys $@
 }
 
 
