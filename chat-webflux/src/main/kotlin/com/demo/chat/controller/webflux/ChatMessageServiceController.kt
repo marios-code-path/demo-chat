@@ -22,6 +22,6 @@ class ChatMessageServiceController<T>(val beans: CompositeServiceBeans<T, String
     override fun listen(req: ByIdRequest<T>): Mono<String> =
         discovery.getServiceInstance("topic")
             .map { instance ->
-                URI.create("${instance.scheme}://${instance.host}:${instance.port}/").toASCIIString()
+                URI.create("ws://${instance.host}:${instance.port}/").toASCIIString()
             }
 }

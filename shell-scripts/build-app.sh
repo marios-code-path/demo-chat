@@ -34,10 +34,19 @@ if [[ -z ${ROOTKEY_SOURCE_URI} ]]; then
   export ROOTKEY_SOURCE_URI=${ROOTKEY_SOURCE_URI:="http://${CORE_HOST:=127.0.0.1}:${CORE_MGMT_PORT}"}
 fi
 
+export BACKEND=memory
+export EXPOSES=rsocket
+
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
-while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
+while getopts ":d:waoxgs:e:c:m:i:k:b:n:p:" o; do
   case $o in
+    s)
+      BACKEND=${OPTARG}
+      ;;
+    e)
+      EXPOSES=${OPTARG}
+      ;;
     w)
       export WEBSOCKET=true
       ;;
@@ -87,12 +96,14 @@ while getopts ":d:wlaoxgsc:m:i:k:b:n:p:" o; do
       -m module name == demo chat module to build within
       -p profile == spring profile to activate
       -g == enable DEBUG on RSocket
+      -a == Native
       -n name == Name of container
-      -d == enables Discovery with consul
-      -l == discover locally
+      -d discovery == local, properties, consul
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
       -c CERT_DIR placeholder == set location of certificate profiles
+      -s BACKEND == Could be memory, cassandra, redis, client
+      -e Expose == Could be http, rsocket
 
       Additional Environment Variables:
       KEYSTORE_PASS = password for keystore when using TLS
@@ -102,6 +113,33 @@ CATZ
       ;;
   esac
 done
+
+if [[ -z ${BACKEND} ]]; then
+cat << BACKSEL
+you forgot to select a backend. use '-e backend'
+where 'backend' can be 'memory' and 'cassandra'
+BACKSEL
+fi
+
+if [[ ${BACKEND} == *"memory"* ]]; then
+  BUILD_PROFILES+="memory-backend,"
+fi
+
+if [[ ${BACKEND} == *"cassandra"* ]]; then
+  BUILD_PROFILES+="cassandra-backend,"
+fi
+
+if [[ ${BACKEND} == *"client"* ]]; then
+  BUILD_PROFILE+="client-backend,"
+fi
+
+if [[ ${EXPOSES} == *"http"* ]]; then
+  BUILD_PROFILES+="expose-webflux,"
+fi
+
+if [[ ${EXPOSES} == *"rsocket"* ]]; then
+  BUILD_PROFILES+="expose-rsocket,"
+fi
 
 if [[ ${BUILD_PROFILES} == *"client-local"* &&
       ${BUILD_PROFILES} == *"register_consul"* ]]; then
