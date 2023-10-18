@@ -26,7 +26,7 @@ function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
     export BUILD_PROFILES="jdbc,"
 
-  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
+  $DIR/build-app.sh -m chat-authorization-server -k long -s client -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker() {
@@ -36,13 +36,13 @@ function docker() {
   export DOCKER_ARGS="--expose ${AUTHSERV_HTTP_PORT} -p ${AUTHSERV_HTTP_PORT}:${AUTHSERV_HTTP_PORT}/tcp \
 --expose ${AUTHSERV_MGMT_PORT} -p ${AUTHSERV_MGMT_PORT}:${AUTHSERV_MGMT_PORT}/tcp"
 
- $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+ $DIR/build-app.sh -m chat-authorization-server -k long -s client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
 }
 
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-authorization-server -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-authorization-server -s client -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
 }
 
 

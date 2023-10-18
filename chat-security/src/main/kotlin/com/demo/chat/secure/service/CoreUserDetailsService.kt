@@ -5,6 +5,7 @@ import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.SecretsStore
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.userdetails.ReactiveUserDetailsPasswordService
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService
 import org.springframework.security.core.userdetails.UserDetails

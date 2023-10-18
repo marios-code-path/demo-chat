@@ -42,10 +42,10 @@ ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-
 while getopts ":d:waoxgs:e:c:m:i:k:b:n:p:" o; do
   case $o in
     s)
-      BACKEND=${OPTARG}
+      export BACKEND=${OPTARG}
       ;;
     e)
-      EXPOSES=${OPTARG}
+      export EXPOSES=${OPTARG}
       ;;
     w)
       export WEBSOCKET=true
@@ -98,12 +98,12 @@ while getopts ":d:waoxgs:e:c:m:i:k:b:n:p:" o; do
       -g == enable DEBUG on RSocket
       -a == Native
       -n name == Name of container
-      -d discovery == local, properties, consul
+      -d discovery == one of [local, properties, consul]
       -k key_type == one of [long, uuid]
       -b build_arg == one of [build, runlocal, image, rundocker]
       -c CERT_DIR placeholder == set location of certificate profiles
-      -s BACKEND == Could be memory, cassandra, redis, client
-      -e Expose == Could be http, rsocket
+      -s BACKEND == one of [memory, cassandra, redis, client]
+      -e Expose == one of [http, rsocket]
 
       Additional Environment Variables:
       KEYSTORE_PASS = password for keystore when using TLS
@@ -121,28 +121,26 @@ where 'backend' can be 'memory' and 'cassandra'
 BACKSEL
 fi
 
-if [[ ${BACKEND} == *"memory"* ]]; then
-  BUILD_PROFILES+="memory-backend,"
-fi
+export BKEYS=("memory" "cassandra" "client")
+export BVALS=("memory-backend" "cassandra-backend" "client-backend")
 
-if [[ ${BACKEND} == *"cassandra"* ]]; then
-  BUILD_PROFILES+="cassandra-backend,"
-fi
+for key in ${!BKEYS[@]}; do
+    if [[ $BACKEND == *${BKEYS[$key]}* ]]; then
+      BUILD_PROFILES+="${BVALS[$key]}",
+    fi
+done
 
-if [[ ${BACKEND} == *"client"* ]]; then
-  BUILD_PROFILE+="client-backend,"
-fi
+export EXKEYS=("http" "rsocket")
+export EXVALS=("expose-webflux" "expose-rsocket")
 
-if [[ ${EXPOSES} == *"http"* ]]; then
-  BUILD_PROFILES+="expose-webflux,"
-fi
-
-if [[ ${EXPOSES} == *"rsocket"* ]]; then
-  BUILD_PROFILES+="expose-rsocket,"
-fi
+for key in ${!EXKEYS[@]}; do
+    if [[  $EXPOSES == *${EXKEYS[$key]}* ]]; then
+        BUILD_PROFILES+="${EXVALS[$key]}",
+    fi
+done
 
 if [[ ${BUILD_PROFILES} == *"client-local"* &&
-      ${BUILD_PROFILES} == *"register_consul"* ]]; then
+      ${BUILD_PROFILES} == *"register-consul"* ]]; then
   echo "You can't have both client-local and register_consul"
   exit 1
 fi
@@ -210,6 +208,16 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
   fi
 fi
 
+if [[ ! -z ${DISCOVERY_TYPE} && ! -z ${CLIENT_FLAGS} ]]; then
+      if [[ ${EXPOSES} == *"rsocket"* ]]; then
+        ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-${DISCOVERY_TYPE}.yml,"
+      fi
+      # TODO WE HAVE TO IMPLEMENT
+      if [[ ${EXPOSES} == *"http"* ]]; then
+        ADDITIONAL_CONFIGS+="classpath:/config/client-http-${DISCOVERY_TYPE}.yml,"
+      fi
+fi
+
 if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   # Publish Root Keys TO Consul KV if we are initializing them here
   # Otherwise, consume them from Consul
@@ -234,7 +242,6 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
 -Dspring.security.user.roles=ACTUATOR"
 
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
-    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-consul.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
     BUILD_PROFILES+="client-consul,"
   fi
@@ -288,7 +295,6 @@ fi
 if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
   #BUILD_PROFILES+="native,"
   echo "Native Builds are not supported at this time"
-  echo "Use of @Profile, @Conditional... not supported"
   exit 1
 fi
 

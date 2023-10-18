@@ -18,15 +18,13 @@ interface PersistenceStore<T, E> {
     fun byIds(keys: List<Key<T>>): Flux<out E> = Flux.empty()
 }
 
-interface PersistenceImpl<T, V> : PersistenceStore<T, V>
+interface UserPersistence<T> : PersistenceStore<T, User<T>>
 
-interface UserPersistence<T> : PersistenceImpl<T, User<T>>
+interface TopicPersistence<T> : PersistenceStore<T, MessageTopic<T>>
 
-interface TopicPersistence<T> : PersistenceImpl<T, MessageTopic<T>>
+interface MembershipPersistence<T> : PersistenceStore<T, TopicMembership<T>>
 
-interface MembershipPersistence<T> : PersistenceImpl<T, TopicMembership<T>>
-
-interface MessagePersistence<T, V> : PersistenceImpl<T, Message<T, V>>
+interface MessagePersistence<T, V> : PersistenceStore<T, Message<T, V>>
 
 interface KeyValueStore<T, V> : PersistenceImpl<T, KeyValuePair<T, V>> {
     fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T,E>> = Mono.empty()
@@ -35,3 +33,5 @@ interface KeyValueStore<T, V> : PersistenceImpl<T, KeyValuePair<T, V>> {
 }
 
 interface InitializingKVStore : KeyValueStore<String, String>
+
+interface PersistenceImpl<T, V> : PersistenceStore<T, V>
