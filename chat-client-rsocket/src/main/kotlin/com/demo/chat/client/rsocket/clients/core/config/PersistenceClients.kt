@@ -35,3 +35,10 @@ class AuthMetadataPersistenceClient<T>(prefix: String, requester: RSocketRequest
         requester,
         ParameterizedTypeReference.forType(AuthMetadata::class.java)
     ), AuthMetaPersistence<T>
+
+class KeyValueStoreClient<T>(prefix: String, requester: RSocketRequester) :
+    PersistenceClient<T, KeyValuePair<T, Any>>(
+        prefix,
+        requester,
+        ParameterizedTypeReference.forType(KeyValuePair::class.java)
+    ), KeyValueStore<T, Any>

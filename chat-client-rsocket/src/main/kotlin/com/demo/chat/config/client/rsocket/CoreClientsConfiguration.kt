@@ -6,8 +6,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-@Configuration
-@ConditionalOnProperty("app.client.protocol", havingValue = "rsocket")
 open class CoreClientsConfiguration<T, V, Q>(
     private val services: CoreRSocketClients<T, V, Q>
 )  {

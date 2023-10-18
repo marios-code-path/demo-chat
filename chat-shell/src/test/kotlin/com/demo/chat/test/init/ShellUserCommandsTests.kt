@@ -6,7 +6,12 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
+import org.reactivestreams.Publisher
 import org.springframework.beans.factory.annotation.Autowired
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Hooks
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 
 class LongUserCommandsTests : ShellUserCommandsTests<Long>()
 
@@ -41,7 +46,7 @@ open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
 
     @Test
     fun `should get key`() {
-        Assertions.assertThat(userCommands.key("false")).isNotNull
+        Assertions.assertThat(userCommands.key()).isNotNull
     }
 
     @Test

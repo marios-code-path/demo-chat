@@ -6,6 +6,8 @@ import com.demo.chat.client.rsocket.RequesterFactory
 import com.demo.chat.client.rsocket.clients.CompositeRSocketClients
 import com.demo.chat.client.rsocket.clients.CoreRSocketClients
 import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
+import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.client.ClientDiscovery
@@ -42,7 +44,7 @@ class RSocketClientConfiguration {
         requesterFactory: ClientFactory<RSocketRequester>,
         clientProps: RSocketClientProperties,
         typeUtil: TypeUtil<T>
-    ) = CoreRSocketClients<T, String, IndexSearchRequest>(
+    ): CoreServices<T, String, IndexSearchRequest> = CoreRSocketClients<T, String, IndexSearchRequest>(
         requesterFactory,
         clientProps,
         typeUtil
@@ -51,6 +53,7 @@ class RSocketClientConfiguration {
     @Bean
     fun <T> compositeClientBeans(
         requesterFactory: ClientFactory<RSocketRequester>,
-        clientProps: RSocketClientProperties
-    ) = CompositeRSocketClients<T>(requesterFactory, clientProps)
+        clientProps: RSocketClientProperties,
+        typeUtil: TypeUtil<T>
+    ): CompositeServiceBeans<T, String> = CompositeRSocketClients(requesterFactory, clientProps)
 }

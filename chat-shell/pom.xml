@@ -15,8 +15,6 @@
     <properties>
         <testcontainers.version>1.17.6</testcontainers.version>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-        <mainClass>com.demo.chat.shell.ShellApp</mainClass>
-        <appMainClass>${mainClass}</appMainClass>
         <spring-shell.version>3.0.0</spring-shell.version>
     </properties>
     <profiles>
@@ -32,32 +30,6 @@
                     <artifactId>spring-boot-starter-actuator</artifactId>
                 </dependency>
             </dependencies>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>${appMainClass}</mainClass>
-                            <image>
-                                <name>${appImageName}</name>
-                                <cleanCache>false</cleanCache>
-                                <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}</BPE_APPEND_JAVA_TOOL_OPTIONS>
-                                    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
-                                </env>
-                            </image>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-info</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>client-consul</id>
@@ -91,24 +63,20 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-persistence-memory</artifactId>
+            <artifactId>chat-client-rsocket</artifactId>
             <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-client-rsocket</artifactId>
+            <version>0.0.1</version>
+            <type>test-jar</type>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>shared-deploy-configuration</artifactId>
             <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-rsocket</artifactId>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-service-rsocket</artifactId>
-            <version>0.0.1</version>
-            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -214,13 +182,9 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build-info</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>

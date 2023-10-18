@@ -3,7 +3,7 @@ package com.demo.chat.shell.commands
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.shell.ShellStateConfiguration.Companion.loggedInUser
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
 import org.springframework.shell.Availability
 
 open class CommandsUtil<T>(

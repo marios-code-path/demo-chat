@@ -26,9 +26,22 @@ interface PersistenceStoreMapping<T, E> : PersistenceStore<T, E> {
 }
 
 interface KeyValueStoreMapping<T> :
-    PersistenceStoreMapping<T, KeyValuePair<T, Any>>,
+    //PersistenceStoreMapping<T, KeyValuePair<T, Any>>,
     KeyValueStore<T, Any> {
+    @MessageMapping("key")
+    override fun key(): Mono<out Key<T>>
 
+    @MessageMapping("add")
+    override fun add(ent: KeyValuePair<T, Any>): Mono<Void>
+
+    @MessageMapping("rem")
+    override fun rem(key: Key<T>): Mono<Void>
+
+    @MessageMapping("get")
+    override fun get(key: Key<T>): Mono<out KeyValuePair<T, Any>>
+
+    @MessageMapping("all")
+    override fun all(): Flux<out KeyValuePair<T, Any>>
     @MessageMapping("typedAll")
     override fun <E> typedAll(typeArgument: Class<E>): Flux<KeyValuePair<T, E>>
 

@@ -1,5 +1,6 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.TypeUtil
@@ -13,10 +14,12 @@ import org.springframework.shell.standard.ShellOption
 @Profile("shell")
 @ShellComponent
 class PubSubCommands<T>(
-    private val messageService: ChatMessageService<T, String>,
+    private val compositeServices: CompositeServiceBeans<T, String>,
     private val typeUtil: TypeUtil<T>,
     rootKeys: RootKeys<T>,
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
+
+    private val messageService: ChatMessageService<T, String> = compositeServices.messageService()
 
     @ShellMethod("Send a Message")
     fun send(

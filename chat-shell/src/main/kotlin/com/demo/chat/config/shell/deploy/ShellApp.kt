@@ -1,35 +1,24 @@
-package com.demo.chat.shell
+package com.demo.chat.config.shell.deploy
 
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.domain.knownkey.Anon
 import io.rsocket.metadata.WellKnownMimeType
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.util.MimeTypeUtils
 import org.springframework.web.reactive.config.EnableWebFlux
-import reactor.core.publisher.Hooks
 import java.util.*
 import java.util.function.Supplier
 
-@SpringBootApplication(scanBasePackages = ["com.demo.chat.config", "com.demo.chat.shell"])
+@ComponentScan("com.demo.chat.shell")
 @EnableRSocketSecurity
 @EnableWebFlux
-class ShellApp {
-
-    companion object {
-        @JvmStatic
-        fun main(args: Array<String>) {
-            Hooks.onOperatorDebug()
-            runApplication<ShellApp>(*args)
-        }
-    }
-
-}
+@Configuration
+class ShellApp
 
 @Configuration
 class ShellStateConfiguration {

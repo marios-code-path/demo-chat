@@ -70,7 +70,7 @@ class CoreRSocketClients<T, V, Q>(
         )
 
     override fun keyValuePersistence(): KeyValueStore<T, Any> =
-        KeyValueStoreClientBase(
+        KeyValueStoreClient(
             "${persistenceProps.prefix}keyvalue.",
             persistenceRequester()
         )

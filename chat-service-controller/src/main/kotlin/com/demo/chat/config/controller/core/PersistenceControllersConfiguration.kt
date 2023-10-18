@@ -1,6 +1,7 @@
 package com.demo.chat.config.controller.core
 
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.controller.core.KeyValueStoreController
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -45,5 +46,5 @@ open class PersistenceControllersConfiguration {
     @MessageMapping("persist.keyvalue")
     @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
     class KeyValuePersistenceController<T, V>(s: PersistenceServiceBeans<T, V>) :
-        PersistenceServiceController<T, KeyValuePair<T, Any>>(s.keyValuePersistence())
+        KeyValueStoreController<T>(s.keyValuePersistence())
 }

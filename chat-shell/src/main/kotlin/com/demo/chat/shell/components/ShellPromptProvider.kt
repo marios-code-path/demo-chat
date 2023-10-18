@@ -1,6 +1,6 @@
 package com.demo.chat.shell.components
 
-import com.demo.chat.shell.ShellStateConfiguration
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import org.jline.utils.AttributedString
 import org.springframework.shell.jline.PromptProvider
 import org.springframework.stereotype.Component

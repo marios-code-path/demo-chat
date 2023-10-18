@@ -1,10 +1,10 @@
 package com.demo.chat.shell.commands
 
-import com.demo.chat.config.client.rsocket.CoreClientsConfiguration
+import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatTopicService
-import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
 import org.springframework.shell.standard.ShellComponent
@@ -15,15 +15,16 @@ import reactor.core.publisher.Flux
 @Profile("shell")
 @ShellComponent
 class TopicCommands<T>(
-    private val topicService: ChatTopicService<T, String>,
+    private val coreServices: CoreServices<T, String, IndexSearchRequest>,
+    private val compositeServices: CompositeServiceBeans<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
-    private val serviceBeans: CoreClientsConfiguration<T, String, IndexSearchRequest>,
     private val typeUtil: TypeUtil<T>,
-    private val keyGenerator: IKeyGenerator<T>,
     rootKeys: RootKeys<T>
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     fun topicToString(topic: MessageTopic<T>): String = "${topic.key.id} | ${topic.data}\n"
+
+    private val topicService: ChatTopicService<T, String> = compositeServices.topicService()
 
     @ShellMethod("show topics")
     fun showTopics(): String? = topicService
@@ -45,7 +46,7 @@ class TopicCommands<T>(
                 authorizationService
                     .authorize(
                         AuthMetadata.create(
-                            Key.funKey(keyGenerator.nextId()),
+                            Key.emptyKey(typeUtil.empty()),
                             Key.funKey(identity),
                             topicKey,
                             "*",
@@ -97,8 +98,8 @@ class TopicCommands<T>(
     @ShellMethod("Show what topics user is subscribed to")
     fun memberOf(
         @ShellOption(defaultValue = "_") userId: String,
-    ): String? = serviceBeans
-        .pubsubClient()
+    ): String? = coreServices
+        .pubSubService()
         .getByUser(identity(userId))
         .map(typeUtil::toString)
         .reduce { t, u -> "${t}\n${u}" }
