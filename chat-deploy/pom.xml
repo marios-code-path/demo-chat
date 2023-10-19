@@ -63,6 +63,16 @@
             </build>
         </profile>
         <profile>
+            <id>shell</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-shell</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>noartifact</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
@@ -127,6 +137,21 @@
                 <dependency>
                     <groupId>com.demo</groupId>
                     <artifactId>chat-service-controller</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>expose-gateway</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-gateway</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>shared-deploy-configuration</artifactId>
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>

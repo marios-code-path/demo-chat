@@ -1,12 +1,10 @@
 package com.demo.chat.client.rsocket.clients
 
 import com.demo.chat.client.rsocket.clients.core.KeyClient
-import com.demo.chat.client.rsocket.clients.core.KeyValueStoreClientBase
-import com.demo.chat.client.rsocket.clients.core.TopicPubSubClient
+import com.demo.chat.client.rsocket.clients.core.PubSubClient
 import com.demo.chat.client.rsocket.clients.core.config.*
 import com.demo.chat.config.CoreServices
 import com.demo.chat.config.client.rsocket.RSocketClientProperties
-import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.client.ClientFactory
 import com.demo.chat.service.client.ClientProperty
@@ -14,7 +12,6 @@ import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.demo.chat.service.security.SecretsStore
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.messaging.rsocket.RSocketRequester
 
 /**
@@ -44,7 +41,7 @@ class CoreRSocketClients<T, V, Q>(
         KeyClient("${keyProps.prefix}", keyRequester())
 
     override fun pubSubService(): TopicPubSubService<T, V> =
-        TopicPubSubClient("${pubSubProps.prefix}", pubSubRequester(), typeUtil)
+        PubSubClient("${pubSubProps.prefix}", pubSubRequester(), typeUtil)
 
     override fun secretsStore(): SecretsStore<T> =
         SecretsClient("${secretsProps.prefix}", secretsRequester())

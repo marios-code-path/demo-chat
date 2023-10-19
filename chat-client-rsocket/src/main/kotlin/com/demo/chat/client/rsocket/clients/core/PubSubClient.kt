@@ -11,7 +11,7 @@ import org.springframework.messaging.rsocket.retrieveMono
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class TopicPubSubClient<T, V>(
+class PubSubClient<T, V>(
     private val prefix: String,
     private val requester: RSocketRequester,
     typeUtil: TypeUtil<T>,

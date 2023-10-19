@@ -8,18 +8,19 @@ source $DIR/ports.sh
 export APP_PRIMARY="gateway"
 export APP_IMAGE_NAME="chat-gateway"
 # Authorization server needs to access user accounts and secrets
-export PORTS_FLAGS="-Dserver.port=80 -Dmanagement.server.port=${CORE_MGMT_PORT}"
+export PORTS_FLAGS="-Dserver.port=${GATEWAY_HTTP_PORT} -Dmanagement.server.port=${GATEWAY_HTTP_MGMT_PORT}"
 export OPT_FLAGS="-Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 \
- -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
+ -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk -Dapp.rest.port=6791"
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS=""
 export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
+export CLIENT_FLAGS="-Dapp.client.protocol=rsocket"
 
 export KEYTYPE=long
 
 function local() {
 
-  $DIR/build-app.sh -m chat-gateway -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
+  $DIR/build-app.sh -m chat-deploy -d local -b runlocal -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -e gateway -s client $@
 }
 
 function docker() {
@@ -28,13 +29,13 @@ function docker() {
   export DOCKER_ARGS="--expose 80 -p 80:80/tcp \
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
 
- $DIR/build-app.sh -m chat-gateway -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+ $DIR/build-app.sh -m chat-deploy -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -e gateway -s client -b rundocker -c /etc/keys $@
 }
 
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-gateway -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-deploy -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
 }
 
 

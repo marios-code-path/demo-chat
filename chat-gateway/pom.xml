@@ -14,38 +14,10 @@
     <description>Spring Cloud Gateway to Chat services</description>
     <properties>
         <appImageName>docker.io/library/chat-gateway:${project.version}</appImageName>
-        <mainClass>com.demo.chat.config.gateway.ChatGatewayAppConfiguration</mainClass>
-        <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>
         <profile>
             <id>deploy</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>${appMainClass}</mainClass>
-                            <image>
-                                <name>${appImageName}</name>
-                                <cleanCache>false</cleanCache>
-                                <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
-                                    </BPE_APPEND_JAVA_TOOL_OPTIONS>
-                                </env>
-                            </image>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-info</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>artifact</id>

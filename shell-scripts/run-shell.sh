@@ -18,7 +18,8 @@ OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF -Dspring.autoconfigure.e
 
 function local() {
   set -e
-  $DIR/build-app.sh -m chat-shell -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local $@
+  export BUILD_PROFILES="shell,"
+  $DIR/build-app.sh -m chat-deploy -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local $@
   exit 0
 }
 
@@ -28,7 +29,7 @@ function docker() {
   export PORTS_FLAGS="-Dserver.port=9001 -Dmanagement.server.port=9001"
   export MANAGEMENT_ENDPOINTS="shutdown,health"
 
-  $DIR/build-app.sh -m chat-shell -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+  $DIR/build-app.sh -m chat-deploy -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
   exit 0
 }
 

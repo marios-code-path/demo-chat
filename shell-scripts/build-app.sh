@@ -15,6 +15,9 @@ if [[ -z ${SPRING_ACTIVE_PROFILES} ]]; then
   export SPRING_ACTIVE_PROFILES=""
 fi
 
+if [[ -z ${BACKEND} ]]; then
+  export BACKEND
+fi
 # Default build Profile has deploy
 if [[ -z ${BUILD_PROFILES} ]]; then
   export BUILD_PROFILES="deploy,"
@@ -34,12 +37,9 @@ if [[ -z ${ROOTKEY_SOURCE_URI} ]]; then
   export ROOTKEY_SOURCE_URI=${ROOTKEY_SOURCE_URI:="http://${CORE_HOST:=127.0.0.1}:${CORE_MGMT_PORT}"}
 fi
 
-export BACKEND=memory
-export EXPOSES=rsocket
-
 ADDITIONAL_CONFIGS+="classpath:/config/logging.yml,classpath:/config/management-defaults.yml,"
 
-while getopts ":d:waoxgs:e:c:m:i:k:b:n:p:" o; do
+while getopts ":d:waoxge:s:b:c:m:i:k:b:n:p:" o; do
   case $o in
     s)
       export BACKEND=${OPTARG}
@@ -103,7 +103,7 @@ while getopts ":d:waoxgs:e:c:m:i:k:b:n:p:" o; do
       -b build_arg == one of [build, runlocal, image, rundocker]
       -c CERT_DIR placeholder == set location of certificate profiles
       -s BACKEND == one of [memory, cassandra, redis, client]
-      -e Expose == one of [http, rsocket]
+      -e Expose == one of [http, rsocket, shell]
 
       Additional Environment Variables:
       KEYSTORE_PASS = password for keystore when using TLS
@@ -116,22 +116,23 @@ done
 
 if [[ -z ${BACKEND} ]]; then
 cat << BACKSEL
-you forgot to select a backend. use '-e backend'
+you forgot to select a backend. use '-s backend'
 where 'backend' can be 'memory' and 'cassandra'
 BACKSEL
+exit 1
 fi
 
 export BKEYS=("memory" "cassandra" "client")
 export BVALS=("memory-backend" "cassandra-backend" "client-backend")
 
 for key in ${!BKEYS[@]}; do
-    if [[ $BACKEND == *${BKEYS[$key]}* ]]; then
+    if [[ ! -z $BACKEND && $BACKEND == *${BKEYS[$key]}* ]]; then
       BUILD_PROFILES+="${BVALS[$key]}",
     fi
 done
 
-export EXKEYS=("http" "rsocket")
-export EXVALS=("expose-webflux" "expose-rsocket")
+export EXKEYS=("http" "rsocket" "shell" "gateway")
+export EXVALS=("expose-webflux" "expose-rsocket" "shell" "expose-gateway")
 
 for key in ${!EXKEYS[@]}; do
     if [[  $EXPOSES == *${EXKEYS[$key]}* ]]; then
@@ -188,6 +189,7 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
 fi
 
 if [[ ! -z ${CLIENT_FLAGS} ]]; then
+
   if [[ ${NO_SEC} == *"false"* ]]; then
   TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=pkcs12 \
 -Dapp.rsocket.transport.security.truststore.path=${CERT_DIR}/client_truststore.p12 \
@@ -274,7 +276,6 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
     ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-local.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=properties"
-    BUILD_PROFILES+="client-local,"
   fi
 fi
 
@@ -336,7 +337,9 @@ JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
 EOF
 
 if [[ ! -z ${SHOW_OPTIONS} ]]; then
-  echo $JAVA_TOOL_OPTIONS
+  echo java args=$JAVA_TOOL_OPTIONS
+  echo maven args=$MAVEN_PROFILES
+  echo maven run=$RUN_MAVEN_ARG
   exit 0
 fi
 

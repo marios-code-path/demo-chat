@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
  *  send message to topic
  *  listen to topic
  */
-interface PubSubMessagingService<T, V> {
+interface PubSubService<T, V> {
     fun subscribe(member: T, topic: T): Mono<Void>
     fun unSubscribe(member: T, topic: T): Mono<Void>
     fun unSubscribeAll(member: T): Mono<Void>
@@ -37,4 +37,4 @@ interface TopicInventoryService<T> {
  * Combined (Publish Subscribe + Topic Exchange)
  */
 interface TopicPubSubService<T, V>
-    : PubSubMessagingService<T, V>, TopicInventoryService<T>
+    : PubSubService<T, V>, TopicInventoryService<T>

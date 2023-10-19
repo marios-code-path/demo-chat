@@ -76,7 +76,6 @@
             <groupId>com.demo</groupId>
             <artifactId>shared-deploy-configuration</artifactId>
             <version>0.0.1</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>

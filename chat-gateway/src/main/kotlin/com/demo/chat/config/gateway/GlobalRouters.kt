@@ -1,4 +1,4 @@
-package com.demo.chat.gateway.routers
+package com.demo.chat.config.gateway
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder
