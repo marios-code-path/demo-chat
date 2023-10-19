@@ -14,5 +14,5 @@ class ShellPromptProvider() : PromptProvider {
             .orElse("anonymous")
 
     override fun getPrompt(): AttributedString =
-        AttributedString("chat-init:${getLoggedIn()} :> ")
+        AttributedString("chat-shell:${getLoggedIn()} :> ")
 }

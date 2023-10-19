@@ -1,15 +1,12 @@
-package com.demo.chat.deploy.authserv
+package com.demo.chat.config.deploy.authserv
 
 import com.demo.chat.auth.client.RegisteredClientFactory
-import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.*
 import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.UrlResource
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
-import org.springframework.web.servlet.config.annotation.EnableWebMvc
 import java.io.File
 
 

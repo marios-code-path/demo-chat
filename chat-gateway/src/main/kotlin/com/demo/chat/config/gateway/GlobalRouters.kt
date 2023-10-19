@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration
 @Configuration
 class GlobalRouters {
 
-    @Value("\${app.rest.port:6792}")
+    @Value("\${app.rest.port:6791}")
     private lateinit var webApiPort: String
 
     // http://host:port/persist/user/get/12345

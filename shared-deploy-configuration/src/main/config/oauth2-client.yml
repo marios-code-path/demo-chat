@@ -6,9 +6,9 @@ app:
       client-id: 31649af5-0154-4be5-8695-fda9d18b7981
       secret: "{noop}secret"
       redirect-uris:
-        - http://127.0.0.1:8080/login/oauth2/code/chat-client-oidc
-        - http://127.0.0.1:8080/authorized
-      redirect-uri-prefix: http://127.0.0.1:8080
+        - http://authserv:9000/login/oauth2/code/chat-client-oidc
+        - http://authserv:9000/authorized
+      redirect-uri-prefix: http://127.0.0.1
       additional-scopes:
         - openid
         - profile

@@ -2,7 +2,7 @@ package com.demo.chat
 
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
-import com.demo.chat.deploy.authserv.ClientInitializer
+import com.demo.chat.config.deploy.authserv.ClientInitializer
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Test

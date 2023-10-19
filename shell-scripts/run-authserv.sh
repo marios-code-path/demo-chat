@@ -25,13 +25,13 @@ export KEYTYPE=long
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
     export BUILD_PROFILES="jdbc,"
+    export SPRING_RUN_ARGUMENTS="--clientpath='/Users/grayma/workspace/demo-chat/client.json'"
 
   $DIR/build-app.sh -m chat-authorization-server -k long -s client -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker() {
   OPT_FLAGS+=" -Dkeycert=file:/etc/keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/etc/keys/server_keycert.jwk"
-  SPRING_RUN_ARGUMENTS="--clientpath='/Users/grayma/workspace/demo-chat/client.json'"
 
   export DOCKER_ARGS="--expose ${AUTHSERV_HTTP_PORT} -p ${AUTHSERV_HTTP_PORT}:${AUTHSERV_HTTP_PORT}/tcp \
 --expose ${AUTHSERV_MGMT_PORT} -p ${AUTHSERV_MGMT_PORT}:${AUTHSERV_MGMT_PORT}/tcp"

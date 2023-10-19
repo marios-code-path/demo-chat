@@ -27,7 +27,7 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service-rsocket</artifactId>
+            <artifactId>chat-client-rsocket</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>

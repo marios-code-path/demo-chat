@@ -27,9 +27,9 @@ spring:
           client-secret: nosecret
           authorization-grant-type: authorization_code
           client-authentication-method: client_secret_basic
-          redirect-uri: http://localhost:9000/login/oauth2/code/{registrationId}
+          redirect-uri: http://authserv:9000/login/oauth2/code/{registrationId}
           scope:
             - user
-            - topic,
+            - topic
             - message
             - openId

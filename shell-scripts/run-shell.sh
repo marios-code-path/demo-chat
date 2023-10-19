@@ -2,13 +2,14 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-
+source $DIR/ports.sh
 source $DIR/util.sh
 
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export MAIN_FLAGS="-Dspring.shell.interactive.enabled=true -Dspring.main.web-application-type=reactive"
-export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
+export CLIENT_FLAGS="-Dapp.client.protocol=rsocket -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
+ \
 -Dapp.client.rsocket.core.key \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
@@ -18,15 +19,17 @@ OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF -Dspring.autoconfigure.e
 
 function local() {
   set -e
-  export BUILD_PROFILES="shell,"
-  $DIR/build-app.sh -m chat-deploy -k long -p shell -n ${APP_IMAGE_NAME} -b runlocal -d local $@
+  export PORTS_FLAGS="-Dserver.port=${SHELL_MGMT_PORT} -Dmanagement.server.port=${SHELL_MGMT_PORT}"
+  export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
+
+  $DIR/build-app.sh -m chat-deploy -k long -p shell -e shell -s client -n ${APP_IMAGE_NAME} -b runlocal -d local $@
   exit 0
 }
 
 function docker() {
   set -e
   export DOCKER_ARGS="-it"
-  export PORTS_FLAGS="-Dserver.port=9001 -Dmanagement.server.port=9001"
+  export PORTS_FLAGS="-Dserver.port=${SHELL_MGMT_PORT} -Dmanagement.server.port=${SHELL_MGMT_PORT}"
   export MANAGEMENT_ENDPOINTS="shutdown,health"
 
   $DIR/build-app.sh -m chat-deploy -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@

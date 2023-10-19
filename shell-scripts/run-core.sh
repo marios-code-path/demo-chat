@@ -52,7 +52,7 @@ function memory_local() {
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="memory-${APP_PRIMARY}-webflux"
 
-   $DIR/build-app.sh -m chat-deploy -s memory -e http,rsocket -p prod -n core-service-rsocket -k long \
+   $DIR/build-app.sh -m chat-deploy -s memory -e rsocket -p prod -n core-service-rsocket -k long \
 -d local -b ${EXEC} -i users,rootkeys $@
 }
 

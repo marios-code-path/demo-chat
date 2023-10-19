@@ -10,10 +10,11 @@ spring:
     oauth2:
       authorizationserver:
         client:
-          chatclient:
+          chat-client:
+            require-authorization-consent: true
             registration:
               client-id: chatClient
-              client-secret: nosecret
+              client-secret: "{noop}nosecret"
               client-authentication-methods:
                 - client_secret_basic
               authorization-grant-types:
@@ -28,7 +29,6 @@ spring:
                 - topic
                 - user
                 - openId
-            require-authorization-consent: true
 
 logging:
   level:
