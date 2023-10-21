@@ -30,18 +30,21 @@ open class CoreAuthenticationService<T, U, Q>(
         secretsStore.addCredential(KeyCredential(uid, pw))
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
-        userIndex
-            .findUnique(userNameToQuery.apply(n))
-            .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
-            .flatMap { userKey ->  // this should only happen when rootKeys is there!!!
-                if (rootKeys.hasRootKey(Anon::class.java, userKey))
-                    Mono.just(userKey)
-                else
-                    secretsStore
-                        .getStoredCredentials(userKey)
-                        .map { secure ->
-                            if (!passwordValidator.apply(pw, secure)) throw UsernamePasswordAuthenticationException
-                            userKey
-                        }
-            }
+        if (n.isEmpty()) {
+            Mono.just(rootKeys.getRootKey(Anon::class.java))
+        } else
+            userIndex
+                .findUnique(userNameToQuery.apply(n))
+                .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
+                .flatMap { userKey ->  // this should only happen when rootKeys is there!!!
+                    if (rootKeys.isRootKeyWithValue(Anon::class.java, userKey))
+                        Mono.just(userKey)
+                    else
+                        secretsStore
+                            .getStoredCredentials(userKey)
+                            .map { secure ->
+                                if (!passwordValidator.apply(pw, secure)) throw UsernamePasswordAuthenticationException
+                                userKey
+                            }
+                }
 }

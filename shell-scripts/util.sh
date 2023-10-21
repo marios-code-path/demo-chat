@@ -66,3 +66,11 @@ function std_exec() {
     help_message
   fi
 }
+
+function getRunCommands() {
+cat > $ENV_FILE << EOF
+  echo JAVA_TOOL_OPTIONS = $JAVA_TOOL_OPTIONS
+  echo MAVEN ARGS=$MAVEN_PROFILES
+  echo MAVEN RUN=$RUN_MAVEN_ARG
+EOF
+}

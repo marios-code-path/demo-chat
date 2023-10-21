@@ -1,7 +1,6 @@
 package com.demo.chat.domain.knownkey
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.KnownRootKeys
 import java.util.concurrent.ConcurrentHashMap
 
 class RootKeys<T> {
@@ -20,11 +19,11 @@ class RootKeys<T> {
     fun <S> getRootKey(domain: Class<S>): Key<T> = keyMap[domain.simpleName]!!
     fun getRootKey(domain: String) = keyMap[domain]!!
     fun <S> addRootKey(domain: Class<S>, key: Key<T>) = keyMap.put(domain.simpleName, key)
-    fun <S> hasRootKey(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
+    fun <S> isRootKeyWithValue(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
     fun hasKey(key: String) = keyMap.containsKey(key)
     fun addRootKey(domain: String, key: Key<T>) = keyMap.put(domain, key)
-    fun <S> hasRootKey(domain: Class<S>, key: Key<T>): Boolean {
-        return if(hasRootKey(domain)) {
+    fun <S> isRootKeyWithValue(domain: Class<S>, key: Key<T>): Boolean {
+        return if(isRootKeyWithValue(domain)) {
             getRootKey(domain).id == key.id
         }
         else {

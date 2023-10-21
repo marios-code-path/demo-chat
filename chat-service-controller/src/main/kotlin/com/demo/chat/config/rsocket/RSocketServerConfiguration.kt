@@ -1,5 +1,9 @@
 package com.demo.chat.config.rsocket
 
+import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.secure.CompositeAuthConfiguration
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.secure.service.CoreAuthenticationManager
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
@@ -15,7 +19,9 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @Configuration
 @ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
-class RSocketServerConfiguration {
+class RSocketServerConfiguration<T>(private val rootKeys: RootKeys<T>,
+                                    private val coreBeans: PersistenceServiceBeans<T, *>,
+                                    private val beans: CompositeAuthConfiguration<T, *>) {
 
     // TODO: lock down!
     @Bean
@@ -31,6 +37,11 @@ class RSocketServerConfiguration {
                 .anyRequest()
                 .authenticated()
         }
+        .authenticationManager(
+            CoreAuthenticationManager(
+                beans.authenticationService(),
+                coreBeans.userPersistence()
+            ))
         .build()
 
     @Bean

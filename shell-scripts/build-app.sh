@@ -286,11 +286,11 @@ fi
 
 if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
-#      if [[ ${RUN_MAVEN_ARG} == "rundocker" ]]; then
-#        DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
-#      else
-#        OPT_FLAGS+=" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
-#      fi
+      if [[ ${RUN_MAVEN_ARG} == "rundocker" ]]; then
+        DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
+      else
+        SPRING_JVM_ARGUMENTS+="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
+      fi
 fi
 
 if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
@@ -313,7 +313,7 @@ export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"
 DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME} -v ${KEY_VOLUME}:/etc/keys"
 
-RUN_ARGS="-Dspring-boot.run.arguments=${SPRING_RUN_ARGUMENTS}"
+RUN_ARGS="-Dspring-boot.run.arguments=\"${SPRING_RUN_ARGUMENTS}\" -Dspring-boot.run.jvmArguments=\"${SPRING_JVM_ARGUMENTS}\""
 
 # makes no use of cloud configuration or config-maps
 # That leading space is IMPORTANT ! DONT remove!
@@ -330,16 +330,12 @@ ${RUN_ARGS}"
 
 export ENV_FILE=/tmp/${APP_IMAGE_NAME}-$$.env
 
+getRunCommands
+
 echo "ENV_FILE=${ENV_FILE}"
 
-cat > $ENV_FILE << EOF
-JAVA_TOOL_OPTIONS=${JAVA_TOOL_OPTIONS}
-EOF
-
 if [[ ! -z ${SHOW_OPTIONS} ]]; then
-  echo java args=$JAVA_TOOL_OPTIONS
-  echo maven args=$MAVEN_PROFILES
-  echo maven run=$RUN_MAVEN_ARG
+  cat $ENV_FILE
   exit 0
 fi
 
@@ -358,3 +354,5 @@ set -x
 mvn -DimageName=${APP_IMAGE_NAME} $MAVEN_PROFILES -DskipTests $MAVEN_ARG
 
 [[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
+
+echo $$

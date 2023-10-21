@@ -22,7 +22,7 @@ spring:
                 - authorization_code
                 - refresh_token
               redirect-uris:
-                - ${app.web.oauth2.redirect}
+                - http://authserv:9001/login/oauth2/code/chatClient
               scopes:
                 - auth
                 - message
