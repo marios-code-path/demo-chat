@@ -24,7 +24,7 @@ import java.util.*
         "app.client.rsocket.composite.message", "app.client.rsocket.composite.topic",
         "app.service.security.userdetails", "app.client.rsocket.core.persistence",
         "app.client.rsocket.core.index", "app.service.composite.auth",
-        "app.oauth2.jwk.path=file:/Users/grayma/workspace/demo-chat/encrypt-keys/server_keycert.jwk",
+        "app.oauth2.jwk.path=classpath:server_keycert.jwk",
     "app.rsocket.transport.security.type=unprotected"
 
     ]

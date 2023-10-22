@@ -12,7 +12,7 @@ export PASSWORD=$1; shift
 
 TMPDIR=/tmp/dckeys$$
 
-mkdir $TMPDIR`
+mkdir $TMPDIR
 cd $TMPDIR
 
 ca_gen
@@ -35,3 +35,5 @@ cert_gen client
 cd $DIR
 
 mv $TMPDIR $DIR/../encrypt-keys
+
+cp $DIR/../encrypt-keys/server_keycert.jwk chat-authorization-server/src/test/resources/
