@@ -10,11 +10,15 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.handler.invocation.reactive.HandlerMethodArgumentResolver
 import org.springframework.messaging.rsocket.RSocketStrategies
+<<<<<<< Updated upstream
 import org.springframework.security.authentication.AnonymousAuthenticationProvider
+=======
+>>>>>>> Stashed changes
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity
+import org.springframework.security.core.Authentication
 import org.springframework.security.messaging.handler.invocation.reactive.AuthenticationPrincipalArgumentResolver
 import org.springframework.security.rsocket.api.PayloadExchange
 import org.springframework.security.rsocket.authorization.AuthorizationPayloadInterceptor
@@ -50,6 +54,7 @@ class RSocketServerConfiguration<T>(
                 .anyExchange()
                 .authenticated()
                 .anyRequest()
+                .
                 .authenticated()
         }
         .build()
