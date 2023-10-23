@@ -289,7 +289,7 @@ if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       if [[ ${RUN_MAVEN_ARG} == "rundocker" ]]; then
         DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
       else
-        SPRING_JVM_ARGUMENTS+="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=${DEBUG_PORT}"
+        SPRING_JVM_ARGUMENTS+="-agentlib:jdwp=transport=dt_socket,server=y,suspend=${DEBUG_SUSPEND:=n},address=${DEBUG_PORT}"
       fi
 fi
 

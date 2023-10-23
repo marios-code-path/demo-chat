@@ -33,6 +33,5 @@ class CoreAuthenticationManager<T>(
                 )as Authentication
             }
             .switchIfEmpty(Mono.defer { Mono.error(BadCredentialsException("Invalid Credentials")) })
-
     }
 }
