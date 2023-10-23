@@ -38,9 +38,8 @@ export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.p
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key -Dapp.client.discovery=local \
 -Dapp.controller.pubsub -Dapp.controller.secrets -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
-export BUILD_PROFILES="consul,"
-export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
-export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
+#export DISCOVERY_FLAGS="-Dspring.config.import=optional:consul:"
+#export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 
@@ -50,7 +49,7 @@ function memory_local() {
     export ADDITIONAL_CONFIGS=
 
     export APP_PRIMARY="core-service"
-    export APP_IMAGE_NAME="memory-${APP_PRIMARY}-webflux"
+    export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
    $DIR/build-app.sh -m chat-deploy -s memory -e rsocket -p prod -n core-service-rsocket -k long \
 -d local -b ${EXEC} -i users,rootkeys $@

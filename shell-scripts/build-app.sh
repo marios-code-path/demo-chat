@@ -10,6 +10,7 @@ export APP_VERSION=0.0.1
 export TLS_FLAGS
 export IMAGE_REPO_PREFIX=${IMAGE_REPO_PREFIX:="docker.io/library"}
 export NO_SEC=false
+export DISCOVERY_TYPE=local
 
 if [[ -z ${SPRING_ACTIVE_PROFILES} ]]; then
   export SPRING_ACTIVE_PROFILES=""
@@ -85,7 +86,7 @@ while getopts ":d:waoxge:s:b:c:m:i:k:b:n:p:" o; do
       export RUN_MAVEN_ARG=${OPTARG}
       ;;
     d)
-      export DISCOVERY_TYPE=${OPTARG}
+      DISCOVERY_TYPE=${OPTARG}
       ;;
     x)
       export SHOW_OPTIONS=1

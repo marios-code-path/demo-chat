@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./sql_scripts:/docker-entrypoint-initdb.d   # Mount the local sql_scripts directory
+      - ./sql-scripts:/docker-entrypoint-initdb.d   # Mount the local sql_scripts directory
 
 volumes:
   db_data:
