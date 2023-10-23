@@ -17,7 +17,6 @@ class AuthMetadataAccessBroker<T>(
         return meta
             .map { authMeta -> authMeta.permission }
             .collect(Collectors.toList())
-            .cache(Duration.ofMillis(1000))
             .map { permissions -> permissions.contains(perm) }
             .flatMap { canProceed ->
                 when (canProceed) {

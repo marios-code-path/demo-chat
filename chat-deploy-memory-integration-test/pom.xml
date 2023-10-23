@@ -15,7 +15,6 @@
     <properties>
         <appImageName>docker.io/library/chat-deploy-long-memory-integration-test:${project.version}</appImageName>
         <mainClass>com.demo.chat.ChatApp</mainClass>
-        <appMainClass>${mainClass}</appMainClass>
     </properties>
     <profiles>
         <profile>
@@ -28,7 +27,7 @@
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
-                            <mainClass>${appMainClass}</mainClass>
+                            <mainClass>${mainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>
                                 <cleanCache>false</cleanCache>
@@ -71,10 +70,14 @@
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-deploy-memory</artifactId>
+            <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-deploy-memory</artifactId>
+            <version>0.0.1</version>
+        </dependency>        <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
