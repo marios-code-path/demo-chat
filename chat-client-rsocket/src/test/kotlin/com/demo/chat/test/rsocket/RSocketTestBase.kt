@@ -1,7 +1,7 @@
 package com.demo.chat.test.rsocket
 
 import com.demo.chat.client.rsocket.MetadataRSocketRequester
-import com.demo.chat.client.rsocket.RequestMetadata
+import com.demo.chat.client.rsocket.SimpleRequestMetadata
 import com.demo.chat.domain.knownkey.Anon
 import io.rsocket.metadata.WellKnownMimeType
 import org.junit.jupiter.api.BeforeAll
@@ -27,8 +27,8 @@ open class RSocketTestBase(var username: String = "user", var password: String =
     fun requestMetadataProvider(
         username: String = Anon::class.java.simpleName,
         password: String = ""
-    ): Supplier<RequestMetadata> = Supplier {
-        val metadata = RequestMetadata(
+    ): Supplier<SimpleRequestMetadata> = Supplier {
+        val metadata = SimpleRequestMetadata(
             UsernamePasswordMetadata(username, password),
             MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
         )

@@ -21,13 +21,12 @@ import org.springframework.web.util.pattern.PathPatternRouteMatcher
 @ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
 class RSocketServerConfiguration<T>(
     private val coreBeans: PersistenceServiceBeans<T, *>,
-    private val beans: CompositeAuthConfiguration<T, *>
+    private val compositeBeans: CompositeAuthConfiguration<T, *>
 ) {
-
     @Bean
     fun authMan(): ReactiveAuthenticationManager =
-         CoreAuthenticationManager(
-            beans.authenticationService(),
+        CoreAuthenticationManager(
+            compositeBeans.authenticationService(),
             coreBeans.userPersistence()
         )
 

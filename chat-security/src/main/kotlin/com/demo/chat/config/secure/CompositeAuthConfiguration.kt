@@ -11,6 +11,7 @@ import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.crypto.password.PasswordEncoder
 
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
@@ -20,6 +21,7 @@ class CompositeAuthConfiguration<T, V>(
     persistServices: PersistenceServiceBeans<T, V>,
     secretsStoreBeans: SecretsStoreBeans<T>,
     rootKeys: RootKeys<T>,
+    passwordEncoder: PasswordEncoder
     //authSummarizer: Summarizer<AuthMetadata<T>, Key<T>>,
 ) : BaseAuthConfiguration<T, V, IndexSearchRequest>(rootKeys,
     indexServices,
@@ -30,4 +32,4 @@ class CompositeAuthConfiguration<T, V>(
     { key -> IndexSearchRequest(AuthMetaIndex.PRINCIPAL, typeUtil.toString(key.id), 100) },
     { key -> IndexSearchRequest(AuthMetaIndex.TARGET, typeUtil.toString(key.id), 100) },
     { username -> IndexSearchRequest(UserIndexService.HANDLE, username, 1) },
-    { input, secure -> input == secure })
+    { input, secure -> passwordEncoder.matches(input, secure) })

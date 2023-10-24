@@ -3,6 +3,7 @@ package com.demo.chat.test.init
 import com.demo.chat.client.rsocket.MetadataRSocketRequester
 import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
+import com.demo.chat.client.rsocket.SimpleRequestMetadata
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired

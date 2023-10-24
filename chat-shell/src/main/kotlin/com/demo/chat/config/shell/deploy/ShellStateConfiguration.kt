@@ -1,6 +1,8 @@
 package com.demo.chat.config.shell.deploy
 
+import com.demo.chat.client.rsocket.EmptyRequestMetadata
 import com.demo.chat.client.rsocket.RequestMetadata
+import com.demo.chat.client.rsocket.SimpleRequestMetadata
 import com.demo.chat.domain.knownkey.Anon
 import io.rsocket.metadata.WellKnownMimeType
 import org.springframework.beans.factory.annotation.Value
@@ -8,6 +10,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.util.MimeTypeUtils
+import reactor.core.publisher.Sinks.Empty
 import java.util.*
 import java.util.function.Supplier
 
@@ -24,12 +27,13 @@ class ShellStateConfiguration {
 
     @Bean
     fun requestMetadataProvider(): Supplier<RequestMetadata> = Supplier {
-        val metadata = RequestMetadata(
+        println("SUPPLIER SUPPLIES")
+        val metadata =
             loginMetadata
-                .map { UsernamePasswordMetadata(it.username, it.password) }
-                .orElseGet { UsernamePasswordMetadata(Anon::class.java.simpleName, anonymousPassword) },
-            MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
-        )
+                .map<RequestMetadata> { SimpleRequestMetadata(UsernamePasswordMetadata(it.username, it.password),
+                    MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)) }
+                .orElseGet { EmptyRequestMetadata }
+
         metadata
     }
 }

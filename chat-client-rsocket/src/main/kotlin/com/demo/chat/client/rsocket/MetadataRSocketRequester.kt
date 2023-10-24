@@ -4,7 +4,9 @@ import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.util.MimeType
 import java.util.function.Supplier
 
-data class RequestMetadata(val value: Any, val mimeType: MimeType)
+sealed interface RequestMetadata
+data class SimpleRequestMetadata(val value: Any, val mimeType: MimeType) : RequestMetadata
+object EmptyRequestMetadata : RequestMetadata
 
 class MetadataRSocketRequester(
     private val r: RSocketRequester,
@@ -12,8 +14,7 @@ class MetadataRSocketRequester(
 ) : RSocketRequester by r {
     override fun route(route: String, vararg routeVars: Any): RSocketRequester.RequestSpec {
         return when(val metadata = metadataProvider.get()) {
-            is RequestMetadata -> {
-                r.route(route, *routeVars).metadata(metadata.value, metadata.mimeType) }
+            is SimpleRequestMetadata -> { r.route(route, *routeVars).metadata(metadata.value, metadata.mimeType) }
             else -> r.route(route, *routeVars)
         }
     }

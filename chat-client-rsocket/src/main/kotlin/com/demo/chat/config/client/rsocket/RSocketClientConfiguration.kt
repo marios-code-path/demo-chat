@@ -12,7 +12,6 @@ import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.service.client.ClientFactory
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -31,8 +30,8 @@ class RSocketClientConfiguration {
         builder: RSocketRequester.Builder,
         connection: RSocketClientTransportFactory,
         discovery: ClientDiscovery,
-        @Autowired(required = false) requestMetadataProvider: Supplier<RequestMetadata>?,
-    ): RequesterFactory = RSocketRequesterFactory(discovery, builder, connection, requestMetadataProvider ?: Supplier { Any() })
+        @Autowired(required = false) simpleRequestMetadataProvider: Supplier<RequestMetadata>?,
+    ): RequesterFactory = RSocketRequesterFactory(discovery, builder, connection, simpleRequestMetadataProvider ?: Supplier { Any() })
 
     @Bean
     @ConditionalOnMissingBean

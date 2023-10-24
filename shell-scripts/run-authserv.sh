@@ -53,6 +53,9 @@ Available deployment-profiles:
   local
   docker
   docker_image
+
+Available Environment:
+JWK_KEYPATH = /tmp/keys
 EOF
 }
 
