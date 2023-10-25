@@ -9,7 +9,6 @@ import org.springframework.security.authentication.InternalAuthenticationService
 import org.springframework.security.authentication.ReactiveAuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import reactor.core.publisher.Mono
 // Sample authentication manager that uses a user service to authenticate a user.
 class CoreAuthenticationManager<T>(
