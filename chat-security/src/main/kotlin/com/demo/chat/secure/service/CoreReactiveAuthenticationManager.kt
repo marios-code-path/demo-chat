@@ -11,7 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication
 import reactor.core.publisher.Mono
 // Sample authentication manager that uses a user service to authenticate a user.
-class CoreAuthenticationManager<T>(
+class CoreReactiveAuthenticationManager<T>(
     private val authenticationS: AuthenticationService<T>,
     private val userPersistence: PersistenceStore<T, User<T>>,
 ) :

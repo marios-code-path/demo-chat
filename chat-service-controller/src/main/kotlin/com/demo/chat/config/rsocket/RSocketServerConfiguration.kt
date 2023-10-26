@@ -1,12 +1,12 @@
 package com.demo.chat.config.rsocket
 
 import com.demo.chat.config.PersistenceServiceBeans
-import com.demo.chat.config.secure.CompositeAuthConfiguration
+//import com.demo.chat.config.secure.AuthBeansConfiguration
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.service.CoreAuthenticationManager
+//import com.demo.chat.secure.service.CoreReactiveAuthenticationManager
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
@@ -32,26 +32,26 @@ import reactor.core.publisher.Mono
 @Configuration
 @ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
 class RSocketServerConfiguration<T>(
-    private val coreBeans: PersistenceServiceBeans<T, *>,
-    private val compositeBeans: CompositeAuthConfiguration<T, *>
+    //private val coreBeans: PersistenceServiceBeans<T, *>,
+  //  private val compositeBeans: AuthBeansConfiguration<T, *>
 ) {
-    @Bean
-    fun authMan(): ReactiveAuthenticationManager =
-        CoreAuthenticationManager(
-            compositeBeans.authenticationService(),
-            coreBeans.userPersistence()
-        )
+//    @Bean
+//    fun authMan(): ReactiveAuthenticationManager =
+//        CoreReactiveAuthenticationManager(
+//            compositeBeans.authenticationService(),
+//            coreBeans.userPersistence()
+//        )
 
     // TODO: lock down!
     @Bean
     fun rsocketSecurityAuthentication(
         security: RSocketSecurity,
-        authMan: ReactiveAuthenticationManager,
+        //authMan: ReactiveAuthenticationManager,
         rootKeys: RootKeys<T>
     )
             : PayloadSocketAcceptorInterceptor = security
         .simpleAuthentication(Customizer.withDefaults())
-        .authenticationManager(authMan)
+        //.authenticationManager(authMan)
         .addPayloadInterceptor(CustomAuthorizationPayloadInterceptor(rootKeys))
         .authorizePayload { authorize ->
             authorize

@@ -1,8 +1,10 @@
 package com.demo.chat.test.rsocket
 
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.security.config.Customizer
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
@@ -12,6 +14,7 @@ import org.springframework.security.rsocket.metadata.SimpleAuthenticationEncoder
 import org.springframework.web.util.pattern.PathPatternRouteMatcher
 
 @EnableRSocketSecurity
+@TestConfiguration
 class RSocketSecurityTestConfiguration {
 
     @Bean
@@ -23,9 +26,9 @@ class RSocketSecurityTestConfiguration {
                 .setup()
                 .permitAll() // This 'setup' access works on connect!
                 .anyExchange()
-                .authenticated()
+                .permitAll()
                 .anyRequest()
-                .authenticated()
+                .permitAll()
 
         }
         .build()

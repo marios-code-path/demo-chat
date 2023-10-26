@@ -1,0 +1,38 @@
+app:
+  rsocket:
+    config:
+      core:
+        pubsub:
+          dest: core-service-rsocket
+          prefix: pubsub.
+        index:
+          dest: core-service-rsocket
+          prefix: index.
+        persistence:
+          dest: core-service-rsocket
+          prefix: persist.
+        key:
+          dest: core-service-rsocket
+          prefix: key.
+        secrets:
+          dest: core-service-rsocket
+          prefix: secrets.
+        message:
+          dest: core-service-rsocket
+          prefix: message.
+        topic:
+          dest: core-service-rsocket
+          prefix: topic.
+        user:
+          dest: core-service-rsocket
+          prefix: user.
+      composite:
+        message:
+          dest: core-service-rsocket
+          prefix: message.
+        topic:
+          dest: core-service-rsocket
+          prefix: topic.
+        user:
+          dest: core-service-rsocket
+          prefix: user.

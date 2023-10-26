@@ -5,8 +5,9 @@ import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
+import com.demo.chat.test.rsocket.RSocketSecurityTestConfiguration
 import com.demo.chat.test.rsocket.RSocketTestBase
-import com.demo.chat.test.rsocket.controller.core.SecretsControllerTests
+import com.demo.chat.test.rsocket.controller.core.TestSecretStoreController
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -19,7 +20,7 @@ import reactor.test.StepVerifier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringJUnitConfig(
     classes = [
-        SecretsControllerTests.TestSecretsControllerConfiguration::class
+        TestSecretStoreController::class
     ]
 )
 class SecretsTests : RSocketTestBase() {

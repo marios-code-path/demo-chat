@@ -1,4 +1,4 @@
-package com.demo.chat.config.secure
+package com.demo.chat.secure.service
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -9,15 +9,13 @@ import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.Summarizer
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
-import com.demo.chat.secure.service.CoreAuthenticationService
-import com.demo.chat.secure.service.CoreReactiveAuthorizationService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
 import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 
-open class BaseAuthConfiguration<T, V, Q>(
+open class CoreAuthBeans<T, V, Q>(
     private val rootKeys: RootKeys<T>,
     private val indexServices: IndexServiceBeans<T, V, Q>,
     private val persistServices: PersistenceServiceBeans<T, V>,
@@ -31,7 +29,7 @@ open class BaseAuthConfiguration<T, V, Q>(
 
     @Bean
     open fun authorizationService(): AuthorizationService<T, AuthMetadata<T>> =
-        CoreReactiveAuthorizationService(
+        CoreAuthorizationService(
             persistServices.authMetaPersistence(),
             indexServices.authMetadataIndex(),
             authMetaPrincipalSearch,

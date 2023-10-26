@@ -1,0 +1,28 @@
+app:
+  client:
+    discovery:
+      config:
+        pubsub:
+          dest: "127.0.0.1:6790"
+          prefix: pubsub.
+        index:
+          dest: "127.0.0.1:6790"
+          prefix: index.
+        persistence:
+          dest: "127.0.0.1:6790"
+          prefix: persist.
+        key:
+          dest: "127.0.0.1:6790"
+          prefix: key.
+        message:
+          dest: "127.0.0.1:6790"
+          prefix: message.
+        topic:
+          dest: "127.0.0.1:6790"
+          prefix: topic.
+        user:
+          dest: "127.0.0.1:6790"
+          prefix: user.
+        secrets:
+          dest: "127.0.0.1:6790"
+          prefix: secrets.

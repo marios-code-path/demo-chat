@@ -1,0 +1,21 @@
+package com.demo.chat.test.rsocket
+
+import com.demo.chat.convert.JsonNodeToAnyConverter
+import com.demo.chat.domain.serializers.JacksonModules
+import org.springframework.boot.SpringBootConfiguration
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
+import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
+import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
+import org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
+import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
+import org.springframework.context.annotation.ComponentScan
+
+class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
+
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan
+@ImportAutoConfiguration(TestModules::class)
+class RSocketServerTestConfiguration

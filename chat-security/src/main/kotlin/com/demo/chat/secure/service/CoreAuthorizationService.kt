@@ -18,7 +18,7 @@ import java.util.function.Supplier
  * M = AuthorizationMetaData Type
  * Q = Authorization Query Type
  */
-class CoreReactiveAuthorizationService<T, Q>(
+class CoreAuthorizationService<T, Q>(
     private val authPersist: PersistenceStore<T, AuthMetadata<T>>,
     private val authIndex: IndexService<T, AuthMetadata<T>, Q>,
     private val queryForPrinciple: Function<in Key<T>, Q>,
