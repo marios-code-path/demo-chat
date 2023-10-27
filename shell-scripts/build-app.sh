@@ -202,7 +202,7 @@ if [[ ! -z ${CLIENT_FLAGS} ]]; then
 
   if [[ ! -z ${WEBSOCKET} ]]; then
     CLIENT_FLAGS+=" -Dapp.rsocket.transport.websocket.enabled=true"
-    BUILD_PROFILES+="websocket,"
+    #BUILD_PROFILES+="websocket,"
   fi
 
   if [[ ! -z ${DEBUG} ]]; then
