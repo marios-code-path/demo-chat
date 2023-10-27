@@ -35,12 +35,6 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-core</artifactId>
-            <type>test-jar</type>
-            <version>0.0.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
             <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
         </dependency>
@@ -61,12 +55,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-reflect</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib-jdk8</artifactId>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-core</artifactId>
+            <type>test-jar</type>
+            <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
@@ -85,6 +77,14 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-reflect</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-jdk8</artifactId>
         </dependency>
     </dependencies>
     <build>

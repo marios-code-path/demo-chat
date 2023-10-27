@@ -12,8 +12,6 @@ import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean
-import org.springframework.security.crypto.factory.PasswordEncoderFactories
-import org.springframework.security.crypto.password.PasswordEncoder
 
 open class CoreAuthBeans<T, V, Q>(
     private val rootKeys: RootKeys<T>,
@@ -46,9 +44,6 @@ open class CoreAuthBeans<T, V, Q>(
         userHandleSearch,
         rootKeys
     )
-
-    @Bean
-    open fun encFactory(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 
     @Bean
     open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authMan)

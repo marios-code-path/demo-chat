@@ -16,7 +16,8 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
 class ActuatorWebSecurityConfiguration(
     @Value("\${app.actuator.username:actuator}") val actuatorUser: String,
-    @Value("\${app.actuator.password:actuator}") val actuatorPasswd: String
+    @Value("\${app.actuator.password:actuator}") val actuatorPasswd: String,
+    private val passwordEncoder: PasswordEncoder
 ) {
 
     @Bean
@@ -40,11 +41,8 @@ class ActuatorWebSecurityConfiguration(
     fun actuatorUserDetailService() = MapReactiveUserDetailsService(
         org.springframework.security.core.userdetails.User
             .withUsername(actuatorUser)
-            .password(passwordEncoder().encode(actuatorPasswd))
+            .password(passwordEncoder.encode(actuatorPasswd))
             .roles("ACTUATOR")
             .build()
     )
-
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = PasswordEncoderFactories.createDelegatingPasswordEncoder()
 }
