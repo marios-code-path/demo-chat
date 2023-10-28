@@ -1,0 +1,89 @@
+version: '3.8'
+
+networks:
+  chatnet:
+    driver: bridge
+
+services:
+  consul:
+    image: hashicorp/consul:latest
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    networks:
+      - chatnet
+
+  postgres:
+    image: postgres:15.2
+    environment:
+      POSTGRES_DB: authserver
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./sql-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - chatnet
+
+  core-service-rsocket:
+    image: memory-core-service-rsocket:0.0.1
+    volumes:
+      - chat-secrets:/etc/keys
+    ports:
+      - "6791:6791"
+      - "6790:6790"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6791/actuator/health | grep UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chatnet
+
+  chat-authserv:
+    image: chat-authserv:0.0.1
+    depends_on:
+      - core-service-rsocket
+    volumes:
+      - chat-secrets:/etc/keys
+    ports:
+      - "9000:9000"
+    networks:
+      - chatnet
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://consul:5432/authserver
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+
+  chat-rest:
+    depends_on:
+      - core-service-rsocket
+      - chat-authserv
+    image: chat-rest:0.0.1
+    volumes:
+      - chat-secrets:/etc/keys
+    ports:
+      - "6792:6792"
+    networks:
+      - chatnet
+
+  chat-gateway:
+    image: chat-gateway:0.0.1
+    depends_on:
+      - chat-rest
+    volumes:
+      - chat-secrets:/etc/keys
+    ports:
+      - "6702:8080"
+    networks:
+      - chatnet
+
+volumes:
+  db_data:
+    external: true
+  chat-secrets:
+    external: true

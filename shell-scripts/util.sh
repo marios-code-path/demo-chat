@@ -21,6 +21,14 @@ function join_by {
 
 function find_consul {
   export CONSUL_CONTAINER=`docker ps -aqf "name=consul"`
+  if [[ -z $CONSUL_CONTAINER ]]; then
+    cat <<CONSUL_ERR
+Could not detect consul on any port on localhost.
+Either run consul in a docker container, or manually set
+'CONSUL_HOST' and 'CONSUL_PORT' environments.
+CONSUL_ERR
+    exit 1
+  fi
   export CONSUL_HOST=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${CONSUL_CONTAINER})
   export CONSUL_PORT=8500
 }

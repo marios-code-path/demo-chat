@@ -1,6 +1,7 @@
 package com.demo.chat.config.client.discovery
 
 import com.demo.chat.client.discovery.ConsulClientDiscovery
+import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.service.client.ClientProperties
 import com.demo.chat.service.client.ClientProperty
 import com.ecwid.consul.v1.ConsulClient
@@ -23,6 +24,6 @@ class DiscoveryClientConfiguration(val client: ConsulClient, val props: ConsulDi
     fun discoveryClient(): ConsulReactiveDiscoveryClient = ConsulReactiveDiscoveryClient(client, props)
 
     @Bean
-    fun consulClientDiscovery(rds: ConsulReactiveDiscoveryClient, configProps: ClientProperties<ClientProperty>) =
-        ConsulClientDiscovery(rds, configProps)
+    fun consulClientDiscovery(rds: ConsulReactiveDiscoveryClient, configProps: ClientProperties<ClientProperty>)
+            : ClientDiscovery = ConsulClientDiscovery(rds, configProps)
 }

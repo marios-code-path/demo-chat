@@ -128,16 +128,16 @@ export BVALS=("memory-backend" "cassandra-backend" "client-backend")
 
 for key in ${!BKEYS[@]}; do
     if [[ ! -z $BACKEND && $BACKEND == *${BKEYS[$key]}* ]]; then
-      BUILD_PROFILES+="${BVALS[$key]}",
+      BUILD_PROFILES+="${BVALS[$key]},"
     fi
 done
 
-export EXKEYS=("http" "rsocket" "shell" "gateway")
+export EXKEYS=("rest" "rsocket" "shell" "gateway")
 export EXVALS=("expose-webflux" "expose-rsocket" "shell" "expose-gateway")
 
 for key in ${!EXKEYS[@]}; do
     if [[  $EXPOSES == *${EXKEYS[$key]}* ]]; then
-        BUILD_PROFILES+="${EXVALS[$key]}",
+        BUILD_PROFILES+="${EXVALS[$key]},"
     fi
 done
 
@@ -222,6 +222,7 @@ if [[ ! -z ${DISCOVERY_TYPE} && ! -z ${CLIENT_FLAGS} ]]; then
 fi
 
 if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
+  BUILD_PROFILES+="register-consul," #TODO: Make this optional
   # Publish Root Keys TO Consul KV if we are initializing them here
   # Otherwise, consume them from Consul
   if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
@@ -232,7 +233,10 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
 -Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"
   fi
 
+if [[ -z ${CONSUL_HOST} ]]; then
   find_consul
+  exit 1
+fi
 
   # Turn on consul discovery &  registration
   DISCOVERY_FLAGS+=" -Dspring.cloud.consul.host=${CONSUL_HOST} \
@@ -246,10 +250,10 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
 
   if [[ ! -z ${CLIENT_FLAGS} ]]; then
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
-    BUILD_PROFILES+="client-consul,"
+    BUILD_PROFILES+="discovery-consul,"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-consul.yml"
   fi
 
-  BUILD_PROFILES+="consul,"
 
   if [[ ! $MANAGEMENT_ENDPOINTS == *"health"* ]]; then
     MANAGEMENT_ENDPOINTS+=",health"

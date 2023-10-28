@@ -46,23 +46,22 @@ OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 function memory_local() {
     export DOCKER_ARGS=
     export DISCOVERY_FLAGS=
-    export ADDITIONAL_CONFIGS=
+    export ADDITIONAL_CONFIGS="classpath:/config/server-rsocket-consul.yml,"
 
     export APP_PRIMARY="core-service"
     export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
    $DIR/build-app.sh -m chat-deploy -s memory -e rsocket -p prod -n core-service-rsocket -k long \
--d local -b ${EXEC} -i users,rootkeys $@
+-b ${EXEC} -i users,rootkeys $@
 }
 
 function memory() {
-  export CERT_DIR=${CERT_DIR:=/etc/keys}
   DOCKER_ARGS+=" -it -d"
   export APP_PRIMARY="core-service"
   export APP_IMAGE_NAME="memory-${APP_PRIMARY}-rsocket"
 
   $DIR/build-app.sh -m chat-deploy-memory -s memory -e http,rsocket -p prod -n core-service-rsocket -k long  \
--b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@
+-b ${EXEC} -i users,rootkeys $@
 
   # $DIR/build-app.sh -m chat-deploy-memory -p prod,consul -n core-service-rsocket -k long -d consul \
 #-b ${EXEC} -c ${CERT_DIR} -i users,rootkeys $@

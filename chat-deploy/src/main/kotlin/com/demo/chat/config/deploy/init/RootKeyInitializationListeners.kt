@@ -58,7 +58,6 @@ class RootKeyInitializationListeners<T>(
     @Bean
     @ConditionalOnProperty("app.kv.rootkeys")
     fun rootKeysService(
-        keyService: IKeyService<T>,
         kvStore: InitializingKVStore,
         @Value("\${app.kv.rootkeys}") key: String,
     ) = RootKeyService(kvStore, typeUtil, key)

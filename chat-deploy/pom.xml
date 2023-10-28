@@ -129,6 +129,11 @@
                     <artifactId>chat-webflux</artifactId>
                     <version>0.0.1</version>
                 </dependency>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>shared-deploy-configuration</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
             </dependencies>
         </profile>
         <profile>
@@ -162,11 +167,6 @@
         <profile>
             <id>discovery-consul</id>
             <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-client-consul</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
             </dependencies>
         </profile>
         <profile>
@@ -186,6 +186,11 @@
                 <dependency>
                     <groupId>org.springframework.cloud</groupId>
                     <artifactId>spring-cloud-starter-consul-config</artifactId>
+                </dependency>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-client-consul</artifactId>
+                    <version>0.0.1</version>
                 </dependency>
             </dependencies>
         </profile>

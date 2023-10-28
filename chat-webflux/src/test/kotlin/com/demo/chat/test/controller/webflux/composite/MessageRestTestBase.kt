@@ -35,6 +35,7 @@ import java.net.URI
 )
 class LongMessageRestTests : MessageRestTestBase<Long>({ 1001L })
 
+// TODO fix the issue where we need to fill in annotations with compile time constants on test methods
 @WebFluxTest
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
 @TestPropertySource(properties = ["app.controller.message"])
@@ -52,7 +53,7 @@ open class MessageRestTestBase<T>(
     @MockBean
     private lateinit var discovery: ClientDiscovery
 
-    @Test
+    @Test // TODO fix this so we can use runtime variables
     @WithLongCustomChatUser(userId = 1L, roles = ["TEST"])
     fun `should listen to topic`() {
         BDDMockito

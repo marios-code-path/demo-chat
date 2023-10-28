@@ -1,6 +1,8 @@
 docker run -d -p 8500:8500 \
  -p 8600:8600/udp \
- --name dev-consul \
- -e CONSUL_BIND_INTERFACE=eth0 consul
+ --name consul \
+ --hostname consul \
+ --network mynet \
+ -e CONSUL_BIND_INTERFACE=eth0 hashicorp/consul
 sleep 5
-docker exec -t dev-consul consul members
+docker exec -t consul consul members
