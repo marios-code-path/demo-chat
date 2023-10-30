@@ -14,13 +14,12 @@ export OPT_FLAGS="-Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 \
 export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS=""
 export JWK_KEYPATH="${JWK_KEYPATH:-/tmp/dc-keys}"
-export CLIENT_FLAGS="-Dapp.client.protocol=rsocket"
 
 export KEYTYPE=long
 
 function local() {
 
-  $DIR/build-app.sh -m chat-deploy -d local -b runlocal -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -e gateway -s client $@
+  $DIR/build-app.sh -m chat-deploy -d local -b runlocal -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -e gateway $@
 }
 
 function docker() {

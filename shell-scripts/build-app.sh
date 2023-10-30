@@ -189,15 +189,17 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
   fi
 fi
 
-if [[ ! -z ${CLIENT_FLAGS} ]]; then
 
-  if [[ ${NO_SEC} == *"false"* ]]; then
-  TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=pkcs12 \
+if [[ -n ${CLIENT_FLAGS} ]]; then
+  if [[ ${CLIENT_FLAGS} == *"rsocket"* ]]; then
+    if  [[ ${NO_SEC} == *"false"* ]]; then
+      TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=pkcs12 \
 -Dapp.rsocket.transport.security.truststore.path=${CERT_DIR}/client_truststore.p12 \
 -Dapp.rsocket.transport.security.keystore.path=${CERT_DIR}/client_keystore.p12 \
 -Dapp.rsocket.transport.security.keyfile.pass=${KEYSTORE_PASS}"
-  else
-  TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=unprotected"
+    else
+      TLS_FLAGS+=" -Dapp.rsocket.transport.security.type=unprotected"
+    fi
   fi
 
   if [[ ! -z ${WEBSOCKET} ]]; then
@@ -228,15 +230,12 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
         INIT_FLAGS+=" -Dapp.kv.store=consul -Dapp.kv.prefix=/chat -Dapp.kv.rootkeys=rootkeys \
 -Dapp.rootkeys.publish.scheme=kv"
-  else
-        INIT_FLAGS+=" -Dapp.kv.store=consul -Dapp.kv.prefix=/chat \
--Dapp.kv.rootkeys=rootkeys -Dapp.rootkeys.consume.scheme=kv"
   fi
 
-if [[ -z ${CONSUL_HOST} ]]; then
-  find_consul
-  exit 1
-fi
+  if [[ -z ${CONSUL_HOST} ]]; then
+    find_consul
+    exit 1
+  fi
 
   # Turn on consul discovery &  registration
   DISCOVERY_FLAGS+=" -Dspring.cloud.consul.host=${CONSUL_HOST} \
@@ -248,7 +247,7 @@ fi
 -Dspring.security.user.password=actuator \
 -Dspring.security.user.roles=ACTUATOR"
 
-  if [[ ! -z ${CLIENT_FLAGS} ]]; then
+  if [[ -n ${CLIENT_FLAGS} ]]; then
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
     BUILD_PROFILES+="discovery-consul,"
     ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-consul.yml"
@@ -263,7 +262,7 @@ fi
 if [[ ${DISCOVERY_TYPE} == "local" ]]; then
 
 # Consume Rootkeys when not creating Rootkeys in a local discovery scenario
-  if [[  ${INIT_PHASES} != *"rootkeys"* ]]; then
+  if [[  ${INIT_PHASES} != *"rootkeys"* && ${BACKEND} != "none" ]]; then
     INIT_FLAGS+="-Dapp.kv.store=none -Dapp.rootkeys.consume.scheme=http \
 -Dapp.rootkeys.consume.source=${ROOTKEY_SOURCE_URI}"
   fi
@@ -298,7 +297,7 @@ if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       fi
 fi
 
-if [[ ! -z {NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
+if [[ ! -z ${NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
   #BUILD_PROFILES+="native,"
   echo "Native Builds are not supported at this time"
   exit 1
