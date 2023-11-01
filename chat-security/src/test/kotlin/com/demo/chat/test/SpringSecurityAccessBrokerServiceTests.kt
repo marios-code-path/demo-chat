@@ -70,7 +70,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val accessService = SpringSecurityAccessBrokerService(broker)
 
-        val p = accessService.hasAccessFor(targetKey, "TEST1")
+        val p = accessService.hasAccessTo(targetKey, "TEST1")
 
         StepVerifier
             .create(p)
@@ -95,7 +95,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val accessService = SpringSecurityAccessBrokerService(broker)
 
-        val p = accessService.hasAccessFor(targetKey, "TEST")
+        val p = accessService.hasAccessTo(targetKey, "TEST")
 
         StepVerifier
             .create(p)

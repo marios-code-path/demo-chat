@@ -8,9 +8,9 @@ import reactor.core.publisher.Mono
 
 interface SecretsStoreAccess<T> : SecretsStore<T> {
 
-    @PreAuthorize("@chatAccess.hasAccessFor(#key, 'READ')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#key, 'READ')")
     override fun getStoredCredentials(key: Key<T>): Mono<String>
 
-    @PreAuthorize("@chatAccess.hasAccessFor(#keyCredential.component1(), 'WRITE')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#keyCredential.component1(), 'WRITE')")
     override fun addCredential(keyCredential: KeyCredential<T>): Mono<Void>
 }

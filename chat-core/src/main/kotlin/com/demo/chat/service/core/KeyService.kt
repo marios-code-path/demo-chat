@@ -7,6 +7,7 @@ interface  IKeyService <T> {
     fun <S> key(kind: Class<S>): Mono<out Key<T>>
     fun rem(key: Key<T>): Mono<Void>
     fun exists(key: Key<T>): Mono<Boolean>
+    fun kind(key: Key<T>): Mono<String> = Mono.just("none")
 }
 
 interface IKeyGenerator <T> {

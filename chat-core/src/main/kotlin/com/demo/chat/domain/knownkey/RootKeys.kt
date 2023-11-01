@@ -21,6 +21,7 @@ class RootKeys<T> {
     fun <S> addRootKey(domain: Class<S>, key: Key<T>) = keyMap.put(domain.simpleName, key)
     fun <S> isRootKeyWithValue(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
     fun hasKey(key: String) = keyMap.containsKey(key)
+    fun <S> hasKey(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
     fun addRootKey(domain: String, key: Key<T>) = keyMap.put(domain, key)
     fun <S> isRootKeyWithValue(domain: Class<S>, key: Key<T>): Boolean {
         return if(isRootKeyWithValue(domain)) {
