@@ -32,6 +32,24 @@ class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     }
 
     @Test
+    fun `created key should query by id`() {
+        val pub = svc.key(String::class.java)
+            .flatMap {
+                svc.kind(it)
+            }
+
+        StepVerifier
+            .create(pub)
+            .assertNext{ kind ->
+                Assertions
+                    .assertThat(kind)
+                    .isNotNull
+                    .isEqualTo("String")
+            }
+            .verifyComplete()
+    }
+
+    @Test
     fun `created key should Exist`() {
         val keyStream = svc
             .key(User::class.java)

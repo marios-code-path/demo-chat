@@ -2,6 +2,7 @@ package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.User
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.ChatUserDetails
 import com.demo.chat.secure.access.AuthMetadataAccessBroker
 import com.demo.chat.secure.access.SpringSecurityAccessBrokerService
@@ -38,6 +39,9 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     @MockBean
     lateinit var authSvc: AuthorizationService<T, AuthMetadata<T>>
 
+    @MockBean
+    lateinit var rootKeys: RootKeys<T>
+
     @BeforeEach
     fun setUp() {
         val authMetadataAgainstData = Flux.just(
@@ -68,7 +72,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val broker = AuthMetadataAccessBroker(authSvc)
 
-        val accessService = SpringSecurityAccessBrokerService(broker)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
         val p = accessService.hasAccessTo(targetKey, "TEST1")
 
@@ -86,14 +90,15 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     @Test
     fun `has access will allow`() {
         val auth =
-            UsernamePasswordAuthenticationToken.authenticated(ChatUserDetails(user, roles()), "", grantedAuthorities())
+            UsernamePasswordAuthenticationToken.authenticated(
+                ChatUserDetails(user, roles()), "", grantedAuthorities())
 
         // ReactorContextTestExecutionListener will set the context on the Hooks.onLastOperator call
         SecurityContextHolder.getContext().authentication = auth
 
         val broker = AuthMetadataAccessBroker(authSvc)
 
-        val accessService = SpringSecurityAccessBrokerService(broker)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
         val p = accessService.hasAccessTo(targetKey, "TEST")
 

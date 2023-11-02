@@ -3,6 +3,7 @@ package com.demo.chat.test.rsocket.controller
 import com.demo.chat.controller.core.access.SecretsStoreAccess
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.secure.access.SpringSecurityAccessBrokerService
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.SecretsStore
@@ -32,6 +33,9 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
 
     @MockBean
     private lateinit var secretStore: SecretsStore<Long>
+
+    @MockBean
+    private lateinit var rootKeys: RootKeys<Long>
 
     @MockBean
     private lateinit var accessBroker: AccessBroker<Long>

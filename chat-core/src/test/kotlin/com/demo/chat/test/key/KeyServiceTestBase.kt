@@ -12,6 +12,25 @@ import reactor.test.StepVerifier
 open class KeyServiceTestBase<T>(private val keyService: IKeyService<T>) {
 
     @Test
+    fun `should create and find kind`() {
+        StepVerifier
+            .create(
+                keyService
+                    .key(String::class.java)
+                    .flatMap { key ->
+                        keyService.kind(key)
+                    }
+            )
+            .assertNext { kind ->
+                Assertions
+                    .assertThat(kind)
+                    .isNotNull()
+                    .isEqualTo("String")
+            }
+            .verifyComplete()
+    }
+
+    @Test
     fun `should create key`() {
         StepVerifier
             .create(
