@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller
 
-import com.demo.chat.controller.core.access.SecretsStoreAccess
+import com.demo.chat.config.access.core.SecretsStoreAccess
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
@@ -10,7 +10,6 @@ import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketSecurityTestConfiguration
 import com.demo.chat.test.rsocket.RSocketTestBase
-import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito

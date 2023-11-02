@@ -1,4 +1,4 @@
-package com.demo.chat.controller.core.access
+package com.demo.chat.config.access.core
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.IndexService
@@ -17,41 +17,41 @@ interface IndexAccess<T, E, Q> : IndexService<T, E, Q> {
 
 interface UserIndexAccess<T, Q> : IndexAccess<T, User<T>, Q> {
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.User), 'FIND')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('User', 'FIND')")
     override fun findBy(query: Q): Flux<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.User), 'FINDUNIQUE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('User', 'FINDUNIQUE')")
     override fun findUnique(query: Q): Mono<out Key<T>>
 }
 
 interface TopicIndexAccess<T, Q> : IndexAccess<T, MessageTopic<T>, Q> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.MessageTopic), 'FIND')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'FIND')")
     override fun findBy(query: Q): Flux<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.MessageTopic), 'FINDUNIQUE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'FINDUNIQUE')")
     override fun findUnique(query: Q): Mono<out Key<T>>
 }
 
 interface MembershipIndexAccess<T, Q> : IndexAccess<T, TopicMembership<T>, Q> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.TopicMembership), 'FIND')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('TopicMembership', 'FIND')")
     override fun findBy(query: Q): Flux<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.TopicMembership), 'FINDUNIQUE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('TopicMembership', 'FINDUNIQUE')")
     override fun findUnique(query: Q): Mono<out Key<T>>
 }
 
 interface MessageIndexAccess<T, V, Q> : IndexAccess<T, Message<T, V>, Q> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.Message), 'FIND')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'FIND')")
     override fun findBy(query: Q): Flux<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.Message), 'FINDUNIQUE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'FINDUNIQUE')")
     override fun findUnique(query: Q): Mono<out Key<T>>
 }
 
 interface KeyValueIndexAccess<T, Q> : IndexAccess<T, KeyValuePair<T, Any>, Q> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.KeyValuePair), 'FIND')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('KeyValuePair', 'FIND')")
     override fun findBy(query: Q): Flux<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.KeyValuePair), 'FINDUNIQUE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('KeyValuePair', 'FINDUNIQUE')")
     override fun findUnique(query: Q): Mono<out Key<T>>
 }

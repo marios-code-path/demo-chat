@@ -1,4 +1,4 @@
-package com.demo.chat.controller.core.access
+package com.demo.chat.config.access.core
 
 import com.demo.chat.domain.Message
 import com.demo.chat.service.core.PubSubService
@@ -27,21 +27,21 @@ interface PubSubAccess<T, V> : PubSubService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'SUBSCRIBE')")
     override fun listenTo(topic: T): Flux<out Message<T, V>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(T(com.demo.chat.domain.Message), 'SUBSCRIBE')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'SUBSCRIBE')")
     override fun exists(topic: T): Mono<Boolean>
 }
 
 interface TopicInventoryAccess<T> : TopicInventoryService<T> {
 
-    @PreAuthorize("@chatAccess.hasAccessTo(T(com.demo.chat.domain.MessageTopic), #topicId, 'OPEN')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#topicId, 'OPEN')")
     override fun open(topicId: T): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(T(com.demo.chat.domain.MessageTopic), #topicId, 'CLOSE')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#topicId, 'CLOSE')")
     override fun close(topicId: T): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(T(com.demo.chat.domain.User), #uid, 'TOPICS')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#uid, 'TOPICS')")
     override fun getByUser(uid: T): Flux<T>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(T(com.demo.chat.domain.MessageTopic), #topicId, 'GET')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#topicId, 'GET')")
     override fun getUsersBy(topicId: T): Flux<T>
 }

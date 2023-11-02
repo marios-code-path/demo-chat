@@ -1,4 +1,4 @@
-package com.demo.chat.controller.core.access
+package com.demo.chat.config.access.core
 
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
