@@ -7,16 +7,14 @@ app:
       wildcard: "*"
       roles:
         - { user: Admin, target: Admin, role: "*" }
-        - { user: Anon, target: User, role: READ }
-        - { user: Anon, target: User, role: CREATE }
-        - { user: Anon, target: Message, role: READ }
-        - { user: Anon, target: MessageTopic, role: READ }
-        - { user: User, target: User, role: READ }
-        - { user: User, target: Message, role: READ }
-        - { user: User, target: Message, role: CREATE }
+        - { user: Anon, target: User, role: FIND }
+        - { user: Anon, target: User, role: NEW }
+        - { user: Anon, target: Message, role: GET }
+        - { user: User, target: Message, role: SEND }
+        - { user: User, target: MessageTopic, role: ALL }
+        - { user: User, target: MessageTopic, role: GET }
         - { user: User, target: MessageTopic, role: JOIN }
-        - { user: User, target: MessageTopic, role: SEND }
-        - { user: User, target: MessageTopic, role: READ }
+        - { user: User, target: MessageTopic, role: MEMBERS }
     initialUsers:
       Anon:
         handle: Anon
