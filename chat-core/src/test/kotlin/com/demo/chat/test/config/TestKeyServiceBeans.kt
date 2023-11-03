@@ -6,7 +6,9 @@ import org.mockito.BDDMockito
 
 open class TestKeyServiceBeans<T> : KeyServiceBeans<T> {
 
-    val keyService: IKeyService<T> = BDDMockito.mock(IKeyService::class.java) as IKeyService<T>
+    val mockKeyService: IKeyService<T> = BDDMockito.mock(IKeyService::class.java)
+            as? IKeyService<T> ?: throw ClassCastException("Unable to cast mock to IKeyService<T>")
 
-    override fun keyService(): IKeyService<T> = keyService
+
+    override fun keyService(): IKeyService<T> = mockKeyService
 }

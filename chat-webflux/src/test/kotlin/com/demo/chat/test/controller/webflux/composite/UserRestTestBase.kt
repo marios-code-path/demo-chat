@@ -6,7 +6,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.config.LongCompositeServiceBeans
+import com.demo.chat.test.config.TestLongCompositeServiceBeans
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
@@ -28,7 +28,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @ContextConfiguration(
-    classes = [LongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatUserServiceController::class]
+    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatUserServiceController::class]
 )
 class LongUserRestTests : UserRestTestBase<Long>(
     { 1001L },

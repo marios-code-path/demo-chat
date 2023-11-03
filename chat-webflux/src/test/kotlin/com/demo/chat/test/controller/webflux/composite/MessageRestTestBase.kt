@@ -6,7 +6,7 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.config.LongCompositeServiceBeans
+import com.demo.chat.test.config.TestLongCompositeServiceBeans
 import com.demo.chat.test.controller.webflux.TestServiceInstance
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono
 import java.net.URI
 
 @ContextConfiguration(
-    classes = [LongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatMessageServiceController::class]
+    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatMessageServiceController::class]
 )
 class LongMessageRestTests : MessageRestTestBase<Long>({ 1001L })
 

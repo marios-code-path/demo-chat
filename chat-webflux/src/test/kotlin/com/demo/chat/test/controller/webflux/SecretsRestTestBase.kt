@@ -5,8 +5,8 @@ import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.controller.webflux.SecretsRestController
 import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.config.LongKeyServiceBeans
-import com.demo.chat.test.config.LongSecretsStoreBeans
+import com.demo.chat.test.config.TestLongKeyServiceBeans
+import com.demo.chat.test.config.TestLongSecretsStoreBeans
 import com.demo.chat.test.controller.webflux.config.LongUserDetailsConfiguration
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Disabled
@@ -28,7 +28,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
 
-@ContextConfiguration(classes = [LongSecretsStoreBeans::class, LongKeyServiceBeans::class,
+@ContextConfiguration(classes = [TestLongSecretsStoreBeans::class, TestLongKeyServiceBeans::class,
     LongUserDetailsConfiguration::class, WebFluxTestConfiguration::class, SecretsRestController::class])
 class LongSecretsRestTestBase: SecretsRestTestBase<Long>( { Key.funKey(1L) })
 

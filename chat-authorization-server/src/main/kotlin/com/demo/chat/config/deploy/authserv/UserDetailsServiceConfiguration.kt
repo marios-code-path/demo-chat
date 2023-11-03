@@ -1,6 +1,6 @@
 package com.demo.chat.config.deploy.authserv
 
-import com.demo.chat.secure.service.CoreUserDetailsService
+import com.demo.chat.security.service.CoreUserDetailsService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.core.userdetails.UserDetails

@@ -1,10 +1,10 @@
 package com.demo.chat.test.rsocket.controller
 
-import com.demo.chat.config.access.core.SecretsStoreAccess
+import com.demo.chat.security.access.core.SecretsStoreAccess
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.access.SpringSecurityAccessBrokerService
+import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyObject
@@ -47,7 +47,7 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
             .willReturn(Mono.just("1234567890"))
 
         BDDMockito
-            .given(accessBroker.getAccessFromPublisher(anyObject(), anyObject(), anyObject()))
+            .given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(false))
 
         StepVerifier.create(

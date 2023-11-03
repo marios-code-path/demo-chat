@@ -1,10 +1,10 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.*
-import com.demo.chat.secure.AuthMetadataPrincipleKeySearch
-import com.demo.chat.secure.AuthMetadataTargetKeySearch
-import com.demo.chat.secure.AuthSummarizer
-import com.demo.chat.secure.service.CoreAuthorizationService
+import com.demo.chat.security.AuthMetadataPrincipleKeySearch
+import com.demo.chat.security.AuthMetadataTargetKeySearch
+import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.security.service.CoreAuthorizationService
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.test.auth.AuthorizationServiceTests

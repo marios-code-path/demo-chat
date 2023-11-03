@@ -1,4 +1,4 @@
-package com.demo.chat.config.access.core
+package com.demo.chat.security.access.core
 
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
@@ -7,7 +7,7 @@ import reactor.core.publisher.Mono
 
 interface IKeyServiceAccess<T> : IKeyService<T> {
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain(#kind, 'NEW')")
+    @PreAuthorize("@chatAccess.hasAccessToDomainByKind(#kind, 'NEW')")
     override fun <S> key(kind: Class<S>): Mono<out Key<T>>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'DEL')")

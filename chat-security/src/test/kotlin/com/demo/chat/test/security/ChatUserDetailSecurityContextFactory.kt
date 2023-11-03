@@ -1,4 +1,4 @@
-package com.demo.chat.test.controller.webflux.config
+package com.demo.chat.test.security
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -8,7 +8,6 @@ import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.test.context.support.WithSecurityContext
 import org.springframework.security.test.context.support.WithSecurityContextFactory
-
 
 @Retention(AnnotationRetention.RUNTIME)
 @WithSecurityContext(factory = ChatUserDetailSecurityContextFactory::class)

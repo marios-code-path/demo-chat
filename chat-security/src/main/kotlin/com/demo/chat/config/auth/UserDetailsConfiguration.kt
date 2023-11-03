@@ -1,9 +1,8 @@
-package com.demo.chat.config.secure
+package com.demo.chat.config.auth
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
-import com.demo.chat.domain.TypeUtil
-import com.demo.chat.secure.service.CoreUserDetailsService
+import com.demo.chat.security.service.CoreUserDetailsService
 import com.demo.chat.service.security.AuthenticationService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean

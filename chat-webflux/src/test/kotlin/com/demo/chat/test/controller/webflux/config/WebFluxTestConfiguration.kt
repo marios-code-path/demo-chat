@@ -11,6 +11,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 @TestConfiguration
 @Import(DefaultChatJacksonModules::class)
 class WebFluxTestConfiguration {
+
     @Bean
     fun filterChain(http: ServerHttpSecurity): SecurityWebFilterChain? = http
         .authorizeExchange {

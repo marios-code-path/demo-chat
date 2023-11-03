@@ -1,8 +1,8 @@
-package com.demo.chat.secure.service
+package com.demo.chat.security.service
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
-import com.demo.chat.secure.Summarizer
+import com.demo.chat.security.Summarizer
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthorizationService
@@ -26,6 +26,7 @@ class CoreAuthorizationService<T, Q>(
     private val anonKey: Supplier<out Key<T>>,
     private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>
 ) : AuthorizationService<T, AuthMetadata<T>> {
+
     override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> = when (auth.key.empty) {
         true -> authPersist
             .key()

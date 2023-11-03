@@ -1,6 +1,7 @@
 package com.demo.chat.domain
 
 import org.springframework.core.ParameterizedTypeReference
+import java.lang.NumberFormatException
 import java.util.*
 
 // Path: chat-core/src/main/kotlin/com/demo/chat/domain/TypeUtil.kt
@@ -17,7 +18,11 @@ interface TypeUtil<T> {
 
         override fun toString(t: Long): String = t.toString()
 
-        override fun fromString(t: String): Long = java.lang.Long.parseLong(t)
+        override fun fromString(t: String): Long = try {
+            java.lang.Long.parseLong(t)
+        } catch (e: NumberFormatException) {
+            0L
+        }
 
         override fun assignFrom(t: Any): Long {
             return when (t) {
@@ -39,7 +44,11 @@ class LongUtil : TypeUtil<Long> {
 
     override fun toString(t: Long): String = t.toString()
 
-    override fun fromString(t: String): Long = java.lang.Long.parseLong(t)
+    override fun fromString(t: String): Long = try {
+        java.lang.Long.parseLong(t)
+    } catch (e: NumberFormatException) {
+        0L
+    }
 
     override fun assignFrom(t: Any): Long {
         return when (t) {

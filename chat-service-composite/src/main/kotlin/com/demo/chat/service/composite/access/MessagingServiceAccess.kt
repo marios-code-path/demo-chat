@@ -17,14 +17,14 @@ open class MessagingServiceAccess<T, V> (
 ): ChatMessageService<T, V> {
 
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> = authMetadataAccessBroker
-        .getAccessFromPublisher(Mono.from(principalPublisher()), Key.funKey(req.id), "LISTEN")
+        .hasAccessByPrincipal(Mono.from(principalPublisher()), Key.funKey(req.id), "LISTEN")
         .thenMany(that.listenTopic(req))
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> = authMetadataAccessBroker
-        .getAccessFromPublisher(Mono.from(principalPublisher()), Key.funKey(req.id), "READ")
+        .hasAccessByPrincipal(Mono.from(principalPublisher()), Key.funKey(req.id), "READ")
         .then(that.messageById(req))
 
     override fun send(req: MessageSendRequest<T, V>): Mono<Void> = authMetadataAccessBroker
-        .getAccessFromPublisher(Mono.from(principalPublisher()), Key.funKey(req.dest), "SEND")
+        .hasAccessByPrincipal(Mono.from(principalPublisher()), Key.funKey(req.dest), "SEND")
         .then(that.send(req))
 }

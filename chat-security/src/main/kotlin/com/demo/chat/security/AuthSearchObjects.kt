@@ -1,4 +1,4 @@
-package com.demo.chat.secure
+package com.demo.chat.security
 
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key

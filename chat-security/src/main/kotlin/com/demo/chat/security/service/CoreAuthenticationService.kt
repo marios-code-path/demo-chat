@@ -1,4 +1,4 @@
-package com.demo.chat.secure.service
+package com.demo.chat.security.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException

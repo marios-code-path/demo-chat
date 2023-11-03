@@ -1,4 +1,4 @@
-package com.demo.chat.config.secure
+package com.demo.chat.config.auth
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -6,8 +6,8 @@ import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.AuthSummarizer
-import com.demo.chat.secure.service.CoreAuthBeans
+import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.security.service.CoreAuthBeans
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty

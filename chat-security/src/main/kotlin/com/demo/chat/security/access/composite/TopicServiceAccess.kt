@@ -1,4 +1,4 @@
-package com.demo.chat.config.access.composite
+package com.demo.chat.security.access.composite
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatTopicService
@@ -26,7 +26,7 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#req.uid(), 'JOIN')")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.cuid(), 'JOIN')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#req.roomId(), 'JOIN')")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'MEMBERS')")

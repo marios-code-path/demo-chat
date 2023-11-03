@@ -7,9 +7,9 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.config.access.composite.MessageServiceAccess
-import com.demo.chat.config.access.composite.TopicServiceAccess
-import com.demo.chat.config.access.composite.UserServiceAccess
+import com.demo.chat.security.access.composite.MessageServiceAccess
+import com.demo.chat.security.access.composite.TopicServiceAccess
+import com.demo.chat.security.access.composite.UserServiceAccess
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller

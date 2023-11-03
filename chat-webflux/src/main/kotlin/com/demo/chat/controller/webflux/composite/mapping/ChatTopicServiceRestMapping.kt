@@ -1,7 +1,7 @@
 package com.demo.chat.controller.webflux.composite.mapping
 
 import com.demo.chat.domain.*
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.composite.ChatTopicService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType

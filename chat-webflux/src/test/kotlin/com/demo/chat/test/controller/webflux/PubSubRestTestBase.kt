@@ -7,8 +7,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.config.LongKeyServiceBeans
-import com.demo.chat.test.config.LongPubSubBeans
+import com.demo.chat.test.config.TestLongKeyServiceBeans
+import com.demo.chat.test.config.TestLongPubSubBeans
 import com.demo.chat.test.controller.webflux.config.LongUserDetailsConfiguration
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
@@ -32,7 +32,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @ContextConfiguration(
-    classes = [LongPubSubBeans::class, LongKeyServiceBeans::class, LongUserDetailsConfiguration::class,
+    classes = [TestLongPubSubBeans::class, TestLongKeyServiceBeans::class, LongUserDetailsConfiguration::class,
         WebFluxTestConfiguration::class, PubSubRestController::class]
 )
 class LongPubSubRestTests : PubSubRestTestBase<Long, String>(

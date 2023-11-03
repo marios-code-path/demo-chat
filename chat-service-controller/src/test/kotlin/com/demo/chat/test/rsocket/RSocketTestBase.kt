@@ -19,6 +19,7 @@ open class RSocketTestBase(var username: String = "user", var password: String =
     val SIMPLE_AUTH = MimeTypeUtils.parseMimeType(WellKnownMimeType.MESSAGE_RSOCKET_AUTHENTICATION.string)
 
     lateinit var requester: RSocketRequester
+
     @BeforeAll
     internal fun `config`(
         @Autowired builder: RSocketRequester.Builder,

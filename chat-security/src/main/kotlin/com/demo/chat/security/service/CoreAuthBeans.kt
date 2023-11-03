@@ -1,4 +1,4 @@
-package com.demo.chat.secure.service
+package com.demo.chat.security.service
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -7,8 +7,8 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.Summarizer
-import com.demo.chat.secure.access.AuthMetadataAccessBroker
+import com.demo.chat.security.Summarizer
+import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Bean

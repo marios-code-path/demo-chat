@@ -1,4 +1,4 @@
-package com.demo.chat.config.access.core
+package com.demo.chat.security.access.core
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.IndexService

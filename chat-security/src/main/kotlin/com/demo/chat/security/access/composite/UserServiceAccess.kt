@@ -1,4 +1,4 @@
-package com.demo.chat.config.access.composite
+package com.demo.chat.security.access.composite
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatUserService

@@ -2,7 +2,7 @@ package com.demo.chat.controller.webflux.core.mapping
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.http.HttpStatus

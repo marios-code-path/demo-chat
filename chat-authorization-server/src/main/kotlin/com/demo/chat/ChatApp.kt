@@ -1,6 +1,6 @@
 package com.demo.chat
 
-import com.demo.chat.secure.service.CoreUserDetailsService
+import com.demo.chat.security.service.CoreUserDetailsService
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

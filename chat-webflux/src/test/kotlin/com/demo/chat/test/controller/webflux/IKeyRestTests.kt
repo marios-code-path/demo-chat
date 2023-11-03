@@ -5,7 +5,7 @@ import com.demo.chat.controller.webflux.IKeyRestController
 import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
-import com.demo.chat.test.config.LongKeyServiceBeans
+import com.demo.chat.test.config.TestLongKeyServiceBeans
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -26,7 +26,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
 
-@ContextConfiguration(classes = [LongKeyServiceBeans::class, IKeyRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongKeyServiceBeans::class, IKeyRestController::class, WebFluxTestConfiguration::class])
 @WebFluxTest(IKeyRestController::class)
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
 @TestPropertySource(properties = ["app.controller.key"])

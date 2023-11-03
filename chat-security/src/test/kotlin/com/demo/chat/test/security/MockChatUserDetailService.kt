@@ -1,4 +1,5 @@
-package com.demo.chat.test.controller.webflux.config
+package com.demo.chat.test.security
+
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User

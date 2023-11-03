@@ -1,8 +1,8 @@
-package com.demo.chat.secure.access
+package com.demo.chat.security.access
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.stereotype.Component
@@ -16,7 +16,7 @@ class SpringSecurityAccessBrokerService<T>(
 ) {
 
     fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
-        access.getAccessFromPublisher(
+        access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),
             rootKeys.getRootKey(domain), perm
         )
@@ -24,20 +24,20 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
 
     fun hasAccessTo(who: T, target: T, perm: String): Mono<Boolean> =
-        access.getAccess(who, target, perm)
+        access.hasAccessByKeyId(who, target, perm)
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
     fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
-        access.getAccessFromPublisher(
+        access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),
             target, perm
         )
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
-    fun <S> hasAccessToDomain(kind: Class<S>, perm: String): Mono<Boolean> =
-        access.getAccessFromPublisher(
+    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> =
+        access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),
             rootKeys.getRootKey(kind), perm
         )

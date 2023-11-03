@@ -2,7 +2,7 @@ package com.demo.chat
 
 import com.demo.chat.service.client.discovery.LocalhostDiscovery
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.secure.service.CoreUserDetailsService
+import com.demo.chat.security.service.CoreUserDetailsService
 import com.demo.chat.service.client.ClientDiscovery
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -12,7 +12,6 @@ import org.springframework.cloud.client.ServiceInstance
 import org.springframework.context.annotation.Bean
 import org.springframework.test.context.ActiveProfiles
 import reactor.core.publisher.Mono
-import java.util.*
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,

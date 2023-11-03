@@ -1,7 +1,7 @@
-package com.demo.chat.secure.service
+package com.demo.chat.security.service
 
 import com.demo.chat.domain.User
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthenticationService
 import org.springframework.security.authentication.BadCredentialsException

@@ -3,15 +3,13 @@ package com.demo.chat.controller.webflux.composite.mapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.composite.ChatMessageService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.net.URI
 
 interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
 

@@ -1,7 +1,7 @@
-package com.demo.chat.secure.service
+package com.demo.chat.security.service
 
 import com.demo.chat.domain.ByStringRequest
-import com.demo.chat.secure.ChatUserDetails
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AuthenticationService
 import com.demo.chat.service.security.SecretsStore

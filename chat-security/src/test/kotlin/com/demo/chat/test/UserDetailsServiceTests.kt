@@ -1,6 +1,6 @@
 package com.demo.chat.test
 
-import com.demo.chat.secure.service.CoreUserDetailsService
+import com.demo.chat.security.service.CoreUserDetailsService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test

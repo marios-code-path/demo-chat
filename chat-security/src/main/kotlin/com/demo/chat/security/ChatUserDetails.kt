@@ -1,4 +1,4 @@
-package com.demo.chat.secure
+package com.demo.chat.security
 
 import com.demo.chat.domain.User
 import org.springframework.security.core.GrantedAuthority

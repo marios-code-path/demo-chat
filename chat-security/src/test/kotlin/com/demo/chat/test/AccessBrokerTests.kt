@@ -1,7 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.secure.access.AuthMetadataAccessBroker
+import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.test.key.MockKeyGeneratorResolver
@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -23,13 +22,11 @@ open class AccessBrokerTests<T>(
     private val keyGenerator: IKeyGenerator<T>
 ) {
 
-    @MockBean
-    lateinit var authSvc: AuthorizationService<T, AuthMetadata<T>>
-
     @Test
     fun `empty authMetadata disallows access`() {
         val myPrincipal = keyGenerator.nextKey()
         val objectForAccess = keyGenerator.nextKey()
+        val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         BDDMockito
             .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject()))
@@ -38,7 +35,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc)
 
         StepVerifier
-            .create(access.getAccess(myPrincipal, objectForAccess, "TEST"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)
@@ -51,6 +48,7 @@ open class AccessBrokerTests<T>(
     fun `sufficient privileges allows access`() {
         val myPrincipal = keyGenerator.nextKey()
         val objectForAccess = keyGenerator.nextKey()
+        val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(
             AuthMetadata.create(
@@ -72,7 +70,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc)
 
         StepVerifier
-            .create(access.getAccess(myPrincipal, objectForAccess, "TEST"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)
@@ -85,6 +83,7 @@ open class AccessBrokerTests<T>(
     fun `insufficient privileges disallows access`() {
         val myPrincipal = keyGenerator.nextKey()
         val objectForAccess = keyGenerator.nextKey()
+        val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(
             AuthMetadata.create(
@@ -106,7 +105,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc)
 
         StepVerifier
-            .create(access.getAccess(myPrincipal, objectForAccess, "EXEC"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "EXEC"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)

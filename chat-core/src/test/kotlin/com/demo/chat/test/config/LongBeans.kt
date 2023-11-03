@@ -6,42 +6,42 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 
 @TestConfiguration
-open class LongPersistenceBeans {
+open class TestLongPersistenceBeans {
 
     @Bean
     open fun persistenceBeans(): PersistenceServiceBeans<Long, String> = TestPersistenceBeans()
 }
 
 @TestConfiguration
-open class LongIndexBeans {
+open class TestLongIndexBeans {
 
     @Bean
     open fun indexBeans(): IndexServiceBeans<Long, String, IndexSearchRequest> = TestIndexBeans()
 }
 
 @TestConfiguration
-open class LongPubSubBeans {
+open class TestLongPubSubBeans {
 
     @Bean
     open fun pubsubBeans(): PubSubServiceBeans<Long, String> = TestPubSubBeans()
 }
 
 @TestConfiguration
-open class LongSecretsStoreBeans {
+open class TestLongSecretsStoreBeans {
 
     @Bean
     open fun secretsStoreBeans(): SecretsStoreBeans<Long> = TestSecretsStoreBeans()
 }
 
 @TestConfiguration
-open class LongKeyServiceBeans {
+open class TestLongKeyServiceBeans {
 
     @Bean
     open fun keyServiceBeans(): KeyServiceBeans<Long> = TestKeyServiceBeans()
 }
 
 @TestConfiguration
-open class LongCompositeServiceBeans {
+open class TestLongCompositeServiceBeans {
 
     @Bean
     open fun compositeServiceBeans(): CompositeServiceBeans<Long, String> = TestCompositeServiceBeans()

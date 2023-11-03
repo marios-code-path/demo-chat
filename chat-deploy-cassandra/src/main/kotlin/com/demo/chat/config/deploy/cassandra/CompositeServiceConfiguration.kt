@@ -5,8 +5,7 @@ import com.demo.chat.config.service.composite.CompositeServiceBeansConfiguration
 import com.demo.chat.config.service.composite.access.CompositeServiceAccessBeansConfiguration
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.secure.ChatUserDetails
-import com.demo.chat.service.core.*
+import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
