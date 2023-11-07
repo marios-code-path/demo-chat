@@ -18,4 +18,5 @@ interface AuthorizationService<T, out M> {
     fun getAuthorizationsForTarget(uid: Key<T>): Flux<out M>
     fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<out M>
     fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<out M>
+    fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>): Flux<out M>
 }

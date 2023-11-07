@@ -21,13 +21,14 @@ interface PubSubAccess<T, V> : PubSubService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'UNSUBALLIN')")
     override fun unSubscribeAllIn(topic: T): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessToEntity(#message, 'SEND')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#message.key.id, 'SEND')")
     override fun sendMessage(message: Message<T, V>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'SUBSCRIBE')")
     override fun listenTo(topic: T): Flux<out Message<T, V>>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'SUBSCRIBE')")
+    //@PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'SUBSCRIBE')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'SUBSCRIBE')")
     override fun exists(topic: T): Mono<Boolean>
 }
 

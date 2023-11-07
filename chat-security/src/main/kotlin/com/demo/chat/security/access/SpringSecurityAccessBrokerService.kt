@@ -15,6 +15,15 @@ class SpringSecurityAccessBrokerService<T>(
     val rootKeys: RootKeys<T>
 ) {
 
+    fun hasAccessToMany(targets: List<Key<T>>, perm: String): Mono<Boolean> =
+        access.hasAccessManyByPrincipal(
+            getSecurityContextPrincipal(),
+            targets,
+            perm
+        )
+            .onErrorReturn(false)
+            .switchIfEmpty(Mono.just(false))
+
     fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
         access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),

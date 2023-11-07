@@ -27,6 +27,9 @@
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
+                            <docker>
+                                <host>${env.DOCKER_HOST}</host>
+                            </docker>
                             <mainClass>${mainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>

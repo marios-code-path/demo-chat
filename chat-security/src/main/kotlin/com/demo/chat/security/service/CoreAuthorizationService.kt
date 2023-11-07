@@ -31,6 +31,7 @@ class CoreAuthorizationService<T, Q>(
         true -> authPersist
             .key()
             .map { key -> AuthMetadata.create(key, auth.principal, auth.target, auth.permission, auth.expires) }
+
         else -> Mono.just(auth)
     }
         .flatMap { authorization ->
@@ -38,10 +39,23 @@ class CoreAuthorizationService<T, Q>(
                 true -> authPersist
                     .add(authorization)
                     .then(authIndex.add(authorization))
+
                 else -> authPersist.rem(authorization.key)
                     .flatMap { authIndex.rem(authorization.key) }
             }
         }
+
+    private fun getAuthorizationsForMultipleTarget(uids: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
+        .computeAggregates(
+            Flux.concat(uids.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
+            sequenceOf(anonKey.get()) + uids
+        )
+
+    fun getAuthorizationsForMultiplePrincipal(uids: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
+        .computeAggregates(
+            Flux.concat(uids.map { authIndex.findBy(queryForPrinciple.apply(it)).flatMap(authPersist::get) }),
+            sequenceOf(anonKey.get()) + uids
+        )
 
     override fun getAuthorizationsForTarget(uid: Key<T>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
@@ -52,14 +66,19 @@ class CoreAuthorizationService<T, Q>(
     override fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             authIndex
-                .findBy(queryForPrinciple.apply(uid))
-                .flatMap(authPersist::get),
+                .findBy(queryForPrinciple.apply(uid)).flatMap(authPersist::get),
             sequenceOf(anonKey.get(), uid)
         )
 
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
-            getAuthorizationsForTarget(uidB),
+            authIndex.findBy(queryForTarget.apply(uidB)).flatMap(authPersist::get),
             sequenceOf(anonKey.get(), uidA, uidB)
+        )
+
+    override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
+        .computeAggregates(
+            Flux.concat(uidB.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
+            sequenceOf(anonKey.get(), uidA) + uidB
         )
 }

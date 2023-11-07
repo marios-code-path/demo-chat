@@ -41,24 +41,24 @@ import reactor.core.publisher.Flux
 // 1: requires a principal entity id = Pid
 // 2: requires all wildcard id's = Wid[n]
 interface Summarizer<M, T> {
-    fun computeAggregates(elements: Flux<M>, targetIds: Sequence<T>): Flux<M>
+    fun computeAggregates(elements: Flux<M>, actorIds: Sequence<T>): Flux<M>
 }
 
 class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : Summarizer<AuthMetadata<T>, Key<T>> {
+
     override fun computeAggregates(
         elements: Flux<AuthMetadata<T>>,
-        targetIds: Sequence<Key<T>>
+        actorIds: Sequence<Key<T>>
     ): Flux<AuthMetadata<T>> =
         elements
             .filter { meta ->
                 val principalId = meta.principal
 
-                targetIds
+                actorIds
                     .filter { targetId -> (targetId == principalId) }
                     .any()
             }
             .groupBy { g -> g.permission }
             .flatMap { g -> g.sort(comparator).last() }
             .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) } // removing 0L allows us to overlay negative permission (+CREATE == Long.MAX_VALUE,  -CREATE = Long.MIN_VALUE)
-
 }

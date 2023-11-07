@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 interface PersistenceAccess<T, E> : PersistenceStore<T, E> {
-    @PreAuthorize("@chatAccess.hasAccessToEntity(#ent, 'PUT')")
+    @PreAuthorize("@chatAccess.hasAccessTo(#ent.key, 'PUT')")
     override fun add(ent: E): Mono<Void>
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'DEL')")
     override fun rem(key: Key<T>): Mono<Void>
