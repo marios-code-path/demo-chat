@@ -14,7 +14,7 @@ import java.util.function.Function
 open class MessagingServiceImpl<T, V, Q>(
     private val messageIndex: MessageIndexService<T, V, Q>,
     private val messagePersistence: MessagePersistence<T, V>,
-    private val topicMessaging: TopicPubSubService<T, V>,
+    private val pubsub: TopicPubSubService<T, V>,
     private val topicIdToQuery: Function<ByIdRequest<T>, Q>,
 ) : ChatMessageService<T, V> {
 
@@ -28,7 +28,7 @@ open class MessagingServiceImpl<T, V, Q>(
                 .flatMapMany { messageKeys ->
                     messagePersistence.byIds(messageKeys)
                 },
-            topicMessaging.listenTo(req.id)
+            pubsub.listenTo(req.id)
         )
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
@@ -46,7 +46,7 @@ open class MessagingServiceImpl<T, V, Q>(
                 Flux.concat(
                     messagePersistence.add(sending(it.id)),
                     messageIndex.add(sending(it.id)),
-                    topicMessaging.sendMessage(sending(it.id))
+                    pubsub.sendMessage(sending(it.id))
                 ).then()
             }
     }

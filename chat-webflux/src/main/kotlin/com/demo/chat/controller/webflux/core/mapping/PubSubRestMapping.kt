@@ -6,6 +6,7 @@ import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
@@ -49,7 +50,7 @@ interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {
             .flatMap { key ->
                 sendMessage(
                     Message.create(
-                        MessageKey.create(key.id, user.user.key.id, topic),
+                        MessageKey.create(key.id, user.userId(), topic),
                         message,
                         true
                     )
@@ -58,8 +59,8 @@ interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {
             }
             .map { it.id.toString() }
 
-//    @GetMapping("/listen")
-//    override fun listenTo(topic: T): Flux<out Message<T, V>>
+    @GetMapping("/listen/{topic}", produces = [MediaType.APPLICATION_NDJSON_VALUE])
+    override fun listenTo(@PathVariable topic: T): Flux<out Message<T, String>>
 
     @GetMapping("/exists/{topic}")
     override fun exists(@PathVariable topic: T): Mono<Boolean>

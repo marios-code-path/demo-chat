@@ -14,6 +14,8 @@ open class ChatUserDetails<T>(val user: User<T>, val roles: Collection<String>) 
         passwd = password
     }
 
+    fun userId(): T = user.key.id
+
     override fun getPassword(): String = passwd!!
 
     override fun getUsername(): String = user.handle

@@ -8,8 +8,8 @@ source $DIR/util.sh
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export MAIN_FLAGS="-Dspring.shell.interactive.enabled=true -Dspring.main.web-application-type=reactive"
-export CLIENT_FLAGS="-Dapp.client.protocol=rsocket -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
- \
+export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
+-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration \
 -Dapp.client.rsocket.core.key \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \

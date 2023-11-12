@@ -8,7 +8,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-@ConditionalOnProperty("app.service.security.userdetails")
+
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
 @Configuration
 class UserDetailsConfiguration {
 
@@ -17,6 +18,7 @@ class UserDetailsConfiguration {
         compositeServices: CompositeServiceBeans<T, String>,
         secretsBeans: SecretsStoreBeans<T>,
         auth: AuthenticationService<T>
-    ): CoreUserDetailsService<T> = CoreUserDetailsService(compositeServices.userService(), secretsBeans.secretsStore(), auth)
+    ): CoreUserDetailsService<T> =
+        CoreUserDetailsService(compositeServices.userService(), secretsBeans.secretsStore(), auth)
 
 }

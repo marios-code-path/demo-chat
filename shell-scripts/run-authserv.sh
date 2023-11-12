@@ -12,7 +12,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.key \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.oauth2.entrypoint-path=localhost:9090 \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user \
--Dapp.service.security.userdetails -Dapp.service.composite.auth"
+-Dapp.service.composite.auth"
 export PORTS_FLAGS="-Dserver.port=${AUTHSERV_HTTP_PORT} -Dmanagement.server.port=${AUTHSERV_MGMT_PORT}"
 export OPT_FLAGS="-Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration \
 -Dspring.main.web-application-type=servlet -Dlogging.level.com.demo.chat.client.rsocket=DEBUG"

@@ -28,7 +28,7 @@ class CompositeServiceBeansConfiguration<T, V, Q>(
     override fun messageService() = MessagingServiceImpl(
         messageIndex = indexBeans.messageIndex(),
         messagePersistence = persistenceBeans.messagePersistence(),
-        topicMessaging = pubsub.pubSubService(),
+        pubsub = pubsub.pubSubService(),
         topicIdToQuery = queryConverters::topicIdToQuery
     )
 

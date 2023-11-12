@@ -109,6 +109,9 @@ while getopts ":d:waoxge:s:b:c:m:i:k:b:n:p:" o; do
       Additional Environment Variables:
       KEYSTORE_PASS = password for keystore when using TLS
       CERT_DIR = directory where certs are stored
+      CONSUL_HOST =
+      CONSUL_PORT =
+
 CATZ
       exit
       ;;
@@ -319,8 +322,6 @@ DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME} -v ${KEY_VOLUME}:/etc/keys"
 
 RUN_ARGS="-Dspring-boot.run.arguments=\"${SPRING_RUN_ARGUMENTS}\" -Dspring-boot.run.jvmArguments=\"${SPRING_JVM_ARGUMENTS}\""
 
-# makes no use of cloud configuration or config-maps
-# That leading space is IMPORTANT ! DONT remove!
 export JAVA_TOOL_OPTIONS=" ${JAVA_TOOL_OPTIONS}  \
 ${MAIN_FLAGS} \
 ${TLS_FLAGS} \
