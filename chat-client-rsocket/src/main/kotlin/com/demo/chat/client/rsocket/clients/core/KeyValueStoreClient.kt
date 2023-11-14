@@ -8,7 +8,7 @@ import org.springframework.messaging.rsocket.RSocketRequester
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class KeyValueStoreClientBase<T>(
+open class KeyValueStoreClient<T>(
     private val prefix: String,
     private val requester: RSocketRequester,
 ) : PersistenceClient<T, KeyValuePair<T, Any>>(prefix, requester, ParameterizedTypeReference.forType(KeyValuePair::class.java)),

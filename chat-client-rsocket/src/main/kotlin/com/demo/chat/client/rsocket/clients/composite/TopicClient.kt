@@ -17,6 +17,7 @@ class TopicClient<T, V>(
         private val prefix: String,
         private val requester: RSocketRequester,
 ) : ChatTopicService<T, V> {
+
     override fun addRoom(req: ByStringRequest): Mono<out Key<T>> = requester
             .route("${prefix}topic-add")
             .data(req)

@@ -25,7 +25,6 @@ class PKCS12ClientConnection(
                         this.load(FileInputStream(keyFile), storePass.toCharArray())
                     }
 
-                    keyStore.getKey("1", storePass.toCharArray())
                     this.init(keyStore, storePass.toCharArray())
                 } catch(e: Exception) {
                     throw ChatException("Unable to Load the PKCS12 keyfile at ${keyFile.absolutePath}.")

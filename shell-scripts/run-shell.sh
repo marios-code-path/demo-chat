@@ -26,16 +26,6 @@ function local() {
   exit 0
 }
 
-function docker() {
-  set -e
-  export DOCKER_ARGS="-it"
-  export PORTS_FLAGS="-Dserver.port=${SHELL_MGMT_PORT} -Dmanagement.server.port=${SHELL_MGMT_PORT}"
-  export MANAGEMENT_ENDPOINTS="shutdown,health"
-
-  $DIR/build-app.sh -m chat-deploy -k long -p shell,client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
-  exit 0
-}
-
 function help_message() {
   cat << EOF
 Usage: $0 [deployment-profile] [options]

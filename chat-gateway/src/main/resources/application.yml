@@ -8,7 +8,6 @@ logging:
     org.springframework.security: INFO
     org.springframework.security.oauth2: INFO
 #    org.springframework.boot.autoconfigure: DEBUG
-
 spring:
   main:
     web-application-type: reactive
@@ -33,3 +32,10 @@ spring:
             - topic
             - message
             - openId
+  cloud:
+    gateway:
+      routes:
+          - id: global
+            uri: http://core-service-http:6792
+            predicates:
+              - Path=/**

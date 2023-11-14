@@ -12,6 +12,10 @@ export IMAGE_REPO_PREFIX=${IMAGE_REPO_PREFIX:="docker.io/library"}
 export NO_SEC=false
 export DISCOVERY_TYPE=local
 
+if [[ -z ${APP_SERVER_PROTO} ]]; then
+  export APP_SERVER_PROTO="rsocket"
+fi
+
 if [[ -z ${SPRING_ACTIVE_PROFILES} ]]; then
   export SPRING_ACTIVE_PROFILES=""
 fi
@@ -121,26 +125,26 @@ done
 if [[ -z ${BACKEND} ]]; then
 cat << BACKSEL
 you forgot to select a backend. use '-s backend'
-where 'backend' can be 'memory' and 'cassandra'
+where 'backend' can be 'memory', 'cassandra', and/or 'client'
 BACKSEL
 exit 1
 fi
 
-export BKEYS=("memory" "cassandra" "client")
-export BVALS=("memory-backend" "cassandra-backend" "client-backend")
+BACKEND_KEYS=("memory" "cassandra" "client")
+BACKEND_VALUES=("memory-backend" "cassandra-backend" "client-backend")
 
-for key in ${!BKEYS[@]}; do
-    if [[ ! -z $BACKEND && $BACKEND == *${BKEYS[$key]}* ]]; then
-      BUILD_PROFILES+="${BVALS[$key]},"
+for key in "${!BACKEND_KEYS[@]}"; do
+    if [[ ! -z $BACKEND && $BACKEND == *${BACKEND_KEYS[$key]}* ]]; then
+      BUILD_PROFILES+="${BACKEND_VALUES[$key]},"
     fi
 done
 
-export EXKEYS=("rest" "rsocket" "shell" "gateway")
-export EXVALS=("expose-webflux" "expose-rsocket" "shell" "expose-gateway")
+EXPOSE_KEYS=("rest" "rsocket" "shell" "gateway")
+EXPOSE_VALUES=("expose-webflux" "expose-rsocket" "shell" "expose-gateway")
 
-for key in ${!EXKEYS[@]}; do
-    if [[  $EXPOSES == *${EXKEYS[$key]}* ]]; then
-        BUILD_PROFILES+="${EXVALS[$key]},"
+for key in "${!EXPOSE_KEYS[@]}"; do
+    if [[  $EXPOSES == *${EXPOSE_KEYS[$key]}* ]]; then
+        BUILD_PROFILES+="${EXPOSE_VALUES[$key]},"
     fi
 done
 
@@ -185,7 +189,7 @@ if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
     TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=false"
   fi
 
-  if [[ ! -z ${WEBSOCKET} ]]; then
+  if [[ -n ${WEBSOCKET} ]]; then
     SERVICE_FLAGS+=" -Dspring.rsocket.server.transport=websocket"
     SERVICE_FLAGS+=" -Dspring.rsocket.server.mapping-path=/"
     # BUILD_PROFILES+="websocket,"
@@ -205,24 +209,20 @@ if [[ -n ${CLIENT_FLAGS} ]]; then
     fi
   fi
 
-  if [[ ! -z ${WEBSOCKET} ]]; then
+  if [[ -n ${WEBSOCKET} ]]; then
     CLIENT_FLAGS+=" -Dapp.rsocket.transport.websocket.enabled=true"
     #BUILD_PROFILES+="websocket,"
   fi
 
-  if [[ ! -z ${DEBUG} ]]; then
+  if [[ -n ${DEBUG} ]]; then
     OPT_FLAGS+="-Dlogging.level.com.demo.chat.client.rsocket=DEBUG \
 -Dlogging.level.reactor.netty.http.client=DEBUG"
   fi
 fi
 
-if [[ ! -z ${DISCOVERY_TYPE} && ! -z ${CLIENT_FLAGS} ]]; then
-      if [[ ${EXPOSES} == *"rsocket"* ]]; then
-        ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-${DISCOVERY_TYPE}.yml,"
-      fi
-      # TODO WE HAVE TO IMPLEMENT
-      if [[ ${EXPOSES} == *"http"* ]]; then
-        ADDITIONAL_CONFIGS+="classpath:/config/client-http-${DISCOVERY_TYPE}.yml,"
+if [[ -n ${DISCOVERY_TYPE} && -n ${CLIENT_FLAGS} ]]; then
+      if [[ -n ${EXPOSES} ]]; then
+        ADDITIONAL_CONFIGS+="classpath:/config/client-${APP_SERVER_PROTO}-${DISCOVERY_TYPE}.yml,"
       fi
 fi
 
@@ -237,6 +237,10 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
 
   if [[ -z ${CONSUL_HOST} ]]; then
     find_consul
+  fi
+
+  if [[ -z ${CONSUL_PORT} ]]; then
+    echo "CONSUL_PORT must be set to a value. Please set CONSUL_PORT and re-run"
     exit 1
   fi
 
@@ -253,7 +257,7 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   if [[ -n ${CLIENT_FLAGS} ]]; then
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
     BUILD_PROFILES+="discovery-consul,"
-    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-consul.yml"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-${APP_SERVER_PROTO}-consul.yml"
   fi
 
 
@@ -280,18 +284,20 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
 -Dspring.security.user.roles=ACTUATOR
 "
 
-  if [[ ! -z ${CLIENT_FLAGS} ]]; then
+  if [[ -n ${CLIENT_FLAGS} ]]; then
     ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-local.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=properties"
   fi
 fi
 
-if [[ ! -z ${MANAGEMENT_ENDPOINTS} ]]; then
-  export ENDPOINT_FLAGS=$(expand_delimited "${MANAGEMENT_ENDPOINTS}" "-Dmanagement.endpoint.__.enabled=true ")
+if [[ -n ${MANAGEMENT_ENDPOINTS} ]]; then
+  ENDPOINT_FLAGS=$(expand_delimited "${MANAGEMENT_ENDPOINTS}" "-Dmanagement.endpoint.__.enabled=true ")
   ENDPOINT_FLAGS+=" -Dmanagement.endpoints.web.exposure.include=${MANAGEMENT_ENDPOINTS}"
+
+  export ENDPOINT_FLAGS
 fi
 
-if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
+if [[ -n ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=DEBUG"
       if [[ ${RUN_MAVEN_ARG} == "rundocker" ]]; then
         DOCKER_ARGS+=" --env BPL_DEBUG_ENABLED=true --env BPL_DEBUG_PORT=${DEBUG_PORT} -p ${DEBUG_PORT}:${DEBUG_PORT}/tcp"
@@ -300,13 +306,13 @@ if [[ ! -z ${DEBUG_ENABLED} && ${DEBUG_ENABLED} == true ]]; then
       fi
 fi
 
-if [[ ! -z ${NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
+if [[ -n ${NATIVE_BUILD} && ${NATIVE_BUILD} == true ]]; then
   #BUILD_PROFILES+="native,"
   echo "Native Builds are not supported at this time"
   exit 1
 fi
 
-cd $DIR/../$MODULE
+cd "$DIR"/../"$MODULE"
 
 export SECURE_RANDOM="-Djava.security.egd=file:/dev/./urandom"
 export APP_SPRING_PROFILES="-Dspring.profiles.active=${SPRING_ACTIVE_PROFILES%,}"
@@ -318,7 +324,6 @@ export MAIN_FLAGS="${APP_SPRING_PROFILES} ${ENDPOINT_FLAGS} \
 
 
 OPT_FLAGS+=" -Dspring.config.additional-location=${ADDITIONAL_CONFIGS%,}"
-DOCKER_ARGS+=" --name ${DEPLOYMENT_NAME} -v ${KEY_VOLUME}:/etc/keys"
 
 RUN_ARGS="-Dspring-boot.run.arguments=\"${SPRING_RUN_ARGUMENTS}\" -Dspring-boot.run.jvmArguments=\"${SPRING_JVM_ARGUMENTS}\""
 
@@ -339,12 +344,12 @@ getRunCommands
 
 echo "ENV_FILE=${ENV_FILE}"
 
-if [[ ! -z ${SHOW_OPTIONS} ]]; then
-  cat $ENV_FILE
+if [[ -n ${SHOW_OPTIONS} ]]; then
+  cat "$ENV_FILE"
   exit 0
 fi
 
-if [[ ! -z ${BAKE_OPTIONS} ]]; then
+if [[ -n ${BAKE_OPTIONS} ]]; then
   export JAVA_TOOL_OPTIONS=
   DOCKER_ARGS+=" --env-file ${ENV_FILE}"
 fi
@@ -353,11 +358,8 @@ set -x
 
 [[ $RUN_MAVEN_ARG == "" ]] && exit
 [[ $RUN_MAVEN_ARG == "build" ]] && MAVEN_ARG="spring-boot:build-image"
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && MAVEN_ARG="spring-boot:build-image"
 [[ $RUN_MAVEN_ARG == "runlocal" ]] && MAVEN_ARG="spring-boot:run"
 
 mvn -DimageName=${APP_IMAGE_NAME} $MAVEN_PROFILES -DskipTests $MAVEN_ARG
-
-[[ $RUN_MAVEN_ARG == "rundocker" ]] && docker run ${DOCKER_ARGS} --rm $APP_IMAGE_NAME:$APP_VERSION
 
 echo $$

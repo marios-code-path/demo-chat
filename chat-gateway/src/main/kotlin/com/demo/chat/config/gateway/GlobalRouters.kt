@@ -1,5 +1,6 @@
 package com.demo.chat.config.gateway
 
+import com.demo.chat.service.client.ClientDiscovery
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder
 import org.springframework.cloud.gateway.route.builder.routes
@@ -8,10 +9,7 @@ import org.springframework.context.annotation.Configuration
 
 
 @Configuration
-class GlobalRouters {
-
-    @Value("\${app.rest.port:6791}")
-    private lateinit var webApiPort: String
+class GlobalRouters(val clientDiscovery: ClientDiscovery) {
 
     // http://host:port/persist/user/get/12345
     // to
@@ -19,12 +17,15 @@ class GlobalRouters {
     // PUT http://host:port/user {body}
     // DELETE http://host:port/user/12345
     //
-    @Bean
-    fun wildcardRoutes(builder: RouteLocatorBuilder) = builder.routes {
-        route(id = "global") {
-            path("/**")
-            uri("http://localhost:$webApiPort")
-        }
-
-    }
+//    @Bean
+//    fun wildcardRoutes(builder: RouteLocatorBuilder) = builder.routes {
+//        clientDiscovery.getServiceInstance("core-service-http")
+//            .map {instance ->
+//                route(id = "global") {
+//                    path("/**")
+//                    uri("${instance.scheme}://core-service-http:${instance.port}")
+//                }
+//            }
+//            .subscribe()
+//    }
 }

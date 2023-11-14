@@ -19,22 +19,7 @@ export KEYTYPE=long
 
 function local() {
 
-  $DIR/build-app.sh -m chat-deploy -d local -b runlocal -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -e gateway $@
-}
-
-function docker() {
-  OPT_FLAGS+=" -Dkeycert=file:/etc/keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/etc/keys/server_keycert.jwk"
-
-  export DOCKER_ARGS="--expose 80 -p 80:80/tcp \
---expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
-
- $DIR/build-app.sh -m chat-deploy -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -e gateway -s client -b rundocker -c /etc/keys $@
-}
-
-function docker_image() {
-    OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
-
-  $DIR/build-app.sh -m chat-deploy -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-deploy -d local -b runlocal -k ${KEYTYPE} -n ${APP_IMAGE_NAME} -e gateway "$@"
 }
 
 
@@ -43,10 +28,8 @@ function help_message() {
 Usage: $0 [deployment-profile] [options]
 Available deployment-profiles:
   local
-  docker
-  docker_image
 EOF
 }
 
 # -- main() --
-std_exec $@
+std_exec "$@"

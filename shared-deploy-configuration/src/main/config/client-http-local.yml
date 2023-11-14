@@ -1,0 +1,28 @@
+app:
+  client:
+    discovery:
+      config:
+        pubsub:
+          dest: "127.0.0.1:6792"
+          prefix: pubsub
+        index:
+          dest: "127.0.0.1:6792"
+          prefix: index
+        persistence:
+          dest: "127.0.0.1:6792"
+          prefix: persist
+        key:
+          dest: "127.0.0.1:6792"
+          prefix: key
+        message:
+          dest: "127.0.0.1:6792"
+          prefix: message
+        secrets:
+          dest: "127.0.0.1:6792"
+          prefix: secrets
+        topic:
+          dest: "127.0.0.1:6792"
+          prefix: topic
+        user:
+          dest: "127.0.0.1:6792"
+          prefix: user

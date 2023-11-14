@@ -20,7 +20,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health"
 export ADDITIONAL_CONFIGS="classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,"
 export JWK_KEYPATH="${JWK_KEYPATH:-/etc/keys}"
 
-export KEYTYPE=long
+export KEY_TYPE=long
 
 function local() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
@@ -28,22 +28,13 @@ function local() {
     export SPRING_RUN_ARGUMENTS="--clientpath='classpath:client.json'"
     OPT_FLAGS+=" -DSpring.datasource.url=jdbc:postgresql://postgres:5432/authserver -Dspring.datasource.username=user -Dspring.datasource.password=password"
 
-  $DIR/build-app.sh -m chat-authorization-server -k long -s client -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
-}
-
-function docker() {
-  OPT_FLAGS+=" -Dkeycert=file:/etc/keys/server_keystore.p12 -Dapp.oauth2.jwk.path=file:/etc/keys/server_keycert.jwk"
-
-  export DOCKER_ARGS="--expose ${AUTHSERV_HTTP_PORT} -p ${AUTHSERV_HTTP_PORT}:${AUTHSERV_HTTP_PORT}/tcp \
---expose ${AUTHSERV_MGMT_PORT} -p ${AUTHSERV_MGMT_PORT}:${AUTHSERV_MGMT_PORT}/tcp"
-
- $DIR/build-app.sh -m chat-authorization-server -k long -s client -n ${APP_IMAGE_NAME} -d consul -b rundocker -c /etc/keys $@
+  $DIR/build-app.sh -m chat-authorization-server -k ${KEY_TYPE} -s client -n ${APP_IMAGE_NAME} -d local -b runlocal -c ${JWK_KEYPATH} $@
 }
 
 function docker_image() {
     OPT_FLAGS+=" -Dkeycert=file:${JWK_KEYPATH}/server_keystore.p12 -Dapp.oauth2.jwk.path=file:${JWK_KEYPATH}/server_keycert.jwk"
 
-  $DIR/build-app.sh -m chat-authorization-server -s client -k long -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
+  $DIR/build-app.sh -m chat-authorization-server -s client -k ${KEY_TYPE} -n ${APP_IMAGE_NAME} -d consul -b build -c /tmp/dc-keys $@
 }
 
 

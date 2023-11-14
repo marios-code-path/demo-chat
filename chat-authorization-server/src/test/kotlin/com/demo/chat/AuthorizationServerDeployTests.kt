@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono
         "app.key.type=long", "app.client.protocol=rsocket", "app.primary=authserv_test",
         "app.rsocket.transport.unprotected", "app.client.rsocket.composite.user",
         "app.client.rsocket.composite.message", "app.client.rsocket.composite.topic",
-        "app.service.security.userdetails", "app.client.rsocket.core.persistence",
+        "app.client.rsocket.core.persistence",
         "app.client.rsocket.core.index", "app.service.composite.auth",
         "app.oauth2.jwk.path=classpath:server_keycert.jwk",
     "app.rsocket.transport.security.type=unprotected"

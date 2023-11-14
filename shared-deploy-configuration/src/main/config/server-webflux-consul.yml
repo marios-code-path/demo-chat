@@ -1,0 +1,11 @@
+spring:
+  cloud:
+    consul:
+      discovery:
+        tags: http
+        port: ${server.port}
+        metadata:
+          serverPort: ${server.port}
+          keyType: ${app.key.type}
+        instance-id: "${spring.application.name}"
+        management-port: ${management.server.port}

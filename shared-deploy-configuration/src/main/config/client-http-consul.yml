@@ -1,0 +1,35 @@
+spring:
+  cloud:
+    consul:
+      discovery:
+        enabled: true
+        default-query-tag: http
+
+app:
+  client:
+    discovery:
+      config:
+        pubsub:
+          dest: core-service-http
+          prefix: pubsub
+        index:
+          dest: core-service-http
+          prefix: index
+        persistence:
+          dest: core-service-http
+          prefix: persist
+        key:
+          dest: core-service-http
+          prefix: key
+        message:
+          dest: core-service-http
+          prefix: message
+        topic:
+          dest: core-service-http
+          prefix: topic
+        user:
+          dest: core-service-http
+          prefix: user
+        secrets:
+          dest: core-service-http
+          prefix: secrets
