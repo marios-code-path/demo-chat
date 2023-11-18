@@ -1,5 +1,6 @@
 package com.demo.chat.security.access
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
@@ -8,8 +9,6 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 
-
-@Component("chatAccess")
 class SpringSecurityAccessBrokerService<T>(
     val access: AccessBroker<T>,
     val rootKeys: RootKeys<T>
@@ -29,6 +28,7 @@ class SpringSecurityAccessBrokerService<T>(
             getSecurityContextPrincipal(),
             rootKeys.getRootKey(domain), perm
         )
+            .doOnError { println("ERROR") }
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
@@ -45,13 +45,17 @@ class SpringSecurityAccessBrokerService<T>(
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
-    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> =
-        access.hasAccessByPrincipal(
+    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> {
+        if(!rootKeys.hasKey(kind))
+            throw ChatException("Unknown key for domain ${kind.name}")
+
+       return access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),
             rootKeys.getRootKey(kind), perm
         )
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
+    }
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
         .map { it.authentication.principal as ChatUserDetails<T> }

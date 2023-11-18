@@ -10,6 +10,8 @@ import com.demo.chat.test.config.TestLongCompositeServiceBeans
 import com.demo.chat.test.controller.webflux.TestServiceInstance
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -26,8 +28,11 @@ import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.web.reactive.server.EntityExchangeResult
 import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
 import java.net.URI
 
 @ContextConfiguration(
@@ -53,6 +58,9 @@ open class MessageRestTestBase<T>(
     @MockBean
     private lateinit var discovery: ClientDiscovery
 
+    @Autowired
+    private lateinit var mapper: ObjectMapper
+
     @Test // TODO fix this so we can use runtime variables
     @WithLongCustomChatUser(userId = 1L, roles = ["TEST"])
     fun `should listen to topic`() {
@@ -60,27 +68,43 @@ open class MessageRestTestBase<T>(
             .given(discovery.getServiceInstance(anyObject()))
             .willReturn(Mono.just(TestServiceInstance))
 
+        BDDMockito
+            .given(beans.messageService().listenTopic(anyObject()))
+            .willReturn(
+                Flux.just(
+                    Message.create(
+                        MessageKey.Factory.create(idSupply(), idSupply(), idSupply()),
+                        "TEST", true
+                    )
+                ).repeat(3)
+            )
+
         client
             .get()
             .uri("/message/topic/12345")
             .exchange()
-            .expectStatus().isTemporaryRedirect
-            .expectBody()
+            .expectStatus()
+            .isOk
+            .expectHeader()
+            .contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
+            .expectBody(String::class.java)
             .consumeWith { res ->
-                val uri = URI.create(String(res.responseBodyContent!!, Charsets.UTF_8))
+                val body = res.responseBody!!
+                val message = mapper.readValue<Message<T, String>>(body)
 
                 Assertions
-                    .assertThat(uri)
-                    .hasScheme("ws")
-            }
-            .consumeWith(
-                WebTestClientRestDocumentation.document(
-                    "listen",
+                    .assertThat(message)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("data", "TEST")
+
+                WebTestClientRestDocumentation.document<EntityExchangeResult<String>>(
+                    "message.listen",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
-                )
-            )
+                ).accept(res)
+            }
+
     }
 
     @Test
@@ -101,7 +125,7 @@ open class MessageRestTestBase<T>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "send",
+                    "message.send",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
@@ -137,7 +161,7 @@ open class MessageRestTestBase<T>(
             .expectBody()
             .consumeWith(
                 WebTestClientRestDocumentation.document(
-                    "byId",
+                    "message.by-id",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()

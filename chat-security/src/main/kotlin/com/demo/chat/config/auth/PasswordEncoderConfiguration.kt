@@ -8,7 +8,6 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories
 import org.springframework.security.crypto.password.PasswordEncoder
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
 class PasswordEncoderConfiguration {
 
     @Bean

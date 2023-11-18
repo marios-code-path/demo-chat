@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller
 
 @Configuration
 class IndexControllersConfiguration {
+
     @Controller
     @MessageMapping("index.kv")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])

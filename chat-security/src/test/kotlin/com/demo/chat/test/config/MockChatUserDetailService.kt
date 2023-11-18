@@ -1,4 +1,4 @@
-package com.demo.chat.test.security
+package com.demo.chat.test.config
 
 
 import com.demo.chat.domain.Key
@@ -18,7 +18,7 @@ class MockChatUserDetailService<T>(uid: T, roles: Collection<String>) : MapReact
 )
 
 @TestConfiguration
-class LongUserDetailsConfiguration {
+class TestLongUserDetailsConfiguration {
     val service = MockChatUserDetailService(1L, listOf("TEST"))
     @Bean
     fun mockChatUserDetailService() = service

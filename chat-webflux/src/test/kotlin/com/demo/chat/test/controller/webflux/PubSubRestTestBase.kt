@@ -30,6 +30,8 @@ import org.springframework.restdocs.webtestclient.WebTestClientRestDocumentation
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
+import org.springframework.test.web.reactive.server.EntityExchangeResult
+import org.springframework.test.web.reactive.server.FluxExchangeResult
 import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -108,6 +110,13 @@ open class PubSubRestTestBase<T : Any, V>(
                     .expectNextCount(2)
                     .thenCancel()
                     .verify()
+
+                WebTestClientRestDocumentation.document<FluxExchangeResult<String>>(
+                    "pubsub.listen",
+                    Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
+                    Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
+                    SpringCloudContractRestDocs.dslContract()
+                ).accept(res)
             }
 
         BDDMockito.verify(pubsubService, BDDMockito.times(1)).listenTo(anyObject())

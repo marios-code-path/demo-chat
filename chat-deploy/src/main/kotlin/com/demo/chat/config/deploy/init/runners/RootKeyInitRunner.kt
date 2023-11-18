@@ -4,12 +4,9 @@ import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
 import com.demo.chat.deploy.event.StartupAnnouncementEvent
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.service.init.RootKeysSupplier
+import com.demo.chat.domain.knownkey.RootKeysSupplier
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.core.annotation.Order
-import org.springframework.stereotype.Component
 
 
 //@Component

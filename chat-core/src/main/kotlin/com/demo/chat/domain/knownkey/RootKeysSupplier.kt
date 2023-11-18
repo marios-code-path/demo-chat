@@ -1,4 +1,4 @@
-package com.demo.chat.service.init
+package com.demo.chat.domain.knownkey
 
 import com.demo.chat.domain.KnownRootKeys
 import com.demo.chat.domain.Key

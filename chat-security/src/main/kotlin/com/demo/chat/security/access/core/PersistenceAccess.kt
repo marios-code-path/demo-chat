@@ -14,7 +14,7 @@ interface PersistenceAccess<T, E> : PersistenceStore<T, E> {
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'GET')")
     override fun get(key: Key<T>): Mono<out E>
     @PreAuthorize("@chatAccess.hasAccessToMany(#keys, 'GET')")
-    override fun byIds(keys: List<Key<T>>): Flux<out E> = Flux.empty()
+    override fun byIds(keys: List<Key<T>>): Flux<out E>
 }
 
 interface UserPersistenceAccess<T> : PersistenceStore<T, User<T>> {

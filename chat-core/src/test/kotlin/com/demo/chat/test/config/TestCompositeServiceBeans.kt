@@ -8,9 +8,12 @@ import org.mockito.BDDMockito
 
 class TestCompositeServiceBeans<T, V> : CompositeServiceBeans<T, V> {
 
-    val mockUserBean = BDDMockito.mock(ChatUserService::class.java) as ChatUserService<T>
-    val mockMessageBean = BDDMockito.mock(ChatMessageService::class.java) as ChatMessageService<T, V>
-    val mockTopicBean = BDDMockito.mock(ChatTopicService::class.java) as ChatTopicService<T, V>
+    val mockUserBean:ChatUserService<T> = BDDMockito.mock(ChatUserService::class.java)
+            as? ChatUserService<T> ?: throw ClassCastException("Unable to cast mock to ChatUserService<T>")
+
+    val mockMessageBean:ChatMessageService<T, V> = BDDMockito.mock(ChatMessageService::class.java) as ChatMessageService<T, V>
+
+    val mockTopicBean:ChatTopicService<T, V> = BDDMockito.mock(ChatTopicService::class.java) as ChatTopicService<T, V>
 
     override fun messageService(): ChatMessageService<T, V> = mockMessageBean
 

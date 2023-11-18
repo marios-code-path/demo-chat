@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration
 
 
 @Configuration
-class GlobalRouters(val clientDiscovery: ClientDiscovery) {
+class GlobalRouters() {
 
     // http://host:port/persist/user/get/12345
     // to

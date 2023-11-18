@@ -14,7 +14,6 @@ Available execution-strategy:
 
 Available deployment-profiles:
   memory
-  memory_local
   cassandra
   cassandra_astra
 EOF

@@ -79,6 +79,7 @@ class InitialUsersService<T>(
         // set permissions
         Flux.fromIterable(initialRoles)
             .flatMap { authMeta ->
+                println("Adding Permission ${authMeta.principal.id} -> ${authMeta.target.id} : ${authMeta.permission}, ${authMeta.mute}, ${authMeta.expires}")
                 authorizationService.authorize(authMeta, true)
             }.blockLast()
 

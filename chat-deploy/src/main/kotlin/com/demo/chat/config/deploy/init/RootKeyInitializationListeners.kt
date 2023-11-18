@@ -9,7 +9,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.InitializingKVStore
 import com.demo.chat.service.init.RootKeyService
-import com.demo.chat.service.init.RootKeysSupplier
+import com.demo.chat.domain.knownkey.RootKeysSupplier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent

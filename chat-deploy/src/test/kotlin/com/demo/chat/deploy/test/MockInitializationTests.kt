@@ -11,7 +11,7 @@ import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.init.InitialUsersService
 import com.demo.chat.service.init.RootKeyService
-import com.demo.chat.service.init.RootKeysSupplier
+import com.demo.chat.domain.knownkey.RootKeysSupplier
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyBoolean
@@ -24,8 +24,6 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
-import org.springframework.security.crypto.password.DelegatingPasswordEncoder
-import org.springframework.security.crypto.password.NoOpPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono

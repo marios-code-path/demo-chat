@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
@@ -105,7 +107,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc)
 
         StepVerifier
-            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "EXEC"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST3"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)

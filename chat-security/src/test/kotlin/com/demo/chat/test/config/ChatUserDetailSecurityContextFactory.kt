@@ -1,4 +1,4 @@
-package com.demo.chat.test.security
+package com.demo.chat.test.config
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User

@@ -175,7 +175,6 @@ if [[ ${INIT_PHASES} == *"rootkeys"* ]]; then
 fi
 
 if [[ ! -z ${SERVICE_FLAGS}  && -z ${CLIENT_FLAGS} ]]; then
-  OPT_FLAGS+=" -Dapp.service.security.userdetails"
 
   if [[ ${NO_SEC} == *"false"* ]]; then
     TLS_FLAGS+=" -Dspring.rsocket.server.ssl.enabled=true \

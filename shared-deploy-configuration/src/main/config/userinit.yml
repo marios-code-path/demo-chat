@@ -8,7 +8,7 @@ app:
       roles:
         - { user: Admin, target: Admin, role: "*" }
         - { user: Anon, target: User, role: FIND }
-        - { user: Anon, target: User, role: NEW }
+        - { user: Anon, target: User, role: PUT }
         - { user: Anon, target: Message, role: GET }
         - { user: User, target: Message, role: SEND }
         - { user: User, target: MessageTopic, role: ALL }
