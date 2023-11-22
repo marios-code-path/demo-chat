@@ -221,7 +221,7 @@ fi
 
 if [[ -n ${DISCOVERY_TYPE} && -n ${CLIENT_FLAGS} ]]; then
       if [[ -n ${EXPOSES} ]]; then
-        ADDITIONAL_CONFIGS+="classpath:/config/client-${APP_SERVER_PROTO}-${DISCOVERY_TYPE}.yml,"
+        ADDITIONAL_CONFIGS+="classpath:/config/client-${CLIENT_PROTO}-${DISCOVERY_TYPE}.yml,"
       fi
 fi
 
@@ -256,7 +256,7 @@ if [[ ${DISCOVERY_TYPE} == "consul" ]]; then
   if [[ -n ${CLIENT_FLAGS} ]]; then
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=consul"
     BUILD_PROFILES+="discovery-consul,"
-    ADDITIONAL_CONFIGS+="classpath:/config/client-${APP_SERVER_PROTO}-consul.yml"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-${CLIENT_PROTO}-consul.yml"
   fi
 
 
@@ -284,7 +284,7 @@ if [[ ${DISCOVERY_TYPE} == "local" ]]; then
 "
 
   if [[ -n ${CLIENT_FLAGS} ]]; then
-    ADDITIONAL_CONFIGS+="classpath:/config/client-rsocket-local.yml,"
+    ADDITIONAL_CONFIGS+="classpath:/config/client-${CLIENT_PROTO}-local.yml,"
     DISCOVERY_FLAGS+=" -Dapp.client.discovery=properties"
   fi
 fi

@@ -5,6 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/util.sh
 source $DIR/ports.sh
 
+export CLIENT_PROTO="rsocket"
 export APP_PRIMARY="authserv"
 export APP_IMAGE_NAME="chat-authserv"
 # Authorization server needs to access user accounts and secrets

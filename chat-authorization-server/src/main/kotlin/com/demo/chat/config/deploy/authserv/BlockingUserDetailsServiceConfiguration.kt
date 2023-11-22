@@ -8,7 +8,7 @@ import org.springframework.security.core.userdetails.UserDetailsPasswordService
 import org.springframework.security.core.userdetails.UserDetailsService
 
 @Configuration
-class UserDetailsServiceConfiguration {
+class BlockingUserDetailsServiceConfiguration {
 
     @Bean
     fun <T> authServUserDetailsService(uds: CoreUserDetailsService<T>): UserDetailsService {

@@ -14,11 +14,10 @@ import org.springframework.context.annotation.Configuration
 class UserDetailsConfiguration {
 
     @Bean
-    fun <T> chatUserDetailsService(
+    fun <T> coreUserDetailsService(
         compositeServices: CompositeServiceBeans<T, String>,
         secretsBeans: SecretsStoreBeans<T>,
         auth: AuthenticationService<T>
     ): CoreUserDetailsService<T> =
         CoreUserDetailsService(compositeServices.userService(), secretsBeans.secretsStore(), auth)
-
 }

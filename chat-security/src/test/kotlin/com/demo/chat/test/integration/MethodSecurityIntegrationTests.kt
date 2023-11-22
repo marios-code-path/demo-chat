@@ -63,7 +63,6 @@ import reactor.test.StepVerifier
 class LongMethodSecurityIntegrationTests(k: IKeyGenerator<Long>) : MethodSecurityIntegrationTests<Long>(k)
 
 @Disabled
-@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
 open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>) {
 
     @Autowired

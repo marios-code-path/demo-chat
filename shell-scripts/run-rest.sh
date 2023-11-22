@@ -5,6 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/util.sh
 source $DIR/ports.sh
 
+export CLIENT_PROTO="rsocket"
 export APP_PRIMARY="REST"
 export APP_IMAGE_NAME="chat-rest"
 export APP_SERVER_PROTO="http"
