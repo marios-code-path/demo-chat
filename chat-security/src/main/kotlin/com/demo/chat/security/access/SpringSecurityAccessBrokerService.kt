@@ -47,7 +47,7 @@ class SpringSecurityAccessBrokerService<T>(
 
     fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> {
         if(!rootKeys.hasKey(kind))
-            throw ChatException("Unknown key for domain ${kind.name}")
+            throw ChatException("Unknown key for domain ${kind.simpleName}")
 
        return access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),

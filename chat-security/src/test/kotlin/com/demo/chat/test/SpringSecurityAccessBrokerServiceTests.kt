@@ -16,11 +16,11 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
-@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
 class SpringSecurityAccessBrokerServiceLongKeyTests(k: IKeyGenerator<Long>) :
     SpringSecurityAccessBrokerServiceTests<Long>(k)
 
 @Disabled
+@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
 open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
 
     val user = User.create(keyGen.nextKey(), "TEST USER", "SOMENAME", "http://test/image.png")
@@ -41,6 +41,9 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
+
+        BDDMockito.given(rootKeys.hasKey<Class<*>>(anyObject()))
+            .willReturn(true)
 
         val p = accessService.hasAccessToDomainByKind(User::class.java, "TEST")
 

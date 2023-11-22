@@ -59,7 +59,7 @@ import reactor.test.StepVerifier
         MethodSecurityIntegrationTestConfiguration::class
     ]
 )
-
+@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
 class LongMethodSecurityIntegrationTests(k: IKeyGenerator<Long>) : MethodSecurityIntegrationTests<Long>(k)
 
 @Disabled
@@ -235,5 +235,4 @@ class MethodSecurityIntegrationTestConfiguration {
     @Bean
     fun <T> chatAccess(access: AccessBroker<T>, rootKeys: RootKeys<T>): SpringSecurityAccessBrokerService<T> =
         SpringSecurityAccessBrokerService(access, rootKeys)
-
 }

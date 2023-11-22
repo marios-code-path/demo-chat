@@ -10,6 +10,7 @@ import com.demo.chat.test.config.TestLongPubSubBeans
 import com.demo.chat.test.controller.webflux.config.LongUserDetailsConfiguration
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.demo.chat.test.controller.webflux.config.WithLongCustomChatUser
+import com.demo.chat.test.key.MockKeyGeneratorResolver
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
@@ -51,7 +52,7 @@ class LongPubSubRestTests : PubSubRestTestBase<Long, String>(
 
 @Disabled
 @WebFluxTest
-@ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
+@ExtendWith(RestDocumentationExtension::class, SpringExtension::class, MockKeyGeneratorResolver::class)
 @TestPropertySource(properties = ["app.controller.pubsub"])
 @AutoConfigureRestDocs
 open class PubSubRestTestBase<T : Any, V>(

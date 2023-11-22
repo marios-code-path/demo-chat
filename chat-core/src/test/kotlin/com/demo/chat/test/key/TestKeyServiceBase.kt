@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 @Disabled
-open class KeyServiceTestBase<T>(private val keyService: IKeyService<T>) {
+open class TestKeyServiceBase<T>(private val keyService: IKeyService<T>) {
 
     @Test
     fun `should create and find kind`() {

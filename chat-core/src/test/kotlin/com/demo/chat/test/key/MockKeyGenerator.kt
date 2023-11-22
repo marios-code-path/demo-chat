@@ -4,10 +4,10 @@ import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.test.randomAlphaNumeric
 import org.mockito.BDDMockito
-import org.mockito.Mockito
-import org.mockito.kotlin.mock
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
+
+inline fun <reified T : Any> mock(): T = BDDMockito.mock(T::class.java)!!
 
 open class MockKeyGenerator {
 
@@ -16,36 +16,35 @@ open class MockKeyGenerator {
     inline fun <reified T> testKeyGen(): Any {
 
         val mocked = when (T::class) {
-            UUID::class -> mock<IKeyGenerator<UUID>>().apply {
-                BDDMockito.given(this.nextId())
+            UUID::class -> {
+                val uuidMocked = mock<IKeyGenerator<UUID>>()
+                BDDMockito.given(uuidMocked.nextId())
                     .willReturn(UUID.randomUUID())
-                BDDMockito.given(this.nextKey())
+                BDDMockito.given(uuidMocked.nextKey())
                     .willReturn(Key.funKey(UUID.randomUUID()))
+                uuidMocked
             }
 
-            String::class -> mock<IKeyGenerator<String>>().apply {
-                BDDMockito.given(this.nextId())
+            String::class -> {
+                val stringMocked = mock<IKeyGenerator<String>>()
+                BDDMockito.given(stringMocked.nextId())
                     .willReturn(randomAlphaNumeric(8))
-                BDDMockito.given(this.nextKey())
+                BDDMockito.given(stringMocked.nextKey())
                     .willReturn(Key.funKey(randomAlphaNumeric(8)))
+                stringMocked
             }
 
-            Long::class -> mock<IKeyGenerator<Long>>().apply {
-                Mockito.`when`(this.nextId())
-                    .thenReturn(counter.incrementAndGet())
-                val key: () -> Key<Long> = {Key.funKey(counter.incrementAndGet())}
-
-                Mockito.`when`(this.nextKey())
-                    .thenReturn(key())
-//                BDDMockito.given(this.nextId())
-  //                  .willReturn(counter.incrementAndGet())
-    //            BDDMockito.given(this.nextKey())
-      //              .willReturn(Key.funKey(this.nextId()))
+            Long::class -> {
+                val longMocked = mock<IKeyGenerator<Long>>()
+                BDDMockito.given(longMocked.nextId())
+                    .willReturn(counter.incrementAndGet())
+                BDDMockito.given(longMocked.nextKey())
+                    .willReturn(Key.funKey(counter.incrementAndGet()))
+                longMocked
             }
 
-            else -> throw Exception("Known Key Generic for " + T::class)
+            else -> throw Exception("Unknown Key class for " + T::class)
         }
-
 
         return mocked
     }
