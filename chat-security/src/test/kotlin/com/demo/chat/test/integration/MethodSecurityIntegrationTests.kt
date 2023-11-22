@@ -78,7 +78,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     private lateinit var authService: AuthorizationService<T, AuthMetadata<T>>
 
     @Test
-    @WithLongCustomChatUser(userId = 1L, roles = [])
+    //@WithLongCustomChatUser(userId = 1L, roles = [])
     fun `anonymous call find user allowed`(
         @Autowired composites: CompositeServiceBeans<T, String>,
         @Autowired users: ChatUserService<T>,

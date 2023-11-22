@@ -42,9 +42,12 @@ open class CoreAuthenticationService<T, U, Q>(
                     else
                         secretsStore
                             .getStoredCredentials(userKey)
-                            .map { secure ->
-                                if (!passwordValidator.apply(pw, secure)) throw UsernamePasswordAuthenticationException
-                                userKey
+                            .handle { secure, sink ->
+                                if (!passwordValidator.apply(pw, secure)) {
+                                    sink.error(UsernamePasswordAuthenticationException)
+                                    return@handle
+                                }
+                                sink.next(userKey)
                             }
                 }
 }

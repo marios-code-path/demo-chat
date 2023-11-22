@@ -16,11 +16,11 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
-class SpringSecurityAccessBrokerServiceLongKeyTests(k: IKeyGenerator<Long>) :
-    SpringSecurityAccessBrokerServiceTests<Long>(k)
+class SpringSecurityAccessBrokerServiceLongKeyTests() :
+    SpringSecurityAccessBrokerServiceTests<Long>(TestLongKeyGenerator())
 
 @Disabled
-@ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
+@ExtendWith(SpringExtension::class)
 open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
 
     val user = User.create(keyGen.nextKey(), "TEST USER", "SOMENAME", "http://test/image.png")
@@ -36,6 +36,11 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     fun `calls hasAccessToDomain with class kind returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
+
+        val anonKey = keyGen.nextKey()
+
+        BDDMockito.given(rootKeys.getRootKey("Anon"))
+            .willReturn(anonKey)
 
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
@@ -62,6 +67,10 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     fun `calls hasAccessTo with primitives returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
+        val anonKey = keyGen.nextKey()
+
+        BDDMockito.given(rootKeys.getRootKey("Anon"))
+            .willReturn(anonKey)
 
         val returnVal = Mono.just(true)
 
@@ -87,6 +96,10 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     fun `calls hasAccessToDomain returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
+        val anonKey = keyGen.nextKey()
+
+        BDDMockito.given(rootKeys.getRootKey("Anon"))
+            .willReturn(anonKey)
 
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
@@ -111,6 +124,11 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
 
+        val anonKey = keyGen.nextKey()
+
+        BDDMockito.given(rootKeys.getRootKey("Anon"))
+            .willReturn(anonKey)
+
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
@@ -134,6 +152,10 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
 
+        val anonKey = keyGen.nextKey()
+
+        BDDMockito.given(rootKeys.getRootKey("Anon"))
+            .willReturn(anonKey)
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))

@@ -1,10 +1,7 @@
 package com.demo.chat
 
-import com.demo.chat.security.service.CoreUserDetailsService
-import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
-import org.springframework.context.annotation.Bean
 import reactor.core.publisher.Hooks
 
 @SpringBootApplication(
@@ -18,15 +15,5 @@ class ChatApp {
             Hooks.onOperatorDebug()
             runApplication<ChatApp>(*args)
         }
-    }
-
-    @Bean
-    fun runGet(bean: CoreUserDetailsService<Long>) =
-        CommandLineRunner { args ->
-        bean.findByUsername("Anon")
-            .doOnNext {
-                println("found ${it.username} found")
-            }
-            .subscribe()
     }
 }

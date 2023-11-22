@@ -2,6 +2,7 @@ package com.demo.chat.security.access
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
@@ -58,6 +59,13 @@ class SpringSecurityAccessBrokerService<T>(
     }
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
-        .map { it.authentication.principal as ChatUserDetails<T> }
+        .map {
+                it.authentication.principal as ChatUserDetails<T>
+        }
+        .switchIfEmpty(Mono.just(
+            ChatUserDetails(User
+                .create(rootKeys.getRootKey("Anon"), "anon", "anon", "http://anon"),
+                listOf())
+        ))
         .map { it.user.key }
 }
