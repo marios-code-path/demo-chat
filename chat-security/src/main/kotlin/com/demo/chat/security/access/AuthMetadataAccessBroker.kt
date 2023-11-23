@@ -45,5 +45,4 @@ class AuthMetadataAccessBroker<T>(
                 collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(pKey, targets), perm)
             }
     }
-
 }

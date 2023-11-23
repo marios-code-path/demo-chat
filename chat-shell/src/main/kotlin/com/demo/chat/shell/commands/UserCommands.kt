@@ -66,7 +66,6 @@ class UserCommands<T>(
     fun key(): T? =
         coreServices.keyService().key(Key::class.java).block()?.id
 
-
     fun userToString(user: User<T>): String = "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
 
     @ShellMethod("Add A User")

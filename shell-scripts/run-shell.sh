@@ -5,6 +5,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/ports.sh
 source $DIR/util.sh
 
+export CLIENT_PROTO="rsocket"
 export APP_PRIMARY="shell"
 export APP_IMAGE_NAME="chat-shell"
 export MAIN_FLAGS="-Dspring.shell.interactive.enabled=true -Dspring.main.web-application-type=reactive"

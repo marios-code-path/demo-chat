@@ -41,7 +41,7 @@ class CoreAuthorizationService<T, Q>(
                     .then(authIndex.add(authorization))
 
                 else -> authPersist.rem(authorization.key)
-                    .flatMap { authIndex.rem(authorization.key) }
+                    .then(authIndex.rem(authorization.key))
             }
         }
 

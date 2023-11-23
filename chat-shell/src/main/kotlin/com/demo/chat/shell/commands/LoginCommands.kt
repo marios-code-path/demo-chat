@@ -1,12 +1,14 @@
 package com.demo.chat.shell.commands
 
-import com.demo.chat.client.rsocket.clients.CompositeRSocketClients
 import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.domain.*
-import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loginMetadata
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.NotFoundException
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.composite.ChatUserService
 import org.springframework.context.annotation.Profile
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.shell.standard.ShellComponent
