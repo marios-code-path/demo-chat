@@ -1,7 +1,3 @@
-The `README.md` of the Demo Chat application hosted on GitHub at marios-code-path/demo-chat can be rewritten to accurately reflect the current state of the code as follows:
-
----
-
 # Demo Chat (Adventures in Cyber Space)
 
 **Overview:**
