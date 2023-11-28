@@ -1,72 +1,28 @@
-# About Demo Chat (Adventures in Cyber Space)
+The `README.md` of the Demo Chat application hosted on GitHub at marios-code-path/demo-chat can be rewritten to accurately reflect the current state of the code as follows:
 
-This Application features a compliment of microservice-y components written mostly in Kotlin, using
-Spring Boot. This project attempts to distill tenets of 12-Factor, TDD and iterative deployment. I want
-to make it known how simple an approach can be had using existing application services on top of
-Spring Boot and Kotlin. 
+---
 
-This means the examples are quite more detailed but do teach a lot about the underpinnings of the Spring Di,
-Spring Repositories, Spring Service composition and Kotlin interrelation among other things.
+# Demo Chat (Adventures in Cyber Space)
 
-Also, I really like communication systems and had the opportunity to develop a multi-user experience that can
-be deployed on a whim, used and be educational at the same time. How we get there is what this demo is about.
+**Overview:**
+Demo Chat is a multifaceted application showcasing microservices, primarily written in Kotlin and utilizing Spring Boot. It's designed to illustrate the principles of 12-Factor apps, Test-Driven Development (TDD), and iterative deployment, leveraging Spring Boot and Kotlin's capabilities. The project serves as an educational platform, elucidating the intricacies of Spring Di, Spring Repositories, and their integration with Kotlin.
 
-# The modules, What are these modules?
+**Modules:**
 
-Each module should eventually get its own README.md, for now here are brief descriptions of each.
+1. **chat-core**: Serves as the foundation for other modules, providing essential domain services and entry points for a chat application. Responsibilities include managing domain super-types, service composition, serialization, CODECs, and foundational tests for downstream modules. It defines service strategies for persistence, indexing, key management, messaging, and security.
 
-## chat-core
+2. **chat-service-controller**: Facilitates interfaces as controllers over messaging APIs like R-Socket and STOMP. Currently, it primarily leverages R-Socket for efficient inter-process communication.
 
-This module composes most of the underlying object and server-scape for the rest of the
-modules to include. The idea is to provide the underlying foundation to implement domain services and entry-points
-that give rise to a chat application. This module currently has the responsibility to convey:
+3. **chat-service-rsocket**: Acts as the client component adhering to service contracts, implemented using the RSocket protocol.
 
-* Domain Super-Types
-* Domain-Service Composition
-* Super-Type Serialization
-* Super-Type CODECs (or anything CODECy)
-* Tests for the above
-* Base Tests for downstream modules  
+4. **chat-persistence-cassandra**: Integrates with Cassandra for data binding, demonstrating configuration, connection, and data-type strategies. It includes Cassandra-specific testing using TestContainers.
 
-Technically, the chat-core defines 4 service strategies:
+5. **chat-persistence-xstream**: Implements core services using Redis Streams, backing domain operations and exposing chat-core messaging as a Redis-backed service.
 
-* Persistence - store entity V given key T
-* Index - index entity V given key T, with Query Q  
-* Key - generate and store key of type T
-* Messaging - exchange entities of V in a topic T 
-* Security - authorization, authentication, secrets stores
+6. **chat-deploy**: Aims to productionize the above modules, encompassing cloud-discovery, monitoring, tracing, and various execution styles for deployment.
 
-The following sections should describe fundamental goals of each module. This is a work
-in progress, and as such it is subject to change without notice or reflection in this
-document.
+**Note:** Each module is a work in progress and subject to change. Detailed documentation for each module will be provided in their respective README.md files.
 
-## chat-service-controller
+---
 
-Implement interfaces as controllers over Messaging APIS such as R-Socket, STOMP,
-or something else entirely. Currently, R-Socket is capable of fulfilling all requirements for inter-process
-communication with speed and efficiency. There is no real plan to use something else
-unless we really want to demonstrate messaging through STOMP or maybe even gRPC?
-
-## chat-service-rsocket
-
-The client component to the service contracts. This should be implemented with
-underlaying protocol - RSocket in this case.
-
-## chat-persistence-cassandra
-
-This implementation backs chat-core services with cassandra data binding. It shows how to
-configure and connect to cassandra and DSE / Astra, and use it's data-type strategies among other things. Inherent to 
-this project is the use of testing specific to cassandra with TestContainers.
- 
-## chat-persistence-xstream
-
-Implementation of core services using Redis Streams. This module uses streams to back domain operations. 
-
-What's more it exposes chat-core/Messaging as a redis-backed service.
-
-## chat-deploy - new!
-
-So, this module attempts to production-ize the modules above. We should be able to 
-build and deliver the application to our destination of choice (cloud, local, etc..).
-
-Given this, we will engage cloud-discovery, monitoring, tracing, and execution style (lambda, resource, deploy img).
+This revised README.md provides a concise yet comprehensive overview of the Demo Chat application, highlighting the purpose, structure, and current functionality of the individual modules.
