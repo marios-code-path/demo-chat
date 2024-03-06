@@ -5,6 +5,11 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/util.sh
 source $DIR/ports.sh
 
+if [ -z $JWK_KEYPATH ]; then
+	echo You should set JWK_KEYPATH
+	exit 1
+fi
+
 export CLIENT_PROTO="rsocket"
 export APP_PRIMARY="authserv"
 export APP_IMAGE_NAME="chat-authserv"

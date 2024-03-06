@@ -9,7 +9,7 @@ set -e
 export APP_VERSION=0.0.1
 export TLS_FLAGS
 export IMAGE_REPO_PREFIX=${IMAGE_REPO_PREFIX:="docker.io/library"}
-export NO_SEC=false
+export NO_SEC=${NO_SEC:=false}
 export DISCOVERY_TYPE=local
 
 if [[ -z ${APP_SERVER_PROTO} ]]; then
@@ -77,7 +77,7 @@ while getopts ":d:waoxge:s:b:c:m:i:k:b:n:p:" o; do
       export DEPLOYMENT_NAME=${OPTARG}
       ;;
     c)
-      if [[ ${OPTARG} == *"notls"* ]]; then
+      if [[ "${OPTARG}" == *"notls"* && "${NO_SEC}" == *"false"* ]]; then
         NO_SEC=true
       else
         export CERT_DIR=${OPTARG}
@@ -160,8 +160,9 @@ if [[ -z "${CERT_DIR}" && ${NO_SEC} == *"false"* ]]; then
   exit 1
 fi
 
-if [[ -z "${KEYSTORE_PASS}" && ${NO_SEC} == *"false"* ]]; then
-  echo "env KEYSTORE_PASS is not set"
+if [[ -z "${KEYSTORE_PASS}" && "${NO_SEC}" == *"false"* ]]; then
+echo ${NO_SEC}
+  echo "env KEYSTORE_PASS is not set. Alternately, set NO_SEC=true"
   exit 1
 fi
 

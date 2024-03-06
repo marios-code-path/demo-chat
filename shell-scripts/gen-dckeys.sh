@@ -6,12 +6,18 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source $DIR/key_functions.sh
 
 set -x
-set -e
+#set -e
 
-export PASSWORD=$1; shift
+if [ ! -z $1 ]; then
+	export PASSWORD=$1; shift
+fi
+
+if [ -z $PASSWORD ]; then
+	echo either pass in the cert password as first argument, or place in \$PASSWORD
+	exit 1
+fi
 
 TMPDIR=/tmp/dckeys$$
-
 mkdir $TMPDIR
 cd $TMPDIR
 
@@ -34,6 +40,7 @@ cert_gen client
 
 cd $DIR
 
-mv $TMPDIR $DIR/../encrypt-keys
+cp -pRP $TMPDIR $DIR/../encrypt-keys
 
-cp $DIR/../encrypt-keys/server_keycert.jwk chat-authorization-server/src/test/resources/
+mkdir -p $DIR/../chat-authorization-server/src/test/resources/
+cp -p $DIR/../encrypt-keys/server_keycert.jwk $DIR/../chat-authorization-server/src/test/resources/
