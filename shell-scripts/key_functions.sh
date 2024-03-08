@@ -58,4 +58,7 @@ function docker_volume_gen() {
   docker cp ./server_keystore.p12 temp-container:/etc/keys
   docker cp ./server_truststore.p12 temp-container:/etc/keys
   docker cp ./server_keycert.jwk temp-container:/etc/keys
+
+  # Remove the temporary container
+  docker stop temp-container
 }

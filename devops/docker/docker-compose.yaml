@@ -32,7 +32,7 @@ services:
   core-service-rsocket:
     image: memory-core-service-rsocket:0.0.1
     volumes:
-      - chat-secrets:/etc/keys
+      - chat-pks:/etc/keys
     ports:
       - "6791:6791"
       - "6790:6790"
@@ -49,7 +49,7 @@ services:
     depends_on:
       - core-service-rsocket
     volumes:
-      - chat-secrets:/etc/keys
+      - chat-pks:/etc/keys
     ports:
       - "9000:9000"
     networks:
@@ -65,7 +65,7 @@ services:
       - chat-authserv
     image: chat-rest:0.0.1
     volumes:
-      - chat-secrets:/etc/keys
+      - chat-pks:/etc/keys
     ports:
       - "6792:6792"
     networks:
@@ -76,7 +76,7 @@ services:
     depends_on:
       - chat-rest
     volumes:
-      - chat-secrets:/etc/keys
+      - chat-pks:/etc/keys
     ports:
       - "6702:8080"
     networks:
@@ -85,5 +85,5 @@ services:
 volumes:
   db_data:
     external: true
-  chat-secrets:
+  chat-pks:
     external: true
