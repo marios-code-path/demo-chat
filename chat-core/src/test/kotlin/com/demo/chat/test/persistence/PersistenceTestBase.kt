@@ -6,6 +6,9 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.mockito.BDDMockito
+import org.mockito.kotlin.mockingDetails
+import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
@@ -72,6 +75,10 @@ open class PersistenceTestBase<K, V>(
 
     @Test
     fun `add single, finds all`() {
+        if (mockingDetails(store).isMock)
+            BDDMockito.given(store.all())
+                .willReturn(Flux.just(valCodec.get()))
+
         val saveNFind = store
             .add(valCodec.get())
             .thenMany(store.all())

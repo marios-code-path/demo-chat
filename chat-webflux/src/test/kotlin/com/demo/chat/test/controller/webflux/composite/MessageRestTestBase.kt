@@ -2,6 +2,7 @@ package com.demo.chat.test.controller.webflux.composite
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatMessageServiceController
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.client.ClientDiscovery
@@ -112,9 +113,11 @@ open class MessageRestTestBase<T>(
     fun `should send`() {
         val service = beans.messageService()
 
+        val messageId = idSupply()
+
         BDDMockito
             .given(service.send(anyObject()))
-            .willReturn(Mono.empty())
+            .willReturn(Mono.just(Key.funKey(messageId)))
 
         client
             .post()
@@ -122,16 +125,24 @@ open class MessageRestTestBase<T>(
             .bodyValue("TESTMESSAGE")
             .exchange()
             .expectStatus().isCreated
-            .expectBody()
-            .consumeWith(
-                WebTestClientRestDocumentation.document(
+            .expectBody(String::class.java)
+            .consumeWith { res ->
+                val body = res.responseBody!!
+                val message = mapper.readValue<Key<T>>(body)
+
+                Assertions
+                    .assertThat(message)
+                    .isNotNull
+                    .hasFieldOrPropertyWithValue("id", messageId)
+
+                WebTestClientRestDocumentation.document<EntityExchangeResult<String>>(
                     "message.send",
                     Preprocessors.preprocessRequest(Preprocessors.prettyPrint()),
                     Preprocessors.preprocessResponse(Preprocessors.prettyPrint()),
                     SpringCloudContractRestDocs.dslContract()
-                )
-            )
-            .isEmpty
+                ).accept(res)
+            }
+
     }
 
     @Test

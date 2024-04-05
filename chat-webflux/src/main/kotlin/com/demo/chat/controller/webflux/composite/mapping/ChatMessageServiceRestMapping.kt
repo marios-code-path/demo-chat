@@ -1,6 +1,7 @@
 package com.demo.chat.controller.webflux.composite.mapping
 
 import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.security.ChatUserDetails
@@ -29,6 +30,6 @@ interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
     @ResponseStatus(HttpStatus.CREATED)
     fun restSend(
         @PathVariable id: T, @RequestBody message: String,
-        @AuthenticationPrincipal user: ChatUserDetails<T>
-    ): Mono<Void> = send(MessageSendRequest(message, user.user.key.id, id))
+        @AuthenticationPrincipal details: ChatUserDetails<T>
+    ): Mono<out Key<T>> = send(MessageSendRequest(message, details.user.key.id, id))
 }

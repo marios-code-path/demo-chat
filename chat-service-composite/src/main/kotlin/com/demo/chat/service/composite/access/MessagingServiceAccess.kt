@@ -24,7 +24,7 @@ open class MessagingServiceAccess<T, V> (
         .hasAccessByPrincipal(Mono.from(principalPublisher()), Key.funKey(req.id), "READ")
         .then(that.messageById(req))
 
-    override fun send(req: MessageSendRequest<T, V>): Mono<Void> = authMetadataAccessBroker
+    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> = authMetadataAccessBroker
         .hasAccessByPrincipal(Mono.from(principalPublisher()), Key.funKey(req.dest), "SEND")
         .then(that.send(req))
 }

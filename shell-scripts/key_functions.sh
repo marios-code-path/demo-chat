@@ -53,12 +53,14 @@ function docker_volume_gen() {
 
   docker volume create ${VOLUME_NAME}
 
-  docker run -d --rm --name temp-container -v ${VOLUME_NAME}:/etc/keys alpine:latest tail -f /dev/null
+  export TEMP_CONTAINER="temp_container"$$
 
-  docker cp ./server_keystore.p12 temp-container:/etc/keys
-  docker cp ./server_truststore.p12 temp-container:/etc/keys
-  docker cp ./server_keycert.jwk temp-container:/etc/keys
+  docker run -d --rm --name $TEMP_CONTAINER -v ${VOLUME_NAME}:/etc/keys alpine:latest tail -f /dev/null
+
+  docker cp ./server_keystore.p12 $TEMP_CONTAINER:/etc/keys
+  docker cp ./server_truststore.p12 $TEMP_CONTAINER:/etc/keys
+  docker cp ./server_keycert.jwk $TEMP_CONTAINER:/etc/keys
 
   # Remove the temporary container
-  docker stop temp-container
+  docker stop $TEMP_CONTAINER
 }

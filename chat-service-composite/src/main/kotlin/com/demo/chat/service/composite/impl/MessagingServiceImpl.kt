@@ -35,19 +35,22 @@ open class MessagingServiceImpl<T, V, Q>(
         messagePersistence
             .get(Key.funKey(req.id))
 
-    override fun send(req: MessageSendRequest<T, V>): Mono<Void> {
+    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> {
         val sending: (T) -> Message<T, V> = {
             Message.create(MessageKey.create(it, req.from, req.dest), req.msg, true)
         }
 
         return messagePersistence
             .key()
-            .flatMap {
+            .flatMap { messageKey ->
+                val keyId = messageKey.id
+
                 Flux.concat(
-                    messagePersistence.add(sending(it.id)),
-                    messageIndex.add(sending(it.id)),
-                    pubsub.sendMessage(sending(it.id))
-                ).then()
+                    messagePersistence.add(sending(keyId)),
+                    messageIndex.add(sending(keyId)),
+                    pubsub.sendMessage(sending(keyId))
+                )
+                    .then(Mono.just(messageKey))
             }
     }
 }

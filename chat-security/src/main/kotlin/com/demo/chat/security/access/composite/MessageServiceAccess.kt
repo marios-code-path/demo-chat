@@ -1,6 +1,7 @@
 package com.demo.chat.security.access.composite
 
 import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.service.composite.ChatMessageService
@@ -17,5 +18,5 @@ interface MessageServiceAccess<T, V> : ChatMessageService<T, V> {
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#req.dest(), 'SEND')")
-    override fun send(req: MessageSendRequest<T, V>): Mono<Void>
+    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>>
 }

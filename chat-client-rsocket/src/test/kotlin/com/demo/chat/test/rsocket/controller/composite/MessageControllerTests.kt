@@ -38,6 +38,7 @@ import java.util.stream.Stream
 @Import(MockCoreServicesConfiguration::class,
         MessageControllerTests.CompositeMessagingTestConfiguration::class)
 class MessageControllerTests : RSocketTestBase() {
+
     @Autowired
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 

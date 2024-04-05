@@ -1,3 +1,4 @@
+# Shell Scripting for TCP ports used in services.
 export CORE_PORT=${CORE_PORT:=6790}
 export CORE_RSOCKET_PORT=$((CORE_PORT))
 export CORE_MGMT_PORT=${CORE_MGMT_PORT:=$((CORE_PORT+1))}

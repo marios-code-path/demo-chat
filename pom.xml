@@ -33,7 +33,7 @@
         <spring-messaging.version>${spring.version}</spring-messaging.version>
 
         <jackson.version>2.14.1</jackson.version>
-        <io-reactor.version>3.5.2</io-reactor.version>
+        <io-reactor.version>3.6.4</io-reactor.version>
         <cassandra-driver.version>4.14.1</cassandra-driver.version>
         <lognet.version>2.1.4</lognet.version>
     </properties>

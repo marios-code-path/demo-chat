@@ -6,7 +6,6 @@ import com.demo.chat.test.TestUserSupplier
 import com.demo.chat.test.index.MockIndexResolver
 import com.demo.chat.test.persistence.MockPersistenceResolver
 import com.demo.chat.test.persistence.PersistenceTestBase
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.extension.ExtendWith
 
 data class TestUserRequest(val name: String, val handle: String, val uri: String)

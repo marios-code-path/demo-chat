@@ -15,6 +15,6 @@ open class KeyEnricherPersistenceStore<T, V, E>(
         .flatMap { entity ->
             store
                 .add(entity)
-                .thenReturn(entity)
+                .thenReturn(entity!!)
         }
 }

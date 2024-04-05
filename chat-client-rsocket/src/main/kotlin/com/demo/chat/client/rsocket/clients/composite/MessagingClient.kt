@@ -1,6 +1,7 @@
 package com.demo.chat.client.rsocket.clients.composite
 
 import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.domain.Message
@@ -26,9 +27,9 @@ open class MessagingClient<T, V>(
                     .data(req)
                     .retrieveMono()
 
-    override fun send(req: MessageSendRequest<T, V>): Mono<Void> =
+    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> =
             requester
                     .route("${prefix}message-send")
                     .data(req)
-                    .send()
+                    .retrieveMono()
 }
