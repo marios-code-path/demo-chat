@@ -1,4 +1,6 @@
-# Demo Chat (Adventures in Cyber Space)
+# Chat App
+## Code Name: ImpactDriver
+### (Adventure in Cyber-Space with Microservices)
 
 **Overview:**
 Demo Chat is a multifaceted application showcasing microservices, primarily written in Kotlin and utilizing Spring Boot. It's designed to illustrate the principles of 12-Factor apps, Test-Driven Development (TDD), and iterative deployment, leveraging Spring Boot and Kotlin's capabilities. The project serves as an educational platform, elucidating the intricacies of Spring Di, Spring Repositories, and their integration with Kotlin.
