@@ -18,7 +18,3 @@ Demo Chat is a multifaceted application showcasing microservices, primarily writ
 6. **chat-deploy**: Aims to productionize the above modules, encompassing cloud-discovery, monitoring, tracing, and various execution styles for deployment.
 
 **Note:** Each module is a work in progress and subject to change. Detailed documentation for each module will be provided in their respective README.md files.
-
----
-
-This revised README.md provides a concise yet comprehensive overview of the Demo Chat application, highlighting the purpose, structure, and current functionality of the individual modules.
