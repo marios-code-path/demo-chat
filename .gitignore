@@ -39,3 +39,9 @@ astra
 
 ### encryption keys ###
 encrypt-keys
+env.lsp
+env.custom
+.mcp.json
+
+# Fiberplane local issue tracking
+.fp/

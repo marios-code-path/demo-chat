@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.5</version>
+        <version>3.3.13</version>
         <relativePath/>
     </parent>
 
@@ -23,10 +23,8 @@
         <kotlin.version>1.8.0</kotlin.version>
         <serialization.version>1.2.2</serialization.version>
         <spring-data-elastic.version>5.0.1</spring-data-elastic.version>
-        <spring-cloud-gateway.version>4.1.0-SNAPSHOT</spring-cloud-gateway.version>
-
-        <spring-boot.version>3.1.5</spring-boot.version>
-        <spring-cloud-bom.version>2022.0.4</spring-cloud-bom.version>
+        <spring-boot.version>3.3.13</spring-boot.version>
+        <spring-cloud-bom.version>2023.0.6</spring-cloud-bom.version>
         <spring-cloud.version>4.0.4</spring-cloud.version>
         <spring-cloud-stream.version>4.0.4</spring-cloud-stream.version>
         <spring.version>6.0.13</spring.version>
@@ -34,7 +32,7 @@
 
         <jackson.version>2.14.1</jackson.version>
         <io-reactor.version>3.6.4</io-reactor.version>
-        <cassandra-driver.version>4.14.1</cassandra-driver.version>
+        <datastax-java-driver.version>4.17.0</datastax-java-driver.version>
         <lognet.version>2.1.4</lognet.version>
     </properties>
 
@@ -82,37 +80,13 @@
 
     <repositories>
         <repository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-        <repository>
             <id>spring-milestones</id>
             <name>Spring Milestones</name>
             <url>https://repo.spring.io/milestone</url>
         </repository>
-        <repository>
-            <id>sonatype-oss-snapshot</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>daily</updatePolicy>
-            </snapshots>
-        </repository>
     </repositories>
 
     <pluginRepositories>
-        <pluginRepository>
-            <id>spring-snapshots</id>
-            <name>Spring Snapshots</name>
-            <url>https://repo.spring.io/snapshot</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </pluginRepository>
         <pluginRepository>
             <id>spring-milestones</id>
             <name>Spring Milestones</name>

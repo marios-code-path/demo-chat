@@ -23,17 +23,17 @@
 		<dependency>
 			<groupId>com.datastax.oss</groupId>
 			<artifactId>java-driver-core</artifactId>
-			<version>${cassandra-driver.version}</version>
+			<version>${datastax-java-driver.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.datastax.oss</groupId>
 			<artifactId>java-driver-query-builder</artifactId>
-			<version>${cassandra-driver.version}</version>
+			<version>${datastax-java-driver.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.datastax.oss</groupId>
 			<artifactId>java-driver-mapper-runtime</artifactId>
-			<version>${cassandra-driver.version}</version>
+			<version>${datastax-java-driver.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.datastax.oss</groupId>

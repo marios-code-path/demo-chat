@@ -1,5 +1,12 @@
 # Chat App
+
 ## Code Name: ImpactDriver
+
+This is a tool for abstracting streaming message flows with chat-room semantics.
+It is useful for persisting conversational state, delegating Identities, authorization between
+resources in a chat-room setting and even pluggable event-streaming
+Even use it as a rudimentary chat application between humans.
+
 ### (Adventure in Cyber-Space with Microservices)
 
 **Overview:**
@@ -19,4 +26,21 @@ Demo Chat is a multifaceted application showcasing microservices, primarily writ
 
 6. **chat-deploy**: Aims to productionize the above modules, encompassing cloud-discovery, monitoring, tracing, and various execution styles for deployment.
 
-**Note:** Each module is a work in progress and subject to change. Detailed documentation for each module will be provided in their respective README.md files.
+### Status
+
+* Deployment
+* Create Use Case
+ * Agent->agent chatter
+ * Agent->human chatter
+ * ChatRoom->{some-other-chat-platoform} chatter
+* Develop Use Case
+ * Agent -> agent chatter Use Case
+    * Develop client spec ( we have an API )
+    * Develop client.     ( we have a client )
+    * Integrate client into mcp.   
+    * Integrate client into dagdir
+    * create commandline client for 1-shot tasks
+    * Authentication requirements
+        * Tokens are refreshed hourly
+        * Each client can see it's Public key,  Private Key, but not Chat's private key.
+        * Means we have to enable chat-authorization-server (ugh)   
