@@ -1,0 +1,20 @@
+{
+  "image.repo": "${env.IMAGE_REPO_PREFIX}",
+  "project.build.sourceEncoding": "UTF-8",
+  "project.reporting.outputEncoding": "UTF-8",
+  "java.version": "17",
+  "kotlin.version": "1.8.0",
+  "serialization.version": "1.2.2",
+  "spring-data-elastic.version": "5.0.1",
+  "spring-cloud-gateway.version": "4.1.0-SNAPSHOT",
+  "spring-boot.version": "3.3.13",
+  "spring-cloud-bom.version": "2023.0.6",
+  "spring-cloud.version": "4.0.4",
+  "spring-cloud-stream.version": "4.0.4",
+  "spring.version": "6.0.13",
+  "spring-messaging.version": "${spring.version}",
+  "jackson.version": "2.14.1",
+  "io-reactor.version": "3.6.4",
+  "cassandra-driver.version": "4.14.1",
+  "lognet.version": "2.1.4"
+}

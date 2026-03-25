@@ -1,0 +1,3 @@
+chat-streams
+chat-messaging-pulsar
+chat-deploy-stream-rabbit

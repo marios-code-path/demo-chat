@@ -45,3 +45,5 @@ env.custom
 
 # Fiberplane local issue tracking
 .fp/
+*.versionsBackup
+.claude/

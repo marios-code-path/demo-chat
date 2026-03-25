@@ -1,0 +1,355 @@
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-security:jar:0.0.1
+[WARNING] 'dependencies.dependency.version' for org.testng:testng:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 78, column 22
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-deploy:jar:0.0.1
+[WARNING] 'profiles.profile[deploy].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.springframework.boot:spring-boot-maven-plugin @ line 58, column 29
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-deploy-redis:jar:0.0.1
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.springframework.boot:spring-boot-maven-plugin @ line 117, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Demo Chat Parent                                                   [pom]
+[INFO] chat-core                                                          [jar]
+[INFO] chat-security                                                      [jar]
+[INFO] chat-service-composite                                             [jar]
+[INFO] chat-service-controller                                            [jar]
+[INFO] chat-webflux                                                       [jar]
+[INFO] chat-client-rsocket                                                [jar]
+[INFO] chat-persistence-memory                                            [jar]
+[INFO] chat-messaging-memory                                              [jar]
+[INFO] chat-index-lucene                                                  [jar]
+[INFO] chat-messaging-kafka                                               [jar]
+[INFO] shared-resources-cassandra                                         [jar]
+[INFO] chat-persistence-cassandra                                         [jar]
+[INFO] chat-index-cassandra                                               [jar]
+[INFO] chat-index-elastic                                                 [jar]
+[INFO] chat-persistence-xstream                                           [jar]
+[INFO] chat-client-consul                                                 [jar]
+[INFO] shared-deploy-configuration                                        [jar]
+[INFO] chat-gateway                                                       [jar]
+[INFO] chat-web                                                           [jar]
+[INFO] chat-deploy                                                        [jar]
+[INFO] chat-deploy-memory                                                 [jar]
+[INFO] chat-deploy-redis                                                  [jar]
+[INFO] chat-deploy-cassandra                                              [jar]
+[INFO] chat-deploy-memory-integration-tests                               [jar]
+[INFO] chat-shell                                                         [jar]
+[INFO] chat-authorization-server                                          [jar]
+[INFO] 
+[INFO] ------------------------< com.demo:chat-parent >------------------------
+[INFO] Building Demo Chat Parent 0.0.1                                   [1/27]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-parent ---
+[INFO] 
+[INFO] The following version property updates are available:
+[INFO]   ${kotlin.version} ................................... 1.8.0 -> 2.3.20
+[INFO]   ${spring-cloud-bom.version} .................... 2023.0.6 -> 2025.1.1
+[INFO] 
+[INFO] 
+[INFO] -------------------------< com.demo:chat-core >-------------------------
+[INFO] Building chat-core 0.0.1                                          [2/27]
+[INFO]   from chat-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-core ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -----------------------< com.demo:chat-security >-----------------------
+[INFO] Building chat-security 0.0.1                                      [3/27]
+[INFO]   from chat-security/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-security ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ------------------< com.demo:chat-service-composite >-------------------
+[INFO] Building chat-service-composite 0.0.1                             [4/27]
+[INFO]   from chat-service-composite/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-service-composite ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ------------------< com.demo:chat-service-controller >------------------
+[INFO] Building chat-service-controller 0.0.1                            [5/27]
+[INFO]   from chat-service-controller/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-service-controller ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -----------------------< com.demo:chat-webflux >------------------------
+[INFO] Building chat-webflux 0.0.1                                       [6/27]
+[INFO]   from chat-webflux/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-webflux ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] --------------------< com.demo:chat-client-rsocket >--------------------
+[INFO] Building chat-client-rsocket 0.0.1                                [7/27]
+[INFO]   from chat-client-rsocket/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-client-rsocket ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ------------------< com.demo:chat-persistence-memory >------------------
+[INFO] Building chat-persistence-memory 0.0.1                            [8/27]
+[INFO]   from chat-persistence-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-persistence-memory ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.demo:chat-messaging-memory >-------------------
+[INFO] Building chat-messaging-memory 0.0.1                              [9/27]
+[INFO]   from chat-messaging-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-messaging-memory ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ---------------------< com.demo:chat-index-lucene >---------------------
+[INFO] Building chat-index-lucene 0.0.1                                 [10/27]
+[INFO]   from chat-index-lucene/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-index-lucene ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.demo:chat-messaging-kafka >--------------------
+[INFO] Building chat-messaging-kafka 0.0.1                              [11/27]
+[INFO]   from chat-messaging-kafka/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-messaging-kafka ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ----------------< com.demo:shared-resources-cassandra >-----------------
+[INFO] Building shared-resources-cassandra 0.0.1                        [12/27]
+[INFO]   from shared-resources-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ shared-resources-cassandra ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ----------------< com.demo:chat-persistence-cassandra >-----------------
+[INFO] Building chat-persistence-cassandra 0.0.1                        [13/27]
+[INFO]   from chat-persistence-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-persistence-cassandra ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.demo:chat-index-cassandra >--------------------
+[INFO] Building chat-index-cassandra 0.0.1                              [14/27]
+[INFO]   from chat-index-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-index-cassandra ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] --------------------< com.demo:chat-index-elastic >---------------------
+[INFO] Building chat-index-elastic 0.0.1                                [15/27]
+[INFO]   from chat-index-elastic/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-index-elastic ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -----------------< com.demo:chat-persistence-xstream >------------------
+[INFO] Building chat-persistence-xstream 0.0.1                          [16/27]
+[INFO]   from chat-persistence-xstream/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-persistence-xstream ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] --------------------< com.demo:chat-client-consul >---------------------
+[INFO] Building chat-client-consul 0.0.1                                [17/27]
+[INFO]   from chat-client-consul/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-client-consul ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ----------------< com.demo:shared-deploy-configuration >----------------
+[INFO] Building shared-deploy-configuration 0.0.1                       [18/27]
+[INFO]   from shared-deploy-configuration/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ shared-deploy-configuration ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -----------------------< com.demo:chat-gateway >------------------------
+[INFO] Building chat-gateway 0.0.1                                      [19/27]
+[INFO]   from chat-gateway/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-gateway ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -------------------------< com.demo:chat-web >--------------------------
+[INFO] Building chat-web 0.0.1                                          [20/27]
+[INFO]   from chat-web/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-web ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ------------------------< com.demo:chat-deploy >------------------------
+[INFO] Building chat-deploy 0.0.1                                       [21/27]
+[INFO]   from chat-deploy/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-deploy ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] --------------------< com.demo:chat-deploy-memory >---------------------
+[INFO] Building chat-deploy-memory 0.0.1                                [22/27]
+[INFO]   from chat-deploy-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-deploy-memory ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ---------------------< com.demo:chat-deploy-redis >---------------------
+[INFO] Building chat-deploy-redis 0.0.1                                 [23/27]
+[INFO]   from chat-deploy-redis/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-deploy-redis ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.demo:chat-deploy-cassandra >-------------------
+[INFO] Building chat-deploy-cassandra 0.0.1                             [24/27]
+[INFO]   from chat-deploy-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-deploy-cassandra ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] -----------< com.demo:chat-deploy-memory-integration-tests >------------
+[INFO] Building chat-deploy-memory-integration-tests 0.0.1              [25/27]
+[INFO]   from chat-deploy-memory-integration-test/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-deploy-memory-integration-tests ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] 
+[INFO] ------------------------< com.demo:chat-shell >-------------------------
+[INFO] Building chat-shell 0.0.1                                        [26/27]
+[INFO]   from chat-shell/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-shell ---
+[INFO] 
+[INFO] The following version property updates are available:
+[INFO]   ${spring-shell.version} .............................. 3.0.0 -> 4.0.1
+[INFO]   ${testcontainers.version} .......................... 1.17.6 -> 1.21.4
+[INFO] 
+[INFO] 
+[INFO] --------------< com.demo.chat:chat-authorization-server >---------------
+[INFO] Building chat-authorization-server 0.0.1                         [27/27]
+[INFO]   from chat-authorization-server/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- versions:2.15.0:display-property-updates (default-cli) @ chat-authorization-server ---
+[INFO] 
+[INFO] This project does not have any properties associated with versions.
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Demo Chat Parent 0.0.1:
+[INFO] 
+[INFO] Demo Chat Parent ................................... SUCCESS [  1.074 s]
+[INFO] chat-core .......................................... SUCCESS [  0.006 s]
+[INFO] chat-security ...................................... SUCCESS [  0.003 s]
+[INFO] chat-service-composite ............................. SUCCESS [  0.002 s]
+[INFO] chat-service-controller ............................ SUCCESS [  0.003 s]
+[INFO] chat-webflux ....................................... SUCCESS [  0.006 s]
+[INFO] chat-client-rsocket ................................ SUCCESS [  0.003 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  0.003 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  0.001 s]
+[INFO] chat-index-lucene .................................. SUCCESS [  0.002 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.003 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  0.007 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.002 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  0.001 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.002 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  0.002 s]
+[INFO] chat-client-consul ................................. SUCCESS [  0.001 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  0.001 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.002 s]
+[INFO] chat-web ........................................... SUCCESS [  0.002 s]
+[INFO] chat-deploy ........................................ SUCCESS [  0.001 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.002 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.001 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.002 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.001 s]
+[INFO] chat-shell ......................................... SUCCESS [  0.433 s]
+[INFO] chat-authorization-server .......................... SUCCESS [  0.003 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.068 s
+[INFO] Finished at: 2026-03-24T18:55:48-07:00
+[INFO] ------------------------------------------------------------------------

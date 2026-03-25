@@ -1,0 +1,103 @@
+{
+  "generated_at": "2026-03-25T01:54:50Z",
+  "repo_root": "/Users/darkbit1001/workspace/demo-chat",
+  "root_pom": "/Users/darkbit1001/workspace/demo-chat/pom.xml",
+  "tools": {
+    "mvn": {
+      "available": true,
+      "path": "/Users/darkbit1001/.sdkman/candidates/maven/current/bin/mvn"
+    },
+    "xmllint": {
+      "available": true,
+      "path": "/usr/bin/xmllint"
+    },
+    "jq": {
+      "available": true,
+      "path": "/opt/homebrew/bin/jq"
+    },
+    "rg": {
+      "available": true,
+      "path": "/Users/darkbit1001/.vscode/extensions/openai.chatgpt-26.318.11754-darwin-arm64/bin/macos-aarch64/rg"
+    },
+    "git": {
+      "available": true,
+      "path": "/opt/homebrew/bin/git"
+    }
+  },
+  "git": {
+    "dirty": true,
+    "entries": [
+      " M .gitignore",
+      " M README.md",
+      " M pom.xml",
+      " M shell-scripts/build.sh",
+      " M shell-scripts/util.sh",
+      "?? .claude/",
+      "?? AGENTS.md",
+      "?? CLAUDE.md",
+      "?? FP_CLAUDE.md",
+      "?? check-types.sh",
+      "?? deps-update/",
+      "?? docs/",
+      "?? personality.rdf",
+      "?? py.py",
+      "?? shell-scripts/deps-apply.sh",
+      "?? shell-scripts/deps-preflight.sh",
+      "?? shell-scripts/deps-report.sh",
+      "?? shell-scripts/deps-scope.sh",
+      "?? start-lsp.sh",
+      "?? stop-lsp.sh"
+    ]
+  },
+  "snapshots": {
+    "count": 3,
+    "refs": [
+      "26:        <spring-cloud-gateway.version>4.1.0-SNAPSHOT</spring-cloud-gateway.version>",
+      "81:            <version>4.1.0-SNAPSHOT</version>",
+      "86:            <version>4.1.0-SNAPSHOT</version>"
+    ]
+  },
+  "scope": {
+    "reactor_module_count": 26,
+    "reactor_modules": [
+      "chat-core",
+      "chat-security",
+      "chat-service-composite",
+      "chat-service-controller",
+      "chat-webflux",
+      "chat-client-rsocket",
+      "chat-persistence-memory",
+      "chat-messaging-memory",
+      "chat-index-lucene",
+      "chat-messaging-kafka",
+      "shared-resources-cassandra",
+      "chat-persistence-cassandra",
+      "chat-index-cassandra",
+      "chat-index-elastic",
+      "chat-persistence-xstream",
+      "chat-client-consul",
+      "chat-gateway",
+      "chat-web",
+      "shared-deploy-configuration",
+      "chat-deploy",
+      "chat-deploy-memory",
+      "chat-deploy-redis",
+      "chat-deploy-cassandra",
+      "chat-deploy-memory-integration-test",
+      "chat-shell",
+      "chat-authorization-server"
+    ],
+    "excluded_modules": [
+      "chat-streams",
+      "chat-messaging-pulsar",
+      "chat-deploy-stream-rabbit"
+    ],
+    "excluded_modules_in_reactor": []
+  },
+  "boundary": {
+    "exists": true,
+    "spring_boot_version": "3.3.13",
+    "spring_cloud_bom_version": "2023.0.6"
+  },
+  "status": "warn"
+}

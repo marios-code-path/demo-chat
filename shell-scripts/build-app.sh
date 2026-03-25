@@ -87,7 +87,11 @@ while getopts ":d:waoxge:s:b:c:m:i:k:b:n:p:" o; do
       export KEYSPACE_TYPE=${OPTARG}
       ;;
     b)
-      export RUN_MAVEN_ARG=${OPTARG}
+      if [[ -n ${RUN_MAVEN_ARG} && ${RUN_MAVEN_ARG} != ${OPTARG} ]]; then
+        echo "Conflicting -b values: keeping '${RUN_MAVEN_ARG}', ignoring '${OPTARG}'" >&2
+      elif [[ -z ${RUN_MAVEN_ARG} ]]; then
+        export RUN_MAVEN_ARG=${OPTARG}
+      fi
       ;;
     d)
       DISCOVERY_TYPE=${OPTARG}

@@ -1,0 +1,31 @@
+ M .gitignore
+ M README.md
+ M chat-client-consul/pom.xml
+ M chat-deploy-cassandra/pom.xml
+ M chat-index-elastic/pom.xml
+ M chat-persistence-xstream/pom.xml
+ M chat-shell/pom.xml
+ M pom.xml
+ M shell-scripts/build.sh
+ M shell-scripts/util.sh
+?? .claude/
+?? AGENTS.md
+?? CLAUDE.md
+?? FP_CLAUDE.md
+?? chat-client-consul/pom.xml.versionsBackup
+?? chat-deploy-cassandra/pom.xml.versionsBackup
+?? chat-index-elastic/pom.xml.versionsBackup
+?? chat-persistence-xstream/pom.xml.versionsBackup
+?? chat-shell/pom.xml.versionsBackup
+?? check-types.sh
+?? deps-update/
+?? docs/
+?? personality.rdf
+?? pom.xml.versionsBackup
+?? py.py
+?? shell-scripts/deps-apply.sh
+?? shell-scripts/deps-preflight.sh
+?? shell-scripts/deps-report.sh
+?? shell-scripts/deps-scope.sh
+?? start-lsp.sh
+?? stop-lsp.sh

@@ -1,0 +1,2119 @@
+[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-security:jar:0.0.1
+[WARNING] 'dependencies.dependency.version' for org.testng:testng:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 78, column 22
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-deploy:jar:0.0.1
+[WARNING] 'profiles.profile[deploy].plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.springframework.boot:spring-boot-maven-plugin @ line 58, column 29
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for com.demo:chat-deploy-redis:jar:0.0.1
+[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.springframework.boot:spring-boot-maven-plugin @ line 117, column 21
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] Demo Chat Parent                                                   [pom]
+[INFO] chat-core                                                          [jar]
+[INFO] chat-security                                                      [jar]
+[INFO] chat-service-composite                                             [jar]
+[INFO] chat-service-controller                                            [jar]
+[INFO] chat-webflux                                                       [jar]
+[INFO] chat-client-rsocket                                                [jar]
+[INFO] chat-persistence-memory                                            [jar]
+[INFO] chat-messaging-memory                                              [jar]
+[INFO] chat-index-lucene                                                  [jar]
+[INFO] chat-messaging-kafka                                               [jar]
+[INFO] shared-resources-cassandra                                         [jar]
+[INFO] chat-persistence-cassandra                                         [jar]
+[INFO] chat-index-cassandra                                               [jar]
+[INFO] chat-index-elastic                                                 [jar]
+[INFO] chat-persistence-xstream                                           [jar]
+[INFO] chat-client-consul                                                 [jar]
+[INFO] shared-deploy-configuration                                        [jar]
+[INFO] chat-gateway                                                       [jar]
+[INFO] chat-web                                                           [jar]
+[INFO] chat-deploy                                                        [jar]
+[INFO] chat-deploy-memory                                                 [jar]
+[INFO] chat-deploy-redis                                                  [jar]
+[INFO] chat-deploy-cassandra                                              [jar]
+[INFO] chat-deploy-memory-integration-tests                               [jar]
+[INFO] chat-shell                                                         [jar]
+[INFO] chat-authorization-server                                          [jar]
+[INFO] 
+[INFO] Using the MultiThreadedBuilder implementation with a thread count of 4
+[INFO] 
+[INFO] ------------------------< com.demo:chat-parent >------------------------
+[INFO] Building Demo Chat Parent 0.0.1                                   [1/27]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-parent ---
+[INFO] isPomProject is true and skipPoms is true, return
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-parent ---
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-parent ---
+[WARNING] No sources found skipping Kotlin compile
+[INFO] 
+[INFO] -------------------------< com.demo:chat-core >-------------------------
+[INFO] 
+[INFO] ----------------< com.demo:shared-resources-cassandra >-----------------
+[INFO] Building chat-core 0.0.1                                          [2/27]
+[INFO]   from chat-core/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Building shared-resources-cassandra 0.0.1                         [3/27]
+[INFO]   from shared-resources-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] ----------------< com.demo:shared-deploy-configuration >----------------
+[INFO] Building shared-deploy-configuration 0.0.1                        [4/27]
+[INFO]   from shared-deploy-configuration/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ shared-deploy-configuration ---
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ shared-resources-cassandra ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-core ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.branch with value master
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:04-07:00
+[INFO] Collected git.build.time with value 2026-03-24T20:37:04-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.time with value 2026-03-24T20:37:04-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/shared-resources-cassandra/target/classes/git.properties] (for project shared-resources-cassandra)...
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-core/target/classes/git.properties] (for project chat-core)...
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/shared-deploy-configuration/target/classes/git.properties] (for project shared-deploy-configuration)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-core/target/classes/git.properties] is up-to-date (for module chat-core)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/shared-resources-cassandra/target/classes/git.properties] is up-to-date (for module shared-resources-cassandra)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/shared-deploy-configuration/target/classes/git.properties] is up-to-date (for module shared-deploy-configuration)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-core ---
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ shared-deploy-configuration ---
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ shared-resources-cassandra ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shared-deploy-configuration ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-core ---
+[INFO] 
+[INFO] --- remote-resources:1.7.0:bundle (default) @ shared-resources-cassandra ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-core ---
+[INFO] Copying 11 resources from src/main/config to target/classes/config
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ shared-deploy-configuration ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ shared-deploy-configuration ---
+[WARNING] No sources found skipping Kotlin compile
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-core ---
+[INFO] Writing META-INF/maven/remote-resources.xml descriptor with 4 entries
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ shared-resources-cassandra ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 4 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ shared-resources-cassandra ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ shared-resources-cassandra ---
+[WARNING] No sources found skipping Kotlin compile
+[INFO] Applied plugin: 'kotlinx-serialization'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/convert/Codecs.kt: (17, 26) The corresponding parameter in the supertype 'Converter' is named 'source'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt: (33, 33) The corresponding parameter in the supertype 'Key' is named 'other'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt: (46, 33) The corresponding parameter in the supertype 'NoKey' is named 'other'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt: (71, 37) The corresponding parameter in the supertype 'KeyValuePair' is named 'other'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/SnowflakeGenerator.kt: (79, 13) Name shadowed: currentTimestamp
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/User.kt: (30, 33) The corresponding parameter in the supertype 'User' is named 'other'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/comparator/UserComparater.kt: (8, 26) 'toLowerCase(): String' is deprecated. Use lowercase() instead.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/comparator/UserComparater.kt: (8, 60) 'toLowerCase(): String' is deprecated. Use lowercase() instead.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatDeserializers.kt: (94, 13) Check for instance is always 'true'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatDeserializers.kt: (165, 29) 'create(Key<T>, Key<T>, Key<T>, String, Long): AuthMetadata<T>' is deprecated. Use muted constructor instead
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-core/src/main/kotlin/com/demo/chat/service/conflate/KeyEnricherPersistenceStore.kt: (12, 30) The corresponding parameter in the supertype 'EnricherPersistenceStore' is named 'data'. This may cause problems when calling this function with named arguments.
+[INFO] 
+[INFO] ------------------< com.demo:chat-service-composite >-------------------
+[INFO] Building chat-service-composite 0.0.1                             [5/27]
+[INFO]   from chat-service-composite/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] ------------------< com.demo:chat-persistence-memory >------------------
+[INFO] Building chat-persistence-memory 0.0.1                            [6/27]
+[INFO]   from chat-persistence-memory/pom.xml
+[INFO] 
+[INFO] 
+[INFO] -------------------< com.demo:chat-messaging-memory >-------------------
+[INFO] Building chat-messaging-memory 0.0.1                              [7/27]
+[INFO]   from chat-messaging-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] -----------------------< com.demo:chat-security >-----------------------
+[INFO] Building chat-security 0.0.1                                      [8/27]
+[INFO]   from chat-security/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-persistence-memory ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-messaging-memory ---
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.branch with value master
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-service-composite ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-security ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.tag with value 
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:13-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.time with value 2026-03-24T20:37:13-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/target/classes/git.properties] (for project chat-messaging-memory)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/target/classes/git.properties] is up-to-date (for module chat-messaging-memory)...
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/target/classes/git.properties] (for project chat-persistence-memory)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-messaging-memory ---
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/target/classes/git.properties] is up-to-date (for module chat-persistence-memory)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-persistence-memory ---
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:13-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-service-composite/target/classes/git.properties] (for project chat-service-composite)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-service-composite/target/classes/git.properties] is up-to-date (for module chat-service-composite)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-service-composite ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-messaging-memory ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-persistence-memory ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-service-composite ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-messaging-memory ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-service-composite/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-service-composite/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-service-composite ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-persistence-memory ---
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:13-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-security/target/classes/git.properties] (for project chat-security)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-security/target/classes/git.properties] is up-to-date (for module chat-security)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-security ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-security ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-security ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-messaging-memory ---
+[INFO] 
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-security ---
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-persistence-memory ---
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-service-composite ---
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (7, 31) 'DirectProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (9, 31) 'FluxProcessor<IN : Any!, OUT : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (23, 46) 'FluxProcessor<IN : Any!, OUT : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (82, 36) 'FluxProcessor<IN : Any!, OUT : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (94, 31) 'FluxProcessor<IN : Any!, OUT : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (97, 41) 'DirectProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/ExampleReactiveStreamManager.kt: (97, 57) 'create(): DirectProcessor<E!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/MemoryTopicPubSubService.kt: (9, 31) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/MemoryTopicPubSubService.kt: (61, 36) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-messaging-memory/src/main/kotlin/com/demo/chat/pubsub/memory/impl/MemoryTopicPubSubService.kt: (61, 52) 'create(Int): ReplayProcessor<E!>' is deprecated. Deprecated in Java
+[INFO] 
+[INFO] ---------------------< com.demo:chat-index-lucene >---------------------
+[INFO] Building chat-index-lucene 0.0.1                                  [9/27]
+[INFO]   from chat-index-lucene/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-index-lucene ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:15-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-lucene/target/classes/git.properties] (for project chat-index-lucene)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-lucene/target/classes/git.properties] is up-to-date (for module chat-index-lucene)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-index-lucene ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-index-lucene ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-index-lucene ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-index-lucene ---
+[INFO] Applied plugin: 'spring'
+[WARNING] Language version 1.4 is deprecated and its support will be removed in a future version of Kotlin
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/src/main/kotlin/com/demo/chat/persistence/memory/impl/InMemoryKeyValueStore.kt: (21, 94) Unchecked cast: Any to E
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/src/main/kotlin/com/demo/chat/persistence/memory/impl/InMemoryKeyValueStore.kt: (29, 69) Unchecked cast: Any to E
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-memory/src/main/kotlin/com/demo/chat/persistence/memory/impl/InMemoryKeyValueStore.kt: (39, 89) Unchecked cast: Any to E
+[INFO] 
+[INFO] -------------------< com.demo:chat-messaging-kafka >--------------------
+[INFO] Building chat-messaging-kafka 0.0.1                              [10/27]
+[INFO]   from chat-messaging-kafka/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-messaging-kafka ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:15-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-messaging-kafka/target/classes/git.properties] (for project chat-messaging-kafka)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-messaging-kafka/target/classes/git.properties] is up-to-date (for module chat-messaging-kafka)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-messaging-kafka ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-messaging-kafka ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-messaging-kafka/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-messaging-kafka/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-messaging-kafka ---
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-messaging-kafka ---
+[WARNING] No sources found skipping Kotlin compile
+[INFO] 
+[INFO] ----------------< com.demo:chat-persistence-cassandra >-----------------
+[INFO] Building chat-persistence-cassandra 0.0.1                        [11/27]
+[INFO]   from chat-persistence-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --------------------< com.demo:chat-index-elastic >---------------------
+[INFO] Building chat-index-elastic 0.0.1                                [12/27]
+[INFO]   from chat-index-elastic/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-index-elastic ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:15-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-elastic/target/classes/git.properties] (for project chat-index-elastic)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-elastic/target/classes/git.properties] is up-to-date (for module chat-index-elastic)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-index-elastic ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-index-elastic ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-index-elastic ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-index-elastic ---
+[INFO] Applied plugin: 'spring'
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-persistence-cassandra ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:15-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-cassandra/target/classes/git.properties] (for project chat-persistence-cassandra)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-cassandra/target/classes/git.properties] is up-to-date (for module chat-persistence-cassandra)...
+[INFO] 
+[INFO] --- remote-resources:1.7.0:process (default) @ chat-persistence-cassandra ---
+[INFO] Preparing remote bundle com.demo:shared-resources-cassandra:0.0.1
+[INFO] Copying 4 resources from 1 bundle.
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-persistence-cassandra ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-persistence-cassandra ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 4 resources from target/maven-shared-archive-resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-persistence-cassandra ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-persistence-cassandra ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/access/AuthMetadataAccessBroker.kt: (29, 65) The corresponding parameter in the supertype 'AccessBroker' is named 'action'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/access/AuthMetadataAccessBroker.kt: (32, 64) The corresponding parameter in the supertype 'AccessBroker' is named 'key'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/access/AuthMetadataAccessBroker.kt: (32, 80) The corresponding parameter in the supertype 'AccessBroker' is named 'action'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/access/SpringSecurityAccessBrokerService.kt: (63, 45) Unchecked cast: Any! to ChatUserDetails<T>
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt: (30, 28) The corresponding parameter in the supertype 'AuthorizationService' is named 'authorization'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt: (33, 40) 'create(Key<T>, Key<T>, Key<T>, String, Long): AuthMetadata<T>' is deprecated. Use muted constructor instead
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/security/service/CoreReactiveAuthenticationManager.kt: (32, 18) No cast needed
+[INFO] 
+[INFO] --------------------< com.demo:chat-client-consul >---------------------
+[INFO] Building chat-client-consul 0.0.1                                [13/27]
+[INFO]   from chat-client-consul/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-elastic/src/main/kotlin/com/demo/chat/index/elastic/domain/User.kt: (8, 44) 'PersistenceConstructor' is deprecated. Deprecated in Java
+[INFO] 
+[INFO] -----------------------< com.demo:chat-gateway >------------------------
+[INFO] Building chat-gateway 0.0.1                                      [14/27]
+[INFO]   from chat-gateway/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-client-consul ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-gateway ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[WARNING] Language version 1.4 is deprecated and its support will be removed in a future version of Kotlin
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-lucene/src/main/kotlin/com/demo/chat/index/lucene/domain/IndexEntryEncoder.kt: (16, 64) Unchecked cast: List<*>? to List<Pair<String, String>>
+[INFO] 
+[INFO] -------------------------< com.demo:chat-web >--------------------------
+[INFO] Building chat-web 0.0.1                                          [15/27]
+[INFO]   from chat-web/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:16-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-client-consul/target/classes/git.properties] (for project chat-client-consul)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-client-consul/target/classes/git.properties] is up-to-date (for module chat-client-consul)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-client-consul ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-client-consul ---
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-client-consul/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-client-consul/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-client-consul ---
+[INFO] Collected git.tags with value 
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Collected git.tag with value 
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-client-consul ---
+[INFO] Applied plugin: 'spring'
+[INFO] Collected git.closest.tag.name with value 
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-web ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:16-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-gateway/target/classes/git.properties] (for project chat-gateway)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-gateway/target/classes/git.properties] is up-to-date (for module chat-gateway)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-gateway ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-gateway ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-gateway ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-gateway ---
+[INFO] Applied plugin: 'spring'
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:16-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-web/target/classes/git.properties] (for project chat-web)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-web/target/classes/git.properties] is up-to-date (for module chat-web)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-web ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-web ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-web ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-web ---
+[INFO] Applied plugin: 'spring'
+[INFO] 
+[INFO] ------------------------< com.demo:chat-deploy >------------------------
+[INFO] Building chat-deploy 0.0.1                                       [16/27]
+[INFO]   from chat-deploy/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-deploy ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:17-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy/target/classes/git.properties] (for project chat-deploy)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy/target/classes/git.properties] is up-to-date (for module chat-deploy)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-deploy ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-deploy ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-deploy ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-deploy ---
+[INFO] Applied plugin: 'spring'
+[INFO] 
+[INFO] -----------------< com.demo:chat-persistence-xstream >------------------
+[INFO] Building chat-persistence-xstream 0.0.1                          [17/27]
+[INFO]   from chat-persistence-xstream/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] ------------------< com.demo:chat-service-controller >------------------
+[INFO] Building chat-service-controller 0.0.1                           [18/27]
+[INFO]   from chat-service-controller/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from central: https://repo.maven.apache.org/maven2/org/springframework/data/spring-data-redis/3.3.13/spring-data-redis-3.3.13.jar
+Progress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.1/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.2/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.3/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.4/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.5/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.6/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.7/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.8/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 0.9/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.0/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.1/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.2/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.3/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.4/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.5/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.6/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.7/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.8/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 1.9/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.0/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.1/2.2 MBProgress (1): 2.2/2.2 MBProgress (1): 2.2/2.2 MBProgress (1): 2.2/2.2 MBProgress (1): 2.2/2.2 MBProgress (1): 2.2 MB                        Downloaded from central: https://repo.maven.apache.org/maven2/org/springframework/data/spring-data-redis/3.3.13/spring-data-redis-3.3.13.jar (2.2 MB at 4.4 MB/s)
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-persistence-xstream ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-service-controller ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:18-07:00
+[INFO] Collected git.build.time with value 2026-03-24T20:37:18-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/target/classes/git.properties] (for project chat-persistence-xstream)...
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-service-controller/target/classes/git.properties] (for project chat-service-controller)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/target/classes/git.properties] is up-to-date (for module chat-persistence-xstream)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-service-controller/target/classes/git.properties] is up-to-date (for module chat-service-controller)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-service-controller ---
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-persistence-xstream ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-service-controller ---
+[WARNING] Source root doesn't exist: /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-service-controller ---
+[INFO] Applied plugin: 'spring'
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-service-controller ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CredentialSecretsStoreCassandra.kt: (18, 32) The corresponding parameter in the supertype 'UserCredentialSecretsStore' is named 'keyCredential'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/MembershipPersistenceCassandra.kt: (30, 42) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[INFO] 
+[INFO] -----------------------< com.demo:chat-webflux >------------------------
+[INFO] Building chat-webflux 0.0.1                                      [19/27]
+[INFO]   from chat-webflux/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-webflux ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:18-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-webflux/target/classes/git.properties] (for project chat-webflux)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-webflux/target/classes/git.properties] is up-to-date (for module chat-webflux)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-webflux ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-webflux ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-webflux ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-webflux ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/security/ActuatorWebSecurityConfiguration.kt: (26, 14) 'csrf(): ServerHttpSecurity.CsrfSpec!' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/security/ActuatorWebSecurityConfiguration.kt: (27, 14) 'formLogin(): ServerHttpSecurity.FormLoginSpec!' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/security/ActuatorWebSecurityConfiguration.kt: (28, 14) 'httpBasic(): ServerHttpSecurity.HttpBasicSpec!' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/security/ActuatorWebSecurityConfiguration.kt: (29, 14) 'and(): ServerHttpSecurity!' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/security/ActuatorWebSecurityConfiguration.kt: (30, 14) 'authorizeExchange(): ServerHttpSecurity.AuthorizeExchangeSpec!' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt: (69, 61) Unnecessary non-null assertion (!!) on a non-null receiver of type Key<T>
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt: (70, 63) Unnecessary non-null assertion (!!) on a non-null receiver of type Key<T>
+[INFO] 
+[INFO] -------------------< com.demo:chat-index-cassandra >--------------------
+[INFO] Building chat-index-cassandra 0.0.1                              [20/27]
+[INFO]   from chat-index-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-index-cassandra ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:19-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/target/classes/git.properties] (for project chat-index-cassandra)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/target/classes/git.properties] is up-to-date (for module chat-index-cassandra)...
+[INFO] 
+[INFO] --- remote-resources:1.7.0:process (default) @ chat-index-cassandra ---
+[INFO] Preparing remote bundle com.demo:shared-resources-cassandra:0.0.1
+[INFO] Copying 4 resources from 1 bundle.
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-index-cassandra ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-index-cassandra ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 4 resources from target/maven-shared-archive-resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-index-cassandra ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-index-cassandra ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/core/IndexControllersConfiguration.kt: (19, 44) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/core/IndexControllersConfiguration.kt: (25, 39) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/core/IndexControllersConfiguration.kt: (31, 42) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/core/IndexControllersConfiguration.kt: (37, 40) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/core/IndexControllersConfiguration.kt: (43, 43) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[INFO] 
+[INFO] --------------------< com.demo:chat-client-rsocket >--------------------
+[INFO] Building chat-client-rsocket 0.0.1                               [21/27]
+[INFO]   from chat-client-rsocket/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-client-rsocket ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:20-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/target/classes/git.properties] (for project chat-client-rsocket)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/target/classes/git.properties] is up-to-date (for module chat-client-rsocket)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-client-rsocket ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-client-rsocket ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-client-rsocket ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-client-rsocket ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (17, 41) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (23, 44) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (29, 47) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (35, 42) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (41, 49) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/IndexControllers.kt: (46, 44) 'IndexSearchRequest' is a final type, and thus a value of the type parameter is predetermined
+[INFO] 
+[INFO] --------------------< com.demo:chat-deploy-memory >---------------------
+[INFO] Building chat-deploy-memory 0.0.1                                [22/27]
+[INFO]   from chat-deploy-memory/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-deploy-memory ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubServiceRedis.kt: (14, 31) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubServiceRedis.kt: (170, 29) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubServiceRedis.kt: (170, 45) 'create(Int): ReplayProcessor<E!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubTopicInventoryRedisStream.kt: (16, 31) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubTopicInventoryRedisStream.kt: (184, 30) 'ReplayProcessor<T : Any!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/pubsub/impl/memory/messaging/TopicPubSubTopicInventoryRedisStream.kt: (184, 46) 'create(Int): ReplayProcessor<E!>' is deprecated. Deprecated in Java
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/kotlin/com/demo/chat/service/persistence/xstream/UserPersistenceXStream.kt: (63, 81) Unchecked cast: Map<*, *>! to MutableMap<Any, Any>
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-persistence-xstream ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-persistence-xstream ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-persistence-xstream/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-persistence-xstream ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:20-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-memory/target/classes/git.properties] (for project chat-deploy-memory)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-memory/target/classes/git.properties] is up-to-date (for module chat-deploy-memory)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-deploy-memory ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-deploy-memory ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-deploy-memory ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-deploy-memory ---
+[INFO] Applied plugin: 'spring'
+[INFO] 
+[INFO] -----------< com.demo:chat-deploy-memory-integration-tests >------------
+[INFO] Building chat-deploy-memory-integration-tests 0.0.1              [23/27]
+[INFO]   from chat-deploy-memory-integration-test/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-deploy-memory-integration-tests ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/impl/AuthMetadataIndex.kt: (48, 51) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/impl/AuthMetadataIndex.kt: (49, 50) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/impl/MembershipIndex.kt: (40, 33) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-index-cassandra/src/main/kotlin/com/demo/chat/index/cassandra/impl/MembershipIndex.kt: (43, 45) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[INFO] Collected git.branch with value master
+[INFO] 
+[INFO] -------------------< com.demo:chat-deploy-cassandra >-------------------
+[INFO] Building chat-deploy-cassandra 0.0.1                             [24/27]
+[INFO]   from chat-deploy-cassandra/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-deploy-cassandra ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.build.time with value 2026-03-24T20:37:21-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-memory-integration-test/target/classes/git.properties] (for project chat-deploy-memory-integration-tests)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-memory-integration-test/target/classes/git.properties] is up-to-date (for module chat-deploy-memory-integration-tests)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-deploy-memory-integration-tests ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-deploy-memory-integration-tests ---
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-deploy-memory-integration-test/src/main/resources
+[INFO] skip non existing resourceDirectory /Users/darkbit1001/workspace/demo-chat/chat-deploy-memory-integration-test/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-deploy-memory-integration-tests ---
+[INFO] Collected git.tags with value 
+[INFO] No sources to compile
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-deploy-memory-integration-tests ---
+[WARNING] No sources found skipping Kotlin compile
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:21-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-cassandra/target/classes/git.properties] (for project chat-deploy-cassandra)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-cassandra/target/classes/git.properties] is up-to-date (for module chat-deploy-cassandra)...
+[INFO] 
+[INFO] --- remote-resources:1.7.0:process (default) @ chat-deploy-cassandra ---
+[INFO] Preparing remote bundle com.demo:shared-resources-cassandra:0.0.1
+[INFO] Copying 4 resources from 1 bundle.
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-deploy-cassandra ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-deploy-cassandra ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 4 resources from target/maven-shared-archive-resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-deploy-cassandra ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-deploy-cassandra ---
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-deploy-cassandra/src/main/kotlin/com/demo/chat/config/deploy/cassandra/CompositeServiceConfiguration.kt: (28, 52) Unchecked cast: Any! to ChatUserDetails<T>
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (38, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (43, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (53, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (58, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (63, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (68, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (73, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/client/rsocket/clients/core/PubSubClient.kt: (78, 29) Type parameter 'T' has nullable upper bounds while non-nullable version is expected. This warning will become an error soon. See https://youtrack.jetbrains.com/issue/KT-36770 for details
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-client-rsocket/src/main/kotlin/com/demo/chat/config/client/rsocket/RSocketPropertyConfiguration.kt: (19, 35) The corresponding parameter in the supertype 'ClientProperties' is named 'serviceKey'. This may cause problems when calling this function with named arguments.
+[INFO] 
+[INFO] 
+[INFO] 
+[INFO] --------------< com.demo.chat:chat-authorization-server >---------------
+[INFO] Building chat-authorization-server 0.0.1                         [25/27]
+[INFO]   from chat-authorization-server/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] ---------------------< com.demo:chat-deploy-redis >---------------------
+[INFO] Building chat-deploy-redis 0.0.1                                 [26/27]
+[INFO]   from chat-deploy-redis/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] ------------------------< com.demo:chat-shell >-------------------------
+[INFO] Building chat-shell 0.0.1                                        [27/27]
+[INFO]   from chat-shell/pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-deploy-redis ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-authorization-server ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.branch with value master
+[INFO] 
+[INFO] --- git-commit-id:8.0.2:revision (default) @ chat-shell ---
+[INFO] dotGitDirectory '/Users/darkbit1001/workspace/demo-chat/.git'
+[INFO] Collected git.build.user.name with value Mario Gray
+[INFO] Collected git.build.user.email with value mario.gray@gmail.com
+[INFO] Collected git.branch with value master
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.commit.id.describe with value 2ae5937-dirty
+[INFO] Collected git.commit.id.describe-short with value 2ae5937-dirty
+[INFO] Collected git.commit.id with value 2ae59375cd44e8fb58093b0f24596fc3111fd447
+[INFO] Collected git.commit.id.abbrev with value 2ae5937
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.dirty with value true
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.user.name with value Mario Gray
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.commit.user.email with value mario.gray@gmail.com
+[INFO] Collected git.commit.message.full with value file
+[INFO] Collected git.commit.message.short with value file
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.commit.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.author.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.commit.committer.time with value 2024-04-10T20:31:19-07:00
+[INFO] Collected git.remote.origin.url with value git@github.com:/marios-code-path/demo-chat
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tags with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.tag with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.name with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.closest.tag.commit.count with value 
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.total.commit.count with value 618
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.local.branch.ahead with value 0
+[INFO] Collected git.local.branch.behind with value 0
+[INFO] Collected git.build.time with value 2026-03-24T20:37:23-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] Collected git.build.time with value 2026-03-24T20:37:23-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Collected git.build.time with value 2026-03-24T20:37:23-07:00
+[INFO] Collected git.build.version with value 0.0.1
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-redis/target/classes/git.properties] (for project chat-deploy-redis)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-deploy-redis/target/classes/git.properties] is up-to-date (for module chat-deploy-redis)...
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-shell/target/classes/git.properties] (for project chat-shell)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-deploy-redis ---
+[INFO] Collected git.build.host with value Marios-Laptop.local
+[INFO] including property 'git.tags' in results
+[INFO] including property 'git.build.version' in results
+[INFO] including property 'git.branch' in results
+[INFO] including property 'git.build.host' in results
+[INFO] including property 'git.commit.id' in results
+[INFO] including property 'git.commit.user.email' in results
+[INFO] including property 'git.local.branch.behind' in results
+[INFO] including property 'git.commit.author.time' in results
+[INFO] including property 'git.build.user.name' in results
+[INFO] including property 'git.dirty' in results
+[INFO] including property 'git.closest.tag.commit.count' in results
+[INFO] including property 'git.commit.user.name' in results
+[INFO] including property 'git.commit.id.abbrev' in results
+[INFO] including property 'git.commit.id.describe-short' in results
+[INFO] including property 'git.total.commit.count' in results
+[INFO] including property 'git.commit.id.describe' in results
+[INFO] including property 'git.build.user.email' in results
+[INFO] including property 'git.commit.message.short' in results
+[INFO] including property 'git.commit.committer.time' in results
+[INFO] including property 'git.tag' in results
+[INFO] including property 'git.closest.tag.name' in results
+[INFO] including property 'git.local.branch.ahead' in results
+[INFO] including property 'git.commit.time' in results
+[INFO] including property 'git.build.time' in results
+[INFO] including property 'git.commit.message.full' in results
+[INFO] including property 'git.remote.origin.url' in results
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-shell/target/classes/git.properties] is up-to-date (for module chat-shell)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-shell ---
+[INFO] Reading existing properties file [/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/target/classes/git.properties] (for project chat-authorization-server)...
+[INFO] Properties file [/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/target/classes/git.properties] is up-to-date (for module chat-authorization-server)...
+[INFO] 
+[INFO] --- spring-boot:3.3.13:build-info (default) @ chat-authorization-server ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-authorization-server ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-shell ---
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ chat-deploy-redis ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-shell ---
+[INFO] Copying 1 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-deploy-redis ---
+[INFO] Copying 0 resource from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ chat-authorization-server ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-authorization-server ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-deploy-redis ---
+[INFO] 
+[INFO] --- kotlin:1.8.0:compile (compile) @ chat-shell ---
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'spring'
+[INFO] Applied plugin: 'spring'
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/ClientLoader.kt: (21, 29) Parameter 'args' is never used, could be renamed to _
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/convert/RegisteredClientIndexEntryConverter.kt: (8, 26) The corresponding parameter in the supertype 'Converter' is named 'source'. This may cause problems when calling this function with named arguments.
+[WARNING] /Users/darkbit1001/workspace/demo-chat/chat-shell/src/main/kotlin/com/demo/chat/shell/commands/TopicCommands.kt: (48, 38) 'create(Key<T>, Key<T>, Key<T>, String, Long): AuthMetadata<T>' is deprecated. Use muted constructor instead
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Demo Chat Parent 0.0.1:
+[INFO] 
+[INFO] Demo Chat Parent ................................... SUCCESS [  0.821 s]
+[INFO] chat-core .......................................... SUCCESS [  9.407 s]
+[INFO] chat-security ...................................... SUCCESS [  3.447 s]
+[INFO] chat-service-composite ............................. SUCCESS [  2.665 s]
+[INFO] chat-service-controller ............................ SUCCESS [  2.513 s]
+[INFO] chat-webflux ....................................... SUCCESS [  2.277 s]
+[INFO] chat-client-rsocket ................................ SUCCESS [  2.768 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  2.370 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  1.968 s]
+[INFO] chat-index-lucene .................................. SUCCESS [  1.699 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.168 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  1.174 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  3.196 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  2.160 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.886 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  3.414 s]
+[INFO] chat-client-consul ................................. SUCCESS [  1.238 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  1.086 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.670 s]
+[INFO] chat-web ........................................... SUCCESS [  1.144 s]
+[INFO] chat-deploy ........................................ SUCCESS [  2.106 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.428 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.602 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.790 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.318 s]
+[INFO] chat-shell ......................................... SUCCESS [  1.669 s]
+[INFO] chat-authorization-server .......................... SUCCESS [  1.312 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  22.436 s (Wall Clock)
+[INFO] Finished at: 2026-03-24T20:37:24-07:00
+[INFO] ------------------------------------------------------------------------

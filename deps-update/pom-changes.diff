@@ -1,0 +1,136 @@
+diff --git a/chat-client-consul/pom.xml b/chat-client-consul/pom.xml
+index 99aff22d..3cda909a 100644
+--- a/chat-client-consul/pom.xml
++++ b/chat-client-consul/pom.xml
+@@ -65,13 +65,13 @@
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>junit-jupiter</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>consul</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+     </dependencies>
+diff --git a/chat-deploy-cassandra/pom.xml b/chat-deploy-cassandra/pom.xml
+index 32adc32e..f432e840 100644
+--- a/chat-deploy-cassandra/pom.xml
++++ b/chat-deploy-cassandra/pom.xml
+@@ -97,14 +97,14 @@
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>cassandra</artifactId>
+-            <version>1.18.3</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+ 
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>junit-jupiter</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+         <dependency>
+diff --git a/chat-index-elastic/pom.xml b/chat-index-elastic/pom.xml
+index d6f22fa8..ee3f088a 100644
+--- a/chat-index-elastic/pom.xml
++++ b/chat-index-elastic/pom.xml
+@@ -35,14 +35,14 @@
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>elasticsearch</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+ 
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>junit-jupiter</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+ 
+diff --git a/chat-persistence-xstream/pom.xml b/chat-persistence-xstream/pom.xml
+index f4954c21..0e27c5b7 100644
+--- a/chat-persistence-xstream/pom.xml
++++ b/chat-persistence-xstream/pom.xml
+@@ -41,14 +41,14 @@
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>testcontainers</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+         <!-- https://mvnrepository.com/artifact/org.testcontainers/junit-jupiter -->
+         <dependency>
+             <groupId>org.testcontainers</groupId>
+             <artifactId>junit-jupiter</artifactId>
+-            <version>1.17.6</version>
++            <version>1.21.4</version>
+             <scope>test</scope>
+         </dependency>
+         <dependency>
+@@ -149,4 +149,4 @@
+             </plugin>
+         </plugins>
+     </build>
+-</project>
+\ No newline at end of file
++</project>
+diff --git a/chat-shell/pom.xml b/chat-shell/pom.xml
+index 7e769ae5..deb387ff 100644
+--- a/chat-shell/pom.xml
++++ b/chat-shell/pom.xml
+@@ -13,7 +13,7 @@
+     <name>chat-shell</name>
+     <description>Chat Application Initialization</description>
+     <properties>
+-        <testcontainers.version>1.17.6</testcontainers.version>
++        <testcontainers.version>1.21.4</testcontainers.version>
+         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
+         <spring-shell.version>3.0.0</spring-shell.version>
+     </properties>
+diff --git a/pom.xml b/pom.xml
+index 526dc691..386913e0 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -5,7 +5,7 @@
+     <parent>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-parent</artifactId>
+-        <version>3.1.5</version>
++        <version>3.3.13</version>
+         <relativePath/>
+     </parent>
+ 
+@@ -25,8 +25,8 @@
+         <spring-data-elastic.version>5.0.1</spring-data-elastic.version>
+         <spring-cloud-gateway.version>4.1.0-SNAPSHOT</spring-cloud-gateway.version>
+ 
+-        <spring-boot.version>3.1.5</spring-boot.version>
+-        <spring-cloud-bom.version>2022.0.4</spring-cloud-bom.version>
++        <spring-boot.version>3.3.13</spring-boot.version>
++        <spring-cloud-bom.version>2023.0.6</spring-cloud-bom.version>
+         <spring-cloud.version>4.0.4</spring-cloud.version>
+         <spring-cloud-stream.version>4.0.4</spring-cloud-stream.version>
+         <spring.version>6.0.13</spring.version>
+@@ -34,7 +34,7 @@
+ 
+         <jackson.version>2.14.1</jackson.version>
+         <io-reactor.version>3.6.4</io-reactor.version>
+-        <cassandra-driver.version>4.14.1</cassandra-driver.version>
++        <cassandra-driver.version>4.18.1</cassandra-driver.version>
+         <lognet.version>2.1.4</lognet.version>
+     </properties>
+ 
