@@ -1,5 +1,15 @@
 <!-- INDEX -->
 - [Gateway Contract v1 — Domain Types & Service Interfaces](#gateway-contract-v1-domain-types-service-interfaces)
+- [Overview](#overview)
+- [Design Principles](#design-principles)
+- [Domain Types](#domain-types)
+- [Enums](#enums)
+- [Service Interfaces](#service-interfaces)
+- [Config Bean Interface](#config-bean-interface)
+- [Files to Create](#files-to-create)
+- [Out of Scope](#out-of-scope)
+- [Request & Response Types](#request-response-types)
+- [Request & Response Types](#request-response-types)
 <!-- /INDEX -->
 
 ## Gateway Contract v1 — Domain Types & Service Interfaces
@@ -560,3 +570,257 @@ interface GatewayServices<T, V, Q> :
 - Matrix adapter (deferred)
 - MCP server lifecycle management (deferred)
 - Planner and Scheduler fixtures (deferred — require Task/Agent/Execution to exist first)
+
+
+## Request & Response Types
+## Request & Response Types
+
+All request/response types follow the existing pattern in `domain/RequestResponse.kt` — sealed class hierarchy with `@JsonTypeInfo`/`@JsonTypeName` annotations, extending `RequestResponse<T>`.
+
+### Gateway Request Types
+
+```kotlin
+// Agent requests
+@JsonTypeName("AgentCreateRequest")
+data class AgentCreateRequest(
+    val name: String,
+    val description: String,
+    val defaultModelId: String,
+    val defaultContextBuilderId: String,
+    val tools: List<String>,
+    val autonomyLevel: AutonomyLevel
+) : RequestResponse<Any>()
+
+// Task requests
+@JsonTypeName("TaskCreateRequest")
+data class TaskCreateRequest(
+    val title: String,
+    val origin: String,
+    val requestedBy: String,
+    val roomId: String,
+    val agentId: String,
+    val priority: TaskPriority,
+    val timeoutSeconds: Long,
+    val maxToolCalls: Int,
+    val maxModelCalls: Int,
+    val requiresApproval: Boolean
+) : RequestResponse<Any>()
+
+@JsonTypeName("TaskStatusUpdateRequest")
+data class TaskStatusUpdateRequest<T>(
+    val taskId: T,
+    val status: TaskStatus
+) : RequestResponse<T>()
+
+// Session requests
+@JsonTypeName("SessionCreateRequest")
+data class SessionCreateRequest(
+    val principalId: String,
+    val roomId: String,
+    val agentId: String,
+    val projectId: String,
+    val memoryScope: String,
+    val contextWindowPolicy: String,
+    val expiresAfterSeconds: Long,
+    val allowResume: Boolean,
+    val allowFork: Boolean,
+    val allowHandoff: Boolean
+) : RequestResponse<Any>()
+
+@JsonTypeName("SessionForkRequest")
+data class SessionForkRequest<T>(
+    val sessionId: T,
+    val newPrincipalId: String,
+    val newAgentId: String
+) : RequestResponse<T>()
+
+@JsonTypeName("SessionHandoffRequest")
+data class SessionHandoffRequest<T>(
+    val sessionId: T,
+    val targetAgentId: String
+) : RequestResponse<T>()
+
+// Model requests
+@JsonTypeName("ModelCreateRequest")
+data class ModelCreateRequest(
+    val provider: String,
+    val endpoint: String,
+    val modelName: String,
+    val contextLimitTokens: Int,
+    val supportsTools: Boolean,
+    val supportsVision: Boolean,
+    val maxConcurrentRequests: Int,
+    val maxPromptTokens: Int,
+    val maxCompletionTokens: Int,
+    val temperatureDefault: Double,
+    val fallbackModelId: String
+) : RequestResponse<Any>()
+
+// Tool requests
+@JsonTypeName("ToolCreateRequest")
+data class ToolCreateRequest(
+    val name: String,
+    val provider: String,
+    val mcpServerId: String,
+    val riskLevel: RiskLevel,
+    val inputSchemaRef: String,
+    val outputSchemaRef: String,
+    val requiresApproval: Boolean,
+    val timeoutSeconds: Long,
+    val maxCallsPerTask: Int,
+    val allowedAgents: List<String>
+) : RequestResponse<Any>()
+
+// MCP Server requests
+@JsonTypeName("MCPServerCreateRequest")
+data class MCPServerCreateRequest(
+    val transport: String,
+    val command: String,
+    val endpoint: String,
+    val scope: String,
+    val exposedTools: List<String>,
+    val restartOnFailure: Boolean,
+    val maxRequestDurationSeconds: Long,
+    val allowedAgents: List<String>,
+    val blockedPaths: List<String>
+) : RequestResponse<Any>()
+
+// Policy requests
+@JsonTypeName("PolicyCreateRequest")
+data class PolicyCreateRequest(
+    val appliesTo: List<String>,
+    val rules: List<PolicyRule>,
+    val enforcementMode: EnforcementMode,
+    val logDecisions: Boolean,
+    val failClosed: Boolean
+) : RequestResponse<Any>()
+
+// Approval requests
+@JsonTypeName("ApprovalCreateRequest")
+data class ApprovalCreateRequest(
+    val requestedByTaskId: String,
+    val approverRoles: List<String>,
+    val approvalSurface: String,
+    val allowedResponses: List<String>,
+    val expiresAfterSeconds: Long,
+    val defaultOnExpiry: String,
+    val requireReasonOnDeny: Boolean
+) : RequestResponse<Any>()
+
+@JsonTypeName("ApprovalResolveRequest")
+data class ApprovalResolveRequest<T>(
+    val approvalId: T,
+    val response: String,
+    val reason: String
+) : RequestResponse<T>()
+
+// ContextBuilder requests
+@JsonTypeName("ContextBuilderCreateRequest")
+data class ContextBuilderCreateRequest(
+    val strategy: ContextStrategy,
+    val include: List<String>,
+    val maxContextTokens: Int,
+    val reserveCompletionTokens: Int,
+    val compressionEnabled: Boolean,
+    val dropPolicy: String,
+    val requireSourceLabels: Boolean
+) : RequestResponse<Any>()
+
+// Execution requests
+@JsonTypeName("ExecutionCreateRequest")
+data class ExecutionCreateRequest(
+    val taskId: String,
+    val agentId: String,
+    val plannerId: String,
+    val modelId: String,
+    val selectedTools: List<String>,
+    val timeoutSeconds: Long,
+    val captureStdout: Boolean,
+    val captureToolIo: Boolean
+) : RequestResponse<Any>()
+
+@JsonTypeName("ExecutionStatusUpdateRequest")
+data class ExecutionStatusUpdateRequest<T>(
+    val executionId: T,
+    val status: ExecutionStatus
+) : RequestResponse<T>()
+
+// EventLog requests
+@JsonTypeName("EventLogEntry")
+data class EventLogEntry(
+    val eventType: String,
+    val correlationKey: String,
+    val payload: String,
+    val redacted: Boolean
+) : RequestResponse<Any>()
+
+// Telemetry requests
+@JsonTypeName("TelemetryEntry")
+data class TelemetryEntry(
+    val metricType: String,
+    val taskId: String,
+    val value: Double,
+    val unit: String
+) : RequestResponse<Any>()
+
+// Artifact requests
+@JsonTypeName("ArtifactCreateRequest")
+data class ArtifactCreateRequest(
+    val taskId: String,
+    val storageBackend: String,
+    val mediaType: String,
+    val provenance: String,
+    val visibility: String,
+    val mutable: Boolean,
+    val retain: Boolean,
+    val data: ByteArray
+) : RequestResponse<Any>()
+
+// FailureHandling requests
+@JsonTypeName("FailureHandlingCreateRequest")
+data class FailureHandlingCreateRequest(
+    val retryableErrors: List<String>,
+    val nonRetryableErrors: List<String>,
+    val maxAttempts: Int,
+    val backoffStrategy: BackoffStrategy,
+    val fallbackModelEnabled: Boolean,
+    val fallbackAgentEnabled: Boolean,
+    val escalateToHumanAfterFailure: Boolean
+) : RequestResponse<Any>()
+```
+
+### Gateway Response Types
+
+```kotlin
+@JsonTypeName("ContextResult")
+data class ContextResult(
+    val context: String,
+    val tokenCount: Int,
+    val sources: List<String>,
+    val dropped: List<String>
+)
+
+@JsonTypeName("TelemetryAggregate")
+data class TelemetryAggregate(
+    val metricType: String,
+    val count: Long,
+    val sum: Double,
+    val average: Double,
+    val min: Double,
+    val max: Double,
+    val from: Instant,
+    val to: Instant
+)
+
+@JsonTypeName("FailureDecision")
+data class FailureDecision(
+    val retry: Boolean,
+    val fallbackModel: Boolean,
+    val fallbackAgent: Boolean,
+    val escalateToHuman: Boolean,
+    val backoffSeconds: Long,
+    val reason: String
+)
+```
+
+**Note:** These request/response types are added to `domain/RequestResponse.kt` alongside existing types (`UserCreateRequest`, `ByIdRequest`, `ByStringRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest`).
