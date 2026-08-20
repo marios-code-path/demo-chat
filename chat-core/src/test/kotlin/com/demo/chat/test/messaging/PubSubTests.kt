@@ -6,15 +6,13 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.TopicPubSubService
 import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.function.Supplier
 
-@Disabled
-open class PubSubTests<T, V>(
+abstract class PubSubTests<T, V>(
     val messaging: TopicPubSubService<T, V>,
     val keySvc: IKeyService<T>,
     val valueSupply: Supplier<V>,

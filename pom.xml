@@ -57,7 +57,6 @@
 
         <module>chat-index-elastic</module>
         <module>chat-persistence-xstream</module>
-<!--        <module>chat-messaging-pulsar</module> -->
 
         <module>chat-client-consul</module>
         <module>chat-gateway</module>
@@ -76,6 +75,11 @@
         <module>chat-deploy-memory-integration-test</module>
         <module>chat-shell</module>
         <module>chat-authorization-server</module>
+
+        <!-- E2EE + Presence (merged from agent-bridge plan) -->
+        <module>chat-crypto</module>
+        <module>chat-presence</module>
+        <module>chat-deploy-e2ee</module>
     </modules>
 
     <repositories>

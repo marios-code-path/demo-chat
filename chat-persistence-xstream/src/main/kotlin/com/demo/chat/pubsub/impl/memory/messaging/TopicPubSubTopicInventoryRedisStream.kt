@@ -5,7 +5,6 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.service.core.TopicPubSubService
-import com.demo.chat.pubsub.memory.impl.ExampleReactiveStreamManager
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.connection.stream.MapRecord
 import org.springframework.data.redis.connection.stream.RecordId
@@ -13,7 +12,7 @@ import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.ReplayProcessor
+import reactor.core.publisher.Sinks
 import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
@@ -42,7 +41,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val streamManager = ExampleReactiveStreamManager<T, E>()
+    private val sinks: MutableMap<T, Sinks.Many<Message<T, E>>> = ConcurrentHashMap()
     private val topicXReads: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
@@ -91,7 +90,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
                                     }
                     )
                     .thenEmpty {
-                        streamManager.subscribe(topic, member)
+                        sinks.getOrPut(topic) { Sinks.many().multicast().onBackpressureBuffer() }
                         it.onComplete()
                     }
 
@@ -120,8 +119,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
                                     }
                     )
                     .thenEmpty {
-                        streamManager
-                                .unsubscribe(topic, member)
+                        sinks[topic]?.let { }
                         it.onComplete()
                     }
 
@@ -174,17 +172,18 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
     }
 
     override fun listenTo(topic: T): Flux<out Message<T, E>> =
-            streamManager.getSink(topic)
+            sinks.getOrPut(topic) {
+                Sinks.many().multicast().onBackpressureBuffer()
+            }.asFlux()
 
-    // may need to turn this into a different rturn type ( just start the source using .subscribe() )
-    // Connect a Processor to a flux for message ingest ( xread -> processor )
+    // Connect a Redis Stream xread to the Sinks.Many for in-process fan-out
     fun sourceOf(topic: T): Flux<out Message<T, E>> =
             topicXReads.getOrPut(topic, {
                 val xread = getXReadFlux(topic)
-                val reProc = ReplayProcessor.create<Message<T, E>>(replayDepth)
-                streamManager.setSource(topic, reProc)
-                streamManager.subscribeUpstream(topic, xread)
-
+                val sink = sinks.getOrPut(topic) {
+                    Sinks.many().multicast().onBackpressureBuffer()
+                }
+                xread.doOnNext { msg -> sink.tryEmitNext(msg) }
                 xread
             })
 
@@ -218,8 +217,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
             .del(ByteBuffer
                     .wrap((prefixTopicStream + topicId.toString()).toByteArray(Charset.defaultCharset())))
             .doOnNext {
-                streamManager
-                        .close(topicId)
+                sinks.remove(topicId)?.tryEmitComplete()
             }.then()
 
     private fun getXReadFlux(topic: T): Flux<Message<T, E>> =

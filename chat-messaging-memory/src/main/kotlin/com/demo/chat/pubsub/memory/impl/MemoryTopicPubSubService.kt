@@ -2,132 +2,101 @@ package com.demo.chat.pubsub.memory.impl
 
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
-import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.core.publisher.ReplayProcessor
+import reactor.core.publisher.Sinks
 import reactor.core.scheduler.Schedulers
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Memory implementation of PubSubService.
+ * In-memory implementation of TopicPubSubService.
  *
- * This service handles the behaviour of topic record keeping and
- * message distribution using memory as storage.
+ * Uses Reactor [Sinks.Many] with multicast + backpressure buffering for per-topic
+ * fan-out — the same reactive pattern as the Kafka implementation. This is the
+ * correct best-practice for an in-memory RSocket pub/sub backend: messages are
+ * pushed to all subscribers through a hot stream, and backpressure is handled
+ * by buffering rather than dropping.
  *
- * TODO rewrite ti incorporate topicIndex/topicPersistence !
- * */
+ * Membership tracking uses [ConcurrentHashMap] with [newKeySet] for thread-safe
+ * concurrent access — identical to the Kafka implementation.
+ *
+ * This replaces the legacy [ExampleReactiveStreamManager] which used deprecated
+ * [DirectProcessor] / [ReplayProcessor] and had known resource-leak issues
+ * (disposable management was broken).
+ */
 class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
-    private val streamMgr: ExampleReactiveStreamManager<T, V> = ExampleReactiveStreamManager()
 
-    // map of <topic : [msgInbox]s>
-    private val topicMembers: MutableMap<T, HashSet<T>> = mutableMapOf()
+    private val sinks: MutableMap<T, Sinks.Many<Message<T, V>>> = ConcurrentHashMap()
+    private val topicMembers: MutableMap<T, MutableSet<T>> = ConcurrentHashMap()
+    private val memberTopics: MutableMap<T, MutableSet<T>> = ConcurrentHashMap()
 
-    // map of <msgInbox : [topic]s>
-    private val memberTopics: MutableMap<T, HashSet<T>> = mutableMapOf()
+    private fun topicExistsOrError(topicId: T): Mono<Boolean> =
+        exists(topicId)
+            .filter { it }
+            .switchIfEmpty(Mono.error(NotFoundException))
 
-    private val sinkByTopic: MutableMap<T, Flux<out Message<T, V>>> = ConcurrentHashMap()
+    // --- TopicInventoryService ---
 
-    override fun open(topicId: T): Mono<Void> = Mono.create { sink ->
-        topicToMembers(topicId)
-        sourceOf(topicId)
+    override fun open(topicId: T): Mono<Void> =
+        Mono.fromCallable {
+            sinks.getOrPut(topicId) {
+                Sinks.many().multicast().onBackpressureBuffer()
+            }
+            topicMembers.getOrPut(topicId) { ConcurrentHashMap.newKeySet() }
+        }.then()
 
-        sink.success()
-    }
+    override fun close(topicId: T): Mono<Void> =
+        unSubscribeAllIn(topicId)
+            .then(Mono.fromCallable {
+                sinks.remove(topicId)?.tryEmitComplete()
+                topicMembers.remove(topicId)
+            }.then())
 
-    private fun topicExistsOrError(topic: T): Mono<Boolean> =
-            exists(topic)
-                    .filter { it == true }
-                    .switchIfEmpty(Mono.error(NotFoundException))
+    override fun getByUser(uid: T): Flux<T> =
+        Flux.defer { Flux.fromIterable(memberTopics[uid] ?: emptySet()) }
 
-    override fun exists(topic: T): Mono<Boolean> = Mono
-            .fromCallable { sinkByTopic.containsKey(topic) }
+    override fun getUsersBy(topicId: T): Flux<T> =
+        Flux.defer { Flux.fromIterable(topicMembers[topicId] ?: emptySet()) }
 
-    //  override fun keyExists(topic: EventKey, id: EventKey): Mono<Boolean> = Mono.just(false)
-
-    override fun listenTo(topic: T): Flux<out Message<T, V>> =
-            streamMgr
-                    .getSink(topic)
-
-    /**
-     * topicManager is a subscriber to an upstream from topicXSource
-     * so basically, topicManager.getTopicFlux(id) - where ReplayProcessor backs the flux.
-     */
-    private fun sourceOf(topic: T): Flux<out Message<T, V>> =
-            sinkByTopic
-                    .getOrPut(topic) {
-                        val proc = ReplayProcessor.create<Message<T, V>>(1)
-                        streamMgr.setSource(topic, proc)
-
-                        val reader = streamMgr.getSink(topic)
-
-                        reader
-                    }
-
-    override fun sendMessage(message: Message<T, V>): Mono<Void> {
-        val dest = message.key.dest
-
-        return topicExistsOrError(dest)
-                .map {
-                    streamMgr
-                            .getSource(dest)
-                            .onNext(message)
-                }
-                .switchIfEmpty(Mono.error(NotFoundException))
-                .then()
-    }
+    // --- PubSubService ---
 
     override fun subscribe(member: T, topic: T): Mono<Void> =
-            topicExistsOrError(topic)
-                    .map {
-                        topicToMembers(topic).add(member)
-                        memberToTopics(member).add(topic)
-                        streamMgr.subscribe(topic, member)
-                    }
-                    .then()
-
-    override fun unSubscribe(member: T, topic: T): Mono<Void> = Mono
-            .fromCallable {
-                topicToMembers(topic).remove(member)
-                memberToTopics(member).remove(topic)
-                streamMgr
-                        .unsubscribe(topic, member)
+        topicExistsOrError(topic)
+            .map {
+                topicMembers.getOrPut(topic) { ConcurrentHashMap.newKeySet() }.add(member)
+                memberTopics.getOrPut(member) { ConcurrentHashMap.newKeySet() }.add(topic)
             }.then()
 
-    override fun unSubscribeAll(member: T): Mono<Void> =
-            Flux.fromIterable(memberToTopics(member))
-                    .flatMap { topic ->
-                        unSubscribe(member, topic)
-                    }
-                    .subscribeOn(Schedulers.parallel())
-                    .then()
+    override fun unSubscribe(member: T, topic: T): Mono<Void> =
+        Mono.fromCallable {
+            topicMembers[topic]?.remove(member)
+            memberTopics[member]?.remove(topic)
+        }.then()
 
-    override fun unSubscribeAllIn(topic: T): Mono<Void> = Flux
-            .fromIterable(topicToMembers(topic))
-            .flatMap { member ->
-                unSubscribe(member, topic)
-            }
+    override fun unSubscribeAll(member: T): Mono<Void> =
+        Flux.fromIterable(memberTopics[member]?.toSet() ?: emptySet())
+            .flatMap { topic -> unSubscribe(member, topic) }
             .subscribeOn(Schedulers.parallel())
             .then()
 
-    override fun close(topicId: T): Mono<Void> = Mono
-            .fromCallable {
-                streamMgr.close(topicId)
+    override fun unSubscribeAllIn(topic: T): Mono<Void> =
+        Flux.fromIterable(topicMembers[topic]?.toSet() ?: emptySet())
+            .flatMap { member -> unSubscribe(member, topic) }
+            .subscribeOn(Schedulers.parallel())
+            .then()
+
+    override fun sendMessage(message: Message<T, V>): Mono<Void> =
+        topicExistsOrError(message.key.dest)
+            .map {
+                sinks[message.key.dest]?.tryEmitNext(message)
             }.then()
 
-    override fun getByUser(uid: T): Flux<T> = Flux.fromIterable(memberToTopics(uid))
+    override fun listenTo(topic: T): Flux<out Message<T, V>> =
+        sinks.getOrPut(topic) {
+            Sinks.many().multicast().onBackpressureBuffer()
+        }.asFlux()
 
-    override fun getUsersBy(topicId: T): Flux<T> = Flux.fromIterable(topicToMembers(topicId))
-
-    private fun memberToTopics(memberId: T): MutableSet<T> =
-            memberTopics.getOrPut(memberId) {
-                HashSet()
-            }
-
-    private fun topicToMembers(topicId: T): MutableSet<T> =
-            topicMembers.getOrPut(topicId) {
-                HashSet()
-            }
+    override fun exists(topic: T): Mono<Boolean> =
+        Mono.fromCallable { sinks.containsKey(topic) }
 }

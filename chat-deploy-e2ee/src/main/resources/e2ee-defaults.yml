@@ -1,0 +1,10 @@
+# E2EE deployment defaults
+# These are activated when app.service.e2ee.enabled=true
+app:
+  service:
+    e2ee:
+      enabled: true
+    crypto:
+      backend: memory
+    presence:
+      backend: memory
