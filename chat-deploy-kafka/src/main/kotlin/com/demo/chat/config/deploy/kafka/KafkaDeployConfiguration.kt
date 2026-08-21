@@ -1,7 +1,6 @@
 package com.demo.chat.config.deploy.kafka
 
 import com.demo.chat.domain.Message
-import com.demo.chat.domain.TypeUtil
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -38,9 +37,7 @@ class KafkaDeployConfiguration {
     )
 
     @Bean
-    fun kafkaProducerTemplate(
-        typeUtil: TypeUtil<Any>
-    ): ReactiveKafkaProducerTemplate<String, Message<Any, Any>> {
+    fun kafkaProducerTemplate(): ReactiveKafkaProducerTemplate<String, Message<Any, Any>> {
         val props = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,

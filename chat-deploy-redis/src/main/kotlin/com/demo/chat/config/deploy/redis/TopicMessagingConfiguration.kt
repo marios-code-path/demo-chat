@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(name = ["app.service.core.pubsub"])
+@ConditionalOnProperty(name = ["app.service.core.pubsub"], havingValue = "redis-pubsub")
 class TopicMessagingConfiguration<T>(
     private val config: RedisTemplateConfiguration,
     private val typeUtil: TypeUtil<T>

@@ -34,7 +34,7 @@ export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${COR
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
 -Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key \
--Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.service.core.pubsub=memory -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
@@ -87,6 +87,8 @@ function kafka() {
     BUILD_PROFILES+="kafka-backend,"
 
     export OPT_FLAGS="-Dspring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP_SERVERS:=localhost:9092}"
+    SERVICE_FLAGS="${SERVICE_FLAGS/-Dapp.service.core.pubsub=memory/-Dapp.service.core.pubsub=kafka}"
+    export SERVICE_FLAGS
 
     "$DIR"/build-app.sh -m chat-deploy -s kafka -e rsocket -p kafka -n core-service-rsocket -k ${KEY_TYPE} \
 -b "${EXEC}" -i users,rootkeys "$@"
