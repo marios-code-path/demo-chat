@@ -9,7 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"], havingValue = "cassandra")
 class SecretStoreConfig<T>(
     val keyService: IKeyService<T>,
     val repo: KeyCredentialRepository<T>
