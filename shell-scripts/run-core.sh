@@ -33,7 +33,7 @@ export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${COR
 --expose ${CORE_MGMT_PORT} -p ${CORE_MGMT_PORT}:${CORE_MGMT_PORT}/tcp"
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
 -Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
-export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key \
+export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key=memory \
 -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
 -Dapp.service.core.persistence=memory -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \

@@ -9,7 +9,12 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
+@ConditionalOnProperty(
+    prefix = "app.service.core",
+    name = ["key"],
+    havingValue = "memory",
+    matchIfMissing = true
+)
 class MemoryKeyServices<T>(
     val keyGenerator: IKeyGenerator<T>
 ) : KeyServiceBeans<T> {

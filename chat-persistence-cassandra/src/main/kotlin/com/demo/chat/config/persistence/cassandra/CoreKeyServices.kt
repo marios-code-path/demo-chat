@@ -11,7 +11,7 @@ import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["key"])
+@ConditionalOnProperty(prefix = "app.service.core", name = ["key"], havingValue = "cassandra")
 class CoreKeyServices<T>(
     val reactiveTemplate: ReactiveCassandraTemplate,
     val keyGenerator: IKeyGenerator<T>
