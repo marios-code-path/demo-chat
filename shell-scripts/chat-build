@@ -8,7 +8,7 @@ a Service definition, composes JAVA_TOOL_OPTIONS in the same order build-app.sh
 does, writes an env file, and runs Maven.
 
     chat-build core --memory --run --notls
-    chat-build core --cassandra --kafka --build --notls --uuid
+    chat-build core --kafka --build --notls --uuid
     chat-build rest --run --notls --dry-run
 
 The module is always chat-deploy (or chat-authorization-server for authserv);
