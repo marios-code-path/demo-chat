@@ -12,7 +12,7 @@
     <artifactId>chat-persistence-xstream</artifactId>
     <version>0.0.1</version>
     <name>chat-persistence-xstream</name>
-    <description>Redis and Redis-Stream persistence back-end</description>
+    <description>Redis Pub/Sub and Redis Stream messaging back-end</description>
 
     <dependencies>
         <dependency>
@@ -26,11 +26,6 @@
             <type>test-jar</type>
             <version>0.0.1</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.demo</groupId>
-            <artifactId>chat-messaging-memory</artifactId>
-            <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
