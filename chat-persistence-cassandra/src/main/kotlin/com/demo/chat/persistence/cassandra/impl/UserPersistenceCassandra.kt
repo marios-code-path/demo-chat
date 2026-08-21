@@ -7,12 +7,12 @@ import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.UserPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.util.stream.Collectors
 
-open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
-                                       private val userRepo: ChatUserRepository<T>
-)
-    : UserPersistence<T> {
+open class UserPersistenceCassandra<T>(
+    val keyService: IKeyService<T>,
+    private val userRepo: ChatUserRepository<T>
+) : UserPersistence<T> {
+
     override fun all(): Flux<out User<T>> = userRepo.findAll()
 
     override fun get(key: Key<T>): Mono<out User<T>> = userRepo.findByKeyId(key.id)
@@ -24,6 +24,5 @@ open class UserPersistenceCassandra<T>(val keyService: IKeyService<T>,
     override fun add(ent: User<T>): Mono<Void> = userRepo.add(ent)
 
     override fun byIds(keys: List<Key<T>>): Flux<out User<T>> =
-            userRepo.findByKeyIdIn(keys.stream().map { it.id }.collect(Collectors.toList()))
+        userRepo.findByKeyIdIn(keys.map { it.id })
 }
-

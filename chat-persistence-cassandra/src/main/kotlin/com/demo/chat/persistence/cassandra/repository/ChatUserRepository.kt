@@ -13,7 +13,6 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.time.Instant
 
-
 interface ChatUserRepository<T> : ReactiveCassandraRepository<ChatUser<T>, T>,
     ChatUserRepositoryCustom<T> {
     fun findByKeyId(id: T): Mono<ChatUser<T>>
@@ -40,25 +39,12 @@ class ChatUserRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate) 
         cassandra
             .insert(
                 ChatUser(
-                    ChatUserKey(
-                        u.key.id
-                    ),
+                    ChatUserKey(u.key.id),
                     u.name,
                     u.handle,
                     u.imageUri,
                     Instant.now()
                 )
-//                            InsertOptions
-//                                    .builder()
-//                                    .withIfNotExists()
-//                                    .consistencyLevel(ConsistencyLevel.ANY)
-//                                    .build()
             )
-//                    .handle<Void> { write, sink ->
-//                        when (write.wasApplied()) {
-//                            false -> sink.error(DuplicateUserException)
-//                            else -> sink.complete()
-//                        }
-//                    }
             .then()
 }

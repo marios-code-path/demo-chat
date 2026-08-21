@@ -2,19 +2,14 @@ package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
-import com.demo.chat.persistence.cassandra.domain.CSKey
 import com.demo.chat.persistence.cassandra.domain.CSKeyValuePair
 import com.demo.chat.persistence.cassandra.domain.KVKey
 import com.demo.chat.persistence.cassandra.repository.KeyValuePairRepository
-import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.KeyValueStore
 import com.fasterxml.jackson.databind.ObjectMapper
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import reactor.util.retry.Retry
-import java.time.Duration
 
 class KeyValuePersistenceCassandra<T>(
     private val keyService: IKeyService<T>,

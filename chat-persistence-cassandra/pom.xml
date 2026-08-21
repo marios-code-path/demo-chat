@@ -36,14 +36,8 @@
             <version>${datastax-java-driver.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.datastax.oss</groupId>
-            <artifactId>native-protocol</artifactId>
-            <version>1.5.1</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-cassandra-reactive</artifactId>
-            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -61,7 +55,6 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
-            <version>${io-reactor.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -77,15 +70,15 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter</artifactId>
-            <version>2.2.0.RC1</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>cassandra</artifactId>
+            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.playtika.testcontainers</groupId>
-            <artifactId>embedded-cassandra</artifactId>
-            <version>2.2.14</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>

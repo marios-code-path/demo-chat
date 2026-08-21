@@ -21,9 +21,7 @@ class KeyServiceCassandra<T>(
             Query.query(where("id").`is`(key.id)),
             CSKey::class.java
         )
-            .map {
-                it.kind
-            }
+            .map { it.kind }
 
     override fun rem(key: Key<T>): Mono<Void> = template
         .deleteById(CSKey(key.id, ""), CSKey::class.java)
@@ -35,5 +33,4 @@ class KeyServiceCassandra<T>(
     override fun <S> key(kind: Class<S>): Mono<out Key<T>> = template
         .insert(CSKey(keyGen.nextId(), kind.simpleName))
         .retryWhen(Retry.backoff(5, Duration.ofMillis(100L)))
-    // TODO Cassandra keyGen error states
 }
