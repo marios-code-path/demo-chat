@@ -69,7 +69,7 @@ class SerializationTests {
         fun mapper(): ObjectMapper {
             return ObjectMapper().apply {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
-                registerModule(KotlinModule())
+                registerModule(KotlinModule.Builder().build())
                 val module = JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
                 registerModules(
                     module.keyModule(),
