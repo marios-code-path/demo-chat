@@ -1,0 +1,73 @@
+package com.demo.chat.persistence.redis.impl
+
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.service.core.IKeyService
+import com.demo.chat.service.core.KeyValueStore
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+
+/**
+ * Redis-backed [KeyValueStore].
+ *
+ * Pairs are stored as JSON strings under `chat:kv:<id>` with a Set index
+ * (`chat:idx:kv`) of key ids. The typed accessors re-wrap the deserialized
+ * pair with the requested value type.
+ */
+class KeyValuePersistenceRedis<T>(
+    private val keyService: IKeyService<T>,
+    private val stringTemplate: ReactiveStringRedisTemplate,
+    private val objectMapper: ObjectMapper,
+    private val prefix: String = "chat:kv:",
+    private val indexKey: String = "chat:idx:kv",
+) : KeyValueStore<T, Any> {
+
+    override fun key(): Mono<out Key<T>> = keyService.key(KeyValuePair::class.java)
+
+    override fun add(ent: KeyValuePair<T, Any>): Mono<Void> {
+        val redisKey = prefix + ent.key.id.toString()
+        val json = objectMapper.writeValueAsString(ent)
+        return stringTemplate
+            .opsForValue()
+            .set(redisKey, json)
+            .then(stringTemplate.opsForSet().add(indexKey, ent.key.id.toString()))
+            .then()
+    }
+
+    override fun get(key: Key<T>): Mono<out KeyValuePair<T, Any>> =
+        stringTemplate
+            .opsForValue()
+            .get(prefix + key.id.toString())
+            .map { json -> objectMapper.readValue(json, KeyValuePair::class.java) as KeyValuePair<T, Any> }
+
+    override fun rem(key: Key<T>): Mono<Void> =
+        stringTemplate
+            .delete(prefix + key.id.toString())
+            .then(stringTemplate.opsForSet().remove(indexKey, key.id.toString()))
+            .then()
+
+    override fun all(): Flux<out KeyValuePair<T, Any>> =
+        stringTemplate
+            .opsForSet()
+            .members(indexKey)
+            .flatMap { id ->
+                stringTemplate
+                    .opsForValue()
+                    .get(prefix + id)
+                    .map { json -> objectMapper.readValue(json, KeyValuePair::class.java) as KeyValuePair<T, Any> }
+            }
+
+    override fun byIds(keys: List<Key<T>>): Flux<out KeyValuePair<T, Any>> =
+        Flux.fromIterable(keys).flatMap { key -> get(key) }
+
+    override fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T, E>> =
+        get(key).map { kv -> KeyValuePair.create(kv.key, typeArgument.cast(kv.data)) }
+
+    override fun <E> typedAll(typeArgument: Class<E>): Flux<KeyValuePair<T, E>> =
+        all().map { kv -> KeyValuePair.create(kv.key, typeArgument.cast(kv.data)) }
+
+    override fun <E> typedByIds(ids: List<Key<T>>, typedArgument: Class<E>): Flux<KeyValuePair<T, E>> =
+        byIds(ids).map { kv -> KeyValuePair.create(kv.key, typedArgument.cast(kv.data)) }
+}
