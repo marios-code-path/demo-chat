@@ -20,11 +20,13 @@ class KeyServiceRedis<T>(
 ) : IKeyService<T> {
 
     override fun <S> key(kind: Class<S>): Mono<out Key<T>> {
-        val newId = keyGen.nextId()
-        return stringTemplate
-            .opsForHash<String, String>()
-            .put(keyRegistryHash, newId.toString(), kind.simpleName)
-            .map { Key.funKey(newId) }
+        return Mono.fromCallable<T> { keyGen.nextId() }
+            .flatMap { newId ->
+                stringTemplate
+                    .opsForHash<String, String>()
+                    .put(keyRegistryHash, newId.toString(), kind.simpleName)
+                    .map { Key.funKey(newId) }
+            }
     }
 
     override fun rem(key: Key<T>): Mono<Void> =

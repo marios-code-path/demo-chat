@@ -28,12 +28,14 @@ class MessagePersistenceRedis<T, V>(
 
     override fun add(ent: Message<T, V>): Mono<Void> {
         val redisKey = prefix + ent.key.id.toString()
-        val json = objectMapper.writeValueAsString(ent)
-        return stringTemplate
-            .opsForValue()
-            .set(redisKey, json)
-            .then(stringTemplate.opsForSet().add(indexKey, ent.key.id.toString()))
-            .then()
+        return Mono.fromCallable { objectMapper.writeValueAsString(ent) }
+            .flatMap { json ->
+                stringTemplate
+                    .opsForValue()
+                    .set(redisKey, json)
+                    .then(stringTemplate.opsForSet().add(indexKey, ent.key.id.toString()))
+                    .then()
+            }
     }
 
     override fun get(key: Key<T>): Mono<out Message<T, V>> =
