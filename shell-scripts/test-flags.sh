@@ -30,13 +30,38 @@ CHAT_BUILD="$DIR/chat-build"
 export CONSUL_HOST=10.0.0.5
 export KEYSTORE_PASS="golden-test-pass"
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+export DEBUG_PORT=5005
 
+# Provenance matters. The four cases marked [parity] are also asserted against
+# build-app.sh by test-parity.sh, so their goldens carry the legacy scripts'
+# authority. The rest are snapshots of chat-build's own output: they detect
+# change, but nothing independent vouches for their correctness.
+#
+# Cassandra cannot be parity-checked even in principle. run-core.sh builds the
+# chat-deploy-cassandra module directly, while chat-build builds chat-deploy
+# with the cassandra-backend profile, so the two produce different Maven
+# invocations by construction rather than by mistake.
+#
 # name | chat-build arguments
 CASES=(
-  "core-memory-init|core --memory --run --notls --long --init users,rootkeys"
-  "core-memory-consul|core --memory --consul --run --notls --long --init users,rootkeys"
-  "core-memory-tls|core --memory --run --tls /etc/keys --long --init users,rootkeys"
-  "shell-client|shell --run --notls --long"
+  # core backends
+  "core-memory-init|core --memory --run --notls --long --init users,rootkeys"          # [parity]
+  "core-memory-consul|core --memory --consul --run --notls --long --init users,rootkeys" # [parity]
+  "core-memory-tls|core --memory --run --tls /etc/keys --long --init users,rootkeys"   # [parity]
+  "core-cassandra|core --cassandra --run --notls --long --init users,rootkeys"
+  "core-kafka|core --kafka --run --notls --long"
+  "core-redis|core --redis --run --notls --long"
+  "core-e2ee|core --memory --e2ee --run --notls --long"
+  # core variants
+  "core-uuid|core --memory --run --notls --uuid"
+  "core-websocket|core --memory --websocket --run --notls --long"
+  "core-debug|core --memory --debug --run --notls --long"
+  "core-build-image|core --memory --build --notls --long"
+  # other services
+  "rest-client|rest --run --notls --long"
+  "gateway-client|gateway --run --notls --long"
+  "authserv-client|authserv --run --notls --long"
+  "shell-client|shell --run --notls --long"                                            # [parity]
 )
 
 UPDATE=0
