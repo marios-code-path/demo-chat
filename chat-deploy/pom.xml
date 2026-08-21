@@ -122,6 +122,16 @@
             <id>redis-backend</id>
         </profile>
         <profile>
+            <id>kafka-backend</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-deploy-kafka</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>expose-webflux</id>
             <dependencies>
                 <dependency>

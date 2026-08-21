@@ -10,6 +10,7 @@ import org.apache.kafka.clients.admin.AdminClient
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate
 import org.springframework.stereotype.Component
+import reactor.kafka.receiver.ReceiverOptions
 
 @Component
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "kafka")
@@ -17,6 +18,7 @@ class KafkaPubSubBeans<T, V>(
     private val producer: ReactiveKafkaProducerTemplate<String, Message<T, V>>,
     private val adminClient: AdminClient,
     private val typeUtil: TypeUtil<T>,
+    private val receiverOptions: ReceiverOptions<String, Message<T, V>>
 ) : PubSubServiceBeans<T, V> {
 
     override fun pubSubService(): TopicPubSubService<T, V> =
@@ -24,5 +26,6 @@ class KafkaPubSubBeans<T, V>(
             producer,
             KafkaTopicAdmin(adminClient, typeUtil),
             typeUtil,
+            receiverOptions
         )
 }

@@ -134,8 +134,8 @@ BACKSEL
 exit 1
 fi
 
-BACKEND_KEYS=("memory" "cassandra" "client")
-BACKEND_VALUES=("memory-backend" "cassandra-backend" "client-backend")
+BACKEND_KEYS=("memory" "cassandra" "client" "kafka")
+BACKEND_VALUES=("memory-backend" "cassandra-backend" "client-backend" "kafka-backend")
 
 for key in "${!BACKEND_KEYS[@]}"; do
     if [[ ! -z $BACKEND && $BACKEND == *${BACKEND_KEYS[$key]}* ]]; then

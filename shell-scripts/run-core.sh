@@ -76,6 +76,22 @@ function cassandra() {
 -b "${EXEC}" -i users,rootkeys "$@"
 }
 
+function kafka() {
+    export DOCKER_ARGS=
+    export BUILD_PROFILES=
+    export DISCOVERY_FLAGS=
+    export ADDITIONAL_CONFIGS=
+
+    export APP_PRIMARY="core-service"
+    export APP_IMAGE_NAME="kafka-${APP_PRIMARY}-rsocket"
+    BUILD_PROFILES+="kafka-backend,"
+
+    export OPT_FLAGS="-Dspring.kafka.bootstrap-servers=${KAFKA_BOOTSTRAP_SERVERS:=localhost:9092}"
+
+    "$DIR"/build-app.sh -m chat-deploy -s kafka -e rsocket -p kafka -n core-service-rsocket -k ${KEY_TYPE} \
+-b "${EXEC}" -i users,rootkeys "$@"
+}
+
 function cassandra_astra() {
     source "$DIR"/astra-options.sh
 
