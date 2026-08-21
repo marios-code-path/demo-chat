@@ -1,3 +1,7 @@
 spring:
   cassandra:
     base-packages: com.demo.chat.persistence.cassandra.repository
+    keyspace-name: chat_${app.key.type}
+    local-datacenter: datacenter1
+    # contact-points and port are set by deployment scripts (run-core.sh)
+    # or by DynamicPropertySource in tests.
