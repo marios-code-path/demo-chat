@@ -19,7 +19,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.config.location=classpath:/application.yml",
         "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
         "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long",
-        "app.service.core.key",
+        "app.service.core.key=cassandra",
         "app.service.core.pubsub=memory", "app.service.core.index=cassandra", "app.service.core.persistence=cassandra",
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",

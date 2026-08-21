@@ -30,7 +30,7 @@ import org.springframework.test.context.TestPropertySource
         "app.server.proto=rsocket",
         "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long",
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
-        "app.service.core.key",
+        "app.service.core.key=memory",
         "app.service.core.pubsub=kafka",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
