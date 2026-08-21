@@ -2,13 +2,13 @@
 #
 # test-flags.sh — assert chat-build emits the flags recorded under golden/.
 #
-# test-parity.sh proves chat-build agrees with build-app.sh. That check dies
-# with build-app.sh. This one does not: it compares chat-build against committed
-# expectations, so chat-build stays verified after the shell scripts are gone.
+# chat-build used to be verified by test-parity.sh, which diffed it against
+# build-app.sh. Both are gone. This compares chat-build against committed
+# expectations instead, so it stays verified without the scripts it replaced.
 #
-# The goldens were seeded from a tree where test-parity.sh passed every case, so
-# they carry the legacy scripts' authority rather than merely freezing whatever
-# chat-build happened to emit that day.
+# The goldens were seeded while test-parity.sh still existed and passed every
+# case, so they carry the legacy scripts' authority rather than merely freezing
+# whatever chat-build happened to emit that day.
 #
 #   ./test-flags.sh                  # check every case
 #   ./test-flags.sh core-memory-tls  # check one case
@@ -32,15 +32,15 @@ export KEYSTORE_PASS="golden-test-pass"
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 export DEBUG_PORT=5005
 
-# Provenance matters. The four cases marked [parity] are also asserted against
-# build-app.sh by test-parity.sh, so their goldens carry the legacy scripts'
+# Provenance matters. The four cases marked [parity] were asserted against
+# build-app.sh before it was removed, so their goldens carry the legacy scripts'
 # authority. The rest are snapshots of chat-build's own output: they detect
-# change, but nothing independent vouches for their correctness.
+# change, but nothing independent ever vouched for their correctness.
 #
-# Cassandra cannot be parity-checked even in principle. run-core.sh builds the
-# chat-deploy-cassandra module directly, while chat-build builds chat-deploy
-# with the cassandra-backend profile, so the two produce different Maven
-# invocations by construction rather than by mistake.
+# Cassandra was never parity-checked and could not have been: run-core.sh built
+# the chat-deploy-cassandra module directly, while chat-build builds chat-deploy
+# with the cassandra-backend profile, so the two differed by construction rather
+# than by mistake.
 #
 # name | chat-build arguments
 CASES=(
