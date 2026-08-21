@@ -47,3 +47,4 @@ env.custom
 .fp/
 *.versionsBackup
 .claude/
+.hermes/
