@@ -670,10 +670,13 @@ class BuildContext:
         return flags
 
     def additional_configs(self) -> list[str]:
-        configs = list(BASE_ADDITIONAL_CONFIGS)
-        configs += self.service.additional_configs
+        # Order is load order, and later locations win in Spring. build-app.sh
+        # appends the base pair onto whatever the run script exported, so
+        # service and feature configs come first and the base overrides them.
+        configs = list(self.service.additional_configs)
         for feat in self._features():
             configs += feat.additional_configs
+        configs += BASE_ADDITIONAL_CONFIGS
         if "users" in self.init_phases:
             configs.append("classpath:/config/userinit.yml")
         if self.service.client_proto:
