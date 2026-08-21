@@ -132,6 +132,16 @@
             </dependencies>
         </profile>
         <profile>
+            <id>e2ee</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-deploy-e2ee</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>expose-webflux</id>
             <dependencies>
                 <dependency>
