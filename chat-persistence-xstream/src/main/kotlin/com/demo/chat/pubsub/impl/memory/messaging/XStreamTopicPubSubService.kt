@@ -26,7 +26,7 @@ data class KeyConfiguration(
 )
 
 @Suppress("DuplicatedCode")
-class TopicPubSubTopicInventoryRedisStream<T, E>(
+class XStreamTopicPubSubService<T, E>(
     keyConfig: KeyConfiguration,
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,

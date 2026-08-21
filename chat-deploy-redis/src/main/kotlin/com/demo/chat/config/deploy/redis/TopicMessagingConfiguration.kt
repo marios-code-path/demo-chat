@@ -5,8 +5,8 @@ import com.demo.chat.convert.Converter
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubServiceRedis
-import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubTopicInventoryRedisStream
+import com.demo.chat.pubsub.impl.memory.messaging.RedisTopicPubSubService
+import com.demo.chat.pubsub.impl.memory.messaging.XStreamTopicPubSubService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -16,10 +16,10 @@ import org.springframework.context.annotation.Configuration
  * Wires the Redis-backed [TopicPubSubService] selected by `app.service.core.pubsub`:
  *
  *  - `redis-pubsub` - non-durable Redis Pub/Sub channels, lowest latency.
- *  - `redis-stream` - durable Redis Streams, capped replay depth.
+ *  - `redis-xstream` - durable Redis Streams, capped replay depth.
  *
  * The value space is flat and shared across backends (`memory`, `kafka`,
- * `redis-pubsub`, `redis-stream`); only `memory` carries the default.
+ * `redis-pubsub`, `redis-xstream`); only `memory` carries the default.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
@@ -31,7 +31,7 @@ class TopicMessagingConfiguration<T>(
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-pubsub")
     fun topicMessagingRedisPubSub(): TopicPubSubService<*, *> =
-        TopicPubSubServiceRedis(
+        RedisTopicPubSubService(
             KeyConfigurationPubSub(
                 "all_topics",
                 "st_topic_",
@@ -44,9 +44,9 @@ class TopicMessagingConfiguration<T>(
         )
 
     @Bean
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-stream")
-    fun topicMessagingRedisStream(): TopicPubSubService<*, *> =
-        TopicPubSubTopicInventoryRedisStream(
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-xstream")
+    fun topicMessagingRedisXStream(): TopicPubSubService<*, *> =
+        XStreamTopicPubSubService(
             KeyConfiguration(
                 "all_topics",
                 "st_topic_",
