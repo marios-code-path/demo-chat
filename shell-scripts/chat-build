@@ -1,0 +1,892 @@
+#!/usr/bin/env python3
+"""chat-build — build CLI for demo-chat.
+
+A declarative replacement for build-app.sh + run-*.sh. Every backend, transport
+and discovery mode is a Feature: a mapping from one CLI flag to Maven profiles,
+Spring properties and JVM flags. The CLI resolves the requested features against
+a Service definition, composes JAVA_TOOL_OPTIONS in the same order build-app.sh
+does, writes an env file, and runs Maven.
+
+    chat-build core --memory --run --notls
+    chat-build core --cassandra --kafka --build --notls --uuid
+    chat-build rest --run --notls --dry-run
+
+The module is always chat-deploy (or chat-authorization-server for authserv);
+backends are Maven profiles that pull their deploy module in as a dependency.
+
+Python 3.10+ stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shlex
+import subprocess
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+REPO_ROOT = HERE.parent
+
+
+# --------------------------------------------------------------------------
+# Ports — mirrors shell-scripts/ports.sh
+# --------------------------------------------------------------------------
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        sys.exit(f"chat-build: {name} must be an integer, got {raw!r}")
+
+
+CORE_PORT = _env_int("CORE_PORT", 6790)
+CORE_RSOCKET_PORT = CORE_PORT
+CORE_MGMT_PORT = _env_int("CORE_MGMT_PORT", CORE_PORT + 1)
+HTTP_PORT = CORE_PORT + 2
+HTTP_MGMT_PORT = HTTP_PORT + 1
+
+CONSUL_HOST = os.environ.get("CONSUL_HOST", "127.0.0.1")
+CONSUL_PORT = _env_int("CONSUL_PORT", 8500)
+DEBUG_PORT = _env_int("DEBUG_PORT", 9060)
+
+AUTHSERV_HTTP_PORT = _env_int("AUTHSERV_HTTP_PORT", 9000)
+AUTHSERV_MGMT_PORT = _env_int("AUTHSERV_MGMT_PORT", 9001)
+
+GATEWAY_HTTP_PORT = _env_int("GATEWAY_HTTP_PORT", 80)
+GATEWAY_HTTP_MGMT_PORT = _env_int("GATEWAY_HTTP_MGMT_PORT", 8080)
+
+SHELL_MGMT_PORT = _env_int("SHELL_MGMT_PORT", 9101)
+
+CORE_HOST = os.environ.get("CORE_HOST", "127.0.0.1")
+ROOTKEY_SOURCE_URI = os.environ.get(
+    "ROOTKEY_SOURCE_URI", f"http://{CORE_HOST}:{CORE_MGMT_PORT}"
+)
+
+# Always-on Spring config imports, prepended by build-app.sh.
+BASE_ADDITIONAL_CONFIGS = [
+    "classpath:/config/logging.yml",
+    "classpath:/config/management-defaults.yml",
+]
+
+
+# --------------------------------------------------------------------------
+# Feature registry
+# --------------------------------------------------------------------------
+
+@dataclass
+class Feature:
+    """One composable build option.
+
+    maven_profiles are appended to -P. service_flags/client_flags/opt_flags land
+    in the matching JAVA_TOOL_OPTIONS group, preserving build-app.sh's ordering.
+    """
+
+    name: str
+    description: str
+    maven_profiles: list[str] = field(default_factory=list)
+    spring_properties: dict[str, str] = field(default_factory=dict)
+    service_flags: list[str] = field(default_factory=list)
+    client_flags: list[str] = field(default_factory=list)
+    opt_flags: list[str] = field(default_factory=list)
+    additional_configs: list[str] = field(default_factory=list)
+    spring_profiles: list[str] = field(default_factory=list)
+    conflicts: list[str] = field(default_factory=list)
+    # Backends are mutually exclusive within a group; transports are not.
+    group: str | None = None
+
+
+# Backends map to a chat-deploy profile that pulls the matching deploy module in
+# as a dependency. The module itself never changes -- see chat-deploy/pom.xml.
+FEATURES: dict[str, Feature] = {
+    "memory": Feature(
+        name="memory",
+        description="Memory persistence + pubsub + Lucene index",
+        maven_profiles=["memory-backend"],
+        spring_profiles=["prod"],
+        additional_configs=["classpath:/config/server-rsocket-consul.yml"],
+        group="backend",
+    ),
+    "cassandra": Feature(
+        name="cassandra",
+        description="Cassandra persistence + index",
+        maven_profiles=["cassandra-backend"],
+        spring_profiles=["cassandra-contact-point"],
+        group="backend",
+    ),
+    "client": Feature(
+        name="client",
+        description="RSocket client backend (no local datastore)",
+        maven_profiles=["client-backend"],
+        group="backend",
+    ),
+    "redis": Feature(
+        name="redis",
+        description="Redis persistence (profile is a placeholder, no deps yet)",
+        maven_profiles=["redis-backend"],
+        group="backend",
+    ),
+    "kafka": Feature(
+        name="kafka",
+        description="Kafka messaging (replaces the in-memory pubsub)",
+        maven_profiles=["kafka-backend"],
+        spring_profiles=["kafka"],
+        opt_flags=[
+            "-Dspring.kafka.bootstrap-servers="
+            + os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+        ],
+    ),
+    "e2ee": Feature(
+        name="e2ee",
+        description="E2EE substrate (crypto + presence services)",
+        maven_profiles=["e2ee"],
+        spring_properties={
+            "app.service.e2ee.enabled": "true",
+            "app.service.crypto.backend": "memory",
+            "app.service.presence.backend": "memory",
+        },
+    ),
+
+    # ---- transports -----------------------------------------------------
+    "rsocket": Feature(
+        name="rsocket",
+        description="RSocket server transport",
+        maven_profiles=["expose-rsocket"],
+        service_flags=[
+            "-Dapp.server.proto=rsocket",
+            "-Dspring.main.web-application-type=reactive",
+        ],
+        group="expose",
+    ),
+    "rest": Feature(
+        name="rest",
+        description="WebFlux REST controllers",
+        maven_profiles=["expose-webflux"],
+        service_flags=["-Dapp.server.proto=http"],
+        group="expose",
+    ),
+    "shell": Feature(
+        name="shell",
+        description="Spring Shell CLI",
+        maven_profiles=["shell"],
+        spring_profiles=["shell"],
+        group="expose",
+    ),
+    "gateway": Feature(
+        name="gateway",
+        description="Spring Cloud Gateway edge routing",
+        maven_profiles=["expose-gateway"],
+        group="expose",
+    ),
+
+    # ---- discovery ------------------------------------------------------
+    "local": Feature(
+        name="local",
+        description="Local discovery; root keys consumed over HTTP",
+        conflicts=["consul"],
+        group="discovery",
+    ),
+    "consul": Feature(
+        name="consul",
+        description="Consul service discovery + KV",
+        maven_profiles=["register-consul"],
+        conflicts=["local"],
+        group="discovery",
+    ),
+
+    # ---- key type -------------------------------------------------------
+    "long": Feature(
+        name="long",
+        description="Long (Snowflake) key type",
+        conflicts=["uuid"],
+        group="keytype",
+    ),
+    "uuid": Feature(
+        name="uuid",
+        description="UUID key type",
+        conflicts=["long"],
+        group="keytype",
+    ),
+
+    # ---- misc -----------------------------------------------------------
+    "websocket": Feature(
+        name="websocket",
+        description="WebSocket transport for RSocket",
+    ),
+    "debug": Feature(
+        name="debug",
+        description="Enable RSocket frame logging and a JDWP agent",
+    ),
+}
+
+BACKENDS = [n for n, f in FEATURES.items() if f.group == "backend"]
+
+
+# --------------------------------------------------------------------------
+# Service registry
+# --------------------------------------------------------------------------
+
+@dataclass
+class Service:
+    name: str
+    description: str
+    module: str
+    app_primary: str
+    deployment_name: str
+    image_name: str
+    default_backend: str
+    default_features: list[str] = field(default_factory=list)
+    service_flags: list[str] = field(default_factory=list)
+    client_flags: list[str] = field(default_factory=list)
+    opt_flags: list[str] = field(default_factory=list)
+    additional_configs: list[str] = field(default_factory=list)
+    management_endpoints: list[str] = field(default_factory=list)
+    maven_profiles: list[str] = field(default_factory=list)
+    run_arguments: str = ""
+    client_proto: str = ""
+    available_features: list[str] = field(default_factory=list)
+    # Ports are computed late so CORE_PORT overrides still apply.
+    port_flags_fn: object = None
+
+    def port_flags(self) -> list[str]:
+        return list(self.port_flags_fn()) if self.port_flags_fn else []
+
+    def image_name_for(self, backend: str) -> str:
+        if "{backend}" in self.image_name:
+            return self.image_name.format(backend=backend)
+        return self.image_name
+
+
+CORE_SERVICE_FLAGS = [
+    "-Dapp.service.core.key",
+    "-Dapp.service.core.pubsub",
+    "-Dapp.service.core.index",
+    "-Dapp.service.core.persistence",
+    "-Dapp.service.core.secrets",
+    "-Dapp.service.composite",
+    "-Dapp.service.composite.auth",
+    "-Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message",
+    "-Dapp.controller.persistence",
+    "-Dapp.controller.index",
+    "-Dapp.controller.key",
+    "-Dapp.controller.pubsub",
+    "-Dapp.controller.secrets",
+    "-Dapp.controller.user",
+    "-Dapp.controller.topic",
+    "-Dapp.controller.message",
+]
+
+RSOCKET_SERVER_AUTOCONFIG_EXCLUDE = (
+    "-Dspring.autoconfigure.exclude="
+    "org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
+)
+
+COMMON_FEATURES = ["local", "consul", "long", "uuid", "websocket", "debug"]
+
+SERVICES: dict[str, Service] = {
+    "core": Service(
+        name="core",
+        description="Core RSocket service (persistence, pubsub, index, security)",
+        module="chat-deploy",
+        app_primary="core-service",
+        deployment_name="core-service-rsocket",
+        image_name="{backend}-core-service-rsocket",
+        default_backend="memory",
+        default_features=["rsocket", "local", "long"],
+        service_flags=CORE_SERVICE_FLAGS,
+        opt_flags=["-Dlogging.level.io.rsocket.FrameLogger=OFF"],
+        management_endpoints=["shutdown", "health", "rootkeys"],
+        port_flags_fn=lambda: [
+            f"-Dserver.port={CORE_MGMT_PORT}",
+            f"-Dmanagement.server.port={CORE_MGMT_PORT}",
+            f"-Dspring.rsocket.server.port={CORE_RSOCKET_PORT}",
+        ],
+        available_features=["memory", "cassandra", "redis", "kafka", "e2ee",
+                            "rsocket", "rest"] + COMMON_FEATURES,
+    ),
+    "rest": Service(
+        name="rest",
+        description="REST facade over the core RSocket service",
+        module="chat-deploy",
+        app_primary="REST",
+        deployment_name="core-service-http",
+        image_name="chat-rest",
+        default_backend="client",
+        default_features=["rest", "local", "long"],
+        client_proto="rsocket",
+        client_flags=[
+            "-Dapp.client.protocol=rsocket",
+            "-Dapp.server.proto=http",
+            "-Dapp.client.rsocket.composite.user",
+            "-Dapp.client.rsocket.composite.topic",
+            "-Dapp.client.rsocket.composite.message",
+            "-Dapp.controller.user",
+            "-Dapp.controller.topic",
+            "-Dapp.controller.message",
+        ],
+        opt_flags=[
+            RSOCKET_SERVER_AUTOCONFIG_EXCLUDE,
+            "-Dlogging.level.com.demo.chat.client.rsocket=DEBUG",
+        ],
+        management_endpoints=["shutdown", "health"],
+        port_flags_fn=lambda: [
+            f"-Dserver.port={HTTP_PORT}",
+            f"-Dmanagement.server.port={HTTP_MGMT_PORT}",
+        ],
+        available_features=["client", "rest", "e2ee"] + COMMON_FEATURES,
+    ),
+    "gateway": Service(
+        name="gateway",
+        description="Spring Cloud Gateway edge router",
+        module="chat-deploy",
+        app_primary="gateway",
+        deployment_name="chat-gateway",
+        image_name="chat-gateway",
+        default_backend="client",
+        default_features=["gateway", "local", "long"],
+        opt_flags=[f"-Dapp.rest.port={CORE_MGMT_PORT}"],
+        management_endpoints=["shutdown", "health"],
+        port_flags_fn=lambda: [
+            f"-Dserver.port={GATEWAY_HTTP_PORT}",
+            f"-Dmanagement.server.port={GATEWAY_HTTP_MGMT_PORT}",
+        ],
+        available_features=["client", "gateway"] + COMMON_FEATURES,
+    ),
+    "authserv": Service(
+        name="authserv",
+        description="OAuth2 authorization server (JDBC-backed)",
+        module="chat-authorization-server",
+        app_primary="authserv",
+        deployment_name="chat-authserv",
+        image_name="chat-authserv",
+        default_backend="client",
+        default_features=["local", "long"],
+        client_proto="rsocket",
+        maven_profiles=["jdbc"],
+        client_flags=[
+            "-Dapp.client.protocol=rsocket",
+            "-Dapp.client.rsocket.core.key",
+            "-Dapp.client.rsocket.core.persistence",
+            "-Dapp.client.rsocket.core.index",
+            "-Dapp.oauth2.entrypoint-path=localhost:9090",
+            "-Dapp.client.rsocket.core.secrets",
+            "-Dapp.client.rsocket.composite.user",
+            "-Dapp.service.composite.auth",
+        ],
+        opt_flags=[
+            RSOCKET_SERVER_AUTOCONFIG_EXCLUDE,
+            "-Dspring.main.web-application-type=servlet",
+            "-Dlogging.level.com.demo.chat.client.rsocket=DEBUG",
+        ],
+        additional_configs=[
+            "classpath:/config/server-authserv-consul.yml",
+            "classpath:/config/oauth2-client.yml",
+        ],
+        management_endpoints=["shutdown", "health"],
+        run_arguments="--clientpath='classpath:client.json'",
+        port_flags_fn=lambda: [
+            f"-Dserver.port={AUTHSERV_HTTP_PORT}",
+            f"-Dmanagement.server.port={AUTHSERV_MGMT_PORT}",
+        ],
+        available_features=["client"] + COMMON_FEATURES,
+    ),
+    "shell": Service(
+        name="shell",
+        description="Interactive Spring Shell client",
+        module="chat-deploy",
+        app_primary="shell",
+        deployment_name="chat-shell",
+        image_name="chat-shell",
+        default_backend="client",
+        default_features=["shell", "local", "long"],
+        client_proto="rsocket",
+        client_flags=[
+            "-Dapp.client.protocol=rsocket",
+            RSOCKET_SERVER_AUTOCONFIG_EXCLUDE,
+            "-Dapp.client.rsocket.core.key",
+            "-Dapp.client.rsocket.core.persistence",
+            "-Dapp.client.rsocket.core.index",
+            "-Dapp.client.rsocket.core.pubsub",
+            "-Dapp.client.rsocket.core.secrets",
+            "-Dapp.client.rsocket.composite.user",
+            "-Dapp.client.rsocket.composite.message",
+            "-Dapp.client.rsocket.composite.topic",
+        ],
+        service_flags=[
+            "-Dapp.service.core.key",
+            "-Dapp.service.composite.auth",
+        ],
+        opt_flags=[
+            "-Dspring.shell.interactive.enabled=true",
+            "-Dspring.main.web-application-type=reactive",
+            "-Dlogging.level.io.rsocket.FrameLogger=OFF",
+        ],
+        management_endpoints=["shutdown", "health", "rootkeys"],
+        port_flags_fn=lambda: [
+            f"-Dserver.port={SHELL_MGMT_PORT}",
+            f"-Dmanagement.server.port={SHELL_MGMT_PORT}",
+        ],
+        available_features=["client", "shell"] + COMMON_FEATURES,
+    ),
+}
+
+
+# --------------------------------------------------------------------------
+# Build context
+# --------------------------------------------------------------------------
+
+class BuildContext:
+    """Resolves features against a service and composes the Maven invocation."""
+
+    def __init__(self, service: Service, args: argparse.Namespace):
+        self.service = service
+        self.args = args
+        self.selected = self._resolve_features()
+        self.backend = self._resolve_backend()
+        self.key_type = "uuid" if "uuid" in self.selected else "long"
+        self.discovery = "consul" if "consul" in self.selected else "local"
+        self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
+        self.tls_dir: str | None = args.tls
+        self.image_name = service.image_name_for(self.backend)
+
+    # -- resolution ------------------------------------------------------
+
+    def _resolve_features(self) -> list[str]:
+        chosen = [
+            name for name in self.service.available_features
+            if getattr(self.args, name.replace("-", "_"), False)
+        ]
+        for name in self.service.default_features:
+            if name not in chosen and not self._group_taken(chosen, name):
+                chosen.append(name)
+
+        for name in chosen:
+            for other in FEATURES[name].conflicts:
+                if other in chosen:
+                    sys.exit(f"chat-build: --{name} conflicts with --{other}")
+
+        seen: dict[str, str] = {}
+        for name in chosen:
+            group = FEATURES[name].group
+            if group in (None, "backend"):
+                continue
+            if group in seen and seen[group] != name:
+                sys.exit(
+                    f"chat-build: --{name} and --{seen[group]} are both "
+                    f"'{group}' options; pick one"
+                )
+            seen[group] = name
+        return chosen
+
+    def _group_taken(self, chosen: list[str], candidate: str) -> bool:
+        group = FEATURES[candidate].group
+        if group is None:
+            return False
+        return any(FEATURES[c].group == group for c in chosen)
+
+    def _resolve_backend(self) -> str:
+        picked = [n for n in self.selected if FEATURES[n].group == "backend"]
+        if len(picked) > 1:
+            sys.exit(
+                "chat-build: pick exactly one backend, got "
+                + ", ".join(f"--{p}" for p in picked)
+            )
+        if picked:
+            return picked[0]
+        default = self.service.default_backend
+        self.selected.append(default)
+        return default
+
+    def _features(self) -> list[Feature]:
+        return [FEATURES[n] for n in self.selected]
+
+    # -- Maven -----------------------------------------------------------
+
+    def maven_profiles(self) -> list[str]:
+        profiles = ["deploy"]
+        profiles += list(self.service.maven_profiles)
+        for feat in self._features():
+            profiles += feat.maven_profiles
+        if self.discovery == "consul" and self.service.client_proto:
+            profiles.append("discovery-consul")
+        # Preserve order, drop duplicates.
+        return list(dict.fromkeys(profiles))
+
+    def spring_profiles(self) -> list[str]:
+        profiles: list[str] = []
+        for feat in self._features():
+            profiles += feat.spring_profiles
+        profiles += self.args.profile
+        return list(dict.fromkeys(profiles))
+
+    def maven_goal(self) -> str:
+        return "spring-boot:build-image" if self.args.build else "spring-boot:run"
+
+    def module_dir(self) -> Path:
+        return REPO_ROOT / self.service.module
+
+    def compose_maven_command(self) -> list[str]:
+        return [
+            "mvn",
+            f"-DimageName={self.image_name}",
+            "-P" + ",".join(self.maven_profiles()),
+            "-DskipTests",
+            self.maven_goal(),
+        ]
+
+    # -- JAVA_TOOL_OPTIONS groups, in build-app.sh order -----------------
+
+    def endpoint_flags(self) -> list[str]:
+        endpoints = list(self.service.management_endpoints)
+        if self.discovery == "consul" and "health" not in endpoints:
+            endpoints.append("health")
+        if not endpoints:
+            return []
+        flags = [f"-Dmanagement.endpoint.{e}.enabled=true" for e in endpoints]
+        flags.append("-Dmanagement.endpoints.web.exposure.include=" + ",".join(endpoints))
+        return flags
+
+    def main_flags(self) -> list[str]:
+        flags = [f"-Dspring.profiles.active={','.join(self.spring_profiles())}"]
+        flags += self.endpoint_flags()
+        flags += [
+            f"-Dapp.key.type={self.key_type}",
+            f"-Dapp.primary={self.service.app_primary}",
+            f"-Dspring.application.name={self.service.deployment_name}",
+            "-Djava.security.egd=file:/dev/./urandom",
+        ]
+        for feat in self._features():
+            for key, value in feat.spring_properties.items():
+                flags.append(f"-D{key}={value}")
+        return flags
+
+    def tls_flags(self) -> list[str]:
+        """Server TLS for services, client TLS for client-shaped services.
+
+        build-app.sh branches on whether CLIENT_FLAGS is set; this mirrors that.
+        """
+        is_client = bool(self.service.client_flags)
+        if self.tls_dir is None:
+            if is_client and self.service.client_proto == "rsocket":
+                return ["-Dapp.rsocket.transport.security.type=unprotected"]
+            return ["-Dspring.rsocket.server.ssl.enabled=false"]
+
+        keystore_pass = os.environ.get("KEYSTORE_PASS", "")
+        if is_client and self.service.client_proto == "rsocket":
+            return [
+                "-Dapp.rsocket.transport.security.type=pkcs12",
+                f"-Dapp.rsocket.transport.security.truststore.path={self.tls_dir}/client_truststore.p12",
+                f"-Dapp.rsocket.transport.security.keystore.path={self.tls_dir}/client_keystore.p12",
+                f"-Dapp.rsocket.transport.security.keyfile.pass={keystore_pass}",
+            ]
+        return [
+            "-Dspring.rsocket.server.ssl.enabled=true",
+            "-Dspring.rsocket.server.ssl.client-auth=none",
+            "-Dspring.rsocket.server.ssl.protocol=TLS",
+            "-Dspring.rsocket.server.ssl.enabled-protocols=TLSv1.2",
+            f"-Dspring.rsocket.server.ssl.key-store={self.tls_dir}/server_keystore.p12",
+            "-Dspring.rsocket.server.ssl.key-store-type=PKCS12",
+            f"-Dspring.rsocket.server.ssl.key-store-password={keystore_pass}",
+        ]
+
+    def ports_flags(self) -> list[str]:
+        return self.service.port_flags()
+
+    def init_flags(self) -> list[str]:
+        flags: list[str] = []
+        if "users" in self.init_phases:
+            flags.append("-Dapp.users.create=true")
+        if "rootkeys" in self.init_phases:
+            flags.append("-Dapp.rootkeys.create=true")
+
+        if self.discovery == "consul" and "rootkeys" in self.init_phases:
+            # This node mints the root keys, so publish them to Consul KV.
+            flags += [
+                "-Dapp.kv.store=consul",
+                "-Dapp.kv.prefix=/chat",
+                "-Dapp.kv.rootkeys=rootkeys",
+                "-Dapp.rootkeys.publish.scheme=kv",
+            ]
+        elif self.discovery == "local" and "rootkeys" not in self.init_phases:
+            # Joining node: pull the root keys off a peer's actuator endpoint.
+            flags += [
+                "-Dapp.kv.store=none",
+                "-Dapp.rootkeys.consume.scheme=http",
+                f"-Dapp.rootkeys.consume.source={ROOTKEY_SOURCE_URI}",
+            ]
+        return flags
+
+    def discovery_flags(self) -> list[str]:
+        actuator_user = [
+            "-Dspring.security.user.name=actuator",
+            "-Dspring.security.user.password=actuator",
+            "-Dspring.security.user.roles=ACTUATOR",
+        ]
+        if self.discovery == "consul":
+            host = os.environ.get("CONSUL_HOST") or find_consul_host()
+            flags = [
+                f"-Dspring.cloud.consul.host={host}",
+                f"-Dspring.cloud.consul.port={CONSUL_PORT}",
+                "-Dspring.cloud.consul.discovery.enabled=true",
+                "-Dspring.cloud.consul.discovery.preferIpAddress=true",
+                "-Dspring.cloud.consul.discovery.health-check-headers[0]="
+                "'Authorization: Basic QXV0aG9yaXphdGlvbjogQmFzaWMg'",
+            ] + actuator_user
+            if self.service.client_proto:
+                flags.append("-Dapp.client.discovery=consul")
+            return flags
+
+        flags = [
+            "-Dspring.cloud.consul.enabled=false",
+            "-Dspring.cloud.service-registry.auto-registration.enabled=false",
+            "-Dspring.cloud.consul.config.enabled=false",
+            "-Dspring.cloud.consul.config.watch.enabled=false",
+            "-Dspring.cloud.consul.discovery.enabled=false",
+        ] + actuator_user
+        if self.service.client_proto:
+            flags.append("-Dapp.client.discovery=properties")
+        return flags
+
+    def client_flags(self) -> list[str]:
+        flags = list(self.service.client_flags)
+        if flags and "websocket" in self.selected:
+            flags.append("-Dapp.rsocket.transport.websocket.enabled=true")
+        return flags
+
+    def service_flags(self) -> list[str]:
+        flags = list(self.service.service_flags)
+        for feat in self._features():
+            flags += feat.service_flags
+        if flags and "websocket" in self.selected:
+            flags += [
+                "-Dspring.rsocket.server.transport=websocket",
+                "-Dspring.rsocket.server.mapping-path=/",
+            ]
+        return flags
+
+    def additional_configs(self) -> list[str]:
+        # Order is load order, and later locations win in Spring. build-app.sh
+        # appends the base pair onto whatever the run script exported, so
+        # service and feature configs come first and the base overrides them.
+        configs = list(self.service.additional_configs)
+        for feat in self._features():
+            configs += feat.additional_configs
+        configs += BASE_ADDITIONAL_CONFIGS
+        if "users" in self.init_phases:
+            configs.append("classpath:/config/userinit.yml")
+        if self.service.client_proto:
+            configs.append(
+                f"classpath:/config/client-{self.service.client_proto}-{self.discovery}.yml"
+            )
+        return list(dict.fromkeys(configs))
+
+    def opt_flags(self) -> list[str]:
+        flags = list(self.service.opt_flags)
+        for feat in self._features():
+            flags += feat.opt_flags
+        if "debug" in self.selected:
+            flags.append("-Dlogging.level.io.rsocket.FrameLogger=DEBUG")
+            if self.service.client_proto:
+                flags += [
+                    "-Dlogging.level.com.demo.chat.client.rsocket=DEBUG",
+                    "-Dlogging.level.reactor.netty.http.client=DEBUG",
+                ]
+        flags.append(
+            "-Dspring.config.additional-location=" + ",".join(self.additional_configs())
+        )
+        return flags
+
+    def run_args(self) -> list[str]:
+        jvm_args = ""
+        if "debug" in self.selected and not self.args.build:
+            suspend = os.environ.get("DEBUG_SUSPEND", "n")
+            jvm_args = (
+                f"-agentlib:jdwp=transport=dt_socket,server=y,"
+                f"suspend={suspend},address={DEBUG_PORT}"
+            )
+        return [
+            f'-Dspring-boot.run.arguments="{self.service.run_arguments}"',
+            f'-Dspring-boot.run.jvmArguments="{jvm_args}"',
+        ]
+
+    def java_tool_options_list(self) -> list[str]:
+        groups = [
+            self.main_flags(),
+            self.tls_flags(),
+            self.ports_flags(),
+            self.init_flags(),
+            self.discovery_flags(),
+            self.client_flags(),
+            self.service_flags(),
+            self.opt_flags(),
+            self.run_args(),
+        ]
+        return [flag for group in groups for flag in group]
+
+    def java_tool_options(self) -> str:
+        return " ".join(self.java_tool_options_list())
+
+    # -- output ----------------------------------------------------------
+
+    def env_file_path(self) -> Path:
+        if self.args.env_file:
+            return Path(self.args.env_file)
+        return Path(f"/tmp/chat-build-{self.service.name}-{self.image_name}.env")
+
+    def env_file_content(self) -> str:
+        """Real KEY=VALUE pairs.
+
+        build-app.sh wrote literal `echo KEY = VALUE` lines here, which docker
+        --env-file cannot parse. This emits something docker can actually read.
+        """
+        return "\n".join([
+            f"JAVA_TOOL_OPTIONS={self.java_tool_options()}",
+            "MAVEN_PROFILES=-P" + ",".join(self.maven_profiles()),
+            f"MAVEN_GOAL={self.maven_goal()}",
+            f"CWD={self.module_dir()}",
+            f"IMAGE_NAME={self.image_name}",
+        ]) + "\n"
+
+    def write_env_file(self) -> Path:
+        path = self.env_file_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(self.env_file_content())
+        return path
+
+    def execute(self) -> int:
+        env_file = self.write_env_file()
+        print(f"ENV_FILE={env_file}", file=sys.stderr)
+
+        env = os.environ.copy()
+        if self.args.bake:
+            # The image build reads the env file instead of inheriting options.
+            env.pop("JAVA_TOOL_OPTIONS", None)
+        else:
+            env["JAVA_TOOL_OPTIONS"] = self.java_tool_options()
+
+        cmd = self.compose_maven_command()
+        print("+ " + " ".join(shlex.quote(c) for c in cmd), file=sys.stderr)
+        return subprocess.run(cmd, cwd=self.module_dir(), env=env).returncode
+
+
+def find_consul_host() -> str:
+    """Mirror util.sh find_consul: locate a running consul container's IP."""
+    try:
+        cid = subprocess.run(
+            ["docker", "ps", "-aqf", "name=consul"],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        cid = ""
+    if not cid:
+        sys.exit(
+            "chat-build: no consul container found and CONSUL_HOST is unset.\n"
+            "Run consul in docker, or set CONSUL_HOST and CONSUL_PORT."
+        )
+    ip = subprocess.run(
+        ["docker", "inspect", "-f",
+         "{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}", cid],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+    return ip or CONSUL_HOST
+
+
+# --------------------------------------------------------------------------
+# CLI
+# --------------------------------------------------------------------------
+
+def add_common_args(parser: argparse.ArgumentParser) -> None:
+    tls = parser.add_mutually_exclusive_group()
+    tls.add_argument("--tls", metavar="DIR",
+                     help="enable TLS using certificates in DIR")
+    tls.add_argument("--notls", action="store_true",
+                     help="disable TLS (required if --tls is not given)")
+
+    goal = parser.add_mutually_exclusive_group()
+    goal.add_argument("--run", action="store_true",
+                      help="run locally via spring-boot:run (default)")
+    goal.add_argument("--build", action="store_true",
+                      help="build a container image via spring-boot:build-image")
+
+    parser.add_argument("--init", default="", metavar="PHASES",
+                        help="init phases, comma separated: users,rootkeys")
+    parser.add_argument("--profile", action="append", default=[], metavar="NAME",
+                        help="additional Spring profile (repeatable)")
+    parser.add_argument("--env-file", metavar="PATH",
+                        help="where to write the env file")
+    parser.add_argument("--bake", action="store_true",
+                        help="pass options via the env file instead of inheriting them")
+    parser.add_argument("--native", action="store_true",
+                        help="GraalVM native build (not supported)")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="print the resolved command and options, run nothing")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="chat-build",
+        description="Compose and run demo-chat Maven builds from feature flags.",
+        epilog="Example: chat-build core --memory --run --notls --init users,rootkeys",
+    )
+    subparsers = parser.add_subparsers(dest="service", required=True,
+                                       metavar="SERVICE")
+    for service in SERVICES.values():
+        sub = subparsers.add_parser(service.name, help=service.description)
+        add_common_args(sub)
+        group = sub.add_argument_group("features")
+        for name in service.available_features:
+            feat = FEATURES[name]
+            suffix = ""
+            if name == service.default_backend or name in service.default_features:
+                suffix = " (default)"
+            group.add_argument(f"--{name}", action="store_true",
+                               help=feat.description + suffix)
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+
+    if args.native:
+        print("chat-build: native builds are not supported at this time",
+              file=sys.stderr)
+        return 1
+
+    if not args.tls and not args.notls:
+        print("chat-build: specify --tls <dir> or --notls", file=sys.stderr)
+        return 1
+
+    if args.tls and not os.environ.get("KEYSTORE_PASS"):
+        print("chat-build: KEYSTORE_PASS must be set when using --tls",
+              file=sys.stderr)
+        return 1
+
+    ctx = BuildContext(SERVICES[args.service], args)
+
+    if args.dry_run:
+        cmd = ctx.compose_maven_command()
+        print(f"# service:  {ctx.service.name}")
+        print(f"# module:   {ctx.module_dir()}")
+        print(f"# features: {' '.join(sorted(ctx.selected))}")
+        print(f"# image:    {ctx.image_name}")
+        print()
+        print("# maven command:")
+        print(" ".join(shlex.quote(c) for c in cmd))
+        print()
+        print("# JAVA_TOOL_OPTIONS:")
+        for flag in ctx.java_tool_options_list():
+            print(f"  {flag}")
+        print()
+        print(f"# env file would be written to: {ctx.env_file_path()}")
+        return 0
+
+    return ctx.execute()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
