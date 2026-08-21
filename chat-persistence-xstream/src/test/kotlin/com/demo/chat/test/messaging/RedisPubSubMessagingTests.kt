@@ -3,7 +3,7 @@ package com.demo.chat.test.messaging
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
-import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubServiceRedis
+import com.demo.chat.pubsub.impl.memory.messaging.RedisTopicPubSubService
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
@@ -67,7 +67,7 @@ class RedisPubSubMessagingTests(
 class PubSubBeanConfiguration {
     @Bean
     fun pubsubTests(configRedisTemplate: RedisTemplateConfiguration) =
-        TopicPubSubServiceRedis(
+        RedisTopicPubSubService(
             KeyConfigurationPubSub(
                 "t_all_topics",
                 "t_st_topic_",

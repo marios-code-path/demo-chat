@@ -3,7 +3,7 @@ package com.demo.chat.test.messaging
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfiguration
-import com.demo.chat.pubsub.impl.memory.messaging.TopicPubSubTopicInventoryRedisStream
+import com.demo.chat.pubsub.impl.memory.messaging.XStreamTopicPubSubService
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
 import org.junit.jupiter.api.extension.ExtendWith
@@ -47,7 +47,7 @@ class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
 
 class XStreamBeanConfiguration {
     @Bean
-    fun topicService(configRedisTemplate: RedisTemplateConfiguration) = TopicPubSubTopicInventoryRedisStream(
+    fun topicService(configRedisTemplate: RedisTemplateConfiguration) = XStreamTopicPubSubService(
         KeyConfiguration(
             "all_topics",
             "st_topic_",

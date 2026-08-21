@@ -26,7 +26,7 @@ data class KeyConfiguration(
 )
 
 @Suppress("DuplicatedCode")
-class TopicPubSubTopicInventoryRedisStream<T, E>(
+class XStreamTopicPubSubService<T, E>(
     keyConfig: KeyConfiguration,
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
@@ -97,7 +97,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
     override fun unSubscribe(member: T, topic: T): Mono<Void> =
             topicExistsOrError(topic)
                     .then(
-                            stringTemplate    // todo Streams entries too!
+                            stringTemplate
                                     .opsForSet()
                                     .remove(prefixUserToTopicSubs + member.toString(), topic.toString())
                                     .handle<Void> { a, sink ->
@@ -108,7 +108,7 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
                                     }
                     )
                     .then(
-                            stringTemplate    // todo Streams entries too!
+                            stringTemplate
                                     .opsForSet()
                                     .remove(prefixTopicToUserSubs + topic.toString(), member.toString())
                                     .handle<Void> { a, sink ->
@@ -155,19 +155,20 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
 
     override fun sendMessage(message: Message<T, E>): Mono<Void> {
         val map = mapOf(Pair("data", message))
-        /*
-            * <li>1    Time-based T
-            * <li>2    DCE security T
-            * <li>3    Name-based T
-            * <li>4    Randomly generated T
-         */
+        val streamKey = prefixTopicStream + message.key.dest.toString()
         val recordId = RecordId.autoGenerate()
         return Mono.from(topicExistsOrError(message.key.dest))
-                .thenMany(messageTemplate
+                .then(messageTemplate
                         .opsForStream<String, Message<T, E>>()
                         .add(MapRecord
-                                .create(prefixTopicStream + message.key.dest.toString(), map)
+                                .create(streamKey, map)
                                 .withId(recordId)))
+                // XTRIM MAXLEN: cap each topic stream at replayDepth entries so
+                // streams do not grow without bound. Exact (not approximate)
+                // trimming, because replayDepth is far smaller than a stream node.
+                .then(messageTemplate
+                        .opsForStream<String, Message<T, E>>()
+                        .trim(streamKey, replayDepth.toLong()))
                 .then()
     }
 
@@ -223,11 +224,18 @@ class TopicPubSubTopicInventoryRedisStream<T, E>(
     private fun getXReadFlux(topic: T): Flux<Message<T, E>> =
             messageTemplate
                     .opsForStream<String, Message<T, E>>()
-                    .read(StreamOffset.fromStart(prefixTopicStream + topic.toString()))
+                    .read(StreamOffset.latest(prefixTopicStream + topic.toString()))
                     .map {
                         it.value["data"]!!
                     }.doOnComplete {
                         topicXReads.remove(topic)
                     }
-    // TODO Strategy needed to manage consumer groups and synchronous looping of Xreads
+    // TODO: For multi-instance deployment, add consumer-group-based XREADGROUP
+    //  per service instance. Current design uses Sinks.Many for in-process fan-out
+    //  and StreamOffset.latest for per-listener subscription. Cross-process fan-out
+    //  requires consumer groups with unique consumer names per instance.
+    // TODO: sourceOf() discards the doOnNext-decorated Flux and returns the
+    //  undecorated xread, and nothing subscribes to it, so the Sinks.Many is
+    //  never fed from the stream. Fixing this needs a live (blocking or
+    //  StreamReceiver-based) read rather than the one-shot XREAD used here.
 }

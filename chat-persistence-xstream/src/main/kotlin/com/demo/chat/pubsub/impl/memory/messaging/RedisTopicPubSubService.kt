@@ -24,7 +24,7 @@ data class KeyConfigurationPubSub(
 )
 
 @Suppress("DuplicatedCode")
-class TopicPubSubServiceRedis<T, E>(
+class RedisTopicPubSubService<T, E>(
     keyConfig: KeyConfigurationPubSub,
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,

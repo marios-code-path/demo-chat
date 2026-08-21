@@ -1,0 +1,6 @@
+app:
+  service:
+    core:
+      # redis-pubsub -> RedisTopicPubSubService (Redis Pub/Sub, non-durable)
+      # redis-xstream -> XStreamTopicPubSubService (Redis Streams, durable)
+      pubsub: redis-pubsub

@@ -15,7 +15,7 @@ import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactor
 class TestContextConfiguration {
     @Bean
     fun mapper(): ObjectMapper =
-        jacksonObjectMapper().registerModule(KotlinModule()).apply {
+        jacksonObjectMapper().registerModule(KotlinModule.Builder().build()).apply {
             with(JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)) {
                 registerModules(
                     JavaTimeModule(),
