@@ -81,6 +81,6 @@ class FooBar {
     @Bean
     fun mapper(): ObjectMapper = ObjectMapper().apply {
         registerModules(DefaultChatJacksonModules().allModules())
-        registerModule(KotlinModule())
+        registerModule(KotlinModule.Builder().build())
     }
 }
