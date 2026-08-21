@@ -133,13 +133,15 @@ FEATURES: dict[str, Feature] = {
     ),
     "kafka": Feature(
         name="kafka",
-        description="Kafka messaging (replaces the in-memory pubsub)",
+        description="Kafka persistence-memory + Lucene index + Kafka messaging",
         maven_profiles=["kafka-backend"],
         spring_profiles=["kafka"],
+        spring_properties={"app.service.core.pubsub": "kafka"},
         opt_flags=[
             "-Dspring.kafka.bootstrap-servers="
             + os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
         ],
+        group="backend",
     ),
     "e2ee": Feature(
         name="e2ee",
@@ -264,7 +266,7 @@ class Service:
 
 CORE_SERVICE_FLAGS = [
     "-Dapp.service.core.key",
-    "-Dapp.service.core.pubsub",
+    "-Dapp.service.core.pubsub=memory",
     "-Dapp.service.core.index",
     "-Dapp.service.core.persistence",
     "-Dapp.service.core.secrets",
@@ -562,6 +564,8 @@ class BuildContext:
         ]
         for feat in self._features():
             for key, value in feat.spring_properties.items():
+                if key == "app.service.core.pubsub":
+                    continue  # emitted in service_flags, which owns the default
                 flags.append(f"-D{key}={value}")
         return flags
 
@@ -662,6 +666,19 @@ class BuildContext:
         flags = list(self.service.service_flags)
         for feat in self._features():
             flags += feat.service_flags
+        # A feature that names a pubsub implementation replaces the default.
+        pubsub = next(
+            (f.spring_properties["app.service.core.pubsub"]
+             for f in self._features()
+             if "app.service.core.pubsub" in f.spring_properties),
+            None,
+        )
+        if pubsub:
+            flags = [
+                f"-Dapp.service.core.pubsub={pubsub}"
+                if f.startswith("-Dapp.service.core.pubsub") else f
+                for f in flags
+            ]
         if flags and "websocket" in self.selected:
             flags += [
                 "-Dspring.rsocket.server.transport=websocket",
