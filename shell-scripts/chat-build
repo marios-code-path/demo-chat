@@ -117,6 +117,12 @@ FEATURES: dict[str, Feature] = {
         description="Cassandra persistence + index",
         maven_profiles=["cassandra-backend"],
         spring_profiles=["cassandra-contact-point"],
+        spring_properties={
+            "app.service.core.key": "cassandra",
+            "app.service.core.index": "cassandra",
+            "app.service.core.persistence": "cassandra",
+            "app.service.core.secrets": "cassandra",
+        },
         group="backend",
     ),
     "client": Feature(
@@ -264,12 +270,16 @@ class Service:
         return self.image_name
 
 
+# Every app.service.core.* selector names a backend. A bare flag matches no
+# havingValue and does not trigger matchIfMissing either, so it activates
+# nothing at all -- see docs/BUILD-HEALTH.md and the selector work of Aug 2026.
+# Backend features override these via spring_properties.
 CORE_SERVICE_FLAGS = [
-    "-Dapp.service.core.key",
+    "-Dapp.service.core.key=memory",
     "-Dapp.service.core.pubsub=memory",
-    "-Dapp.service.core.index",
-    "-Dapp.service.core.persistence",
-    "-Dapp.service.core.secrets",
+    "-Dapp.service.core.index=lucene",
+    "-Dapp.service.core.persistence=memory",
+    "-Dapp.service.core.secrets=memory",
     "-Dapp.service.composite",
     "-Dapp.service.composite.auth",
     "-Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message",
@@ -420,7 +430,7 @@ SERVICES: dict[str, Service] = {
             "-Dapp.client.rsocket.composite.topic",
         ],
         service_flags=[
-            "-Dapp.service.core.key",
+            "-Dapp.service.core.key=memory",
             "-Dapp.service.composite.auth",
         ],
         opt_flags=[
@@ -564,8 +574,8 @@ class BuildContext:
         ]
         for feat in self._features():
             for key, value in feat.spring_properties.items():
-                if key == "app.service.core.pubsub":
-                    continue  # emitted in service_flags, which owns the default
+                if key.startswith("app.service.core."):
+                    continue  # emitted in service_flags, which owns the defaults
                 flags.append(f"-D{key}={value}")
         return flags
 
@@ -666,17 +676,18 @@ class BuildContext:
         flags = list(self.service.service_flags)
         for feat in self._features():
             flags += feat.service_flags
-        # A feature that names a pubsub implementation replaces the default.
-        pubsub = next(
-            (f.spring_properties["app.service.core.pubsub"]
-             for f in self._features()
-             if "app.service.core.pubsub" in f.spring_properties),
-            None,
-        )
-        if pubsub:
+        # A feature that names a backend for any app.service.core.* selector
+        # replaces the default. Later features win, matching profile order.
+        selectors: dict[str, str] = {}
+        for feat in self._features():
+            for key, value in feat.spring_properties.items():
+                if key.startswith("app.service.core."):
+                    selectors[key] = value
+        for key, value in selectors.items():
+            prefix = f"-D{key}"
             flags = [
-                f"-Dapp.service.core.pubsub={pubsub}"
-                if f.startswith("-Dapp.service.core.pubsub") else f
+                f"{prefix}={value}"
+                if f == prefix or f.startswith(prefix + "=") else f
                 for f in flags
             ]
         if flags and "websocket" in self.selected:
