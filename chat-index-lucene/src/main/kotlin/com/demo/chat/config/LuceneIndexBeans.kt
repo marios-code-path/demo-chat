@@ -13,7 +13,12 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.core.convert.ConversionService
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+@ConditionalOnProperty(
+    prefix = "app.service.core",
+    name = ["index"],
+    havingValue = "lucene",
+    matchIfMissing = true
+)
 open class LuceneIndexBeans<T>(
     private val typeUtil: TypeUtil<T>,
     private val cs: ConversionService

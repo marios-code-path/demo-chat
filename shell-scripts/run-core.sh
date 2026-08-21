@@ -34,8 +34,8 @@ export DOCKER_ARGS=" --expose ${CORE_RSOCKET_PORT} -p ${CORE_RSOCKET_PORT}:${COR
 export PORTS_FLAGS="-Dserver.port=${CORE_MGMT_PORT} -Dmanagement.server.port=${CORE_MGMT_PORT} \
 -Dspring.rsocket.server.port=${CORE_RSOCKET_PORT}"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket -Dapp.service.core.key \
--Dapp.service.core.pubsub=memory -Dapp.service.core.index \
--Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
+-Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets -Dapp.service.composite -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
 -Dapp.controller.pubsub -Dapp.controller.secrets -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message"
