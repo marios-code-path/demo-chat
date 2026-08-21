@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["index"])
+@ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
 class IndexServiceConfiguration<T> (
     cassandra: ReactiveCassandraTemplate,
     userHandleRepo: ChatUserHandleRepository<T>,

@@ -32,7 +32,7 @@ import org.springframework.test.context.TestPropertySource
         "spring.kafka.bootstrap-servers=\${spring.embedded.kafka.brokers}",
         "app.service.core.key",
         "app.service.core.pubsub=kafka",
-        "app.service.core.index", "app.service.core.persistence",
+        "app.service.core.index=lucene", "app.service.core.persistence",
         "app.service.core.secrets", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence",
         "app.controller.index", "app.controller.user", "app.controller.message",
