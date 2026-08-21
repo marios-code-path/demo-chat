@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"])
+@ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"], havingValue = "cassandra")
 class CorePersistenceServices<T>(
     keyService: IKeyService<T>,
     userRepo: ChatUserRepository<T>,
