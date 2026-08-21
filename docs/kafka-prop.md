@@ -167,3 +167,32 @@ spring:
 - The `listenTo` consumer loop must be started on module init (e.g. `@PostConstruct` or
   `ApplicationRunner`). It should subscribe to all currently open topics and dynamically
   add new ones as `open()` is called.
+
+## `app.service.core.pubsub` value space
+
+The property names the pubsub *implementation*. It is a selector, not an
+on/off switch — passing it bare sets it to the empty string, which matches
+nothing.
+
+| Value | Activates | Module |
+|---|---|---|
+| unset or `memory` | `MemoryPubSubBeans` | `chat-messaging-memory` |
+| `kafka` | `KafkaPubSubBeans` + `KafkaDeployConfiguration` | `chat-messaging-kafka`, `chat-deploy-kafka` |
+| `redis-pubsub` | `TopicMessagingConfiguration` | `chat-deploy-redis` |
+| `redis-stream` | Redis stream pubsub (not yet built) | `chat-deploy-redis` |
+
+`memory` is the only implementation with `matchIfMissing = true`. Adding a
+second default makes the winner non-deterministic.
+
+The sibling switches — `app.service.core.key`, `.index`, `.persistence`,
+`.secrets` — remain bare presence flags. They have one implementation each,
+chosen by which module the Maven profile put on the classpath.
+
+### Pending plans that must adopt this
+
+`.hermes/plans/2026-08-20_194702-xstream-messaging-only.md` and
+`.hermes/plans/2026-08-20_194702-persistence-redis-new-module.md` specify
+`havingValue = "pubsub"` / `"stream"` with `matchIfMissing = true` on the
+first. Those values must become `redis-pubsub` / `redis-stream`, and the
+`matchIfMissing` must be dropped, or Redis and memory will both claim the
+default. (Both plans have since been updated to adopt this contract.)
