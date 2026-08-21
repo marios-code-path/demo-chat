@@ -124,7 +124,7 @@ export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
 -Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets -Dapp.service.composite \
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
@@ -152,7 +152,7 @@ export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
 -Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets -Dapp.service.composite \
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \
@@ -182,7 +182,7 @@ export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
 -Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets -Dapp.service.composite \
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
 -Dapp.controller.persistence -Dapp.controller.index -Dapp.controller.key \

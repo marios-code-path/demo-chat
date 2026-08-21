@@ -9,7 +9,12 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = ["secrets"])
+@ConditionalOnProperty(
+    prefix = "app.service.core",
+    name = ["secrets"],
+    havingValue = "memory",
+    matchIfMissing = true
+)
 class MemorySecretsStoreServiceBeans<T> : SecretsStoreBeans<T> {
 
     @Bean
