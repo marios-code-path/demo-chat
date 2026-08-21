@@ -12,8 +12,8 @@ Python 3.10+, stdlib only. No virtualenv, no `pip install`.
 ./shell-scripts/run core --memory --run --notls
 ```
 
-The old shell scripts still work and are not deleted. `test-parity.sh` asserts the
-two paths produce the same JVM flags.
+The shell scripts it replaced have been removed. `test-flags.sh` asserts that
+chat-build keeps emitting the flags recorded under `golden/`.
 
 ---
 
@@ -131,11 +131,14 @@ before using either flag, or the single-module build cannot resolve them.
 | `--native` | Rejected — GraalVM native builds are still unsupported. |
 
 **TLS is fail-closed.** You must pass `--tls <dir>` or `--notls`; there is no
-implicit default, matching `build-app.sh`.
+implicit default, as `build-app.sh` required before it was removed.
 
 ---
 
 ## Migration
+
+The shell scripts below no longer exist. The table is kept for anyone working
+from muscle memory, an old runbook, or a branch that predates their removal.
 
 | Old | New |
 |---|---|
@@ -216,27 +219,30 @@ shape, it needs updating.
 
 ---
 
-## Parity testing
+## Flag testing
 
 ```bash
-./shell-scripts/test-parity.sh     # -v to dump both flag sets
+./shell-scripts/test-flags.sh                  # check every case
+./shell-scripts/test-flags.sh core-memory-tls  # check one case
+./shell-scripts/test-flags.sh --update         # rewrite goldens, then read the diff
 ```
 
-Runs `build-app.sh -x` and `chat-build --dry-run` over four configurations
-(core/memory/local, core/memory/consul, core/memory/TLS, shell/client/local) and
-diffs the flag sets and Maven profiles. Any undeclared difference fails the run.
+Runs `chat-build --dry-run` over fifteen configurations and compares the flag
+set and Maven profiles against committed expectations under `golden/`. Every
+backend, every service, and the variants that change flag composition.
 
 Comparison ignores three non-semantic differences: shell quoting that never
 needed to reach the JVM, `-P` ordering, and repeated entries inside comma-lists.
 
-Two intentional behavioural differences are declared in the harness:
+The goldens were seeded while `test-parity.sh` still existed and passed, so the
+four cases it covered carry the old scripts' authority. The remaining eleven are
+snapshots of chat-build's own output — they catch change, but nothing
+independent vouches for them. The case list in `test-flags.sh` marks which is
+which.
 
-1. `build-app.sh` emits `client-<proto>-<discovery>.yml` twice for client
-   services. `chat-build` emits it once.
-2. `build-app.sh` overwrites `MAIN_FLAGS` after sourcing the run script, so
-   `run-shell.sh`'s `spring.shell.interactive.enabled` and
-   `web-application-type=reactive` never reach the JVM. `chat-build` carries
-   them through.
+`--update` exists, and a diff it produces is a bug until you can say why it is
+not. Committing a regenerated golden without that explanation turns the harness
+into a rubber stamp.
 
 ---
 
