@@ -15,7 +15,7 @@ import org.springframework.test.context.TestPropertySource
 @TestPropertySource(
     properties = [
         "server.port=0", "spring.rsocket.server.port=0",
-        "app.service.core.key",
+        "app.service.core.key=memory",
         "app.service.core.pubsub=memory", "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",

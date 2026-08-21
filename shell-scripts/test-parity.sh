@@ -123,7 +123,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
+-Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
 -Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
@@ -151,7 +151,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
+-Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
 -Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
@@ -181,7 +181,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
+-Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene \
 -Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
@@ -218,7 +218,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user \
 -Dapp.client.rsocket.composite.message -Dapp.client.rsocket.composite.topic"
-export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
+export SERVICE_FLAGS="-Dapp.service.core.key=memory -Dapp.service.composite.auth"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 
 OLD_CMD="$DIR/build-app.sh -m chat-deploy -k long -p shell -e shell -s client \

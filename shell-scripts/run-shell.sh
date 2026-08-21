@@ -15,7 +15,7 @@ export CLIENT_FLAGS="-Dapp.client.protocol=rsocket \
 -Dapp.client.rsocket.core.persistence -Dapp.client.rsocket.core.index -Dapp.client.rsocket.core.pubsub \
 -Dapp.client.rsocket.core.secrets -Dapp.client.rsocket.composite.user -Dapp.client.rsocket.composite.message \
 -Dapp.client.rsocket.composite.topic"
-export SERVICE_FLAGS="-Dapp.service.core.key -Dapp.service.composite.auth"
+export SERVICE_FLAGS="-Dapp.service.core.key=memory -Dapp.service.composite.auth"
 OPT_FLAGS+=" -Dlogging.level.io.rsocket.FrameLogger=OFF -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 
 function local() {
