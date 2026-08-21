@@ -1,0 +1,143 @@
+#!/bin/bash
+#
+# test-flags.sh — assert chat-build emits the flags recorded under golden/.
+#
+# test-parity.sh proves chat-build agrees with build-app.sh. That check dies
+# with build-app.sh. This one does not: it compares chat-build against committed
+# expectations, so chat-build stays verified after the shell scripts are gone.
+#
+# The goldens were seeded from a tree where test-parity.sh passed every case, so
+# they carry the legacy scripts' authority rather than merely freezing whatever
+# chat-build happened to emit that day.
+#
+#   ./test-flags.sh                  # check every case
+#   ./test-flags.sh core-memory-tls  # check one case
+#   ./test-flags.sh --update         # rewrite goldens, then read the diff
+#
+# Updating is not a way to make a failure go away. A diff means either a
+# deliberate change to the launch contract, in which case commit the new golden
+# alongside the change that caused it, or a bug. Decide which before running
+# --update.
+
+set -uo pipefail
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GOLDEN="$DIR/golden"
+CHAT_BUILD="$DIR/chat-build"
+
+# Pinned so goldens are reproducible on any machine. CONSUL_HOST especially:
+# chat-build otherwise shells out to `docker inspect` to find it.
+export CONSUL_HOST=10.0.0.5
+export KEYSTORE_PASS="golden-test-pass"
+export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# name | chat-build arguments
+CASES=(
+  "core-memory-init|core --memory --run --notls --long --init users,rootkeys"
+  "core-memory-consul|core --memory --consul --run --notls --long --init users,rootkeys"
+  "core-memory-tls|core --memory --run --tls /etc/keys --long --init users,rootkeys"
+  "shell-client|shell --run --notls --long"
+)
+
+UPDATE=0
+ONLY=""
+for arg in "$@"; do
+    case "$arg" in
+        -u|--update) UPDATE=1 ;;
+        --help|-h) awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
+        -*) echo "unknown option: $arg" >&2; exit 2 ;;
+        *) ONLY="$arg" ;;
+    esac
+done
+
+# One flag per line, quoting stripped, comma-lists de-duplicated, sorted. Same
+# normalisation test-parity.sh applies, so goldens seeded from a green parity
+# run compare like for like.
+normalise() {
+  sed "s/'//g" | sed 's/"//g' | python3 -c '
+import sys
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    if "=" in line and "," in line.split("=", 1)[1]:
+        key, value = line.split("=", 1)
+        value = ",".join(dict.fromkeys(value.split(",")))
+        line = f"{key}={value}"
+    print(line)
+' | LC_ALL=C sort -u
+}
+
+extract_flags() {
+  sed -n '/^# JAVA_TOOL_OPTIONS:/,/^$/p' | sed '1d;/^$/d' | sed 's/^  //' \
+    | tr ' ' '\n' | sed '/^$/d'
+}
+
+extract_profiles() {
+  grep -oE '^mvn .*' | grep -oE '\-P[^ ]+' | sed 's/^-P//' \
+    | tr ',' '\n' | sed '/^$/d' | LC_ALL=C sort | paste -sd, -
+}
+
+mkdir -p "$GOLDEN"
+pass=0
+fail=0
+updated=0
+
+for entry in "${CASES[@]}"; do
+    name="${entry%%|*}"
+    args="${entry#*|}"
+
+    [ -n "$ONLY" ] && [ "$ONLY" != "$name" ] && continue
+
+    # shellcheck disable=SC2086
+    out="$("$CHAT_BUILD" $args --dry-run 2>&1)"
+    if [ $? -ne 0 ]; then
+        echo "FAIL  $name — chat-build exited non-zero"
+        echo "$out" | sed 's/^/        /'
+        fail=$((fail + 1))
+        continue
+    fi
+
+    actual="$({ echo "# profiles: $(echo "$out" | extract_profiles)"; \
+                echo "$out" | extract_flags | normalise; })"
+    file="$GOLDEN/$name.flags"
+
+    if [ "$UPDATE" -eq 1 ]; then
+        if [ -f "$file" ] && [ "$actual" = "$(cat "$file")" ]; then
+            echo "same  $name"
+        else
+            echo "$actual" > "$file"
+            echo "wrote $name"
+            updated=$((updated + 1))
+        fi
+        continue
+    fi
+
+    if [ ! -f "$file" ]; then
+        echo "FAIL  $name — no golden at ${file#"$DIR"/}; run --update to create it"
+        fail=$((fail + 1))
+        continue
+    fi
+
+    if [ "$actual" = "$(cat "$file")" ]; then
+        echo "ok    $name"
+        pass=$((pass + 1))
+    else
+        echo "FAIL  $name — flags differ from golden"
+        diff <(cat "$file") <(echo "$actual") | sed 's/^/        /'
+        fail=$((fail + 1))
+    fi
+done
+
+echo
+if [ "$UPDATE" -eq 1 ]; then
+    echo "goldens: $updated rewritten"
+    echo "review the diff before committing — an unexplained change is a bug, not a new baseline"
+    exit 0
+fi
+
+if [ "$fail" -gt 0 ]; then
+    echo "flags: $fail case(s) failed, $pass passed"
+    exit 1
+fi
+echo "flags: all $pass case(s) match"
