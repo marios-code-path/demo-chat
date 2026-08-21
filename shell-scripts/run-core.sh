@@ -15,7 +15,6 @@ Available execution-strategy:
 Available deployment-profiles:
   memory
   cassandra
-  cassandra_astra
 EOF
 exit 1
 }
@@ -91,17 +90,6 @@ function kafka() {
     export SERVICE_FLAGS
 
     "$DIR"/build-app.sh -m chat-deploy -s kafka -e rsocket -p kafka -n core-service-rsocket -k ${KEY_TYPE} \
--b "${EXEC}" -i users,rootkeys "$@"
-}
-
-function cassandra_astra() {
-    source "$DIR"/astra-options.sh
-
-    export APP_PRIMARY="core-service"
-    export APP_IMAGE_NAME="astra-${APP_PRIMARY}-rsocket"
-    BUILD_PROFILES+="cassandra-astra,"
-
-    $DIR/build-app.sh -m chat-deploy-cassandra ${APP_IMAGE_NAME} -p prod -s memory -e rsocket -n ${APP_IMAGE_NAME} -k ${KEY_TYPE} \
 -b "${EXEC}" -i users,rootkeys "$@"
 }
 

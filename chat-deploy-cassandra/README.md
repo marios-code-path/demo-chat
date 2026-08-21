@@ -2,7 +2,7 @@
 
 This module performs Key, Persistence and Index operations backed by Apache Cassandra.
 We'll explain how to start a Cassandra Instance with [DataStax Enterprise](https://www.datastax.com/products/datastax-enterprise), and how to 
-connect to both an [Astra](https://astra.datastax.com/register) Instance in the Cloud or your `DSE` instance locally.
+connect to your `DSE` instance locally.
 
 # Running DataStax Enterprise in Docker
 
@@ -45,7 +45,7 @@ $ docker run -p 9042:9042 -e DS_LICENSE=accept --memory 1g --name my-dse -v PATH
 ```
 
 At this point we can now follow the instructions over at the [DataStax Documents](https://docs.datastax.com/en/security/6.7/security/Auth/secCreateRootAccount.html) 
-for creating superuser /otheruser accounts. This demo uses a 'chatroot' super-user account similar ( just for conformity to the Astra configuration)
+for creating superuser /otheruser accounts. This demo uses a 'chatroot' super-user account.
 
 # App Dependencies (POM.xml)
 
@@ -57,8 +57,6 @@ set to a newer version of datastax 4.x series drivers. It is mentioned also beca
 to find it's own driver version.
 
 I'm using `4.9` since it's the latest as of this writing. Switching versions may cause instability or break the app,
-
-  NOTE: version `4.6` causes an error when using secure-connect in this configuration. 
 
 
 Showing Maven dependencies for Cassandra Persistence:
@@ -152,68 +150,6 @@ class ContactPointConfiguration(
 Doing this will allow our application to work per usual - just send in cassandra properties through application.* or 
 as [spring-boot-maven-plugin](https://docs.spring.io/spring-boot/docs/1.1.4.RELEASE/reference/html/build-tool-plugins-maven-plugin.html) command line arguments (e.g. `--spring.data.cassandra.request.serial-consistency=any`).
 
-## Using Datastax Astra Secure Connect Bundle
-
-You can skip this section if you're not using Astra.
-
-In this application, using a local datacenter for cassandra is nuts - it takes a lot to manage
-and deploy. In that case I use DataStax's Cassandra-as-a-service [Astra](https://www.datastax.com/products/datastax-astra) as
-it offers a great wealth of flexibility and scales - we won't get to discuss here. One thing
-to note is that its driver connection setup is slightly different from a known contact-point. So let's
-take a look.
-
-Download your secure-connect.zip archive and store it in a known location that is readable
-by the process running the app. Next, lets take a look at code configuration to enable 
-our datastax driver to consume this bundle:
-
-This Block of Code Configures our app for secure-connect-bundle:
-
-```kotlin
-class AstraConfiguration(
-        val props: CassandraProperties,
-        val connectPath: String,
-)  : AbstractCassandraConfiguration() {
-
-    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
-            SessionBuilderConfigurer { sessionBuilder ->
-                sessionBuilder
-                        .withCloudSecureConnectBundle(Paths.get(connectPath))
-                        .withAuthCredentials(props.username, props.password)
-            }
-
-    @Bean
-     fun driverConfigLoaderCustomizer() = DriverConfigLoaderBuilderCustomizer {
-        it.without(DefaultDriverOption.CONTACT_POINTS)
-    }
-
-    override fun getKeyspaceName(): String {
-        return props.keyspaceName
-    }
-}
-```
-
-OK, so first things first - declare your [AbstractCassandraConfiguration](https://docs.spring.io/spring-data/cassandra/docs/current/api/org/springframework/data/cassandra/config/AbstractCassandraConfiguration.html) then override a few key methods.
-The method that lets us declare our secure bundle is `getSessionBuilderConfigurer`. This gives us
-a way to alter the existing [SessionBuilder](https://docs.datastax.com/en/drivers/java/4.0/com/datastax/oss/driver/api/core/session/SessionBuilder.html) and provide it additional cluster discovery details
-for accessing the secure-connect-bundle and providing the username and password to connect to the cluster.
-
-Next, we need to define a bean that customizes [DriverConfigLoader](https://docs.datastax.com/en/drivers/java/4.0/com/datastax/oss/driver/api/core/config/DriverConfigLoader.html) to not use any 'contact-points' since
-the secure-connect-bundle will get activated. Otherwise, the driver has no idea which to use, or at worst
-(as in the 4.6 driver series) the application won't work at all.
-
-## Distributing the Secure Connect Bundle
-
-WEll, we could either build the image WITH the secure-connect bundle (not recommended) or provide way to fetch
-it remotely. I feel the later choice will work better because we also have an option for configuring
-authentication against the remote resource.
-
-Lets build an nginx server, deploy it and wire in the address to our application for consumption.
-
-### OPTION: Serve it with NGINX
-
-In this section we will build an NGINX image that includes the secure-connect-bundle for remote distribution.
-
- 
 # Launch the App
 
 This part is simple. just find a script and execute it. Soon, I will add a section for deploying to
