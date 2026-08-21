@@ -179,7 +179,7 @@ nothing.
 | unset or `memory` | `MemoryPubSubBeans` | `chat-messaging-memory` |
 | `kafka` | `KafkaPubSubBeans` + `KafkaDeployConfiguration` | `chat-messaging-kafka`, `chat-deploy-kafka` |
 | `redis-pubsub` | `TopicMessagingConfiguration` | `chat-deploy-redis` |
-| `redis-stream` | Redis stream pubsub (not yet built) | `chat-deploy-redis` |
+| `redis-xstream` | Redis Streams (XADD/XREAD) pubsub (not yet built) | `chat-deploy-redis` |
 
 `memory` is the only implementation with `matchIfMissing = true`. Adding a
 second default makes the winner non-deterministic.
@@ -193,6 +193,6 @@ chosen by which module the Maven profile put on the classpath.
 `.hermes/plans/2026-08-20_194702-xstream-messaging-only.md` and
 `.hermes/plans/2026-08-20_194702-persistence-redis-new-module.md` specify
 `havingValue = "pubsub"` / `"stream"` with `matchIfMissing = true` on the
-first. Those values must become `redis-pubsub` / `redis-stream`, and the
+first. Those values must become `redis-pubsub` / `redis-xstream`, and the
 `matchIfMissing` must be dropped, or Redis and memory will both claim the
 default. (Both plans have since been updated to adopt this contract.)
