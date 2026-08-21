@@ -132,13 +132,10 @@ app:
       backend: memory
 ```
 
-Or via command line (following the existing `build-app.sh` pattern):
+Or via command line, where `--e2ee` sets all three:
 
 ```bash
-run-core.sh memory -e rsocket -k long -i users,rootkeys \
-  -Dapp.service.e2ee.enabled=true \
-  -Dapp.service.crypto.backend=memory \
-  -Dapp.service.presence.backend=memory
+chat-build core --memory --e2ee --run --notls --long --init users,rootkeys
 ```
 
 ## Module dependency graph
