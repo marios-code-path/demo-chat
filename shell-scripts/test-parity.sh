@@ -123,7 +123,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
@@ -151,7 +151,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \
@@ -181,7 +181,7 @@ export MANAGEMENT_ENDPOINTS="shutdown,health,rootkeys"
 export OPT_FLAGS=" -Dlogging.level.io.rsocket.FrameLogger=OFF"
 export PORTS_FLAGS="-Dserver.port=6791 -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790"
 export SERVICE_FLAGS="-Dspring.main.web-application-type=reactive -Dapp.server.proto=rsocket \
--Dapp.service.core.key -Dapp.service.core.pubsub -Dapp.service.core.index \
+-Dapp.service.core.key -Dapp.service.core.pubsub=memory -Dapp.service.core.index \
 -Dapp.service.core.persistence -Dapp.service.core.secrets -Dapp.service.composite \
 -Dapp.service.composite.auth \
 -Dapp.core.controllers='persistence,index,key,pubsub,secrets,user,topic,message' \

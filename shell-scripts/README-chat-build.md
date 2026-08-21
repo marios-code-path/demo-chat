@@ -26,8 +26,8 @@ chat-build core --memory --run --notls --init users,rootkeys
 # Same, but Cassandra-backed with UUID keys
 chat-build core --cassandra --run --notls --uuid --init users,rootkeys
 
-# Kafka messaging in front of the memory backend
-chat-build core --memory --kafka --run --notls
+# Kafka backend (Kafka messaging, memory persistence, Lucene index)
+chat-build core --kafka --run --notls
 
 # REST facade (talks to core over RSocket)
 chat-build rest --run --notls
@@ -75,6 +75,7 @@ JVM flags. Options within a group are mutually exclusive.
 |---|---|---|
 | `--memory` | `memory-backend` | Memory persistence + pubsub + Lucene index. Default for `core`. |
 | `--cassandra` | `cassandra-backend` | Cassandra persistence + index. |
+| `--kafka` | `kafka-backend` | Kafka messaging with memory persistence + Lucene index. Reads `KAFKA_BOOTSTRAP_SERVERS`. |
 | `--client` | `client-backend` | RSocket client, no local datastore. Default for `rest`, `gateway`, `authserv`, `shell`. |
 | `--redis` | `redis-backend` | Placeholder — the profile exists but declares no dependencies yet. |
 
@@ -82,17 +83,16 @@ The module never changes. Backends are `chat-deploy` profiles that pull the
 matching deploy module in as a dependency, so `--cassandra` still builds
 `chat-deploy` with `chat-deploy-cassandra` on the classpath.
 
-### Add-ons (combine freely)
+### Add-ons
 
 | Flag | Maven profile | Effect |
 |---|---|---|
-| `--kafka` | `kafka-backend` | Kafka messaging in place of the in-memory pubsub. Reads `KAFKA_BOOTSTRAP_SERVERS`. |
 | `--e2ee` | `e2ee` | E2EE substrate: sets `app.service.e2ee.enabled`, `app.service.crypto.backend`, `app.service.presence.backend`. |
 
-Both pull modules that are not yet published to the local repository
-(`chat-deploy-kafka`, `chat-deploy-e2ee`, `chat-crypto`, `chat-presence`). Run
-`mvn -DskipTests install` from the repo root once before using either flag, or
-the single-module build cannot resolve them.
+`--e2ee` pulls modules that are not yet published to the local repository
+(`chat-deploy-e2ee`, `chat-crypto`, `chat-presence`), as does `--kafka`
+(`chat-deploy-kafka`). Run `mvn -DskipTests install` from the repo root once
+before using either flag, or the single-module build cannot resolve them.
 
 ### Transport (pick one)
 
@@ -141,7 +141,7 @@ implicit default, matching `build-app.sh`.
 |---|---|
 | `run-core.sh runlocal memory -c notls` | `chat-build core --memory --run --notls --init users,rootkeys` |
 | `run-core.sh runlocal cassandra -c notls` | `chat-build core --cassandra --run --notls --init users,rootkeys` |
-| `run-core.sh runlocal kafka` | `chat-build core --memory --kafka --run --notls` |
+| `run-core.sh runlocal kafka` | `chat-build core --kafka --run --notls` |
 | `run-core.sh build memory -c notls` | `chat-build core --memory --build --notls` |
 | `run-rest.sh local` | `chat-build rest --run --notls` |
 | `run-gateway.sh local` | `chat-build gateway --run --notls` |

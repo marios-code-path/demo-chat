@@ -8,7 +8,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 
 @Component
-@ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"])
+@ConditionalOnProperty(
+    prefix = "app.service.core",
+    name = ["pubsub"],
+    havingValue = "memory",
+    matchIfMissing = true
+)
 class MemoryPubSubBeans<T, V>(val typeUtil: TypeUtil<T>) : PubSubServiceBeans<T, String> {
 
     override fun pubSubService(): TopicPubSubService<T, String> = MemoryTopicPubSubService()
