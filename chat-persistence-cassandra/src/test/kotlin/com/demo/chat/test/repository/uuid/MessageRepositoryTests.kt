@@ -8,6 +8,7 @@ import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
@@ -34,6 +35,7 @@ import com.datastax.oss.driver.api.core.uuid.Uuids as UUIDs
     classes = [RepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.key.type=uuid"])
+@Tag("integration")
 class MessageRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val MSGTEXT = "SUP TEST"

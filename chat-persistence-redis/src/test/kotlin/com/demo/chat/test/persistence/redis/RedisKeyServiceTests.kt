@@ -3,6 +3,7 @@ package com.demo.chat.test.persistence.redis
 import com.demo.chat.persistence.redis.impl.KeyServiceRedis
 import com.demo.chat.test.key.TestKeyServiceBase
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +18,7 @@ import java.util.UUID
     ExtendWith(SpringExtension::class)
 )
 @Import(RedisPersistenceTestContext::class, RedisPersistenceTestBeans::class)
+@Tag("integration")
 class RedisKeyServiceTests(
     @Autowired keyService: KeyServiceRedis<UUID>,
     @Autowired private val stringTemplate: ReactiveStringRedisTemplate,

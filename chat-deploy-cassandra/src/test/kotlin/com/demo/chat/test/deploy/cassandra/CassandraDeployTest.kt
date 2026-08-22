@@ -4,6 +4,7 @@ import com.demo.chat.ChatApp
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -29,6 +30,7 @@ import org.springframework.test.context.TestPropertySource
     ]
 )
 @ActiveProfiles("cassandra-contact-point")
+@Tag("integration")
 class CassandraDeployTest : CassandraContainerBase() {
     @Autowired
     private lateinit var repo: ChatUserRepository<Long>

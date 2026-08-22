@@ -5,6 +5,7 @@ import com.demo.chat.index.elastic.domain.ChatUser
 import com.demo.chat.index.elastic.domain.ChatUserKey
 import com.demo.chat.index.elastic.repository.ReactiveUserIndexRepository
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -18,6 +19,7 @@ import java.time.Instant
 //    classes = [ElasticConfiguration::class, ElasticContainerBase.ConfConfig::class]
 //)
 //@EnableReactiveElasticsearchRepositories(basePackages = ["com.demo.chat"])
+@Tag("integration")
 class UserIndexTests : ElasticContainerBase() {
 
     @Autowired

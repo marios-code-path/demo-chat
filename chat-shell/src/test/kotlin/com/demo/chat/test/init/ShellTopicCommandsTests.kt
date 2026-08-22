@@ -3,12 +3,15 @@ package com.demo.chat.test.init
 import com.demo.chat.shell.commands.TopicCommands
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*
+import org.junit.jupiter.api.Tag
 import org.springframework.beans.factory.annotation.Autowired
 
+@Tag("integration")
 class LongShellTopicCommandsTests : ShellTopicCommandsTests<Long>()
 
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+@Tag("integration")
 open class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
 
     @Autowired

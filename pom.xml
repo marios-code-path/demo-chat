@@ -38,6 +38,8 @@
              testcontainers artifacts at 1.21.4 were still getting the 1.19.8 core. -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <lognet.version>2.1.4</lognet.version>
+        <!-- Overridden to empty by -Pintegration. See maven-surefire-plugin below. -->
+        <excluded.test.groups>integration</excluded.test.groups>
     </properties>
 
     <modules>
@@ -158,6 +160,27 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Container-backed tests are opt-in: a plain build must not
+                         require a Docker daemon. Run them with -Pintegration. -->
+                    <excludedGroups>${excluded.test.groups}</excludedGroups>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <!-- Runs the tests tagged "integration", which need a Docker daemon.
+                 Pair with -Ptest-build when the chat-shell tests are in scope:
+                 those consume an image that profile produces. -->
+            <id>integration</id>
+            <properties>
+                <excluded.test.groups></excluded.test.groups>
+            </properties>
+        </profile>
+    </profiles>
 </project>

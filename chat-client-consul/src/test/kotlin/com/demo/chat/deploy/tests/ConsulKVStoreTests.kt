@@ -6,6 +6,7 @@ import com.demo.chat.persistence.consul.ConsulKVStore
 import com.ecwid.consul.v1.ConsulClient
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -16,6 +17,7 @@ import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 class ConsulKVStoreTests : ConsulContainerSetup() {
 
     @Value("\${spring.cloud.consul.port}")

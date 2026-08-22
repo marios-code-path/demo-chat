@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategies
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -34,6 +35,7 @@ import reactor.test.StepVerifier
 @AutoConfigureJson
 @AutoConfigureJsonTesters
 @TestPropertySource(properties = ["app.key.type=long"])
+@Tag("integration")
 class LongKeyValueRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

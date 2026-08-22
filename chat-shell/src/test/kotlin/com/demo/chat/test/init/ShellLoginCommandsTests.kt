@@ -6,14 +6,17 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
 import org.springframework.beans.factory.annotation.Autowired
 
+@Tag("integration")
 class LongLoginCommandsTests : ShellLoginCommandsTests<Long>()
 
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+@Tag("integration")
 class ShellLoginCommandsTests<T>() : ShellIntegrationTestBase() {
 
     @Autowired
