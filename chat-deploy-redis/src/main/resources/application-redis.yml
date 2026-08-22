@@ -4,3 +4,6 @@ app:
       # redis-pubsub -> RedisTopicPubSubService (Redis Pub/Sub, non-durable)
       # redis-xstream -> XStreamTopicPubSubService (Redis Streams, durable)
       pubsub: redis-pubsub
+      # redis -> RedisPersistenceServices / RedisKeyServices (chat-persistence-redis)
+      persistence: redis
+      key: redis

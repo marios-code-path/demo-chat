@@ -61,6 +61,7 @@
 
         <module>chat-index-elastic</module>
         <module>chat-persistence-xstream</module>
+        <module>chat-persistence-redis</module>
 
         <module>chat-client-consul</module>
         <module>chat-gateway</module>
