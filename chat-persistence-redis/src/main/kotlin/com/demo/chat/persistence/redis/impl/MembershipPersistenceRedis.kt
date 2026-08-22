@@ -15,6 +15,13 @@ import reactor.core.publisher.Mono
  * [TopicMembership.key] is a raw id (not a [Key] wrapper), so the Redis key
  * is `chat:member:<rawId>` and the Set index (`chat:idx:member`) holds raw
  * id strings.
+ *
+ * Known limitation (documented decision): add() is SET + SADD and rem() is
+ * DEL + SREM — two round trips with no MULTI/EXEC or Lua atomicity. A
+ * failure between them leaves either an orphaned record (absent from the
+ * index, invisible to all() — silent data loss) or a dangling index id
+ * (benign: all()'s flatMap drops the empty get). Accepted at demo scale;
+ * make it atomic with a Lua script if durability matters.
  */
 class MembershipPersistenceRedis<T>(
     private val keyService: IKeyService<T>,
@@ -61,6 +68,8 @@ class MembershipPersistenceRedis<T>(
                     .map { json -> objectMapper.readValue(json, TopicMembership::class.java) as TopicMembership<T> }
             }
 
+    // N round trips (one get per id) rather than a single MGET — a
+    // deliberate demo-scale choice, not an oversight.
     override fun byIds(keys: List<Key<T>>): Flux<out TopicMembership<T>> =
         Flux.fromIterable(keys).flatMap { key -> get(key) }
 }

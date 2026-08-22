@@ -14,6 +14,13 @@ import reactor.core.publisher.Mono
  *
  * Entities are stored as JSON strings under `chat:auth:<id>` with a Set
  * index (`chat:idx:auth`) of key ids.
+ *
+ * Known limitation (documented decision): add() is SET + SADD and rem() is
+ * DEL + SREM — two round trips with no MULTI/EXEC or Lua atomicity. A
+ * failure between them leaves either an orphaned record (absent from the
+ * index, invisible to all() — silent data loss) or a dangling index id
+ * (benign: all()'s flatMap drops the empty get). Accepted at demo scale;
+ * make it atomic with a Lua script if durability matters.
  */
 class AuthMetaPersistenceRedis<T>(
     private val keyService: IKeyService<T>,
@@ -60,6 +67,8 @@ class AuthMetaPersistenceRedis<T>(
                     .map { json -> objectMapper.readValue(json, AuthMetadata::class.java) as AuthMetadata<T> }
             }
 
+    // N round trips (one get per id) rather than a single MGET — a
+    // deliberate demo-scale choice, not an oversight.
     override fun byIds(keys: List<Key<T>>): Flux<out AuthMetadata<T>> =
         Flux.fromIterable(keys).flatMap { key -> get(key) }
 }

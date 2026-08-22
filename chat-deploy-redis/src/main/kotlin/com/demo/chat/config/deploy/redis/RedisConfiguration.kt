@@ -22,6 +22,6 @@ class RedisConfiguration(private val props: ConfigurationPropertiesRedis) {
         RedisTemplateConfiguration(factory, mapper)
 
     @Bean
-    fun redisConnection(): ReactiveRedisConnectionFactory =
+    fun redisConnection(): LettuceConnectionFactory =
             LettuceConnectionFactory(RedisStandaloneConfiguration(props.host, props.port))
 }
