@@ -1,4 +1,4 @@
-# profiles: cassandra-backend,deploy,expose-rsocket
+# profiles: deploy,expose-rsocket
 -Dapp.controller.index
 -Dapp.controller.key
 -Dapp.controller.message

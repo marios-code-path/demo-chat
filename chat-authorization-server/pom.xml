@@ -45,36 +45,6 @@
             </build>
         </profile>
         <profile>
-            <id>deploy</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>${appMainClass}</mainClass>
-                            <image>
-                                <name>${appImageName}</name>
-                                <cleanCache>false</cleanCache>
-                                <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
-                                    </BPE_APPEND_JAVA_TOOL_OPTIONS>
-                                    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
-                                </env>
-                            </image>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-info</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>register-consul</id>
             <dependencies>
                 <dependency>
@@ -100,23 +70,6 @@
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>
-        </profile>
-        <profile>
-            <id>noartifact</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
         <profile>
             <id>client-local</id>

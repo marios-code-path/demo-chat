@@ -1,4 +1,4 @@
-# profiles: deploy,expose-rsocket,redis-backend
+# profiles: deploy,expose-rsocket
 -Dapp.controller.index
 -Dapp.controller.key
 -Dapp.controller.message
@@ -17,9 +17,9 @@
 -Dapp.service.composite
 -Dapp.service.composite.auth
 -Dapp.service.core.index=lucene
--Dapp.service.core.key=memory
--Dapp.service.core.persistence=memory
--Dapp.service.core.pubsub=memory
+-Dapp.service.core.key=redis
+-Dapp.service.core.persistence=redis
+-Dapp.service.core.pubsub=redis-pubsub
 -Dapp.service.core.secrets=memory
 -Djava.security.egd=file:/dev/./urandom
 -Dlogging.level.io.rsocket.FrameLogger=OFF

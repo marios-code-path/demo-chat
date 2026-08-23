@@ -1,4 +1,4 @@
-# profiles: deploy,e2ee,expose-rsocket,memory-backend
+# profiles: deploy,e2ee,expose-rsocket
 -Dapp.controller.index
 -Dapp.controller.key
 -Dapp.controller.message

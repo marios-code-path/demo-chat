@@ -1,4 +1,4 @@
-# profiles: deploy,expose-rsocket,memory-backend,register-consul
+# profiles: deploy,expose-rsocket,register-consul
 -Dapp.controller.index
 -Dapp.controller.key
 -Dapp.controller.message
