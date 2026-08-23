@@ -27,7 +27,7 @@ interface TypeUtil<T> {
         override fun assignFrom(t: Any): Long {
             return when (t) {
                 is String -> java.lang.Long.parseLong(t)
-                is Long -> t.toLong()
+                is Number -> t.toLong()
                 else -> 0L
             }
         }
@@ -53,7 +53,7 @@ class LongUtil : TypeUtil<Long> {
     override fun assignFrom(t: Any): Long {
         return when (t) {
             is String -> java.lang.Long.parseLong(t)
-            is Long -> t.toLong()
+            is Number -> t.toLong()
             else -> 0L
         }
     }
@@ -74,7 +74,7 @@ class UUIDUtil : TypeUtil<UUID> {
     override fun assignFrom(t: Any): UUID {
         return when (t) {
             is String -> fromString(t)
-            is Long -> UUID(t, 0)
+            is Number -> UUID(t.toLong(), 0)
             else -> UUID(0, 0)
         }
     }

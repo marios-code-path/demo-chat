@@ -4,6 +4,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.KeyValueStore
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -21,13 +22,18 @@ interface KeyValueStoreRestMapping<T> :
     @GetMapping("/byIds")
     fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> = typedByIds(ids, Any::class.java)
 
+    // The controller is generic in T, so Jackson never sees T when it binds the
+    // request body: it infers the key type from the JSON alone. The key arrives as
+    // Any and typeUtil() converts it to the key type this store actually uses.
+    fun typeUtil(): TypeUtil<T>
+
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addKv(@RequestBody req: KVRequest<T>) = key()
+    fun addKv(@RequestBody req: KVRequest) = key()
         .flatMap { key ->
-            add(KeyValuePair.create(Key.funKey(req.key), req.data))
+            add(KeyValuePair.create(Key.funKey(typeUtil().assignFrom(req.key)), req.data))
                 .thenReturn(key)
         }
 }
 
-data class KVRequest<T>(val key: T, val data: Any)
+data class KVRequest(val key: Any, val data: Any)

@@ -53,7 +53,7 @@ class MembershipPersistenceRestTests(
     beans.membershipPersistence()
 )
 
-@ContextConfiguration(classes = [TestLongPersistenceBeans::class, KeyValueStoreRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, KeyValueStoreRestController::class, WebFluxTestConfiguration::class])
 class KeyValuePersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, KeyValuePair<Long, Any>>(
