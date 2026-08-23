@@ -28,9 +28,9 @@ DOC="docs/BUILD-HEALTH.md"
 # the module here.
 KNOWN_FAILING=""
 # Additionally expected to fail once the build reaches package/install.
-# Names here are Maven project names as printed in the reactor summary, which is
-# why this one is plural while its directory is singular.
-KNOWN_FAILING_INSTALL="chat-deploy-memory-integration-tests"
+# Empty since B1: chat-deploy-memory-integration-test no longer builds an image
+# on every install - that moved behind -Ptest-build.
+KNOWN_FAILING_INSTALL=""
 # Additionally expected to fail under -Pintegration, which runs the
 # container-backed tests excluded from a default build.
 KNOWN_FAILING_INTEGRATION="chat-shell"
