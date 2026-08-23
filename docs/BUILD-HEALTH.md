@@ -16,85 +16,41 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — one module fails, nothing is skipped.
-`mvn clean install` — additionally fails at `chat-deploy-memory-integration-test`, which stops the build before packaging.
+`mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
-| B1 | `spring-boot:build-image` cannot talk to Docker 29.x, and the image it would build does not boot | `mvn install` for the whole reactor | Open — fix proven, plan written |
-| B2 | `chat-shell` integration tests need an image B1 never builds | 4 test classes, only under `-Pintegration` | Open — no longer fails the default build (#32) |
+| B2 | `chat-shell` shell commands fail on uninitialized root keys | 3 test classes, only under `-Pintegration` | Open — cause changed, see below |
 | B4 | `chat-authorization-server` missing `server_keycert.jwk` fixture | 1 test | Open, needs a decision |
 | B5 | CI compiles but never runs a test | all of B2–B4 invisible to CI | Open, may be deliberate |
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 
 ---
 
-### B1 — `spring-boot:build-image` cannot talk to Docker 29.x
+### B2 — `chat-shell` shell commands fail on uninitialized root keys
 
-**Symptom**
-
-```
-Docker API call to '.../v1.24/images/create?fromImage=docker.io%2Fpaketobuildpacks%2Fbuilder-jammy-base%3Alatest'
-failed with status code 400 "Bad Request" and message
-"client version 1.24 is too old. Minimum supported API version is 1.40"
-```
-
-**Cause.** `chat-deploy-memory-integration-test` binds `spring-boot:build-image` to the default lifecycle, so it runs on every `install`. The plugin's own Docker client negotiates API 1.24; Docker Engine 29.x requires 1.40 or newer. This is a different Docker client from the one testcontainers uses — the testcontainers half of this problem was fixed separately (see R2), and that fix does not help here.
-
-**Blast radius.** Stops `mvn install` for the whole reactor, and starves B2 of its image.
-
-**Reproduce.** `mvn -pl chat-deploy-memory-integration-test install`
-
-**Fix proven, 2026-08-22.** `v1.24` is hardcoded in `spring-boot-buildpack-platform` 3.3.13's `DockerApi`; 3.5.x negotiates instead. Pinning `spring-boot-maven-plugin` to 3.5.12 for that module builds the image in 33s. `DOCKER_HOST` is *not* the fix — the module already passes it and the client still negotiates v1.24.
-
-**A second defect sits underneath B1.** Once the image builds it still fails to start:
+**This entry changed shape once B1 landed.** It used to be "the image cannot be pulled". With a working image the container starts, `ShellRequesterTests` passes 2/2, and what remains is a different bug:
 
 ```
-APPLICATION FAILED TO START
-No qualifying bean of type 'com.demo.chat.config.PersistenceServiceBeans<?, ?>' available
+java.lang.NullPointerException
+  at com.demo.chat.domain.knownkey.RootKeys.getRootKey(RootKeys.kt:20)
+  at com.demo.chat.shell.commands.CommandsUtil.identity(CommandsUtil.kt:19)
+  at com.demo.chat.shell.commands.LoginCommands.whoami(LoginCommands.kt:45)
 ```
 
-That module's pom bakes **bare** `app.service.core.*` selectors into `BPE_APPEND_JAVA_TOOL_OPTIONS`. Since the selector conversion a bare flag matches no `havingValue` and activates nothing. It went unnoticed because the selector sweep covered `*.sh`, `*.kt` and `*.yml` but never `pom.xml`, and B1 hid it — an image that cannot be built cannot be seen failing.
+**Blast radius.** `LongShellTopicCommandsTests` (3 errors), `LongUserCommandsTests` (1), `LongLoginCommandsTests` (1). Only under `-Pintegration`.
 
-Full plan: `.hermes/plans/2026-08-22_133000-b1-build-image-docker-api.md` (`CHAT-gtcnjyit`).
+**Reproduce.** `mvn -Ptest-build install` then `mvn -pl chat-shell -Pintegration test`
 
----
+**Also here, and still unfixed:** `ShellIntegrationTestBase` builds its container with
 
-### B2 — `chat-shell` integration tests need an image B1 never builds
-
-**Symptom**
-
-```
-ContainerFetchException: Can't get Docker image:
-  RemoteDockerImage(imageName=chat-deploy-long-memory-integration-test:0.0.1, ...)
-NotFoundException: Status 404: pull access denied for chat-deploy-long-memory-integration-test
+```kotlin
+.apply { start(); setWaitStrategy(...) }
 ```
 
-**Cause.** Downstream of B1. These tests expect a locally built image; testcontainers cannot find it locally, falls back to pulling from Docker Hub, and gets a 404 because no such public image exists.
-
-**Blast radius.** `ShellRequesterTests`, `LongShellTopicCommandsTests`, `LongUserCommandsTests`, `LongLoginCommandsTests` error out. A further 17 tests in the module are `@Disabled`.
-
-**Note.** These failures were invisible until recently: `chat-shell` was being SKIPPED because `chat-client-rsocket` failed to compile (R1), so nobody saw them.
-
----
-
-### B4 — `chat-authorization-server` missing `server_keycert.jwk` fixture
-
-**Symptom**
-
-```
-FileNotFoundException: class path resource [server_keycert.jwk] cannot be opened because it does not exist
-  ... creating bean 'jwkSetSource' in AuthorizationServerConfig
-```
-
-**Cause.** The test context builds a `JWKSource` from a classpath resource that is not in the repository.
-
-**Blast radius.** 1 error of 3 tests in the module.
-
-**Needs a decision.** Either commit a test-only key, or generate one in test setup. Committing a real signing key is the wrong answer; a throwaway generated per run is likely right, but that is a call for whoever owns the auth server.
-
-**Note.** Like B2, this was hidden behind R1 — the module's tests had not compiled for some time.
+The wait strategy is set *after* `start()` has already returned, so it never applies. The pattern it would have used, `withRegEx("*Netty RSocket started*")`, is not a valid regular expression either — a leading `*` has no operand. Both are currently harmless because `start()` blocks on the default strategy, which is why this was invisible.
 
 ---
 
@@ -126,6 +82,7 @@ Kept so the list can be trusted — an entry disappearing without explanation is
 
 | ID | Deficiency | Fixed by |
 |----|-----------|----------|
+| B1 | Two defects stacked. `spring-boot-maven-plugin` 3.3.x hardcodes Docker API v1.24 and Docker Engine 29 requires v1.40, so the image could not be built; and the image it *would* have built did not boot, because the module's pom baked bare `app.service.core.*` selectors that activate nothing. Plugin pinned to 3.5.12 for that module, selectors given values, and image building moved behind `-Ptest-build` so no ordinary build needs Docker. | #39 |
 | B3 | `joinRestRoom` and `leaveRestRoom` declared `id: T` with no annotation, so Spring treated it as a model attribute and failed to instantiate the erased type variable — `IllegalStateException: Insufficient type information to create instance of ?`. Adding `@PathVariable` binds from the URI template instead. Not an authentication problem, which was the first hypothesis. | #34 |
 | R1 | `KotlinModule` named-constructor form is a compile error under the jackson version Spring Boot 3.3.13 manages. `chat-client-rsocket` failing test-compile stopped the reactor and took `chat-deploy-redis`, `chat-shell` and `chat-authorization-server` down as SKIPPED. | #13, #22 |
 | R2 | Modules declared `org.testcontainers:cassandra` at 1.21.4 but Spring Boot's BOM pinned the core `testcontainers` artifact at 1.19.8, whose `docker-java` 3.3.6 cannot negotiate with Docker Engine 29.x — reported as the misleading "Could not find a valid Docker environment". | #23 |
