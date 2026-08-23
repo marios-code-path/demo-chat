@@ -27,11 +27,16 @@ Note what the default run no longer covers. Since #32 the container-backed tests
 
 ---
 
-### B6 — stale `target/` across branch switches produces phantom results
+### B6 — a stale `target/` directory after a branch change gives false results
 
-**Symptom.** `mvn test` without `clean` runs compiled test classes left in `target/test-classes` by a previously checked-out branch, against production code that no longer matches. Observed during the selector work: three failures that did not correspond to any source file present in the tree.
+**Symptom.** `mvn test` without `clean` runs the compiled test classes in `target/test-classes`. A different branch put those classes there. They do not agree with the production code in the tree.
 
-**Mitigation.** Use `mvn clean test` when switching branches. The verifier script always cleans.
+This occurred during the selector work. Three tests failed. No source file in the tree contained those tests.
+
+**Mitigation.**
+
+1. Use `mvn clean test` after you change branches.
+2. The verifier script always cleans. It is not affected.
 
 ---
 
