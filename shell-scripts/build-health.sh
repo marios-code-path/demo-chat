@@ -11,6 +11,7 @@
 #   ./shell-scripts/build-health.sh              # offline, test phase only
 #   ./shell-scripts/build-health.sh --online     # allow artifact downloads
 #   ./shell-scripts/build-health.sh --install    # include package/install, covers build-image
+#   ./shell-scripts/build-health.sh --integration # also run the container-backed tests
 #
 # Exit status: 0 when reality matches the document, 1 when it does not.
 
@@ -22,33 +23,41 @@ DOC="docs/BUILD-HEALTH.md"
 
 # Modules expected to fail, from docs/BUILD-HEALTH.md. Keep these two in sync:
 # if you change this list, change the document, and vice versa.
-KNOWN_FAILING="chat-authorization-server chat-shell chat-webflux"
+KNOWN_FAILING="chat-authorization-server"
 # Additionally expected to fail once the build reaches package/install.
+# Names here are Maven project names as printed in the reactor summary, which is
+# why this one is plural while its directory is singular.
 KNOWN_FAILING_INSTALL="chat-deploy-memory-integration-tests"
+# Additionally expected to fail under -Pintegration, which runs the
+# container-backed tests excluded from a default build.
+KNOWN_FAILING_INTEGRATION="chat-shell"
 
 PHASE="test"
 OFFLINE="-o"
+INTEGRATION=""
 for arg in "$@"; do
     case "$arg" in
         --online)  OFFLINE="" ;;
         --install) PHASE="install" ;;
+        --integration) INTEGRATION="-Pintegration" ;;
         --help|-h) awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
 
 expected="$KNOWN_FAILING"
-[ "$PHASE" = "install" ] && expected="$KNOWN_FAILING $KNOWN_FAILING_INSTALL"
+[ "$PHASE" = "install" ] && expected="$expected $KNOWN_FAILING_INSTALL"
+[ -n "$INTEGRATION" ] && expected="$expected $KNOWN_FAILING_INTEGRATION"
 
 log="$(mktemp -t build-health)"
 trap 'rm -f "$log"' EXIT
 
-echo "running: mvn $OFFLINE clean $PHASE -fae"
+echo "running: mvn $OFFLINE clean $PHASE -fae $INTEGRATION"
 echo "(a full run takes several minutes; container-backed modules dominate)"
 echo
 
 # shellcheck disable=SC2086
-(cd "$ROOT" && mvn $OFFLINE clean "$PHASE" -fae) > "$log" 2>&1
+(cd "$ROOT" && mvn $OFFLINE clean "$PHASE" -fae $INTEGRATION) > "$log" 2>&1
 
 summary="$(sed -n '/Reactor Summary/,/^\[INFO\] -\{20,\}$/p' "$log")"
 if [ -z "$summary" ]; then
