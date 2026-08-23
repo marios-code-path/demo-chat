@@ -33,7 +33,8 @@ KNOWN_FAILING=""
 KNOWN_FAILING_INSTALL=""
 # Additionally expected to fail under -Pintegration, which runs the
 # container-backed tests excluded from a default build.
-KNOWN_FAILING_INTEGRATION="chat-shell"
+# Empty since B2: the container-backed suites pass under -Pintegration.
+KNOWN_FAILING_INTEGRATION=""
 
 PHASE="test"
 OFFLINE="-o"

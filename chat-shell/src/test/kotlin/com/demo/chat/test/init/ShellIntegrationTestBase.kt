@@ -36,17 +36,26 @@ open class ShellIntegrationTestBase {
     companion object {
         val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
 
-        val container = GenericContainer(imageName).withExposedPorts(6790, 6791)
-            .apply {
-                start()
-                setWaitStrategy(
-                    LogMessageWaitStrategy()
-                        .withRegEx("*Netty RSocket started*") //Netty started on port
-                        .withTimes(1)
-                        .withStartupTimeout(Duration.ofSeconds(5))
-                )
-                withReuse(true)
-            }
+        // The wait strategy must be configured BEFORE start(), not after. Set
+        // afterwards it never applies, and start() falls back to the default
+        // strategy - a port check, which returns as soon as the port is bound
+        // rather than when the application is ready to serve. The actuator
+        // fetch that follows then races startup and fails with "Connection
+        // reset", intermittently and depending on test order.
+        //
+        // The previous pattern, "*Netty RSocket started*", is also not a valid
+        // regular expression: a leading * has no operand. LogMessageWaitStrategy
+        // matches against the whole accumulated log, so the pattern needs
+        // leading and trailing .* rather than shell-style globbing.
+        val container = GenericContainer(imageName)
+            .withExposedPorts(6790, 6791)
+            .waitingFor(
+                LogMessageWaitStrategy()
+                    .withRegEx("(?s).*Started ChatApp.*")
+                    .withTimes(1)
+                    .withStartupTimeout(Duration.ofSeconds(120))
+            )
+            .apply { start() }
 
         @JvmStatic
         @DynamicPropertySource
