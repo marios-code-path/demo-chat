@@ -2,7 +2,7 @@
 
 Known build-time deficiencies, what causes them, and what they take down with them.
 
-**Verified against master `0842082a` on 2026-08-22** by a full `mvn clean test -fae` plus targeted per-module runs.
+**Verified against master `c4dc9a57` on 2026-08-22** by a full `mvn clean test -fae` plus targeted per-module runs.
 
 Do not trust this file on its own — run the verifier:
 
@@ -15,14 +15,15 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — three modules fail, nothing is skipped.
+`mvn clean test -fae` — one module fails, nothing is skipped.
 `mvn clean install` — additionally fails at `chat-deploy-memory-integration-test`, which stops the build before packaging.
+
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
 | B1 | `spring-boot:build-image` cannot talk to Docker 29.x, and the image it would build does not boot | `mvn install` for the whole reactor | Open — fix proven, plan written |
-| B2 | `chat-shell` integration tests need an image B1 never builds | 4 test classes | Open — tests now opt-in (#32) |
-| B3 | `chat-webflux` `LongTopicRestTests` returns 500 where 200 is expected | 2 tests | Open, uninvestigated |
+| B2 | `chat-shell` integration tests need an image B1 never builds | 4 test classes, only under `-Pintegration` | Open — no longer fails the default build (#32) |
 | B4 | `chat-authorization-server` missing `server_keycert.jwk` fixture | 1 test | Open, needs a decision |
 | B5 | CI compiles but never runs a test | all of B2–B4 invisible to CI | Open, may be deliberate |
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
@@ -78,23 +79,6 @@ NotFoundException: Status 404: pull access denied for chat-deploy-long-memory-in
 
 ---
 
-### B3 — `chat-webflux` `LongTopicRestTests` returns 500 where 200 is expected
-
-**Symptom**
-
-```
-LongTopicRestTests > TopicRestTestBase.join a room:199   expected <200 OK> but was <500 INTERNAL_SERVER_ERROR>
-LongTopicRestTests > TopicRestTestBase.leave topic:224   expected <200 OK> but was <500 INTERNAL_SERVER_ERROR>
-```
-
-**Cause.** Unknown — not investigated. Long-standing; predates the selector and messaging work of August 2026. The module depends only on `chat-core` and `chat-security`, so it is independent of the persistence, index and messaging backends.
-
-**Blast radius.** 2 tests of 77 in the module.
-
-**Reproduce.** `mvn -pl chat-webflux test`
-
----
-
 ### B4 — `chat-authorization-server` missing `server_keycert.jwk` fixture
 
 **Symptom**
@@ -142,6 +126,7 @@ Kept so the list can be trusted — an entry disappearing without explanation is
 
 | ID | Deficiency | Fixed by |
 |----|-----------|----------|
+| B3 | `joinRestRoom` and `leaveRestRoom` declared `id: T` with no annotation, so Spring treated it as a model attribute and failed to instantiate the erased type variable — `IllegalStateException: Insufficient type information to create instance of ?`. Adding `@PathVariable` binds from the URI template instead. Not an authentication problem, which was the first hypothesis. | #34 |
 | R1 | `KotlinModule` named-constructor form is a compile error under the jackson version Spring Boot 3.3.13 manages. `chat-client-rsocket` failing test-compile stopped the reactor and took `chat-deploy-redis`, `chat-shell` and `chat-authorization-server` down as SKIPPED. | #13, #22 |
 | R2 | Modules declared `org.testcontainers:cassandra` at 1.21.4 but Spring Boot's BOM pinned the core `testcontainers` artifact at 1.19.8, whose `docker-java` 3.3.6 cannot negotiate with Docker Engine 29.x — reported as the misleading "Could not find a valid Docker environment". | #23 |
 
