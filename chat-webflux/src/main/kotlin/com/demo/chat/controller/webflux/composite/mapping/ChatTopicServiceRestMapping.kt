@@ -30,12 +30,12 @@ interface ChatTopicServiceRestMapping<T> : ChatTopicService<T, String> {
 
     @PutMapping("/leave/{id}")
     @ResponseStatus(HttpStatus.OK)
-    fun leaveRestRoom(id: T, @AuthenticationPrincipal user: ChatUserDetails<T>): Mono<Void> =
+    fun leaveRestRoom(@PathVariable id: T, @AuthenticationPrincipal user: ChatUserDetails<T>): Mono<Void> =
         leaveRoom(MembershipRequest(user.user.key.id, id))
 
     @PutMapping("/join/{id}")
     @ResponseStatus(HttpStatus.OK)
-    fun joinRestRoom(id: T, @AuthenticationPrincipal user: ChatUserDetails<T>): Mono<Void> =
+    fun joinRestRoom(@PathVariable id: T, @AuthenticationPrincipal user: ChatUserDetails<T>): Mono<Void> =
         joinRoom(MembershipRequest(user.user.key.id, id))
 
     @GetMapping("/id/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
