@@ -25,6 +25,15 @@ interface MessageKey<T> : Key<T> {
                 get() = Instant.now()
             override val empty: Boolean
                 get() = false
+
+            // A message key is a Key, so the id decides equality here exactly as it
+            // does in Key.funKey, and the two match each other in both directions.
+            // from and dest are payload. timestamp cannot take part at all: it
+            // returns Instant.now() on every read.
+            override fun equals(k2: Any?): Boolean =
+                (k2 != null && (k2 is Key<*>) && !k2.empty && k2.id == this.id)
+
+            override fun hashCode(): Int = id.hashCode()
         }
 
         @JvmStatic
@@ -40,6 +49,15 @@ interface MessageKey<T> : Key<T> {
                 get() = Instant.now()
             override val empty: Boolean
                 get() = false
+
+            // A message key is a Key, so the id decides equality here exactly as it
+            // does in Key.funKey, and the two match each other in both directions.
+            // from and dest are payload. timestamp cannot take part at all: it
+            // returns Instant.now() on every read.
+            override fun equals(k2: Any?): Boolean =
+                (k2 != null && (k2 is Key<*>) && !k2.empty && k2.id == this.id)
+
+            override fun hashCode(): Int = id.hashCode()
         }
     }
 }

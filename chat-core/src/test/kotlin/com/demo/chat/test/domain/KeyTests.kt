@@ -42,6 +42,46 @@ class KeyTests : TestBase() {
     }
 
     @Test
+    fun `equal keys should share a hash code`() {
+        Assertions
+            .assertThat(Key.funKey(1L).hashCode())
+            .isEqualTo(Key.funKey(1L).hashCode())
+
+        Assertions
+            .assertThat(Key.emptyKey(1L).hashCode())
+            .isEqualTo(Key.emptyKey(1L).hashCode())
+    }
+
+    @Test
+    fun `a map keyed on a key should find an equal key`() {
+        val map = hashMapOf(Key.funKey(1L) to "found")
+
+        Assertions
+            .assertThat(map[Key.funKey(1L)])
+            .isEqualTo("found")
+
+        val emptyMap = hashMapOf(Key.emptyKey(1L) to "found")
+
+        Assertions
+            .assertThat(emptyMap[Key.emptyKey(1L)])
+            .isEqualTo("found")
+    }
+
+    @Test
+    fun `an empty key should not equal a populated key in either direction`() {
+        val populated = Key.funKey(1L)
+        val empty = Key.emptyKey(1L)
+
+        Assertions
+            .assertThat(populated)
+            .isNotEqualTo(empty)
+
+        Assertions
+            .assertThat(empty)
+            .isNotEqualTo(populated)
+    }
+
+    @Test
     fun `should create`() {
         Assertions
             .assertThat(Key.funKey("TEST"))

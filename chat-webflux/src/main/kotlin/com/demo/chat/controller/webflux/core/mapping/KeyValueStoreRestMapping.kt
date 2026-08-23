@@ -21,13 +21,16 @@ interface KeyValueStoreRestMapping<T> :
     @GetMapping("/byIds")
     fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> = typedByIds(ids, Any::class.java)
 
+    // Jackson has no more of T here than Spring does for a path segment: it infers
+    // the key type from the JSON alone. The key arrives as Any and typeUtil(),
+    // inherited from PersistenceRestMapping, converts it to the store's key type.
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addKv(@RequestBody req: KVRequest<T>) = key()
+    fun addKv(@RequestBody req: KVRequest) = key()
         .flatMap { key ->
-            add(KeyValuePair.create(Key.funKey(req.key), req.data))
+            add(KeyValuePair.create(Key.funKey(typeUtil().assignFrom(req.key)), req.data))
                 .thenReturn(key)
         }
 }
 
-data class KVRequest<T>(val key: T, val data: Any)
+data class KVRequest(val key: Any, val data: Any)

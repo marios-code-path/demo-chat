@@ -1,6 +1,7 @@
 package com.demo.chat.controller.webflux.core.mapping
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.IKeyService
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -9,6 +10,10 @@ import reactor.core.publisher.Mono
 
 
 interface IKeyRestMapping<T> : IKeyService<T> {
+
+    // T is erased where Spring resolves the path segment, so the segment arrives
+    // as the String it is on the wire and typeUtil() converts it to the key type.
+    fun typeUtil(): TypeUtil<T>
 
     @PostMapping("/new",
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -19,11 +24,11 @@ interface IKeyRestMapping<T> : IKeyService<T> {
     @DeleteMapping("/rem/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun restRem(@PathVariable id: T): Mono<Void> = rem(Key.funKey(id))
+    fun restRem(@PathVariable id: String): Mono<Void> = rem(Key.funKey(typeUtil().fromString(id)))
 
     @GetMapping("/exists/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun restExists(@PathVariable id: T): Mono<Boolean> = exists(Key.funKey(id))
+    fun restExists(@PathVariable id: String): Mono<Boolean> = exists(Key.funKey(typeUtil().fromString(id)))
 
 }
 

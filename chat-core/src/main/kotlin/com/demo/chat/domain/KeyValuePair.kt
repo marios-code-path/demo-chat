@@ -30,8 +30,12 @@ interface Key<T> {
                 return id.toString()
             }
 
+            // A populated key never equals an empty one, in either direction: the
+            // empty key below refuses this class, so this one refuses empty keys.
             override fun equals(k2: Any?): Boolean =
-                (k2 != null && (k2 is Key<*>) && k2.id == this.id)
+                (k2 != null && (k2 is Key<*>) && !k2.empty && k2.id == this.id)
+
+            override fun hashCode(): Int = id.hashCode()
         }
 
         fun <T> emptyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : NoKey<T> {
@@ -46,6 +50,8 @@ interface Key<T> {
             override fun equals(k2: Any?): Boolean =
                 (k2 != null && k2::class == this::class) &&
                         (k2 is Key<*> && k2.id == this.id)
+
+            override fun hashCode(): Int = id.hashCode()
         }
     }
 
