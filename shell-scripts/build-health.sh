@@ -23,7 +23,10 @@ DOC="docs/BUILD-HEALTH.md"
 
 # Modules expected to fail, from docs/BUILD-HEALTH.md. Keep these two in sync:
 # if you change this list, change the document, and vice versa.
-KNOWN_FAILING="chat-authorization-server"
+# Empty: a default build has no known failures. If this script reports NEW,
+# something regressed - that is the signal, not noise to be silenced by adding
+# the module here.
+KNOWN_FAILING=""
 # Additionally expected to fail once the build reaches package/install.
 # Names here are Maven project names as printed in the reactor summary, which is
 # why this one is plural while its directory is singular.
