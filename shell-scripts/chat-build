@@ -11,8 +11,11 @@ does, writes an env file, and runs Maven.
     chat-build core --kafka --build --notls --uuid
     chat-build rest --run --notls --dry-run
 
-The module is always chat-deploy (or chat-authorization-server for authserv);
-backends are Maven profiles that pull their deploy module in as a dependency.
+The module is chat-deploy for client-shaped services, chat-authorization-server
+for authserv, and chat-deploy-<backend> when a backend names its own composition
+root. Backends used to be Maven profiles on chat-deploy that pulled their deploy
+module in; that direction, plus the module's own dependency back on chat-deploy,
+formed a reactor cycle.
 
 Python 3.10+ stdlib only.
 """
@@ -97,17 +100,23 @@ class Feature:
     additional_configs: list[str] = field(default_factory=list)
     spring_profiles: list[str] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)
+    # A backend that is its own composition root names the module to build.
+    # chat-deploy no longer carries <backend>-backend profiles: the profile and
+    # the chat-deploy-<backend> module were two mechanisms composing the same
+    # thing in opposite directions, which made a reactor cycle.
+    module: str | None = None
     # Backends are mutually exclusive within a group; transports are not.
     group: str | None = None
 
 
-# Backends map to a chat-deploy profile that pulls the matching deploy module in
-# as a dependency. The module itself never changes -- see chat-deploy/pom.xml.
+# Each datastore-backed backend IS a module: chat-deploy-<backend> already
+# aggregates the app plus that backend's persistence, index and messaging. The
+# client backend has no such module and stays a profile on chat-deploy.
 FEATURES: dict[str, Feature] = {
     "memory": Feature(
         name="memory",
         description="Memory persistence + pubsub + Lucene index",
-        maven_profiles=["memory-backend"],
+        module="chat-deploy-memory",
         spring_profiles=["prod"],
         additional_configs=["classpath:/config/server-rsocket-consul.yml"],
         group="backend",
@@ -115,7 +124,7 @@ FEATURES: dict[str, Feature] = {
     "cassandra": Feature(
         name="cassandra",
         description="Cassandra persistence + index",
-        maven_profiles=["cassandra-backend"],
+        module="chat-deploy-cassandra",
         spring_profiles=["cassandra-contact-point"],
         spring_properties={
             "app.service.core.key": "cassandra",
@@ -133,14 +142,19 @@ FEATURES: dict[str, Feature] = {
     ),
     "redis": Feature(
         name="redis",
-        description="Redis persistence (profile is a placeholder, no deps yet)",
-        maven_profiles=["redis-backend"],
+        description="Redis persistence + Redis Pub/Sub messaging",
+        module="chat-deploy-redis",
+        spring_properties={
+            "app.service.core.key": "redis",
+            "app.service.core.persistence": "redis",
+            "app.service.core.pubsub": "redis-pubsub",
+        },
         group="backend",
     ),
     "kafka": Feature(
         name="kafka",
         description="Kafka persistence-memory + Lucene index + Kafka messaging",
-        maven_profiles=["kafka-backend"],
+        module="chat-deploy-kafka",
         spring_profiles=["kafka"],
         spring_properties={"app.service.core.pubsub": "kafka"},
         opt_flags=[
@@ -540,7 +554,14 @@ class BuildContext:
         return "spring-boot:build-image" if self.args.build else "spring-boot:run"
 
     def module_dir(self) -> Path:
-        return REPO_ROOT / self.service.module
+        return REPO_ROOT / self.module_name()
+
+    def module_name(self) -> str:
+        """The selected backend's module wins over the service default."""
+        for feat in self._features():
+            if feat.module:
+                return feat.module
+        return self.service.module
 
     def compose_maven_command(self) -> list[str]:
         return [

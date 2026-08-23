@@ -29,40 +29,6 @@
             </build>
         </profile>
         <profile>
-            <id>deploy</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <mainClass>${appMainClass}</mainClass>
-                            <image>
-                                <name>${appImageName}</name>
-                                <cleanCache>false</cleanCache>
-                                <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
-                                    </BPE_APPEND_JAVA_TOOL_OPTIONS>
-                                    <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
-                                </env>
-                            </image>
-                        </configuration>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>build-info</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>shell</id>
             <dependencies>
                 <dependency>
@@ -73,110 +39,11 @@
             </dependencies>
         </profile>
         <profile>
-            <id>noartifact</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-        <profile>
             <id>client-backend</id>
             <dependencies>
                 <dependency>
                     <groupId>com.demo</groupId>
                     <artifactId>chat-client-rsocket</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>memory-backend</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-memory</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>cassandra-backend</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-cassandra</artifactId>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>redis-backend</id>
-        </profile>
-        <profile>
-            <id>kafka-backend</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-kafka</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>e2ee</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-e2ee</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>expose-webflux</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-webflux</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>shared-deploy-configuration</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>expose-rsocket</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-service-controller</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>expose-gateway</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-gateway</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>shared-deploy-configuration</artifactId>
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>

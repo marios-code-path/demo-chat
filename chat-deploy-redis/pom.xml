@@ -14,6 +14,13 @@
     <name>chat-deploy-redis</name>
     <description>Deployment details for redis services</description>
 
+    <properties>
+        <!-- Composition root: chat-build targets this module directly
+             for the redis backend. -->
+        <appImageName>${image.repo}/chat-deploy-redis:${project.version}</appImageName>
+        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>

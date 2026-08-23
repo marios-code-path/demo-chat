@@ -13,6 +13,13 @@
     <name>chat-deploy-kafka</name>
     <description>Deployment for Kafka-backed messaging services</description>
 
+    <properties>
+        <!-- Composition root: chat-build targets this module directly
+             for the kafka backend. -->
+        <appImageName>${image.repo}/chat-deploy-kafka:${project.version}</appImageName>
+        <appMainClass>com.demo.chat.ChatApp</appMainClass>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -116,13 +123,6 @@
                         <version>${kotlin.version}</version>
                     </dependency>
                 </dependencies>
-            </plugin>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
