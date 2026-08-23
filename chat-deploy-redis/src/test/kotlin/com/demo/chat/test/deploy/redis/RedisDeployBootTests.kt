@@ -1,6 +1,7 @@
 package com.demo.chat.test.deploy.redis
 
 import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -75,6 +76,7 @@ import java.time.Duration
 )
 @SpringBootTest(classes = [RedisDeployBootTests.BootApp::class], webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Disabled
+@Tag("integration")
 class RedisDeployBootTests {
 
     @Autowired

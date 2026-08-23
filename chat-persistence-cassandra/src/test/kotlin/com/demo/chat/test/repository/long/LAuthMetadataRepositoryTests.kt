@@ -7,6 +7,7 @@ import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,6 +24,7 @@ import reactor.test.StepVerifier
     classes = [RepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.key.type=long"])
+@Tag("integration")
 class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

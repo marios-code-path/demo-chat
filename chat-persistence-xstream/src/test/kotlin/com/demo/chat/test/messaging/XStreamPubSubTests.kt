@@ -6,6 +6,7 @@ import com.demo.chat.pubsub.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.pubsub.impl.memory.messaging.XStreamTopicPubSubService
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
 import org.springframework.beans.factory.annotation.Autowired
@@ -25,6 +26,7 @@ import java.util.function.Supplier
     ExtendWith(SpringExtension::class)
 )
 @Import(TestContextConfiguration::class, XStreamBeanConfiguration::class)
+@Tag("integration")
 class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
     PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " }) {
 

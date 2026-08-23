@@ -8,6 +8,7 @@ import com.demo.chat.test.TestUUIDKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.boot.test.context.SpringBootTest
@@ -23,6 +24,7 @@ import java.util.*
     classes = [RepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.service.core.key=cassandra", "app.key.type=uuid"])
+@Tag("integration")
 class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     lateinit var svc: IKeyService<UUID>
 

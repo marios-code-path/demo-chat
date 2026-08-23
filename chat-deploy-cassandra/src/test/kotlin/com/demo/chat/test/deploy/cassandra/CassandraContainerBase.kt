@@ -1,5 +1,6 @@
 package com.demo.chat.test.deploy.cassandra
 
+import org.junit.jupiter.api.Tag
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -11,6 +12,7 @@ import org.testcontainers.utility.MountableFile
 import java.time.Duration
 
 @Testcontainers
+@Tag("integration")
 open class CassandraContainerBase {
 
     @Value("\${app.key.type:uuid}")

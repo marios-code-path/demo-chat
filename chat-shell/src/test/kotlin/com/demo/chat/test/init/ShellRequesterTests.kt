@@ -5,11 +5,13 @@ import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.client.rsocket.SimpleRequestMetadata
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
+@Tag("integration")
 class ShellRequesterTests : ShellIntegrationTestBase() {
 
     @Test

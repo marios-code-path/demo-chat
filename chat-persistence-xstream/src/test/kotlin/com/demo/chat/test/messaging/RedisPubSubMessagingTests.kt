@@ -8,6 +8,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
@@ -30,6 +31,7 @@ import java.util.function.Supplier
 )
 @Import(TestContextConfiguration::class, PubSubBeanConfiguration::class)
 @Testcontainers
+@Tag("integration")
 class RedisPubSubMessagingTests(
     @Autowired pubsub: TopicPubSubService<UUID, String>,
 ) : PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " })

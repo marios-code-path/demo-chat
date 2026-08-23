@@ -5,6 +5,7 @@ import org.apache.http.auth.AuthScope
 import org.apache.http.auth.UsernamePasswordCredentials
 import org.apache.http.impl.client.BasicCredentialsProvider
 import org.elasticsearch.client.RestClient
+import org.junit.jupiter.api.Tag
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -16,6 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 import java.time.Duration
 
 //@Testcontainers
+@Tag("integration")
 open class ElasticContainerBase {
 
   //  @TestConfiguration

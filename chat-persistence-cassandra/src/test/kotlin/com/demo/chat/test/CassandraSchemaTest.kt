@@ -2,6 +2,7 @@ package com.demo.chat.test
 
 import com.demo.chat.service.core.IKeyGenerator
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.TestInstance
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,6 +21,7 @@ import kotlin.math.abs
 import kotlin.random.Random
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Tag("integration")
 open class CassandraSchemaTest<T>(val keyGenerator: IKeyGenerator<T>) {
     @Autowired
     lateinit var template: ReactiveCassandraTemplate

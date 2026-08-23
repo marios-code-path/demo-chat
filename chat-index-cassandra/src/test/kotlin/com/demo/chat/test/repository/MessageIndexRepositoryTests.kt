@@ -11,6 +11,7 @@ import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
@@ -33,6 +34,7 @@ import kotlin.streams.asSequence
     classes = [IndexRepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.key.type=uuid"])
+@Tag("integration")
 class MessageIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     private val MSGTEXT = "SUP TEST"

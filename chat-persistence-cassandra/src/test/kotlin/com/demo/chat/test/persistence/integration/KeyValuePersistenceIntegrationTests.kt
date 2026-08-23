@@ -12,6 +12,7 @@ import com.demo.chat.test.repository.RepositoryTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,6 +29,7 @@ import java.util.*
     classes = [RepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.service.core.kv", "app.key.type=long"])
+@Tag("integration")
 class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKeyService()) {
 
     lateinit var persistence: KeyValueStore<Long, Any>

@@ -6,6 +6,7 @@ import com.demo.chat.domain.User
 import com.demo.chat.persistence.redis.impl.KeyValuePersistenceRedis
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
@@ -30,6 +31,7 @@ import java.util.UUID
     ExtendWith(SpringExtension::class)
 )
 @Import(RedisPersistenceTestContext::class, RedisPersistenceTestBeans::class)
+@Tag("integration")
 class RedisKeyValueTypedDomainTests(
     @Autowired private val keyValuePersistence: KeyValuePersistenceRedis<UUID>,
     @Autowired private val stringTemplate: ReactiveStringRedisTemplate,

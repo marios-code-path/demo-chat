@@ -9,6 +9,7 @@ import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -32,6 +33,7 @@ import reactor.test.StepVerifier
     ]
 )
 @TestPropertySource(properties = ["app.service.core.key=cassandra","app.key.type=long"])
+@Tag("integration")
 class LongKeyspaceAppTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

@@ -10,6 +10,7 @@ import com.demo.chat.test.persistence.KeyValueStoreTestBase
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
@@ -38,6 +39,7 @@ import kotlin.random.Random
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestPropertySource(properties = ["app.service.core.kv", "app.key.type=long"])
+@Tag("integration")
 class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
 
     @Autowired

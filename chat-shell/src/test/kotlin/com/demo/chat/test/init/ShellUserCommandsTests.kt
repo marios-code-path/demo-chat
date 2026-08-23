@@ -4,6 +4,7 @@ import com.demo.chat.shell.commands.UserCommands
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.MethodOrderer
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
 import org.reactivestreams.Publisher
@@ -13,10 +14,12 @@ import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
+@Tag("integration")
 class LongUserCommandsTests : ShellUserCommandsTests<Long>()
 
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
+@Tag("integration")
 open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
 
     @Autowired lateinit var userCommands: UserCommands<T>

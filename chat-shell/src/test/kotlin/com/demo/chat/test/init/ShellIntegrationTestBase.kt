@@ -1,6 +1,7 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.ChatApp
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
@@ -29,6 +30,7 @@ import java.time.Duration
 )
 @ActiveProfiles("shell")
 //@SingletonContainers: https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/#singleton-containers
+@Tag("integration")
 open class ShellIntegrationTestBase {
 
     companion object {

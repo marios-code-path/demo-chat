@@ -7,6 +7,7 @@ import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestLongKeyGenerator
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -26,6 +27,7 @@ import java.util.stream.Stream
     classes = [RepositoryTestConfiguration::class]
 )
 @TestPropertySource(properties = ["app.key.type=long"])
+@Tag("integration")
 class LMembershipRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerator()) {
 
     @Autowired

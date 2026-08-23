@@ -10,6 +10,7 @@ import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.anyObject
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
@@ -31,6 +32,7 @@ import java.util.*
 //        Supplier { Key.funKey(UUID(10, 10)) },
 //        Supplier { mapOf(Pair(MembershipIndexService.MEMBEROF, UUID(10, 10).toString())) }
 //)
+@Tag("integration")
 class UserIndexTests {
 
     @MockBean
