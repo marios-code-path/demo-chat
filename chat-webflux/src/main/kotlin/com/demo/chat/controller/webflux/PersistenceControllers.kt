@@ -13,14 +13,20 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 
-open class PersistenceRestController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceRestMapping<T, E>,
-    PersistenceStore<T, E> by that
+open class PersistenceRestController<T, E>(
+    private val that: PersistenceStore<T, E>,
+    private val typeUtil: TypeUtil<T>
+) : PersistenceRestMapping<T, E>,
+    PersistenceStore<T, E> by that {
+
+    override fun typeUtil(): TypeUtil<T> = typeUtil
+}
 
 @RestController
 @RequestMapping("/persist/user")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
-    PersistenceRestController<T, User<T>>(s.userPersistence()) {
+class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
+    PersistenceRestController<T, User<T>>(s.userPersistence(), typeUtil) {
 
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
@@ -34,8 +40,8 @@ class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 @RestController
 @RequestMapping("/persist/message")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
-    PersistenceRestController<T, Message<T, V>>(s.messagePersistence()) {
+class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
+    PersistenceRestController<T, Message<T, V>>(s.messagePersistence(), typeUtil) {
 
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
@@ -49,8 +55,8 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 @RestController
 @RequestMapping("/persist/topic")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
-    PersistenceRestController<T, MessageTopic<T>>(s.topicPersistence()) {
+class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
+    PersistenceRestController<T, MessageTopic<T>>(s.topicPersistence(), typeUtil) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun addTopic(@RequestBody req: ByStringRequest) = key()
@@ -63,8 +69,8 @@ class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
 @RestController
 @RequestMapping("/persist/membership")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>) :
-    PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence()) {
+class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
+    PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence(), typeUtil) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun addMembership(@RequestBody req: MembershipRequest<T>) = key()

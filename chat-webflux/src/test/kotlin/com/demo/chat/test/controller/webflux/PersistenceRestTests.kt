@@ -9,7 +9,7 @@ import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
 
-@ContextConfiguration(classes = [TestLongPersistenceBeans::class, UserPersistenceRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, UserPersistenceRestController::class, WebFluxTestConfiguration::class])
 class UserPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, User<Long>>(
@@ -20,7 +20,7 @@ class UserPersistenceRestTests(
     beans.userPersistence()
 )
 
-@ContextConfiguration(classes = [TestLongPersistenceBeans::class, TopicPersistenceRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, TopicPersistenceRestController::class, WebFluxTestConfiguration::class])
 class TopicPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, MessageTopic<Long>>(
@@ -31,7 +31,7 @@ class TopicPersistenceRestTests(
     beans.topicPersistence()
 )
 
-@ContextConfiguration(classes = [TestLongPersistenceBeans::class, MessagePersistenceRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, MessagePersistenceRestController::class, WebFluxTestConfiguration::class])
 class MessagePersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, Message<Long, String>>(
@@ -42,7 +42,7 @@ class MessagePersistenceRestTests(
     beans.messagePersistence()
 )
 
-@ContextConfiguration(classes = [TestLongPersistenceBeans::class, MembershipPersistenceRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, MembershipPersistenceRestController::class, WebFluxTestConfiguration::class])
 class MembershipPersistenceRestTests(
     @Autowired beans: PersistenceServiceBeans<Long, String>
 ) : PersistenceRestTestBase<Long, TopicMembership<Long>>(

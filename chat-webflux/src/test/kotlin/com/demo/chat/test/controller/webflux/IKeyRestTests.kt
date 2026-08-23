@@ -26,7 +26,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
 
-@ContextConfiguration(classes = [TestLongKeyServiceBeans::class, IKeyRestController::class, WebFluxTestConfiguration::class])
+@ContextConfiguration(classes = [TestLongKeyServiceBeans::class, LongTypeUtilConfiguration::class, IKeyRestController::class, WebFluxTestConfiguration::class])
 @WebFluxTest(IKeyRestController::class)
 @ExtendWith(RestDocumentationExtension::class, SpringExtension::class)
 @TestPropertySource(properties = ["app.controller.key"])
