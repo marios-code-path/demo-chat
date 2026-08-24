@@ -24,6 +24,8 @@ Note what the default run no longer covers. Since #32 the container-backed tests
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 36 tests with 17 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class — `ShellUserCommandsTests`, `ShellLoginCommandsTests`, `ShellTopicCommandsTests` — and surefire discovers those as test classes in their own right and reports them skipped. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 19 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
+
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
