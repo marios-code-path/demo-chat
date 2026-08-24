@@ -2,7 +2,7 @@
 
 Known build-time deficiencies, what causes them, and what they take down with them.
 
-**Verified against master `f7d462a0` on 2026-08-23** by a full `mvn clean test -fae` plus targeted per-module runs.
+**Verified against master `d81f0859` on 2026-08-23** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift.
 
 Do not trust this file on its own — run the verifier:
 
@@ -18,8 +18,11 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails, nothing is skipped.
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
+`mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed.
+
+The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
