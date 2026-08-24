@@ -13,7 +13,13 @@ import java.util.*
  * Provides the [IKeyGenerator] bean for Redis deployments, mirroring the
  * memory/cassandra modules. Selected by `app.key.type` (uuid | long).
  */
-@Configuration
+// One key generator per deployment. The selector that picks the key
+// backend picks its generator too, so exactly one of these registers.
+// Ungated they all registered, and two of them share this simple class
+// name - a classpath carrying both failed to start on a conflicting bean
+// definition rather than on anything meaningful. Redis is selected explicitly or not at all.
+@Configuration("redisKeyGenConfiguration")
+@ConditionalOnProperty(prefix = "app.service.core", name = ["key"], havingValue = "redis")
 class KeyGenConfiguration {
     // enforce number on nodeid
     @Value("\${app.nodeid:0}")

@@ -1,6 +1,5 @@
 package com.demo.chat.test.deploy.redis
 
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -23,19 +22,27 @@ import java.time.Duration
  * secrets=memory, composite + auth, all controllers) against a
  * Testcontainers Redis.
  *
- * DISABLED: with the current classpath the context fails to start with
- * `NoSuchBeanDefinitionException: No qualifying bean of type
- * 'com.demo.chat.config.IndexServiceBeans<?, ?, ?>'` — index=lucene is
- * selected (matchIfMissing) but chat-index-lucene is not a dependency of
- * chat-deploy-redis, and secrets=memory likewise has no provider
- * (chat-persistence-memory absent). This is the known gap the
- * redis-backend profile wiring plan closes
- * (.hermes/plans/2026-08-21_141027-redis-backend-profile-wiring.md,
- * Tasks 1 + 2). Re-enable after those tasks (switching
- * `app.service.core.secrets` to `redis`) — this test is the boot proof
- * for that work.
+ * Enabled. It was disabled while the classpath could not satisfy those
+ * flags, and re-enabling it is what drove the six gaps below out into the
+ * open, one boot failure at a time. Keep it enabled: it is the only thing
+ * standing between this backend and silently rotting again.
  *
- * Boot bugs this test caught and that are now fixed in main code:
+ * Gaps it exposed, in the order the context hit them:
+ * 1. secrets=memory had no provider — chat-persistence-memory absent.
+ * 2. index=lucene had no provider — chat-index-lucene absent.
+ * 3. Memory and redis both ship a `KeyGenConfiguration`, ungated, sharing
+ *    a simple class name. With both on one classpath the context failed on
+ *    a conflicting bean definition. Each is now gated on the key selector.
+ * 4. EmptyMessageUtil had no provider — chat-deploy absent, so this
+ *    composition root was missing the shared deploy layer entirely.
+ * 5. RequestToQueryConverters had no provider — every other backend module
+ *    has an AppConfiguration supplying it and this one had none.
+ * 6. chat-client-rsocket was on the classpath of a server deployment,
+ *    which made `app.rsocket.transport.security.type` mandatory. Nothing
+ *    needed the client; it is gone, and chat-service-composite, which had
+ *    been arriving through it, is now declared directly.
+ *
+ * Boot bugs this test caught earlier and that are fixed in main code:
  * 1. ConfigurationPropertiesRedisTopics declared @ConstructorBinding on a
  *    constructor with default arguments — Kotlin copies the annotation
  *    onto the synthetic no-args constructor and the binder rejects it
@@ -49,6 +56,8 @@ import java.time.Duration
  */
 @TestPropertySource(
     properties = [
+        // chat-build always passes this; the deployment event listeners read it.
+        "spring.application.name=redis-boot-test",
         "spring.main.web-application-type=reactive",
         "server.port=0",
         "spring.rsocket.server.port=0",
@@ -75,7 +84,6 @@ import java.time.Duration
     ]
 )
 @SpringBootTest(classes = [RedisDeployBootTests.BootApp::class], webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Disabled
 @Tag("integration")
 class RedisDeployBootTests {
 

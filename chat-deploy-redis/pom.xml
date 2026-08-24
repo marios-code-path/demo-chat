@@ -34,12 +34,41 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-service-controller</artifactId>
+            <artifactId>chat-service-composite</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <!-- The shared deploy layer: root key initialisation, initial users and
+             the EmptyMessageUtil the composite services need. chat-deploy-memory
+             and chat-deploy-cassandra both carry it; this module did not, so it
+             was a composition root missing part of the composition. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
-            <artifactId>chat-client-rsocket</artifactId>
+            <artifactId>shared-deploy-configuration</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <!-- Redis provides key, persistence and pubsub. It provides no index
+             and no secrets store, so the two selectors this backend is launched
+             with - index=lucene, secrets=memory - need their providers here.
+             Without them the context fails on SecretsStoreBeans and
+             IndexServiceBeans rather than falling back to anything. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-index-lucene</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-memory</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
         </dependency>
         <dependency>
@@ -115,7 +144,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.demo.chat.deploy.redis.App</mainClass>
+                    <mainClass>com.demo.chat.ChatApp</mainClass>
                 </configuration>
             </plugin>
             <plugin>

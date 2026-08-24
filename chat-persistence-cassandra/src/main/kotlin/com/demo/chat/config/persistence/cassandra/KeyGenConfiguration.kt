@@ -9,7 +9,13 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.util.*
 
-@Configuration
+// One key generator per deployment. The selector that picks the key
+// backend picks its generator too, so exactly one of these registers.
+// Ungated they all registered, and two of them share this simple class
+// name - a classpath carrying both failed to start on a conflicting bean
+// definition rather than on anything meaningful. Cassandra is the one that differs: its uuid generator is CassandraUUIDKeyGenerator.
+@Configuration("cassandraKeyGenConfiguration")
+@ConditionalOnProperty(prefix = "app.service.core", name = ["key"], havingValue = "cassandra")
 class KeyGenConfiguration {
 
     // enforce number on nodeid
