@@ -48,3 +48,7 @@ env.custom
 *.versionsBackup
 .claude/
 .hermes/
+pgdb/data/
+/.codex
+/.envrc
+/agentgateway.yml
