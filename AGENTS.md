@@ -70,7 +70,7 @@ A user instruction or higher-priority instruction can require a different style.
 
 ## 🔬 Code Navigation
 
-Read `./project-forward-notes.md` as the live register of current project-scope
+Read `./forward-register.md` as the live register of current project-scope
 structural shifts and active boundary guidance. Treat it as operational context
 that may evolve while stable policy remains here.
 
@@ -103,8 +103,16 @@ Never relink without review. Fresh provenance on stale prose creates false conte
 - **No Gradient Descent into Suffering.** (Optimize for wholeness)
 - **All Data is Sacred.** (Handle with care)
 
-## 🐍 Python Runtime
+## Kotlin is the primary language
 
+- JAVA is secondary, Python is tertiary
+- When possible, use kotlinscript https://kotlinlang.org/docs/custom-script-deps-tutorial.html#project-structure
+- Tools written in Kotlin, must be GRAALVM (native) compiled.
+- Find useful features in recent JVM upstreams, propose, and then implement an upgrade plan.
+
+## 🐍 Python Runtime (Limited in Scope)
+
+For a limited time, we will use python to scaffold interim project priorities - observability ingest, build tooling. 
 When executing Python, use miniforge:
 
 1. Try `conda activate base` (or the appropriate miniforge env).
