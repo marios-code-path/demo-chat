@@ -1,11 +1,8 @@
 package com.demo.chat.domain
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 import java.util.*
 
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("topic")
 interface MessageTopic<T> : KeyValuePair<T, String> {
     companion object Factory {
         fun <T> create(key: Key<T>, name: String) = object : MessageTopic<T> {
