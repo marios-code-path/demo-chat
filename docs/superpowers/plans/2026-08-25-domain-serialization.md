@@ -41,7 +41,7 @@ Observed post-change shapes (verified by spike):
 
 Note: `MessageTopic` extends `KeyValuePair`, which keeps its own `@JsonTypeInfo`. Once `MessageTopic` loses its annotation, Jackson annotation inheritance applies the `KeyValuePair` wrapper. So `MessageTopic` is NOT flat. It carries the `keyValue` wrapper. The test asserts this.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `chat-core/src/test/kotlin/com/demo/chat/test/serializers/DomainWireShapeTests.kt`:
 
@@ -94,12 +94,12 @@ class DomainWireShapeTests : TestBase() {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `mvn -o -pl chat-core test -Dtest=DomainWireShapeTests`
 Expected: FAIL. The three tests fail because the current shapes carry the old wrappers (`user`, `topic`, `membership`).
 
-- [ ] **Step 3: Remove the annotations from User.kt**
+- [x] **Step 3: Remove the annotations from User.kt**
 
 In `chat-core/src/main/kotlin/com/demo/chat/domain/User.kt`, remove the two imports and the two annotations.
 
@@ -123,7 +123,7 @@ import java.util.*
 interface User<T> : KeyBearer<T> {
 ```
 
-- [ ] **Step 4: Remove the annotations from MessageTopic.kt**
+- [x] **Step 4: Remove the annotations from MessageTopic.kt**
 
 In `chat-core/src/main/kotlin/com/demo/chat/domain/MessageTopic.kt`, remove the `JsonTypeInfo` import and the two annotations. KEEP the `JsonTypeName` import. The data classes `TopicMetaData`, `TopicMember`, `TopicMemberships` use it.
 
@@ -146,7 +146,7 @@ import java.util.*
 interface MessageTopic<T> : KeyValuePair<T, String> {
 ```
 
-- [ ] **Step 5: Remove the annotations from TopicMembership.kt**
+- [x] **Step 5: Remove the annotations from TopicMembership.kt**
 
 In `chat-core/src/main/kotlin/com/demo/chat/domain/TopicMembership.kt`, remove the two imports and the two annotations.
 
@@ -175,17 +175,17 @@ After:
 interface TopicMembership<T> {
 ```
 
-- [ ] **Step 6: Run the wire-shape tests to verify they pass**
+- [x] **Step 6: Run the wire-shape tests to verify they pass**
 
 Run: `mvn -o -pl chat-core test -Dtest=DomainWireShapeTests`
 Expected: PASS. All three tests pass.
 
-- [ ] **Step 7: Run the full chat-core suite**
+- [x] **Step 7: Run the full chat-core suite**
 
 Run: `mvn -o -pl chat-core test`
 Expected: 43 tests pass. No new failures. The existing round-trip tests (`UserSerliazerTests`, `TopicSerializerTests`, `TopicMembershipSerializerTests`) still pass because the custom deserializers read the flat shape.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add chat-core/src/test/kotlin/com/demo/chat/test/serializers/DomainWireShapeTests.kt \
