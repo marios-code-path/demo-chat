@@ -17,7 +17,7 @@
 - Do not touch the six E2EE types in `EncryptedEnvelope.kt`.
 - Do not touch `RequestResponse`. It uses `As.PROPERTY`, a different mechanism.
 - Controlled English for new prose and comments.
-- Expected counts: chat-core 43, chat-client-rsocket 57, chat-persistence-redis 46. chat-webflux has 2 pre-existing failures. No new failures.
+- Expected counts: chat-core 43, chat-client-rsocket 57, chat-persistence-redis 46. chat-webflux 81 tests, all pass. No new failures.
 - Drift discipline: check bindings before editing covered files. Update prose first, then `drift link`.
 
 ---
@@ -206,7 +206,7 @@ git commit -m "drop dead json wrapper from user, topic, membership"
 - Consumes: `objectMapper.convertValue` (already a field on the class).
 - Produces: plain `convertValue` in `typedGet`, `typedAll`, `typedByIds`. No `rebind`.
 
-- [ ] **Step 1: Replace the three call sites**
+- [x] **Step 1: Replace the three call sites**
 
 In `KeyValuePersistenceRedis.kt`, replace `rebind(...)` with `objectMapper.convertValue(...)` in the three typed accessors.
 
@@ -234,11 +234,11 @@ After:
         byIds(ids).map { kv -> KeyValuePair.create(kv.key, objectMapper.convertValue(kv.data, typedArgument)) }
 ```
 
-- [ ] **Step 2: Delete the rebind method and its KDoc**
+- [x] **Step 2: Delete the rebind method and its KDoc**
 
 Delete the `rebind` method and its KDoc block (the `/** ... */` comment and the `private fun <E> rebind(...)` function). The class body ends at the closing brace after `typedByIds`.
 
-- [ ] **Step 3: Remove the now-unused imports**
+- [x] **Step 3: Remove the now-unused imports**
 
 Remove the two imports that only `rebind` used:
 ```kotlin
@@ -246,12 +246,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.annotation.JsonTypeName
 ```
 
-- [ ] **Step 4: Run the redis suite including the integration typed domain test**
+- [x] **Step 4: Run the redis suite including the integration typed domain test**
 
 Run: `mvn -o -pl chat-core,chat-persistence-redis test -Pintegration`
 Expected: the redis suite passes. The `RedisKeyValueTypedDomainTests` (typed domain test) passes with plain `convertValue`. It needs Docker for the Testcontainers Redis.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add chat-persistence-redis/src/main/kotlin/com/demo/chat/persistence/redis/impl/KeyValuePersistenceRedis.kt
@@ -264,12 +264,13 @@ git commit -m "delete redis rebind workaround"
 
 **Files:**
 - Modify: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/UserRestTestBase.kt`
+- Modify: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/TopicRestTestBase.kt`
 
 **Interfaces:**
-- Consumes: the flat `User` wire shape from Task 1.
-- Produces: REST test assertions that match the flat shape.
+- Consumes: the flat `User` wire shape and the `keyValue`-wrapped `MessageTopic` shape from Task 1.
+- Produces: REST test assertions that match the new shapes.
 
-- [ ] **Step 1: Update the two jsonPath assertions**
+- [x] **Step 1: Update the jsonPath assertions**
 
 In `UserRestTestBase.kt`, update the two assertions that pin the old wrapper.
 
@@ -291,16 +292,19 @@ After:
             .jsonPath("$.name").isNotEmpty
 ```
 
-- [ ] **Step 2: Run the webflux suite**
+Also update the three `topic.data` jsonPaths in `TopicRestTestBase.kt` to `keyValue.data`. `MessageTopic` now carries the inherited `keyValue` wrapper. The plan originally named only `UserRestTestBase.kt`; the `TopicRestTestBase.kt` change was found during execution.
+
+- [x] **Step 2: Run the webflux suite**
 
 Run: `mvn -o -pl chat-core,chat-webflux test`
-Expected: the 2 pre-existing failures stay. No new failures. `LongUserRestTests` passes with the updated assertions.
+Expected: all 81 tests pass. No failures. The suite was green before the change. The 5 failures seen mid-Task-3 (3 in `LongTopicRestTests`, 2 in `LongUserRestTests`) were caused by the Task 1 wrapper removal, not pre-existing.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
-git add chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/UserRestTestBase.kt
-git commit -m "update rest contract to flat user shape"
+git add chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/UserRestTestBase.kt \
+        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/TopicRestTestBase.kt
+git commit -m "update rest contract to flat user and keyValue topic shapes"
 ```
 
 ---
@@ -356,7 +360,7 @@ Run the full build health:
 ```bash
 ./shell-scripts/build-health.sh --integration
 ```
-Expected: no new failures beyond the 2 pre-existing chat-webflux failures.
+Expected: no new failures. The chat-webflux suite is fully green (81 tests).
 
 Attach the commits to the issue and mark it done:
 ```bash
