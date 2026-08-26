@@ -319,11 +319,11 @@ git commit -m "update rest contract to flat user and keyValue topic shapes"
 - Consumes: the completed change from Tasks 1-3.
 - Produces: updated forward register, E2EE follow-up issue, verified drift.
 
-- [ ] **Step 1: Update forward-register.md**
+- [x] **Step 1: Update forward-register.md**
 
 Move `CHAT-gjggodpa` out of the deferred table. Record the E2EE follow-up issue. Note the `MessageTopic` inheritance outcome: it carries the `keyValue` wrapper, not flat.
 
-- [ ] **Step 2: Create the E2EE follow-up issue**
+- [x] **Step 2: Create the E2EE follow-up issue**
 
 Run:
 ```bash
@@ -332,7 +332,7 @@ fp issue create --title "Drop the dead json wrapper from the six e2ee types" --p
 
 The six types: `DeviceRegistration`, `PreKeyBundle`, `EncryptedEnvelope`, `ConversationEpoch`, `FrankingTag`, `Presence` in `chat-core/src/main/kotlin/com/demo/chat/domain/EncryptedEnvelope.kt`.
 
-- [ ] **Step 3: Check drift bindings on the edited files**
+- [x] **Step 3: Check drift bindings on the edited files**
 
 Run:
 ```bash
@@ -345,7 +345,7 @@ drift refs chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/co
 
 If any file has a binding and the prose is stale, update the prose first. Then refresh provenance with `drift link`. Verify with `drift check`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add forward-register.md
