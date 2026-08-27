@@ -103,8 +103,6 @@ went away.
   #47 and the evidence is logged on the issue, but the status was never moved to
   `done`. It should be.
 - **`CHAT-uortzsbx` is `in-progress`** from earlier work, not touched this session.
-- **`b6-ste` still holds the B6 Simplified Technical English docs commit**
-  (`e2b1f99f`) awaiting its own PR. It was deliberately kept out of #44.
 - **Rebase done.** The branch was rebased onto `master` and merged on 2026-08-25.
   The spec and plan now wait for a PR from `master`.
 
