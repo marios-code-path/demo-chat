@@ -132,6 +132,12 @@ built on top of them inherits the risk.
   coverage.** `@Disabled` sits on the generic base classes, surefire counts them as
   test classes, and JUnit does not inherit `@Disabled`, so the concrete `Long*`
   subclasses run. Documented in `docs/BUILD-HEALTH.md`.
+- **A wire-format change makes the shell integration image stale.** The
+  chat-shell tests run the client against the
+  `chat-deploy-long-memory-integration-test` Docker image, not against the
+  reactor. After a serialization change, rebuild the image with
+  `mvn -Ptest-build install`, then run `-Pintegration`. A stale image caused 8
+  decode errors that looked like a code regression.
 - **A disabled boot test is how a backend rots unnoticed.** `RedisDeployBootTests`
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay
