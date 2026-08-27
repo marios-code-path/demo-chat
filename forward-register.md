@@ -74,7 +74,7 @@ rename with no alias period.
 
 ## Domain serialization (2026-08-25/26)
 
-`CHAT-gjggodpa` is done. The dead `@JsonTypeInfo(WRAPPER_OBJECT)` wrapper was
+`CHAT-gjggodpa` implementation is complete. The dead `@JsonTypeInfo(WRAPPER_OBJECT)` wrapper was
 removed from `User`, `MessageTopic`, and `TopicMembership`. The redis `rebind`
 workaround was deleted; the typed accessors use plain `convertValue`. The REST
 contract test was updated to the new shapes. The webflux suite is fully green
@@ -85,8 +85,8 @@ its own `@JsonTypeInfo`. Once `MessageTopic` lost its annotation, Jackson
 annotation inheritance applied the `KeyValuePair` wrapper. So `MessageTopic` is
 NOT flat. It carries the `keyValue` wrapper. The wire-shape test pins this.
 
-**E2EE follow-up:** `CHAT-zbjzbcoy`. The six E2EE types in `EncryptedEnvelope.kt`
-(`DeviceRegistration`, `PreKeyBundle`, `EncryptedEnvelope`, `ConversationEpoch`,
+**E2EE follow-up:** `CHAT-zbjzbcoy`. The seven E2EE types in `EncryptedEnvelope.kt`
+(`DeviceRegistration`, `PreKeyBundle`, `EncryptedEnvelope`, `ConversationCursor`, `ConversationEpoch`,
 `FrankingTag`, `Presence`) still carry the dead wrapper. Same fix as
 `CHAT-gjggodpa`. Verify `EncryptedEnvelope` for subtypes before dropping.
 
