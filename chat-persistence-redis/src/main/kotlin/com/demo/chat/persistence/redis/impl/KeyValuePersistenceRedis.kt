@@ -4,8 +4,6 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.core.KeyValueStore
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import reactor.core.publisher.Flux
@@ -78,57 +76,11 @@ class KeyValuePersistenceRedis<T>(
         Flux.fromIterable(keys).flatMap { key -> get(key) }
 
     override fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T, E>> =
-        get(key).map { kv -> KeyValuePair.create(kv.key, rebind(kv.data, typeArgument)) }
+        get(key).map { kv -> KeyValuePair.create(kv.key, objectMapper.convertValue(kv.data, typeArgument)) }
 
     override fun <E> typedAll(typeArgument: Class<E>): Flux<KeyValuePair<T, E>> =
-        all().map { kv -> KeyValuePair.create(kv.key, rebind(kv.data, typeArgument)) }
+        all().map { kv -> KeyValuePair.create(kv.key, objectMapper.convertValue(kv.data, typeArgument)) }
 
     override fun <E> typedByIds(ids: List<Key<T>>, typedArgument: Class<E>): Flux<KeyValuePair<T, E>> =
-        byIds(ids).map { kv -> KeyValuePair.create(kv.key, rebind(kv.data, typedArgument)) }
-
-    /**
-     * Re-binds the untyped `data` of a stored pair to [type].
-     *
-     * The round trip is asymmetric for polymorphic domain types, which is why
-     * a plain `convertValue` is not enough. Serialising a `User` on its own
-     * writes the type wrapper its `@JsonTypeInfo(WRAPPER_OBJECT)` declares:
-     *
-     *     {"user":{"name":"alice",...}}
-     *
-     * but as the `data` of a KeyValuePair it is written through the erased
-     * type parameter `E`, so no wrapper is emitted:
-     *
-     *     {"keyValue":{"key":{...},"data":{"name":"alice",...}}}
-     *
-     * Reading back gives a flat Map. Handing that to `convertValue` makes
-     * Jackson read the first property name as a type id and fail with
-     * "Could not resolve type id 'name' as a subtype of User".
-     *
-     * So when the target type declares a WRAPPER_OBJECT type name and the
-     * stored value does not already carry it, put it back before converting.
-     * Types without polymorphic annotations - String, Int, plain data classes -
-     * convert directly, unchanged.
-     *
-     * This is a workaround, not the fix. The cause is that the domain
-     * interfaces carry @JsonTypeInfo uniformly while chat-core also registers
-     * custom deserializers for the same types; for User the wrapper feeds
-     * nothing but Jackson's own type machinery. Removing it makes this method
-     * unnecessary - verified - but changes the REST wire format, which
-     * LongUserRestTests pins at $.user.name. Tracked as CHAT-gjggodpa; delete
-     * this helper when that lands.
-     */
-    private fun <E> rebind(data: Any?, type: Class<E>): E {
-        val typeInfo = type.getAnnotation(JsonTypeInfo::class.java)
-        val typeName = type.getAnnotation(JsonTypeName::class.java)?.value
-        val needsWrapper = typeInfo != null &&
-            typeInfo.include == JsonTypeInfo.As.WRAPPER_OBJECT &&
-            typeName != null &&
-            data is Map<*, *> &&
-            !data.containsKey(typeName)
-
-        return objectMapper.convertValue(
-            if (needsWrapper) mapOf(typeName to data) else data,
-            type,
-        )
-    }
+        byIds(ids).map { kv -> KeyValuePair.create(kv.key, objectMapper.convertValue(kv.data, typedArgument)) }
 }

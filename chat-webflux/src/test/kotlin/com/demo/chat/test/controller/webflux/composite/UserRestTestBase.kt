@@ -106,7 +106,7 @@ open class UserRestTestBase<T>(
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-            .jsonPath("$.[0].user.name").isNotEmpty
+            .jsonPath("$.[0].name").isNotEmpty
     }
 
     @Test
@@ -132,6 +132,6 @@ open class UserRestTestBase<T>(
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-            .jsonPath("$.user.name").isNotEmpty
+            .jsonPath("$.name").isNotEmpty
     }
 }

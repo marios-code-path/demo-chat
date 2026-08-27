@@ -69,9 +69,26 @@ rename with no alias period.
 
 | Issue | State | What |
 |-------|-------|------|
-| `CHAT-gjggodpa` | todo | Domain serialization: `@JsonTypeInfo` wrappers vs custom deserializers. **Blocked on a decision only the owner can make** — option 1 breaks the REST wire format and needs stored-JSON migration, option 2 changes the stored format across cassandra and memory, option 3 documents rather than fixes. |
 | `CHAT-koufkrsl` | todo | `nodeId` uniqueness unenforced, and the default derivation collides — by birthday across ~38 hosts, and deterministically for containers sharing an IP on different hosts. Registry-based detection is insufficient because a store outlives any one registry. |
 | `CHAT-cikgeefc` | todo | Build health verification. Standing tracker, deliberately left open — a cycle finding no drift is a clean reading, not a finished task. |
+
+## Domain serialization (2026-08-25/26)
+
+`CHAT-gjggodpa` implementation is complete. The dead `@JsonTypeInfo(WRAPPER_OBJECT)` wrapper was
+removed from `User`, `MessageTopic`, and `TopicMembership`. The redis `rebind`
+workaround was deleted; the typed accessors use plain `convertValue`. The REST
+contract test was updated to the new shapes. The webflux suite is fully green
+(81 tests).
+
+**`MessageTopic` inheritance outcome:** it extends `KeyValuePair`, which keeps
+its own `@JsonTypeInfo`. Once `MessageTopic` lost its annotation, Jackson
+annotation inheritance applied the `KeyValuePair` wrapper. So `MessageTopic` is
+NOT flat. It carries the `keyValue` wrapper. The wire-shape test pins this.
+
+**E2EE follow-up:** `CHAT-zbjzbcoy`. The seven E2EE types in `EncryptedEnvelope.kt`
+(`DeviceRegistration`, `PreKeyBundle`, `EncryptedEnvelope`, `ConversationCursor`, `ConversationEpoch`,
+`FrankingTag`, `Presence`) still carry the dead wrapper. Same fix as
+`CHAT-gjggodpa`. Verify `EncryptedEnvelope` for subtypes before dropping.
 
 ## Housekeeping
 
@@ -115,6 +132,12 @@ built on top of them inherits the risk.
   coverage.** `@Disabled` sits on the generic base classes, surefire counts them as
   test classes, and JUnit does not inherit `@Disabled`, so the concrete `Long*`
   subclasses run. Documented in `docs/BUILD-HEALTH.md`.
+- **A wire-format change makes the shell integration image stale.** The
+  chat-shell tests run the client against the
+  `chat-deploy-long-memory-integration-test` Docker image, not against the
+  reactor. After a serialization change, rebuild the image with
+  `mvn -Ptest-build install`, then run `-Pintegration`. A stale image caused 8
+  decode errors that looked like a code regression.
 - **A disabled boot test is how a backend rots unnoticed.** `RedisDeployBootTests`
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay

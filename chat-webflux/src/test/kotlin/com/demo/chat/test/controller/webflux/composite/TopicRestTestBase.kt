@@ -126,7 +126,7 @@ open class TopicRestTestBase<T>(
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-            .jsonPath("\$.[0].topic.data").isNotEmpty
+            .jsonPath("\$.[0].keyValue.data").isNotEmpty
     }
 
     @Test
@@ -153,7 +153,7 @@ open class TopicRestTestBase<T>(
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-            .jsonPath("\$.topic.data").isNotEmpty
+            .jsonPath("\$.keyValue.data").isNotEmpty
     }
 
     @Test
@@ -180,7 +180,7 @@ open class TopicRestTestBase<T>(
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
-            .jsonPath("\$.topic.data").isNotEmpty
+            .jsonPath("\$.keyValue.data").isNotEmpty
     }
 
     @Test

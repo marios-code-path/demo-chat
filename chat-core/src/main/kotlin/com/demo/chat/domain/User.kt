@@ -1,12 +1,8 @@
 package com.demo.chat.domain
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
 import java.time.Instant
 import java.util.*
 
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("user")
 interface User<T> : KeyBearer<T> {
     val name: String
     val handle: String
