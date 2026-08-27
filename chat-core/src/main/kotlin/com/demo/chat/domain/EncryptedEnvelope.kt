@@ -1,15 +1,9 @@
 package com.demo.chat.domain
 
-import com.fasterxml.jackson.annotation.JsonSubTypes
-import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.fasterxml.jackson.annotation.JsonTypeName
-
 /**
  * Device registration for E2EE — identity is (user, device). All crypto is per-device.
  * The server stores only public keys and pre-key bundles. Private keys never leave the device.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("device")
 interface DeviceRegistration<T> : KeyBearer<T> {
     val userId: Key<T>
     val registrationId: Int
@@ -50,8 +44,6 @@ interface DeviceRegistration<T> : KeyBearer<T> {
  * One-time pre-key bundle for X3DH key agreement. The server holds a pool of these
  * per device. When a new session is established, one pre-key is consumed.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("preKeyBundle")
 interface PreKeyBundle<T> : KeyBearer<T> {
     val deviceId: Key<T>
     val preKeyId: Int
@@ -96,8 +88,6 @@ interface PreKeyBundle<T> : KeyBearer<T> {
  * Encrypted envelope — the per-device ciphertext envelope stored in the device inbox.
  * The server never sees plaintext. It routes by conversationId + seq + deviceId.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("encryptedEnvelope")
 interface EncryptedEnvelope<T> : KeyBearer<T> {
     val conversationId: Key<T>
     val senderUserId: Key<T>
@@ -144,8 +134,6 @@ interface EncryptedEnvelope<T> : KeyBearer<T> {
  * Conversation cursor — per-conversation sequence allocator.
  * Uses Postgres row-lock for linearizable ordering (no gaps for committed messages).
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("conversationCursor")
 interface ConversationCursor<T> {
     val conversationId: Key<T>
     var nextSeq: Long
@@ -164,8 +152,6 @@ interface ConversationCursor<T> {
  * The server cannot understand crypto membership, but it can enforce transport membership
  * and prevent obvious history leaks across epoch boundaries.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("conversationEpoch")
 interface ConversationEpoch<T> : KeyBearer<T> {
     val conversationId: Key<T>
     val epoch: Int
@@ -197,8 +183,6 @@ enum class MessageKind {
  * Franking tag — server-generated proof tag bound to a specific message.
  * Used for abuse reporting without revealing plaintext.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("frankingTag")
 interface FrankingTag<T> : KeyBearer<T> {
     val conversationId: Key<T>
     val seq: Long
@@ -241,8 +225,6 @@ enum class HistoryVisibility {
  * Presence state — ephemeral, never persisted durably.
  * The server tracks online/away/offline via heartbeat TTL keys.
  */
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("presence")
 interface Presence<T> {
     val userId: Key<T>
     val deviceId: Key<T>
