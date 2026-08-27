@@ -14,7 +14,7 @@ in this file is authoritative on its own — each row points at the artifact tha
 | Worktree | `.claude/worktrees/xstream-messaging-only` (locked) |
 | Branch | `capability-composition-spec`, merged into `master` on 2026-08-25 |
 | Commits | `25a93e57` spec, `0b609644` plan, on `master`, unpushed |
-| `origin/master` | `4d184528` — two commits behind local `master` |
+| `origin/master` | `b404d733` — PR #48 and PR #49 are merged |
 | Open PRs | dependabot only (#8, #10, #11); nothing of ours is in flight |
 
 The worktree is named for xstream messaging and has not held xstream work for
@@ -28,6 +28,8 @@ several tasks. The name is stale; the contents are current.
 | #45 | Build health re-verified against current master, all three verifier modes |
 | #46 | Why `chat-shell` reports 17 skipped under `-Pintegration` |
 | #47 | The redis backend made into a composition root that actually starts |
+| #48 | The dead JSON wrapper dropped from `User`, `MessageTopic`, and `TopicMembership` |
+| #49 | The dead JSON wrapper dropped from the seven E2EE types in `EncryptedEnvelope.kt` |
 
 ## Decisions carried forward
 
@@ -85,10 +87,15 @@ its own `@JsonTypeInfo`. Once `MessageTopic` lost its annotation, Jackson
 annotation inheritance applied the `KeyValuePair` wrapper. So `MessageTopic` is
 NOT flat. It carries the `keyValue` wrapper. The wire-shape test pins this.
 
-**E2EE follow-up:** `CHAT-zbjzbcoy`. The seven E2EE types in `EncryptedEnvelope.kt`
-(`DeviceRegistration`, `PreKeyBundle`, `EncryptedEnvelope`, `ConversationCursor`, `ConversationEpoch`,
-`FrankingTag`, `Presence`) still carry the dead wrapper. Same fix as
-`CHAT-gjggodpa`. Verify `EncryptedEnvelope` for subtypes before dropping.
+**E2EE follow-up is complete.** `CHAT-zbjzbcoy` is done and merged as PR #49. The
+seven E2EE types in `EncryptedEnvelope.kt` (`DeviceRegistration`, `PreKeyBundle`,
+`EncryptedEnvelope`, `ConversationCursor`, `ConversationEpoch`, `FrankingTag`,
+`Presence`) now serialize flat. The check for subtypes found none. No type had
+`@JsonSubTypes`. No type had a custom serializer or deserializer. So the wrapper
+was dead on all seven. `E2eeWireShapeTests` pins the flat shape, one test per type.
+
+`Key<T>` keeps its own wrapper inside these seven types. Only the outer wrapper
+went away.
 
 ## Housekeeping
 
@@ -138,6 +145,13 @@ built on top of them inherits the risk.
   reactor. After a serialization change, rebuild the image with
   `mvn -Ptest-build install`, then run `-Pintegration`. A stale image caused 8
   decode errors that looked like a code regression.
+- **A stale compiled test class outlives its source across a branch switch.**
+  `DomainWireShapeTests.class` stayed in `chat-core/target/test-classes` after a
+  checkout that removed its source. Surefire runs compiled classes, not sources.
+  So it ran the orphan class and reported 3 failures against source that was not
+  on the branch. Run `mvn -o -pl chat-core clean test` after a branch switch. This
+  is the same shape as the stale integration image trap above. The build artifact
+  outlived the source.
 - **A disabled boot test is how a backend rots unnoticed.** `RedisDeployBootTests`
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay
