@@ -158,6 +158,14 @@ built on top of them inherits the risk.
   deployment the same node in silence, which is the failure this change removed.
   Tests can use `app.nodeid=1`. Uniqueness across deployments is still not
   enforced. That remains `CHAT-wyssrokr`.
+- **A sandboxed build run can fail on agent self-attach, not on the code.**
+  Mockito loads the Byte Buddy agent into the running JVM. A sandbox can block that
+  self-attach on a GraalVM JVM, and `build-health.sh` then fails for a reason that
+  has nothing to do with the change under test. The same check passes unsandboxed.
+  Confirm a failure outside the sandbox before you treat it as a regression. The
+  build already prints the related warning on every run: "A Java agent has been
+  loaded dynamically" and "Dynamic loading of agents will be disallowed by default
+  in a future release".
 - **A disabled boot test is how a backend rots unnoticed.** `RedisDeployBootTests`
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay
