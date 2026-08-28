@@ -1,12 +1,14 @@
 package com.demo.chat.config.persistence.memory
 
+import com.demo.chat.domain.NodeId
+import com.demo.chat.domain.NodeIdConfiguration
 import com.demo.chat.service.LongKeyGenerator
 import com.demo.chat.service.UUIDKeyGenerator
 import com.demo.chat.service.core.IKeyGenerator
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import java.util.*
 
 // One key generator per deployment. The selector that picks the key
@@ -16,16 +18,14 @@ import java.util.*
 // definition rather than on anything meaningful. Memory keeps matchIfMissing so an unset selector still boots.
 @Configuration("memoryKeyGenConfiguration")
 @ConditionalOnProperty(prefix = "app.service.core", name = ["key"], havingValue = "memory", matchIfMissing = true)
+@Import(NodeIdConfiguration::class)
 class KeyGenConfiguration {
-    // enforce number on nodeid
-    @Value("\${app.nodeid:0}")
-    lateinit var nodeId: String
 
     @ConditionalOnProperty("app.key.type", havingValue = "uuid")
     @Bean("KeyGenerator")
-    fun uuidGenerator(): IKeyGenerator<UUID> = UUIDKeyGenerator(nodeId.toInt())
+    fun uuidGenerator(nodeId: NodeId): IKeyGenerator<UUID> = UUIDKeyGenerator(nodeId.value)
 
     @ConditionalOnProperty("app.key.type", havingValue = "long")
     @Bean("KeyGenerator")
-    fun longGenerator(): IKeyGenerator<Long> = LongKeyGenerator(nodeId.toInt())
+    fun longGenerator(nodeId: NodeId): IKeyGenerator<Long> = LongKeyGenerator(nodeId.value)
 }

@@ -1,8 +1,6 @@
 package com.demo.chat.domain
 
 import com.demo.chat.service.core.IKeyGenerator
-import java.net.NetworkInterface
-import java.security.SecureRandom
 import java.time.Instant
 
 /**
@@ -13,18 +11,15 @@ import java.time.Instant
  *
  * This class should be used as a Singleton.
  * Make sure that you create and reuse a Single instance of SequenceGenerator per node in your distributed system cluster.
+ *
+ * The node id is always supplied. There is no derivation, because a derived node id
+ * collided for certain across containers that share an IP. See [NodeId].
  */
 class SnowflakeGenerator : IKeyGenerator<Long> {
 
     constructor(nodeId: Int) {
         require(!(nodeId < 0 || nodeId > maxNodeId)) { String.format("NodeId must be between %d and %d", 0, maxNodeId) }
         this.nodeId = nodeId
-    }
-
-    // Let SequenceGenerator generate a nodeId
-    constructor() {
-        nodeId = createNodeId()
-
     }
 
     private val UNUSED_BITS = 1 // Sign bit, Unused (always set to 0)
@@ -81,27 +76,5 @@ class SnowflakeGenerator : IKeyGenerator<Long> {
             currentTimestamp = timestamp()
         }
         return currentTimestamp
-    }
-
-    private fun createNodeId(): Int {
-        var nodeId: Int
-        nodeId = try {
-            val sb = StringBuilder()
-            val networkInterfaces = NetworkInterface.getNetworkInterfaces()
-            while (networkInterfaces.hasMoreElements()) {
-                val networkInterface = networkInterfaces.nextElement()
-                val mac = networkInterface.hardwareAddress
-                if (mac != null) {
-                    for (i in mac.indices) {
-                        sb.append(String.format("%02X", mac[i]))
-                    }
-                }
-            }
-            sb.toString().hashCode()
-        } catch (ex: Exception) {
-            SecureRandom().nextInt()
-        }
-        nodeId = nodeId and maxNodeId
-        return nodeId
     }
 }
