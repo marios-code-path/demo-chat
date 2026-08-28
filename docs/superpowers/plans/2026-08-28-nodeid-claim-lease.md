@@ -20,6 +20,7 @@
 - Property defaults: `app.nodeid.claim.ttl=30s`, `renew-interval=10s`, `safety-margin=5s`, `operation-timeout=5s`.
 - Property rules: `ttl >= 1s` and whole seconds. `renew-interval <= ttl / 3`. `safety-margin > 0` and `< ttl`. `operation-timeout < renew-interval`. `ttl - safety-margin > renew-interval`.
 - Do not use `grep` or `find` for symbol lookup. Use the language server or treesitter tools.
+- Every `mvn -pl` command outside `chat-core` carries `-am`. This task chain adds new types to `chat-core` and new CQL to `shared-resources-cassandra`. Without `-am`, Maven resolves the stale installed artifact and the module compiles against the old code.
 
 ### Node id allocation
 
@@ -188,7 +189,7 @@ class NodeClaimTableProbeTests {
 
 - [ ] **Step 4: Run the probe**
 
-Run: `mvn -o -pl chat-persistence-cassandra -Pintegration test -Dtest=NodeClaimTableProbeTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=NodeClaimTableProbeTests`
 
 Expected: PASS, all three tests. A Docker daemon must be running.
 
@@ -1804,7 +1805,7 @@ class RedisNodeIdClaimStoreTests(
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `mvn -o -pl chat-persistence-redis -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
 
 Expected: FAIL to compile, with an unresolved reference to `RedisNodeIdClaimStore`.
 
@@ -1963,7 +1964,7 @@ class NodeIdClaimConfiguration {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `mvn -o -pl chat-persistence-redis -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
 
 Expected: PASS, 9 tests.
 
@@ -2142,7 +2143,7 @@ class CassandraNodeIdClaimStoreTests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `mvn -o -pl chat-persistence-cassandra -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
 
 Expected: FAIL to compile, with an unresolved reference to `CassandraNodeIdClaimStore`.
 
@@ -2269,7 +2270,7 @@ class NodeIdClaimConfiguration {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `mvn -o -pl chat-persistence-cassandra -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
 
 Expected: PASS, 9 tests.
 
@@ -2290,16 +2291,16 @@ git commit -m "add the cassandra node id claim store"
 - Test: `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisClaimBootTests.kt`
 
 **Interfaces:**
-- Consumes: the redis store and configuration from Task 7.
+- Consumes: the redis store and configuration from Task 7. Reuses two members of `RedisDeployBootTests` as they already stand: the companion `val redis`, which is the shared `GenericContainer`, and the nested `@SpringBootApplication class BootApp`. Neither needs a change.
 - Produces: no new type.
 
-- [ ] **Step 1: Read the existing boot test flags**
+**Expected result.** Task 7 already put the guard on this classpath. These tests pass as soon as they are written. There is no red step here. The red step for this behaviour was Task 4, `a denial at the second store releases the first store`. If the duplicate test starts cleanly, the seam is broken. Read Step 3 before changing anything.
 
-Open `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeployBootTests.kt`. Copy its `@TestPropertySource` property list and its `@DynamicPropertySource` container wiring. The new tests reuse that launch surface and change only the node id and the two selectors.
+**Container properties.** `@DynamicPropertySource` applies to a `@SpringBootTest` context only. These tests drive `SpringApplicationBuilder` directly, so they pass the container address themselves. `RedisConfiguration` reads it from `ConfigurationPropertiesRedisTopics`, whose prefix is `redis-topics`.
 
-- [ ] **Step 2: Write the failing boot tests**
+- [ ] **Step 1: Write the boot tests**
 
-Create `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisClaimBootTests.kt`. Replace `PROPERTIES_FROM_EXISTING_BOOT_TEST` with the exact property list read in Step 1, changing `app.nodeid` as each test states.
+Create `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisClaimBootTests.kt`.
 
 ```kotlin
 package com.demo.chat.test.deploy.redis
@@ -2308,9 +2309,10 @@ import com.demo.chat.domain.NodeIdClaimStore
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.springframework.boot.WebApplicationType
 import org.springframework.boot.builder.SpringApplicationBuilder
-import org.springframework.context.ApplicationListener
 import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.ApplicationListener
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
@@ -2322,44 +2324,83 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Node ids 11 and 12 belong to this class. See the allocation table in the
  * plan. `RedisDeployBootTests` holds node id 1 in the same container.
+ *
+ * The foreign claim is written straight to redis, not through a booted
+ * context. A guarded context would claim the id itself and then release it
+ * on close, and the duplicate would never be present for the second boot.
  */
 @Tag("integration")
 class RedisClaimBootTests {
 
+    private val container = RedisDeployBootTests.redis
+
     private fun template(): ReactiveStringRedisTemplate {
-        val container = RedisDeployBootTests.redisContainer
         val factory = LettuceConnectionFactory(
-            RedisStandaloneConfiguration(container.host, container.getMappedPort(6379))
+            RedisStandaloneConfiguration(container.containerIpAddress, container.getMappedPort(6379))
         ).apply { afterPropertiesSet() }
         return ReactiveStringRedisTemplate(factory)
     }
 
-    private fun foreignClaim(nodeId: Int) {
-        template().opsForValue()
-            .setIfAbsent("chat:nodeclaim:long:$nodeId", "foreign-owner@host-z:1#deadbeef", Duration.ofSeconds(60))
+    private fun seedForeignClaim(nodeId: Int, owner: String) {
+        val applied = template().opsForValue()
+            .setIfAbsent("chat:nodeclaim:long:$nodeId", owner, Duration.ofSeconds(120))
             .block()
+        Assertions.assertEquals(true, applied, "the foreign claim seed must be applied")
     }
 
-    private fun boot(vararg properties: String, ready: AtomicBoolean): SpringApplicationBuilder =
+    // The launch surface of RedisDeployBootTests. Each test overrides only
+    // what it needs after this list.
+    private fun launchProperties(): Array<String> = arrayOf(
+        "spring.application.name=redis-claim-boot-test",
+        "spring.main.web-application-type=reactive",
+        "server.port=0",
+        "spring.rsocket.server.port=0",
+        "app.server.proto=rsocket",
+        "app.key.type=long",
+        "app.service.core.pubsub=redis-pubsub",
+        "app.service.core.index=lucene",
+        "app.service.core.secrets=memory",
+        "app.service.composite",
+        "app.service.composite.auth",
+        "app.controller.persistence",
+        "app.controller.index",
+        "app.controller.key",
+        "app.controller.pubsub",
+        "app.controller.secrets",
+        "app.controller.user",
+        "app.controller.topic",
+        "app.controller.message",
+        "spring.cloud.consul.enabled=false",
+        "spring.cloud.consul.discovery.enabled=false",
+        "spring.cloud.consul.config.enabled=false",
+        "redis-topics.host=${container.containerIpAddress}",
+        "redis-topics.port=${container.getMappedPort(6379)}"
+    )
+
+    private fun boot(vararg extra: String, ready: AtomicBoolean) =
         SpringApplicationBuilder(RedisDeployBootTests.BootApp::class.java)
-            .properties(*properties)
+            .web(WebApplicationType.REACTIVE)
+            .properties(*launchProperties(), *extra)
             .listeners(ApplicationListener<ApplicationReadyEvent> { ready.set(true) })
+
+    private fun allMessages(thrown: Throwable): String =
+        generateSequence(thrown) { it.cause }.mapNotNull { it.message }.joinToString(" | ")
 
     @Test
     fun `a live claim fails startup with the actionable message`() {
-        foreignClaim(11)
+        seedForeignClaim(11, "foreign-owner@host-z:1#deadbeef")
         val ready = AtomicBoolean(false)
 
         val thrown = Assertions.assertThrows(Exception::class.java) {
             boot(
-                // PROPERTIES_FROM_EXISTING_BOOT_TEST, with app.nodeid=11
+                "app.nodeid=11",
+                "app.service.core.key=redis",
+                "app.service.core.persistence=redis",
                 ready = ready
             ).run().close()
         }
 
-        val text = generateSequence(thrown as Throwable) { it.cause }
-            .mapNotNull { it.message }.joinToString(" | ")
-
+        val text = allMessages(thrown)
         Assertions.assertTrue(text.contains("app.nodeid=11 is already claimed"), text)
         Assertions.assertTrue(text.contains("redis store for key type long"), text)
         Assertions.assertTrue(text.contains("foreign-owner@host-z:1#deadbeef"), text)
@@ -2372,8 +2413,9 @@ class RedisClaimBootTests {
         val ready = AtomicBoolean(false)
 
         boot(
-            // PROPERTIES_FROM_EXISTING_BOOT_TEST, with app.nodeid=12,
-            // app.service.core.key=memory, app.service.core.persistence=redis
+            "app.nodeid=12",
+            "app.service.core.key=memory",
+            "app.service.core.persistence=redis",
             ready = ready
         ).run().use { context ->
             val stores = context.getBeansOfType(NodeIdClaimStore::class.java)
@@ -2386,44 +2428,32 @@ class RedisClaimBootTests {
 }
 ```
 
-- [ ] **Step 3: Expose the container and the application class**
+- [ ] **Step 2: Run the boot tests**
 
-`RedisClaimBootTests` needs the container and the boot application class that `RedisDeployBootTests` already declares. In `RedisDeployBootTests.kt`, promote the container field and the `@SpringBootApplication` class to the companion object so both test classes share one container.
-
-Change the container declaration to a companion member named `redisContainer`, and make the nested application class visible. Do not change any existing property or assertion in that file.
-
-- [ ] **Step 4: Run the tests to verify they fail**
-
-Run: `mvn -o -pl chat-deploy-redis -Pintegration test -Dtest=RedisClaimBootTests`
-
-Expected: FAIL. The first test fails because startup succeeds, since no guard is on this classpath until `chat-persistence-redis` supplies it. Read the failure before fixing.
-
-- [ ] **Step 5: Make the tests pass**
-
-The guard reaches this classpath through `chat-persistence-redis`, which `chat-deploy-redis` already depends on. If the first test still starts cleanly, check that:
-
-1. `app.key.type` is set. `NodeIdClaimConfiguration` reads it with `@Value` and fails when it is absent.
-2. `app.service.core.key` or `app.service.core.persistence` is `redis`.
-3. `chat-persistence-redis` is on the test classpath.
-
-Fix the launch properties, not the guard.
-
-- [ ] **Step 6: Run the tests to verify they pass**
-
-Run: `mvn -o -pl chat-deploy-redis -Pintegration test -Dtest=RedisClaimBootTests`
+Run: `mvn -o -pl chat-deploy-redis -am -Pintegration test -Dtest=RedisClaimBootTests`
 
 Expected: PASS, 2 tests.
 
-- [ ] **Step 7: Run the whole redis deploy module**
+- [ ] **Step 3: Read a clean start as a seam failure**
 
-Run: `mvn -o -pl chat-deploy-redis -Pintegration test`
+If `a live claim fails startup with the actionable message` reports that no exception was thrown, the guard did not activate. Check three things in order:
 
-Expected: PASS. `RedisDeployBootTests` still boots on node id 1.
+1. `app.key.type` is set. `NodeIdClaimConfiguration` reads it with `@Value` and fails when it is absent.
+2. `app.service.core.key` or `app.service.core.persistence` is `redis`, so `OnSharedBackendCondition` matches.
+3. `chat-persistence-redis` is on the test classpath of `chat-deploy-redis`.
 
-- [ ] **Step 8: Commit**
+Fix the launch properties or the condition. Do not weaken the test.
+
+- [ ] **Step 4: Run the whole redis deploy module**
+
+Run: `mvn -o -pl chat-deploy-redis -am -Pintegration test`
+
+Expected: PASS. `RedisDeployBootTests` still boots on node id 1, and it now takes a real claim in the shared container.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/
+git add chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisClaimBootTests.kt
 git commit -m "boot the redis claim seams and prove the duplicate failure"
 ```
 
@@ -2435,12 +2465,16 @@ git commit -m "boot the redis claim seams and prove the duplicate failure"
 - Test: `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraClaimBootTests.kt`
 
 **Interfaces:**
-- Consumes: the cassandra store and configuration from Task 8, and the `node_claim` table from Task 1.
+- Consumes: the cassandra store and configuration from Task 8, and the `node_claim` table from Task 1. Extends `CassandraContainerBase`, which already starts the container and applies both keyspaces.
 - Produces: no new type.
 
-- [ ] **Step 1: Write the failing boot tests**
+**Expected result.** Task 8 already put the guard on this classpath. These tests pass as soon as they are written. There is no red step here.
 
-Create `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraClaimBootTests.kt`. Copy the property list from `CassandraDeployTest`, changing only the values each test states.
+**Seeding the foreign claim.** The seed must not run through a booted deploy context. A guarded context claims the id itself, so the seed insert would find the row taken. The context then releases the id on close, and the second boot would start cleanly. The seed therefore runs through `cqlsh` in the container, which is the pattern `CassandraContainerBase` already uses to apply the long keyspace. The test asserts that the seed row is present before it boots.
+
+- [ ] **Step 1: Write the boot tests**
+
+Create `chat-deploy-cassandra/src/test/kotlin/com/demo/chat/test/deploy/cassandra/CassandraClaimBootTests.kt`.
 
 ```kotlin
 package com.demo.chat.test.deploy.cassandra
@@ -2450,76 +2484,111 @@ import com.demo.chat.domain.NodeIdClaimStore
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
-import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.WebApplicationType
+import org.springframework.boot.builder.SpringApplicationBuilder
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationListener
-import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Boot level tests for the cassandra claim seam.
  *
  * Node ids 21 and 22 belong to this class. See the allocation table in the
- * plan. `CassandraDeployTest` holds node id 1 in the same container.
+ * plan. `CassandraDeployTest` holds node id 1 in the same container, and
+ * truncate-long.cql does not clear node_claim.
  */
 @Tag("integration")
 class CassandraClaimBootTests : CassandraContainerBase() {
 
-    private val launchProperties = arrayOf(
+    private fun cqlsh(statement: String): String {
+        val result = cassandraContainer.execInContainer(
+            "cqlsh",
+            "-u", cassandraContainer.username,
+            "-p", cassandraContainer.password,
+            "-e", statement
+        )
+        Assertions.assertEquals(
+            0, result.exitCode,
+            "cqlsh failed. stdout: ${result.stdout} stderr: ${result.stderr}"
+        )
+        return result.stdout
+    }
+
+    /**
+     * Writes the claim with cqlsh, outside every application context.
+     *
+     * A booted context would take the id itself and release it on close, and
+     * the duplicate would not be there for the second boot.
+     */
+    private fun seedForeignClaim(nodeId: Int, owner: String) {
+        cqlsh(
+            "INSERT INTO chat_long.node_claim (node_id, owner_id) " +
+                "VALUES ($nodeId, '$owner') IF NOT EXISTS USING TTL 300;"
+        )
+        val readBack = cqlsh("SELECT owner_id FROM chat_long.node_claim WHERE node_id = $nodeId;")
+        Assertions.assertTrue(
+            readBack.contains(owner),
+            "the foreign claim seed must be applied. cqlsh said: $readBack"
+        )
+    }
+
+    private fun launchProperties(): Array<String> = arrayOf(
         "spring.config.location=classpath:/application.yml",
         "spring.config.additional-location=classpath:/config/logging.yml," +
             "classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
-        "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long",
-        "app.service.core.pubsub=memory", "app.service.core.index=cassandra",
-        "app.service.core.secrets=cassandra", "app.service.composite", "app.service.composite.auth",
-        "app.controller.secrets", "app.controller.key", "app.controller.persistence",
-        "app.controller.index", "app.controller.user", "app.controller.message",
-        "app.controller.topic", "app.controller.pubsub", "app.service.security.userdetails",
-        "spring.profiles.active=cassandra-contact-point"
+        "server.port=0",
+        "spring.rsocket.server.port=0",
+        "app.key.type=long",
+        "app.service.core.pubsub=memory",
+        "app.service.core.index=cassandra",
+        "app.service.core.secrets=cassandra",
+        "app.service.composite",
+        "app.service.composite.auth",
+        "app.controller.secrets",
+        "app.controller.key",
+        "app.controller.persistence",
+        "app.controller.index",
+        "app.controller.user",
+        "app.controller.message",
+        "app.controller.topic",
+        "app.controller.pubsub",
+        "app.service.security.userdetails",
+        "spring.profiles.active=cassandra-contact-point",
+        // SpringApplicationBuilder does not read @DynamicPropertySource.
+        "spring.cassandra.contact-points=${cassandraContainer.host}",
+        "spring.cassandra.port=${cassandraContainer.getMappedPort(9042)}",
+        "spring.cassandra.username=${cassandraContainer.username}",
+        "spring.cassandra.password=${cassandraContainer.password}"
     )
 
     private fun boot(vararg extra: String, ready: AtomicBoolean) =
         SpringApplicationBuilder(ChatApp::class.java)
             .web(WebApplicationType.NONE)
-            .properties(*launchProperties, *extra)
+            .properties(*launchProperties(), *extra)
             .listeners(ApplicationListener<ApplicationReadyEvent> { ready.set(true) })
 
-    private fun foreignClaim(template: ReactiveCassandraTemplate, nodeId: Int) {
-        template.reactiveCqlOperations.queryForRows(
-            "INSERT INTO node_claim (node_id, owner_id) VALUES (?, ?) IF NOT EXISTS USING TTL ?",
-            nodeId, "foreign-owner@host-z:1#deadbeef", 120
-        ).next().block()
-    }
+    private fun allMessages(thrown: Throwable): String =
+        generateSequence(thrown) { it.cause }.mapNotNull { it.message }.joinToString(" | ")
 
     @Test
     fun `a live claim fails startup with the actionable message`() {
+        seedForeignClaim(21, "foreign-owner@host-z:1#deadbeef")
         val ready = AtomicBoolean(false)
 
-        boot(
-            "app.nodeid=21", "app.service.core.key=cassandra",
-            "app.service.core.persistence=cassandra",
-            ready = ready
-        ).run().use { context ->
-            foreignClaim(context.getBean(ReactiveCassandraTemplate::class.java), 21)
-        }
-
-        val second = AtomicBoolean(false)
         val thrown = Assertions.assertThrows(Exception::class.java) {
             boot(
-                "app.nodeid=21", "app.service.core.key=cassandra",
+                "app.nodeid=21",
+                "app.service.core.key=cassandra",
                 "app.service.core.persistence=cassandra",
-                ready = second
+                ready = ready
             ).run().close()
         }
 
-        val text = generateSequence(thrown as Throwable) { it.cause }
-            .mapNotNull { it.message }.joinToString(" | ")
-
+        val text = allMessages(thrown)
         Assertions.assertTrue(text.contains("app.nodeid=21 is already claimed"), text)
         Assertions.assertTrue(text.contains("cassandra keyspace chat_long"), text)
         Assertions.assertTrue(text.contains("foreign-owner@host-z:1#deadbeef"), text)
-        Assertions.assertFalse(second.get(), "ApplicationReadyEvent must not be published")
+        Assertions.assertFalse(ready.get(), "ApplicationReadyEvent must not be published")
     }
 
     @Test
@@ -2527,7 +2596,8 @@ class CassandraClaimBootTests : CassandraContainerBase() {
         val ready = AtomicBoolean(false)
 
         boot(
-            "app.nodeid=22", "app.service.core.key=memory",
+            "app.nodeid=22",
+            "app.service.core.key=memory",
             "app.service.core.persistence=cassandra",
             ready = ready
         ).run().use { context ->
@@ -2541,21 +2611,21 @@ class CassandraClaimBootTests : CassandraContainerBase() {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [ ] **Step 2: Run the boot tests**
 
-Run: `mvn -o -pl chat-deploy-cassandra -Pintegration test -Dtest=CassandraClaimBootTests`
+Run: `mvn -o -pl chat-deploy-cassandra -am -Pintegration test -Dtest=CassandraClaimBootTests`
 
-Expected: FAIL on the first run. Read the failure text before changing anything.
+Expected: PASS, 2 tests.
 
-The first test closes the first context on purpose. The guard releases the lease on close, so the test writes its own foreign claim before the second boot.
+- [ ] **Step 3: Read a clean start as a seam failure**
 
-- [ ] **Step 3: Make the tests pass**
+If the duplicate test reports that no exception was thrown, check the same three points as Task 9, Step 3, with `cassandra` in place of `redis`. Then check that the seed assertion passed. A seed that did not apply means node 21 was already held, and the allocation table was broken.
 
-If the first test starts cleanly, check the same three points as Task 9, Step 5, with `cassandra` in place of `redis`. Fix the launch properties, not the guard.
+Fix the launch properties or the condition. Do not weaken the test.
 
 - [ ] **Step 4: Run the whole cassandra deploy module**
 
-Run: `mvn -o -pl chat-deploy-cassandra -Pintegration test`
+Run: `mvn -o -pl chat-deploy-cassandra -am -Pintegration test`
 
 Expected: PASS. `CassandraDeployTest` still boots on node id 1.
 
@@ -2633,7 +2703,7 @@ class MemoryClaimAbsenceTests {
 
 - [ ] **Step 2: Run the tests**
 
-Run: `mvn -o -pl chat-deploy-memory test -Dtest=MemoryClaimAbsenceTests`
+Run: `mvn -o -pl chat-deploy-memory -am test -Dtest=MemoryClaimAbsenceTests`
 
 Expected: PASS, 3 tests. Nothing on this classpath names redis or cassandra, so the condition never matches.
 
@@ -2793,7 +2863,11 @@ git commit -m "document the node id claim lease and record the build gate"
 
 **Spec coverage.** Every spec section maps to a task. D1 to Task 6. D2 to Tasks 4 and 5. D3 to Task 1 and Task 12. D4 to Tasks 4, 9, and 10. D5 to Tasks 7 and 8. D6 to Task 11. The contract to Task 2. The guard to Tasks 4 and 5. The owner id and scheduler to Task 3. Redis to Task 7. Cassandra to Task 8. The message to Task 2. The Cassandra UUID note to Task 12. Every test in the spec test tables appears in a task. R1 appears as the allocation table in Global Constraints. R2 appears in Task 1 comments and Task 8. R3 appears in the properties. R4 appears in Tasks 3 and 5. Unverified claim 1 is Task 1. Unverified claim 2 is Task 9 Step 2 and Task 10 Step 1.
 
-**Two gaps to accept.** Task 9 leaves the exact property list to be copied from the existing boot test, because that list is long and already correct in the repository. Task 11 does the same for the memory deployment test. Both steps name the file and the fields to copy. Every other step carries its content.
+**One gap to accept.** Task 11 leaves the memory deployment classes and properties to be copied from `MemoryDeploymentTests` in the same package. The step names the file and the fields. Every other step carries its content, including the launch property lists in Tasks 9 and 10.
+
+**Red steps.** Tasks 1 to 8 each write a failing test first. Tasks 9, 10, and 11 do not, and they say so. By Task 9 the redis guard is already wired by Task 7, and by Task 10 the cassandra guard is already wired by Task 8. A boot test written after its guard cannot fail first. Those tasks instead state what a clean start means: the seam is broken, and the step lists what to check. The red step for the denial behaviour itself is Task 4.
+
+**Build order.** Every `mvn -pl` command outside `chat-core` carries `-am`. Task 1 needs it because `shared-resources-cassandra` changes. Tasks 7 to 11 need it because `chat-core` gains new types. Without `-am` those modules compile against the stale installed artifact.
 
 **Type consistency.** `NodeIdClaimException` takes `(nodeId, scope, holder, ttl)` in Task 2 and is constructed with those four arguments in Tasks 4 and 5. `NodeIdClaimStore` declares `backendName`, `scope`, `claim`, `renew`, `release` in Task 2 and is implemented with the same names in Tasks 7 and 8. `ClaimScheduler` declares five methods in Task 3, and `ManualClaimScheduler` in Task 4 implements all five. `NodeIdClaimProperties` exposes `ttl`, `renewInterval`, `safetyMargin`, `operationTimeout`, `closeDeadline` in Task 2 and is read with those names in Task 4.
 
