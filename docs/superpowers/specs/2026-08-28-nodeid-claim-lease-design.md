@@ -179,9 +179,15 @@ interface NodeIdClaimStore {
 `claim` never returns `Lost`. `Lost` reports that a renew found no live
 claim.
 
-`backendName` orders the stores and names the backend in the message.
-`scope` names the space that the claim covers, such as `key type long` or
-`keyspace chat_long`. The failure message states both.
+`backendName` orders the stores. It is `redis` or `cassandra`.
+
+`scope` is the full phrase that names the space the claim covers. Redis
+supplies `redis store for key type long`. Cassandra supplies
+`cassandra keyspace chat_long`.
+
+`scope` carries the whole phrase so that one message template serves both
+backends. A template that joined a backend name to a short scope would need
+a branch per backend.
 
 The stores compose on the reactive infrastructure. The guard is the only
 place that blocks. The guard applies `.timeout(operationTimeout).block()`.
@@ -303,15 +309,20 @@ a holder.
 
 ```lua
 local v = redis.call('GET', KEYS[1])
-if v == false then return {0} end
+if v == false then return 'lost' end
 if v == ARGV[1] then
     redis.call('PEXPIRE', KEYS[1], ARGV[2])
-    return {1}
+    return 'granted'
 end
-return {2, v}
+return 'denied:' .. v
 ```
 
-`{0}` is `Lost`. `{1}` is `Granted`. `{2, owner}` is `Denied`.
+The reply is one string. `lost` is `Lost`. `granted` is `Granted`.
+`denied:<owner>` is `Denied`.
+
+A single string keeps one serializer in play. A Lua array that mixes a
+number and a string needs a mixed result type, and
+`ReactiveStringRedisTemplate` carries a string serializer.
 
 The script returns the state and the holder in one round trip. No read
 follows a failed script. The value can change between two calls.
@@ -320,9 +331,12 @@ follows a failed script. The value can change between two calls.
 
 ```lua
 local v = redis.call('GET', KEYS[1])
-if v == false then return {0} end
-if v == ARGV[1] then return {1, redis.call('DEL', KEYS[1])} end
-return {2, v}
+if v == false then return 'lost' end
+if v == ARGV[1] then
+    redis.call('DEL', KEYS[1])
+    return 'granted'
+end
+return 'denied:' .. v
 ```
 
 `PX` makes the Redis server the clock. No application clock enters the
@@ -368,23 +382,36 @@ https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html
 
 ## Failure message
 
-`NodeIdClaimException` carries `nodeId`, `backendName`, `scope`, `holder`,
-and `ttl`. It builds the text in one place in `chat-core`.
+`NodeIdClaimException` carries `nodeId`, `scope`, `holder`, and `ttl`. It
+builds the text in one place in `chat-core`.
 
-`scope` names the exact space that the claim covers. The store supplies it.
-Redis supplies `key type long`. Cassandra supplies `keyspace chat_long`.
+The exception carries no `backendName`. The scope phrase already names the
+backend. `backendName` stays on the store, where it orders the claims.
+
+`scope` is the full phrase that names the space the claim covers. The store
+supplies it.
 
 The message must state the scope, because uniqueness is per key type per
 store. A message that says "one store" is false for a Redis `long`
 deployment beside a Redis `uuid` deployment. See D5.
+
+The template is one string:
+
+```
+app.nodeid=<id> is already claimed in the <scope>.
+Holder: <holder>
+Two deployments that write to the <scope> must not use the same app.nodeid.
+Set a different app.nodeid, or stop the other deployment and wait <ttl>
+for its lease to expire.
+```
 
 Redis:
 
 ```
 app.nodeid=7 is already claimed in the redis store for key type long.
 Holder: core-service@host-a:4711#a3f19c2b
-Two deployments that write to this store with key type long must not use
-the same app.nodeid.
+Two deployments that write to the redis store for key type long must not
+use the same app.nodeid.
 Set a different app.nodeid, or stop the other deployment and wait 30s
 for its lease to expire.
 ```
@@ -394,14 +421,13 @@ Cassandra:
 ```
 app.nodeid=7 is already claimed in the cassandra keyspace chat_long.
 Holder: core-service@host-a:4711#a3f19c2b
-Two deployments that write to keyspace chat_long must not use the same
-app.nodeid.
+Two deployments that write to the cassandra keyspace chat_long must not
+use the same app.nodeid.
 Set a different app.nodeid, or stop the other deployment and wait 30s
 for its lease to expire.
 ```
 
-One template builds both. Only the backend name, the scope, and the wait
-time differ.
+One template builds both. Only the scope and the wait time differ.
 
 ## Cassandra UUID note
 
