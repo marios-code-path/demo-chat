@@ -10,6 +10,18 @@ CREATE TABLE chat_uuid.keys(
                           kind varchar ,
                           PRIMARY KEY(id) );
 
+-- Holds the app.nodeid lease. One row per claimed node id.
+-- The row carries a TTL, so a crashed deployment releases its own id.
+-- The columns do not change with the key type. A claim holds a node id,
+-- not a domain key.
+-- This table is deliberately absent from truncate-uuid.cql. A live lease
+-- must expire. A test cleanup script must not delete it.
+CREATE TABLE chat_uuid.node_claim(
+    node_id  int,
+    owner_id text,
+    PRIMARY KEY(node_id)
+);
+
 CREATE TABLE chat_uuid.kv_pair(
                                   id UUID,
                                   vdata text,

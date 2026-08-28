@@ -31,6 +31,16 @@
             <artifactId>chat-persistence-cassandra</artifactId>
             <version>0.0.1</version>
         </dependency>
+        <!-- Test only. CassandraClaimBootTests boots the mixed seam, where
+             app.service.core.key=memory and app.service.core.persistence=cassandra.
+             That pair needs the memory KeyServiceBeans. Production deployments of
+             this module select cassandra for both, so this stays out of runtime. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-memory</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-composite</artifactId>

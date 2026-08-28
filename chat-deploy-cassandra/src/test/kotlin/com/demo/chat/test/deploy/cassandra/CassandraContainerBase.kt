@@ -6,7 +6,6 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.CassandraContainer
 import org.testcontainers.containers.Network
-import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.MountableFile
 import java.time.Duration
@@ -21,7 +20,12 @@ open class CassandraContainerBase {
     companion object {
         private const val CASSANDRA_IMAGE = "cassandra:4.1.3"
 
-        @Container
+        // Not annotated with @Container on purpose. @Container on a static
+        // field makes JUnit stop the container when the first test class
+        // finishes. The init block below starts it and applies the long
+        // keyspace exactly once per JVM, so a second test class would then
+        // meet a fresh container with no chat_long keyspace.
+        // RedisTestContainer starts its container the same way.
         val cassandraContainer = CassandraContainer(CASSANDRA_IMAGE).apply {
             withExposedPorts(9042)
             withReuse(true)
