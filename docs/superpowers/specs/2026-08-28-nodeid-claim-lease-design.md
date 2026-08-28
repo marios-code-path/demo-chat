@@ -43,14 +43,23 @@ Out of scope:
 A process must claim a lease in every distinct shared backend that
 `app.service.core.key` or `app.service.core.persistence` names.
 
-| `app.service.core.key` | `app.service.core.persistence` | Claim |
-|---|---|---|
-| `redis` | `redis` | redis |
-| `cassandra` | `cassandra` | cassandra |
-| `memory` | `redis` | redis |
-| `redis` | `cassandra` | redis and cassandra |
-| `memory` | `memory` | none |
-| unset | unset | none |
+The table below is exhaustive. The row is `app.service.core.key`. The
+column is `app.service.core.persistence`. The cell is the set of backends
+that the process claims.
+
+| key \ persistence | `memory` | `redis` | `cassandra` |
+|---|---|---|---|
+| `memory` | none | redis | cassandra |
+| `redis` | redis | redis | redis and cassandra |
+| `cassandra` | cassandra | cassandra and redis | cassandra |
+
+An unset selector counts as `memory` in this table. `app.service.core.key`
+is unset for the client launches, and the memory `KeyGenConfiguration`
+carries `matchIfMissing = true`. An unset `app.service.core.persistence`
+names no shared persistence backend.
+
+So an unset key with an unset persistence claims nothing. A client keeps
+its current startup behaviour.
 
 Reason: generated ids reach both the key store and the persistence store.
 A seam on one selector alone leaves a real pair unprotected. Current
@@ -75,9 +84,14 @@ class `ConditionalOnSharedBackend` in `chat-core` reads both properties.
 The close deadline is `ttl - safety-margin` after the last successful claim
 or renew. Every success reschedules a single shot deadline timer.
 
-Reason: a lost claim is a proven live collision. A store error is not.
-A short store outage must not stop a healthy process. The margin makes the
-process close before the lease can expire.
+Reason: a lost claim is proven loss of ownership. The process closes before
+another owner can safely continue.
+
+`Lost` does not prove that another owner exists. `Denied` does prove it,
+because the store named the other holder.
+
+A store error proves neither. A short store outage must not stop a healthy
+process. The margin makes the process close before the lease can expire.
 
 ### D3. The Cassandra claim table comes from the schema files
 
@@ -98,11 +112,17 @@ Each backend module contributes a claim store. Each such configuration
 imports `NodeIdClaimGuardConfiguration`. The guard bean claims in
 `afterPropertiesSet`.
 
-A duplicate throws during refresh. The web server port never binds. No id
-is generated.
+A duplicate throws during refresh. Startup then fails before the
+application is ready and before the process serves normal traffic.
 
-Reason: a listener on `ApplicationReadyEvent` binds the port first. A
-duplicate deployment would serve traffic before it closes.
+The stronger statement is that the web server port never binds. Bean
+instantiation runs before `WebServerStartStopLifecycle`, so the port should
+still be closed. That order is not asserted anywhere today. The spec does
+not rely on it. A lifecycle proof test measures it, and the result is
+recorded as an observation, not as a requirement.
+
+Reason: a listener on `ApplicationReadyEvent` runs after the web server
+starts. A duplicate deployment would serve traffic before it closes.
 
 ### D5. Uniqueness is per key type per store
 
@@ -149,6 +169,7 @@ sealed class ClaimResult {
 
 interface NodeIdClaimStore {
     val backendName: String
+    val scope: String
     fun claim(nodeId: NodeId, owner: String, ttl: Duration): Mono<ClaimResult>
     fun renew(nodeId: NodeId, owner: String, ttl: Duration): Mono<ClaimResult>
     fun release(nodeId: NodeId, owner: String): Mono<Void>
@@ -157,6 +178,10 @@ interface NodeIdClaimStore {
 
 `claim` never returns `Lost`. `Lost` reports that a renew found no live
 claim.
+
+`backendName` orders the stores and names the backend in the message.
+`scope` names the space that the claim covers, such as `key type long` or
+`keyspace chat_long`. The failure message states both.
 
 The stores compose on the reactive infrastructure. The guard is the only
 place that blocks. The guard applies `.timeout(operationTimeout).block()`.
@@ -192,6 +217,24 @@ A test supplies a virtual clock and a controlled scheduler. The unit tests
 therefore need no real waiting.
 
 ### Shutdown
+
+A renew task can decide to close the context. That task runs on the guard
+scheduler. `destroy` then runs inside `close`, on that same thread.
+
+A `destroy` that waits for the scheduler to finish would wait for itself.
+That is a deadlock.
+
+Two rules prevent it.
+
+1. The guard never closes the context from the scheduler thread. It
+   dispatches `context.close()` to a separate daemon thread named
+   `nodeid-claim-close`. The scheduler task returns at once.
+2. `destroy` calls `shutdownNow` on the scheduler. It never calls
+   `awaitTermination` from a scheduler thread. It checks the current thread
+   before any wait.
+
+Rule 1 alone is enough. Rule 2 stays as a second barrier, because a future
+caller may close the context from an unexpected thread.
 
 `destroy` cancels the scheduler first. It then releases every granted store
 under the operation timeout. A failure logs at DEBUG and never blocks
@@ -239,6 +282,9 @@ Module `chat-persistence-redis`. Bean on `ReactiveStringRedisTemplate`.
 Key: `chat:nodeclaim:<keyType>:<nodeId>`.
 
 No braces. Redis Cluster hash tags are not intended.
+
+The key type comes from `app.key.type`. The store reports
+`scope = "key type <keyType>"`.
 
 ### Claim
 
@@ -296,6 +342,9 @@ CREATE TABLE chat_long.node_claim(
 
 The same table is declared in the `chat_uuid` keyspace.
 
+The keyspace comes from the configured session. The store reports
+`scope = "keyspace <keyspace>"`.
+
 | Operation | Statement |
 |---|---|
 | Claim | `INSERT INTO node_claim (node_id, owner_id) VALUES (?, ?) IF NOT EXISTS USING TTL 30` |
@@ -319,18 +368,39 @@ https://cassandra.apache.org/doc/latest/cassandra/developing/cql/dml.html
 
 ## Failure message
 
-`NodeIdClaimException` carries `nodeId`, `backendName`, `holder`, and
-`ttl`. It builds the text in one place in `chat-core`.
+`NodeIdClaimException` carries `nodeId`, `backendName`, `scope`, `holder`,
+and `ttl`. It builds the text in one place in `chat-core`.
+
+`scope` names the exact space that the claim covers. The store supplies it.
+Redis supplies `key type long`. Cassandra supplies `keyspace chat_long`.
+
+The message must state the scope, because uniqueness is per key type per
+store. A message that says "one store" is false for a Redis `long`
+deployment beside a Redis `uuid` deployment. See D5.
+
+Redis:
 
 ```
-app.nodeid=7 is already claimed in the redis store.
+app.nodeid=7 is already claimed in the redis store for key type long.
 Holder: core-service@host-a:4711#a3f19c2b
-Two deployments that write to one store must not use the same app.nodeid.
+Two deployments that write to this store with key type long must not use
+the same app.nodeid.
 Set a different app.nodeid, or stop the other deployment and wait 30s
 for its lease to expire.
 ```
 
-The text is identical for both backends. Only the backend name and the wait
+Cassandra:
+
+```
+app.nodeid=7 is already claimed in the cassandra keyspace chat_long.
+Holder: core-service@host-a:4711#a3f19c2b
+Two deployments that write to keyspace chat_long must not use the same
+app.nodeid.
+Set a different app.nodeid, or stop the other deployment and wait 30s
+for its lease to expire.
+```
+
+One template builds both. Only the backend name, the scope, and the wait
 time differ.
 
 ## Cassandra UUID note
@@ -360,7 +430,9 @@ These use fake stores. They need no container.
 | Ordered claim | Two stores are claimed in `backendName` order |
 | Ordered release | A denial at store two releases store one first |
 | Property rules | Each rule in the properties table fails startup and states the rule |
-| Message text | The text names the property, the backend, the holder, and the wait |
+| Message text | The text names the property, the backend, the scope, the holder, and the wait |
+| Close is off the scheduler | A `Denied` renew closes the context on the `nodeid-claim-close` thread, not on a scheduler thread |
+| Shutdown does not deadlock | `destroy` completes inside that close, within a bounded time |
 
 ### Store integration tests
 
@@ -392,6 +464,13 @@ depends on it.
 The test claims the node id in the container under a foreign owner. It then
 boots the deploy context. It asserts a `NodeIdClaimException` and the
 actionable text.
+
+The same test records the lifecycle observation from D4. It asserts that
+`ApplicationReadyEvent` is never published. It then reports whether the
+server port accepted a connection at any point. The port result is
+recorded in the spec as an observation. A port that binds does not fail
+the test, because the requirement is failure before ready and before
+normal traffic.
 
 ### Memory test
 
@@ -438,6 +517,15 @@ Mitigation: the same distinct node id allocation from R1.
 The guard blocks the refresh thread on a store call.
 
 Mitigation: `operation-timeout` bounds every call. The default is 5s.
+
+### R4. The guard can close the context from its own scheduler thread
+
+A renew task decides to close. `destroy` then runs on the scheduler thread
+and can wait for that same thread.
+
+Mitigation: the guard dispatches `context.close()` to the
+`nodeid-claim-close` daemon thread. `destroy` calls `shutdownNow` and never
+waits from a scheduler thread. Two unit tests pin both rules.
 
 ## Claims that are load bearing and unverified
 
