@@ -150,6 +150,14 @@ built on top of them inherits the risk.
   on the branch. Run `mvn -o -pl chat-core clean test` after a branch switch. This
   is the same shape as the stale integration image trap above. The build artifact
   outlived the source.
+- **`app.nodeid` has no default and no derivation.** It takes an integer in
+  0..1023, and 0 is a legal explicit value. The MAC derivation is gone, because it
+  collided for certain across containers that share an IP. `chat-build --node-id`
+  is the normal launch path, and the argument is required. Do not add a shared
+  `app.nodeid` value to deployment yml. A committed default would make every
+  deployment the same node in silence, which is the failure this change removed.
+  Tests can use `app.nodeid=1`. Uniqueness across deployments is still not
+  enforced. That remains `CHAT-wyssrokr`.
 - **A disabled boot test is how a backend rots unnoticed.** `RedisDeployBootTests`
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay
