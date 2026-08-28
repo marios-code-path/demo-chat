@@ -12,8 +12,9 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| `HEAD` | `ed7e18c4`, PR #53 merge commit |
-| `origin/master` | `ed7e18c4`, PR #53 merge commit |
+| Current commit | This register refresh, after PR #53 merged |
+| Last merged PR | #53, merge commit `ed7e18c4` |
+| `origin/master` at refresh time | `ed7e18c4`, before this register refresh was pushed |
 | Merged feature branch | `nodeid-claim-lease` at `79944205` |
 | Locked worktree | `.claude/worktrees/domain-serialization`, still on merged `nodeid-claim-lease` |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
