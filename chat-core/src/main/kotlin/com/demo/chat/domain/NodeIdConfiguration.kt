@@ -7,7 +7,7 @@ import org.springframework.core.env.Environment
 /**
  * Supplies the validated [NodeId].
  *
- * This class sits in `com.demo.chat.domain` on purpose. `com.demo.chat.config` is
+ * This class is in `com.demo.chat.domain` on purpose. `com.demo.chat.config` is
  * component-scanned by every deployment, so a copy placed there would supply the
  * bean in processes that generate no keys and would fail their startup.
  *
