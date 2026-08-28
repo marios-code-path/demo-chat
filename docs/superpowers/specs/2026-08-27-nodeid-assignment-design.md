@@ -64,6 +64,7 @@ it uses `CassandraUUIDKeyGenerator`, which takes no argument.
 | Derivation | Delete it. | Any name for the derivation keeps the collision reachable. |
 | Value 0 | Legal and explicit. | 0 stops being a sentinel once the default is gone. |
 | Structure | One validated type in `chat-core`. | Three copies of one contract let the bad default sit unnoticed in all three. |
+| Launcher input | A required `--node-id` argument. | The launcher must not reintroduce a default that the runtime just removed. |
 
 ## The contract
 
@@ -89,7 +90,15 @@ text. A pure `parse(raw: String?)` function does the work, so tests need no Spri
 context.
 
 A `@Configuration` class in `chat-core` supplies one validated `NodeId` bean. That
-class reads `@Value("\${app.nodeid}")` with no default and calls `parse`.
+class reads the raw value with `Environment.getProperty("app.nodeid")` and passes the
+result to `parse`.
+
+Do not read the value with `@Value("\${app.nodeid}")`. Spring resolves a placeholder
+before it injects the field. An unset property then fails placeholder resolution, and
+the error comes from Spring rather than from `parse`. The unset case is the one every
+existing deployment meets first, so `parse` must own it.
+`Environment.getProperty` returns null for an absent property, which lets
+`parse(null)` produce the designed message.
 
 Do not put that class on a component-scanned path. A globally scanned bean would exist
 in every process, including processes that generate no keys, which contradicts the
@@ -131,12 +140,21 @@ Replace the `@Value("\${app.nodeid:0}")` field with the injected `NodeId`. Add t
 `shell-scripts/chat-build` builds the launch flags. Its `main_flags()` emits
 `-Dapp.key.type` today. It must also emit `-Dapp.nodeid`.
 
-`shell-scripts/golden` holds 15 `.flags` files. `shell-scripts/test-flags.sh` compares
-emitted flags against them. Every golden that gains the flag must be regenerated with
+**Input source.** `chat-build` takes the value from a required `--node-id ID`
+argument. A generated launch must name it. The launcher supplies no default and
+derives nothing, which matches the runtime contract. A missing `--node-id` fails the
+launcher with its own message, before any JVM starts.
+
+`shell-scripts/test-flags.sh` passes `--node-id 0` explicitly, so golden output stays
+deterministic across runs and machines. 0 is a legal explicit value under the new
+contract.
+
+`shell-scripts/golden` holds 15 `.flags` files. `test-flags.sh` compares emitted flags
+against them. Every golden that gains the flag must be regenerated with
 `./shell-scripts/test-flags.sh --update`.
 
-`README-chat-build.md` states that a regenerated golden needs an explanation. The
-commit message must give one.
+`shell-scripts/README-chat-build.md:243` states that a regenerated golden needs an
+explanation. The commit message must give one.
 
 **Emit the flag in all 15 goldens.** Twelve goldens name a key backend through
 `app.service.core.key`. Three do not: `gateway-client`, `rest-client`, and
@@ -165,7 +183,9 @@ Unit tests for `NodeId.parse` cover an unset value, an empty value, whitespace, 
 non-numeric value, a negative value, 0, 1023, and 1024.
 
 A context test asserts that a deployment without `app.nodeid` fails, and that the
-message names the property.
+message names the property. This test also guards the `Environment.getProperty`
+choice. A change back to `@Value` breaks it, because the failure text becomes a Spring
+placeholder error.
 
 A second context test asserts that a deployment with a valid value starts.
 
@@ -179,8 +199,18 @@ them.
 
 This is a breaking change with no grace period. `app.nodeid` is set nowhere today.
 It appears only in the three `@Value` declarations. No yml file, no properties file,
-no test, and no deploy config sets it. So every deployment currently derives its node
-id, and every one of them must gain the property before it starts.
+no test, and no deploy config sets it.
+
+So every deployment that activates a deriving key generator currently derives its node
+id. That set is:
+
+- memory, with either key type
+- redis, with either key type
+- Cassandra, with the Long key type
+
+Cassandra with the UUID key type does not derive, because `CassandraUUIDKeyGenerator`
+takes no node id. A process that activates no `KeyGenConfiguration` derives nothing.
+Every deployment in the deriving set must gain the property before it starts.
 
 The size of the test change is not knowable by reading. This matches the
 "Task 7 of the plan is unbounded" entry in the forward register. Run the full suite
