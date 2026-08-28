@@ -369,7 +369,7 @@ class NodeIdClaimExceptionTests {
 
 - [ ] **Step 3: Run both tests to verify they fail**
 
-Run: `mvn -o -pl chat-core test -Dtest='NodeIdClaimPropertiesTests+NodeIdClaimExceptionTests'`
+Run: `mvn -o -pl chat-core test -Dtest='NodeIdClaimPropertiesTests,NodeIdClaimExceptionTests'`
 
 Expected: FAIL to compile, with unresolved references to `NodeIdClaimProperties` and `NodeIdClaimException`.
 
@@ -540,7 +540,7 @@ class NodeIdClaimProperties(
 
 - [ ] **Step 6: Run both tests to verify they pass**
 
-Run: `mvn -o -pl chat-core test -Dtest='NodeIdClaimPropertiesTests+NodeIdClaimExceptionTests'`
+Run: `mvn -o -pl chat-core test -Dtest='NodeIdClaimPropertiesTests,NodeIdClaimExceptionTests'`
 
 Expected: PASS, 11 tests.
 
@@ -688,7 +688,7 @@ class ExecutorClaimSchedulerTests {
 
 - [ ] **Step 3: Run both tests to verify they fail**
 
-Run: `mvn -o -pl chat-core test -Dtest='RuntimeOwnerIdTests+ExecutorClaimSchedulerTests'`
+Run: `mvn -o -pl chat-core test -Dtest='RuntimeOwnerIdTests,ExecutorClaimSchedulerTests'`
 
 Expected: FAIL to compile, with unresolved references to `RuntimeOwnerId` and `ExecutorClaimScheduler`.
 
@@ -823,7 +823,7 @@ class ExecutorClaimScheduler : ClaimScheduler {
 
 - [ ] **Step 6: Run both tests to verify they pass**
 
-Run: `mvn -o -pl chat-core test -Dtest='RuntimeOwnerIdTests+ExecutorClaimSchedulerTests'`
+Run: `mvn -o -pl chat-core test -Dtest='RuntimeOwnerIdTests,ExecutorClaimSchedulerTests'`
 
 Expected: PASS, 7 tests.
 
