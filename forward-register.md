@@ -11,14 +11,14 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Worktree | `.claude/worktrees/xstream-messaging-only` (locked) |
-| Branch | `capability-composition-spec`, merged into `master` on 2026-08-25 |
-| Commits | `25a93e57` spec, `0b609644` plan, on `master`, unpushed |
-| `origin/master` | `b404d733` — PR #48 and PR #49 are merged |
-| Open PRs | dependabot only (#8, #10, #11); nothing of ours is in flight |
+| Checkout | `master` |
+| `HEAD` | `ed7e18c4`, PR #53 merge commit |
+| `origin/master` | `ed7e18c4`, PR #53 merge commit |
+| Merged feature branch | `nodeid-claim-lease` at `79944205` |
+| Locked worktree | `.claude/worktrees/domain-serialization`, still on merged `nodeid-claim-lease` |
+| Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
-The worktree is named for xstream messaging and has not held xstream work for
-several tasks. The name is stale; the contents are current.
+The locked worktree is host-managed. Do not remove it from an agent session.
 
 ## Landed
 
@@ -30,6 +30,10 @@ several tasks. The name is stale; the contents are current.
 | #47 | The redis backend made into a composition root that actually starts |
 | #48 | The dead JSON wrapper dropped from `User`, `MessageTopic`, and `TopicMembership` |
 | #49 | The dead JSON wrapper dropped from the seven E2EE types in `EncryptedEnvelope.kt` |
+| #50 | The forward register was refreshed after PR #49 |
+| #51 | `app.nodeid` became explicit, required, and validated |
+| #52 | The GraalVM sandbox self-attach trap was recorded |
+| #53 | Redis and Cassandra now enforce `app.nodeid` uniqueness with a store-side lease |
 
 ## Decisions carried forward
 
@@ -71,8 +75,11 @@ rename with no alias period.
 
 | Issue | State | What |
 |-------|-------|------|
-| `CHAT-koufkrsl` | todo | `nodeId` uniqueness unenforced, and the default derivation collides — by birthday across ~38 hosts, and deterministically for containers sharing an IP on different hosts. Registry-based detection is insufficient because a store outlives any one registry. |
 | `CHAT-cikgeefc` | todo | Build health verification. Standing tracker, deliberately left open — a cycle finding no drift is a clean reading, not a finished task. |
+
+`CHAT-koufkrsl` and its child `CHAT-wyssrokr` are done. PR #51 removed
+derivation and made `app.nodeid` explicit. PR #53 added the store-side claim
+lease. No open child remains under `CHAT-koufkrsl`.
 
 ## Domain serialization (2026-08-25/26)
 
@@ -103,8 +110,8 @@ went away.
   #47 and the evidence is logged on the issue, but the status was never moved to
   `done`. It should be.
 - **`CHAT-uortzsbx` is `in-progress`** from earlier work, not touched this session.
-- **Rebase done.** The branch was rebased onto `master` and merged on 2026-08-25.
-  The spec and plan now wait for a PR from `master`.
+- **The capability composition branch is merged.** The spec and first plan are on
+  `master`. Capability steps 5 to 7 still have no implementation plan.
 
 ## Claims that are load-bearing and unverified
 
@@ -174,10 +181,16 @@ built on top of them inherits the risk.
 
 ## Node id claim lease (2026-08-28)
 
-`CHAT-wyssrokr` is implemented on branch `nodeid-claim-lease`. Spec:
-`docs/superpowers/specs/2026-08-28-nodeid-claim-lease-design.md`. Plan:
+`CHAT-wyssrokr` is done and merged through PR #53. Merge commit:
+`ed7e18c4`. Branch head: `79944205`. The merge tree is byte-identical to the
+branch head tree, so the merge added no content change beyond the merge commit.
+
+Spec: `docs/superpowers/specs/2026-08-28-nodeid-claim-lease-design.md`. Plan:
 `docs/superpowers/plans/2026-08-28-nodeid-claim-lease.md`. Operator document:
 `docs/NODEID-CLAIM.md`.
+
+The integration gate ran again after the merge. `build-health.sh --integration`
+exited 0 and reported that reality matches `docs/BUILD-HEALTH.md`.
 
 Four rules that are load bearing and easy to lose:
 
