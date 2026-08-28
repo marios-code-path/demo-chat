@@ -563,10 +563,19 @@ waits from a scheduler thread. Two unit tests pin both rules.
    The `expires_at` fallback is not needed. The design keeps the
    coordinator applied TTL, and no application clock enters the decision.
 
-2. The reactive Redis and Cassandra beans are present at every claim seam.
-   A `key=memory` and `persistence=redis` process must still supply
-   `ReactiveStringRedisTemplate`. This was read from module configuration.
-   It was not observed. The implementation plan must boot that pair once.
+2. ~~The reactive Redis and Cassandra beans are present at every claim
+   seam.~~ **Verified on 2026-08-28.** `RedisClaimBootTests` boots
+   `key=memory` with `persistence=redis` and finds exactly one redis claim
+   store. `CassandraClaimBootTests` boots `key=memory` with
+   `persistence=cassandra` and finds exactly one cassandra claim store.
+   The cassandra case needed `chat-persistence-memory` on the test
+   classpath of `chat-deploy-cassandra`, for the memory `KeyServiceBeans`.
+   It is declared in test scope only.
+
+3. Whether the web server port binds before the claim fails is not
+   measured. The boot tests assert the requirement, which is that
+   `ApplicationReadyEvent` is never published. The stronger statement in D4
+   is still an expectation, not a result. Do not quote it as verified.
 
 ## Consequences
 
