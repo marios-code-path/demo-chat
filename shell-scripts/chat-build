@@ -475,6 +475,7 @@ class BuildContext:
         self.selected = self._resolve_features()
         self.backend = self._resolve_backend()
         self.key_type = "uuid" if "uuid" in self.selected else "long"
+        self.node_id = args.node_id
         self.discovery = "consul" if "consul" in self.selected else "local"
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
         self.tls_dir: str | None = args.tls
@@ -589,6 +590,7 @@ class BuildContext:
         flags += self.endpoint_flags()
         flags += [
             f"-Dapp.key.type={self.key_type}",
+            f"-Dapp.nodeid={self.node_id}",
             f"-Dapp.primary={self.service.app_primary}",
             f"-Dspring.application.name={self.service.deployment_name}",
             "-Djava.security.egd=file:/dev/./urandom",
@@ -849,7 +851,24 @@ def find_consul_host() -> str:
 # CLI
 # --------------------------------------------------------------------------
 
+def node_id_value(raw: str) -> int:
+    """Parse --node-id. There is no default and no derivation."""
+    try:
+        value = int(raw)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"node id must be an integer in 0..1023, got {raw!r}")
+    if value < 0 or value > 1023:
+        raise argparse.ArgumentTypeError(
+            f"node id must be an integer in 0..1023, got {value}")
+    return value
+
+
 def add_common_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--node-id", metavar="ID", required=True, type=node_id_value,
+                        help="node id for key generation, an integer in 0..1023. "
+                             "It must be unique across every deployment that writes to one store.")
+
     tls = parser.add_mutually_exclusive_group()
     tls.add_argument("--tls", metavar="DIR",
                      help="enable TLS using certificates in DIR")

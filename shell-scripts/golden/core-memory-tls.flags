@@ -9,6 +9,7 @@
 -Dapp.controller.user
 -Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message
 -Dapp.key.type=long
+-Dapp.nodeid=0
 -Dapp.primary=core-service
 -Dapp.rootkeys.create=true
 -Dapp.server.proto=rsocket

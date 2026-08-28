@@ -9,6 +9,7 @@
 -Dapp.controller.user
 -Dapp.key.type=long
 -Dapp.kv.store=none
+-Dapp.nodeid=0
 -Dapp.primary=REST
 -Dapp.rootkeys.consume.scheme=http
 -Dapp.rootkeys.consume.source=http://127.0.0.1:6791

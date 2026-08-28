@@ -1,6 +1,7 @@
 # profiles: client-backend,deploy,expose-gateway
 -Dapp.key.type=long
 -Dapp.kv.store=none
+-Dapp.nodeid=0
 -Dapp.primary=gateway
 -Dapp.rest.port=6791
 -Dapp.rootkeys.consume.scheme=http

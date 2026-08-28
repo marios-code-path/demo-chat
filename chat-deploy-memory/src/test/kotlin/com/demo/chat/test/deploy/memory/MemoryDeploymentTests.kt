@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource
     properties = [
         "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
         "spring.application.name=test-deployment", "app.server.proto=rsocket",
-        "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long",
+        "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory",
         "app.service.core.pubsub=memory", "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth",

@@ -62,7 +62,7 @@ import java.time.Duration
         "server.port=0",
         "spring.rsocket.server.port=0",
         "app.server.proto=rsocket",
-        "app.key.type=long",
+        "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=redis",
         "app.service.core.pubsub=redis-pubsub",
         "app.service.core.index=lucene",

@@ -10,6 +10,7 @@
 -Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message
 -Dapp.key.type=uuid
 -Dapp.kv.store=none
+-Dapp.nodeid=0
 -Dapp.primary=core-service
 -Dapp.rootkeys.consume.scheme=http
 -Dapp.rootkeys.consume.source=http://127.0.0.1:6791

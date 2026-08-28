@@ -10,7 +10,7 @@ class SnowflakeGeneratorTests {
 
     @Test
     fun `should generate a few sequences`() {
-        val generator = SnowflakeGenerator()
+        val generator = SnowflakeGenerator(1)
 
         val publisher = Flux.create<Long> { sink ->
             sink.next(generator.nextId())
