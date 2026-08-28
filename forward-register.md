@@ -156,8 +156,9 @@ built on top of them inherits the risk.
   is the normal launch path, and the argument is required. Do not add a shared
   `app.nodeid` value to deployment yml. A committed default would make every
   deployment the same node in silence, which is the failure this change removed.
-  Tests can use `app.nodeid=1`. Uniqueness across deployments is still not
-  enforced. That remains `CHAT-wyssrokr`.
+  Tests can use `app.nodeid=1` where the deployment claims nothing. Uniqueness
+  across deployments is now enforced by a store-side lease. See the node id claim
+  lease section below.
 - **A sandboxed build run can fail on agent self-attach, not on the code.**
   Mockito loads the Byte Buddy agent into the running JVM. A sandbox can block that
   self-attach on a GraalVM JVM, and `build-health.sh` then fails for a reason that
@@ -170,3 +171,68 @@ built on top of them inherits the risk.
   was `@Disabled` with an accurate comment explaining why, and the backend stayed
   broken behind it. Every composition gets a boot test in the plan, and they stay
   enabled.
+
+## Node id claim lease (2026-08-28)
+
+`CHAT-wyssrokr` is implemented on branch `nodeid-claim-lease`. Spec:
+`docs/superpowers/specs/2026-08-28-nodeid-claim-lease-design.md`. Plan:
+`docs/superpowers/plans/2026-08-28-nodeid-claim-lease.md`. Operator document:
+`docs/NODEID-CLAIM.md`.
+
+Four rules that are load bearing and easy to lose:
+
+1. **The claim seam is either core selector.** A process claims when
+   `app.service.core.key` or `app.service.core.persistence` names `redis` or
+   `cassandra`. Generated ids reach the key store and the persistence store, so a
+   condition on one selector alone would leave `key=memory` with
+   `persistence=redis` unprotected. `@ConditionalOnProperty` cannot express that
+   OR, so `ConditionalOnSharedBackend` in `chat-core` reads both properties.
+2. **Uniqueness is per key type per store.** Cassandra separates key types by
+   keyspace. Redis carries the key type in `chat:nodeclaim:<keyType>:<nodeId>`. A
+   `long` deployment and a `uuid` deployment can both hold node id 7 on one redis,
+   and that is correct. The failure message states the scope for this reason. A
+   message that said "one store" would be false.
+3. **`node_claim` is absent from the truncate scripts on purpose.** A live lease
+   must expire. A test cleanup script must not delete it.
+4. **Every container-backed test that claims owns a distinct `app.nodeid`.** The
+   allocation table is in `docs/NODEID-CLAIM.md`. Spring caches contexts, so two
+   open contexts against one store would collide. That collision is correct
+   behaviour and appears as a test failure, not as a flake.
+
+Two claims from the spec were verified while building:
+
+- **Cassandra treats a TTL expired row as absent for `IF NOT EXISTS`.**
+  `NodeClaimTableProbeTests` proves it against `cassandra:4.1.3`. The `expires_at`
+  fallback is not needed, and no application clock enters the decision.
+- **The reactive store beans are present at the mixed seam.** A deployment with
+  `key=memory` and `persistence=redis` supplies `ReactiveStringRedisTemplate` and
+  registers one redis claim store. The cassandra equivalent also boots.
+
+Traps found while building, each of which cost a debugging cycle:
+
+- **`@Container` on a static field stops the container after the first test
+  class.** `CassandraContainerBase` applies `keyspace-long.cql` once per JVM in an
+  `init` block, so a second test class met a fresh container with no `chat_long`
+  keyspace and `CassandraDeployTest` failed with `Invalid keyspace chat_long`. The
+  annotation is gone. The `init` block starts the container, which is how
+  `RedisTestContainer` already worked.
+- **`SpringApplicationBuilder.properties()` is the lowest precedence source.** It
+  writes to `defaultProperties`, so `application.yml` overrode the test container
+  address with `localhost`. Pass a launch surface as command line arguments
+  instead.
+- **A lightweight transaction that did not apply because no row exists returns a
+  row with only the `[applied]` column.** Asking that row for `owner_id` throws
+  `IllegalArgumentException`. Test for the column, not for null.
+- **Spring Data wraps the driver `InvalidQueryException`.** `onErrorMap` on the
+  driver type never matches. Walk the cause chain.
+- **`mvn -pl <module> -am -Dtest=X` fails on every upstream module** with "No tests
+  matching pattern". Add `-Dsurefire.failIfNoSpecifiedTests=false`. Surefire joins
+  several test names with a comma, not a plus sign.
+
+One item recorded as unmeasured, not as a result:
+
+- **Whether the web server port binds before the claim fails is not measured.**
+  The boot tests assert the requirement, which is that `ApplicationReadyEvent` is
+  never published for a duplicate. The stronger statement, that the port never
+  binds, rests on bean instantiation running before `WebServerStartStopLifecycle`,
+  and nothing in the suite asserts it. Do not quote it as verified.
