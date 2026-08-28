@@ -24,7 +24,7 @@
 
 - `ChatApp.kt` in `chat-deploy` and in `chat-authorization-server` sets `scanBasePackages = ["com.demo.chat.config"]`. That package is component-scanned in every deployment.
 - No component scan covers `com.demo.chat.domain`. The scans in use are `com.demo.chat.config`, `com.demo.chat.shell`, `com.demo.chat.controller.webflux`, and `com.demo.chat.config.deploy.cassandra.dse`.
-- `shell-scripts/chat-build` builds arguments in `add_common_args` at line 852, sets fields in `LaunchPlan.__init__` at line 472, and emits flags in `main_flags` at line 591.
+- `shell-scripts/chat-build` builds arguments in `add_common_args` at line 852, sets fields in `BuildContext.__init__` at line 472, where `BuildContext` is declared at line 469, and emits flags in `main_flags` at line 591.
 - `shell-scripts/test-flags.sh` holds a `CASES` array of `name|arguments` entries at line 46.
 - `app.nodeid` is set in no configuration file anywhere in the repository.
 
@@ -146,6 +146,19 @@ class NodeIdTests {
         Assertions.assertTrue(text.contains("no default"))
         Assertions.assertTrue(text.contains("99999"))
     }
+
+    @Test
+    fun `the message calls a null value unset`() {
+        val text = NodeId.message(null)
+        Assertions.assertTrue(text.contains("unset"))
+    }
+
+    @Test
+    fun `the message shows a blank value in quotes rather than as unset`() {
+        val text = NodeId.message("   ")
+        Assertions.assertTrue(text.contains("'   '"), text)
+        Assertions.assertFalse(text.contains("unset"), text)
+    }
 }
 ```
 
@@ -194,7 +207,11 @@ class NodeId(val value: Int) {
         fun message(raw: String?): String =
             "app.nodeid is required and has no default. " +
                 "Set it to an integer in $MIN..$MAX, unique across every deployment " +
-                "that writes to this store. Got: ${if (raw.isNullOrBlank()) "unset" else raw}"
+                "that writes to this store. Got: ${describe(raw)}"
+
+        // Only a null property is unset. An empty or blank value was supplied, so
+        // show it in quotes rather than hide it behind the word unset.
+        private fun describe(raw: String?): String = if (raw == null) "unset" else "'" + raw + "'"
     }
 }
 ```
@@ -233,7 +250,7 @@ open class NodeIdConfiguration {
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `mvn -o -pl chat-core test -Dtest=NodeIdTests`
-Expected: PASS. Ten tests, zero failures.
+Expected: PASS. Twelve tests, zero failures.
 
 - [ ] **Step 6: Write the configuration test**
 
@@ -329,6 +346,7 @@ Tasks 2, 3, and 4 land together. The tree is releasable at the end of Task 4, no
 - Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/SnowflakeGenerator.kt`
 - Modify: `chat-core/src/main/kotlin/com/demo/chat/service/LongKeyGenerator.kt`
 - Modify: `chat-core/src/main/kotlin/com/demo/chat/service/UUIDKeyGenerator.kt`
+- Modify: `chat-core/src/test/kotlin/com/demo/chat/test/domain/SnowflakeGeneratorTests.kt`
 - Modify: `chat-persistence-cassandra/src/main/kotlin/com/demo/chat/config/persistence/cassandra/KeyGenConfiguration.kt`
 - Modify: `chat-persistence-redis/src/main/kotlin/com/demo/chat/config/persistence/redis/KeyGenConfiguration.kt`
 - Modify: `chat-persistence-memory/src/main/kotlin/com/demo/chat/config/persistence/memory/KeyGenConfiguration.kt`
@@ -519,19 +537,43 @@ class KeyGenConfiguration {
 }
 ```
 
-- [ ] **Step 7: Build chat-core and read the failures**
+- [ ] **Step 7: Fix the test that calls the deleted constructor**
+
+`chat-core/src/test/kotlin/com/demo/chat/test/domain/SnowflakeGeneratorTests.kt` calls the
+no-argument constructor. Change this line:
+
+```kotlin
+        val generator = SnowflakeGenerator()
+```
+
+to:
+
+```kotlin
+        val generator = SnowflakeGenerator(1)
+```
+
+- [ ] **Step 8: Build chat-core and read the failures**
 
 Run: `mvn -o -pl chat-core clean test`
-Expected: compilation succeeds. Some tests may fail where they build a generator directly.
-Fix each by passing an explicit node id, for example `LongKeyGenerator(1)`. Do not add a
-default anywhere.
+Expected: PASS. Any other test that builds a generator directly fails to compile. Fix each by
+passing an explicit node id, for example `LongKeyGenerator(1)`. Do not add a default anywhere.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Compile the three backend modules**
+
+This task changes three persistence modules. A `chat-core` run does not compile them, so a
+broken `KeyGenConfiguration` stays hidden until much later.
+
+Run: `mvn -o -pl chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra -am test-compile`
+Expected: BUILD SUCCESS. A failure here means a `KeyGenConfiguration` still reads `@Value`, or
+still passes a raw `String` where an `Int` is now required.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add chat-core/src/main/kotlin/com/demo/chat/domain/SnowflakeGenerator.kt \
         chat-core/src/main/kotlin/com/demo/chat/service/LongKeyGenerator.kt \
         chat-core/src/main/kotlin/com/demo/chat/service/UUIDKeyGenerator.kt \
+        chat-core/src/test/kotlin/com/demo/chat/test/domain/SnowflakeGeneratorTests.kt \
         chat-persistence-cassandra/src/main/kotlin/com/demo/chat/config/persistence/cassandra/KeyGenConfiguration.kt \
         chat-persistence-redis/src/main/kotlin/com/demo/chat/config/persistence/redis/KeyGenConfiguration.kt \
         chat-persistence-memory/src/main/kotlin/com/demo/chat/config/persistence/memory/KeyGenConfiguration.kt
@@ -579,7 +621,7 @@ def node_id_value(raw: str) -> int:
 
 - [ ] **Step 2: Carry the value onto the launch plan**
 
-In `LaunchPlan.__init__` near line 477, directly below the `self.key_type` line, add:
+In `BuildContext.__init__` near line 477, directly below the `self.key_type` line, add:
 
 ```python
         self.node_id = args.node_id
@@ -711,10 +753,20 @@ instance against one store must override this per instance. Record that in the c
 Run: `./shell-scripts/build-health.sh`
 Expected: green. Repeat Steps 2 and 3 until nothing reports `app.nodeid is required`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Review what changed, then stage only those files**
+
+Run: `git status --short`
+
+Read that list and stage each file by name. Do not use `git add -A`. This worktree can hold
+scratch files, and files from other work, and a broad stage sweeps them into the commit.
+
+The file set comes from the build in Steps 1 to 4, so it is known by the time you reach this
+step. Stage the test sources the build named, and the `application*.yml` files you edited, and
+nothing else.
 
 ```bash
-git add -A
+git status --short
+git add <each file named above>
 git commit -m "set an explicit node id across tests and deployment configuration"
 ```
 
