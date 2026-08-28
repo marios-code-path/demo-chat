@@ -10,6 +10,16 @@ id BIGINT,
 kind varchar ,
 PRIMARY KEY(id) );
 
+-- Holds the app.nodeid lease. One row per claimed node id.
+-- The row carries a TTL, so a crashed deployment releases its own id.
+-- This table is deliberately absent from truncate-long.cql. A live lease
+-- must expire. A test cleanup script must not delete it.
+CREATE TABLE chat_long.node_claim(
+    node_id  int,
+    owner_id text,
+    PRIMARY KEY(node_id)
+);
+
 CREATE TABLE chat_long.kv_pair(
     id BIGINT,
     vdata text,

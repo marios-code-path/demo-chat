@@ -21,6 +21,7 @@
 - Property rules: `ttl >= 1s` and whole seconds. `renew-interval <= ttl / 3`. `safety-margin > 0` and `< ttl`. `operation-timeout < renew-interval`. `ttl - safety-margin > renew-interval`.
 - Do not use `grep` or `find` for symbol lookup. Use the language server or treesitter tools.
 - Every `mvn -pl` command outside `chat-core` carries `-am`. This task chain adds new types to `chat-core` and new CQL to `shared-resources-cassandra`. Without `-am`, Maven resolves the stale installed artifact and the module compiles against the old code.
+- Every command that carries both `-am` and `-Dtest` also carries `-Dsurefire.failIfNoSpecifiedTests=false`. `-am` runs surefire in each upstream module too, and an upstream module that holds no matching test fails the build with `No tests matching pattern`.
 
 ### Node id allocation
 
@@ -189,7 +190,7 @@ class NodeClaimTableProbeTests {
 
 - [ ] **Step 4: Run the probe**
 
-Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=NodeClaimTableProbeTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=NodeClaimTableProbeTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, all three tests. A Docker daemon must be running.
 
@@ -1805,7 +1806,7 @@ class RedisNodeIdClaimStoreTests(
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL to compile, with an unresolved reference to `RedisNodeIdClaimStore`.
 
@@ -1964,7 +1965,7 @@ class NodeIdClaimConfiguration {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-redis -am -Pintegration test -Dtest=RedisNodeIdClaimStoreTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, 9 tests.
 
@@ -2143,7 +2144,7 @@ class CassandraNodeIdClaimStoreTests {
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: FAIL to compile, with an unresolved reference to `CassandraNodeIdClaimStore`.
 
@@ -2270,7 +2271,7 @@ class NodeIdClaimConfiguration {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests`
+Run: `mvn -o -pl chat-persistence-cassandra -am -Pintegration test -Dtest=CassandraNodeIdClaimStoreTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, 9 tests.
 
@@ -2430,7 +2431,7 @@ class RedisClaimBootTests {
 
 - [ ] **Step 2: Run the boot tests**
 
-Run: `mvn -o -pl chat-deploy-redis -am -Pintegration test -Dtest=RedisClaimBootTests`
+Run: `mvn -o -pl chat-deploy-redis -am -Pintegration test -Dtest=RedisClaimBootTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, 2 tests.
 
@@ -2613,7 +2614,7 @@ class CassandraClaimBootTests : CassandraContainerBase() {
 
 - [ ] **Step 2: Run the boot tests**
 
-Run: `mvn -o -pl chat-deploy-cassandra -am -Pintegration test -Dtest=CassandraClaimBootTests`
+Run: `mvn -o -pl chat-deploy-cassandra -am -Pintegration test -Dtest=CassandraClaimBootTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, 2 tests.
 
@@ -2703,7 +2704,7 @@ class MemoryClaimAbsenceTests {
 
 - [ ] **Step 2: Run the tests**
 
-Run: `mvn -o -pl chat-deploy-memory -am test -Dtest=MemoryClaimAbsenceTests`
+Run: `mvn -o -pl chat-deploy-memory -am test -Dtest=MemoryClaimAbsenceTests -Dsurefire.failIfNoSpecifiedTests=false`
 
 Expected: PASS, 3 tests. Nothing on this classpath names redis or cassandra, so the condition never matches.
 

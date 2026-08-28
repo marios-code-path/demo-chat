@@ -555,12 +555,13 @@ waits from a scheduler thread. Two unit tests pin both rules.
 
 ## Claims that are load bearing and unverified
 
-1. Cassandra treats a TTL expired row as absent for `IF NOT EXISTS`.
-   When `owner_id` expires, `node_claim` holds a primary key with no live
-   columns. A takeover must then apply. This is the documented behaviour.
-   The Cassandra expiry test proves it. If the claim is false, the fallback
-   adds an explicit `expires_at` column and a takeover condition on it.
-   That fallback returns a clock question to the design.
+1. ~~Cassandra treats a TTL expired row as absent for `IF NOT EXISTS`.~~
+   **Verified on 2026-08-28.** `NodeClaimTableProbeTests` ran against
+   `cassandra:4.1.3` in Testcontainers. Three tests passed. A row whose
+   `owner_id` expired accepted a takeover by a second owner. A live row
+   refused one. A deleted row accepted one.
+   The `expires_at` fallback is not needed. The design keeps the
+   coordinator applied TTL, and no application clock enters the decision.
 
 2. The reactive Redis and Cassandra beans are present at every claim seam.
    A `key=memory` and `persistence=redis` process must still supply
