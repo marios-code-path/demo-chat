@@ -12,6 +12,7 @@
 -Dapp.kv.prefix=/chat
 -Dapp.kv.rootkeys=rootkeys
 -Dapp.kv.store=consul
+-Dapp.nodeid=0
 -Dapp.primary=core-service
 -Dapp.rootkeys.create=true
 -Dapp.rootkeys.publish.scheme=kv

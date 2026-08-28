@@ -8,6 +8,7 @@
 -Dapp.client.rsocket.core.secrets
 -Dapp.key.type=long
 -Dapp.kv.store=none
+-Dapp.nodeid=0
 -Dapp.oauth2.entrypoint-path=localhost:9090
 -Dapp.primary=authserv
 -Dapp.rootkeys.consume.scheme=http

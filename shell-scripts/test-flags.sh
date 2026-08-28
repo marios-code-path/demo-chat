@@ -45,23 +45,23 @@ export DEBUG_PORT=5005
 # name | chat-build arguments
 CASES=(
   # core backends
-  "core-memory-init|core --memory --run --notls --long --init users,rootkeys"          # [parity]
-  "core-memory-consul|core --memory --consul --run --notls --long --init users,rootkeys" # [parity]
-  "core-memory-tls|core --memory --run --tls /etc/keys --long --init users,rootkeys"   # [parity]
-  "core-cassandra|core --cassandra --run --notls --long --init users,rootkeys"
-  "core-kafka|core --kafka --run --notls --long"
-  "core-redis|core --redis --run --notls --long"
-  "core-e2ee|core --memory --e2ee --run --notls --long"
+  "core-memory-init|core --memory --run --notls --long --init users,rootkeys --node-id 0"          # [parity]
+  "core-memory-consul|core --memory --consul --run --notls --long --init users,rootkeys --node-id 0" # [parity]
+  "core-memory-tls|core --memory --run --tls /etc/keys --long --init users,rootkeys --node-id 0"   # [parity]
+  "core-cassandra|core --cassandra --run --notls --long --init users,rootkeys --node-id 0"
+  "core-kafka|core --kafka --run --notls --long --node-id 0"
+  "core-redis|core --redis --run --notls --long --node-id 0"
+  "core-e2ee|core --memory --e2ee --run --notls --long --node-id 0"
   # core variants
-  "core-uuid|core --memory --run --notls --uuid"
-  "core-websocket|core --memory --websocket --run --notls --long"
-  "core-debug|core --memory --debug --run --notls --long"
-  "core-build-image|core --memory --build --notls --long"
+  "core-uuid|core --memory --run --notls --uuid --node-id 0"
+  "core-websocket|core --memory --websocket --run --notls --long --node-id 0"
+  "core-debug|core --memory --debug --run --notls --long --node-id 0"
+  "core-build-image|core --memory --build --notls --long --node-id 0"
   # other services
-  "rest-client|rest --run --notls --long"
-  "gateway-client|gateway --run --notls --long"
-  "authserv-client|authserv --run --notls --long"
-  "shell-client|shell --run --notls --long"                                            # [parity]
+  "rest-client|rest --run --notls --long --node-id 0"
+  "gateway-client|gateway --run --notls --long --node-id 0"
+  "authserv-client|authserv --run --notls --long --node-id 0"
+  "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
 )
 
 UPDATE=0
