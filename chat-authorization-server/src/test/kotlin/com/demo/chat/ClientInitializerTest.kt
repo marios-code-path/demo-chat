@@ -39,7 +39,9 @@ class ClientInitializerTest {
         ClientInitializer(repo, mapper).loadClient().run(args)
 
         val clientCaptor = ArgumentCaptor.forClass(RegisteredClient::class.java)
-        Mockito.verify(repo, Mockito.times(1)).save(clientCaptor.capture())
+        // B5-RED-PROOF: times(2) cannot hold. One save happens. The unit job
+        // must report failure. Do not merge.
+        Mockito.verify(repo, Mockito.times(2)).save(clientCaptor.capture())
     }
 
 

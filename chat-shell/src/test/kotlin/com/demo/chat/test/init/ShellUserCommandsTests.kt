@@ -15,7 +15,15 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
 @Tag("integration")
-class LongUserCommandsTests : ShellUserCommandsTests<Long>()
+class LongUserCommandsTests : ShellUserCommandsTests<Long>() {
+    // B5-RED-PROOF: deliberate failure inside a container-backed class. The
+    // integration job must run this after starting the test container and
+    // report failure. Do not merge.
+    @Test
+    fun `red proof container test fails`() {
+        Assertions.assertThat(true).isFalse
+    }
+}
 
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
