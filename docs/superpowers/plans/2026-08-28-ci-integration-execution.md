@@ -41,7 +41,7 @@ green measurement. Without this fix, Task 1 fails for the wrong reason.
       branch work must not leave them behind.
 - [ ] Branch `ci-integration-execution` off master.
 - [ ] Add `-Dapp.nodeid=900` to `BPE_APPEND_JAVA_TOOL_OPTIONS` in that pom.
-- [ ] Comment it: 900 is this test deployment's own value, baked into the image
+- [ ] Comment it: 900 is this test deployment's own value, set in the image
       at build time. It is not a shared YAML default. The memory backend
       enforces no cross-deployment claim, so no collision check applies.
 - [ ] Commit on the branch.
