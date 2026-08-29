@@ -39,3 +39,36 @@ jobs:
     - name: Test
       run: mvn -B clean test
 
+  # This job runs the container tests. The build job's `test` phase never
+  # reaches `package`, so it cannot create the image for chat-shell tests.
+  # `verify` creates that image before chat-shell starts. See pom.xml lines
+  # 83 and 84. The test-build profile enables the image build. The job also
+  # runs unit tests during verify. One Maven reactor run preserves the order
+  # of image creation, dependencies, and container tests. No merge gate applies.
+  # Spec: docs/superpowers/specs/2026-08-28-ci-integration-execution-design.md
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.m2/repository
+          ~/.m2/wrapper
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+          ${{ runner.os }}-
+    - name: Integration tests
+      run: mvn -B clean verify -Ptest-build,integration

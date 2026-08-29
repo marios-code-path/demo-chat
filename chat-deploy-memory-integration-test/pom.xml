@@ -18,11 +18,10 @@
     </properties>
     <profiles>
         <profile>
-            <!-- Opt-in: mvn -Ptest-build. Building a container image on every
-                 install made a Docker daemon a prerequisite for a plain build,
-                 and a Docker failure failed the whole reactor. The only consumer
-                 is chat-shell's integration tests, themselves opt-in behind
-                 -Pintegration, so the two are enabled together:
+            <!-- Opt-in: mvn -Ptest-build. This profile builds a container image.
+                 A plain build must not need a Docker daemon. The only consumer
+                 is chat-shell integration tests. Those tests need -Pintegration.
+                 Enable the two profiles together:
 
                    mvn -Ptest-build install    # produce the image
                    mvn -Pintegration test      # run the tests that use it -->
@@ -33,12 +32,12 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                        <!-- Pinned ahead of the managed version (Spring Boot
-                             3.3.13). 3.3.x hardcodes Docker API v1.24 in
-                             DockerApi, and Docker Engine 29 refuses anything
-                             below v1.40; 3.5.x negotiates instead. Only this
-                             module builds an image, so the skew is contained
-                             here. Remove the pin when the parent moves to a
+                        <!-- This plugin is newer than the managed version.
+                             Spring Boot 3.3.13 hardcodes Docker API v1.24.
+                             Docker Engine 29 refuses API versions below v1.40.
+                             Spring Boot 3.5.x negotiates the API version. Only
+                             this module builds an image, so the version skew
+                             stays here. Remove the pin after the parent uses a
                              Boot version that negotiates. CHAT-gtcnjyit. -->
                         <version>3.5.12</version>
                         <configuration>
@@ -61,6 +60,12 @@
 -Dapp.rootkeys.create=true -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
 -Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene
+<!-- PR #51 (2026-08-28) made app.nodeid required. The memory key generators
+read it at startup. KeyGenConfiguration imports NodeIdConfiguration.
+NodeId.parse fails without a value. 900 is this test deployment value. The
+image receives it at build time. It is not a shared YAML default. The memory
+backend has no claim store, so no lease check applies. -->
+-Dapp.nodeid=900
 -Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth
 -Dapp.controller.persistence -Dapp.controller.index
 -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
@@ -107,11 +112,10 @@
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
-                <!-- This module exists only to produce a container image, and it
-                     has no main class of its own. Outside -Ptest-build the Boot
-                     plugin must stay out of the way, or the repackage goal
-                     inherited from spring-boot-starter-parent fails with
-                     "Unable to find main class". The profile sets skip false. -->
+                <!-- This module exists only to create a container image. It has
+                     no main class. Without -Ptest-build, the Boot plugin must
+                     stay disabled. If repackage runs, it fails with "Unable to
+                     find main class". The profile sets skip to false. -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
