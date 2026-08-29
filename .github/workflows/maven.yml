@@ -39,14 +39,12 @@ jobs:
     - name: Test
       run: mvn -B clean test
 
-  # Container-backed half of the suite. The build job's `test` phase never
-  # reaches `package`, so it cannot produce the image chat-shell's tests
-  # consume. `verify` builds the image (module at pom.xml line 83, before
-  # chat-shell at 84) and runs the @Tag("integration") tests. The
-  # test-build profile enables the image build. The job re-runs unit tests
-  # inside verify on purpose: one reactor invocation keeps image,
-  # dependencies and container tests in one ordering. Informational: no
-  # merge gate applies.
+  # This job runs the container tests. The build job's `test` phase never
+  # reaches `package`, so it cannot create the image for chat-shell tests.
+  # `verify` creates that image before chat-shell starts. See pom.xml lines
+  # 83 and 84. The test-build profile enables the image build. The job also
+  # runs unit tests during verify. One Maven reactor run preserves the order
+  # of image creation, dependencies, and container tests. No merge gate applies.
   # Spec: docs/superpowers/specs/2026-08-28-ci-integration-execution-design.md
   integration:
     runs-on: ubuntu-latest
@@ -74,4 +72,3 @@ jobs:
           ${{ runner.os }}-
     - name: Integration tests
       run: mvn -B clean verify -Ptest-build,integration
-
