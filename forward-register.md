@@ -12,10 +12,10 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Register state | Updated after PR #53 merge and branch cleanup |
-| Last merged PR | #53, merge commit `ed7e18c4` |
-| Previous `origin/master` | `bc3330f5`, register refresh before branch cleanup |
-| Merged feature branch | `nodeid-claim-lease` at `79944205`, cleaned up after merge |
+| Register state | Updated after PR #54 and #56 merges (B5 CI integration execution) |
+| Last merged PR | #56, merge commit `107c187e` |
+| Previous `origin/master` | `cc93a946`, merge of #54 |
+| Merged feature branches | `ci-integration-execution` at `43dcd908` (#54), `b5-docs` at `dfbd2dc7` (#56). Post-merge branch cleanup pending owner approval. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
@@ -36,6 +36,8 @@ and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 | #51 | `app.nodeid` became explicit, required, and validated |
 | #52 | The GraalVM sandbox self-attach trap was recorded |
 | #53 | Redis and Cassandra now enforce `app.nodeid` uniqueness with a store-side lease |
+| #54 | CI integration job runs the container tests, node id for the test image, and the repackage default fix (B6 profile coupling) |
+| #56 | BUILD-HEALTH doc records the CI integration job |
 
 ## Decisions carried forward
 
@@ -111,7 +113,9 @@ went away.
 - **`CHAT-ubmrxyqo` is still `in-progress`.** Its last open item was closed in PR
   #47 and the evidence is logged on the issue, but the status was never moved to
   `done`. It should be.
-- **`CHAT-uortzsbx` is `in-progress`** from earlier work, not touched this session.
+- **`CHAT-uortzsbx` is done** as of 2026-08-29. B5 closed with PR #54 and #56.
+  The one open thread it leaves is the 10-run gating decision, recorded on the
+  issue and in the CI integration execution section.
 - **The capability composition branch is merged.** The spec and first plan are on
   `master`. Capability steps 5 to 7 still have no implementation plan.
 
@@ -251,3 +255,47 @@ One item recorded as unmeasured, not as a result:
   never published for a duplicate. The stronger statement, that the port never
   binds, rests on bean instantiation running before `WebServerStartStopLifecycle`,
   and nothing in the suite asserts it. Do not quote it as verified.
+
+## CI integration execution (2026-08-29)
+
+`CHAT-uortzsbx` (B5) is done and closed. PR #54 merged the workflow and the
+build fix, merge commit `cc93a946`. PR #56 merged the BUILD-HEALTH record,
+merge commit `107c187e`. Spec and plan:
+`docs/superpowers/specs/2026-08-28-ci-integration-execution-design.md` and
+`docs/superpowers/plans/2026-08-28-ci-integration-execution.md`.
+
+The workflow now carries two jobs. `build` runs `mvn -B clean test`.
+`integration` runs `mvn -B clean verify -Ptest-build,integration` with a
+30 minute timeout. Both fire on every pull request and every master push.
+Nothing gates on them yet.
+
+Three facts that are expensive to relearn:
+
+1. **The job must use `verify`, not `test`.** The chat-shell test image is
+   built in the `package` phase by `chat-deploy-memory-integration-test`.
+   That module precedes `chat-shell` in reactor order (`pom.xml` lines 83
+   and 84), so `verify` produces the image before the container tests run.
+   `test` never reaches `package`.
+2. **Do not gate a default behind `activeByDefault`.** The removed
+   `noartifact` profile set repackage skip through that mechanism. Maven
+   deactivates an `activeByDefault` profile whenever any profile in the
+   same POM activates, so `-Pintegration` silently repackaged every module
+   and broke library test compile (fp issue `CHAT-kaaupcvu`, distinct from
+   the `B6` stale-target row in BUILD-HEALTH). The root POM now sets
+   `skip=true` directly, and only the `deploy` profile or a module
+   image-build profile enables repackage.
+3. **`chat-shell` 36 run with 17 skipped is the green shape.** The 17 are
+   `@Disabled` generic base classes. The 19 that run include every
+   container-backed test. See BUILD-HEALTH for the mechanism.
+
+The failure proof ran on throwaway PR #55, closed without merging. Run
+`33274410463` shows both jobs red: the unit job failed in
+`ClientInitializerTest` with no container started; the integration job
+booted the test image and failed in `chat-shell` at module 28 of 32.
+
+Flakiness baseline for the gating decision, integration job:
+`33271411684` pass 8m31s, `33274062218` pass 8m16s, `33274410463` designed
+failure, `33275208499` pass 9m11s, plus `33273399921` and `33277954119`
+pass. Six runs, five green, one designed red. Four more green runs complete
+the 10-run record. The decision (required check or status quo) is open and
+tracked on `CHAT-uortzsbx`.
