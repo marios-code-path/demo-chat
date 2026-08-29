@@ -155,11 +155,11 @@
                 <!-- Repackage is off by default. A default build produces plain
                      jars, so library modules stay usable on a test classpath.
                      The `deploy` profile below and a module's own image-build
-                     profile turn it back on. An earlier design used an
+                     profile enable it again. An earlier design used an
                      activeByDefault `noartifact` profile for the same effect,
                      and it failed silently. Maven deactivates an activeByDefault
                      profile when any profile in the same POM is activated. So
-                     `-Pintegration` switched repackage on for every module, and
+                     `-Pintegration` enabled repackage for every module, and
                      library consumers stopped compiling. CHAT-kaaupcvu. -->
                 <configuration>
                     <skip>true</skip>
@@ -195,8 +195,9 @@
              skip=true in the `<build>` section above, and the `deploy`
              profile passes skip=false. Activating any other profile therefore
              changes nothing about packaging. The old `noartifact`
-             activeByDefault profile made that false: every activation
-             switched it off. It is removed. CHAT-kaaupcvu. -->
+             activeByDefault profile broke that rule: Maven deactivated it
+             whenever any profile in this POM was active. It is removed.
+             CHAT-kaaupcvu. -->
         <profile>
             <id>deploy</id>
             <build>
