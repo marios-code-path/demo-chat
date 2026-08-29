@@ -12,14 +12,15 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Current commit | This register refresh, after PR #53 merged |
+| Register state | Updated after PR #53 merge and branch cleanup |
 | Last merged PR | #53, merge commit `ed7e18c4` |
-| `origin/master` at refresh time | `ed7e18c4`, before this register refresh was pushed |
-| Merged feature branch | `nodeid-claim-lease` at `79944205` |
-| Locked worktree | `.claude/worktrees/domain-serialization`, still on merged `nodeid-claim-lease` |
+| Previous `origin/master` | `bc3330f5`, register refresh before branch cleanup |
+| Merged feature branch | `nodeid-claim-lease` at `79944205`, cleaned up after merge |
+| Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
-The locked worktree is host-managed. Do not remove it from an agent session.
+The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
+and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 
 ## Landed
 
