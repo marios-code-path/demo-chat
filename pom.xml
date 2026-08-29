@@ -152,6 +152,18 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <!-- Repackage is off by default. A default build produces plain
+                     jars, so library modules stay usable on a test classpath.
+                     The `deploy` profile below and a module's own image-build
+                     profile turn it back on. An earlier design used an
+                     activeByDefault `noartifact` profile for the same effect,
+                     and it failed silently. Maven deactivates an activeByDefault
+                     profile when any profile in the same POM is activated. So
+                     `-Pintegration` switched repackage on for every module, and
+                     library consumers stopped compiling. CHAT-kaaupcvu. -->
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -179,32 +191,12 @@
              are here so every module can use them, which is what lets the
              chat-deploy-<backend> modules act as composition roots.
 
-             `deploy` and `noartifact` MUST stay in the same POM as each other.
-             noartifact is activeByDefault, and Maven only deactivates an
-             activeByDefault profile when another profile in the SAME POM is
-             activated. Split them across poms and activating deploy no longer
-             switches noartifact off, so skip=true wins and nothing is
-             packaged. -->
-        <profile>
-            <!-- Default: build a plain jar, not a Spring Boot artifact.
-                 Deactivated automatically when any other profile here is
-                 activated - see the note above. -->
-            <id>noartifact</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.springframework.boot</groupId>
-                        <artifactId>spring-boot-maven-plugin</artifactId>
-                        <configuration>
-                            <skip>true</skip>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
+             No profile in this POM is activeByDefault. Repackage defaults to
+             skip=true in the `<build>` section above, and the `deploy`
+             profile passes skip=false. Activating any other profile therefore
+             changes nothing about packaging. The old `noartifact`
+             activeByDefault profile made that false: every activation
+             switched it off. It is removed. CHAT-kaaupcvu. -->
         <profile>
             <id>deploy</id>
             <build>
@@ -213,6 +205,10 @@
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
                         <configuration>
+                            <!-- The only root profile that packages Boot
+                                 artifacts. Overrides the default skip=true in
+                                 the `<build>` section. -->
+                            <skip>false</skip>
                             <mainClass>${appMainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>
