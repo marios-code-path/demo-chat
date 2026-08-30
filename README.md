@@ -2,6 +2,20 @@
 
 ## Code Name: ImpactDriver
 
+## Build And Run
+
+Start with `docs/BUILD.md`.
+
+Use `just --list` for the human command menu.
+
+Maven remains the build system.
+
+Use `shell-scripts/` for implementation scripts and advanced launch details.
+
+Local service launch uses `chat-build`.
+
+Pass `--node-id` for each launch.
+
 This is a tool for abstracting streaming message flows with chat-room semantics.
 It is useful for persisting conversational state, delegating Identities, authorization between
 resources in a chat-room setting and even pluggable event-streaming

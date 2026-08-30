@@ -7,9 +7,9 @@ declarative feature flags. It replaces the flag assembly spread across
 Python 3.10+, stdlib only. No virtualenv, no `pip install`.
 
 ```bash
-./shell-scripts/chat-build core --memory --run --notls
+./shell-scripts/chat-build core --memory --run --notls --node-id 0
 # or via the wrapper
-./shell-scripts/run core --memory --run --notls
+./shell-scripts/run core --memory --run --notls --node-id 0
 ```
 
 The shell scripts it replaced have been removed. `test-flags.sh` asserts that
@@ -21,30 +21,38 @@ chat-build keeps emitting the flags recorded under `golden/`.
 
 ```bash
 # Core RSocket service, in-memory backend, seeding users and root keys
-chat-build core --memory --run --notls --init users,rootkeys
+chat-build core --memory --run --notls --node-id 0 --init users,rootkeys
 
 # Same, but Cassandra-backed with UUID keys
-chat-build core --cassandra --run --notls --uuid --init users,rootkeys
+chat-build core --cassandra --run --notls --node-id 0 --uuid --init users,rootkeys
 
 # Kafka backend (Kafka messaging, memory persistence, Lucene index)
-chat-build core --kafka --run --notls
+chat-build core --kafka --run --notls --node-id 0
 
 # REST facade (talks to core over RSocket)
-chat-build rest --run --notls
+chat-build rest --run --notls --node-id 0
 
 # Interactive shell client
-chat-build shell --run --notls
+chat-build shell --run --notls --node-id 0
 
 # Build a container image instead of running
-chat-build core --cassandra --build --notls
+chat-build core --cassandra --build --notls --node-id 0
 
 # See what would happen, run nothing
-chat-build core --memory --run --notls --dry-run
+chat-build core --memory --run --notls --node-id 0 --dry-run
 ```
 
 `--dry-run` prints the resolved feature set, the Maven command, every
 `JAVA_TOOL_OPTIONS` flag one per line, and the env file path. It is the fastest
 way to answer "why is this property set".
+
+All launch examples pass `--node-id`.
+
+The value has no default.
+
+Choose a value that is unique for deployments that write to one Redis or Cassandra store.
+
+These examples use `0`.
 
 ---
 
@@ -142,14 +150,14 @@ from muscle memory, an old runbook, or a branch that predates their removal.
 
 | Old | New |
 |---|---|
-| `run-core.sh runlocal memory -c notls` | `chat-build core --memory --run --notls --init users,rootkeys` |
-| `run-core.sh runlocal cassandra -c notls` | `chat-build core --cassandra --run --notls --init users,rootkeys` |
-| `run-core.sh runlocal kafka` | `chat-build core --kafka --run --notls` |
-| `run-core.sh build memory -c notls` | `chat-build core --memory --build --notls` |
-| `run-rest.sh local` | `chat-build rest --run --notls` |
-| `run-gateway.sh local` | `chat-build gateway --run --notls` |
-| `run-authserv.sh local` | `chat-build authserv --run --notls` |
-| `run-shell.sh local` | `chat-build shell --run --notls` |
+| `run-core.sh runlocal memory -c notls` | `chat-build core --memory --run --notls --node-id 0 --init users,rootkeys` |
+| `run-core.sh runlocal cassandra -c notls` | `chat-build core --cassandra --run --notls --node-id 0 --init users,rootkeys` |
+| `run-core.sh runlocal kafka` | `chat-build core --kafka --run --notls --node-id 0` |
+| `run-core.sh build memory -c notls` | `chat-build core --memory --build --notls --node-id 0` |
+| `run-rest.sh local` | `chat-build rest --run --notls --node-id 0` |
+| `run-gateway.sh local` | `chat-build gateway --run --notls --node-id 0` |
+| `run-authserv.sh local` | `chat-build authserv --run --notls --node-id 0` |
+| `run-shell.sh local` | `chat-build shell --run --notls --node-id 0` |
 | `build-app.sh ... -x` | `chat-build ... --dry-run` |
 | `-g` | `--debug` |
 | `-w` | `--websocket` |
