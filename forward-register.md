@@ -15,7 +15,7 @@ in this file is authoritative on its own — each row points at the artifact tha
 | Register state | Updated after PR #54 and #56 merges (B5 CI integration execution) |
 | Last merged PR | #56, merge commit `107c187e` |
 | Previous `origin/master` | `cc93a946`, merge of #54 |
-| Merged feature branches | `ci-integration-execution` at `43dcd908` (#54), `b5-docs` at `dfbd2dc7` (#56). Post-merge branch cleanup pending owner approval. |
+| Merged feature branches | `ci-integration-execution` at `43dcd908` (#54), `b5-docs` at `dfbd2dc7` (#56). Both removed from local and remote on 2026-08-30. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
