@@ -54,7 +54,12 @@
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
-            <scope>test</scope>
+            <!-- Compile scope, not test. The launch surface runs
+                 spring-boot:run, which uses the runtime classpath. The
+                 controllers and the password encoder configuration of
+                 chat-security must be present at boot. The cassandra,
+                 kafka, and image modules all use compile scope. B7,
+                 fp issue CHAT-uxmjaebs. -->
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
