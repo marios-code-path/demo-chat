@@ -47,9 +47,9 @@ class PubSubCommands<T>(
         if (!topicName.equals("_")) {
             topicService
                 .getRoomByName(ByStringRequest(topicName))
-                .flatMap {
+                .flatMap { room ->
                     messageService
-                        .send(MessageSendRequest(messageText, identity, typeUtil.assignFrom(topicId)))
+                        .send(MessageSendRequest(messageText, identity, room.key.id))
                 }
                 .doOnNext { key ->
                     println("Message Id: ${key.id}")
