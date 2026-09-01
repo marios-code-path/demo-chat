@@ -27,7 +27,6 @@ class ShellStateConfiguration {
 
     @Bean
     fun requestMetadataProvider(): Supplier<RequestMetadata> = Supplier {
-        println("SUPPLIER SUPPLIES")
         val metadata =
             loginMetadata
                 .map<RequestMetadata> { SimpleRequestMetadata(UsernamePasswordMetadata(it.username, it.password),
