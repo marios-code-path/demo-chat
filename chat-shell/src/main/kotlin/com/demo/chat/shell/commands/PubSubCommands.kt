@@ -1,6 +1,7 @@
 package com.demo.chat.shell.commands
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
@@ -84,9 +85,18 @@ class PubSubCommands<T>(
     @ShellMethod("Listen to a topic")
     fun listen(
         @ShellOption topicId: String
-    ) = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
-        .doOnNext { message ->
-            println("Message: ${message.key.from} : ${message.data}\n")
-        }
-        .subscribe()
+    ) {
+        val d = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
+            .doOnNext { message ->
+                println("Message: ${message.key.from} : ${message.data}\n")
+            }
+            .subscribe()
+
+        ShellStateConfiguration.listeners[topicId] = d
+    }
+
+    @ShellMethod("Stop listening to a topic")
+    fun hangup(@ShellOption topicId: String) {
+        ShellStateConfiguration.listeners.remove(topicId)?.dispose()
+    }
 }

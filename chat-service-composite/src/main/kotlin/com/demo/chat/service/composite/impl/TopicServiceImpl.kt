@@ -56,13 +56,19 @@ open class TopicServiceImpl<T, V, Q>(
         topicPersistence
             .get(Key.funKey(req.id))
 
+    // The first switchIfEmpty must sit before single(). An empty index makes
+    // single() throw NoSuchElementException, which would outrun a fallback
+    // placed after it. The second switchIfEmpty answers an index hit whose
+    // persistence row is gone. fp issue CHAT-fplhtycq.
     override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>> =
         topicIndex
             .findBy(topicNameToQuery.apply(req))
+            .switchIfEmpty(Mono.error(NotFoundException))
             .single()
             .flatMap {
                 topicPersistence.get(it)
             }
+            .switchIfEmpty(Mono.error(NotFoundException))
 
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void> {
         return topicPersistence
@@ -89,6 +95,7 @@ open class TopicServiceImpl<T, V, Q>(
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
         membershipIndex
             .findBy(memberWithTopicToQuery.apply(req))
+            .switchIfEmpty(Mono.error(NotFoundException))
             .last()
             .flatMap { key ->
                 membershipPersistence.rem(key)
