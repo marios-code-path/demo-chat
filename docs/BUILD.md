@@ -106,6 +106,20 @@ See `docs/NODEID-CLAIM.md` for the node-id lease rules.
 
 See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 
+## Installed Artifacts
+
+`chat-build` resolves library modules from the local Maven repository. The launch also uses the installed `chat-deploy` jar.
+
+After a pull or a branch switch, refresh the installed artifacts once:
+
+```bash
+mvn clean install -DskipTests
+```
+
+The launch and image commands pass `-Dmaven.test.skip=true`. Stale test classes in the local repository cannot break a launch.
+
+Use `mvn clean` whenever you build. A stale `target/` directory reports false results. See B6 in `docs/BUILD-HEALTH.md`.
+
 ## Direct Script Use
 
 Use scripts directly when a recipe does not cover the task.

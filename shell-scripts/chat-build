@@ -569,7 +569,11 @@ class BuildContext:
             "mvn",
             f"-DimageName={self.image_name}",
             "-P" + ",".join(self.maven_profiles()),
-            "-DskipTests",
+            # Skip test compilation too. spring-boot:run forks the
+            # test-compile lifecycle, and -DskipTests does not stop
+            # that compilation. A stale local repository then breaks a
+            # launch in test classes. B7, fp issue CHAT-uxmjaebs.
+            "-Dmaven.test.skip=true",
             self.maven_goal(),
         ]
 
