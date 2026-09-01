@@ -12,10 +12,10 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Register state | Updated after PR #54 and #56 merges, and after the global build surface addition |
-| Last merged PR | #56, merge commit `107c187e` |
-| Previous `origin/master` | `cc93a946`, merge of #54 |
-| Merged feature branches | `ci-integration-execution` at `43dcd908` (#54), `b5-docs` at `dfbd2dc7` (#56). Both removed from local and remote on 2026-08-30. |
+| Register state | Updated after PR #57 merge (B7 launch classpath fix) |
+| Last merged PR | #57, merge commit `0c5378c2` |
+| Previous `origin/master` | `366274a4`, the human build surface addition |
+| Merged feature branches | `b7-launch-fix` merged in #57, remote ref auto-deleted. Local ref stays until the owner approves removal. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
@@ -38,6 +38,7 @@ and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 | #53 | Redis and Cassandra now enforce `app.nodeid` uniqueness with a store-side lease |
 | #54 | CI integration job runs the container tests, node id for the test image, and the repackage default fix (B6 profile coupling) |
 | #56 | BUILD-HEALTH doc records the CI integration job |
+| #57 | B7: memory deployment compile scope fix, launch skips test compilation, BUILD.md records the installed-artifact rule |
 
 ## Decisions carried forward
 
@@ -303,3 +304,26 @@ failure, `33275208499` pass 9m11s, plus `33273399921` and `33277954119`
 pass. Six runs, five green, one designed red. Four more green runs complete
 the 10-run record. The decision (required check or status quo) is open and
 tracked on `CHAT-uortzsbx`.
+
+## Launch classpath and B7 (2026-08-31)
+
+`CHAT-uxmjaebs` (B7) is done and merged through PR #57, merge commit
+`0c5378c2`. `chat-deploy-memory` carried `chat-service-controller` at
+`test` scope since 2023-10-12. The first direct launch through
+`just launch-memory` failed on a missing `PasswordEncoder` bean.
+
+Three facts that are expensive to relearn:
+
+1. **A deploy module has three classpaths, not one.** `spring-boot:run`
+   uses the runtime classpath. Surefire uses the test classpath. The
+   Docker image is assembled by `chat-deploy-memory-integration-test`,
+   which declares its own scopes. A wrong scope is invisible in two of
+   the three, which is how a 2023 defect survived to 2026.
+2. **`-DskipTests` does not stop test compilation.** `spring-boot:run`
+   forks the `test-compile` lifecycle. Test classes then resolve upstream
+   modules from the local repository, and a stale repository breaks a
+   launch before the app starts. The launch path now passes
+   `-Dmaven.test.skip=true`.
+3. **Local repository policy, set by the owner.** Resolve a stale local
+   repository by removing `~/.m2` and building fresh. Use `mvn clean`
+   whenever possible. `docs/BUILD.md` carries the same rule.
