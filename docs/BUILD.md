@@ -90,10 +90,17 @@ Start the core service with memory storage:
 just launch-memory 0
 ```
 
-Print the launch command without execution:
+Start the interactive shell client against a running core service:
+
+```bash
+just launch-shell 1
+```
+
+Print a launch command without execution:
 
 ```bash
 just dry-run-memory 0
+just dry-run-shell 1
 ```
 
 `app.nodeid` has no default.
