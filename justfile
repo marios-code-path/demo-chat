@@ -36,6 +36,14 @@ launch-memory node_id="0":
 dry-run-memory node_id="0":
 	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys --dry-run
 
+# Start the interactive shell client. Start a core service first.
+launch-shell node_id="1":
+	./shell-scripts/chat-build shell --run --notls --node-id {{node_id}}
+
+# Print the shell client launch command and properties.
+dry-run-shell node_id="1":
+	./shell-scripts/chat-build shell --run --notls --node-id {{node_id}} --dry-run
+
 # Build a Cassandra core service image.
 build-cassandra node_id:
 	./shell-scripts/chat-build core --cassandra --build --notls --node-id {{node_id}}
