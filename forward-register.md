@@ -12,10 +12,9 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Register state | Updated after PR #58 and #59 merges (B8, B9) |
-| Last merged PR | #59, merge commit `83eaa2d1` |
-| Previous merged PR | #58, merge commit `2d1de81a` |
-| Merged feature branches | `b8-send-fix` (#59), `shell-recipe` (#58), `b7-launch-fix` (#57) all merged. Local refs removed on update. Remote refs for #58/#59 stayed after merge — no auto-delete; they await the owner's word. |
+| Register state | Updated after PR #60 merge (hangup, loud NotFound) |
+| Last merged PR | #60, merge commit `abbfaedb` |
+| Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
@@ -41,6 +40,7 @@ and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 | #57 | B7: memory deployment compile scope fix, launch skips test compilation, BUILD.md records the installed-artifact rule |
 | #58 | `just launch-shell` and `just dry-run-shell` recipes for the interactive client |
 | #59 | B8: shell `send` by topic name uses the looked-up room id, plus the first end-to-end send tests. B9: pubsub provider beans made singletons |
+| #60 | Shell `hangup` disposes the stored listener; `getRoomByName` and `leaveRoom` fail loudly with `NotFound`. Fallback placement before `single()` corrected. Six new tests, composite and container level |
 
 ## Decisions carried forward
 
