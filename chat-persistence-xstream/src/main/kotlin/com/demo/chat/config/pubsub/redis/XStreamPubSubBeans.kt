@@ -8,19 +8,24 @@ import com.demo.chat.pubsub.impl.memory.messaging.KeyConfiguration
 import com.demo.chat.pubsub.impl.memory.messaging.XStreamTopicPubSubService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.stereotype.Component
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 
 /**
  * Durable messaging over Redis Streams, selected by
  * `app.service.core.pubsub=redis-xstream`.
+ *
+ * Configuration plus Bean, not Component. Every holder of this provider must
+ * get the same pubsub instance. fp issue B9, CHAT-ouzjdxun.
  */
-@Component
+@Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-xstream")
 class XStreamPubSubBeans<T>(
     private val config: RedisTemplateConfiguration,
     private val typeUtil: TypeUtil<T>
 ) : PubSubServiceBeans<T, String> {
 
+    @Bean
     override fun pubSubService(): TopicPubSubService<T, String> =
         XStreamTopicPubSubService(
             KeyConfiguration(

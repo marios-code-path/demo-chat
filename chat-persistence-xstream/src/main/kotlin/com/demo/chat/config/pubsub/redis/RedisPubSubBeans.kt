@@ -7,19 +7,26 @@ import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
 import com.demo.chat.pubsub.impl.memory.messaging.RedisTopicPubSubService
 import com.demo.chat.service.core.TopicPubSubService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.stereotype.Component
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
 
 /**
  * Non-durable messaging over Redis Pub/Sub channels, selected by
  * `app.service.core.pubsub=redis-pubsub`.
+ *
+ * Configuration plus Bean, not Component. The service keeps its sinks and
+ * Redis listeners in instance maps. Every holder of this provider must get
+ * the same instance, or a subscription in one instance receives nothing from
+ * another. fp issue B9, CHAT-ouzjdxun.
  */
-@Component
+@Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-pubsub")
 class RedisPubSubBeans<T>(
     private val config: RedisTemplateConfiguration,
     private val typeUtil: TypeUtil<T>
 ) : PubSubServiceBeans<T, String> {
 
+    @Bean
     override fun pubSubService(): TopicPubSubService<T, String> =
         RedisTopicPubSubService(
             KeyConfigurationPubSub(
