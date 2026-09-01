@@ -10,8 +10,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.util.MimeTypeUtils
+import reactor.core.Disposable
 import reactor.core.publisher.Sinks.Empty
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Supplier
 
 @Configuration
@@ -23,6 +25,7 @@ class ShellStateConfiguration {
     companion object {
         var loggedInUser: Optional<Any> = Optional.empty()
         var loginMetadata: Optional<UsernamePasswordMetadata> = Optional.empty()
+        val listeners: MutableMap<String, Disposable> = ConcurrentHashMap()
     }
 
     @Bean
