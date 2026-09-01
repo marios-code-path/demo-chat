@@ -12,10 +12,10 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Register state | Updated after PR #57 merge (B7 launch classpath fix) |
-| Last merged PR | #57, merge commit `0c5378c2` |
-| Previous `origin/master` | `366274a4`, the human build surface addition |
-| Merged feature branches | `b7-launch-fix` merged in #57, remote ref auto-deleted. Local ref stays until the owner approves removal. |
+| Register state | Updated after PR #58 and #59 merges (B8, B9) |
+| Last merged PR | #59, merge commit `83eaa2d1` |
+| Previous merged PR | #58, merge commit `2d1de81a` |
+| Merged feature branches | `b8-send-fix` (#59), `shell-recipe` (#58), `b7-launch-fix` (#57) all merged. Local refs removed on update. Remote refs for #58/#59 stayed after merge — no auto-delete; they await the owner's word. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
 
@@ -39,6 +39,8 @@ and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 | #54 | CI integration job runs the container tests, node id for the test image, and the repackage default fix (B6 profile coupling) |
 | #56 | BUILD-HEALTH doc records the CI integration job |
 | #57 | B7: memory deployment compile scope fix, launch skips test compilation, BUILD.md records the installed-artifact rule |
+| #58 | `just launch-shell` and `just dry-run-shell` recipes for the interactive client |
+| #59 | B8: shell `send` by topic name uses the looked-up room id, plus the first end-to-end send tests. B9: pubsub provider beans made singletons |
 
 ## Decisions carried forward
 
@@ -327,3 +329,32 @@ Three facts that are expensive to relearn:
 3. **Local repository policy, set by the owner.** Resolve a stale local
    repository by removing `~/.m2` and building fresh. Use `mvn clean`
    whenever possible. `docs/BUILD.md` carries the same rule.
+
+## Send path and B8/B9 (2026-09-01)
+
+`CHAT-qonhhtuq` (B8) and `CHAT-ouzjdxun` (B9) are done and merged through
+PR #59, merge commit `83eaa2d1`. The first interactive shell `send`
+attempt failed twice: `For input string: "_"` client-side, then
+`Object not Found` server-side. Each error was a separate defect.
+
+Three facts that are expensive to relearn:
+
+1. **A provider factory method is not a bean.** The pubsub providers were
+   `@Component` classes whose `pubSubService()` constructed a new object
+   per call. Every Spring call site got its own instance. `@Configuration`
+   plus `@Bean` is what gives shared state, and the memory persistence
+   providers already used that pattern. Lite `@Bean` on a `@Component`
+   does not intercept calls; full-mode `@Configuration` does.
+2. **The memory backend keeps all pubsub state in instance maps.** With
+   split instances, `open()` and `sendMessage()` disagree on whether a
+   topic exists, and the error surfaced as the generic
+   `Object not Found`. The redis and kafka providers keep part of their
+   state externally, so the same split degrades quietly there.
+3. **`send` had zero test coverage, in any era.** That is why B8 and B9
+   coexisted for years. `LongPubSubCommandsTests` now pins both paths:
+   send by name, send by id. A server-code change requires an image
+   rebuild (`-Ptest-build`) before `-Pintegration` can see it.
+
+The sender identity in `PubSubCommands.send` is still hardcoded
+(`identity("_")`), and the `TODO` comments in that method stand. Not
+filed; owner judgment.
