@@ -245,6 +245,78 @@ open class TopicControllerTests : RSocketTestBase() {
             .verifyComplete()
     }
 
+    @Test
+    fun `should report not found when no room carries the name`() {
+        // Guards the fallback position in getRoomByName. With switchIfEmpty
+        // after single(), an empty index throws NoSuchElementException
+        // instead. fp issue CHAT-fplhtycq.
+        BDDMockito
+            .given(topicIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.empty())
+
+        StepVerifier
+            .create(
+                requester
+                    .route("topic-by-name")
+                    .data(ByStringRequest("no-such-room-" + TestBase.randomAlphaNumeric(4)))
+                    .retrieveMono(MessageTopic::class.java)
+            )
+            .expectSubscription()
+            .expectErrorSatisfies {
+                Assertions.assertThat(it)
+                    .isInstanceOf(ApplicationErrorException::class.java)
+                    .hasMessageContaining("Object not Found")
+            }
+            .verify()
+    }
+
+    @Test
+    fun `should report not found when an index hit has no persistence row`() {
+        BDDMockito
+            .given(topicIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.just(Key.funKey(randomTopicId)))
+        BDDMockito
+            .given(topicPersistence.get(TestBase.anyObject()))
+            .willReturn(Mono.empty())
+
+        StepVerifier
+            .create(
+                requester
+                    .route("topic-by-name")
+                    .data(ByStringRequest(randomRoomName))
+                    .retrieveMono(MessageTopic::class.java)
+            )
+            .expectSubscription()
+            .expectErrorSatisfies {
+                Assertions.assertThat(it)
+                    .isInstanceOf(ApplicationErrorException::class.java)
+                    .hasMessageContaining("Object not Found")
+            }
+            .verify()
+    }
+
+    @Test
+    fun `should not leave a room that holds no membership`() {
+        BDDMockito
+            .given(membershipIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.empty())
+
+        StepVerifier
+            .create(
+                requester
+                    .route("topic-leave")
+                    .data(MembershipRequest(randomUserId, randomTopicId))
+                    .retrieveMono(Void::class.java)
+            )
+            .expectSubscription()
+            .expectErrorSatisfies {
+                Assertions.assertThat(it)
+                    .isInstanceOf(ApplicationErrorException::class.java)
+                    .hasMessageContaining("Object not Found")
+            }
+            .verify()
+    }
+
     @TestConfiguration
     class TestTopicControllerConfiguration {
         @Bean
