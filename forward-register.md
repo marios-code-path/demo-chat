@@ -387,3 +387,32 @@ Not filed, recorded here so nobody rederives them: the cassandra index
 the real row and index removal is broken on that backend.
 `MemoryTopicPubSubService.listenTo` uses `getOrPut` and silently opens a
 sink for a topic that was never opened.
+
+## Message vector recall (2026-09-01)
+
+- New modules `chat-vector-simple` and `chat-vector-redis` provide the
+  `VectorStore` bean. They are gated on `app.service.core.vector`. No deploy
+  yml sets the selector yet: the vector and embedding selectors and the
+  `app.controller.recall` flag are test-only until the gateway embedding
+  integration lands.
+- Interim capability wiring: `VectorSelectorValidationConfiguration`
+  (chat-core) fails startup when `app.service.core.vector` and
+  `app.service.core.embedding` are set as an incomplete or illegal pair.
+  `@ConditionalOnProperty` stands in for `@ProvidesCapability` until the
+  capability mechanism lands.
+- The Redis vector path is Jedis-backed (Spring AI `RedisVectorStore`). The
+  repo data path stays Lettuce. Redis Stack is required for the Redis vector
+  tests.
+- Vector tests claim no node id: they activate memory key and persistence.
+  See docs/NODEID-CLAIM.md.
+- Two facts that cost time, recorded so nobody rederives them:
+  1. **`chat-core` does not enable the Kotlin all-open compiler plugin.** The
+     module declares the `kotlin-maven-allopen` dependency, but it has no
+     `<compilerPlugins><plugin>spring</plugin></compilerPlugins>` block. A
+     `@Configuration` class in `chat-core` must be `open`, and its `@Bean`
+     methods must be `open`. `chat-service-composite`,
+     `chat-service-controller`, and both vector modules do enable the plugin.
+  2. **`RSocketServerTestConfiguration` carries a bare `@ComponentScan`.** It
+     roots at `com.demo.chat.test.rsocket`, so every `@Controller` under that
+     package enters every RSocket test context. Put a new test controller
+     outside that package.

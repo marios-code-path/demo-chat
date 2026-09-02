@@ -127,3 +127,8 @@ failure.
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
+
+The vector recall tests (`chat-vector-redis`, `chat-deploy-redis`
+`RedisVectorRecallBootTests`) activate no claim store: key and persistence
+are memory. Only the vector store and the pubsub touch Redis. They claim
+nothing and hold no row in the table above.

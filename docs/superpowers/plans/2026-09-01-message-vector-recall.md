@@ -3139,6 +3139,13 @@ no row in the table above.
 Run: `./shell-scripts/build-health.sh`
 Expected: no drift output. If the script reports failing modules or a stale "Current state" section, update `docs/BUILD-HEALTH.md` to match the verifier output, and re-run until quiet.
 
+Found during execution, and not caused by this work: `chat-client-rsocket`
+`TopicClientTests` failed in two tests. The duplicate name rejection (PR #61)
+made `addRoom` query the topic index first, and the tests did not stub
+`findBy`. The mock returned null. The fix is a two-line stub in each test:
+`given(topicIndex.findBy(anyObject())).willReturn(Flux.empty())`. An empty
+result means the name is free.
+
 - [ ] **Step 4: Run build health in integration mode**
 
 Run (needs a Docker daemon): `./shell-scripts/build-health.sh --integration`
@@ -3160,7 +3167,7 @@ Expected: PASS across all modules.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add forward-register.md docs/NODEID-CLAIM.md docs/BUILD-HEALTH.md
+git add forward-register.md docs/NODEID-CLAIM.md docs/BUILD-HEALTH.md chat-client-rsocket/src/test/kotlin/com/demo/chat/test/rsocket/client/composite/TopicClientTests.kt
 git commit -m "docs: register the message vector recall structure"
 ```
 
