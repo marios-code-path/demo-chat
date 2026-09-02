@@ -29,6 +29,11 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-vector-redis</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-persistence-redis</artifactId>
             <version>0.0.1</version>
         </dependency>
@@ -132,6 +137,15 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>1.21.4</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Redis's own testcontainers module, as chat-vector-redis uses
+             (com.redis.testcontainers.RedisStackContainer). The vector boot
+             test needs Redis Stack, not plain Redis. -->
+        <dependency>
+            <groupId>com.redis</groupId>
+            <artifactId>testcontainers-redis</artifactId>
+            <version>2.2.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

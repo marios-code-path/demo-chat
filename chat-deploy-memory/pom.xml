@@ -27,6 +27,11 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-vector-simple</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-persistence-memory</artifactId>
             <version>0.0.1</version>
         </dependency>

@@ -2886,7 +2886,18 @@ In `chat-deploy-redis/pom.xml` `<dependencies>`, add:
     <artifactId>chat-vector-redis</artifactId>
     <version>0.0.1</version>
 </dependency>
+<dependency>
+    <groupId>com.redis</groupId>
+    <artifactId>testcontainers-redis</artifactId>
+    <version>2.2.0</version>
+    <scope>test</scope>
+</dependency>
 ```
+
+The deploy modules resolve the other modules from the local repository. Run
+`mvn -o -pl chat-core,chat-vector-simple,chat-vector-redis,chat-service-composite,chat-service-controller,chat-webflux install -DskipTests`
+before the boot tests. A stale installed artifact hides a new bean, and the
+boot test then fails on a missing `messageRecallService`.
 
 - [ ] **Step 2: Write the memory boot test**
 
@@ -2952,7 +2963,26 @@ class MemoryVectorRecallBootTests {
 Run: `mvn -o -pl chat-core,chat-deploy-memory test -Dtest=MemoryVectorRecallBootTests`
 Expected: PASS. No container.
 
+Defect found during execution. This is the first context that loads
+`MockEmbeddingConfiguration`, and the class was final. The `chat-core` module
+does not enable the Kotlin all-open compiler plugin, so Spring rejects the
+class. Make the class and the `@Bean` method `open`, like
+`VectorSelectorValidationConfiguration`.
+
 - [ ] **Step 4: Write the Redis boot test**
+
+Defects found during execution, all three in this test:
+
+1. The container class is `com.redis.testcontainers.RedisStackContainer`, not
+   `org.testcontainers.containers.redis.RedisStackContainer`. Add the test
+   dependency `com.redis:testcontainers-redis:2.2.0` to
+   `chat-deploy-redis/pom.xml`, as `chat-vector-redis` does. Build the
+   container with an explicit image and tag. Do not guess a tag.
+2. The module ships no memory messaging provider, so
+   `app.service.core.pubsub=memory` fails with no `PubSubServiceBeans` bean.
+   Use `app.service.core.pubsub=redis-pubsub`, as `RedisDeployBootTests` does.
+3. The redis pubsub reads `redis-topics.host` and `redis-topics.port`. Add
+   both to the dynamic properties. They point at the same container.
 
 Create `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisVectorRecallBootTests.kt` (pattern: `RedisDeployBootTests`; key, persistence, pubsub, index, secrets all memory so no node id claim activates — only the vector store talks to Redis Stack):
 
@@ -2969,7 +2999,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.TestPropertySource
-import org.testcontainers.containers.redis.RedisStackContainer
+import com.redis.testcontainers.RedisStackContainer
 
 /**
  * Boot verification for recall on the Redis vector backend.
@@ -2988,7 +3018,7 @@ import org.testcontainers.containers.redis.RedisStackContainer
         "app.server.proto=rsocket",
         "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory",
-        "app.service.core.pubsub=memory",
+        "app.service.core.pubsub=redis-pubsub",
         "app.service.core.index=lucene",
         "app.service.core.persistence=memory",
         "app.service.core.secrets=memory",
@@ -3022,13 +3052,17 @@ class RedisVectorRecallBootTests {
     }
 
     companion object {
-        val redisStack = RedisStackContainer().apply { start() }
+        val redisStack = RedisStackContainer(
+            RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG)
+        ).apply { start() }
 
         @JvmStatic
         @DynamicPropertySource
         fun redisProps(registry: DynamicPropertyRegistry) {
             registry.add("spring.redis.host") { redisStack.host }
             registry.add("spring.redis.port") { redisStack.firstMappedPort.toString() }
+            registry.add("redis-topics.host") { redisStack.host }
+            registry.add("redis-topics.port") { redisStack.firstMappedPort.toString() }
         }
     }
 
@@ -3053,7 +3087,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorRecallBootTests.kt chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisVectorRecallBootTests.kt
+git add chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorRecallBootTests.kt chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisVectorRecallBootTests.kt
 git commit -m "test: boot the composition roots with vector recall active"
 ```
 
