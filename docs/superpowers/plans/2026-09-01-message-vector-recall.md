@@ -2126,22 +2126,23 @@ class VectorSelectorValidationTests {
 
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
         ApplicationContextRunner()
-            .withPropertyValues(properties)
+            .withPropertyValues(*properties.map { "${it.key}=${it.value}" }.toTypedArray())
             .withUserConfiguration(VectorSelectorValidationConfiguration::class.java)
 
-    private fun failureFor(properties: Map<String, String>): Throwable? {
+    private fun failureFor(properties: Map<String, String>): Throwable {
         var failure: Throwable? = null
         runner(properties).run { context ->
-            if (context.hasFailed()) {
-                failure = context.getStartupFailure()
-            } else {
-                org.assertj.core.api.Assertions.fail("expected startup failure for $properties")
-            }
+            failure = context.startupFailure
         }
         return failure
+            ?: Assertions.fail<Throwable>("expected a startup failure for $properties")
     }
 }
 ```
+
+Two defects in this step became clear during the work. `withPropertyValues`
+takes `String...` values in `key=value` form, not a map. A captured `var` does
+not smart-cast, so `failureFor` returns a value that is not null.
 
 - [ ] **Step 2: Run the validation tests to verify they fail**
 
@@ -2155,8 +2156,8 @@ Create `chat-core/src/main/kotlin/com/demo/chat/config/VectorSelectorValidation.
 ```kotlin
 package com.demo.chat.config
 
+import org.springframework.beans.factory.SmartInitializingSingleton
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.context.SmartInitializingSingleton
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -2196,19 +2197,30 @@ object VectorSelectorValidation {
     }
 }
 
+// The module does not enable the Kotlin all-open compiler plugin. A
+// configuration class must be open, like BaseDomainConfiguration.
 @Configuration
-class VectorSelectorValidationConfiguration(
+open class VectorSelectorValidationConfiguration(
     @Value("\${app.service.core.vector:}") vector: String,
     @Value("\${app.service.core.embedding:}") embedding: String,
 ) {
 
+    private val vectorSelector = vector
+    private val embeddingSelector = embedding
+
     @Bean
-    fun vectorSelectorValidation(): SmartInitializingSingleton =
+    open fun vectorSelectorValidation(): SmartInitializingSingleton =
         SmartInitializingSingleton {
-            VectorSelectorValidation.validate(vector, embedding)
+            VectorSelectorValidation.validate(vectorSelector, embeddingSelector)
         }
 }
 ```
+
+Three defects in this step became clear during the work. `SmartInitializingSingleton`
+lives in `org.springframework.beans.factory`. `chat-core/pom.xml` declares no
+Spring all-open compiler plugin, so the class and the bean method need `open`.
+A constructor parameter is not visible in a member function body, so the class
+holds each selector in a property.
 
 - [ ] **Step 4: Run the validation tests to verify they pass**
 

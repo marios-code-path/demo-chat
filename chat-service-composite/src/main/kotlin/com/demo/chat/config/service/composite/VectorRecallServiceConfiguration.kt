@@ -1,8 +1,10 @@
 package com.demo.chat.config.service.composite
 
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.service.composite.impl.MessageRecallServiceImpl
 import com.demo.chat.service.composite.impl.VectorStoreMessageVectorIndexer
 import com.demo.chat.service.vector.MessageDocumentMapper
+import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageVectorIndexer
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
@@ -31,4 +33,12 @@ class VectorRecallServiceConfiguration<T, V, Q>(
         @Value("\${app.key.type}") keyType: String,
     ): MessageVectorIndexer<T> =
         VectorStoreMessageVectorIndexer(vectorStore, MessageDocumentMapper(typeUtil, keyType))
+
+    @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
+    fun messageRecallService(
+        vectorStore: VectorStore,
+        @Value("\${app.key.type}") keyType: String,
+    ): MessageRecallService<T> =
+        MessageRecallServiceImpl(vectorStore, typeUtil, keyType)
 }
