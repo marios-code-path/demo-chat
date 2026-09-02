@@ -2500,7 +2500,7 @@ fp comment CHAT-mgitmbdo "Task 8 done: MessageRecallServiceImpl with the spec fi
 **Files:**
 - Create: `chat-service-controller/src/main/kotlin/com/demo/chat/controller/composite/mapping/MessageRecallControllerMapping.kt`
 - Modify: `chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt`
-- Test: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/controller/MessageRecallControllerTests.kt`
+- Test: `chat-service-controller/src/test/kotlin/com/demo/chat/test/recall/controller/MessageRecallControllerTests.kt`
 
 **Interfaces:**
 - Consumes: `MessageRecallService<T>` (Task 2), the request DTOs and `MessageRecallHit` (shared DTOs — the same classes REST uses, per spec), `RSocketTestBase` (test), `RSocketServerTestConfiguration` (test).
@@ -2508,14 +2508,25 @@ fp comment CHAT-mgitmbdo "Task 8 done: MessageRecallServiceImpl with the spec fi
 
 - [ ] **Step 1: Write the failing test**
 
-Create `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/controller/MessageRecallControllerTests.kt` (pattern: `SecretsControllerTests` in the same package):
+Create `chat-service-controller/src/test/kotlin/com/demo/chat/test/recall/controller/MessageRecallControllerTests.kt` (pattern: `SecretsControllerTests`).
+
+Defect found during execution. The first draft put this test in
+`com.demo.chat.test.rsocket.controller`. `RSocketServerTestConfiguration`
+carries a bare `@ComponentScan`, which roots at `com.demo.chat.test.rsocket`.
+Every `@Controller` under that package enters every RSocket test context. The
+test controller then leaked into `SecretsControllerTests`, and
+`TestSecretStoreController` leaked into this test. Two failures followed: a
+circular reference on `testSecretStoreController`, because no `SecretsStore`
+bean was present. Keep the test outside the scan root. Add a `SecretsStore`
+mock, because the scan still supplies the secrets test controller.
 
 ```kotlin
-package com.demo.chat.test.rsocket.controller
+package com.demo.chat.test.recall.controller
 
 import com.demo.chat.controller.composite.mapping.MessageRecallControllerMapping
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TopicRecallRequest
+import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.service.vector.MessageRecallHit
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.test.anyObject
@@ -2543,6 +2554,9 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
 
     @MockBean
     private lateinit var recallService: MessageRecallService<Long>
+
+    @MockBean
+    private lateinit var secretsStore: SecretsStore<Long>
 
     @Test
     fun `recall topic route returns hits over the shared DTOs`() {
@@ -2572,8 +2586,13 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
 
 @Controller
 class TestMessageRecallController<T>(private val that: MessageRecallService<T>) :
-    MessageRecallControllerMapping<T> by that
+    MessageRecallControllerMapping<T>, MessageRecallService<T> by that
 ```
+
+Defect found during execution. The first draft used
+`MessageRecallControllerMapping<T> by that`. Kotlin delegation needs a
+delegate of the delegated interface. `that` is only a `MessageRecallService`.
+Use the two-part form of the repository, as `TestSecretStoreController` does.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -2622,8 +2641,11 @@ Add the controller (no class-level `@MessageMapping`; the method routes are the 
 @Controller
 class MessageRecallController<T>(
     recallService: MessageRecallService<T>,
-) : MessageRecallControllerMapping<T> by recallService
+) : MessageRecallControllerMapping<T>, MessageRecallService<T> by recallService
 ```
+
+The two-part delegation form is necessary here too. See the defect note in
+Step 1.
 
 A composition that enables `app.controller.recall` must also enable the selector pair, or startup fails on the missing `MessageRecallService` bean — the same failure style as the existing controllers.
 
@@ -2635,7 +2657,7 @@ Expected: PASS, including `MessageRecallControllerTests`.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add chat-service-controller/src/main/kotlin/com/demo/chat/controller/composite/mapping/MessageRecallControllerMapping.kt chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/controller/MessageRecallControllerTests.kt
+git add chat-service-controller/src/main/kotlin/com/demo/chat/controller/composite/mapping/MessageRecallControllerMapping.kt chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt chat-service-controller/src/test/kotlin/com/demo/chat/test/recall/controller/MessageRecallControllerTests.kt
 git commit -m "feat: expose message vector recall on RSocket"
 ```
 
