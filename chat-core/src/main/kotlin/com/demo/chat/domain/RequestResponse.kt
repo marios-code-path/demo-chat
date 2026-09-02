@@ -38,3 +38,50 @@ data class ChatMessageKey<T>(
         override val timestamp: Instant,
         override val empty: Boolean = false
 ) : MessageKey<T>
+
+@JsonTypeName("TopicRecallRequest")
+data class TopicRecallRequest<T>(
+    val topicId: T,
+    val query: String,
+    val limit: Int = 10,
+    val threshold: Double = 0.0,
+) : RequestResponse<T>() {
+    fun validate() = RecallRequestValidation.validate(query, limit, threshold)
+}
+
+@JsonTypeName("UserRecallRequest")
+data class UserRecallRequest<T>(
+    val userId: T,
+    val query: String,
+    val limit: Int = 10,
+    val threshold: Double = 0.0,
+) : RequestResponse<T>() {
+    fun validate() = RecallRequestValidation.validate(query, limit, threshold)
+}
+
+@JsonTypeName("GlobalRecallRequest")
+data class GlobalRecallRequest(
+    val query: String,
+    val limit: Int = 10,
+    val threshold: Double = 0.0,
+) : RequestResponse<Any>() {
+    fun validate() = RecallRequestValidation.validate(query, limit, threshold)
+}
+
+object RecallRequestValidation {
+
+    fun validate(query: String, limit: Int, threshold: Double) {
+        if (query.isBlank()) {
+            throw InvalidRecallRequestException("query must not be blank")
+        }
+        if (limit < 1) {
+            throw InvalidRecallRequestException("limit must be at least 1")
+        }
+        if (limit > 50) {
+            throw InvalidRecallRequestException("limit must be at most 50")
+        }
+        if (threshold < 0.0 || threshold > 1.0) {
+            throw InvalidRecallRequestException("threshold must be in 0.0..1.0")
+        }
+    }
+}
