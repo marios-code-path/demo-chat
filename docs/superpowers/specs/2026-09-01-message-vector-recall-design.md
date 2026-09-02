@@ -34,6 +34,7 @@ The probe checks these accessors:
 - `SearchRequest.Builder.similarityThreshold(Double)`
 - `SearchRequest.Builder.filterExpression(String)`
 - `SearchRequest.Builder.build()`
+- `SearchRequest.SIMILARITY_THRESHOLD_ACCEPT_ALL`
 
 Use Spring AI `VectorStore` as the vector abstraction.
 
@@ -207,11 +208,17 @@ If both selectors are unset, recall stays inactive.
 
 No selector uses `matchIfMissing`.
 
-Provider classes must use `@ProvidesCapability`.
+The capability mechanism does not exist in code yet.
 
-Provider conditions must match the capability annotation.
+This sprint does not depend on that mechanism.
 
-This follows capability design decision 3.
+Provider classes use `@ConditionalOnProperty` in this sprint.
+
+A startup validation bean checks the vector and embedding selector pair.
+
+When the capability mechanism lands, migrate these providers to `@ProvidesCapability`.
+
+That later migration follows capability design decision 3.
 
 Module ownership:
 
