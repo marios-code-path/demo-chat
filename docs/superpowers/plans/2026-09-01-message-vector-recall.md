@@ -1804,20 +1804,41 @@ New `send`:
             .key()
             .flatMap { messageKey ->
                 val message = sending(messageKey.id)
+                // Each write is deferred. A step starts only after the step
+                // before it completes, so a failed write stops the steps
+                // that follow it.
                 val writes: MutableList<Mono<Void>> = mutableListOf(
-                    messagePersistence.add(message),
-                    messageIndex.add(message),
+                    Mono.defer { messagePersistence.add(message) },
+                    Mono.defer { messageIndex.add(message) },
                 )
-                val vectorWrite = messageVectorIndexer?.add(message)
-                if (vectorWrite != null) writes.add(vectorWrite)
-                writes.add(pubsub.sendMessage(message))
+                val indexer = messageVectorIndexer
+                if (indexer != null) writes.add(Mono.defer { indexer.add(asText(message)) })
+                writes.add(Mono.defer { pubsub.sendMessage(message) })
                 Flux.concat(*writes.toTypedArray())
                     .then(Mono.just(messageKey))
             }
     }
+
+    /**
+     * The vector indexer takes text messages. Every composition binds V to
+     * String, so this cast holds. A composition with a different V must not
+     * set the recall selectors.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun asText(message: Message<T, V>): Message<T, String> =
+        message as Message<T, String>
 ```
 
 The message is built once and shared by every write. With no indexer the list is persistence, index, pubsub — the exact current chain.
+
+Two details the first draft of this plan missed:
+
+- `MessageVectorIndexer<T>.add` takes `Message<T, String>`, but this class is
+  generic in `V`. The `asText` helper bridges the two types.
+- Each write must go in `Mono.defer`. A direct call builds the publisher at
+  assembly time. An eager call reaches the collaborator even when
+  `Flux.concat` never subscribes to that step. The defer makes "a vector
+  failure stops pubsub" a real guarantee.
 
 - [ ] **Step 6: Write the vector recall configuration and wire the composite beans**
 
@@ -1909,7 +1930,6 @@ import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.core.env.MapPropertySource
 
