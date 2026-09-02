@@ -54,6 +54,7 @@
         <module>chat-persistence-memory</module>
         <module>chat-messaging-memory</module>
         <module>chat-index-lucene</module>
+        <module>chat-vector-simple</module>
 
         <module>chat-messaging-kafka</module>
 

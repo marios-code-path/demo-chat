@@ -1162,7 +1162,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = "vector", havingValue = "simple")
+@ConditionalOnProperty(prefix = "app.service.core", name = ["vector"], havingValue = "simple")
 class SimpleVectorStoreConfiguration {
 
     @Bean
@@ -1492,7 +1492,7 @@ import redis.clients.jedis.JedisPooled
  * recall filters carry keyType as well.
  */
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = "vector", havingValue = "redis")
+@ConditionalOnProperty(prefix = "app.service.core", name = ["vector"], havingValue = "redis")
 class RedisVectorStoreConfiguration {
 
     @Bean
