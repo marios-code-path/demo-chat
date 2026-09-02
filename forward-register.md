@@ -12,8 +12,8 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` |
-| Register state | Updated after PR #60 merge (hangup, loud NotFound) |
-| Last merged PR | #60, merge commit `abbfaedb` |
+| Register state | Updated after PR #61 merge (duplicate topic name rejected) |
+| Last merged PR | #61, merge commit `5c7fd056` |
 | Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
 | Worktrees | main checkout only |
 | Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
@@ -41,6 +41,7 @@ and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 | #58 | `just launch-shell` and `just dry-run-shell` recipes for the interactive client |
 | #59 | B8: shell `send` by topic name uses the looked-up room id, plus the first end-to-end send tests. B9: pubsub provider beans made singletons |
 | #60 | Shell `hangup` disposes the stored listener; `getRoomByName` and `leaveRoom` fail loudly with `NotFound`. Fallback placement before `single()` corrected. Six new tests, composite and container level |
+| #61 | A topic name names one room. `addRoom` rejects an existing name with `DuplicateException` at the source. Composite and shell tests pin the rejection |
 
 ## Decisions carried forward
 
@@ -358,3 +359,31 @@ Three facts that are expensive to relearn:
 The sender identity in `PubSubCommands.send` is still hardcoded
 (`identity("_")`), and the `TODO` comments in that method stand. Not
 filed; owner judgment.
+
+## Topic name uniqueness (2026-09-01)
+
+`CHAT-qktlglfa` is done and merged through PR #61, merge commit
+`5c7fd056`. The decision is the owner's: a topic name names one room,
+and a second add with the same name fails with `DuplicateException`.
+
+Two facts that are expensive to relearn:
+
+1. **The index schemas never enforced uniqueness.** Cassandra's
+   `chat_room_name` primary key is `(name, room_id)`, so a duplicate
+   name inserts a second row. `findByKeyName` returns a `Mono`, so the
+   lookup took the newest row and silently orphaned the older room.
+   The memory deployment uses the Lucene index, where `findBy` returns
+   every match and `getRoomByName`'s `single()` threw a raw
+   `IllegalStateException`. Same action, two undesigned outcomes.
+2. **Enforcement sits in the composite, not the stores.** `addRoom`
+   checks `findBy(...).hasElements()` before creating. No backend ever
+   holds a duplicate, so `single()` in `getRoomByName` stays safe. The
+   check is check-then-act, not atomic. Two concurrent adds of one name
+   can both pass it. The stores offer no conditional write on the
+   index, so closing that race needs a design decision, not a patch.
+
+Not filed, recorded here so nobody rederives them: the cassandra index
+`rem` deletes `ChatTopicName` with the name `""`, so it never matches
+the real row and index removal is broken on that backend.
+`MemoryTopicPubSubService.listenTo` uses `getOrPut` and silently opens a
+sink for a topic that was never opened.
