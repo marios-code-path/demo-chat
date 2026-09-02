@@ -14,6 +14,27 @@ It does not add topic vectors, user vectors, summary vectors, or graph storage.
 
 ## Source APIs
 
+Pin Spring AI with this BOM:
+
+- `org.springframework.ai:spring-ai-bom:1.0.3`
+
+Do not use Spring AI `2.0.0` in this sprint.
+
+The first plan task must compile an API probe against the pinned BOM.
+
+The probe checks these accessors:
+
+- `Document.getId()`
+- `Document.getText()`
+- `Document.getMetadata()`
+- `Document.getScore()`
+- `SearchRequest.builder()`
+- `SearchRequest.Builder.query(String)`
+- `SearchRequest.Builder.topK(Int)`
+- `SearchRequest.Builder.similarityThreshold(Double)`
+- `SearchRequest.Builder.filterExpression(String)`
+- `SearchRequest.Builder.build()`
+
 Use Spring AI `VectorStore` as the vector abstraction.
 
 Use Spring AI `VectorStoreRetriever` for read-only recall.
@@ -22,7 +43,7 @@ Use Spring AI `SearchRequest` for query text, result limit, threshold, and metad
 
 Use Spring AI `Document` as the stored vector document.
 
-`Document.id` is the message key string.
+`Document.id` is the message document id.
 
 `Document.text` is the message data.
 
@@ -37,6 +58,14 @@ Spring AI `VectorStore` supports these operations:
 - `delete(Filter.Expression)`
 - `similaritySearch(SearchRequest)`
 - `similaritySearch(String)`
+
+`VectorStore`, `VectorStoreRetriever`, and `EmbeddingModel` are blocking APIs.
+
+Provider code must bridge them before it returns `Mono` or `Flux`.
+
+Use `Mono.fromCallable { ... }.subscribeOn(Schedulers.boundedElastic())` for each Spring AI call.
+
+Do not call Spring AI blocking methods directly on request or reactor worker threads.
 
 ## Contract
 
@@ -71,10 +100,18 @@ Existing persistence loads full messages.
 
 ```kotlin
 data class MessageRecallHit<T>(
-    val key: Key<T>,
+    val key: MessageKey<T>,
     val score: Double?
 )
 ```
+
+The hit carries `MessageKey<T>` because the caller must reload the message.
+
+`Key<T>` does not carry `from` or `dest`.
+
+`MessageVectorIndexer.remove(key)` removes by message id only.
+
+It does not need `from` or `dest`.
 
 ## Requests
 
@@ -114,6 +151,7 @@ Validation rules:
 
 - `query` must not be blank.
 - `limit` defaults to `10`.
+- `limit` must be at least `1`.
 - `limit` must be at most `50`.
 - `threshold` defaults to `0.0`.
 - `threshold` must be in `0.0..1.0`.
@@ -121,6 +159,20 @@ Validation rules:
 ## Document Shape
 
 Store one Spring AI `Document` per persisted message.
+
+Skip messages where `message.record == false`.
+
+Join alerts and leave alerts must not enter the recall corpus.
+
+Document id format:
+
+```text
+message:<keyType>:<messageId>
+```
+
+Use the same format for `MessageVectorIndexer.remove(key)`.
+
+Message ids are unique per key type.
 
 Metadata fields:
 
@@ -132,9 +184,9 @@ Metadata fields:
 
 Filters:
 
-- Topic recall: `kind == 'message' && topicId == '<id>'`
-- User recall: `kind == 'message' && userId == '<id>'`
-- Global recall: `kind == 'message'`
+- Topic recall: `kind == 'message' && keyType == '<keyType>' && topicId == '<id>'`
+- User recall: `kind == 'message' && keyType == '<keyType>' && userId == '<id>'`
+- Global recall: `kind == 'message' && keyType == '<keyType>'`
 
 ## Activation
 
@@ -147,6 +199,30 @@ Normal chat does not require either capability.
 
 Recall activates only when both capabilities are set.
 
+If one selector is set and the other is unset, startup fails.
+
+The error must name both selectors.
+
+If both selectors are unset, recall stays inactive.
+
+No selector uses `matchIfMissing`.
+
+Provider classes must use `@ProvidesCapability`.
+
+Provider conditions must match the capability annotation.
+
+This follows capability design decision 3.
+
+Module ownership:
+
+- `chat-core` owns contracts, DTOs, validation, mappers, and mock test fixtures.
+- `chat-service-composite` owns send-chain integration and recall service implementation.
+- `chat-service-controller` owns RSocket recall mappings.
+- `chat-webflux` owns REST recall mappings.
+- `chat-index-lucene` stays unchanged.
+- `chat-vector-simple` owns `SimpleVectorStore` configuration and tests.
+- `chat-vector-redis` owns Redis `VectorStore` configuration and tests.
+
 Vector values:
 
 - `mock`: tests only.
@@ -156,8 +232,30 @@ Vector values:
 Embedding values:
 
 - `mock`: tests only.
-- `local`: local model or deterministic test model.
-- `gateway`: AgentGateway embedding model, when that path exists.
+
+Reserved embedding value:
+
+- `local`: reserved for a local embedding model.
+- `gateway`: reserved for AgentGateway embedding integration.
+
+Do not implement `local` in this sprint.
+
+Do not implement `gateway` in this sprint.
+
+`docs/Project_Gateway.md` does not define an embedding endpoint.
+
+Legal matrix:
+
+| vector | embedding | Status |
+|---|---|---|
+| `mock` | `mock` | unit tests only |
+| `simple` | `mock` | local integration tests |
+| `redis` | `mock` | shared runtime integration tests |
+| `redis` | `gateway` | reserved future pair |
+
+The reserved future pair fails at startup in this sprint.
+
+All other pairs fail at startup.
 
 This sprint implements:
 
@@ -204,6 +302,8 @@ The service does not publish the message after vector failure.
 
 The service does not remove earlier successful writes.
 
+If `message.record == false`, vector indexing returns success without a write.
+
 This matches the current backend fanout behavior.
 
 Follow-up issue `CHAT-ruduojeu` records backend fanout semantics.
@@ -216,22 +316,31 @@ Recall does not load full messages.
 
 It returns keys and scores only.
 
+Recall covers only messages sent while recall is active.
+
+This sprint does not backfill older messages.
+
+Threshold mapping:
+
+- `threshold = 0.0` maps to `SearchRequest.SIMILARITY_THRESHOLD_ACCEPT_ALL`.
+- `threshold > 0.0` maps to `similarityThreshold(threshold)`.
+
 Flow:
 
 1. Validate the request.
 2. Build a `SearchRequest`.
 3. Add the metadata filter.
 4. Call `VectorStoreRetriever.similaritySearch(request)`.
-5. Map each `Document` to `MessageRecallHit`.
+5. Create `MessageKey` from `messageId`, `userId`, and `topicId` metadata.
 6. Return keys and scores.
 
 ## API Surface
 
 RSocket routes:
 
-- `message.recall.topic`
-- `message.recall.user`
-- `message.recall.global`
+- `message-recall-topic`
+- `message-recall-user`
+- `message-recall-global`
 
 REST routes:
 
@@ -241,7 +350,22 @@ REST routes:
 
 REST and RSocket use the same request and response DTOs.
 
+RSocket recall controllers use `@ConditionalOnProperty(prefix = "app.controller", name = ["recall"])`.
+
+REST recall controllers use `@ConditionalOnProperty(prefix = "app.controller", name = ["recall"])`.
+
 No shell commands are in this sprint.
+
+Access control:
+
+- This sprint follows the current controller access pattern.
+- It does not add new authorization rules.
+- Global recall can expose all indexed message keys to an enabled caller.
+- Record that risk in the implementation plan.
+
+Validation errors use `InvalidRecallRequestException`.
+
+The exception extends `ChatException`.
 
 ## Backend Plan
 
@@ -255,6 +379,14 @@ Redis tests require Redis Stack.
 
 Redis must initialize its vector schema explicitly.
 
+Redis isolation:
+
+- Redis index name is `chat:vector:<keyType>:message`.
+- Redis key prefix is `chat:vector:<keyType>:message:`.
+- Redis filters also include `keyType`.
+
+The metadata field alone does not isolate Redis indexes.
+
 Do not use Redis as proof for `SimpleVectorStore` behavior.
 
 Do not use `SimpleVectorStore` as proof for shared runtime behavior.
@@ -264,7 +396,7 @@ Do not use `SimpleVectorStore` as proof for shared runtime behavior.
 Mapper tests:
 
 - Message becomes one `Document`.
-- `Document.id` is the message key string.
+- `Document.id` uses `message:<keyType>:<messageId>`.
 - `Document.text` is message data.
 - Metadata contains `kind`, `messageId`, `topicId`, `userId`, and `keyType`.
 
@@ -272,6 +404,7 @@ Request tests:
 
 - Blank `query` fails.
 - `limit` defaults to `10`.
+- `limit` below `1` fails.
 - `limit` above `50` fails.
 - `threshold` defaults to `0.0`.
 - `threshold` outside `0.0..1.0` fails.
@@ -281,13 +414,19 @@ Service tests:
 - `send` calls persistence, normal index, vector index, then pubsub.
 - Vector failure stops pubsub.
 - Vector failure returns an error.
+- `record=false` skips vector storage.
 - Topic recall builds a topic filter.
 - User recall builds a user filter.
 - Global recall builds a global filter.
 - Recall returns keys and scores only.
+- One selector set without the other fails startup.
+- Both selectors unset leaves recall inactive.
+- An illegal vector and embedding pair fails startup.
+- Spring AI calls occur on `Schedulers.boundedElastic()`.
 
 Integration tests:
 
+- The pinned Spring AI API probe compiles.
 - `SimpleVectorStore` proves Spring AI behavior without containers.
 - Redis vector store proves shared runtime behavior.
 - RSocket mappings use the shared DTOs.
