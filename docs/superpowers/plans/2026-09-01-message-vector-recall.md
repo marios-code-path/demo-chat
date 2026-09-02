@@ -1280,10 +1280,14 @@ Create `chat-vector-redis/pom.xml`:
             <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
+        <!-- Redis's own testcontainers module, as Spring AI 1.0.3's
+             RedisVectorStoreIT uses it (com.redis.testcontainers
+             .RedisStackContainer). Pins the redis/redis-stack-server
+             image; do not guess a tag. -->
         <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>redis-stack</artifactId>
-            <version>1.21.4</version>
+            <groupId>com.redis</groupId>
+            <artifactId>testcontainers-redis</artifactId>
+            <version>2.2.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -1323,7 +1327,7 @@ Create `chat-vector-redis/pom.xml`:
 </project>
 ```
 
-The test uses `org.testcontainers:redis-stack` (Spring AI's own RedisVectorStoreIT does). The artifact pins the Redis Stack image and tag; do not guess an image tag.
+The test uses `com.redis:testcontainers-redis` (Spring AI's own RedisVectorStoreIT does). The artifact provides `com.redis.testcontainers.RedisStackContainer`, which has no no-arg constructor; instantiate with `DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG)` to pin the image. Do not guess a tag.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -1333,14 +1337,14 @@ Create `chat-vector-redis/src/test/kotlin/com/demo/chat/test/vector/redis/RedisV
 package com.demo.chat.test.vector.redis
 
 import com.demo.chat.service.dummy.DummyEmbeddingModel
+import com.redis.testcontainers.RedisStackContainer
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.SearchRequest
-import org.springframework.ai.vectorstore.MetadataField
 import org.springframework.ai.vectorstore.redis.RedisVectorStore
-import org.testcontainers.containers.redis.RedisStackContainer
+import org.springframework.ai.vectorstore.redis.RedisVectorStore.MetadataField
 import redis.clients.jedis.JedisPooled
 
 /**
@@ -1353,23 +1357,33 @@ import redis.clients.jedis.JedisPooled
 class RedisVectorStoreConfigurationTests {
 
     companion object {
-        val stack = RedisStackContainer().apply { start() }
+        val stack = RedisStackContainer(
+            RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG)
+        ).apply { start() }
     }
 
-    private fun store() = RedisVectorStore.builder(
-        JedisPooled(stack.host, stack.firstMappedPort),
-        DummyEmbeddingModel(),
-    )
-        .indexName("chat:vector:long:message")
-        .prefix("chat:vector:long:message:")
-        .metadataFields(
-            MetadataField.tag("kind"),
-            MetadataField.tag("keyType"),
-            MetadataField.tag("topicId"),
-            MetadataField.tag("userId"),
+    private fun store(): VectorStore {
+        // One index per test: the container is shared by the class, so a
+        // fixed index name would leak documents between tests.
+        val index = "chat:vector:long:message-${UUID.randomUUID()}"
+        return RedisVectorStore.builder(
+            JedisPooled(stack.host, stack.firstMappedPort),
+            DummyEmbeddingModel(),
         )
-        .initializeSchema(true)
-        .build()
+            .indexName(index)
+            .prefix("$index:")
+            .metadataFields(
+                MetadataField.tag("kind"),
+                MetadataField.tag("keyType"),
+                MetadataField.tag("topicId"),
+                MetadataField.tag("userId"),
+            )
+            .initializeSchema(true)
+            .build()
+            // Index creation happens in afterPropertiesSet(). Spring calls
+            // it for beans; this inline-built store must call it itself.
+            .also { it.afterPropertiesSet() }
+    }
 
     private fun messageDoc(id: Long, topic: Long, user: Long, text: String) =
         Document.builder()
@@ -1458,6 +1472,7 @@ import com.demo.chat.config.vector.redis.RedisVectorStoreConfiguration
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.core.env.MapPropertySource
+import java.util.UUID
 ```
 
 - [ ] **Step 3: Run the test to verify it fails**
@@ -1473,9 +1488,9 @@ Create `chat-vector-redis/src/main/kotlin/com/demo/chat/config/vector/redis/Redi
 package com.demo.chat.config.vector.redis
 
 import org.springframework.ai.embedding.EmbeddingModel
-import org.springframework.ai.vectorstore.MetadataField
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.ai.vectorstore.redis.RedisVectorStore
+import org.springframework.ai.vectorstore.redis.RedisVectorStore.MetadataField
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
