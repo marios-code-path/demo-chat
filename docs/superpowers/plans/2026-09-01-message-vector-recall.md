@@ -801,7 +801,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.core", name = "embedding", havingValue = "mock")
+@ConditionalOnProperty(prefix = "app.service.core", name = ["embedding"], havingValue = "mock")
 class MockEmbeddingConfiguration {
 
     @Bean
@@ -900,13 +900,15 @@ class MockVectorStore : VectorStore {
     // supports exactly that subset and rejects everything else.
     private fun evaluate(expression: Filter.Expression, metadata: Map<String, Any?>): Boolean =
         when (expression.type()) {
-            Filter.ExpressionType.AND ->
+            Filter.ExpressionType.AND -> {
                 evaluate(expression.left() as Filter.Expression, metadata) &&
                     evaluate(expression.right() as Filter.Expression, metadata)
-            Filter.ExpressionType.EQ ->
+            }
+            Filter.ExpressionType.EQ -> {
                 val key = (expression.left() as Filter.Key).key()
                 val value = (expression.right() as Filter.Value).value()
                 metadata[key]?.toString() == value?.toString()
+            }
             else -> throw UnsupportedOperationException("MockVectorStore does not support ${expression.type()}")
         }
 
