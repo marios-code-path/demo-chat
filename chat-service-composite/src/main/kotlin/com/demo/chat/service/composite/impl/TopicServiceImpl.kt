@@ -25,16 +25,30 @@ open class TopicServiceImpl<T, V, Q>(
 ) : ChatTopicService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
+    // Names are unique. The index schemas tolerate duplicate names, but the
+    // product decision is that a name names one room. Enforce it here, at the
+    // source, so no backend holds a duplicate and getRoomByName's single() is
+    // always safe. Without this, Cassandra orphans the older room in silence
+    // and memory throws a raw IllegalStateException. fp issue CHAT-qktlglfa.
     override fun addRoom(req: ByStringRequest): Mono<out Key<T>> =
-        topicPersistence
-            .key()
-            .map { key -> MessageTopic.create(key, req.name) }
-            .flatMap { room ->
-                topicPersistence
-                    .add(room)
-                    .then(topicIndex.add(room))
-                    .then(pubsub.open(room.key.id))
-                    .then(Mono.just(room.key))
+        topicIndex
+            .findBy(topicNameToQuery.apply(req))
+            .hasElements()
+            .flatMap { exists ->
+                if (exists) {
+                    Mono.error(DuplicateException)
+                } else {
+                    topicPersistence
+                        .key()
+                        .map { key -> MessageTopic.create(key, req.name) }
+                        .flatMap { room ->
+                            topicPersistence
+                                .add(room)
+                                .then(topicIndex.add(room))
+                                .then(pubsub.open(room.key.id))
+                                .then(Mono.just(room.key))
+                        }
+                }
             }
 
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
