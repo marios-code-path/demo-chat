@@ -110,6 +110,7 @@ import org.springframework.ai.embedding.EmbeddingResponse
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.SimpleVectorStore
 import org.springframework.ai.vectorstore.VectorStore
+import org.springframework.ai.vectorstore.filter.Filter
 
 /**
  * Compile-only probe for the Spring AI 1.0.3 API surface this feature uses.
@@ -142,11 +143,11 @@ class SpringAiApiProbe {
             .similarityThresholdAll()
             .build()
 
-    fun requestGetters(request: SearchRequest): Triple<Int, Double, String> {
+    fun requestGetters(request: SearchRequest): Triple<Int, Double, Filter.Expression?> {
         val topK: Int = request.topK
         val threshold: Double = request.similarityThreshold
-        val filter: String? = request.filterExpression
-        return Triple(topK, threshold, filter.toString())
+        val filter: Filter.Expression? = request.filterExpression
+        return Triple(topK, threshold, filter)
     }
 
     fun acceptAllConstant(): Double = SearchRequest.SIMILARITY_THRESHOLD_ACCEPT_ALL
@@ -611,7 +612,7 @@ fp comment CHAT-qvzhyeds "Task 3 done: MessageDocumentMapper with message:<keyTy
 - Produces:
   - `DummyEmbeddingModel : EmbeddingModel` — deterministic character-bigram vectors, 256 dimensions. Main code, so every module can use it.
   - `MockEmbeddingConfiguration` — `@ConditionalOnProperty(prefix = "app.service.core", name = "embedding", havingValue = "mock")`, bean `mockEmbeddingModel(): EmbeddingModel`.
-  - `MockVectorStore : VectorStore` (test-jar) — in-memory, cosine scoring, filter clauses `field == 'value'` joined by `&&`, thread-name capture for the boundedElastic test. Consumers: `val ids: List<String>`, `var lastWriteThread: String?`, `var lastSearchThread: String?`, `var lastFilter: String?`, `var lastTopK: Int`, `var lastThreshold: Double`.
+  - `MockVectorStore : VectorStore` (test-jar) — in-memory, cosine scoring, evaluates a parsed `Filter.Expression` tree over the `&&`/EQ subset the recall service emits, thread-name capture for the boundedElastic test. Consumers: `val ids: List<String>`, `var lastWriteThread: String?`, `var lastSearchThread: String?`, `var lastFilter: Filter.Expression?`, `var lastTopK: Int`, `var lastThreshold: Double`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -822,8 +823,9 @@ import kotlin.math.sqrt
 /**
  * In-memory VectorStore for unit tests. Cosine scoring over character
  * bigram vectors, the same scheme as DummyEmbeddingModel. Filter support is
- * the subset the recall service emits: field == 'value' clauses joined by
- * &&. Not thread-safe; tests use it from one thread.
+ * the subset the recall service emits: EQ clauses joined by AND, evaluated
+ * as a parsed Filter.Expression tree. Not thread-safe; tests use it from
+ * one thread.
  *
  * Captures the thread that runs add and similaritySearch so tests can prove
  * the boundedElastic bridge, and captures the last search request so tests
@@ -841,7 +843,7 @@ class MockVectorStore : VectorStore {
     var lastSearchThread: String? = null
         private set
 
-    var lastFilter: String? = null
+    var lastFilter: Filter.Expression? = null
         private set
 
     var lastTopK: Int = 0
@@ -871,7 +873,8 @@ class MockVectorStore : VectorStore {
 
     override fun similaritySearch(request: SearchRequest): List<Document> {
         lastSearchThread = Thread.currentThread().name
-        lastFilter = request.filterExpression
+        val filter = request.filterExpression
+        lastFilter = filter
         lastTopK = request.topK
         lastThreshold = request.similarityThreshold
 
@@ -883,7 +886,7 @@ class MockVectorStore : VectorStore {
         return entries.values
             .map { it.document to cosine(queryEmbedding, it.embedding) }
             .filter { (doc, score) -> score >= threshold }
-            .filter { (doc, _) -> request.filterExpression == null || matches(doc, request.filterExpression) }
+            .filter { (doc, _) -> filter == null || evaluate(filter, doc.metadata) }
             .sortedByDescending { it.second }
             .take(request.topK)
             .map { (doc, score) ->
@@ -893,15 +896,18 @@ class MockVectorStore : VectorStore {
             }
     }
 
-    private fun matches(doc: Document, filter: String): Boolean =
-        filter.split("&&").all { clause ->
-            val parts = clause.split("==")
-            if (parts.size != 2) {
-                throw IllegalStateException("MockVectorStore cannot parse: $clause")
-            }
-            val field = parts[0].trim()
-            val value = parts[1].trim().trim('\'', '"')
-            doc.metadata[field]?.toString() == value
+    // The recall service emits only EQ clauses joined by AND. The mock
+    // supports exactly that subset and rejects everything else.
+    private fun evaluate(expression: Filter.Expression, metadata: Map<String, Any?>): Boolean =
+        when (expression.type()) {
+            Filter.ExpressionType.AND ->
+                evaluate(expression.left() as Filter.Expression, metadata) &&
+                    evaluate(expression.right() as Filter.Expression, metadata)
+            Filter.ExpressionType.EQ ->
+                val key = (expression.left() as Filter.Key).key()
+                val value = (expression.right() as Filter.Value).value()
+                metadata[key]?.toString() == value?.toString()
+            else -> throw UnsupportedOperationException("MockVectorStore does not support ${expression.type()}")
         }
 
     private fun cosine(a: FloatArray, b: FloatArray): Double {
@@ -2192,6 +2198,7 @@ import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.ai.vectorstore.filter.FilterExpressionTextParser
 import reactor.test.StepVerifier
 
 class MessageRecallServiceImplTests {
@@ -2199,6 +2206,7 @@ class MessageRecallServiceImplTests {
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
     private val service = MessageRecallServiceImpl<Long>(store, LongUtil(), "long")
+    private val parser = FilterExpressionTextParser()
 
     @BeforeEach
     fun seed() {
@@ -2220,7 +2228,7 @@ class MessageRecallServiceImplTests {
             .actual()
 
         Assertions.assertThat(store.lastFilter)
-            .isEqualTo("kind == 'message' && keyType == 'long' && topicId == '100'")
+            .isEqualTo(parser.parse("kind == 'message' && keyType == 'long' && topicId == '100'"))
         Assertions.assertThat(store.lastTopK).isEqualTo(10)
         Assertions.assertThat(store.lastThreshold).isEqualTo(0.0)
         // Seeds 1, 2, and 3 are all in topic 100.
@@ -2237,7 +2245,7 @@ class MessageRecallServiceImplTests {
             .actual()
 
         Assertions.assertThat(store.lastFilter)
-            .isEqualTo("kind == 'message' && keyType == 'long' && userId == '10'")
+            .isEqualTo(parser.parse("kind == 'message' && keyType == 'long' && userId == '10'"))
         Assertions.assertThat(hits.map { it.key.from }).containsOnly(10L)
         Assertions.assertThat(hits.map { it.key.id }).containsExactlyInAnyOrder(1L, 2L)
     }
@@ -2250,7 +2258,7 @@ class MessageRecallServiceImplTests {
             .actual()
 
         Assertions.assertThat(store.lastFilter)
-            .isEqualTo("kind == 'message' && keyType == 'long'")
+            .isEqualTo(parser.parse("kind == 'message' && keyType == 'long'"))
         // All four seeds pass the global filter with the accept-all threshold.
         Assertions.assertThat(hits.map { it.key.id }).containsExactlyInAnyOrder(1L, 2L, 3L, 4L)
     }
