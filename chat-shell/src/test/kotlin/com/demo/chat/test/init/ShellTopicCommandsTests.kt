@@ -1,6 +1,7 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.shell.commands.TopicCommands
+import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.Tag
@@ -106,5 +107,21 @@ open class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
 
         Assertions.assertThat(members)
             .isNullOrEmpty()
+    }
+
+    @Test
+    @Order(6)
+    fun `adding a topic with an existing name fails`() {
+        // Names are unique. The first add creates the room; the second must
+        // fail with the duplicate error, not create a second room. fp issue
+        // CHAT-qktlglfa.
+        topicCommands.addTopic("_", "dupRoom")
+
+        val error = org.junit.jupiter.api.Assertions.assertThrows(ApplicationErrorException::class.java) {
+            topicCommands.addTopic("_", "dupRoom")
+        }
+
+        Assertions.assertThat(error.message)
+            .contains("Object already exists")
     }
 }

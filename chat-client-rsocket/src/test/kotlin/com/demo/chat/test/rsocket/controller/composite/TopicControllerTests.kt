@@ -109,6 +109,11 @@ open class TopicControllerTests : RSocketTestBase() {
             .given(topicIndex.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
 
+        // addRoom now checks the index first. No room carries this name yet.
+        BDDMockito
+            .given(topicIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.empty())
+
         BDDMockito
             .given(topicPersistence.key())
             .willReturn(Mono.just(Key.funKey(theRoomId)))
@@ -313,6 +318,30 @@ open class TopicControllerTests : RSocketTestBase() {
                 Assertions.assertThat(it)
                     .isInstanceOf(ApplicationErrorException::class.java)
                     .hasMessageContaining("Object not Found")
+            }
+            .verify()
+    }
+
+    @Test
+    fun `should not add a room whose name already exists`() {
+        // A room with this name is already indexed. addRoom must reject the
+        // duplicate instead of creating a second room. fp issue CHAT-qktlglfa.
+        BDDMockito
+            .given(topicIndex.findBy(TestBase.anyObject()))
+            .willReturn(Flux.just(Key.funKey(randomTopicId)))
+
+        StepVerifier
+            .create(
+                requester
+                    .route("topic-add")
+                    .data(ByStringRequest(randomRoomName))
+                    .retrieveMono(Void::class.java)
+            )
+            .expectSubscription()
+            .expectErrorSatisfies {
+                Assertions.assertThat(it)
+                    .isInstanceOf(ApplicationErrorException::class.java)
+                    .hasMessageContaining("Object already exists")
             }
             .verify()
     }
