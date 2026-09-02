@@ -2683,6 +2683,11 @@ fp comment CHAT-orgbfaue "Task 9 done: RSocket routes message-recall-topic, mess
 
 Create `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/MessageRecallRestTests.kt` (pattern: `MessageRestTestBase`, minus RestDocs — the recall endpoints are not contract-documented this sprint). `MessageKey` serializes as a `WRAPPER_OBJECT` named `key`, so the test deserializes each NDJSON line into `MessageRecallHit<Long>` through the app mapper (the `MessageKeyDeserializer` from `WebFluxTestConfiguration`'s imported Jackson modules handles it) instead of asserting raw JSON paths.
 
+Defect found during execution. The first draft used mockito-kotlin `any()`.
+The `chat-webflux` module has no mockito-kotlin dependency. Use the
+repository helper `com.demo.chat.test.anyObject`, as `MessageRestTestBase`
+does.
+
 ```kotlin
 package com.demo.chat.test.controller.webflux.composite
 
@@ -2690,13 +2695,13 @@ import com.demo.chat.controller.webflux.ChatMessageRecallController
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.vector.MessageRecallHit
 import com.demo.chat.service.vector.MessageRecallService
+import com.demo.chat.test.anyObject
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito
-import org.mockito.kotlin.any
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
 import org.springframework.boot.test.mock.mockito.MockBean
@@ -2725,7 +2730,7 @@ class MessageRecallRestTests {
     @Test
     fun `recall topic returns NDJSON hits`() {
         BDDMockito
-            .given(recallService.recallInTopic(org.mockito.kotlin.any()))
+            .given(recallService.recallInTopic(anyObject()))
             .willReturn(
                 Flux.just(
                     MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9),
@@ -2756,10 +2761,10 @@ class MessageRecallRestTests {
     @Test
     fun `recall user and global routes exist`() {
         BDDMockito
-            .given(recallService.recallByUser(any()))
+            .given(recallService.recallByUser(anyObject()))
             .willReturn(Flux.just(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)))
         BDDMockito
-            .given(recallService.recallGlobal(any()))
+            .given(recallService.recallGlobal(anyObject()))
             .willReturn(Flux.just(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)))
 
         client.post().uri("/message/recall/user")
