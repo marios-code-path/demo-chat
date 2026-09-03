@@ -139,6 +139,17 @@
             <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
+        <!-- The chat-core test jar carries the mock embedding model and the
+             configuration that supplies it for embedding=mock. Both are test
+             fixtures, so they must not sit on a deployment's main
+             classpath. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-core</artifactId>
+            <type>test-jar</type>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Redis's own testcontainers module, as chat-vector-redis uses
              (com.redis.testcontainers.RedisStackContainer). The vector boot
              test needs Redis Stack, not plain Redis. -->

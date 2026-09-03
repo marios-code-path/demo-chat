@@ -43,8 +43,8 @@ Created:
 - `chat-core/src/main/kotlin/com/demo/chat/service/vector/MessageRecallService.kt` — recall contract.
 - `chat-core/src/main/kotlin/com/demo/chat/service/vector/MessageVectorIndexer.kt` — indexer contract + `MessageRecallHit<T>`.
 - `chat-core/src/main/kotlin/com/demo/chat/service/vector/MessageDocumentMapper.kt` — `Message<T, String>` to `Document`.
-- `chat-core/src/main/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt` — deterministic mock embedding model (main code, `Dummy*` precedent).
-- `chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt` — `embedding=mock` bean.
+- `chat-core/src/test/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt` — deterministic mock embedding model (main code, `Dummy*` precedent).
+- `chat-core/src/test/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt` — `embedding=mock` bean.
 - `chat-core/src/main/kotlin/com/demo/chat/config/VectorSelectorValidation.kt` — selector pair check (object + validation configuration).
 - `chat-core/src/test/kotlin/com/demo/chat/test/vector/SpringAiApiProbe.kt` — compile-only API probe.
 - `chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStore.kt` — in-memory `VectorStore` test fixture (ships in the chat-core test-jar).
@@ -602,8 +602,8 @@ fp comment CHAT-qvzhyeds "Task 3 done: MessageDocumentMapper with message:<keyTy
 ## Task 4: Mock fixtures — DummyEmbeddingModel and MockVectorStore (CHAT-ilxdjayd)
 
 **Files:**
-- Create: `chat-core/src/main/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt`
-- Create: `chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt`
+- Create: `chat-core/src/test/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt`
+- Create: `chat-core/src/test/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt`
 - Create: `chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStore.kt`
 - Test: `chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStoreTests.kt`
 
@@ -612,6 +612,11 @@ fp comment CHAT-qvzhyeds "Task 3 done: MessageDocumentMapper with message:<keyTy
 - Produces:
   - `DummyEmbeddingModel : EmbeddingModel` — deterministic character-bigram vectors, 256 dimensions. Main code, so every module can use it.
   - `MockEmbeddingConfiguration` — `@ConditionalOnProperty(prefix = "app.service.core", name = "embedding", havingValue = "mock")`, bean `mockEmbeddingModel(): EmbeddingModel`.
+
+Both fixtures live in `src/test`, so they ship in the chat-core test jar and
+never reach a deployment's main classpath. Review of PR #62 found them in
+`src/main`. A module that boots with `app.service.core.embedding=mock` needs
+the chat-core test-jar dependency.
   - `MockVectorStore : VectorStore` (test-jar) — in-memory, cosine scoring, evaluates a parsed `Filter.Expression` tree over the `&&`/EQ subset the recall service emits, thread-name capture for the boundedElastic test. Consumers: `val ids: List<String>`, `var lastWriteThread: String?`, `var lastSearchThread: String?`, `var lastFilter: Filter.Expression?`, `var lastTopK: Int`, `var lastThreshold: Double`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -738,7 +743,7 @@ Expected: FAIL — `MockVectorStore` and `DummyEmbeddingModel` do not exist yet.
 
 - [ ] **Step 3: Write the fixtures**
 
-Create `chat-core/src/main/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt`:
+Create `chat-core/src/test/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt`:
 
 ```kotlin
 package com.demo.chat.service.dummy
@@ -789,7 +794,7 @@ class DummyEmbeddingModel : EmbeddingModel {
 }
 ```
 
-Create `chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt`:
+Create `chat-core/src/test/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt`:
 
 ```kotlin
 package com.demo.chat.config
@@ -947,7 +952,7 @@ Note: `MockVectorStore` lives in `src/test/kotlin`, so it ships in the chat-core
 - [ ] **Step 5: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStore.kt chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStoreTests.kt
+git add chat-core/src/test/kotlin/com/demo/chat/service/dummy/DummyEmbeddingModel.kt chat-core/src/test/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStore.kt chat-core/src/test/kotlin/com/demo/chat/test/vector/MockVectorStoreTests.kt
 git commit -m "feat: add deterministic mock embedding model and mock vector store"
 ```
 
@@ -3087,7 +3092,7 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add chat-core/src/main/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorRecallBootTests.kt chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisVectorRecallBootTests.kt
+git add chat-core/src/test/kotlin/com/demo/chat/config/MockEmbeddingConfiguration.kt chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorRecallBootTests.kt chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisVectorRecallBootTests.kt
 git commit -m "test: boot the composition roots with vector recall active"
 ```
 
