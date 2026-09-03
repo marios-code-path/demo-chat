@@ -54,6 +54,8 @@
         <module>chat-persistence-memory</module>
         <module>chat-messaging-memory</module>
         <module>chat-index-lucene</module>
+        <module>chat-vector-simple</module>
+        <module>chat-vector-redis</module>
 
         <module>chat-messaging-kafka</module>
 
@@ -111,6 +113,15 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>${spring-cloud-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Pinned by the message vector recall spec. Do not use 2.0.0.
+                 chat-core's SpringAiApiProbe compiles against this surface. -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>1.0.3</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

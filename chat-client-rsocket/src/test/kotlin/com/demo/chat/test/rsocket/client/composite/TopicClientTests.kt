@@ -92,6 +92,12 @@ class TopicClientTests : RSocketTestBase() {
             .given(topicPersistence.key())
             .willReturn(Mono.just(Key.funKey(keyId)))
 
+        // addRoom rejects a duplicate name, so it queries the topic index
+        // first. An empty result means the name is free.
+        BDDMockito
+            .given(topicIndex.findBy(anyObject()))
+            .willReturn(Flux.empty())
+
         BDDMockito
             .given(topicIndex.add(anyObject()))
             .willReturn(Mono.empty())
@@ -145,6 +151,12 @@ class TopicClientTests : RSocketTestBase() {
         BDDMockito
             .given(topicPersistence.key())
             .willReturn(Mono.just(Key.funKey(theRoomId)))
+
+        // addRoom rejects a duplicate name, so it queries the topic index
+        // first. An empty result means the name is free.
+        BDDMockito
+            .given(topicIndex.findBy(anyObject()))
+            .willReturn(Flux.empty())
 
         BDDMockito
             .given(topicIndex.add(anyObject()))

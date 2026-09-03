@@ -9,6 +9,8 @@ import com.demo.chat.domain.serializers.EmptyMessageUtil
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.composite.impl.UserServiceImpl
+import com.demo.chat.service.vector.MessageVectorIndexer
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -22,6 +24,7 @@ class CompositeServiceBeansConfiguration<T, V, Q>(
     val typeUtil: TypeUtil<T>,
     private val emptyMessageSupplier: EmptyMessageUtil<V>,
     private val queryConverters: RequestToQueryConverters<Q>,
+    private val vectorIndexers: ObjectProvider<MessageVectorIndexer<T>>,
 ) : CompositeServiceBeans<T, V> {
 
     @Bean
@@ -29,7 +32,8 @@ class CompositeServiceBeansConfiguration<T, V, Q>(
         messageIndex = indexBeans.messageIndex(),
         messagePersistence = persistenceBeans.messagePersistence(),
         pubsub = pubsub.pubSubService(),
-        topicIdToQuery = queryConverters::topicIdToQuery
+        topicIdToQuery = queryConverters::topicIdToQuery,
+        messageVectorIndexer = vectorIndexers.ifAvailable,
     )
 
     @Bean
