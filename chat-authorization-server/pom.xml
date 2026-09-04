@@ -16,7 +16,6 @@
     <properties>
         <appImageName>${image.repo}/${imageName}:${project.version}</appImageName>
         <appMainClass>com.demo.chat.ChatApp</appMainClass>
-        <spring-security.version>6.1.0-M2</spring-security.version>
     </properties>
     <profiles>
         <profile>

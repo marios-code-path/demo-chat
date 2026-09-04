@@ -76368,44 +76368,44 @@
 [INFO]                                                           3.0.4 -> 4.0.1
 [INFO]   org.springframework.retry:spring-retry .............. 2.0.12 -> 2.0.13
 [INFO]   org.springframework.security:spring-security-acl ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-aspects ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-cas ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-config ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-core ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-crypto ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-data ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-ldap ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-messaging ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-authorization-server ...
 [INFO]                                                        1.3.7 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-client ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-core ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-jose ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-resource-server ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-rsa ...... 1.1.3 -> 1.1.5
 [INFO]   org.springframework.security:spring-security-rsocket ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-saml2-service-provider ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-taglibs ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-test ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-web ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.session:spring-session-core ....... 3.3.7 -> 4.1.1
 [INFO]   org.springframework.session:spring-session-data-mongodb ...
 [INFO]                                                        3.3.7 -> 4.0.0-M2
@@ -76453,9 +76453,9 @@
 [INFO]   org.springframework.security:spring-security-oauth2-authorization-server ...
 [INFO]                                                        1.3.7 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-oauth2-client ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]   org.springframework.security:spring-security-test ...
-[INFO]                                                     6.1.0-M2 -> 7.2.0-M1
+[INFO]                                                       6.3.10 -> 7.2.0-M1
 [INFO]
 [INFO] The following dependencies in pluginManagement of plugins have newer versions:
 [INFO]   org.springframework.boot:spring-boot-maven-plugin ...
@@ -83848,43 +83848,43 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Demo Chat Parent 0.0.1:
 [INFO]
-[INFO] Demo Chat Parent ................................... SUCCESS [  2.074 s]
-[INFO] chat-core .......................................... SUCCESS [  0.685 s]
-[INFO] chat-security ...................................... SUCCESS [  0.599 s]
-[INFO] chat-service-composite ............................. SUCCESS [  0.548 s]
-[INFO] chat-service-controller ............................ SUCCESS [  0.556 s]
-[INFO] chat-webflux ....................................... SUCCESS [  0.539 s]
-[INFO] chat-client-rsocket ................................ SUCCESS [  0.521 s]
-[INFO] chat-persistence-memory ............................ SUCCESS [  0.564 s]
-[INFO] chat-messaging-memory .............................. SUCCESS [  0.541 s]
-[INFO] chat-index-lucene .................................. SUCCESS [  0.532 s]
-[INFO] chat-vector-simple ................................. SUCCESS [  0.522 s]
-[INFO] chat-vector-redis .................................. SUCCESS [  0.516 s]
-[INFO] chat-messaging-kafka ............................... SUCCESS [  0.523 s]
-[INFO] shared-resources-cassandra ......................... SUCCESS [  0.523 s]
-[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.520 s]
-[INFO] chat-index-cassandra ............................... SUCCESS [  0.520 s]
-[INFO] chat-index-elastic ................................. SUCCESS [  0.523 s]
-[INFO] chat-persistence-xstream ........................... SUCCESS [  0.520 s]
-[INFO] chat-persistence-redis ............................. SUCCESS [  0.519 s]
-[INFO] chat-client-consul ................................. SUCCESS [  0.520 s]
-[INFO] shared-deploy-configuration ........................ SUCCESS [  0.513 s]
-[INFO] chat-gateway ....................................... SUCCESS [  0.517 s]
-[INFO] chat-web ........................................... SUCCESS [  0.533 s]
-[INFO] chat-deploy ........................................ SUCCESS [  0.527 s]
-[INFO] chat-deploy-memory ................................. SUCCESS [  0.522 s]
-[INFO] chat-deploy-redis .................................. SUCCESS [  0.520 s]
-[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.521 s]
-[INFO] chat-deploy-kafka .................................. SUCCESS [  0.525 s]
-[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.522 s]
-[INFO] chat-shell ......................................... SUCCESS [  0.537 s]
-[INFO] chat-authorization-server .......................... SUCCESS [  0.528 s]
-[INFO] chat-crypto ........................................ SUCCESS [  0.524 s]
-[INFO] chat-presence ...................................... SUCCESS [  0.523 s]
-[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.518 s]
+[INFO] Demo Chat Parent ................................... SUCCESS [  1.402 s]
+[INFO] chat-core .......................................... SUCCESS [  0.612 s]
+[INFO] chat-security ...................................... SUCCESS [  0.624 s]
+[INFO] chat-service-composite ............................. SUCCESS [  0.565 s]
+[INFO] chat-service-controller ............................ SUCCESS [  0.533 s]
+[INFO] chat-webflux ....................................... SUCCESS [  0.523 s]
+[INFO] chat-client-rsocket ................................ SUCCESS [  0.522 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  0.511 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  0.514 s]
+[INFO] chat-index-lucene .................................. SUCCESS [  0.508 s]
+[INFO] chat-vector-simple ................................. SUCCESS [  0.504 s]
+[INFO] chat-vector-redis .................................. SUCCESS [  0.504 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.510 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  0.515 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.503 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  0.514 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.507 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  0.502 s]
+[INFO] chat-persistence-redis ............................. SUCCESS [  0.505 s]
+[INFO] chat-client-consul ................................. SUCCESS [  0.508 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  0.503 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.506 s]
+[INFO] chat-web ........................................... SUCCESS [  0.514 s]
+[INFO] chat-deploy ........................................ SUCCESS [  0.509 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.515 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.511 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.510 s]
+[INFO] chat-deploy-kafka .................................. SUCCESS [  0.509 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.500 s]
+[INFO] chat-shell ......................................... SUCCESS [  0.511 s]
+[INFO] chat-authorization-server .......................... SUCCESS [  0.506 s]
+[INFO] chat-crypto ........................................ SUCCESS [  0.507 s]
+[INFO] chat-presence ...................................... SUCCESS [  0.504 s]
+[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.500 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  20.208 s
-[INFO] Finished at: 2026-09-04T01:11:38-07:00
+[INFO] Total time:  18.898 s
+[INFO] Finished at: 2026-09-04T11:13:00-07:00
 [INFO] ------------------------------------------------------------------------
