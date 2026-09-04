@@ -14,10 +14,6 @@
     <name>chat-index-elastic</name>
     <description>Demo-Chat Reactive ElasticSearch Index</description>
 
-    <properties>
-        <lognet.version>2.1.4</lognet.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.demo</groupId>
@@ -76,7 +72,6 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter</artifactId>
-            <version>${spring-cloud.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

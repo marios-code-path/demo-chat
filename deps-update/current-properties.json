@@ -5,13 +5,9 @@
   "java.version": "17",
   "kotlin.version": "1.9.25",
   "serialization.version": "1.6.3",
-  "spring-data-elastic.version": "5.0.1",
   "spring-boot.version": "3.3.13",
   "spring-cloud-bom.version": "2023.0.6",
-  "spring-cloud.version": "4.0.4",
-  "spring-cloud-stream.version": "4.0.4",
   "datastax-java-driver.version": "4.17.0",
   "testcontainers.version": "1.21.4",
-  "lognet.version": "2.1.4",
   "excluded.test.groups": "integration"
 }

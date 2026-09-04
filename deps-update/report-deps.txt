@@ -4948,7 +4948,7 @@
 [INFO]   org.springframework.boot:spring-boot-starter ...... 3.3.13 -> 4.2.0-M1
 [INFO]   org.springframework.boot:spring-boot-starter-test ...
 [INFO]                                                       3.3.13 -> 4.2.0-M1
-[INFO]   org.springframework.cloud:spring-cloud-commons ........ 4.0.4 -> 5.0.3
+[INFO]   org.springframework.cloud:spring-cloud-commons ........ 4.1.6 -> 5.0.3
 [INFO]
 [INFO] The following dependencies in pluginManagement of plugins have newer versions:
 [INFO]   org.springframework.boot:spring-boot-maven-plugin ...
@@ -41931,7 +41931,7 @@
 [INFO]                                                       3.3.13 -> 4.2.0-M1
 [INFO]   org.springframework.boot:spring-boot-starter-webflux ...
 [INFO]                                                       3.3.13 -> 4.2.0-M1
-[INFO]   org.springframework.cloud:spring-cloud-starter ........ 4.0.4 -> 5.0.3
+[INFO]   org.springframework.cloud:spring-cloud-starter ........ 4.1.6 -> 5.0.3
 [INFO]
 [INFO] The following dependencies in pluginManagement of plugins have newer versions:
 [INFO]   org.springframework.boot:spring-boot-maven-plugin ...
@@ -73909,22 +73909,23 @@
 [INFO]                                                        3.3.7 -> 4.0.0-M2
 [INFO]   org.springframework.session:spring-session-jdbc ....... 3.3.7 -> 4.1.1
 [INFO]   org.springframework.shell:spring-shell-autoconfigure ...
-[INFO]                                                       3.0.0 -> 4.0.0-RC1
-[INFO]   org.springframework.shell:spring-shell-core ........... 3.0.0 -> 4.0.3
+[INFO]                                                      3.0.10 -> 4.0.0-RC1
+[INFO]   org.springframework.shell:spring-shell-core .......... 3.0.10 -> 4.0.3
 [INFO]   org.springframework.shell:spring-shell-core-test-support ...
-[INFO]                                                           3.0.0 -> 3.4.3
-[INFO]   org.springframework.shell:spring-shell-standard .... 3.0.0 -> 4.0.0-M1
+[INFO]                                                          3.0.10 -> 3.4.3
+[INFO]   org.springframework.shell:spring-shell-standard ... 3.0.10 -> 4.0.0-M1
 [INFO]   org.springframework.shell:spring-shell-standard-commands ...
-[INFO]                                                           3.0.0 -> 3.4.3
-[INFO]   org.springframework.shell:spring-shell-starter ........ 3.0.0 -> 4.0.3
+[INFO]                                                          3.0.10 -> 3.4.3
+[INFO]   org.springframework.shell:spring-shell-starter ....... 3.0.10 -> 4.0.3
 [INFO]   org.springframework.shell:spring-shell-starter-jansi ...
-[INFO]                                                           3.0.0 -> 4.0.3
-[INFO]   org.springframework.shell:spring-shell-starter-jna .... 3.0.0 -> 4.0.3
-[INFO]   org.springframework.shell:spring-shell-starter-test ... 3.0.0 -> 4.0.3
-[INFO]   org.springframework.shell:spring-shell-table ....... 3.0.0 -> 4.0.0-M1
-[INFO]   org.springframework.shell:spring-shell-test ........... 3.0.0 -> 4.0.3
+[INFO]                                                          3.0.10 -> 4.0.3
+[INFO]   org.springframework.shell:spring-shell-starter-jna ... 3.0.10 -> 4.0.3
+[INFO]   org.springframework.shell:spring-shell-starter-test ...
+[INFO]                                                          3.0.10 -> 4.0.3
+[INFO]   org.springframework.shell:spring-shell-table ...... 3.0.10 -> 4.0.0-M1
+[INFO]   org.springframework.shell:spring-shell-test .......... 3.0.10 -> 4.0.3
 [INFO]   org.springframework.shell:spring-shell-test-autoconfigure ...
-[INFO]                                                           3.0.0 -> 4.0.3
+[INFO]                                                          3.0.10 -> 4.0.3
 [INFO]   org.springframework.vault:spring-vault-core ........... 3.1.1 -> 4.1.0
 [INFO]   org.springframework.ws:spring-ws-core ................ 4.0.15 -> 5.0.2
 [INFO]   org.springframework.ws:spring-ws-security ............ 4.0.15 -> 5.0.2
@@ -73974,7 +73975,7 @@
 [INFO]                                                       3.3.13 -> 4.2.0-M1
 [INFO]   org.springframework.security:spring-security-rsocket ...
 [INFO]                                                       6.3.10 -> 7.2.0-M1
-[INFO]   org.springframework.shell:spring-shell-starter ........ 3.0.0 -> 4.0.3
+[INFO]   org.springframework.shell:spring-shell-starter ....... 3.0.10 -> 4.0.3
 [INFO]   org.testcontainers:testcontainers .................... 1.21.4 -> 2.0.5
 [INFO]
 [INFO] The following dependencies in pluginManagement of plugins have newer versions:
@@ -83836,43 +83837,43 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Demo Chat Parent 0.0.1:
 [INFO]
-[INFO] Demo Chat Parent ................................... SUCCESS [  2.268 s]
-[INFO] chat-core .......................................... SUCCESS [  0.641 s]
-[INFO] chat-security ...................................... SUCCESS [  0.597 s]
-[INFO] chat-service-composite ............................. SUCCESS [  0.593 s]
-[INFO] chat-service-controller ............................ SUCCESS [  0.545 s]
-[INFO] chat-webflux ....................................... SUCCESS [  0.586 s]
-[INFO] chat-client-rsocket ................................ SUCCESS [  0.535 s]
-[INFO] chat-persistence-memory ............................ SUCCESS [  0.525 s]
-[INFO] chat-messaging-memory .............................. SUCCESS [  0.528 s]
-[INFO] chat-index-lucene .................................. SUCCESS [  0.533 s]
-[INFO] chat-vector-simple ................................. SUCCESS [  0.538 s]
-[INFO] chat-vector-redis .................................. SUCCESS [  0.526 s]
-[INFO] chat-messaging-kafka ............................... SUCCESS [  0.555 s]
-[INFO] shared-resources-cassandra ......................... SUCCESS [  0.525 s]
-[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.525 s]
-[INFO] chat-index-cassandra ............................... SUCCESS [  0.525 s]
-[INFO] chat-index-elastic ................................. SUCCESS [  0.568 s]
-[INFO] chat-persistence-xstream ........................... SUCCESS [  0.532 s]
-[INFO] chat-persistence-redis ............................. SUCCESS [  0.531 s]
-[INFO] chat-client-consul ................................. SUCCESS [  0.522 s]
-[INFO] shared-deploy-configuration ........................ SUCCESS [  0.519 s]
-[INFO] chat-gateway ....................................... SUCCESS [  0.527 s]
-[INFO] chat-web ........................................... SUCCESS [  0.521 s]
-[INFO] chat-deploy ........................................ SUCCESS [  0.528 s]
-[INFO] chat-deploy-memory ................................. SUCCESS [  0.526 s]
-[INFO] chat-deploy-redis .................................. SUCCESS [  0.523 s]
-[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.521 s]
-[INFO] chat-deploy-kafka .................................. SUCCESS [  0.522 s]
-[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.520 s]
-[INFO] chat-shell ......................................... SUCCESS [  0.528 s]
-[INFO] chat-authorization-server .......................... SUCCESS [  0.522 s]
-[INFO] chat-crypto ........................................ SUCCESS [  0.522 s]
-[INFO] chat-presence ...................................... SUCCESS [  0.521 s]
-[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.534 s]
+[INFO] Demo Chat Parent ................................... SUCCESS [  2.668 s]
+[INFO] chat-core .......................................... SUCCESS [  0.678 s]
+[INFO] chat-security ...................................... SUCCESS [  0.695 s]
+[INFO] chat-service-composite ............................. SUCCESS [  0.576 s]
+[INFO] chat-service-controller ............................ SUCCESS [  0.549 s]
+[INFO] chat-webflux ....................................... SUCCESS [  0.618 s]
+[INFO] chat-client-rsocket ................................ SUCCESS [  0.568 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  0.537 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  0.605 s]
+[INFO] chat-index-lucene .................................. SUCCESS [  0.565 s]
+[INFO] chat-vector-simple ................................. SUCCESS [  0.544 s]
+[INFO] chat-vector-redis .................................. SUCCESS [  0.527 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.525 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  0.533 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.567 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  0.539 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.512 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  0.552 s]
+[INFO] chat-persistence-redis ............................. SUCCESS [  0.596 s]
+[INFO] chat-client-consul ................................. SUCCESS [  0.613 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  0.567 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.554 s]
+[INFO] chat-web ........................................... SUCCESS [  0.523 s]
+[INFO] chat-deploy ........................................ SUCCESS [  0.523 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.517 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.556 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.510 s]
+[INFO] chat-deploy-kafka .................................. SUCCESS [  0.509 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.509 s]
+[INFO] chat-shell ......................................... SUCCESS [  0.553 s]
+[INFO] chat-authorization-server .......................... SUCCESS [  0.514 s]
+[INFO] chat-crypto ........................................ SUCCESS [  0.511 s]
+[INFO] chat-presence ...................................... SUCCESS [  0.514 s]
+[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.513 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  21.118 s
-[INFO] Finished at: 2026-09-04T15:26:24-07:00
+[INFO] Total time:  21.789 s
+[INFO] Finished at: 2026-09-04T15:32:50-07:00
 [INFO] ------------------------------------------------------------------------

@@ -15,7 +15,7 @@
     <properties>
         <testcontainers.version>1.21.4</testcontainers.version>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
-        <spring-shell.version>3.0.0</spring-shell.version>
+        <spring-shell.version>3.0.10</spring-shell.version>
     </properties>
     <profiles>
         <profile>

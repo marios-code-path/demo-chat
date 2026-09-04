@@ -109,7 +109,6 @@
 		<dependency>
 			<groupId>org.springframework.cloud</groupId>
 			<artifactId>spring-cloud-commons</artifactId>
-			<version>${spring-cloud.version}</version>
 		</dependency>
 		<!-- Spring AI 1.0.3. Versions come from the root BOM. The probe in
 		     src/test/kotlin/.../vector/SpringAiApiProbe.kt pins this surface. -->
