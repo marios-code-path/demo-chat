@@ -166,13 +166,6 @@
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
         <plugins>
             <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <mainClass>com.demo.chat.ChatApp</mainClass>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <configuration>
@@ -196,6 +189,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <mainClass>com.demo.chat.ChatApp</mainClass>
                     <imageName>${env.CHAT_IMAGE_NAME:chat-deploy}</imageName>
                 </configuration>
                 <executions>

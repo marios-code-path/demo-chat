@@ -1,15 +1,4 @@
 [INFO] Scanning for projects...
-[WARNING]
-[WARNING] Some problems were encountered while building the effective model for com.demo:chat-security:jar:0.0.1
-[WARNING] 'dependencies.dependency.version' for org.testng:testng:jar is either LATEST or RELEASE (both of them are being deprecated) @ line 78, column 22
-[WARNING]
-[WARNING] Some problems were encountered while building the effective model for com.demo:chat-deploy-redis:jar:0.0.1
-[WARNING] 'build.plugins.plugin.(groupId:artifactId)' must be unique but found duplicate declaration of plugin org.springframework.boot:spring-boot-maven-plugin @ line 195, column 21
-[WARNING]
-[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
-[WARNING]
-[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
-[WARNING]
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Build Order:
 [INFO]
@@ -54,8 +43,6 @@
 [INFO] --------------------------------[ pom ]---------------------------------
 [INFO]
 [INFO] --- versions:2.16.2:display-property-updates (default-cli) @ chat-parent ---
-[INFO] Downloading from spring-milestones: https://repo.spring.io/milestone/org/springframework/cloud/spring-cloud-dependencies/maven-metadata.xml
-[INFO] Downloaded from spring-milestones: https://repo.spring.io/milestone/org/springframework/cloud/spring-cloud-dependencies/maven-metadata.xml (2.5 kB at 4.3 kB/s)
 [INFO]
 [INFO] The following version properties are referencing the newest available version:
 [INFO]   ${spring-cloud-bom.version} ................................ 2023.0.6
@@ -349,8 +336,6 @@
 [INFO] --------------------------------[ jar ]---------------------------------
 [INFO]
 [INFO] --- versions:2.16.2:display-property-updates (default-cli) @ chat-shell ---
-[INFO] Downloading from spring-milestones: https://repo.spring.io/milestone/org/springframework/shell/spring-shell-dependencies/maven-metadata.xml
-[INFO] Downloaded from spring-milestones: https://repo.spring.io/milestone/org/springframework/shell/spring-shell-dependencies/maven-metadata.xml (1.1 kB at 12 kB/s)
 [INFO]
 [INFO] The following version properties are referencing the newest available version:
 [INFO]   ${testcontainers.version} .................................... 1.21.4
@@ -400,43 +385,43 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Demo Chat Parent 0.0.1:
 [INFO]
-[INFO] Demo Chat Parent ................................... SUCCESS [  1.071 s]
-[INFO] chat-core .......................................... SUCCESS [  0.005 s]
-[INFO] chat-security ...................................... SUCCESS [  0.002 s]
-[INFO] chat-service-composite ............................. SUCCESS [  0.002 s]
-[INFO] chat-service-controller ............................ SUCCESS [  0.002 s]
-[INFO] chat-webflux ....................................... SUCCESS [  0.007 s]
+[INFO] Demo Chat Parent ................................... SUCCESS [  0.927 s]
+[INFO] chat-core .......................................... SUCCESS [  0.012 s]
+[INFO] chat-security ...................................... SUCCESS [  0.006 s]
+[INFO] chat-service-composite ............................. SUCCESS [  0.011 s]
+[INFO] chat-service-controller ............................ SUCCESS [  0.011 s]
+[INFO] chat-webflux ....................................... SUCCESS [  0.026 s]
 [INFO] chat-client-rsocket ................................ SUCCESS [  0.003 s]
-[INFO] chat-persistence-memory ............................ SUCCESS [  0.002 s]
-[INFO] chat-messaging-memory .............................. SUCCESS [  0.002 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  0.005 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  0.003 s]
 [INFO] chat-index-lucene .................................. SUCCESS [  0.002 s]
-[INFO] chat-vector-simple ................................. SUCCESS [  0.002 s]
-[INFO] chat-vector-redis .................................. SUCCESS [  0.001 s]
-[INFO] chat-messaging-kafka ............................... SUCCESS [  0.002 s]
-[INFO] shared-resources-cassandra ......................... SUCCESS [  0.006 s]
-[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.001 s]
-[INFO] chat-index-cassandra ............................... SUCCESS [  0.001 s]
-[INFO] chat-index-elastic ................................. SUCCESS [  0.001 s]
-[INFO] chat-persistence-xstream ........................... SUCCESS [  0.002 s]
-[INFO] chat-persistence-redis ............................. SUCCESS [  0.001 s]
-[INFO] chat-client-consul ................................. SUCCESS [  0.001 s]
-[INFO] shared-deploy-configuration ........................ SUCCESS [  0.001 s]
-[INFO] chat-gateway ....................................... SUCCESS [  0.001 s]
+[INFO] chat-vector-simple ................................. SUCCESS [  0.001 s]
+[INFO] chat-vector-redis .................................. SUCCESS [  0.003 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.009 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  0.015 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.002 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  0.019 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.002 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  0.001 s]
+[INFO] chat-persistence-redis ............................. SUCCESS [  0.005 s]
+[INFO] chat-client-consul ................................. SUCCESS [  0.006 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  0.002 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.004 s]
 [INFO] chat-web ........................................... SUCCESS [  0.002 s]
-[INFO] chat-deploy ........................................ SUCCESS [  0.001 s]
-[INFO] chat-deploy-memory ................................. SUCCESS [  0.001 s]
-[INFO] chat-deploy-redis .................................. SUCCESS [  0.001 s]
-[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.000 s]
+[INFO] chat-deploy ........................................ SUCCESS [  0.003 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.004 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.003 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.003 s]
 [INFO] chat-deploy-kafka .................................. SUCCESS [  0.001 s]
-[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.002 s]
-[INFO] chat-shell ......................................... SUCCESS [  0.105 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.001 s]
+[INFO] chat-shell ......................................... SUCCESS [  0.029 s]
 [INFO] chat-authorization-server .......................... SUCCESS [  0.001 s]
-[INFO] chat-crypto ........................................ SUCCESS [  0.001 s]
-[INFO] chat-presence ...................................... SUCCESS [  0.001 s]
-[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.001 s]
+[INFO] chat-crypto ........................................ SUCCESS [  0.003 s]
+[INFO] chat-presence ...................................... SUCCESS [  0.002 s]
+[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.018 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  1.729 s
-[INFO] Finished at: 2026-09-04T11:11:57-07:00
+[INFO] Total time:  2.316 s
+[INFO] Finished at: 2026-09-04T11:50:55-07:00
 [INFO] ------------------------------------------------------------------------
