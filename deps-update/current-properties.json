@@ -6,15 +6,12 @@
   "kotlin.version": "1.8.0",
   "serialization.version": "1.2.2",
   "spring-data-elastic.version": "5.0.1",
-  "spring-cloud-gateway.version": "4.1.0-SNAPSHOT",
   "spring-boot.version": "3.3.13",
   "spring-cloud-bom.version": "2023.0.6",
   "spring-cloud.version": "4.0.4",
   "spring-cloud-stream.version": "4.0.4",
-  "spring.version": "6.0.13",
-  "spring-messaging.version": "${spring.version}",
-  "jackson.version": "2.14.1",
-  "io-reactor.version": "3.6.4",
-  "cassandra-driver.version": "4.14.1",
-  "lognet.version": "2.1.4"
+  "datastax-java-driver.version": "4.17.0",
+  "testcontainers.version": "1.21.4",
+  "lognet.version": "2.1.4",
+  "excluded.test.groups": "integration"
 }

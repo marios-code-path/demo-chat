@@ -7,12 +7,15 @@ chat-client-rsocket
 chat-persistence-memory
 chat-messaging-memory
 chat-index-lucene
+chat-vector-simple
+chat-vector-redis
 chat-messaging-kafka
 shared-resources-cassandra
 chat-persistence-cassandra
 chat-index-cassandra
 chat-index-elastic
 chat-persistence-xstream
+chat-persistence-redis
 chat-client-consul
 chat-gateway
 chat-web
@@ -21,6 +24,10 @@ chat-deploy
 chat-deploy-memory
 chat-deploy-redis
 chat-deploy-cassandra
+chat-deploy-kafka
 chat-deploy-memory-integration-test
 chat-shell
 chat-authorization-server
+chat-crypto
+chat-presence
+chat-deploy-e2ee

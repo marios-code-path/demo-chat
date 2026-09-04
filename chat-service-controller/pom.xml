@@ -17,7 +17,6 @@
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
-            <version>${io-reactor.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>

@@ -27,11 +27,6 @@
         <spring-cloud-bom.version>2023.0.6</spring-cloud-bom.version>
         <spring-cloud.version>4.0.4</spring-cloud.version>
         <spring-cloud-stream.version>4.0.4</spring-cloud-stream.version>
-        <spring.version>6.0.13</spring.version>
-        <spring-messaging.version>${spring.version}</spring-messaging.version>
-
-        <jackson.version>2.14.1</jackson.version>
-        <io-reactor.version>3.6.4</io-reactor.version>
         <datastax-java-driver.version>4.17.0</datastax-java-driver.version>
         <!-- Spring Boot 3.3.13 manages testcontainers at 1.19.8, whose docker-java
              client cannot negotiate with Docker Engine 29.x. Modules that declare
