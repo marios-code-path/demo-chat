@@ -45,7 +45,7 @@
 [INFO] --- versions:2.16.2:display-plugin-updates (default-cli) @ chat-parent ---
 [INFO]
 [INFO] The following plugin updates are available:
-[INFO]   org.jetbrains.kotlin:kotlin-maven-plugin ...... 1.8.0 -> 2.4.20-RC3
+[INFO]   org.jetbrains.kotlin:kotlin-maven-plugin ..... 1.9.25 -> 2.4.20-RC3
 [INFO]
 [INFO] All plugins have a version specified.
 [INFO]
@@ -448,7 +448,7 @@
 [INFO] --- versions:2.16.2:display-plugin-updates (default-cli) @ chat-index-elastic ---
 [INFO]
 [INFO] The following plugin updates are available:
-[INFO]   org.jetbrains.kotlin:kotlin-maven-plugin ...... 1.8.0 -> 2.4.20-RC3
+[INFO]   org.jetbrains.kotlin:kotlin-maven-plugin ..... 1.9.25 -> 2.4.20-RC3
 [INFO]
 [INFO] All plugins have a version specified.
 [INFO]
@@ -840,43 +840,43 @@
 [INFO] ------------------------------------------------------------------------
 [INFO] Reactor Summary for Demo Chat Parent 0.0.1:
 [INFO]
-[INFO] Demo Chat Parent ................................... SUCCESS [  0.948 s]
-[INFO] chat-core .......................................... SUCCESS [  0.029 s]
-[INFO] chat-security ...................................... SUCCESS [  0.020 s]
-[INFO] chat-service-composite ............................. SUCCESS [  0.019 s]
-[INFO] chat-service-controller ............................ SUCCESS [  0.026 s]
-[INFO] chat-webflux ....................................... SUCCESS [  0.221 s]
-[INFO] chat-client-rsocket ................................ SUCCESS [  0.016 s]
-[INFO] chat-persistence-memory ............................ SUCCESS [  0.014 s]
-[INFO] chat-messaging-memory .............................. SUCCESS [  0.016 s]
+[INFO] Demo Chat Parent ................................... SUCCESS [  0.866 s]
+[INFO] chat-core .......................................... SUCCESS [  0.019 s]
+[INFO] chat-security ...................................... SUCCESS [  0.016 s]
+[INFO] chat-service-composite ............................. SUCCESS [  0.013 s]
+[INFO] chat-service-controller ............................ SUCCESS [  0.015 s]
+[INFO] chat-webflux ....................................... SUCCESS [  0.203 s]
+[INFO] chat-client-rsocket ................................ SUCCESS [  0.019 s]
+[INFO] chat-persistence-memory ............................ SUCCESS [  0.011 s]
+[INFO] chat-messaging-memory .............................. SUCCESS [  0.008 s]
 [INFO] chat-index-lucene .................................. SUCCESS [  0.016 s]
-[INFO] chat-vector-simple ................................. SUCCESS [  0.017 s]
-[INFO] chat-vector-redis .................................. SUCCESS [  0.011 s]
-[INFO] chat-messaging-kafka ............................... SUCCESS [  0.028 s]
-[INFO] shared-resources-cassandra ......................... SUCCESS [  0.266 s]
-[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.223 s]
-[INFO] chat-index-cassandra ............................... SUCCESS [  0.270 s]
-[INFO] chat-index-elastic ................................. SUCCESS [  0.041 s]
-[INFO] chat-persistence-xstream ........................... SUCCESS [  0.012 s]
-[INFO] chat-persistence-redis ............................. SUCCESS [  0.020 s]
-[INFO] chat-client-consul ................................. SUCCESS [  0.010 s]
-[INFO] shared-deploy-configuration ........................ SUCCESS [  0.011 s]
-[INFO] chat-gateway ....................................... SUCCESS [  0.009 s]
-[INFO] chat-web ........................................... SUCCESS [  0.020 s]
-[INFO] chat-deploy ........................................ SUCCESS [  0.015 s]
-[INFO] chat-deploy-memory ................................. SUCCESS [  0.010 s]
-[INFO] chat-deploy-redis .................................. SUCCESS [  0.023 s]
-[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.134 s]
-[INFO] chat-deploy-kafka .................................. SUCCESS [  0.056 s]
-[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.043 s]
-[INFO] chat-shell ......................................... SUCCESS [  0.040 s]
-[INFO] chat-authorization-server .......................... SUCCESS [  0.021 s]
-[INFO] chat-crypto ........................................ SUCCESS [  0.011 s]
-[INFO] chat-presence ...................................... SUCCESS [  0.011 s]
-[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.013 s]
+[INFO] chat-vector-simple ................................. SUCCESS [  0.010 s]
+[INFO] chat-vector-redis .................................. SUCCESS [  0.008 s]
+[INFO] chat-messaging-kafka ............................... SUCCESS [  0.015 s]
+[INFO] shared-resources-cassandra ......................... SUCCESS [  0.158 s]
+[INFO] chat-persistence-cassandra ......................... SUCCESS [  0.099 s]
+[INFO] chat-index-cassandra ............................... SUCCESS [  0.080 s]
+[INFO] chat-index-elastic ................................. SUCCESS [  0.018 s]
+[INFO] chat-persistence-xstream ........................... SUCCESS [  0.008 s]
+[INFO] chat-persistence-redis ............................. SUCCESS [  0.007 s]
+[INFO] chat-client-consul ................................. SUCCESS [  0.009 s]
+[INFO] shared-deploy-configuration ........................ SUCCESS [  0.008 s]
+[INFO] chat-gateway ....................................... SUCCESS [  0.007 s]
+[INFO] chat-web ........................................... SUCCESS [  0.006 s]
+[INFO] chat-deploy ........................................ SUCCESS [  0.007 s]
+[INFO] chat-deploy-memory ................................. SUCCESS [  0.007 s]
+[INFO] chat-deploy-redis .................................. SUCCESS [  0.009 s]
+[INFO] chat-deploy-cassandra .............................. SUCCESS [  0.058 s]
+[INFO] chat-deploy-kafka .................................. SUCCESS [  0.006 s]
+[INFO] chat-deploy-memory-integration-tests ............... SUCCESS [  0.016 s]
+[INFO] chat-shell ......................................... SUCCESS [  0.007 s]
+[INFO] chat-authorization-server .......................... SUCCESS [  0.006 s]
+[INFO] chat-crypto ........................................ SUCCESS [  0.006 s]
+[INFO] chat-presence ...................................... SUCCESS [  0.010 s]
+[INFO] chat-deploy-e2ee ................................... SUCCESS [  0.007 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  3.529 s
-[INFO] Finished at: 2026-09-04T11:50:55-07:00
+[INFO] Total time:  2.748 s
+[INFO] Finished at: 2026-09-04T15:26:06-07:00
 [INFO] ------------------------------------------------------------------------

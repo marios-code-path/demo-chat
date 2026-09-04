@@ -12,7 +12,7 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.util.function.Supplier
 
-open class KeyAwarePersistenceTestBase<K, V>(
+open class KeyAwarePersistenceTestBase<K, V : Any>(
     val v: Supplier<V>,
     val s: PersistenceStore<K, V>,
     val keyFromEntity: (V) -> Key<K>,
@@ -55,7 +55,7 @@ open class KeyAwarePersistenceTestBase<K, V>(
 
 @Disabled
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
-open class PersistenceTestBase<K, V>(
+open class PersistenceTestBase<K, V : Any>(
     val valCodec: Supplier<V>,
     val store: PersistenceStore<K, V>,
 ) {

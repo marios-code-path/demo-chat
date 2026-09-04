@@ -35,12 +35,12 @@ class PubSubClient<T, V>(
 
     override fun unSubscribeAll(member: T): Mono<Void> =
         requester.route("${prefix}unSubscribeAll")
-            .data(Mono.just(member), ref)
+            .data(Mono.just(requireNotNull(member)), ref)
             .retrieveMono(Void::class.java)
 
     override fun unSubscribeAllIn(topic: T): Mono<Void> =
         requester.route("${prefix}unSubscribeAllIn")
-            .data(Mono.just(topic), ref)
+            .data(Mono.just(requireNotNull(topic)), ref)
             .retrieveMono(Void::class.java)
 
     override fun sendMessage(message: Message<T, V>): Mono<Void> =
@@ -50,31 +50,31 @@ class PubSubClient<T, V>(
 
     override fun listenTo(topic: T): Flux<out Message<T, V>> =
         requester.route("${prefix}receiveOn")
-            .data(Mono.just(topic), ref)
+            .data(Mono.just(requireNotNull(topic)), ref)
             .retrieveFlux()
 
     override fun exists(topic: T): Mono<Boolean> =
         requester.route("${prefix}exists")
-            .data(Mono.just(topic), ref)
+            .data(Mono.just(requireNotNull(topic)), ref)
             .retrieveMono()
 
     override fun open(topicId: T): Mono<Void> =
         requester.route("${prefix}add")
-            .data(Mono.just(topicId), ref)
+            .data(Mono.just(requireNotNull(topicId)), ref)
             .retrieveMono()
 
     override fun close(topicId: T): Mono<Void> =
         requester.route("${prefix}rem")
-            .data(Mono.just(topicId), ref)
+            .data(Mono.just(requireNotNull(topicId)), ref)
             .retrieveMono()
 
     override fun getByUser(uid: T): Flux<T> =
         requester.route("${prefix}getByUser")
-            .data(Mono.just(uid), ref)
+            .data(Mono.just(requireNotNull(uid)), ref)
             .retrieveFlux(ref)
 
     override fun getUsersBy(topicId: T): Flux<T> =
         requester.route("${prefix}getUsersBy")
-            .data(Mono.just(topicId), ref)
+            .data(Mono.just(requireNotNull(topicId)), ref)
             .retrieveFlux(ref)
 }

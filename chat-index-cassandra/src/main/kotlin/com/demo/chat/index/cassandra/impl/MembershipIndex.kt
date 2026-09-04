@@ -35,15 +35,17 @@ class MembershipIndex<T>(
                 .then()
     }
 
-    override fun rem(key: Key<T>): Mono<Void> =
-            byMemberRepo
-                    .deleteById(key.id)
-                    .flatMap {
-                        byMemberOfRepo
-                                .deleteById(key.id)
+    override fun rem(key: Key<T>): Mono<Void> {
+        val keyId = requireNotNull(key.id)
+        return byMemberRepo
+                .deleteById(keyId)
+                .flatMap {
+                    byMemberOfRepo
+                            .deleteById(keyId)
 
-                    }
-                    .then()
+                }
+                .then()
+    }
 
     // TODO deperecate this or fix this implementation
     override fun size(query: Map<String, String>): Mono<Long> =

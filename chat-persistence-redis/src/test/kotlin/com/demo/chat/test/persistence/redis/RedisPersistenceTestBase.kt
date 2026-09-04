@@ -21,7 +21,7 @@ import java.util.function.Supplier
  *
  * A FLUSHDB runs before every test so the shared container stays isolated.
  */
-open class RedisPersistenceTestBase<K, V>(
+open class RedisPersistenceTestBase<K, V : Any>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     v: Supplier<V>,
     s: PersistenceStore<K, V>,

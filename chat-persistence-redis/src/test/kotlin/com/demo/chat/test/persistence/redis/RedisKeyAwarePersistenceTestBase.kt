@@ -13,7 +13,7 @@ import java.util.function.Supplier
  * assertions work as-is. Adds a FLUSHDB before every test so the shared
  * container stays isolated.
  */
-open class RedisKeyAwarePersistenceTestBase<K, V>(
+open class RedisKeyAwarePersistenceTestBase<K, V : Any>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     v: Supplier<V>,
     s: PersistenceStore<K, V>,
