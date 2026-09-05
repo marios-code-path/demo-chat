@@ -1,5 +1,8 @@
 package com.demo.chat.config.shell.deploy
 
+import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexSearchRequestConverters
+import com.demo.chat.domain.RequestToQueryConverters
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -25,5 +28,8 @@ class ShellApp {
                 routeMatcher(PathPatternRouteMatcher())
             }
         }
-}
 
+    @Bean
+    fun requestToQueryConverters(): RequestToQueryConverters<IndexSearchRequest> =
+        IndexSearchRequestConverters()
+}

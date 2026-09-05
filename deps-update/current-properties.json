@@ -5,8 +5,8 @@
   "java.version": "17",
   "kotlin.version": "1.9.25",
   "serialization.version": "1.6.3",
-  "spring-boot.version": "3.3.13",
-  "spring-cloud-bom.version": "2023.0.6",
+  "spring-boot.version": "3.5.16",
+  "spring-cloud-bom.version": "2025.0.3",
   "datastax-java-driver.version": "4.17.0",
   "testcontainers.version": "1.21.4",
   "excluded.test.groups": "integration"

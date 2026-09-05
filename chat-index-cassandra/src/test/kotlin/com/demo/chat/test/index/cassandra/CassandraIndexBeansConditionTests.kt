@@ -1,5 +1,6 @@
 package com.demo.chat.test.index.cassandra
 
+import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
@@ -77,7 +78,7 @@ class CassandraIndexBeansConditionTests {
         runner()
             .withPropertyValues("app.service.core.index=cassandra")
             .run { context ->
-                assertThat(context).hasSingleBean(IndexServiceConfiguration::class.java)
+                assertThat(context).hasSingleBean(IndexServiceBeans::class.java)
             }
     }
 
@@ -86,14 +87,14 @@ class CassandraIndexBeansConditionTests {
         runner()
             .withPropertyValues("app.service.core.index=lucene")
             .run { context ->
-                assertThat(context).doesNotHaveBean(IndexServiceConfiguration::class.java)
+                assertThat(context).doesNotHaveBean(IndexServiceBeans::class.java)
             }
     }
 
     @Test
     fun `does not activate when the selector is absent`() {
         runner().run { context ->
-            assertThat(context).doesNotHaveBean(IndexServiceConfiguration::class.java)
+            assertThat(context).doesNotHaveBean(IndexServiceBeans::class.java)
         }
     }
 
@@ -102,7 +103,7 @@ class CassandraIndexBeansConditionTests {
         runner()
             .withPropertyValues("app.service.core.index=")
             .run { context ->
-                assertThat(context).doesNotHaveBean(IndexServiceConfiguration::class.java)
+                assertThat(context).doesNotHaveBean(IndexServiceBeans::class.java)
             }
     }
 }

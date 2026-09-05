@@ -1,8 +1,7 @@
 package com.demo.chat.test.deploy.cassandra
 
 import com.demo.chat.ChatApp
-import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
-import com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration
+import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.persistence.cassandra.repository.ChatUserRepository
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -36,7 +35,7 @@ class CassandraDeployTest : CassandraContainerBase() {
     private lateinit var repo: ChatUserRepository<Long>
 
     @Autowired
-    private lateinit var indexConf: IndexServiceConfiguration<Long>
+    private lateinit var indexBeans: IndexServiceBeans<Long, String, Map<String, String>>
 
     @Test
     fun contextLoads() {

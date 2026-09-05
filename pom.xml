@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -22,8 +22,8 @@
         <java.version>17</java.version>
         <kotlin.version>1.9.25</kotlin.version>
         <serialization.version>1.6.3</serialization.version>
-        <spring-boot.version>3.3.13</spring-boot.version>
-        <spring-cloud-bom.version>2023.0.6</spring-cloud-bom.version>
+        <spring-boot.version>3.5.16</spring-boot.version>
+        <spring-cloud-bom.version>2025.0.3</spring-cloud-bom.version>
         <datastax-java-driver.version>4.17.0</datastax-java-driver.version>
         <!-- Spring Boot 3.3.13 manages testcontainers at 1.19.8, whose docker-java
              client cannot negotiate with Docker Engine 29.x. Modules that declare
