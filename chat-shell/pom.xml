@@ -13,7 +13,6 @@
     <name>chat-shell</name>
     <description>Chat Application Initialization</description>
     <properties>
-        <testcontainers.version>1.21.4</testcontainers.version>
         <appImageName>docker.io/library/${imageName}:${project.version}</appImageName>
         <spring-shell.version>3.4.3</spring-shell.version>
     </properties>
@@ -91,12 +90,10 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
