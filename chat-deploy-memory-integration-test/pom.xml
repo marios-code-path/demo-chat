@@ -32,13 +32,9 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                        <!-- This plugin is newer than the managed version.
-                             Spring Boot 3.3.13 hardcodes Docker API v1.24.
-                             Docker Engine 29 refuses API versions below v1.40.
-                             Spring Boot 3.5.x negotiates the API version. Only
-                             this module builds an image, so the version skew
-                             stays here. Remove the pin after the parent uses a
-                             Boot version that negotiates. CHAT-gtcnjyit. -->
+                        <!-- Keep this pin until the executable image format is
+                             checked against chat-shell RSocket tests. Removing
+                             it makes index query payloads decode as maps. -->
                         <version>3.5.12</version>
                         <configuration>
                             <skip>false</skip>
@@ -50,7 +46,8 @@
                                 <name>${appImageName}</name>
                                 <cleanCache>true</cleanCache>
                                 <env>
-                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>-Dspring.application.name=chat-integration-test
+                                    <BPE_APPEND_JAVA_TOOL_OPTIONS>--enable-native-access=ALL-UNNAMED
+-Dspring.application.name=chat-integration-test
 -Dspring.profiles.active=prod -Dserver.port=6791
 -Dspring.rsocket.server.ssl.enabled=false
 -Dapp.actuator.username=actuator -Dapp.actuator.password=actuator

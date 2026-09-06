@@ -43,6 +43,7 @@
         <module>chat-index-lucene</module>
         <module>chat-vector-simple</module>
         <module>chat-vector-redis</module>
+        <module>chat-vector-embedded</module>
 
         <module>chat-messaging-kafka</module>
 

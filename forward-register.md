@@ -493,3 +493,47 @@ search. The critical path to phase 2 is now:
   compile scope, not test scope. The pom declares no scope element. This predates
   wave 1. Removing the version pins made it visible in the dependency tree.
 - `CHAT-pkolwuqm` Boot 4 and `CHAT-ygllyglb` Spring AI 2.0. Parallel track.
+
+## JDK 25 vector runtime flags (2026-09-06)
+
+Issue `CHAT-eroapfub`.
+
+### What changed
+
+- Added `chat-vector-embedded` as the narrow compile and test ground for the
+  JDK Vector API.
+- Added `--add-modules jdk.incubator.vector` only to `chat-vector-embedded`.
+- Added `--enable-native-access=ALL-UNNAMED` to generated deploy runtime flags.
+- Added the native access flag to the static memory integration image flags.
+- Added the native access flag to legacy Redis deploy startup.
+- Added the native access flag to GraalVM native build arguments.
+- Kept the `chat-deploy-memory-integration-test` Boot plugin pin at `3.5.12`.
+
+### Flag reach
+
+Keep the incubator Vector API flag narrow. Only code that compiles or loads
+`jdk.incubator.vector` receives `--add-modules jdk.incubator.vector`.
+
+Keep native access broad for deploy runtimes. Netty uses native access on Java
+25. Future JDKs may block that path without `--enable-native-access=ALL-UNNAMED`.
+
+### Controller finding
+
+The chat-shell integration image exposed a Boot 3.5 and Java 25 RSocket decode
+change. Generic index controllers used `Q` for the query payload. The server
+decoded that payload as `LinkedHashMap`. Lucene index services require
+`IndexSearchRequest`.
+
+The controller layer now binds query payloads explicitly:
+
+- Lucene index controllers bind `IndexSearchRequest`.
+- Cassandra index controllers bind `Map<String,String>`.
+- The generic controller stays for existing test-only use.
+
+### Proof
+
+- `mvn -o -B -pl chat-vector-embedded test` passed.
+- `shell-scripts/test-flags.sh` passed all 15 golden cases.
+- `mvn -o -B -pl chat-service-controller -am test` passed.
+- `mvn -o -B -pl chat-deploy-memory -am -Dtest=MemoryDeploymentTests -Dsurefire.failIfNoSpecifiedTests=false test` passed.
+- The user reported `mvn -B clean verify -Ptest-build,integration -fae` passed.
