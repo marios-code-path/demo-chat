@@ -14,7 +14,30 @@
     <name>chat-vector-embedded</name>
     <description>Embedded Vector API provider ground for the Vectors adapter</description>
 
+    <properties>
+        <vectors.version>0.1.20</vectors.version>
+    </properties>
+
     <dependencies>
+        <dependency>
+            <groupId>com.integrallis</groupId>
+            <artifactId>vectors-spring-ai</artifactId>
+            <version>${vectors.version}</version>
+        </dependency>
+        <!-- The adapter declares Spring AI as compileOnly, so it brings none
+             of it. This module supplies the Spring AI surface the adapter
+             binds to. The root BOM pins the version at 1.0.3. -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-vector-store</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-core</artifactId>
+            <type>test-jar</type>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
