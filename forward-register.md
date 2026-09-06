@@ -11,8 +11,8 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` |
-| Register state | Updated after PR #61 merge (duplicate topic name rejected) |
+| Checkout | `message-vector-recall`, clean, 7 commits ahead of `origin`. Head `b01d18e8`. Nothing is pushed. |
+| Register state | Updated after toolchain modernization wave 1 (2026-09-05) |
 | Last merged PR | #61, merge commit `5c7fd056` |
 | Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
 | Worktrees | main checkout only |
@@ -416,3 +416,80 @@ sink for a topic that was never opened.
      roots at `com.demo.chat.test.rsocket`, so every `@Controller` under that
      package enters every RSocket test context. Put a new test controller
      outside that package.
+
+## Toolchain modernization wave 1 (2026-09-03/05)
+
+Parent issue `CHAT-owiksxvz`. Seven commits on `message-vector-recall`. None is
+pushed. Head `b01d18e8`.
+
+Why this work started: phase 2 of vector search needs the Vectors library at
+https://integrallis.github.io/vectors/. That library needs JDK 25. The build
+targeted JDK 17 and Kotlin 1.8.0.
+
+### What landed
+
+| Commit | Issue | What |
+|--------|-------|------|
+| `08f276e6` | `CHAT-onzqrqox` | Removed `spring.version`, `jackson.version`, `io-reactor.version`, `spring-data-elastic.version`, and `lognet.version`. All five sat below the version the Boot BOM manages. |
+| `d9728bc8` | `CHAT-adezxbxs` | Removed the `spring-security.version` pin `6.1.0-M2` from `chat-shell` and `chat-authorization-server`. That value was a milestone build. |
+| `086e7f13` | `CHAT-gvrvfchz` | Fixed two malformed Maven declarations. `mvn validate` now prints no model warning. |
+| `fca1712c` | `CHAT-ornxhhcg` | Kotlin 1.8.0 to 1.9.25. kotlinx-serialization 1.2.2 to 1.6.3. `jvmTarget` stays 17. |
+| `a9dd3026` | `CHAT-dzvncoco` | Patch-line refresh. Spring Shell 3.0.0 to 3.4.3. |
+| `dda66dd3` | `CHAT-hduoesfr` | Spring Boot 3.3.13 to 3.5.16. Spring Cloud BOM 2023.0.6 to 2025.0.3. `java.version` stays 17. |
+| `b01d18e8` | `CHAT-yjmpjigt` | Removed the redundant `testcontainers.version` override and its stale comment, in the root pom and in `chat-shell`. |
+
+### The finding that reshaped the plan
+
+Boot 3.3.13 supports Java 17 through 23. Boot 3.5.16 supports Java 17 through 25.
+So JDK 25 does not need Spring Boot 4. A minor bump inside the 3.x line unlocks it.
+
+Spring Boot 4 and Spring AI 2.0 are now a parallel track. Neither blocks vector
+search. The critical path to phase 2 is now:
+
+`CHAT-dixbadbc` Kotlin 2.x, then `CHAT-hczlsjqu` JDK 25, then `CHAT-feodvffh` Vectors.
+
+### Verified facts, checked on 2026-09-03 and 2026-09-05
+
+- Boot 3.5.16 supports Java 17 to 25. It needs Spring Framework 6.2.19 or above.
+  Source: https://docs.spring.io/spring-boot/3.5/system-requirements.html
+- Vectors needs JDK 25. It needs `--add-modules jdk.incubator.vector`. The Vector
+  API is still an incubator module. Source: https://github.com/integrallis/vectors
+- `com.integrallis:vectors-spring-ai:0.1.19` declares no Spring AI dependency. The
+  module uses `compileOnly` for Spring AI. The consumer BOM selects the version.
+  So the adapter works with the pinned Spring AI 1.0.3. Spike `CHAT-uevmymkw`.
+- Boot 3.5.16 manages testcontainers at 1.21.4. The removed override set the same
+  value. `chat-shell` still resolves 1.21.4 from the BOM.
+- The `lognet` gRPC starter is gone from the repo. It was the first named blocking
+  risk for Boot 4. That risk is closed. Spring Shell is the last starter risk.
+
+### Build proof at `b01d18e8`
+
+- Default mode passes. The full reactor reports 29 modules SUCCESS.
+- Integration mode passes. `build-health.sh --integration --online` exits 0.
+- The integration verify at `dda66dd3` started 28 containers. It ran 736 tests
+  with zero failures and 52 skipped. Docker Engine reported 29.7.2.
+- `mvn -o -B validate` prints zero Maven model warnings.
+
+### Traps found in this work
+
+- **An offline build fails at `chat-webflux` after the Boot 3.5 move.** Boot 3.5.16
+  pulls `org.springframework.restdocs:spring-restdocs-asciidoctor:3.0.6`. Boot
+  3.3.13 managed an older version. A repository cache from before `dda66dd3` does
+  not hold 3.0.6. The asciidoctor goal then fails. The tests all pass first, so the
+  failure looks unrelated to the build. Prime the CI cache once after this commit.
+- **`drift check` and `git diff --check` cannot prove a removal is complete.** Both
+  inspect what changed. Neither reports what a task missed. The first `CHAT-yjmpjigt`
+  commit left `chat-shell/pom.xml` untouched, and all three reported checks passed.
+  A text search for the stale comment also passed, because `chat-shell` never held
+  that comment. Only `dependency:tree` and the container tests proved the state.
+
+### Open, not started
+
+- `CHAT-dixbadbc` Kotlin 2.x scope. Next on the critical path. Its first input is
+  the deprecation list from `CHAT-ornxhhcg`. Its named risk is the all-open
+  compiler plugin behaviour under K2. Every Spring `@Configuration` class in the
+  repo depends on that plugin.
+- `CHAT-incuynpc`. Both testcontainers dependencies in `chat-shell` resolve at
+  compile scope, not test scope. The pom declares no scope element. This predates
+  wave 1. Removing the version pins made it visible in the dependency tree.
+- `CHAT-pkolwuqm` Boot 4 and `CHAT-ygllyglb` Spring AI 2.0. Parallel track.
