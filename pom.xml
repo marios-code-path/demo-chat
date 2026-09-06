@@ -20,7 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>17</java.version>
-        <kotlin.version>1.9.25</kotlin.version>
+        <kotlin.version>2.4.10</kotlin.version>
         <serialization.version>1.6.3</serialization.version>
         <spring-boot.version>3.5.16</spring-boot.version>
         <spring-cloud-bom.version>2025.0.3</spring-cloud-bom.version>
