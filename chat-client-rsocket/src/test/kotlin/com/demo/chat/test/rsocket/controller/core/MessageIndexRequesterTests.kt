@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.core
 
-import com.demo.chat.controller.core.IndexServiceController
+import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.KeyValueIndexService
 import com.demo.chat.service.core.MessageIndexService
@@ -93,6 +93,6 @@ open class MessageIndexRequesterTests : RSocketTestBase() {
     class MessageIndexTestConfiguration {
         @Controller
         class TestMessageIndexController<T, E>(that: MessageIndexService<T, E, IndexSearchRequest>) :
-            IndexServiceController<T, Message<T, E>, IndexSearchRequest>(that)
+            IndexSearchRequestIndexServiceController<T, Message<T, E>>(that)
     }
 }

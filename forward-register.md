@@ -493,3 +493,23 @@ search. The critical path to phase 2 is now:
   compile scope, not test scope. The pom declares no scope element. This predates
   wave 1. Removing the version pins made it visible in the dependency tree.
 - `CHAT-pkolwuqm` Boot 4 and `CHAT-ygllyglb` Spring AI 2.0. Parallel track.
+
+## RSocket index query payload binding (2026-09-06)
+
+Issue `CHAT-fjhlnakc`.
+
+Spring 6.2 exposed an index-controller type erasure bug. The deployed RSocket
+index controllers used a generic `Q` query parameter. The server decoded query
+payloads as `LinkedHashMap`. Lucene index services require `IndexSearchRequest`.
+
+The controller layer now binds query payloads explicitly:
+
+- Lucene index controllers bind `IndexSearchRequest`.
+- Cassandra index controllers bind `Map<String,String>`.
+- The unused generic controller and mapping interface are removed.
+
+Proof:
+
+- `mvn -o -B -pl chat-client-rsocket -am -Dtest=MessageIndexRequesterTests,KeyValueIndexRequesterTests -Dsurefire.failIfNoSpecifiedTests=false test` passed.
+- `git diff --check` passed.
+- `drift check` returned ok.
