@@ -513,3 +513,32 @@ Proof:
 - `mvn -o -B -pl chat-client-rsocket -am -Dtest=MessageIndexRequesterTests,KeyValueIndexRequesterTests -Dsurefire.failIfNoSpecifiedTests=false test` passed.
 - `git diff --check` passed.
 - `drift check` returned ok.
+
+## JDK 25 vector runtime flags (2026-09-06)
+
+Issue `CHAT-eroapfub`.
+
+### What changed
+
+- Added `chat-vector-embedded` as the narrow compile and test ground for the
+  JDK Vector API.
+- Added `--add-modules jdk.incubator.vector` only to `chat-vector-embedded`.
+- Added `--enable-native-access=ALL-UNNAMED` to generated deploy runtime flags.
+- Added the native access flag to the static memory integration image flags.
+- Added the native access flag to legacy Redis deploy startup.
+- Added the native access flag to GraalVM native build arguments.
+
+### Flag reach
+
+Keep the incubator Vector API flag narrow. Only code that compiles or loads
+`jdk.incubator.vector` receives `--add-modules jdk.incubator.vector`.
+
+Keep native access broad for deploy runtimes. Netty uses native access on Java
+25. Future JDKs may block that path without `--enable-native-access=ALL-UNNAMED`.
+
+### Proof
+
+- `mvn -o -B -pl chat-vector-embedded test` passed.
+- `shell-scripts/test-flags.sh` passed all 15 golden cases.
+- The user reported the stacked `mvn -B clean verify -Ptest-build,integration -fae`
+  proof passed.

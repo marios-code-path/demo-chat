@@ -311,6 +311,7 @@ RSOCKET_SERVER_AUTOCONFIG_EXCLUDE = (
     "-Dspring.autoconfigure.exclude="
     "org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 )
+NATIVE_ACCESS_FLAG = "--enable-native-access=ALL-UNNAMED"
 
 COMMON_FEATURES = ["local", "consul", "long", "uuid", "websocket", "debug"]
 
@@ -590,7 +591,10 @@ class BuildContext:
         return flags
 
     def main_flags(self) -> list[str]:
-        flags = [f"-Dspring.profiles.active={','.join(self.spring_profiles())}"]
+        flags = [
+            NATIVE_ACCESS_FLAG,
+            f"-Dspring.profiles.active={','.join(self.spring_profiles())}",
+        ]
         flags += self.endpoint_flags()
         flags += [
             f"-Dapp.key.type={self.key_type}",

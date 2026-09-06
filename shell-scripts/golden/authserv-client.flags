@@ -1,4 +1,5 @@
 # profiles: client-backend,deploy,jdbc
+--enable-native-access=ALL-UNNAMED
 -Dapp.client.discovery=properties
 -Dapp.client.protocol=rsocket
 -Dapp.client.rsocket.composite.user

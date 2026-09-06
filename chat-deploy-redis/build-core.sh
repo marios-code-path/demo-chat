@@ -10,7 +10,7 @@ export APP_VERSION=0.0.1
 
 # makes no use of cloud configuration or config-maps
 # TODO: difference between '-D' and '--'
-export JAVA_TOOL_OPTIONS=" -Dspring.profiles.active=${SPRING_PROFILE} \
+export JAVA_TOOL_OPTIONS=" --enable-native-access=ALL-UNNAMED -Dspring.profiles.active=${SPRING_PROFILE} \
 -Dserver.port=$((CORE_PORT+1)) -Dspring.rsocket.server.port=${CORE_PORT} \
 -Dapp.service.core.pubsub=redis-pubsub \
 -Dapp.service.edge.topic \
