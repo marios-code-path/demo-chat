@@ -3,6 +3,7 @@ package com.demo.chat.domain
 import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.security.AuthMetaIndex
 
 
 class MapRequestConverters : RequestToQueryConverters<Map<String, String>> {
@@ -18,6 +19,14 @@ class MapRequestConverters : RequestToQueryConverters<Map<String, String>> {
 
     override fun userHandleToQuery(req: ByStringRequest) = mapOf(
         Pair(UserIndexService.HANDLE, req.name)
+    )
+
+    override fun <T> authPrincipalToQuery(req: ByIdRequest<T>) = mapOf(
+        Pair(AuthMetaIndex.PRINCIPAL, req.id.toString())
+    )
+
+    override fun <T> authTargetToQuery(req: ByIdRequest<T>) = mapOf(
+        Pair(AuthMetaIndex.TARGET, req.id.toString())
     )
 
     override fun <T> membershipIdToQuery(req: ByIdRequest<T>) = mapOf(

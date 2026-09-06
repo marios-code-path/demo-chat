@@ -1,6 +1,9 @@
 package com.demo.chat
 
 import com.demo.chat.service.client.discovery.LocalhostDiscovery
+import com.demo.chat.domain.IndexSearchRequest
+import com.demo.chat.domain.IndexSearchRequestConverters
+import com.demo.chat.domain.RequestToQueryConverters
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.security.service.CoreUserDetailsService
 import com.demo.chat.service.client.ClientDiscovery
@@ -86,6 +89,11 @@ class AuthorizationServerDeployTests {
 class TestConfig {
     @Bean
     fun localDiscovery(): ClientDiscovery = LocalhostDiscovery("127.0.0.1", 9000)
+
+    @Bean
+    fun requestToQueryConverters(): RequestToQueryConverters<IndexSearchRequest> =
+        IndexSearchRequestConverters()
+
     fun discovery() = object : ClientDiscovery {
 
         override fun getServiceInstance(serviceName: String): Mono<ServiceInstance> {

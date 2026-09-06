@@ -45,8 +45,9 @@ class AuthMetadataIndex<T>(
     }
 
     override fun rem(key: Key<T>): Mono<Void> {
-        val removed = targetRepository.deleteById(key.id)
-            .then(principalRepository.deleteById(key.id))
+        val keyId = requireNotNull(key.id)
+        val removed = targetRepository.deleteById(keyId)
+            .then(principalRepository.deleteById(keyId))
 
         return removed.then()
     }

@@ -3,6 +3,7 @@ package com.demo.chat.domain
 import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
+import com.demo.chat.service.security.AuthMetaIndex
 
 class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest> {
     override fun topicNameToQuery(req: ByStringRequest) =
@@ -13,6 +14,12 @@ class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest
 
     override fun userHandleToQuery(req: ByStringRequest) =
             IndexSearchRequest(UserIndexService.HANDLE, req.name, 100)
+
+    override fun <T> authPrincipalToQuery(req: ByIdRequest<T>) =
+            IndexSearchRequest(AuthMetaIndex.PRINCIPAL, req.id.toString(), 100)
+
+    override fun <T> authTargetToQuery(req: ByIdRequest<T>) =
+            IndexSearchRequest(AuthMetaIndex.TARGET, req.id.toString(), 100)
 
     override fun <T> membershipIdToQuery(req: ByIdRequest<T>) =
             IndexSearchRequest(MembershipIndexService.MEMBEROF, req.id.toString(), 100)

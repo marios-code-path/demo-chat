@@ -27,8 +27,8 @@ class MembershipPersistenceCassandra<T>(
         .then()
 
     override fun rem(key: Key<T>): Mono<Void> {
-        requireNotNull(key.id)
-        return membershipRepo.deleteById(key.id)
+        val keyId = requireNotNull(key.id)
+        return membershipRepo.deleteById(keyId)
     }
 
     override fun get(key: Key<T>): Mono<out TopicMembership<T>> = membershipRepo
