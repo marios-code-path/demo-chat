@@ -1,6 +1,6 @@
 package com.demo.chat.test.rsocket.controller.core
 
-import com.demo.chat.controller.core.IndexServiceController
+import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -67,5 +67,5 @@ class KeyValueIndexRequesterTests : RSocketTestBase() {
 class KVIndexTestConfiguration {
     @Controller
     class TestKVIndexController<T>(that: KeyValueIndexService<T, IndexSearchRequest>) :
-        IndexServiceController<T, KeyValuePair<T, Any>, IndexSearchRequest>(that)
+        IndexSearchRequestIndexServiceController<T, KeyValuePair<T, Any>>(that)
 }
