@@ -463,3 +463,19 @@ The issue must cover:
 - Retry.
 - Compensation.
 - Repair.
+
+Issue `CHAT-oghjsnad` records the vector reindex path. It is scheduled for a
+following sprint.
+
+This spec lists message repair and reindex jobs under Out Of Scope. That stays
+true for this sprint. The embedded provider added later made the gap concrete:
+the store is a derived cache on ephemeral storage, so a lost storage directory
+must be rebuilt from the persisted messages.
+
+No rebuild path exists today. `MessageVectorIndexer` declares `add` and `remove`
+only. A lost index makes recall return fewer hits. It does not throw and it does
+not warn, so a caller cannot tell an empty result from a lost index.
+
+This is safe while recall stays test only. It is not safe once recall serves
+users. Check `CHAT-oghjsnad` against `CHAT-ruduojeu` before starting, because
+that issue already names repair.
