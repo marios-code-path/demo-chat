@@ -16,7 +16,14 @@ object VectorSelectorValidation {
         "mock" to "mock",
         "simple" to "mock",
         "redis" to "mock",
+        "embedded" to "mock",
     )
+
+    // Derived from legalPairs so the message cannot drift from the set.
+    private val legalPairsDescription =
+        legalPairs.joinToString(", ") { (vector, embedding) ->
+            "vector=$vector with embedding=$embedding"
+        }
 
     fun validate(vector: String?, embedding: String?) {
         val vectorSet = !vector.isNullOrBlank()
@@ -34,8 +41,7 @@ object VectorSelectorValidation {
             throw IllegalStateException(
                 "Illegal recall selector pair: app.service.core.vector=$vector, " +
                     "app.service.core.embedding=$embedding. Legal pairs: " +
-                    "vector=mock with embedding=mock, vector=simple with embedding=mock, " +
-                    "vector=redis with embedding=mock."
+                    "$legalPairsDescription."
             )
         }
     }
