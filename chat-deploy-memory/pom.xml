@@ -120,7 +120,7 @@
                     <!-- The embedded vector provider loads the Vector API in
                          this module's test JVM. Without the flag the library
                          throws NoClassDefFoundError on jdk/incubator/vector.
-                         It does not fall back to a scalar path. -->
+                         It does not use a scalar path. -->
                     <argLine>--add-modules jdk.incubator.vector</argLine>
                 </configuration>
             </plugin>
