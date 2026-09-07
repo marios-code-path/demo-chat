@@ -235,6 +235,7 @@ Vector values:
 - `mock`: tests only.
 - `simple`: local and integration tests.
 - `redis`: shared runtime.
+- `embedded`: in-process store, added after this sprint. See below.
 
 Embedding values:
 
@@ -258,11 +259,21 @@ Legal matrix:
 | `mock` | `mock` | unit tests only |
 | `simple` | `mock` | local integration tests |
 | `redis` | `mock` | shared runtime integration tests |
+| `embedded` | `mock` | in-process store, added after this sprint |
 | `redis` | `gateway` | reserved future pair |
 
 The reserved future pair fails at startup in this sprint.
 
 All other pairs fail at startup.
+
+The `embedded` pair was added after this sprint, with the Vectors library.
+`VectorSelectorValidation` holds the authoritative set. This table must match it.
+
+The `embedded` pair carries one extra condition. The Vectors library needs the
+Vector API, which is an incubator module. A JVM without
+`--add-modules jdk.incubator.vector` cannot load it. `VectorSelectorValidation`
+therefore rejects `embedded` at startup on such a JVM. Without that check the
+store throws `NoClassDefFoundError` at the first recall, far from the cause.
 
 This sprint implements:
 

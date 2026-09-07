@@ -74,6 +74,19 @@ class VectorSelectorValidationTests {
     }
 
     @Test
+    fun `embedded fails startup when the Vector API is absent`() {
+        // This module declares no --add-modules jdk.incubator.vector, so the
+        // module is absent here. That is the condition under test.
+        val failure = failureFor(
+            mapOf("app.service.core.vector" to "embedded", "app.service.core.embedding" to "mock")
+        )
+
+        assertThat(failure.message)
+            .contains("jdk.incubator.vector")
+            .contains("--add-modules")
+    }
+
+    @Test
     fun `both unset starts`() {
         runner(emptyMap()).run { context ->
             assertThat(context).hasNotFailed()
@@ -82,7 +95,10 @@ class VectorSelectorValidationTests {
 
     @Test
     fun `legal pairs start`() {
-        for ((vector, embedding) in LEGAL_PAIRS) {
+        // embedded is excluded. This module's test JVM carries no
+        // --add-modules jdk.incubator.vector, so the Vector API check
+        // rejects it. The positive path is proven in chat-deploy-memory.
+        for ((vector, embedding) in LEGAL_PAIRS.filterNot { it.first == "embedded" }) {
             runner(
                 mapOf(
                     "app.service.core.vector" to vector,
