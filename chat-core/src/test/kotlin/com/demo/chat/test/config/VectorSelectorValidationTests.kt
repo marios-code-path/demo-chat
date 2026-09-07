@@ -45,6 +45,35 @@ class VectorSelectorValidationTests {
     }
 
     @Test
+    fun `embedded vector without embedding fails startup naming both selectors`() {
+        val failure = failureFor(mapOf("app.service.core.vector" to "embedded"))
+
+        assertThat(failure.message)
+            .contains("app.service.core.vector=embedded")
+            .contains("app.service.core.embedding")
+    }
+
+    @Test
+    fun `embedded vector with a reserved embedding fails startup`() {
+        val failure = failureFor(
+            mapOf("app.service.core.vector" to "embedded", "app.service.core.embedding" to "local")
+        )
+
+        assertThat(failure.message).contains("app.service.core.embedding=local")
+    }
+
+    @Test
+    fun `the illegal pair message lists every legal pair`() {
+        val failure = failureFor(
+            mapOf("app.service.core.vector" to "sqlite", "app.service.core.embedding" to "mock")
+        )
+
+        for ((vector, embedding) in LEGAL_PAIRS) {
+            assertThat(failure.message).contains("vector=$vector with embedding=$embedding")
+        }
+    }
+
+    @Test
     fun `both unset starts`() {
         runner(emptyMap()).run { context ->
             assertThat(context).hasNotFailed()
@@ -53,7 +82,7 @@ class VectorSelectorValidationTests {
 
     @Test
     fun `legal pairs start`() {
-        for ((vector, embedding) in listOf("mock" to "mock", "simple" to "mock", "redis" to "mock")) {
+        for ((vector, embedding) in LEGAL_PAIRS) {
             runner(
                 mapOf(
                     "app.service.core.vector" to vector,
@@ -63,6 +92,16 @@ class VectorSelectorValidationTests {
                 assertThat(context).hasNotFailed()
             }
         }
+    }
+
+    private companion object {
+        // Mirrors VectorSelectorValidation.legalPairs. Both must change together.
+        val LEGAL_PAIRS = listOf(
+            "mock" to "mock",
+            "simple" to "mock",
+            "redis" to "mock",
+            "embedded" to "mock",
+        )
     }
 
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
