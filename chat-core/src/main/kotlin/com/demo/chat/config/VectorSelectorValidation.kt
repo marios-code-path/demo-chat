@@ -16,7 +16,30 @@ object VectorSelectorValidation {
         "mock" to "mock",
         "simple" to "mock",
         "redis" to "mock",
+        "embedded" to "mock",
     )
+
+    const val EMBEDDED = "embedded"
+
+    /**
+     * The Vector API is an incubator module. A JVM without
+     * --add-modules jdk.incubator.vector cannot load it. The embedded
+     * vector store then throws NoClassDefFoundError at the first recall,
+     * far from the cause. This check moves that failure to startup.
+     */
+    private fun vectorApiPresent(): Boolean =
+        try {
+            Class.forName("jdk.incubator.vector.FloatVector")
+            true
+        } catch (absent: ClassNotFoundException) {
+            false
+        }
+
+    // Derived from legalPairs so the message cannot drift from the set.
+    private val legalPairsDescription =
+        legalPairs.joinToString(", ") { (vector, embedding) ->
+            "vector=$vector with embedding=$embedding"
+        }
 
     fun validate(vector: String?, embedding: String?) {
         val vectorSet = !vector.isNullOrBlank()
@@ -34,8 +57,18 @@ object VectorSelectorValidation {
             throw IllegalStateException(
                 "Illegal recall selector pair: app.service.core.vector=$vector, " +
                     "app.service.core.embedding=$embedding. Legal pairs: " +
-                    "vector=mock with embedding=mock, vector=simple with embedding=mock, " +
-                    "vector=redis with embedding=mock."
+                    "$legalPairsDescription."
+            )
+        }
+
+        // Checked last. An illegal pair is a configuration error and must be
+        // reported as one, whatever this JVM can load.
+        if (vector == EMBEDDED && !vectorApiPresent()) {
+            throw IllegalStateException(
+                "Recall selector app.service.core.vector=embedded needs the Vector API. " +
+                    "The module jdk.incubator.vector is absent from this JVM. " +
+                    "Add --add-modules jdk.incubator.vector to the launch command. " +
+                    "Without it the vector store fails at the first recall, not at startup."
             )
         }
     }

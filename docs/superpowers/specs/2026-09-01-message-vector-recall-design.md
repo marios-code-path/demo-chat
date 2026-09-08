@@ -235,6 +235,7 @@ Vector values:
 - `mock`: tests only.
 - `simple`: local and integration tests.
 - `redis`: shared runtime.
+- `embedded`: in-process store, added after this sprint. See below.
 
 Embedding values:
 
@@ -258,11 +259,21 @@ Legal matrix:
 | `mock` | `mock` | unit tests only |
 | `simple` | `mock` | local integration tests |
 | `redis` | `mock` | shared runtime integration tests |
+| `embedded` | `mock` | in-process store, added after this sprint |
 | `redis` | `gateway` | reserved future pair |
 
 The reserved future pair fails at startup in this sprint.
 
 All other pairs fail at startup.
+
+The `embedded` pair was added after this sprint, with the Vectors library.
+`VectorSelectorValidation` holds the authoritative set. This table must match it.
+
+The `embedded` pair carries one extra condition. The Vectors library needs the
+Vector API, which is an incubator module. A JVM without
+`--add-modules jdk.incubator.vector` cannot load it. `VectorSelectorValidation`
+therefore rejects `embedded` at startup on such a JVM. Without that check the
+store throws `NoClassDefFoundError` at the first recall, far from the cause.
 
 This sprint implements:
 
@@ -463,3 +474,19 @@ The issue must cover:
 - Retry.
 - Compensation.
 - Repair.
+
+Issue `CHAT-oghjsnad` records the vector reindex path. It is scheduled for a
+following sprint.
+
+This spec lists message repair and reindex jobs under Out Of Scope. That stays
+true for this sprint. The embedded provider added later made the gap concrete:
+the store is a derived cache on ephemeral storage, so a lost storage directory
+must be rebuilt from the persisted messages.
+
+No rebuild path exists today. `MessageVectorIndexer` declares `add` and `remove`
+only. A lost index makes recall return fewer hits. It does not throw and it does
+not warn, so a caller cannot tell an empty result from a lost index.
+
+This is safe while recall stays test only. It is not safe once recall serves
+users. Check `CHAT-oghjsnad` against `CHAT-ruduojeu` before starting, because
+that issue already names repair.
