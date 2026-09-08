@@ -51,6 +51,7 @@
                                 <cleanCache>true</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>--enable-native-access=ALL-UNNAMED
+${vector.api.module.flag}
 -Dspring.application.name=chat-integration-test
 -Dspring.profiles.active=prod -Dserver.port=6791
 -Dspring.rsocket.server.ssl.enabled=false

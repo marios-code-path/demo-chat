@@ -312,6 +312,7 @@ RSOCKET_SERVER_AUTOCONFIG_EXCLUDE = (
     "org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration"
 )
 NATIVE_ACCESS_FLAG = "--enable-native-access=ALL-UNNAMED"
+VECTOR_API_MODULE_FLAG = "--add-modules=jdk.incubator.vector"
 
 COMMON_FEATURES = ["local", "consul", "long", "uuid", "websocket", "debug"]
 
@@ -593,6 +594,7 @@ class BuildContext:
     def main_flags(self) -> list[str]:
         flags = [
             NATIVE_ACCESS_FLAG,
+            VECTOR_API_MODULE_FLAG,
             f"-Dspring.profiles.active={','.join(self.spring_profiles())}",
         ]
         flags += self.endpoint_flags()

@@ -1,4 +1,5 @@
 # profiles: client-backend,deploy,expose-gateway
+--add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
 -Dapp.key.type=long
 -Dapp.kv.store=none
