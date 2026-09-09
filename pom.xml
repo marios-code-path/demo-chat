@@ -25,6 +25,7 @@
         <spring-boot.version>3.5.16</spring-boot.version>
         <spring-cloud-bom.version>2025.0.3</spring-cloud-bom.version>
         <datastax-java-driver.version>4.17.0</datastax-java-driver.version>
+        <vector.api.module.flag>--add-modules=jdk.incubator.vector</vector.api.module.flag>
         <!-- Overridden to empty by -Pintegration. See maven-surefire-plugin below. -->
         <excluded.test.groups>integration</excluded.test.groups>
     </properties>
@@ -213,6 +214,7 @@
                                 <cleanCache>false</cleanCache>
                                 <env>
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
+                                        ${vector.api.module.flag}
                                     </BPE_APPEND_JAVA_TOOL_OPTIONS>
                                     <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>

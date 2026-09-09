@@ -27,6 +27,7 @@
                         <configuration>
                             <buildArgs>
                                 <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
+                                <buildArg>${vector.api.module.flag}</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

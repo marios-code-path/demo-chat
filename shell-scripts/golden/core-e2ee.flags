@@ -1,4 +1,5 @@
 # profiles: deploy,e2ee,expose-rsocket
+--add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
 -Dapp.controller.index
 -Dapp.controller.key
