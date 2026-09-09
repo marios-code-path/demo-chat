@@ -59,7 +59,6 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.21.4</version>
             <scope>test</scope>
         </dependency>
         <!-- Redis's own testcontainers module, as Spring AI 1.0.3's
@@ -69,7 +68,6 @@
         <dependency>
             <groupId>com.redis</groupId>
             <artifactId>testcontainers-redis</artifactId>
-            <version>2.2.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

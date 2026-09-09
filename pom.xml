@@ -21,9 +21,11 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
         <kotlin.version>2.4.10</kotlin.version>
-        <serialization.version>1.6.3</serialization.version>
         <spring-boot.version>3.5.16</spring-boot.version>
         <spring-cloud-bom.version>2025.0.3</spring-cloud-bom.version>
+        <!-- Not managed by the Boot BOM. The driver moved to the
+             org.apache.cassandra groupId at 4.19, and these poms still
+             use com.datastax.oss. See CHAT issue for the migration. -->
         <datastax-java-driver.version>4.17.0</datastax-java-driver.version>
         <vector.api.module.flag>--add-modules=jdk.incubator.vector</vector.api.module.flag>
         <!-- Overridden to empty by -Pintegration. See maven-surefire-plugin below. -->
