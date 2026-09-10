@@ -120,12 +120,12 @@ Do not rename it in this issue. A rename touches `Oauth2ClientProperties`,
 
 1. Start an authorization request at `/oauth2/authorize`.
 2. Use the client identifier and redirect URI from the test properties.
-3. Request the scopes `openid` and `profile`.
+3. Send one scope parameter with the space-delimited value `openid profile`.
 4. Supply a fixed state value.
 5. Authenticate the request as `token-test-user` with Spring Security test support.
 6. Assert that the server requires consent.
 7. Preserve the MockMvc session from the authorization response.
-8. Submit consent with the same client, state, and both scopes.
+8. Submit consent with the same client and state. Send one parameter for each scope.
 9. Use the preserved session for the consent request.
 10. Assert that the response redirects to the registered redirect URI.
 11. Parse the authorization code from the redirect URI.
@@ -176,17 +176,22 @@ flow requires.
 
 ## Required Application Beans
 
-`TestConfig` states which application beans the context needs. Two beans are
-declared in `TestConfig`. Two more beans are proved by autowired fields on the
-test class.
+`TestConfig` declares two support beans. Keep its no-argument constructor.
 
-Change the two autowired fields into constructor parameters of `TestConfig`:
+Add `RequiredAppBeans` as a second `@TestConfiguration` class. Add it to the
+`classes` list for both authorization-server tests.
+
+Give `RequiredAppBeans` these constructor parameters:
 
 - `TypeUtil<Long>`
 - `CoreUserDetailsService<Long>`
 
-A missing bean then fails at context creation. The requirement then lives in
-one place instead of two.
+A missing bean then fails at context creation. `RequiredAppBeans` declares no
+bean, so no application bean depends on it.
+
+Do not put these parameters on `TestConfig`. `CoreUserDetailsService` depends
+indirectly on the `ClientDiscovery` bean that `TestConfig` creates. Constructor
+injection on `TestConfig` would create a circular reference.
 
 Keep both beans that `TestConfig` declares:
 
@@ -281,7 +286,7 @@ The deferred issue does not block this regression test.
 - The configured `JwtDecoder` accepts the access token and the ID token.
 - The test checks ES256, the user subject, and both approved scopes.
 - The test fails on a Nimbus runtime linkage error.
-- `TestConfig` states the required application beans in its constructor.
+- `RequiredAppBeans` states the required application beans in its constructor.
 - The focused Java 25 Maven command passes.
 - `drift check` passes.
 - No production behavior changes unless the test proves an incompatibility.

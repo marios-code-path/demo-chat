@@ -97,7 +97,7 @@ import org.springframework.test.context.DynamicPropertySource
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = [ChatApp::class, TestConfig::class],
+    classes = [ChatApp::class, TestConfig::class, RequiredAppBeans::class],
     properties = [
         "spring.config.location=classpath:application.yml",
         "app.key.type=long",
@@ -130,10 +130,7 @@ class AuthorizationServerDeployTests {
 }
 
 @TestConfiguration
-class TestConfig(
-    private val typeUtil: TypeUtil<Long>,
-    private val coreUserDetailsService: CoreUserDetailsService<Long>
-) {
+class TestConfig {
     @Bean
     fun localDiscovery(): ClientDiscovery = LocalhostDiscovery("127.0.0.1", 9000)
 
@@ -141,9 +138,16 @@ class TestConfig(
     fun requestToQueryConverters(): RequestToQueryConverters<IndexSearchRequest> =
         IndexSearchRequestConverters()
 }
+
+/** States the application beans that both authorization-server tests need. */
+@TestConfiguration
+class RequiredAppBeans(
+    private val typeUtil: TypeUtil<Long>,
+    private val coreUserDetailsService: CoreUserDetailsService<Long>
+)
 ```
 
-The constructor parameters state the required application beans. Do not remove them because an IDE reports no direct use.
+`RequiredAppBeans` states the required application beans. It declares no bean, so it cannot close the application dependency chain.
 
 - [ ] **Step 4: Run the deploy smoke test**
 
@@ -198,7 +202,7 @@ import org.springframework.test.web.servlet.MockMvc
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-    classes = [ChatApp::class, TestConfig::class],
+    classes = [ChatApp::class, TestConfig::class, RequiredAppBeans::class],
     properties = [
         "spring.config.location=classpath:application.yml",
         "app.key.type=long",
@@ -319,7 +323,7 @@ import org.springframework.web.util.UriComponentsBuilder
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
-    classes = [ChatApp::class, TestConfig::class],
+    classes = [ChatApp::class, TestConfig::class, RequiredAppBeans::class],
     properties = [
         "spring.config.location=classpath:application.yml",
         "app.key.type=long",
@@ -388,7 +392,7 @@ class AuthorizationCodeFlowTests {
                 .param(OAuth2ParameterNames.RESPONSE_TYPE, "code")
                 .param(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
                 .param(OAuth2ParameterNames.REDIRECT_URI, REDIRECT_URI)
-                .param(OAuth2ParameterNames.SCOPE, OPENID_SCOPE, PROFILE_SCOPE)
+                .param(OAuth2ParameterNames.SCOPE, "$OPENID_SCOPE $PROFILE_SCOPE")
                 .param(OAuth2ParameterNames.STATE, STATE)
         )
             .andExpect(status().isOk)
