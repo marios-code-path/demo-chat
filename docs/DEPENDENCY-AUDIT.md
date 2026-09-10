@@ -25,7 +25,15 @@ gh run download <run-id> -n dependency-check-report
 ```
 
 Related policy lives in `CHAT-mgtbicsq`. Versions have one central point, and
-`shell-scripts/check-dependency-versions.sh` keeps them there.
+three checks keep them there:
+
+- `shell-scripts/check-dependency-versions.sh` fails when a module pom declares a
+  third-party version.
+- `requireUpperBoundDeps` fails when a resolved version is lower than another path
+  in the tree requires.
+- `dependencyConvergence` fails when one artifact resolves to two versions.
+
+The two enforcer rules run in the `validate` phase, so every build checks them.
 
 ## The round of actions, today
 

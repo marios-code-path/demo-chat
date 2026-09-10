@@ -34,6 +34,20 @@
         <webjars-bootstrap.version>3.4.1</webjars-bootstrap.version>
         <webjars-jquery.version>3.4.1</webjars-jquery.version>
         <vectors.version>0.1.20</vectors.version>
+        <!-- kotlin-stdlib brings 13.0 and kotlinx-coroutines wants 23.0.0.
+             Maven picks the nearer one, so the higher request loses.
+             Pinned here to satisfy requireUpperBoundDeps. -->
+        <jetbrains-annotations.version>23.0.0</jetbrains-annotations.version>
+        <!-- The Cassandra driver brings 2.1.12 and micrometer-core wants
+             2.2.2. Pinned here to satisfy requireUpperBoundDeps. -->
+        <hdrhistogram.version>2.2.2</hdrhistogram.version>
+        <!-- Boot manages 2.4 and spring-cloud wants 2.5. -->
+        <snakeyaml.version>2.5</snakeyaml.version>
+        <!-- Three versions reach the tree: 9.37.3, 9.37.4 and 9.47. Pinned to
+             the highest so dependencyConvergence passes. -->
+        <nimbus-jose-jwt.version>9.47</nimbus-jose-jwt.version>
+        <!-- Three versions reach the tree: 4.5.5, 4.5.13 and 4.5.14. -->
+        <httpclient.version>4.5.14</httpclient.version>
         <vector.api.module.flag>--add-modules=jdk.incubator.vector</vector.api.module.flag>
         <!-- Overridden to empty by -Pintegration. See maven-surefire-plugin below. -->
         <excluded.test.groups>integration</excluded.test.groups>
@@ -179,6 +193,31 @@
                 <artifactId>vectors-spring-ai</artifactId>
                 <version>${vectors.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>${jetbrains-annotations.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.hdrhistogram</groupId>
+                <artifactId>HdrHistogram</artifactId>
+                <version>${hdrhistogram.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.nimbusds</groupId>
+                <artifactId>nimbus-jose-jwt</artifactId>
+                <version>${nimbus-jose-jwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${httpclient.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -234,6 +273,33 @@
                         <goals>
                             <goal>build-info</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Two rules keep the dependency tree honest.
+                 requireUpperBoundDeps fails when a resolved version is lower
+                 than another path in the tree requires. That is the rule which
+                 would have caught jackson at 2.9.5 against a managed 2.21.4.
+                 dependencyConvergence fails when one artifact resolves to two
+                 versions. Both passed on all 35 modules when added. A new
+                 failure means a real change in the tree, so fix it in the
+                 parent dependencyManagement. See CHAT-mgtbicsq. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-dependency-versions</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireUpperBoundDeps/>
+                                <dependencyConvergence/>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
