@@ -20,6 +20,10 @@ check-integration:
 check-flags:
 	./shell-scripts/test-flags.sh
 
+# Fail when a module pom declares a third-party dependency version.
+check-deps:
+	./shell-scripts/check-dependency-versions.sh
+
 # Run the same Maven command as the CI build job.
 ci-local:
 	mvn -B clean test
