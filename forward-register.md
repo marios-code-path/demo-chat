@@ -11,12 +11,12 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `message-vector-recall`, clean, 7 commits ahead of `origin`. Head `b01d18e8`. Nothing is pushed. |
-| Register state | Updated after toolchain modernization wave 1 (2026-09-05) |
-| Last merged PR | #61, merge commit `5c7fd056` |
+| Checkout | `master`, clean, in sync with `origin`. Head `d709dacc`. |
+| Register state | Updated 2026-09-10, after PR #78 |
+| Last merged PR | #78, merge commit `d709dacc` |
 | Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
 | Worktrees | main checkout only |
-| Open PRs | dependabot only (#8, #10, #11). Nothing of ours is in flight. |
+| Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -542,3 +542,294 @@ Keep native access broad for deploy runtimes. Netty uses native access on Java
 - `shell-scripts/test-flags.sh` passed all 15 golden cases.
 - The user reported the stacked `mvn -B clean verify -Ptest-build,integration -fae`
   proof passed.
+
+## Toolchain modernization wave 2 (2026-09-05/06)
+
+Wave 1 ended at Spring Boot 3.5.16 on Java 17. Wave 2 finished the toolchain.
+
+| PR | Issue | What |
+|----|-------|------|
+| #64 | `CHAT-dixbadbc` | Kotlin 1.9.25 to 2.4.10 |
+| #65 | `CHAT-hczlsjqu` | `java.version` 17 to 25, and both CI jobs to JDK 25 |
+
+### Kotlin 2.x was five deletions
+
+The scope was measured before it was written. A probe with
+`-Dkotlin.version=2.4.10` failed five modules, and every failure read
+`Language version 1.9 is no longer supported`. No failure named a Kotlin source
+file.
+
+The cause was five hardcoded `<languageVersion>` elements. Delete them and the
+whole reactor compiles and tests clean. **No Kotlin source needed a change.**
+
+Kotlin warnings fell from 214 to 183. They did not reach zero. An earlier claim of
+zero came from searching for the string `warning:`, which Kotlin does not use.
+
+### JDK 25 needed Boot 3.5, not Boot 4
+
+Boot 3.3.13 supports Java 17 through 23. Boot 3.5.16 supports Java 17 through 25.
+That single fact removed Spring Boot 4 from the critical path and is why wave 1
+ended where it did.
+
+`java.version` drives two things: the compiler release and `BP_JVM_VERSION` for
+the images. Both moved together.
+
+The CI change had to ship in the same pull request. A JDK 17 toolchain cannot
+compile at release 25, so master breaks if the pom change lands alone.
+
+### Traps
+
+- **Do not check `java.version` with `mvn help:evaluate`.** The name is also a JVM
+  system property and it shadows the pom value. The goal reported `21.0.2` while
+  the pom said 25 and the compiler emitted class version 69. Read the class file
+  instead. Java 17 is major version 61, Java 21 is 65, Java 25 is 69.
+- **The build JDK and the image JRE differ.** The buildpack supplies its own Java
+  25 runtime. It does not copy the build JDK. Both are Java 25.
+
+## Message vector recall, embedded provider (2026-09-06/08)
+
+`CHAT-feodvffh` is done. All seven children are done. This is phase 2 of vector
+search.
+
+| PR | Issue | What |
+|----|-------|------|
+| #69 | `CHAT-ciuqgqge` | The Vectors adapter, pinned at 0.1.20, with a compile proof |
+| #70 | `CHAT-zsnzesqp`, `CHAT-sbpqlmki`, `CHAT-imnzrkci` | The configuration behind the selector, the `embedded` pair, and a boot test |
+
+### What exists
+
+`chat-vector-embedded` supplies a `VectorStore` when `app.service.core.vector` is
+`embedded`. It uses `com.integrallis:vectors-spring-ai`, an in-process store built
+on the JDK Vector API.
+
+The adapter declares Spring AI as `compileOnly`, so the consumer BOM picks the
+version. It binds to the pinned Spring AI 1.0.3. Spring Boot 4 and Spring AI 2.0
+are not needed for it.
+
+### Two decisions, both measured or stated
+
+**Index: FLAT, cosine, no quantization.** Measured on this hardware at 256
+dimensions and topK 50:
+
+| Vectors | Build | Query |
+|---------|-------|-------|
+| 1000 | 62 ms | 0.165 ms |
+| 10000 | 96 ms | 0.937 ms |
+| 100000 | 541 ms | 8.295 ms |
+
+`RecallRequestValidation` rejects a limit above 50, so topK 50 is the worst case.
+Revisit above 100000 vectors in one collection, where the linear cost stops being
+comfortable. Do not choose `CUVS_BRUTEFORCE` or `CUVS_CAGRA`; those are GPU index
+types.
+
+**Storage: rebuild on failure.** The owner decided this. The store is a derived
+cache and the persisted messages are the source of truth. So the default path is a
+temporary directory, container storage is ephemeral, and no deployment mounts a
+volume. That also closes the `app.nodeid` question, because per instance storage
+cannot be shared.
+
+### Three choices the tasks did not name
+
+1. The dimension comes from `embeddingModel.dimensions()`, not a property. A
+   property can disagree with the model, and the collection rejects a wrong width
+   only at the first add.
+2. Both beans declare `destroyMethod = "close"`. `VectorCollection` and
+   `JavaVectorsVectorStore` are `AutoCloseable`.
+3. `chat-vector-embedded` declares `kotlin-stdlib` itself. It has no `chat-core`
+   dependency, so it does not inherit the Kotlin runtime.
+
+### The Vector API flag is not optional and does not degrade
+
+A boot test that only asserted the bean type **passed** without
+`--add-modules jdk.incubator.vector`. It never touched the distance kernels, so it
+proved nothing.
+
+Adding a real `add` and `similaritySearch` made it fail:
+
+```
+java.lang.NoClassDefFoundError: jdk/incubator/vector/FloatVector
+  at com.integrallis.vectors.core.PanamaConstants.<clinit>
+```
+
+The library logs `provider panama unavailable, trying next`, then dies inside its
+own fallback logging, because that path reads `PanamaConstants`. **There is no
+scalar fallback.** A missing flag is a hard failure.
+
+`VectorSelectorValidation` now rejects `vector=embedded` at startup when
+`jdk.incubator.vector` is absent, so the failure lands at startup rather than at
+the first recall. The check runs after the legal pair check.
+
+### What phase 2 did not deliver
+
+- **No deployment sets `app.service.core.vector`.** Every proof is a test.
+- **No rebuild path.** `CHAT-oghjsnad` holds it for a following sprint.
+- **Embeddings are still mock only.** `DummyEmbeddingModel` makes character bigram
+  vectors at 256 dimensions. It is substring matching, not semantics. `local` and
+  `gateway` are reserved and fail at startup. **The store is real. The vectors are
+  not.** No issue tracks the real embedding model.
+
+## Dependency hygiene (2026-09-08/10)
+
+Seven pull requests, #72 to #78. `CHAT-mgtbicsq` is done.
+
+| PR | Issue | What |
+|----|-------|------|
+| #72 | `CHAT-ixazwico` | Removed the `jvmTarget` 1.8 pin in `chat-index-elastic` |
+| #73 | `CHAT-hcgmcuxp` | Removed inline pins below the Boot BOM, across 19 poms |
+| #74 | `CHAT-pjyvoeil` | Moved the Cassandra driver to the `org.apache.cassandra` groupId |
+| #75 | `CHAT-mgtbicsq` | Central `dependencyManagement`, a guard script, and the OWASP workflow |
+| #76 | `CHAT-mgtbicsq` | The audit gate at CVSS 9, plugin pinned |
+| #77 | `CHAT-xojupyhn` | `docs/DEPENDENCY-AUDIT.md` |
+| #78 | `CHAT-mgtbicsq` | The two enforcer rules |
+
+### One defect class, found three times
+
+A stale local override that the build accepts in silence.
+
+- `languageVersion` pins blocked Kotlin 2.4. Found only when the compiler rejected
+  them.
+- A `jvmTarget` 1.8 pin made `chat-index-elastic` emit **class version 52, which is
+  Java 8**, inside a Java 25 build. The issue called it latent and harmless. It was
+  not. Only reading the class file shows it.
+- Inline versions beat the managed ones. `jackson-dataformat-cbor` was pinned at
+  2.9.5 in five modules including `chat-core`, against a managed 2.21.4.
+  `reactor-core` was pinned at 3.3.0.RELEASE against a managed 3.7.19.
+
+Wave 1 removed five downward **properties**. It never looked at version elements
+inside dependency declarations, which is where these lived.
+
+### The rule, and three checks that hold it
+
+No module declares a third-party version. A BOM managed artifact is declared with
+no version. An unmanaged artifact takes its version from the parent
+`dependencyManagement`.
+
+- `shell-scripts/check-dependency-versions.sh`, or `just check-deps`, fails when a
+  module pom declares a third-party version.
+- `requireUpperBoundDeps` fails when a resolved version is lower than another path
+  requires.
+- `dependencyConvergence` fails when one artifact resolves to two versions.
+
+The first catches a pin being written. The other two catch the tree drifting
+underneath it. Both enforcer rules run in the `validate` phase in all 35 modules.
+
+**A future enforcer failure is a real tree change, not noise. Fix it with a parent
+entry, never a module pin.**
+
+### Two corrections of record
+
+- **The 106 conflicts were not 106 problems.** That count came from every
+  `omitted for conflict` line in a verbose tree. Most are benign, because Maven
+  already resolves the higher version. Only five artifacts violated a rule:
+  `org.jetbrains:annotations`, `HdrHistogram`, `snakeyaml`, `nimbus-jose-jwt`,
+  `httpclient`. Run the enforcer rule to count violations. Do not grep the tree.
+- **`spring-boot-starter-oauth2-client:2.5.0` and `spring-security-messaging:5.4.6`
+  are commented out.** A survey script read XML comments as declarations and
+  reported a Boot 2 starter in a Boot 3.5 build. `dependency:tree` showed neither,
+  and it was right.
+
+### Traps
+
+- **`native-protocol` kept the `com.datastax.oss` groupId.** Only the
+  `java-driver` artifacts moved to `org.apache.cassandra`. A blanket groupId change
+  breaks the build.
+- **A plugin dependency must carry its own version.** `pluginManagement` does not
+  cover it. The guard script excludes anything inside `<build>` for that reason.
+- **A scoped Maven run can cache a failed lookup of a `com.demo` artifact.** Later
+  runs then fail with an error naming `repo.spring.io` rather than the real cause.
+  Clear it with `find ~/.m2/repository/com/demo -name '*.lastUpdated' -delete` and
+  use the full reactor.
+
+## The first dependency audit (2026-09-10)
+
+Run `34425935490`. It took 56 minutes on a cold NVD cache and **failed at the CVSS
+9 gate, which is the intended behaviour**. Eleven artifacts carry a finding at or
+above 9.0. `CHAT-icgifzbv` holds the triage.
+
+### This changes the reason for Spring Boot 4
+
+Five of the worst findings sit inside versions that **Boot 3.5.16 chooses**, not
+versions this project picks:
+
+- `spring-core` 6.2.19: four findings at 9.8, one at 9.1.
+- `tomcat-embed-core` 10.1.55: eight findings, two at 9.8.
+- `spring-security-core` and `spring-security-oauth2-resource-server` 6.5.11:
+  CVE-2026-59270 at 9.1.
+
+**3.5.16 is the last release of the 3.5 line.** Maven Central lists no 3.5.17. So
+there is no patch to take, and the only route to a fixed Spring Framework, Tomcat
+and Spring Security is Spring Boot 4. Boot 4.1.1 is the current release.
+
+`CHAT-pkolwuqm` was written as a currency upgrade. It is now security driven, and
+its priority is high.
+
+`CHAT-ygllyglb` is the same. Spring AI 1.0.3 carries CVE-2026-22738 at 9.8, and the
+reason for that pin has expired. `CHAT-gidbchkx` is the same. Netty 4.1.135.Final
+carries CVE-2026-56820 at 9.1 beside the `Unsafe` deprecation already recorded
+there.
+
+### One large false positive
+
+`chat-persistence-xstream` reported nine XStream CVEs, including CVE-2021-21345 at
+9.9. **The module has no XStream dependency.** dependency-check matched the module
+artifactId against the XStream product CPE and read our version `0.0.1` as XStream
+`0.0.1`.
+
+Check `spring-cloud-consul-config` the same way. Its CPE reads
+`spring_cloud_config`, a different product.
+
+No suppression file exists. `CHAT-icgifzbv` adds one.
+
+### Two smaller real findings
+
+- `kotlin-stdlib-common` 1.9.22 is a stale transitive on a Kotlin 2.4.10 build.
+  Find what drags it in.
+- `kotlin-stdlib` 2.4.10 shows CVE-2026-53914 at 9.8 on the current release. Check
+  whether a fixed version exists at all.
+
+## Where the next session starts
+
+The owner's direction on 2026-09-10: **move on to features. Make a security pass
+after vector lands.**
+
+### Vector is a provider, not yet a feature
+
+Three things stand between what exists and something usable. The first has no
+issue.
+
+1. **A real embedding model.** No issue tracks it. `local` and `gateway` are
+   reserved and fail at startup. The open decision is `local`, meaning in process
+   with a large model dependency and CPU cost, against `gateway`, meaning a network
+   hop, credentials, and a new failure mode on the recall path. **That decision is
+   the owner's.**
+2. **A deployment that sets the selector.** No yml sets
+   `app.service.core.vector`.
+3. **The rebuild path.** `CHAT-oghjsnad`.
+
+### Are the embedding model and the reindex parallel
+
+Mostly yes. The file overlap is one line in `VectorSelectorValidation.legalPairs`.
+
+**They collide on a decision, not on code.** The reindex trigger, meaning a startup
+check against an operator command against a lazy rebuild, depends on how long a
+rebuild takes. The benchmark measured 541 ms for 100000 vectors **excluding
+embedding time**. Embedding is free with the mock model and will dominate with a
+real one. A `local` model and a `gateway` round trip give very different answers,
+and one of them makes rebuild at startup untenable.
+
+So the reindex **mechanism** is parallel safe and can be built against the mock
+model. The reindex **trigger** is not, and should be a separate task that lands
+after the embedding model reports a throughput number.
+
+### Open issues at high priority
+
+`CHAT-pkolwuqm` Boot 4, `CHAT-ygllyglb` Spring AI 2.0, `CHAT-gidbchkx` Netty,
+`CHAT-icgifzbv` audit triage, `CHAT-sgyaaivp` Cassandra CI flake, `CHAT-cikgeefc`
+build health.
+
+`CHAT-sgyaaivp` is worth doing before any Cassandra work. While the integration job
+alternates red on unchanged code, every review has to re-derive whether a failure is
+real.
+
+The capability mechanism `CHAT-zqyrsrrg` still has six decomposed tasks and has not
+been started since the original design sprint.
