@@ -5,8 +5,9 @@
 # slow. A per-push run would add several minutes to every build for a report
 # that changes only when the NVD data changes.
 #
-# The job does not fail the build on a finding. Read the report, then decide.
-# A failing threshold can come later, once the current findings are known.
+# The job fails on a CVSS score of 9.0 or above, which is the critical band.
+# That is deliberately high. Lower it to 7 once the deployment surface is
+# wider and the first reports are known.
 #
 # Issue: CHAT-mgtbicsq
 name: dependency audit
@@ -47,14 +48,18 @@ jobs:
           restore-keys: ${{ runner.os }}-nvd-
 
       - name: Run OWASP dependency-check
+        # The plugin version is pinned so a run is reproducible. An unpinned
+        # coordinate takes the latest release, and a plugin update could then
+        # change the result overnight.
+        #
         # An NVD API key raises the download rate limit. Without it the first
-        # run is slow but still completes. Set NVD_API_KEY in repository
-        # secrets to speed it up.
+        # run is slow but still completes. The key must be a repository secret.
+        # A local .envrc does not reach this job.
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: >
-          mvn -B org.owasp:dependency-check-maven:aggregate
-          -DfailBuildOnCVSS=11
+          mvn -B org.owasp:dependency-check-maven:13.0.0:aggregate
+          -DfailBuildOnCVSS=9
           -DnvdApiKey="$NVD_API_KEY"
           -DskipTests
 
