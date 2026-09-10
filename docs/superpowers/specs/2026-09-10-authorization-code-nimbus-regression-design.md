@@ -43,8 +43,9 @@ creating a JWT.
 
 Add a new test class. Do not change the web environment of the deploy test.
 
-Spring Boot supplies `MockMvc` only when the web environment is `MOCK`. The
-deploy test uses `RANDOM_PORT`. The two needs do not fit one class.
+The protocol test uses `MOCK` because it exercises the servlet chain without a
+real server. The deploy test uses `RANDOM_PORT` to keep its server smoke proof.
+The two tests have different ownership and context costs.
 
 - `AuthorizationServerDeployTests` keeps `RANDOM_PORT`. It stays the deploy
   smoke test.
@@ -237,7 +238,7 @@ Run the focused check with Java 25:
 
 ```bash
 mvn -o -B -pl chat-authorization-server -am \
-  -Dtest='AuthorizationCodeFlowTests+AuthorizationServerDeployTests' \
+  -Dtest='AuthorizationCodeFlowTests,AuthorizationServerDeployTests' \
   -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
