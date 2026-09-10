@@ -49,6 +49,7 @@ import java.util.UUID
 /**
  * Creates one temporary ES256 key for authorization-server tests.
  *
+ * AuthorizationServerConfig reads the key from `app.oauth2.jwk.path`.
  * The repository does not commit `server_keycert.jwk`.
  * No build step runs `gen-dckeys.sh`.
  * The test key has no x5c chain because these tests do not validate one.
@@ -297,7 +298,6 @@ package com.demo.chat
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.containsString
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -308,15 +308,14 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.servlet.MockMvc
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.web.util.UriComponentsBuilder
@@ -354,6 +353,7 @@ class AuthorizationCodeFlowTests {
         private const val STATE = "authorization-code-test-state"
         private const val OPENID_SCOPE = "openid"
         private const val PROFILE_SCOPE = "profile"
+        private val CONSENT_STATE_PATTERN = Regex("""name="state" value="([^"]+)"""")
 
         @JvmStatic
         @DynamicPropertySource
@@ -389,24 +389,28 @@ class AuthorizationCodeFlowTests {
         val authorizationResult = mockMvc.perform(
             get(AUTHORIZATION_ENDPOINT)
                 .with(user(TEST_USER))
-                .param(OAuth2ParameterNames.RESPONSE_TYPE, "code")
-                .param(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
-                .param(OAuth2ParameterNames.REDIRECT_URI, REDIRECT_URI)
-                .param(OAuth2ParameterNames.SCOPE, "$OPENID_SCOPE $PROFILE_SCOPE")
-                .param(OAuth2ParameterNames.STATE, STATE)
+                .queryParam(OAuth2ParameterNames.RESPONSE_TYPE, "code")
+                .queryParam(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
+                .queryParam(OAuth2ParameterNames.REDIRECT_URI, REDIRECT_URI)
+                .queryParam(OAuth2ParameterNames.SCOPE, "$OPENID_SCOPE $PROFILE_SCOPE")
+                .queryParam(OAuth2ParameterNames.STATE, STATE)
         )
             .andExpect(status().isOk)
-            .andExpect(content().string(containsString("Consent required")))
             .andReturn()
 
         val session = authorizationResult.request.session as MockHttpSession
+        val consentState = requireNotNull(
+            CONSENT_STATE_PATTERN.find(authorizationResult.response.contentAsString)
+                ?.groupValues
+                ?.get(1)
+        )
 
         val consentResult = mockMvc.perform(
             post(AUTHORIZATION_ENDPOINT)
                 .session(session)
                 .with(user(TEST_USER))
                 .param(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
-                .param(OAuth2ParameterNames.STATE, STATE)
+                .param(OAuth2ParameterNames.STATE, consentState)
                 .param(OAuth2ParameterNames.SCOPE, OPENID_SCOPE, PROFILE_SCOPE)
         )
             .andExpect(status().is3xxRedirection)
@@ -448,7 +452,7 @@ class AuthorizationCodeFlowTests {
         val accessJwt = jwtDecoder.decode(accessToken)
         val idJwt = jwtDecoder.decode(idToken)
 
-        assertThat(accessJwt.headers["alg"]).isEqualTo("ES256")
+        assertThat(accessJwt.headers["alg"]).hasToString("ES256")
         assertThat(accessJwt.subject).isEqualTo(TEST_USER)
         assertThat(idJwt.subject).isEqualTo(TEST_USER)
         assertThat(accessJwt.getClaimAsStringList(OAuth2ParameterNames.SCOPE))

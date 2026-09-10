@@ -120,21 +120,23 @@ Do not rename it in this issue. A rename touches `Oauth2ClientProperties`,
 
 1. Start an authorization request at `/oauth2/authorize`.
 2. Use the client identifier and redirect URI from the test properties.
-3. Send one scope parameter with the space-delimited value `openid profile`.
+3. Send one query parameter with the space-delimited value `openid profile`.
 4. Supply a fixed state value.
 5. Authenticate the request as `token-test-user` with Spring Security test support.
 6. Assert that the server requires consent.
 7. Preserve the MockMvc session from the authorization response.
-8. Submit consent with the same client and state. Send one parameter for each scope.
-9. Use the preserved session for the consent request.
-10. Assert that the response redirects to the registered redirect URI.
-11. Parse the authorization code from the redirect URI.
-12. Send the code to `/oauth2/token`.
-13. Authenticate the client with `client_secret_basic`.
-14. Send `grant_type=authorization_code` and the same redirect URI.
-15. Assert that the token response succeeds.
-16. Read the access token and the ID token from the JSON response.
-17. Decode both tokens with the configured `JwtDecoder` bean.
+8. Read the generated consent state from the hidden form field.
+9. Submit consent with the same client and generated state.
+10. Send one consent parameter for each scope.
+11. Use the preserved session for the consent request.
+12. Assert that the response redirects to the registered redirect URI.
+13. Parse the authorization code from the redirect URI.
+14. Send the code to `/oauth2/token`.
+15. Authenticate the client with `client_secret_basic`.
+16. Send `grant_type=authorization_code` and the same redirect URI.
+17. Assert that the token response succeeds.
+18. Read the access token and the ID token from the JSON response.
+19. Decode both tokens with the configured `JwtDecoder` bean.
 
 Keep the HTTP sequence inside one test. The sequence is one contract and must
 fail as one unit.
@@ -142,7 +144,10 @@ fail as one unit.
 ### Consent notes
 
 Do not send `redirect_uri` with the consent request. A consent submission
-carries `client_id`, `state`, and `scope` only.
+carries `client_id`, generated consent `state`, and `scope` only.
+
+The client state and consent state are different values. The server returns
+the original client state after successful consent.
 
 The default consent page omits `openid` from the offered scopes. Post both
 scopes anyway. Both scopes belong to the requested set, so validation accepts
@@ -171,8 +176,8 @@ Assert these results:
 
 Do not assert timestamps or generated token values.
 
-Do not parse or assert consent-page HTML beyond the response behavior that the
-flow requires.
+Do not assert consent-page text. Parse only the generated consent state that
+the next request requires.
 
 ## Required Application Beans
 
