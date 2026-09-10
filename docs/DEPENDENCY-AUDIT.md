@@ -35,6 +35,88 @@ three checks keep them there:
 
 The two enforcer rules run in the `validate` phase, so every build checks them.
 
+## How to bump a version
+
+There are two levers. Both live in the root pom. A module pom never carries a
+version, so a module is never the place to change one.
+
+### Lever 1: a BOM coordinate
+
+A BOM moves a whole family at once. Do not bump a member of a family directly.
+
+| Change | Moves |
+|--------|-------|
+| `spring-boot-starter-parent` and `spring-boot.version` | Spring Framework, Spring Security, Tomcat, Jackson, Netty, JUnit, Mockito, Testcontainers, Reactor, the Cassandra driver, and more |
+| `spring-cloud-bom.version` | every `spring-cloud-*` artifact |
+| the `spring-ai-bom` version | every `spring-ai-*` artifact |
+
+This is why `jackson-dataformat-cbor` has no property. It rides the Boot BOM. A
+direct pin on it is the defect that `CHAT-hcgmcuxp` removed from five modules.
+
+### Lever 2: a property
+
+For artifacts that no BOM covers. Each has a property in the root pom and a
+matching `dependencyManagement` entry. Change the property and the whole
+repository follows.
+
+Read the current list from the root pom rather than from here, so this document
+cannot go stale:
+
+```bash
+grep -oE '<[a-z0-9.-]+\.version>[^<]*' pom.xml | sort -u
+```
+
+### Which lever applies
+
+```bash
+mvn -B dependency:tree -Dverbose -pl <module> | grep <artifact>
+```
+
+- The output says `(version managed from X)`. Something manages it. If a property
+  for it exists in the root pom, that property is the lever. If not, a BOM is.
+- The output says nothing about management. Nothing manages it, and
+  `shell-scripts/check-dependency-versions.sh` should have failed.
+
+### After any bump
+
+```bash
+mvn -B clean test
+./shell-scripts/check-dependency-versions.sh
+mvn -B clean verify -Pintegration
+```
+
+The enforcer is the ripple detector. It runs in the `validate` phase, before
+compilation.
+
+- `requireUpperBoundDeps` fails when the new version is **lower** than something
+  else in the tree needs.
+- `dependencyConvergence` fails when the artifact now resolves to two versions.
+
+A failure here is a real change in the tree. Fix it with a parent entry, never
+with a module pin.
+
+### What can be bumped
+
+```bash
+mvn -B versions:display-property-updates      # the root pom properties
+mvn -B versions:display-dependency-updates    # everything, BOM managed included
+```
+
+### One question worth asking first
+
+**Does anything in the tree actually request the new version?**
+
+```bash
+mvn -B dependency:tree -Dverbose -pl <module> | grep <artifact>
+```
+
+A pin that matches the highest requester resolves a conflict. A pin above every
+requester forces a version that no upstream library was built or tested against.
+Both are legal. The second carries risk that a green build does not rule out,
+because the failure lands at runtime on the path that uses the removed API.
+
+That is a decision to take deliberately, not by default.
+
 ## The round of actions, today
 
 Every step below is manual. That is the reason this document exists.
