@@ -61,8 +61,11 @@ class KeyValueIndexTests {
         index = KeyValueIndex(fields, byFieldRepo, byIdRepo)
     }
 
+    // add replaces the entity, so it reads the removal table before it
+    // writes. A value that changed must not leave the rows of the old value.
     @Test
-    fun `add writes one row per field to both tables`() {
+    fun `add removes the earlier rows and writes one row per field to both tables`() {
+        BDDMockito.given(byIdRepo.findByKeyId(entityId)).willReturn(Flux.empty())
         BDDMockito.given(byFieldRepo.save(anyObject())).willReturn(Mono.empty())
         BDDMockito.given(byIdRepo.save(anyObject())).willReturn(Mono.empty())
 
@@ -70,8 +73,20 @@ class KeyValueIndexTests {
             .create(index.add(pair(IndexedClient("abc", 7))))
             .verifyComplete()
 
+        BDDMockito.verify(byIdRepo).findByKeyId(entityId)
         BDDMockito.verify(byFieldRepo, BDDMockito.times(2)).save(anyObject())
         BDDMockito.verify(byIdRepo, BDDMockito.times(2)).save(anyObject())
+    }
+
+    // An unregistered type must fail before the removal runs, or a bad add
+    // would destroy the rows that the index already holds.
+    @Test
+    fun `an unregistered value type does not reach the removal`() {
+        StepVerifier
+            .create(index.add(pair("a string value")))
+            .verifyError(ChatException::class.java)
+
+        BDDMockito.verify(byIdRepo, BDDMockito.never()).findByKeyId(anyObject())
     }
 
     @Test

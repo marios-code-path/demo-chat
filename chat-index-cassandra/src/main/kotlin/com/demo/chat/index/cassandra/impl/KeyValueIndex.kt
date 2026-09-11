@@ -31,20 +31,39 @@ class KeyValueIndex<T>(
     private val byIdRepo: KeyValueIndexByIdRepository<T>,
 ) : KeyValueIndexService<T, Map<String, String>> {
 
-    // The field lookup runs at subscribe time. An unregistered value type
-    // becomes an error signal, not an exception from this method.
+    /**
+     * Replaces every row of this entity.
+     *
+     * An insert alone would leave the rows of an earlier value, because a
+     * changed value writes a different primary key. A job that reached
+     * SUCCEEDED would still answer a query for RUNNING.
+     *
+     * The removal and the insert are two steps. A reader between them sees
+     * no row for this entity.
+     *
+     * The field lookup runs at subscribe time and runs before the removal.
+     * An unregistered value type then fails without destroying the rows that
+     * the index already holds.
+     */
     override fun add(entity: KeyValuePair<T, Any>): Mono<Void> =
-        Flux.defer { Flux.fromIterable(fields.fieldsOf(entity.data)) }
-            .concatMap { (field, value) ->
-                byFieldRepo
-                    .save(ChatKeyValueIndex(ChatKeyValueIndexKey(field, value, entity.key.id)))
-                    .then(
-                        byIdRepo.save(
-                            ChatKeyValueIndexById(ChatKeyValueIndexByIdKey(entity.key.id, field, value))
-                        )
+        Mono.fromCallable { fields.fieldsOf(entity.data) }
+            .flatMap { rows ->
+                rem(entity.key)
+                    .thenMany(
+                        Flux.fromIterable(rows).concatMap { (field, value) ->
+                            byFieldRepo
+                                .save(ChatKeyValueIndex(ChatKeyValueIndexKey(field, value, entity.key.id)))
+                                .then(
+                                    byIdRepo.save(
+                                        ChatKeyValueIndexById(
+                                            ChatKeyValueIndexByIdKey(entity.key.id, field, value)
+                                        )
+                                    )
+                                )
+                        }
                     )
+                    .then()
             }
-            .then()
 
     override fun rem(key: Key<T>): Mono<Void> =
         byIdRepo
