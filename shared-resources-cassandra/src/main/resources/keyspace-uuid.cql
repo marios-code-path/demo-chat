@@ -28,6 +28,25 @@ CREATE TABLE chat_uuid.kv_pair(
                                   PRIMARY KEY(id)
 );
 
+-- Inverted index over kv_pair values. One row per indexed field of one
+-- value. The read side partitions on the field and the value, so a query
+-- reads one partition.
+CREATE TABLE chat_uuid.kv_pair_index(
+    field text,
+    value text,
+    id UUID,
+    PRIMARY KEY((field, value), id)
+);
+
+-- The same rows keyed by the entity id. rem() receives only the entity key,
+-- so it needs this table to find the partitions it must delete.
+CREATE TABLE chat_uuid.kv_pair_index_by_id(
+    id UUID,
+    field text,
+    value text,
+    PRIMARY KEY(id, field, value)
+);
+
 
 CREATE TABLE chat_uuid.topic_membership
 (

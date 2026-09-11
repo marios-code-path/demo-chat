@@ -2,6 +2,9 @@ package com.demo.chat.config.index.cassandra
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.service.core.KeyValueIndexFieldsEntry
+import com.demo.chat.service.core.TypedKeyValueIndexFields
+import org.springframework.beans.factory.ObjectProvider
 import com.demo.chat.index.cassandra.repository.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -22,6 +25,9 @@ class IndexServiceConfiguration {
         byTopicRepo: ChatMessageByTopicRepository<T>,
         principalRepo: AuthMetadataByPrincipalRepository<T>,
         targetRepo: AuthMetadataByTargetRepository<T>,
+        kvIndexRepo: KeyValueIndexRepository<T>,
+        kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
+        keyValueFieldEntries: ObjectProvider<KeyValueIndexFieldsEntry>,
         typeUtil: TypeUtil<T>
     ): IndexServiceBeans<T, String, Map<String, String>> = CassandraIndexServices(
         cassandra,
@@ -33,6 +39,9 @@ class IndexServiceConfiguration {
         byTopicRepo,
         principalRepo,
         targetRepo,
+        kvIndexRepo,
+        kvIndexByIdRepo,
+        TypedKeyValueIndexFields(keyValueFieldEntries.orderedStream().toList()),
         typeUtil
     )
 }
