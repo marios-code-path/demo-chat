@@ -11,11 +11,11 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `origin/master` head `f9129f28`. The main checkout is **not** clean. It sits at `af30dfd2`, it holds uncommitted files, and it holds three unpushed documentation commits. See the vector reindex section. |
-| Register state | Updated 2026-09-11, after PR #83 |
-| Last merged PR | #83, merge commit `f9129f28`. #84 merged before it, commit `b3d98cb2`. |
-| Merged feature branches | All local refs removed for older work. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. `origin/chat-kv-index` and `origin/ci-setup-java-v5` are merged and also await the owner's word. |
-| Worktrees | Four. The main checkout, `.worktrees/kv-index` (merged, kept), `.worktrees/ci-setup-java` (merged, kept), and `.worktrees/vector-reindex` (active). |
+| Checkout | `origin/master` head `934a3287`. The main checkout is **not** clean. It sits at `af30dfd2`, it holds uncommitted files, and it holds three unpushed documentation commits. See the vector reindex section. |
+| Register state | Updated 2026-09-11, after PR #86 |
+| Last merged PR | #86, merge commit `934a3287`. #83 `f9129f28`, #84 `b3d98cb2`, and #85 `6e3c4e36` came before it. #85 and #86 were squash merged. |
+| Merged feature branches | None remain. **The earlier claim that this repository has no auto-delete is wrong as of 2026-09-11.** A merge now removes the remote branch. The seven older refs that this row used to list are gone, and so are `origin/chat-kv-index`, `origin/ci-setup-java-v5`, `origin/docs-agents-import`, and `origin/docs-register-refresh`. `git ls-remote --heads origin` returned `master`, `chat-eroapfub-vector-runtime-flags`, and two dependabot refs, and nothing else. |
+| Worktrees | Two. The main checkout, and `.worktrees/vector-reindex` (active). The finished worktrees were removed with their branches. |
 | Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
