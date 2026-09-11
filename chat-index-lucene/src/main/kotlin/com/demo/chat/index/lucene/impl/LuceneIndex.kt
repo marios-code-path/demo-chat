@@ -1,5 +1,6 @@
 package com.demo.chat.index.lucene.impl
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IndexService
@@ -52,6 +53,8 @@ open class LuceneIndex<T, E>(
      */
     protected fun addEntry(fields: List<Pair<String, String>>, key: Key<T>): Mono<Void> =
         Mono.create { sink ->
+            requireNoReservedField(fields)
+
             val doc = Document().apply {
                 fields.forEach { kv ->
                     add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
@@ -70,9 +73,12 @@ open class LuceneIndex<T, E>(
      * Removes the document of one key, and only that document.
      *
      * The `key` field is analyzed, so a parsed query never matched one key.
-     * StandardAnalyzer splits a uuid at its separators, and a hyphen is the
-     * QueryParser NOT operator, so removing one uuid deleted every document
-     * that shared a segment. The removal matches the exact field instead.
+     * StandardAnalyzer split a uuid into segments, and QueryParser joined
+     * them with OR inside one required group, measured on lucene 8.7 as
+     * `+(key:550e8400 key:e29b key:41d4 key:a716 key:446655440000)`. A
+     * document that shared one segment matched the group, so removing one
+     * uuid deleted every document that shared a segment. The removal matches
+     * the exact field instead.
      */
     override fun rem(key: Key<T>): Mono<Void> = Mono.create { sink ->
         writer.deleteDocuments(Term(EXACT_KEY, key.id.toString()))
@@ -104,6 +110,24 @@ open class LuceneIndex<T, E>(
     override fun findUnique(query: IndexSearchRequest): Mono<out Key<T>> =
         findBy(query)
             .singleOrEmpty()
+
+    /**
+     * Rejects an encoded field that carries the internal name.
+     *
+     * The internal field is not analyzed, and an encoded field is. Lucene
+     * refuses a document that gives one name both index options, and it
+     * reports `cannot change field "_key"`. A replacement removes before it
+     * writes, so a refusal after the removal would lose the entry. A caller
+     * must therefore check before it removes.
+     */
+    protected fun requireNoReservedField(fields: List<Pair<String, String>>) {
+        if (fields.any { field -> field.first == EXACT_KEY }) {
+            throw ChatException(
+                "An index field cannot use the name '$EXACT_KEY'. That name holds the key of " +
+                    "the entry, and the index writes it itself."
+            )
+        }
+    }
 
     companion object {
         /** Internal, and not analyzed. A removal matches this field exactly. */

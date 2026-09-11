@@ -26,10 +26,11 @@ open class KeyValueLuceneIndex<T>(
         keyReceiver = { t -> t.key }
     ) {
 
-    // The fields are read once, and before the removal. An unregistered value
-    // type then fails without destroying the entry that the index holds, and
-    // no second encoder call can fail after the removal ran.
+    // The fields are read and checked once, and before the removal. An
+    // unregistered value type and a field that uses the internal name both
+    // fail without destroying the entry that the index holds. No second
+    // encoder call can fail after the removal ran.
     override fun add(entity: KeyValuePair<T, Any>): Mono<Void> =
-        Mono.fromCallable { entryEncoder.apply(entity) }
+        Mono.fromCallable { entryEncoder.apply(entity).also(::requireNoReservedField) }
             .flatMap { fields -> rem(entity.key).then(addEntry(fields, entity.key)) }
 }

@@ -1,5 +1,6 @@
 package com.demo.chat.test.memory
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -7,6 +8,7 @@ import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.index.lucene.domain.IndexEntryEncoder
 import com.demo.chat.index.lucene.impl.KeyValueLuceneIndex
+import com.demo.chat.index.lucene.impl.LuceneIndex
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.KeyValueIndexFields
 import com.demo.chat.service.core.KeyValueIndexFieldsEntry
@@ -20,6 +22,8 @@ import java.util.function.Function
 import java.util.function.Supplier
 
 data class IndexedSample(val name: String, val size: Int)
+
+data class ReservedSample(val name: String)
 
 private val sampleFields = TypedKeyValueIndexFields(
     listOf(
@@ -82,9 +86,11 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
     }
 
     // Two uuid keys that share their first segment. The key field is
-    // analyzed, and a hyphen is the QueryParser NOT operator, so a parsed
-    // removal never matched one key exactly. Removing one entity deleted
-    // both. The removal must use an exact term.
+    // analyzed, so StandardAnalyzer split a uuid into segments and
+    // QueryParser joined them with OR inside one required group:
+    // +(key:550e8400 key:e29b key:41d4 key:a716 key:446655440000).
+    // A document that shared one segment matched, so removing one entity
+    // deleted both. The removal must match an exact term.
     @Test
     fun `a removal by a uuid key leaves an entity that shares a segment`() {
         val index = KeyValueLuceneIndex(UUIDUtil(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields))
@@ -118,6 +124,48 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
                     .thenMany(index.findBy(IndexSearchRequest("name", "SHARED", 10)))
             )
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second.id) }
+            .verifyComplete()
+    }
+
+    // An encoder can name any field, including the internal one. Lucene then
+    // rejects the document, because the encoded field is analyzed and the
+    // internal field is not. The replacement removes first, so a rejection
+    // after the removal would lose the entry. The add must fail first.
+    @Test
+    fun `a field named as the reserved key fails and keeps the entry`() {
+        val mixed = TypedKeyValueIndexFields(
+            listOf(
+                KeyValueIndexFieldsEntry(
+                    IndexedSample::class.java,
+                    KeyValueIndexFields { value ->
+                        listOf(Pair("name", (value as IndexedSample).name))
+                    }
+                ),
+                KeyValueIndexFieldsEntry(
+                    ReservedSample::class.java,
+                    KeyValueIndexFields { value ->
+                        listOf(
+                            Pair("name", (value as ReservedSample).name),
+                            Pair(LuceneIndex.EXACT_KEY, "a value of its own"),
+                        )
+                    }
+                ),
+            )
+        )
+        val index = KeyValueLuceneIndex(LongUtil(), IndexEntryEncoder.ofKeyValueFields<Long>(mixed))
+        val key = Key.funKey(8008L)
+
+        StepVerifier
+            .create(index.add(KeyValuePair.create(key, IndexedSample("KEEP", 1) as Any)))
+            .verifyComplete()
+
+        StepVerifier
+            .create(index.add(KeyValuePair.create(key, ReservedSample("NEW") as Any)))
+            .verifyError(ChatException::class.java)
+
+        StepVerifier
+            .create(index.findBy(IndexSearchRequest("name", "KEEP", 10)))
+            .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(8008L) }
             .verifyComplete()
     }
 
