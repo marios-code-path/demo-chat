@@ -929,15 +929,19 @@ probability. Do not read this as proof that schema size has no effect.
   handling policy mask. `CHAT-tekzakdd` holds a data stream or data view strategy,
   so a rebuild stops reading every stored message.
 
-## A documentation defect, recorded and not fixed
+## The AGENTS.md imports (2026-09-11)
 
-`AGENTS.md` on `origin/master` imports `@FP_AGENTS.md` and `@continuity_brief.md`.
-Neither file exists on `origin/master`. The repository holds `FP_CLAUDE.md` and
-`forward-register.md`.
+`AGENTS.md` imported `@FP_AGENTS.md` and `@continuity_brief.md`. Neither file
+existed on `origin/master`. The repository holds `FP_CLAUDE.md` and
+`forward-register.md`, so both imports were dangling.
 
-This is **not** fixed here on purpose. The main checkout holds an uncommitted rename
-of `FP_CLAUDE.md` to `FP_AGENTS.md`. A fix from this branch would collide with that
-work. The owner owns the rename.
+`@continuity_brief.md` now reads `@forward-register.md`. That file exists, and it is
+the register that `AGENTS.md` tells a reader to treat as live operational context.
+
+**`@FP_AGENTS.md` still names a file that `origin/master` does not hold.** It is left
+alone on purpose. The main checkout holds an uncommitted rename of `FP_CLAUDE.md` to
+`FP_AGENTS.md`. That rename resolves this import, and it belongs to the owner. A
+change from this branch would collide with it.
 
 ## Where the next session starts
 
