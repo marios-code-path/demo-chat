@@ -1,248 +1,278 @@
-# Vector Index Run Record
+# Vector Index Job Record
 
-Status: proposed. This document waits for owner approval.
+Status: proposed. This document waits for owner review.
 
-Issue: `CHAT-oghjsnad`. This design corrects a gap found in review of `93091856`.
+Issue: `CHAT-fpwpfrfj`.
 
 Prior design: `docs/superpowers/specs/2026-09-10-vector-reindex-design.md`.
 
 ## The Gap
 
-`VectorIndexStatus.complete` reads `phase == COMPLETE`.
+`VectorIndexStatus.complete` currently reads `phase == COMPLETE`.
 
 `claim()` moves `COMPLETE` to `REBUILDING`.
 
-So a rebuild of a healthy index makes every recall report `indexComplete=false`.
+Therefore, a repair rebuild makes every recall report `indexComplete=false`.
 
-The operator endpoint invites periodic repair. Periodic repair then degrades the
-reported flag for the length of each run.
+Recall must report current coverage. It must not report the active job phase.
 
-The flag is the feature. A report that drops for an operator action is wrong.
+## Design Summary
 
-## Why The Earlier Decision Changes
+Store each `IndexJob` in the existing key-value store.
 
-The prior design put durable completeness state out of scope.
+Give each job one topic. Use the topic key as the job root key.
 
-The reason was correct. A durable mark can claim complete while the storage
-directory is gone. Spring AI `VectorStore` has no count operation, so nothing can
-verify that claim.
+Publish `JobRecord` messages on that topic. The `record` Boolean recommends
+whether a consumer should store each message.
 
-This design does not store a completeness claim.
+Keep the active claim in process. Durable job state never acts as a lock.
 
-It stores an evidence journal for finished runs and live invalidations.
+A policy reads finished jobs and answers two independent questions:
 
-A record of a past run is evidence. A policy reads the evidence and decides.
+1. What startup action must the process take?
+2. What coverage value must recall report?
 
-The policy owns two separate questions:
+## Root Keys
 
-1. What action must the process take against the index?
-2. What must recall report?
+`IndexJob<T>` and `JobRecord<T>` are top-level domain records. Each record must
+implement `KeyBearer<T>` and hold its own `Key<T>` root key.
 
-Evidence and policy stay separate. That separation is the point of this change.
+The key-value pair that stores an `IndexJob` must use `IndexJob.key`.
 
-## Durable Evidence
+A `JobRecord` message must use `JobRecord.key.id` as its message id. The message
+key also carries the worker and job relationships.
 
-Add `VectorIndexEvidence` in `chat-core`.
+All relationship fields use `Key<T>`. They do not use an unwrapped `T` value.
 
-Two record types implement this contract:
+## IndexJob
 
-- `VectorIndexRunRecord` describes one finished rebuild.
-- `VectorIndexInvalidationRecord` describes one live indexing failure.
+Add `IndexJob<T>` in `chat-core`.
 
-The store appends both record types. It never stores `REBUILDING` as durable
-state. The in-process claim remains the only active-job state.
+The record holds these values:
 
-This rule prevents a process crash from leaving a durable busy state. A new
-process can always claim a new rebuild.
-
-Every evidence record holds these values:
-
+- Root key.
 - Node id. The value of `app.nodeid`.
 - Key type. The value of `app.key.type`.
 - Incarnation id. One random value per process start.
-- Invalidation generation.
-- Event time.
-
-The run record also holds these values:
-
-- Started at, and finished at.
-- Outcome. One of `SUCCEEDED`, `FAILED`, or `RELEASED`.
+- `startedBy`. A root key that identifies the worker incarnation.
+- Start time and optional end time.
+- Outcome. One of `RUNNING`, `SUCCEEDED`, `FAILED`, or `RELEASED`.
 - Attempted, indexed, skipped, and failed counts.
 - Failure summary, or null.
+- Current invalidation generation.
+- Covered generation, or null.
+- Last invalidation time, or null.
 
-The invalidation record also holds the failure summary.
+The worker key identifies the entity that performs the job. One process
+incarnation uses one worker key for all its jobs.
 
-Each record must carry the node id. The embedded vector store keeps one index per
-instance. A record without a node id would describe another instance's index.
+The job record is durable evidence. A `RUNNING` job from an earlier incarnation
+does not block a new claim.
 
-Each record must carry the incarnation id. A reader uses it to separate this
-process from an earlier process.
+## JobRecord
 
-## Invalidation Must Be Durable
+Add `JobRecord<T>` in `chat-core`.
 
-A live add failure changes coverage after a successful run.
+The record holds these values:
 
-A record that holds only the run would then claim coverage that the live failure
-removed.
+- Root key.
+- Job key.
+- Worker key.
+- Timestamp.
+- Message.
+- Error key, or null.
+- Optional progress counts.
 
-So the reindex service writes the invalidation generation into every run record.
+Current deployments bind message data to `String`. Encode `JobRecord` as a
+versioned JSON string for publication. A consumer decodes it from message data.
 
-A later live failure appends one invalidation record. The write is asynchronous
-and never blocks the send path.
+The `JobRecord` root key remains inside the payload. Its id also becomes the
+message id.
 
-A failed record write never fails a send and never fails a rebuild.
+## Job Topic And Discovery
 
-The in-process state remains incomplete after a failed invalidation write. A
-restart can lose that evidence. The `stored` policy accepts this risk explicitly.
+Create one persisted topic before each rebuild. Use a reserved topic-name prefix.
 
-## Storage
+The topic name includes the node id, key type, start time, and incarnation id.
 
-Add a dedicated `VectorIndexEvidenceStore` boundary. Do not use
-`PersistenceServiceBeans.keyValuePersistence()`.
+Use the generated topic key as `IndexJob.key`. Store the job with
+`KeyValuePair.create(job.key, job)`.
 
-The existing key-value store cannot safely hold this journal. Its key space is
-shared with user values. Its `typedAll` implementations convert every value to
-the requested type instead of filtering by type.
+The topic store becomes the job directory. A new process performs these steps:
 
-The dedicated store uses its own key space. It also uses opaque record ids that
-do not use the application key type.
+1. List topics.
+2. Select names with the reserved prefix and matching node id and key type.
+3. Read each key-value pair with `get(topic.key)`.
+4. Decode its data with the `IndexJob` codec.
+5. Select the applicable job by start time and root key.
 
-Partition records by node id and key type. Order records by generation, event
-time, and record id.
+This flow never calls `typedAll` on mixed key-value data. Every read uses a known
+job key.
 
-Append one record for each finished run and each live invalidation. Prune to the
-newest `app.vector.index.history` records in one partition. The default is
-10.
+The codec accepts the backend data shapes. Memory can return an `IndexJob`.
+Redis can return a map. Cassandra can return a JSON string.
 
-Pruning can remove an older successful run after many later failed runs. This
-case produces a safe incomplete report. The design accepts this false negative.
+The RSocket key-value client does not transmit the requested class for
+`typedGet`. The design does not depend on that method.
 
-Use an append journal with pruning. Do not overwrite one record per node. The
-overwrite needs a stable application key, which can collide with generated keys.
+System job topics must not appear in user room lists. User room creation must
+reject the reserved prefix.
 
-Each persistence backend owns its durable representation. Redis uses a separate
-prefix and ordered index. Cassandra uses a separate table and partition. The
-memory provider uses an in-process list for tests and ephemeral deployments.
+The first version reads all matching job topics. Automatic job retention remains
+out of scope.
 
-Expose this store through the persistence transport. A split deployment writes
-the evidence beside the message store. This change expands the transport scope.
+## Job Lifecycle
 
-The store provides three operations:
+The service creates the topic and then writes the `RUNNING` job.
 
-- Append one evidence record.
-- Read the newest records for one node id and key type.
-- Prune old records after an append succeeds.
+The active rebuild uses the existing in-process atomic claim.
 
-## Alternatives Considered
+The service updates the same key-value pair when counts or terminal state change.
+All current key-value backends overwrite an existing value with the same key.
 
-The shared key-value append design needs a typed full scan. That scan cannot
-filter mixed value types on the current backends.
+A successful job sets `coveredGeneration` to its final generation.
 
-The shared key-value overwrite design needs a stable application key. That key
-can collide with a generated user key.
+A failed or released job leaves `coveredGeneration` null.
 
-The dedicated journal adds backend and transport work. It gives this state a
-separate key space and a defined query boundary.
+A process crash can leave a durable `RUNNING` job. A new process treats that job
+as historical evidence and can mark it `RELEASED` on a best-effort basis.
+
+## Job Message Policy
+
+`Message.record` is a retention recommendation. It does not prove persistence.
+
+- `true` recommends storage.
+- `false` recommends ephemeral handling.
+
+The job publishes every `JobRecord` through `PubSubService.sendMessage()`.
+
+The producer can use pub/sub alone when it does not want local persistence.
+Downstream consumers can inspect `record` and choose whether to store the message.
+
+The first policy recommends storage for terminal events and errors. It recommends
+ephemeral handling for routine progress.
+
+Stored job messages must not enter message vector recall. Coverage never depends
+on job-message retention.
+
+A future handling-policy mask can replace the Boolean. Possible flags include
+`SAVE_VECTOR`, `SAVE_PERSIST`, and `FORWARD`. That change remains out of scope.
+
+## Durable Invalidation
+
+A live vector add failure removes coverage after a successful job.
+
+The process increments the in-process generation first. It then updates the
+latest covering `IndexJob` with the generation and invalidation time.
+
+The process can also publish an error `JobRecord` on that job topic. The emission
+policy recommends storage for this error.
+
+A failed job update never fails the original message send. The process stays
+incomplete until a successful rebuild.
+
+A restart can lose an invalidation whose job update failed. The `stored` trust
+policy accepts this risk explicitly.
 
 ## Policy
 
-Add two properties. Both have a safe default.
+Add two properties. Both properties have safe defaults.
 
-`app.vector.index.trust` decides whether a record from an earlier incarnation
-counts as coverage.
+`app.vector.index.trust` controls whether an earlier job counts as coverage.
 
-- `none` is the default. Only a successful run of this process counts.
-- `stored` trusts a successful record from an earlier incarnation of the same node
-  id and key type, when no invalidation followed it.
+- `none` is the default. Only a successful job from this incarnation counts.
+- `stored` trusts a successful job from the same node id and key type.
 
-`app.vector.index.startup` decides the action at startup.
+`app.vector.index.startup` controls startup action.
 
-- `report` is the default. The process reports the state and takes no action.
+- `report` is the default. The process reports state and takes no action.
 - `rebuild` starts one rebuild after the application is ready.
 
 The trust policy never starts a rebuild. The startup policy never changes the
-reported coverage. These decisions remain independent.
+reported coverage.
 
-`stored` is an operator assertion. It is only true when the vector storage path is
-durable and survives the restart. Nothing in the process can check it, because
-`VectorStore` cannot count documents. The property documentation must say this.
+`stored` is an operator assertion. The vector and key-value stores must survive
+the same restart.
 
-The assertion also trusts the evidence store. It accepts the crash window before
-an asynchronous invalidation write completes.
+`VectorStore` cannot count documents. The process cannot verify stored coverage.
 
-Operators must use `stored` only when the vector and evidence stores survive the
-same restart. They must also accept the asynchronous-write risk.
+The operator also accepts the failed-update window for durable invalidations.
 
-`rebuild` remains off by default. Real embedding throughput is still unmeasured.
+`rebuild` remains off by default. Real embedding throughput remains unmeasured.
 
-## The Report Rule
+## Coverage Rule
 
-Recall reports coverage, not phase.
+Recall reports coverage, not job phase.
 
-`indexComplete` is true when a successful run covers the current index, and no
-invalidation followed that run.
+`indexComplete` is true when one trusted successful job covers the current
+generation.
 
-Under `trust=none`, a covering run is a successful run of this incarnation.
+Coverage requires `coveredGeneration == currentGeneration`.
 
-Under `trust=stored`, a covering run is a successful run of this node id and key
-type, from any incarnation.
+Under `trust=none`, the covering job must have the current incarnation id.
 
-A successful run covers generation `G`. An invalidation with a generation larger
-than `G` removes that coverage.
+Under `trust=stored`, the covering job can have an earlier incarnation id.
 
-At startup, the state reads the largest stored generation. New invalidations
-continue from that value. Write completion order cannot change this comparison.
+A new rebuild does not remove an existing covering job. Therefore, a repair
+rebuild keeps `indexComplete=true` while it runs.
 
-A rebuild in progress does not change the answer. So a periodic repair of a
-healthy index no longer flips the flag. That closes the gap.
+A failed repair also keeps prior coverage when no invalidation occurred.
 
-A first rebuild on a fresh process still reports incomplete until it succeeds.
+A first rebuild reports incomplete until it succeeds.
 
 ## Status Changes
 
-`VectorIndexStatus` keeps `phase`, `running`, and the in-process report.
+`VectorIndexStatus` keeps the phase, running flag, and in-process report.
 
-`complete` no longer reads `phase`. It reads the covering run.
+`complete` no longer reads the phase. It reads the covering job.
 
-The status gains the covering run, or null.
+The status gains the active job and covering job. Either value can be null.
 
-The actuator read operation returns the status and the newest evidence records
-for this node.
+The actuator read operation returns the status and recent job records.
 
-## Failure Of The Record Store
+## Failure Behavior
 
-A read failure at startup reports no covering run. The process reports incomplete.
+A topic-list failure at startup reports no covering job.
 
-A write failure after a run logs an error. The in-process state keeps the result.
+A malformed matching job record makes the stored-policy read fail closed.
 
-The index stays usable in both cases. The record is evidence, never a gate.
+An orphan job topic without a key-value record does not count as coverage.
+
+A job write failure logs an error. The in-process state keeps the rebuild result.
+
+The index remains usable. A record is evidence and never acts as a lock.
 
 ## Verification
 
-- A rebuild of a complete index keeps `indexComplete` true for the whole run.
-- A successful run appends one record with its identity and generation.
-- A live indexing failure appends one invalidation record.
-- A fresh incarnation with `trust=none` reports incomplete beside a successful record.
-- A fresh incarnation with `trust=stored` reports complete beside that record.
-- An invalidation after a successful record removes coverage under `trust=stored`.
-- Reordered evidence writes do not change the generation comparison.
-- A failed record write leaves the in-process result unchanged.
-- A record read failure at startup reports incomplete.
-- The prune keeps the newest records for one node and removes older records.
-- The evidence store never creates a durable busy state.
+- `IndexJob` has its own root key.
+- `JobRecord` has its own root key.
+- The job topic key equals the `IndexJob` root key.
+- A known topic key supports an `IndexJob` decode on each backend.
+- The same decode works through the RSocket key-value client.
+- A rebuild of a complete index keeps `indexComplete=true`.
+- A successful job covers its final generation.
+- A later invalidation removes stored coverage.
+- A stale `RUNNING` job never rejects a new claim.
+- A `record=false` job message can use pub/sub without persistence.
+- A subscriber receives the unchanged `record` recommendation.
+- Job messages do not enter vector recall.
+- A topic-list or job-read failure reports incomplete under `stored`.
 
 ## Out Of Scope
 
-- Automatic rebuild as a default.
 - A durable completeness claim that no read can verify.
+- Automatic rebuild as the default.
 - Stale vector document removal.
-- Cross node coverage. One record describes one node id.
-- A record for a partial run. Only a finished run writes a record.
+- Cross-node coverage.
+- Automatic job-topic retention.
+- A handling-policy mask that replaces `record`.
 
 ## Decisions
 
-1. Use an append journal with pruning in a dedicated evidence store.
-2. Use `none` as the default trust policy.
-
-The default matches the current ephemeral storage. No current deployment mounts
-a durable vector volume.
+1. Store `IndexJob` in the existing key-value store.
+2. Give each job a persisted topic.
+3. Use the topic key as the `IndexJob` root key.
+4. Give `IndexJob` and `JobRecord` independent root keys.
+5. Use job topics to discover known keys after restart.
+6. Keep `record` as an advisory Boolean.
+7. Use `none` as the default trust policy.
