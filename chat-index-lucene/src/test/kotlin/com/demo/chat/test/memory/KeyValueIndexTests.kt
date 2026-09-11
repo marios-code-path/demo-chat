@@ -81,14 +81,34 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
             .verifyComplete()
     }
 
-    // The replace removes by key. A uuid key holds separators, and the key
-    // field is analyzed, so this proves the removal does not reach another
-    // entity that shares a field value.
+    // Two uuid keys that share their first segment. The key field is
+    // analyzed, and a hyphen is the QueryParser NOT operator, so a parsed
+    // removal never matched one key exactly. Removing one entity deleted
+    // both. The removal must use an exact term.
     @Test
-    fun `a replaced uuid entry leaves another entity alone`() {
+    fun `a removal by a uuid key leaves an entity that shares a segment`() {
         val index = KeyValueLuceneIndex(UUIDUtil(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields))
-        val first = Key.funKey(UUID.randomUUID())
-        val second = Key.funKey(UUID.randomUUID())
+        val first = Key.funKey(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        val second = Key.funKey(UUID.fromString("550e8400-aaaa-bbbb-cccc-000000000001"))
+
+        StepVerifier
+            .create(
+                index.add(KeyValuePair.create(first, IndexedSample("SHARED", 1) as Any))
+                    .then(index.add(KeyValuePair.create(second, IndexedSample("SHARED", 2) as Any)))
+                    .then(index.rem(first))
+                    .thenMany(index.findBy(IndexSearchRequest("name", "SHARED", 10)))
+            )
+            .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second.id) }
+            .verifyComplete()
+    }
+
+    // A replacement uses the same removal, so it must leave a key that shares
+    // a segment alone.
+    @Test
+    fun `a replaced uuid entry leaves an entity that shares a segment`() {
+        val index = KeyValueLuceneIndex(UUIDUtil(), IndexEntryEncoder.ofKeyValueFields<UUID>(sampleFields))
+        val first = Key.funKey(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))
+        val second = Key.funKey(UUID.fromString("550e8400-aaaa-bbbb-cccc-000000000001"))
 
         StepVerifier
             .create(
@@ -99,6 +119,24 @@ class KeyValueIndexTests : IndexTests<Long, KeyValuePair<Long, Any>, IndexSearch
             )
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second.id) }
             .verifyComplete()
+    }
+
+    // The encoder runs once per add. A second call could fail after the
+    // removal already ran, which would remove the entry and store nothing.
+    @Test
+    fun `an add reads the fields once`() {
+        val calls = java.util.concurrent.atomic.AtomicInteger()
+        val counting = IndexEntryEncoder<KeyValuePair<Long, Any>> { pair ->
+            calls.incrementAndGet()
+            sampleFields.fieldsOf(pair.data)
+        }
+        val index = KeyValueLuceneIndex(LongUtil(), counting)
+
+        StepVerifier
+            .create(index.add(KeyValuePair.create(Key.funKey(7007L), IndexedSample("ONCE", 1) as Any)))
+            .verifyComplete()
+
+        Assertions.assertThat(calls.get()).isEqualTo(1)
     }
 
     // Pins the second defect. The value fields are typed Any, so a field that

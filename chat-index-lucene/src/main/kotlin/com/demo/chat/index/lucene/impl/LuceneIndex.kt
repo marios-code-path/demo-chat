@@ -6,10 +6,12 @@ import com.demo.chat.service.core.IndexService
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
+import org.apache.lucene.document.StringField
 import org.apache.lucene.document.TextField
 import org.apache.lucene.index.DirectoryReader
 import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
+import org.apache.lucene.index.Term
 import org.apache.lucene.queryparser.classic.QueryParser
 import org.apache.lucene.search.IndexSearcher
 import org.apache.lucene.store.ByteBuffersDirectory
@@ -38,29 +40,45 @@ open class LuceneIndex<T, E>(
         }
     }
 
-    override fun add(entity: E): Mono<Void> = Mono.create { sink ->
-        val doc = Document().apply {
-            entityEncoder.apply(entity).forEach { kv ->
-                add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
+    override fun add(entity: E): Mono<Void> =
+        Mono.defer { addEntry(entityEncoder.apply(entity), keyReceiver.apply(entity)) }
+
+    /**
+     * Stores one document for [key] with [fields].
+     *
+     * A caller that already read the fields uses this, so the encoder runs
+     * once per add. A second encoder call could fail after a removal already
+     * ran, which would remove the entry and store nothing in its place.
+     */
+    protected fun addEntry(fields: List<Pair<String, String>>, key: Key<T>): Mono<Void> =
+        Mono.create { sink ->
+            val doc = Document().apply {
+                fields.forEach { kv ->
+                    add(Field(kv.first, kv.second, TextField.TYPE_NOT_STORED))
+                }
+                add(Field("key", key.id.toString(), TextField.TYPE_STORED))
+                add(StringField(EXACT_KEY, key.id.toString(), Field.Store.NO))
             }
-            add(Field("key", keyReceiver.apply(entity).id.toString(), TextField.TYPE_STORED))
+
+            writer.addDocument(doc)
+            writer.commit()
+
+            sink.success()
         }
 
-        writer.addDocument(doc)
-        writer.commit()
-
-        sink.success()
-    }
-
+    /**
+     * Removes the document of one key, and only that document.
+     *
+     * The `key` field is analyzed, so a parsed query never matched one key.
+     * StandardAnalyzer splits a uuid at its separators, and a hyphen is the
+     * QueryParser NOT operator, so removing one uuid deleted every document
+     * that shared a segment. The removal matches the exact field instead.
+     */
     override fun rem(key: Key<T>): Mono<Void> = Mono.create { sink ->
-        val parser = QueryParser("key", analyzer)
-        val query = parser.parse("+${key.id.toString()}")
-
-        writer.deleteDocuments(query)
+        writer.deleteDocuments(Term(EXACT_KEY, key.id.toString()))
         writer.commit()
 
         sink.success()
-
     }
 
     override fun findBy(query: IndexSearchRequest): Flux<out Key<T>> = Flux.create { sink ->
@@ -86,4 +104,9 @@ open class LuceneIndex<T, E>(
     override fun findUnique(query: IndexSearchRequest): Mono<out Key<T>> =
         findBy(query)
             .singleOrEmpty()
+
+    companion object {
+        /** Internal, and not analyzed. A removal matches this field exactly. */
+        const val EXACT_KEY = "_key"
+    }
 }
