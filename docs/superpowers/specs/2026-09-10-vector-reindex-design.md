@@ -239,6 +239,20 @@ A live message can enter persistence after the rebuild scan passes its position.
 
 If its vector add fails, the changed generation keeps the state incomplete.
 
+This rule can produce one safe false negative.
+
+A live add can fail before the rebuild scan reaches the same message.
+
+The rebuild can then index that message successfully.
+
+The changed generation still keeps the state incomplete.
+
+Accept this conservative result.
+
+A later operator rebuild can mark the index complete.
+
+The design prohibits a false complete result.
+
 Repeated successful writes create no duplicate vector document.
 
 The document identifier is deterministic.
@@ -258,7 +272,17 @@ fun status(): VectorIndexStatus
 
 It returns the running status without waiting for completion.
 
-The job reads `MessagePersistence<T, String>.all()`.
+The job reads `MessagePersistence<T, V>.all()`.
+
+It casts each recorded message to `Message<T, String>` before indexing.
+
+Use one private `asText` function with `@Suppress("UNCHECKED_CAST")`.
+
+This function matches the existing bridge in `MessagingServiceImpl`.
+
+Every current composition binds `V` to `String`.
+
+A composition with another value type must not set the recall selectors.
 
 The job processes messages with `concatMap`.
 
@@ -310,7 +334,11 @@ The write returns while the rebuild runs.
 
 A busy write returns `running=true` and starts no job.
 
-The endpoint exists only when the reindex service bean exists.
+Gate the endpoint with both existing property conditions.
+
+Require `app.service.composite`.
+
+Require both `app.service.core.vector` and `app.service.core.embedding`.
 
 A deployment without active recall wiring exposes no endpoint bean.
 
@@ -327,7 +355,15 @@ This issue adds no deployment selector or exposure value.
 
 The configuration injects that state into recall, indexing, and reindex services.
 
-The reindex bean also receives `MessagePersistence<T, String>`.
+The configuration receives `PersistenceServiceBeans<T, V>`.
+
+It obtains message persistence through `persistenceBeans.messagePersistence()`.
+
+The composite context does not expose `MessagePersistence<T, V>` as a bean.
+
+The reindex service receives the returned `MessagePersistence<T, V>` instance.
+
+The reindex service owns the unchecked text-message cast.
 
 The existing vector and embedding selector conditions remain authoritative.
 
