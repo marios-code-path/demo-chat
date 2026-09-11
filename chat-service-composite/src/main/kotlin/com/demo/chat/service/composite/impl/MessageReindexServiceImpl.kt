@@ -32,16 +32,40 @@ class MessageReindexServiceImpl<T, V>(
     override fun start(): Mono<VectorIndexStatus> = Mono.fromSupplier {
         val claim = state.claim()
         if (claim.accepted) {
-            rebuild(claim, clock.instant())
-                .subscribeOn(scheduler)
-                .subscribe(
-                    {},
-                    { error ->
-                        logger.error("Vector reindex terminated unexpectedly", error)
-                    },
-                )
+            val startedAt = clock.instant()
+            try {
+                rebuild(claim, startedAt)
+                    .subscribeOn(scheduler)
+                    .subscribe(
+                        {},
+                        { error -> release(claim, startedAt, error) },
+                    )
+            } catch (error: Throwable) {
+                release(claim, startedAt, error)
+            }
         }
         claim.status
+    }
+
+    /**
+     * Releases a claim that no rebuild can finish. A rejected scheduler and an
+     * unexpected terminal error both reach this path. Without the release the
+     * phase stays REBUILDING and every later trigger reports busy.
+     */
+    private fun release(
+        claim: VectorIndexClaim,
+        startedAt: Instant,
+        error: Throwable,
+    ) {
+        logger.error("Vector reindex terminated unexpectedly", error)
+        if (!state.status().running) {
+            return
+        }
+        state.finish(
+            claim,
+            VectorRebuildReport(startedAt, clock.instant(), 0L, 0L, 0L, 0L),
+            summary(error),
+        )
     }
 
     private fun rebuild(

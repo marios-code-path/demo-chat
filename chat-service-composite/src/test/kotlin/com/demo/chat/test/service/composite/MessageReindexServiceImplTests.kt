@@ -139,6 +139,20 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(awaitFinished(service).complete).isTrue()
     }
 
+    @Test
+    fun `a job that cannot start releases the claim`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        scheduler.dispose()
+
+        service.start().block()!!
+
+        val released = awaitFinished(service)
+        Assertions.assertThat(released.running).isFalse()
+        Assertions.assertThat(released.complete).isFalse()
+        Assertions.assertThat(released.lastFailure).isNotNull()
+        Assertions.assertThat(service.start().block()!!.running).isTrue()
+    }
+
     private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus {
         Assertions.assertThat(service.start().block()!!.running).isTrue()
         return awaitFinished(service)
