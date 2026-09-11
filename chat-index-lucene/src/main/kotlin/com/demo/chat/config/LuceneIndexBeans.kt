@@ -9,8 +9,8 @@ import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaIndex
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.convert.ConversionService
 
 @Configuration
 @ConditionalOnProperty(
@@ -21,7 +21,7 @@ import org.springframework.core.convert.ConversionService
 )
 open class LuceneIndexBeans<T>(
     private val typeUtil: TypeUtil<T>,
-    private val cs: ConversionService
+    private val keyValueFieldEntries: ObjectProvider<KeyValueIndexFieldsEntry>
 ) : IndexServiceBeans<T, String, IndexSearchRequest> {
 
     private val stringToKey: (String) -> Key<T> = { str -> Key.funKey(typeUtil.fromString(str)) }
@@ -48,5 +48,10 @@ open class LuceneIndexBeans<T>(
 
     @Bean
     override fun KVPairIndex(): KeyValueIndexService<T, IndexSearchRequest> =
-        KeyValueLuceneIndex(typeUtil, IndexEntryEncoder.ofConversionService(conversionService = cs) )
+        KeyValueLuceneIndex(
+            typeUtil,
+            IndexEntryEncoder.ofKeyValueFields(
+                TypedKeyValueIndexFields(keyValueFieldEntries.orderedStream().toList())
+            )
+        )
 }
