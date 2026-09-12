@@ -1,5 +1,6 @@
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import java.time.Instant
 
 enum class JobOutcome {
@@ -36,6 +37,14 @@ data class IndexJob<T>(
     val invalidationCount: Long = 0L,
     val lastInvalidationAt: Instant? = null,
 ) : KeyBearer<T> {
+    /**
+     * Derived, and never written.
+     *
+     * Jackson serializes a getter, and this class has no matching constructor
+     * argument, so a stored job would fail to read back with an unrecognized
+     * field. The redis and cassandra shapes both go through Jackson.
+     */
+    @get:JsonIgnore
     val covers: Boolean
         get() = outcome == JobOutcome.SUCCEEDED && invalidationCount == 0L
 }

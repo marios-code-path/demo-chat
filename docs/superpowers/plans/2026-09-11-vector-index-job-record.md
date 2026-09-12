@@ -56,7 +56,8 @@ calls `pubsub.open()`.** The plan raised this gap, and the spec was revised in
 | `CHAT-jddllrrx` | Kept. Task 10. |
 | `CHAT-zepiarzb` | Kept. Task 12. |
 | `CHAT-neucngmw` | Kept. Task 13. |
-| `CHAT-jqvclfbd` | Kept. Task 14. |
+| `CHAT-jqvclfbd` | Kept. Task 15. |
+| New | Task 14 proves the job decode on each backend, which the spec requires and no earlier task covered. |
 | New | Tasks 1 to 8 cover the job record, the topic seam, the state target, the writer, and the policy. |
 
 ## File Structure
@@ -171,6 +172,7 @@ Expected: FAIL. The compiler reports an unresolved reference to `IndexJob`.
 ```kotlin
 package com.demo.chat.domain
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import java.time.Instant
 
 enum class JobOutcome {
@@ -207,6 +209,14 @@ data class IndexJob<T>(
     val invalidationCount: Long = 0L,
     val lastInvalidationAt: Instant? = null,
 ) : KeyBearer<T> {
+    /**
+     * Derived, and never written.
+     *
+     * Jackson serializes a getter, and this class has no matching constructor
+     * argument, so a stored job would fail to read back with an unrecognized
+     * field. The redis and cassandra shapes both go through Jackson.
+     */
+    @get:JsonIgnore
     val covers: Boolean
         get() = outcome == JobOutcome.SUCCEEDED && invalidationCount == 0L
 }
@@ -947,7 +957,7 @@ interface VectorIndexJobStore<T> {
 }
 ```
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing store tests**
 
 ```kotlin
     @Test
@@ -1210,16 +1220,197 @@ The store test then holds instances and one builder:
         )
 ```
 
-The memory key-value store returns the stored object, so the codec passes it
-through. Task 5's decode path for a map and for a JSON string is proved by the
-backend tests that Task 14 runs, not here.
+The memory key-value store returns the stored object, so these tests exercise the
+pass-through branch. `IndexJobCodecTests` covers the map and the JSON string
+branches directly against a mapper carrying the chat modules. **Task 14 proves
+the same decode against each real backend**, which is what the spec requires.
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [ ] **Step 2: Write the failing SerialWriter tests**
 
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorIndexJobStoreImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL. The compiler reports an unresolved reference to `VectorIndexJobStoreImpl`.
+Create `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/SerialWriterTests.kt`.
 
-- [ ] **Step 3: Write the implementation**
+```kotlin
+package com.demo.chat.test.service.composite
+
+import com.demo.chat.domain.ChatException
+import com.demo.chat.service.composite.impl.SerialWriter
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import reactor.test.StepVerifier
+import java.time.Duration
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+
+class SerialWriterTests {
+
+    // Concurrent submission is what produces FAIL_NON_SERIALIZED. Every caller
+    // must still receive a completion.
+    @Test
+    fun `concurrent submissions all complete`() {
+        val writer = SerialWriter()
+        val done = AtomicInteger()
+
+        StepVerifier
+            .create(
+                Flux.range(0, 200)
+                    .parallel(8)
+                    .runOn(Schedulers.boundedElastic())
+                    .flatMap { writer.submit(Mono.fromRunnable { done.incrementAndGet() }) }
+                    .then()
+            )
+            .verifyComplete()
+
+        Assertions.assertThat(done.get()).isEqualTo(200)
+        writer.close().block()
+    }
+
+    // One at a time means one at a time. A second body must not start while
+    // the first is still running.
+    @Test
+    fun `work never overlaps`() {
+        val writer = SerialWriter()
+        val running = AtomicBoolean(false)
+        val overlapped = AtomicBoolean(false)
+
+        // fromRunnable completes empty, and delayElement only delays an onNext.
+        // An empty completion passes straight through, so a delay after
+        // fromRunnable creates no window at all. fromCallable emits a value,
+        // which the delay can hold.
+        //
+        // The flag clears inside doOnNext, not in doFinally. Reactor runs a
+        // doFinally callback after it propagates the terminal signal, so the
+        // next body would start before the previous one cleared the flag, and
+        // a correct writer would look like it overlapped.
+        val body = Mono.fromCallable { !running.compareAndSet(false, true) }
+            .delayElement(Duration.ofMillis(5))
+            .doOnNext { collided ->
+                if (collided) overlapped.set(true)
+                running.set(false)
+            }
+            .then()
+
+        StepVerifier
+            .create(Flux.range(0, 50).flatMap { writer.submit(body) }.then())
+            .verifyComplete()
+
+        Assertions.assertThat(overlapped.get()).isFalse()
+        writer.close().block()
+    }
+
+    // close() must let queued work finish. An immediate dispose would strand
+    // every queued result, and the caller would wait for a completion that
+    // never arrives.
+    @Test
+    fun `close drains queued work`() {
+        val writer = SerialWriter()
+        val started = AtomicInteger()
+        val done = AtomicInteger()
+        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
+            .then(Mono.delay(Duration.ofMillis(20)))
+            .then(Mono.fromRunnable<Void> { done.incrementAndGet() })
+
+        // submit returns a deferred Mono, so nothing reaches the queue until
+        // something subscribes. toFuture subscribes now. Closing before this
+        // would reject every submission instead of draining it.
+        val all = Flux.merge((0 until 10).map { writer.submit(slow) }).then().toFuture()
+
+        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
+            .filter { started.get() > 0 }
+            .next()
+            .block(Duration.ofSeconds(10))
+
+        writer.close().block()
+        all.get(10, TimeUnit.SECONDS)
+
+        Assertions.assertThat(done.get()).isEqualTo(10)
+    }
+
+    /**
+     * The hazard this test exists for.
+     *
+     * Each body needs 400 milliseconds and the shutdown timeout is 50, so no
+     * body can finish. Every caller must receive the shutdown error.
+     *
+     * The assertion demands that error rather than accepting any termination.
+     * A writer that ignored the timeout and drained normally would complete all
+     * five callers, and a weaker assertion would pass it.
+     */
+    @Test
+    fun `work that outlasts the shutdown timeout fails every caller`() {
+        val writer = SerialWriter()
+        val started = AtomicInteger()
+        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
+            .then(Mono.delay(Duration.ofMillis(400)))
+            .then()
+
+        val outcomes = (0 until 5).map { writer.submit(slow).materialize().toFuture() }
+
+        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
+            .filter { started.get() > 0 }
+            .next()
+            .block(Duration.ofSeconds(10))
+
+        writer.close(Duration.ofMillis(50)).block()
+
+        outcomes.forEach { outcome ->
+            // A stranded caller appears here as a future that never resolves.
+            val signal = outcome.get(10, TimeUnit.SECONDS)
+
+            Assertions.assertThat(signal.hasError())
+                .`as`("no body can finish inside the shutdown timeout")
+                .isTrue()
+            Assertions.assertThat(signal.throwable)
+                .isInstanceOf(ChatException::class.java)
+                .hasMessageContaining("shut down before this work ran")
+        }
+    }
+
+    @Test
+    fun `a submission after close fails rather than hanging`() {
+        val writer = SerialWriter()
+        writer.close().block()
+
+        StepVerifier
+            .create(writer.submit(Mono.empty()))
+            .verifyError(ChatException::class.java)
+    }
+
+    @Test
+    fun `a failed body reaches its own caller only`() {
+        val writer = SerialWriter()
+
+        StepVerifier
+            .create(writer.submit(Mono.error(IllegalStateException("write failed"))))
+            .verifyError(IllegalStateException::class.java)
+
+        StepVerifier
+            .create(writer.submit(Mono.empty()))
+            .verifyComplete()
+
+        writer.close().block()
+    }
+}
+```
+
+- [ ] **Step 3: Run both suites and confirm they fail**
+
+```bash
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test \
+  -Dtest=VectorIndexJobStoreImplTests,SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+Expected: FAIL. The compiler reports unresolved references to
+`VectorIndexJobStoreImpl`, `IndexJobCodec`, and `SerialWriter`.
+
+**Both test classes are written before either implementation.** The earlier
+order wrote the writer tests after its implementation, which left that class
+with no red step at all.
+
+- [ ] **Step 4: Write SerialWriter, the codec, and the store**
 
 The store needs a codec, because each backend hands back a different shape.
 `IndexJobCodec<T>` goes in the same file, above the store:
@@ -1466,186 +1657,16 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
 
 The block above carries every import this file needs.
 
-- [ ] **Step 3b: Write the SerialWriter tests**
+- [ ] **Step 5: Run both suites and confirm they pass**
 
-Create `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/SerialWriterTests.kt`.
-
-```kotlin
-package com.demo.chat.test.service.composite
-
-import com.demo.chat.domain.ChatException
-import com.demo.chat.service.composite.impl.SerialWriter
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import reactor.core.scheduler.Schedulers
-import reactor.test.StepVerifier
-import java.time.Duration
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicBoolean
-
-class SerialWriterTests {
-
-    // Concurrent submission is what produces FAIL_NON_SERIALIZED. Every caller
-    // must still receive a completion.
-    @Test
-    fun `concurrent submissions all complete`() {
-        val writer = SerialWriter()
-        val done = AtomicInteger()
-
-        StepVerifier
-            .create(
-                Flux.range(0, 200)
-                    .parallel(8)
-                    .runOn(Schedulers.boundedElastic())
-                    .flatMap { writer.submit(Mono.fromRunnable { done.incrementAndGet() }) }
-                    .then()
-            )
-            .verifyComplete()
-
-        Assertions.assertThat(done.get()).isEqualTo(200)
-        writer.close().block()
-    }
-
-    // One at a time means one at a time. A second body must not start while
-    // the first is still running.
-    @Test
-    fun `work never overlaps`() {
-        val writer = SerialWriter()
-        val running = AtomicBoolean(false)
-        val overlapped = AtomicBoolean(false)
-
-        // fromRunnable completes empty, and delayElement only delays an onNext.
-        // An empty completion passes straight through, so a delay after
-        // fromRunnable creates no window at all. fromCallable emits a value,
-        // which the delay can hold.
-        //
-        // The flag clears inside doOnNext, not in doFinally. Reactor runs a
-        // doFinally callback after it propagates the terminal signal, so the
-        // next body would start before the previous one cleared the flag, and
-        // a correct writer would look like it overlapped.
-        val body = Mono.fromCallable { !running.compareAndSet(false, true) }
-            .delayElement(Duration.ofMillis(5))
-            .doOnNext { collided ->
-                if (collided) overlapped.set(true)
-                running.set(false)
-            }
-            .then()
-
-        StepVerifier
-            .create(Flux.range(0, 50).flatMap { writer.submit(body) }.then())
-            .verifyComplete()
-
-        Assertions.assertThat(overlapped.get()).isFalse()
-        writer.close().block()
-    }
-
-    // close() must let queued work finish. An immediate dispose would strand
-    // every queued result, and the caller would wait for a completion that
-    // never arrives.
-    @Test
-    fun `close drains queued work`() {
-        val writer = SerialWriter()
-        val started = AtomicInteger()
-        val done = AtomicInteger()
-        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
-            .then(Mono.delay(Duration.ofMillis(20)))
-            .then(Mono.fromRunnable<Void> { done.incrementAndGet() })
-
-        // submit returns a deferred Mono, so nothing reaches the queue until
-        // something subscribes. toFuture subscribes now. Closing before this
-        // would reject every submission instead of draining it.
-        val all = Flux.merge((0 until 10).map { writer.submit(slow) }).then().toFuture()
-
-        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
-            .filter { started.get() > 0 }
-            .next()
-            .block(Duration.ofSeconds(10))
-
-        writer.close().block()
-        all.get(10, TimeUnit.SECONDS)
-
-        Assertions.assertThat(done.get()).isEqualTo(10)
-    }
-
-    /**
-     * The hazard this test exists for.
-     *
-     * Each body needs 400 milliseconds and the shutdown timeout is 50, so no
-     * body can finish. Every caller must receive the shutdown error.
-     *
-     * The assertion demands that error rather than accepting any termination.
-     * A writer that ignored the timeout and drained normally would complete all
-     * five callers, and a weaker assertion would pass it.
-     */
-    @Test
-    fun `work that outlasts the shutdown timeout fails every caller`() {
-        val writer = SerialWriter()
-        val started = AtomicInteger()
-        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
-            .then(Mono.delay(Duration.ofMillis(400)))
-            .then()
-
-        val outcomes = (0 until 5).map { writer.submit(slow).materialize().toFuture() }
-
-        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
-            .filter { started.get() > 0 }
-            .next()
-            .block(Duration.ofSeconds(10))
-
-        writer.close(Duration.ofMillis(50)).block()
-
-        outcomes.forEach { outcome ->
-            // A stranded caller appears here as a future that never resolves.
-            val signal = outcome.get(10, TimeUnit.SECONDS)
-
-            Assertions.assertThat(signal.hasError())
-                .`as`("no body can finish inside the shutdown timeout")
-                .isTrue()
-            Assertions.assertThat(signal.throwable)
-                .isInstanceOf(ChatException::class.java)
-                .hasMessageContaining("shut down before this work ran")
-        }
-    }
-
-    @Test
-    fun `a submission after close fails rather than hanging`() {
-        val writer = SerialWriter()
-        writer.close().block()
-
-        StepVerifier
-            .create(writer.submit(Mono.empty()))
-            .verifyError(ChatException::class.java)
-    }
-
-    @Test
-    fun `a failed body reaches its own caller only`() {
-        val writer = SerialWriter()
-
-        StepVerifier
-            .create(writer.submit(Mono.error(IllegalStateException("write failed"))))
-            .verifyError(IllegalStateException::class.java)
-
-        StepVerifier
-            .create(writer.submit(Mono.empty()))
-            .verifyComplete()
-
-        writer.close().block()
-    }
-}
+```bash
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test \
+  -Dtest=VectorIndexJobStoreImplTests,SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 6 tests.
+Expected: PASS. Seven store tests and six writer tests.
 
-- [ ] **Step 4: Run the test and confirm it passes**
-
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorIndexJobStoreImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 7 tests.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A && git commit -m "feat: add the durable vector index job store (CHAT-fpwpfrfj)"
@@ -3215,7 +3236,167 @@ git add -A && git commit -m "test: prove recall recovery after index loss (CHAT-
 
 ---
 
-### Task 14: Documentation and the full gate (`CHAT-jqvclfbd`)
+### Task 14: Prove the job decode on each backend
+
+**Files:**
+- Create: `chat-persistence-redis/src/test/kotlin/com/demo/chat/test/persistence/redis/RedisIndexJobDecodeTests.kt`
+- Create: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraIndexJobDecodeTests.kt`
+- Create: `chat-client-rsocket/src/test/kotlin/com/demo/chat/test/rsocket/controller/core/KeyValueJobDecodeRequesterTests.kt`
+
+**Why this task exists.** The spec requires that a known topic key supports an
+`IndexJob` decode on each backend, and that the same decode works through the
+RSocket key-value client. `IndexJobCodecTests` proves the branches against a
+mapper. It does not prove that each backend hands back the shape that branch
+expects, and no other task did either.
+
+**The three shapes, from the store implementations:**
+
+- Memory returns the stored object. `InMemoryKeyValueStore` holds it in a map.
+- Redis returns a `LinkedHashMap`. `KeyValuePersistenceRedis.get` reads the JSON
+  into a `KeyValuePair`, and `data` arrives as `Any`.
+- Cassandra returns the JSON `String`. `KeyValuePersistenceCassandra.get` builds
+  the pair from `kv.data`, which the table stores as text.
+
+**Interfaces:**
+- Consumes: `IndexJob`, `IndexJobCodec`, and each backend key-value store.
+
+- [ ] **Step 1: Write the redis test**
+
+Follow `RedisKeyValueTypedDomainTests` for the context. It imports
+`RedisPersistenceTestContext` and `RedisPersistenceTestBeans`, and it carries
+`@Tag("integration")`.
+
+```kotlin
+    @Test
+    fun `a stored job reads back through the codec`() {
+        val key = Key.funKey(UUID.randomUUID())
+        val job = IndexJob(
+            key = key,
+            nodeId = 7,
+            keyType = "uuid",
+            incarnationId = "incarnation-a",
+            startedBy = Key.funKey(UUID.randomUUID()),
+            startedAt = Instant.parse("2026-09-12T12:00:00Z"),
+            outcome = JobOutcome.SUCCEEDED,
+            indexed = 3L,
+        )
+
+        keyValuePersistence.add(KeyValuePair.create(key, job as Any)).block()
+
+        val stored = keyValuePersistence.get(key).block()!!
+
+        // The redis branch. A JSON round trip gives a map, not the object.
+        Assertions.assertThat(stored.data).isInstanceOf(Map::class.java)
+
+        val decoded = codec.decode(stored.data)
+        Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(decoded.indexed).isEqualTo(3L)
+        Assertions.assertThat(decoded.nodeId).isEqualTo(7)
+        Assertions.assertThat(decoded.startedAt).isEqualTo(job.startedAt)
+    }
+```
+
+`codec` is `IndexJobCodec<UUID>(mapper)`, where `mapper` registers
+`DefaultChatJacksonModules().allModules()` beside `findAndRegisterModules()`. A
+bare mapper cannot read a `Key`, which is an interface with no type information
+on the wire.
+
+- [ ] **Step 2: Write the cassandra test**
+
+Follow `TypedKeyValueStoreTests` for the context and the keyspace setup.
+
+```kotlin
+    @Test
+    fun `a stored job reads back through the codec`() {
+        val key = Key.funKey(nextLongId())
+        val job = IndexJob(
+            key = key,
+            nodeId = 7,
+            keyType = "long",
+            incarnationId = "incarnation-a",
+            startedBy = Key.funKey(nextLongId()),
+            startedAt = Instant.parse("2026-09-12T12:00:00Z"),
+            outcome = JobOutcome.FAILED,
+            failed = 2L,
+        )
+
+        keyValueStore.add(KeyValuePair.create(key, job as Any)).block()
+
+        val stored = keyValueStore.get(key).block()!!
+
+        // The cassandra branch. The table stores text, so data is the JSON.
+        Assertions.assertThat(stored.data).isInstanceOf(String::class.java)
+
+        val decoded = codec.decode(stored.data)
+        Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.FAILED)
+        Assertions.assertThat(decoded.failed).isEqualTo(2L)
+        Assertions.assertThat(decoded.covers).isFalse()
+    }
+```
+
+- [ ] **Step 3: Write the RSocket test**
+
+Follow `KeyValueIndexRequesterTests` for the requester setup. The server side
+holds a mocked `KeyValueStore` that returns the pair, and the client reads it
+with `get`, never with `typedGet`.
+
+```kotlin
+    @Test
+    fun `a job decodes through the key value client`() {
+        val key = Key.funKey(1000L)
+        val job = IndexJob(
+            key = key,
+            nodeId = 7,
+            keyType = "long",
+            incarnationId = "incarnation-a",
+            startedBy = Key.funKey(2000L),
+            startedAt = Instant.parse("2026-09-12T12:00:00Z"),
+            outcome = JobOutcome.SUCCEEDED,
+        )
+
+        BDDMockito
+            .given(keyValueStore.get(anyObject()))
+            .willReturn(Mono.just(KeyValuePair.create(key, job as Any)))
+
+        val client = KeyValueStoreClient<Long>(svcPrefix, requester)
+
+        StepVerifier
+            .create(client.get(key))
+            .assertNext { pair ->
+                val decoded = codec.decode(pair.data)
+                Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+                Assertions.assertThat(decoded.nodeId).isEqualTo(7)
+            }
+            .verifyComplete()
+    }
+```
+
+**The client never calls `typedGet`.** That route sends only the key, so the
+server receives no class and cannot bind the value. The design reads with `get`
+and decodes locally for that reason.
+
+- [ ] **Step 4: Run the three suites**
+
+```bash
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -B -DskipTests install -q
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-redis -Pintegration test -Dtest=RedisIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-cassandra -Pintegration test -Dtest=CassandraIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-client-rsocket -am test -Dtest=KeyValueJobDecodeRequesterTests -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+The redis and cassandra suites start containers. `CHAT-sgyaaivp` records that the
+cassandra integration job alternates red on unchanged code, so confirm a failure
+twice before treating it as real.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A && git commit -m "test: prove the job decode on each backend (CHAT-fpwpfrfj)"
+```
+
+---
+
+### Task 15: Documentation and the full gate (`CHAT-jqvclfbd`)
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-01-message-vector-recall-design.md`
