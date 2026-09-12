@@ -1163,15 +1163,23 @@ internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty(
         Flux.defer { Flux.fromIterable(values.values.toList()) }
 }
 
-internal class FakeMessagePersistence(private val calls: MutableList<String>? = null) :
-    MessagePersistence<Long, String> {
+/**
+ * [delay] holds the write open. A synchronous double cannot tell a chain that
+ * waits for each step from one that starts them all at once, because both
+ * subscribe in the same order.
+ */
+internal class FakeMessagePersistence(
+    private val calls: MutableList<String>? = null,
+    private val delay: Duration = Duration.ZERO,
+) : MessagePersistence<Long, String> {
     val added = mutableListOf<Message<Long, String>>()
     private var nextId = 900L
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
-    override fun add(ent: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
-        calls?.add("persistence")
-        added.add(ent)
-    }
+    override fun add(ent: Message<Long, String>): Mono<Void> =
+        Mono.delay(delay).then(Mono.fromRunnable {
+            calls?.add("persistence")
+            added.add(ent)
+        })
     override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
     override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
         Mono.defer { Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id }) }
@@ -1819,6 +1827,26 @@ the next rebuild would read its own output back out of
         Assertions.assertThat(message.data).contains("\"version\"")
     }
 
+    // Subscription order is not execution order. A chain that starts every step
+    // at once subscribes them in the same sequence, so a synchronous double
+    // reports the same call list either way. A slow first step separates them.
+    @Test
+    fun `a slow first step still completes before the second starts`() {
+        val slowCalls = mutableListOf<String>()
+        val slowPersistence = FakeMessagePersistence(slowCalls, Duration.ofMillis(60))
+        val writer = ComposedJobRecordWriter(
+            messagePersistence = slowPersistence,
+            messageIndex = FakeMessageIndex(slowCalls),
+            pubsub = FakePubSub(slowCalls),
+            codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
+            asValue = { text -> text },
+        )
+
+        StepVerifier.create(writer.write(record)).verifyComplete()
+
+        Assertions.assertThat(slowCalls).containsExactly("persistence", "index", "pubsub")
+    }
+
     @Test
     fun `a failed index write stops pub sub and keeps the persisted record`() {
         val writer = writerUnderTest(failOn = "index")
@@ -1907,14 +1935,76 @@ class ComposedJobRecordWriter<T, V, Q>(
 }
 ```
 
-`JobRecordCodec.encode` writes `{"version":1, ...}` with a Jackson `ObjectMapper`.
-`decode(text: String): JobRecord<T>` reads it back and rejects an unknown version
-with `ChatException`.
+The interface and the codec both live in `chat-core`:
+
+```kotlin
+package com.demo.chat.service.vector
+
+import com.demo.chat.domain.JobRecord
+import reactor.core.publisher.Mono
+
+/**
+ * Writes one progress record of a rebuild.
+ *
+ * An implementation must not reach the vector indexer. A job record in the
+ * recall corpus would let a later rebuild read its own output back.
+ */
+fun interface JobRecordWriter<T> {
+    fun write(record: JobRecord<T>): Mono<Void>
+}
+```
+
+```kotlin
+package com.demo.chat.service.vector
+
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.JobRecord
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
+
+/**
+ * Encodes one job record as a versioned JSON string.
+ *
+ * Every current deployment binds message data to String, so a record travels as
+ * text. The version is written first so a later reader can refuse a shape it
+ * does not know, rather than bind it wrongly.
+ */
+class JobRecordCodec(private val mapper: ObjectMapper) {
+
+    fun encode(record: JobRecord<*>): String {
+        val node = mapper.valueToTree<ObjectNode>(record)
+        node.put(VERSION_FIELD, VERSION)
+        return mapper.writeValueAsString(node)
+    }
+
+    fun <T> decode(text: String): JobRecord<T> {
+        val node = mapper.readTree(text)
+        val version = node.get(VERSION_FIELD)?.asInt()
+
+        if (version != VERSION) {
+            throw ChatException(
+                "A job record of version '$version' cannot be read. This reader knows version $VERSION."
+            )
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        return mapper.treeToValue(node, JobRecord::class.java) as JobRecord<T>
+    }
+
+    companion object {
+        const val VERSION_FIELD = "version"
+        const val VERSION = 1
+    }
+}
+```
+
+The version is written after the record fields, so a reader can refuse a shape
+it does not know rather than bind it wrongly.
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 3 tests.
+Expected: PASS, 4 tests.
 
 - [ ] **Step 5: Commit**
 

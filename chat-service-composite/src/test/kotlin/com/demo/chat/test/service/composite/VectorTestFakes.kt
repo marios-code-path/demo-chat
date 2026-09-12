@@ -11,6 +11,7 @@ import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPersistence
 import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
+import java.time.Duration
 import reactor.core.publisher.Mono
 
 /**
@@ -79,15 +80,23 @@ internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty(
         Flux.defer { Flux.fromIterable(values.values.toList()) }
 }
 
-internal class FakeMessagePersistence(private val calls: MutableList<String>? = null) :
-    MessagePersistence<Long, String> {
+/**
+ * [delay] holds the write open. A synchronous double cannot tell a chain that
+ * waits for each step from one that starts them all at once, because both
+ * subscribe in the same order.
+ */
+internal class FakeMessagePersistence(
+    private val calls: MutableList<String>? = null,
+    private val delay: Duration = Duration.ZERO,
+) : MessagePersistence<Long, String> {
     val added = mutableListOf<Message<Long, String>>()
     private var nextId = 900L
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
-    override fun add(ent: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
-        calls?.add("persistence")
-        added.add(ent)
-    }
+    override fun add(ent: Message<Long, String>): Mono<Void> =
+        Mono.delay(delay).then(Mono.fromRunnable {
+            calls?.add("persistence")
+            added.add(ent)
+        })
     override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
     override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
         Mono.defer { Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id }) }
