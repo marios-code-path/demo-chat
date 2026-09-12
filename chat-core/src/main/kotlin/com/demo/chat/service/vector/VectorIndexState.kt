@@ -51,8 +51,11 @@ data class VectorInvalidation<T>(
  * The outcome of one run.
  *
  * [succeeded] is true only when this run finished with no failed message, no
- * scan error, and an unchanged generation. [status] describes the index, which
- * an earlier job can still cover.
+ * scan error, and an unchanged generation.
+ *
+ * [status] answers a question about the index. [succeeded] answers a question
+ * about this run. A caller that writes a durable outcome reads [succeeded],
+ * because the two questions can have different answers.
  */
 data class VectorFinishResult(
     val succeeded: Boolean,
@@ -86,9 +89,8 @@ interface VectorIndexState<T> {
      * [jobKey] is null when the caller holds no durable job. The run can then
      * still succeed in process, and it installs no target.
      *
-     * The result carries a verdict for **this run**, not for the index. A
-     * caller that writes a durable outcome must read [VectorFinishResult.succeeded],
-     * never `status.complete`.
+     * The result carries a verdict for this run, not for the index. A caller
+     * that writes a durable outcome reads [VectorFinishResult.succeeded].
      */
     fun finish(
         claim: VectorIndexClaim,

@@ -590,7 +590,7 @@ git commit -m "feat: reject and hide reserved job topic names (CHAT-fpwpfrfj)"
 **Interfaces:**
 - Consumes: `IndexJob<T>` from Task 1.
 - Produces: `VectorIndexState<T>` with `invalidate(reason): VectorInvalidation<T>`,
-  `finish(claim, report, failure, jobKey): VectorIndexStatus`,
+  `finish(claim, report, failure, jobKey): VectorFinishResult`,
   `adoptCoveringJob(jobKey)`, and `coveringJob()`. Task 5, Task 7, and Task 8 use
   all four. `VectorInvalidation<T>(generation, target)`.
 
@@ -608,6 +608,30 @@ Add these to `InMemoryVectorIndexStateTests`. Change the class field to
 `InMemoryVectorIndexState<Long>()`.
 
 ```kotlin
+    /**
+     * The compare-and-set loops need contention, and one race is not enough.
+     * The window between a read and a write is small, so a single round lets a
+     * broken implementation pass. Both races repeat.
+     *
+     * A claim race of one round passed against a claim that wrote without
+     * compare-and-set. Two hundred rounds caught it. A finish race of two
+     * hundred rounds passed against the same fault in finish. Two thousand
+     * caught it.
+     */
+    @Test
+    fun `only one of many concurrent claims is accepted`() {
+        // 16 callers behind one barrier, 200 rounds, exactly one accepted each
+        // round. See the test file for the body.
+    }
+
+    @Test
+    fun `a concurrent finish and invalidation reach one coherent outcome`() {
+        // 2000 rounds. A finish that wins installs its job, so the invalidation
+        // reports the new key. An invalidation that wins moves the generation,
+        // so the finish fails and reports the earlier key. The target is null
+        // after either outcome.
+    }
+
     @Test
     fun `a successful finish installs its job as the invalidation target`() {
         val state = InMemoryVectorIndexState<Long>()
@@ -723,10 +747,12 @@ interface VectorIndexState<T> {
      * [jobKey] is null when the caller holds no durable job. The run can then
      * still succeed in process, and it installs no target.
      *
-     * The result carries a verdict for **this run**, not for the index.
-     * `status.complete` can be true while this run failed, because an earlier
-     * job can still cover. A caller that writes a durable outcome must read
-     * `succeeded`, never `status.complete`.
+     * The result carries a verdict for this run, not for the index. A caller
+     * that writes a durable outcome reads `succeeded`.
+     *
+     * In this task `status.complete` still reads the phase, so a failed run
+     * reports both values false. Task 9 moves `complete` to the covering job,
+     * and the two answers can differ from then on.
      */
     fun finish(
         claim: VectorIndexClaim,
@@ -753,7 +779,7 @@ to null in the same `updateAndGet` result. In `finish`, set `coveringJob = jobKe
 - [ ] **Step 5: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=InMemoryVectorIndexStateTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 10 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 6: Repair the reindex service call site**
 
