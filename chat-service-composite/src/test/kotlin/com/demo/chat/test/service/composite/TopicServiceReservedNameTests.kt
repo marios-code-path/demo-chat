@@ -33,13 +33,34 @@ import java.util.function.Supplier
 class TopicServiceReservedNameTests {
     private val jobName = JobTopicNames.nameFor(1, "long", Instant.EPOCH, "abc")
 
+    // The index fails for every query here. A guard placed after findBy would
+    // surface that failure instead of the rejection, so this pins the order.
     @Test
-    fun `addRoom rejects a reserved name`() {
-        val service = topicServiceUnderTest()
+    fun `addRoom rejects a reserved name without reading the index`() {
+        val service = topicServiceUnderTest(indexFailure = IllegalStateException("index unavailable"))
 
         StepVerifier
             .create(service.addRoom(ByStringRequest(jobName)))
-            .verifyError(ChatException::class.java)
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error)
+                    .isInstanceOf(ChatException::class.java)
+                    .hasMessageContaining(JobTopicNames.PREFIX)
+            }
+    }
+
+    // The complement. A name that is not reserved still reaches the index, so
+    // the guard narrows nothing else.
+    @Test
+    fun `addRoom reads the index for a name that is not reserved`() {
+        val service = topicServiceUnderTest(indexFailure = IllegalStateException("index unavailable"))
+
+        StepVerifier
+            .create(service.addRoom(ByStringRequest("general")))
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error)
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessage("index unavailable")
+            }
     }
 
     @Test
@@ -59,6 +80,7 @@ class TopicServiceReservedNameTests {
 
     private fun topicServiceUnderTest(
         existing: List<MessageTopic<Long>> = emptyList(),
+        indexFailure: Throwable? = null,
     ): ChatTopicService<Long, String> {
         val stored = existing.toMutableList()
         val indexed = mutableListOf<MessageTopic<Long>>()
@@ -77,7 +99,11 @@ class TopicServiceReservedNameTests {
             override fun add(entity: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { indexed.add(entity) }
             override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { indexed.removeIf { it.key == key } }
             override fun findBy(query: IndexSearchRequest): Flux<out Key<Long>> =
-                Flux.fromIterable(indexed.filter { it.data == query.second }.map { it.key })
+                if (indexFailure != null) {
+                    Flux.error(indexFailure)
+                } else {
+                    Flux.fromIterable(indexed.filter { it.data == query.second }.map { it.key })
+                }
             override fun findUnique(query: IndexSearchRequest): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
         }
 
