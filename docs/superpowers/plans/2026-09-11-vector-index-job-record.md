@@ -1493,7 +1493,7 @@ JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service
 Expected: FAIL. The compiler reports unresolved references to
 `VectorIndexJobStoreImpl`, `IndexJobCodec`, and `SerialWriter`.
 
-**Both test classes are written before either implementation.** The earlier
+**All three test classes are written before any implementation.** The earlier
 order wrote the writer tests after its implementation, which left that class
 with no red step at all.
 
@@ -3365,7 +3365,6 @@ expects.
 ```kotlin
 package com.demo.chat.test.persistence.redis
 
-import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -3374,12 +3373,16 @@ import com.demo.chat.persistence.redis.impl.KeyValuePersistenceRedis
 import com.demo.chat.service.vector.IndexJobCodec
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.extension.Extensions
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Import
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.time.Instant
 import java.util.UUID
@@ -3393,12 +3396,17 @@ import java.util.UUID
 @Tag("integration")
 class RedisIndexJobDecodeTests(
     @Autowired private val keyValuePersistence: KeyValuePersistenceRedis<UUID>,
+    @Autowired private val stringTemplate: ReactiveStringRedisTemplate,
+    // The deployed mapper, not a private one. A codec that only ever meets a
+    // mapper the test built proves nothing about the mapper the deployment uses.
+    @Autowired private val mapper: ObjectMapper,
 ) {
-    private val mapper: ObjectMapper = ObjectMapper()
-        .findAndRegisterModules()
-        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
-
     private val codec = IndexJobCodec<UUID>(mapper)
+
+    @BeforeEach
+    fun `flush redis`() {
+        stringTemplate.delete(stringTemplate.keys("*")).block()
+    }
 
     @Test
     fun `a stored job reads back through the codec`() {
@@ -3427,11 +3435,19 @@ class RedisIndexJobDecodeTests(
         Assertions.assertThat(decoded.startedAt).isEqualTo(job.startedAt)
         Assertions.assertThat(decoded.covers).isTrue()
     }
+
+    companion object {
+        @DynamicPropertySource
+        @JvmStatic
+        fun containerSetup(registry: DynamicPropertyRegistry) = RedisTestContainer.properties(registry)
+    }
 }
 ```
 
-`RedisKeyValueTypedDomainTests` uses the same two imported classes, so the
-context needs nothing new.
+The container properties and the flush both come from
+`RedisKeyValueTypedDomainTests`, which carries the same companion object and the
+same cleanup. Without the property source the context has no `spring.redis.host`
+and never reaches a container.
 
 - [ ] **Step 2: Write the cassandra test**
 
@@ -3442,7 +3458,6 @@ makes its own ids.
 ```kotlin
 package com.demo.chat.test.persistence.integration
 
-import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -3482,12 +3497,14 @@ class CassandraIndexJobDecodeTests {
     @Autowired
     lateinit var repo: KeyValuePairRepository<Long>
 
-    private val mapper: ObjectMapper = ObjectMapper()
-        .findAndRegisterModules()
-        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+    // The deployed mapper. TestObjectMapperConfiguration supplies it, and
+    // RepositoryTestConfiguration imports that class.
+    @Autowired
+    lateinit var mapper: ObjectMapper
 
-    private val codec = IndexJobCodec<Long>(mapper)
     private val ids = AtomicLong(9_000L)
+
+    private fun codec() = IndexJobCodec<Long>(mapper)
 
     private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
 
@@ -3511,7 +3528,7 @@ class CassandraIndexJobDecodeTests {
 
         Assertions.assertThat(stored.data).isInstanceOf(String::class.java)
 
-        val decoded = codec.decode(stored.data)
+        val decoded = codec().decode(stored.data)
 
         Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.FAILED)
         Assertions.assertThat(decoded.failed).isEqualTo(2L)
@@ -3520,9 +3537,8 @@ class CassandraIndexJobDecodeTests {
 }
 ```
 
-If `RepositoryTestConfiguration` does not start the container for this class,
-copy the container and keyspace setup from `TypedKeyValueStoreTests`, which
-holds it in that module.
+`RepositoryTestConfiguration` extends `CassandraTestContainerConfiguration`, so
+the container and the keyspace come with it. This class adds nothing for them.
 
 - [ ] **Step 3: Write the RSocket test**
 
@@ -3535,7 +3551,6 @@ holds it in that module.
 package com.demo.chat.test.rsocket.controller.core
 
 import com.demo.chat.client.rsocket.clients.core.KeyValueStoreClient
-import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
@@ -3550,6 +3565,8 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
@@ -3571,11 +3588,11 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
 
     private val svcPrefix = ""
 
-    private val mapper: ObjectMapper = ObjectMapper()
-        .findAndRegisterModules()
-        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
-
-    private val codec = IndexJobCodec<Long>(mapper)
+    // The deployed mapper. RSocketServerTestConfiguration enables auto
+    // configuration and imports TestModules, so this one carries the chat
+    // Jackson modules exactly as a deployment does.
+    @Autowired
+    private lateinit var mapper: ObjectMapper
 
     private val key = Key.funKey(1000L)
 
@@ -3600,7 +3617,7 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
         StepVerifier
             .create(client.get(key))
             .assertNext { pair ->
-                val decoded = codec.decode(pair.data)
+                val decoded = IndexJobCodec<Long>(mapper).decode(pair.data)
 
                 Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
                 Assertions.assertThat(decoded.nodeId).isEqualTo(7)
@@ -3609,6 +3626,9 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
             .verifyComplete()
     }
 
+    // @TestConfiguration is required. A plain imported class does not have its
+    // nested controller discovered, so the routes would never register.
+    @TestConfiguration
     class KeyValueStoreTestConfiguration {
         @Controller
         class TestKeyValueController<T>(
