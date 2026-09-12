@@ -348,7 +348,7 @@ object JobTopicNames {
 - [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core test -Dtest=JobTopicNamesTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 4 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -417,11 +417,68 @@ class TopicServiceReservedNameTests {
 }
 ```
 
-Write `topicServiceUnderTest` in the same file. It builds a `TopicServiceImpl`
-with in-memory fakes for `topicPersistence`, `topicIndex`, `pubsub`,
-`userPersistence`, and `membershipPersistence`. Copy the fake shapes from
-`MessagingServiceVectorTests`, which already builds composite services with
-fakes.
+`topicServiceUnderTest` builds the service from the ten constructor arguments
+`TopicServiceImpl` declares. Only the topic store, the topic index, and pub/sub
+take part in these two tests, so the rest are dummies.
+
+```kotlin
+    private fun topicServiceUnderTest(
+        existing: List<MessageTopic<Long>> = emptyList(),
+    ): ChatTopicService<Long, String> {
+        val stored = existing.toMutableList()
+        val indexed = mutableListOf<MessageTopic<Long>>()
+        var nextId = 100L
+
+        val topicPersistence = object : TopicPersistence<Long> {
+            override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+            override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { stored.add(ent) }
+            override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { stored.removeIf { it.key == key } }
+            override fun get(key: Key<Long>): Mono<out MessageTopic<Long>> =
+                Mono.justOrEmpty(stored.firstOrNull { it.key == key })
+            override fun all(): Flux<out MessageTopic<Long>> = Flux.fromIterable(stored)
+        }
+
+        val topicIndex = object : TopicIndexService<Long, IndexSearchRequest> {
+            override fun add(entity: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { indexed.add(entity) }
+            override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { indexed.removeIf { it.key == key } }
+            override fun findBy(query: IndexSearchRequest): Flux<out Key<Long>> =
+                Flux.fromIterable(indexed.filter { it.data == query.second }.map { it.key })
+            override fun findUnique(query: IndexSearchRequest): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
+        }
+
+        val pubsub = object : TopicPubSubService<Long, String> {
+            val opened = mutableListOf<Long>()
+            override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
+            override fun close(topicId: Long): Mono<Void> = Mono.empty()
+            override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
+            override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
+            override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+            override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+            override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
+            override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
+            override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.empty()
+            override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
+            override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
+        }
+
+        return TopicServiceImpl(
+            topicPersistence = topicPersistence,
+            topicIndex = topicIndex,
+            pubsub = pubsub,
+            userPersistence = DummyUserPersistence(),
+            membershipPersistence = DummyMembershipPersistence(),
+            membershipIndex = DummyMembershipIndex(),
+            emptyDataCodec = Supplier { "" },
+            topicNameToQuery = Function { req -> IndexSearchRequest("name", req.name, 100) },
+            memberOfIdToQuery = Function { IndexSearchRequest("memberOf", "", 100) },
+            memberWithTopicToQuery = Function { IndexSearchRequest("member", "", 100) },
+        )
+    }
+```
+
+`DummyUserPersistence`, `DummyMembershipPersistence`, and `DummyMembershipIndex`
+are the existing dummies in `com.demo.chat.service.dummy`. Neither test reaches
+them.
 
 - [ ] **Step 2: Run the test and confirm it fails**
 
@@ -443,9 +500,27 @@ In `addRoom`, before the index lookup:
             topicIndex
                 .findBy(topicNameToQuery.apply(req))
                 .hasElements()
-                .flatMap { exists -> /* unchanged body */ }
+                .flatMap { exists ->
+                    if (exists) {
+                        Mono.error(DuplicateException)
+                    } else {
+                        topicPersistence
+                            .key()
+                            .map { key -> MessageTopic.create(key, req.name) }
+                            .flatMap { room ->
+                                topicPersistence
+                                    .add(room)
+                                    .then(topicIndex.add(room))
+                                    .then(pubsub.open(room.key.id))
+                                    .then(Mono.just(room.key))
+                            }
+                    }
+                }
         }
 ```
+
+The inner block is the current body of `addRoom`, moved under the new guard and
+otherwise unchanged. The duplicate-name check from PR #61 stays exactly as it is.
 
 In `listRooms`:
 
@@ -553,7 +628,9 @@ Add these to `InMemoryVectorIndexStateTests`. Change the class field to
         val status = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L), null, Key.funKey(11L))
 
         Assertions.assertThat(status.complete).isFalse()
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(9L))
+        // invalidate() cleared the target, and a losing finish installs nothing.
+        // So no job covers until the next successful run.
+        Assertions.assertThat(state.coveringJob()).isNull()
     }
 ```
 
@@ -592,7 +669,8 @@ interface VectorIndexState<T> {
 
     /**
      * Installs [jobKey] as the covering job when the run succeeded and the
-     * generation did not move. A losing run leaves the earlier target in place.
+     * generation did not move. A losing run leaves the current target
+     * unchanged, which is null when an invalidation cleared it.
      */
     fun finish(
         claim: VectorIndexClaim,
@@ -619,7 +697,7 @@ to null in the same `updateAndGet` result. In `finish`, set `coveringJob = jobKe
 - [ ] **Step 5: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=InMemoryVectorIndexStateTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 10 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 6: Repair the reindex service call site**
 
@@ -676,6 +754,19 @@ interface VectorIndexJobStore<T> {
 
     fun write(job: IndexJob<T>): Mono<Void>
 
+    /**
+     * Applies a terminal outcome and its counts.
+     *
+     * It never lowers the stored invalidation fields. An invalidation that
+     * lands between the state decision and this write must survive it,
+     * otherwise a restart under `stored` would trust a job that a live failure
+     * already invalidated.
+     *
+     * This call and [invalidate] run in order on one worker, so no pair of
+     * writes interleaves inside a read and a write.
+     */
+    fun finishJob(job: IndexJob<T>): Mono<Void>
+
     fun readJob(topicKey: Key<T>): Mono<IndexJob<T>>
 
     /** One listing. The caller uses it for discovery and for scan exclusion. */
@@ -727,6 +818,38 @@ interface VectorIndexJobStore<T> {
         Assertions.assertThat(store.readJob(first.key).block()!!.invalidationCount).isEqualTo(1L)
         Assertions.assertThat(store.readJob(first.key).block()!!.lastInvalidationAt).isEqualTo(finishedAt)
         Assertions.assertThat(store.readJob(second.key).block()!!.invalidationCount).isEqualTo(0L)
+    }
+
+    // Interleaving one. The invalidation lands first. The terminal write must
+    // not lower the count back to the value the run carried.
+    @Test
+    fun `a terminal write keeps an invalidation that arrived first`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+
+        store.invalidate(job.key, finishedAt).block()
+        store.finishJob(job.copy(outcome = JobOutcome.SUCCEEDED, indexed = 3L)).block()
+
+        val read = store.readJob(job.key).block()!!
+        Assertions.assertThat(read.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(read.indexed).isEqualTo(3L)
+        Assertions.assertThat(read.invalidationCount).isEqualTo(1L)
+        Assertions.assertThat(read.covers).isFalse()
+    }
+
+    // Interleaving two. The terminal write lands first, and the invalidation
+    // then applies to the job that just became the target.
+    @Test
+    fun `an invalidation after a terminal write raises the count`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+
+        store.finishJob(job.copy(outcome = JobOutcome.SUCCEEDED, indexed = 3L)).block()
+        store.invalidate(job.key, finishedAt).block()
+
+        val read = store.readJob(job.key).block()!!
+        Assertions.assertThat(read.invalidationCount).isEqualTo(1L)
+        Assertions.assertThat(read.covers).isFalse()
     }
 
     @Test
@@ -798,11 +921,28 @@ class VectorIndexJobStoreImpl<T, V, Q>(
         topicPersistence.all()
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
 
+    // One worker orders every read and write pair below. Two callers that both
+    // read, change, and write one job would otherwise lose one of the changes.
+    private val writer = Schedulers.newSingle("vector-job-writer")
+
+    override fun finishJob(job: IndexJob<T>): Mono<Void> =
+        readJob(job.key)
+            .map { stored ->
+                job.copy(
+                    invalidationCount = maxOf(job.invalidationCount, stored.invalidationCount),
+                    lastInvalidationAt = stored.lastInvalidationAt ?: job.lastInvalidationAt,
+                )
+            }
+            .defaultIfEmpty(job)
+            .flatMap { merged -> write(merged) }
+            .subscribeOn(writer)
+
     override fun invalidate(jobKey: Key<T>, at: Instant): Mono<Void> =
         readJob(jobKey)
             .flatMap { job ->
                 write(job.copy(invalidationCount = job.invalidationCount + 1, lastInvalidationAt = at))
             }
+            .subscribeOn(writer)
 }
 ```
 
@@ -994,6 +1134,25 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
         Assertions.assertThat(status.lastReport!!.skipped).isEqualTo(0L)
     }
 
+    // The state decides, and the durable outcome follows that decision. A
+    // durable SUCCEEDED that a losing run wrote would be trusted after a
+    // restart under the stored policy.
+    @Test
+    fun `a live failure during the run leaves no covering job in the store`() {
+        given(persistence.all()).willReturn(
+            Flux.just(message(1L)).delayElements(Duration.ofMillis(50))
+        )
+        state.adoptCoveringJob(Key.funKey(900L))
+
+        service.start().block()
+        state.invalidate("live vector add failed")
+        awaitFinished(service)
+
+        val written = jobStore.written.last()
+        Assertions.assertThat(written.outcome).isEqualTo(JobOutcome.FAILED)
+        Assertions.assertThat(state.coveringJob()).isNull()
+    }
+
     @Test
     fun `a failed topic listing stops the scan`() {
         jobStore.failListing = true
@@ -1022,8 +1181,17 @@ Order inside `rebuild`:
 3. Build `exclusion = topics.map { it.key.id }.toSet() + job.key.id`.
 4. `Flux.defer { persistence.all() }.filter { it.key.dest !in exclusion }` and only
    then the existing `concatMap` with the counters.
-5. On termination, write the job with its counts and outcome, then call
-   `state.finish(claim, report, failure, job.key)`.
+5. On termination, call `state.finish(claim, report, failure, job.key)` **first**.
+   That call decides the outcome atomically and installs the target. Then call
+   `jobStore.finishJob(job.copy(outcome = ..., ...))` with the outcome the state
+   returned: `SUCCEEDED` when `status.complete` is true, and `FAILED` otherwise.
+
+**The order matters and is the fix for a durable race.** A durable `SUCCEEDED`
+written before the generation check can be left behind by a live failure that
+arrives between the two steps. The in-process state would refuse to install that
+job, so this process reports no coverage, but a restart under `trust=stored`
+would read a clean `SUCCEEDED` job and trust it. Deciding first, and merging in
+`finishJob`, closes both halves.
 
 Keep the counters after the filter, so `attempted` describes user messages only.
 
@@ -1346,8 +1514,36 @@ raises the durable invalidation count on the covering job.
         Assertions.assertThat(jobStore.readJob(coveringKey).block()!!.invalidationCount).isEqualTo(1L)
     }
 
+    // The indexer records the failure and then rethrows. A caller must still
+    // see the vector error, because the send chain decides what to do with it.
     @Test
-    fun `a live add failure returns the original error to the sender`() { /* same shape */ }
+    fun `a live add failure returns the original error to the sender`() {
+        state.adoptCoveringJob(coveringKey)
+        vectorStore.failNextAdd = true
+
+        StepVerifier
+            .create(indexer.add(message))
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error)
+                    .isInstanceOf(IllegalStateException::class.java)
+                    .hasMessage("vector store is down")
+            }
+    }
+
+    // A failed durable write must not replace the vector error, and must not
+    // stop the send chain from seeing it.
+    @Test
+    fun `a failed invalidation write keeps the original error`() {
+        state.adoptCoveringJob(coveringKey)
+        vectorStore.failNextAdd = true
+        jobStore.failWrites = true
+
+        StepVerifier
+            .create(indexer.add(message))
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error).hasMessage("vector store is down")
+            }
+    }
 ```
 
 Keep every existing filter, limit, threshold, and scheduler test. Change only the
@@ -1389,7 +1585,7 @@ replaces the original error.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=MessageRecallServiceImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS. Eight existing tests plus four new ones.
+Expected: PASS. Eight existing tests plus five new ones.
 
 - [ ] **Step 5: Commit**
 
@@ -1414,23 +1610,89 @@ git add -A && git commit -m "feat: report recall coverage from the covering job 
 
 - [ ] **Step 1: Change the REST test first**
 
+Replace `recall topic returns NDJSON hits` with these two. Keep the existing
+class annotations, the `WebTestClient`, and the `anyObject` helper, because the
+module has no mockito-kotlin dependency.
+
 ```kotlin
     @Test
-    fun `a topic recall returns one object with the flag`() {
-        // POST /message/recall/topic
-        // expectHeader().contentType(MediaType.APPLICATION_JSON)
-        // jsonPath("$.indexComplete").isEqualTo(false)
-        // jsonPath("$.hits.length()").isEqualTo(2)
+    fun `recall topic returns one object with the flag`() {
+        BDDMockito
+            .given(recallService.recallInTopic(anyObject()))
+            .willReturn(
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(
+                            MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9),
+                            MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.5),
+                        ),
+                    )
+                )
+            )
+
+        client
+            .post()
+            .uri("/message/recall/topic")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"type":"TopicRecallRequest","topicId":30,"query":"apple"}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.indexComplete").isEqualTo(true)
+            .jsonPath("$.hits.length()").isEqualTo(2)
+            .jsonPath("$.hits[0].key.id").isEqualTo(10)
+    }
+
+    // The empty case is the reason this contract changed. A stream of hits
+    // cannot carry a flag when it carries no hit.
+    @Test
+    fun `an empty recall still carries the flag`() {
+        BDDMockito
+            .given(recallService.recallGlobal(anyObject()))
+            .willReturn(Mono.just(MessageRecallResult(indexComplete = false, hits = emptyList())))
+
+        client
+            .post()
+            .uri("/message/recall/global")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"type":"GlobalRecallRequest","query":"apple"}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.indexComplete").isEqualTo(false)
+            .jsonPath("$.hits.length()").isEqualTo(0)
     }
 
     @Test
-    fun `an empty recall still carries the flag`() {
-        // jsonPath("$.hits.length()").isEqualTo(0)
-        // jsonPath("$.indexComplete").isEqualTo(false)
+    fun `recall user returns one object`() {
+        BDDMockito
+            .given(recallService.recallByUser(anyObject()))
+            .willReturn(
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(MessageRecallHit(MessageKey.create(12L, 20L, 30L), 0.7)),
+                    )
+                )
+            )
+
+        client
+            .post()
+            .uri("/message/recall/user")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"type":"UserRecallRequest","userId":20,"query":"apple"}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.hits.length()").isEqualTo(1)
     }
 ```
 
-Write both bodies in full, following the existing `WebTestClient` setup in that file.
+Change the RSocket test in `MessageRecallControllerTests` the same way. Each of
+its three routes returns one response instead of a stream, so each
+`StepVerifier` asserts one `MessageRecallResult` and then completes.
 
 - [ ] **Step 2: Run the tests and confirm they fail**
 
@@ -1488,6 +1750,13 @@ import com.demo.chat.service.vector.VectorIndexState
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.boot.SpringApplication
+import org.springframework.context.ConfigurableApplicationContext
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Configuration
+import reactor.core.publisher.Flux
+import java.time.Duration
 
 /**
  * The class gate is the composite selector. Each bean gate is both recall
@@ -1503,9 +1772,37 @@ class VectorRecallServiceConfigurationTests {
         "app.nodeid=1",
     )
 
-    // VectorRecallTestBeans supplies TypeUtil, PersistenceServiceBeans,
-    // IndexServiceBeans, PubSubServiceBeans, and a VectorStore, all in memory.
-    // Copy its shape from the existing test configuration in this file.
+    /**
+     * Every dependency the configuration reads, in memory.
+     *
+     * The composite context exposes no MessagePersistence bean by type. It
+     * reads every store through the three provider interfaces, so this
+     * configuration supplies those, not the stores themselves.
+     */
+    @Configuration(proxyBeanMethods = false)
+    class VectorRecallTestBeans {
+        @Bean
+        fun typeUtil(): TypeUtil<Long> = LongUtil()
+
+        @Bean
+        fun persistenceBeans(): PersistenceServiceBeans<Long, String> =
+            MemoryPersistenceBeans(LongUtil())
+
+        @Bean
+        fun indexBeans(): IndexServiceBeans<Long, String, IndexSearchRequest> =
+            LuceneIndexBeans(LongUtil(), ObjectProvider.empty())
+
+        @Bean
+        fun pubSubBeans(): PubSubServiceBeans<Long, String> = MemoryPubSubBeans()
+
+        @Bean
+        fun queryConverters(): RequestToQueryConverters<IndexSearchRequest> =
+            LuceneRequestToQueryConverters()
+
+        @Bean
+        fun vectorStore(): VectorStore = MockVectorStore()
+    }
+
     private fun runner() = ApplicationContextRunner()
         .withUserConfiguration(VectorRecallTestBeans::class.java)
         .withUserConfiguration(VectorRecallServiceConfiguration::class.java)
@@ -1557,31 +1854,54 @@ class VectorRecallServiceConfigurationTests {
             }
     }
 
+    /**
+     * ApplicationContextRunner refreshes a context. It never publishes
+     * ApplicationReadyEvent, so a listener bound to that event never fires
+     * unless the test publishes it.
+     */
+    private fun publishReady(context: ConfigurableApplicationContext) {
+        context.publishEvent(
+            ApplicationReadyEvent(SpringApplication(), arrayOf(), context, Duration.ZERO)
+        )
+    }
+
+    private fun jobCount(context: ConfigurableApplicationContext): Long =
+        context.getBean(VectorIndexJobStore::class.java)
+            .listJobTopics()
+            .count()
+            .block(Duration.ofSeconds(10))!!
+
+    private fun awaitNotRunning(reindex: MessageReindexService<*>) {
+        Flux.interval(Duration.ZERO, Duration.ofMillis(20))
+            .map { reindex.status() }
+            .filter { status -> !status.running }
+            .next()
+            .block(Duration.ofSeconds(30))
+    }
+
     // The default must start no rebuild. Real embedding throughput is still
     // unmeasured, so an automatic rebuild could delay readiness or send
     // uncontrolled external requests.
     @Test
-    fun `the startup action stays off by default`() {
+    fun `the default startup action starts no job`() {
         runner()
             .withPropertyValues(*allProperties)
             .run { context ->
-                val reindex = context.getBean(MessageReindexService::class.java)
-                assertThat(reindex.status().running).isFalse()
-                assertThat(reindex.status().lastReport).isNull()
+                publishReady(context)
+
+                assertThat(jobCount(context)).isEqualTo(0L)
             }
     }
 
     @Test
-    fun `the startup action runs one rebuild when the property names rebuild`() {
+    fun `the rebuild startup action starts exactly one job`() {
         runner()
             .withPropertyValues(*allProperties, "app.vector.index.startup=rebuild")
             .run { context ->
-                val reindex = context.getBean(MessageReindexService::class.java)
-                // The listener fires on ApplicationReadyEvent, which the runner
-                // publishes. One job exists, and a second start finds it busy or
-                // finished, never a second running job.
-                assertThat(context.getBean(VectorIndexJobStore::class.java)).isNotNull
-                assertThat(reindex.status()).isNotNull
+                publishReady(context)
+                awaitNotRunning(context.getBean(MessageReindexService::class.java))
+
+                assertThat(jobCount(context)).isEqualTo(1L)
             }
     }
 
@@ -1817,6 +2137,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -1834,6 +2155,10 @@ import java.time.Duration
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+// Each test needs an empty index, an empty store, and no prior job. The beans
+// hold that state in memory, so a shared context would let test order decide
+// the initial conditions.
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(
     properties = [
         "app.service.composite=true",
@@ -1918,20 +2243,43 @@ class VectorIndexRecoveryTests {
 }
 ```
 
-Write `messagesOfTopic` in the same file. It resolves a job topic through
-`MessageIndexService.findBy(topicIdToQuery(ByIdRequest(topicId)))` and then
-`MessagePersistence.byIds(...)`, which is the read path
-`MessagingServiceImpl.listenTopic` already uses.
+`messagesOfTopic` reads a job topic the same way `MessagingServiceImpl.listenTopic`
+reads a room. Add it to the class, with these two injected beans:
+
+```kotlin
+    @Autowired
+    lateinit var messageIndex: MessageIndexService<Long, String, IndexSearchRequest>
+
+    @Autowired
+    lateinit var queryConverters: RequestToQueryConverters<IndexSearchRequest>
+
+    private fun messagesOfTopic(topicId: Long): List<Message<Long, String>> =
+        messageIndex
+            .findBy(queryConverters.topicIdToQuery(ByIdRequest(topicId)))
+            .collectList()
+            .flatMapMany { keys -> persistence.byIds(keys) }
+            .collectList()
+            .block(Duration.ofSeconds(10))!!
+            .map { message -> message as Message<Long, String> }
+```
+
+The memory composition binds `Q` to `IndexSearchRequest`. A cassandra composition
+binds it to `Map<String, String>`, so this test stays on the memory deployment.
 
 **The third test is the load-bearing one.** `attempted` stays at one after two
 rebuilds. If the exclusion filter is missing, the second rebuild counts the job
 records of the first.
 
-- [ ] **Step 2: Run and confirm it fails, implement nothing, then run again**
+- [ ] **Step 2: Run the test**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-deploy-memory test -Dtest=VectorIndexRecoveryTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS after Tasks 1 to 12. A failure here names a real gap in an earlier
-task. Fix it there, not with a special case in this test.
+
+**This task has no red step, and that is deliberate.** Tasks 1 to 12 already
+built every part. This test only proves that the assembled parts recover a lost
+index, so a passing first run is the expected result.
+
+A failure here names a real gap in an earlier task. Fix it in that task, and
+never with a special case in this test.
 
 - [ ] **Step 3: Commit**
 
