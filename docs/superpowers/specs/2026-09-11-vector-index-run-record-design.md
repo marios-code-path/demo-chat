@@ -1,6 +1,7 @@
 # Vector Index Job Record
 
-Status: proposed. This document waits for owner review.
+Status: proposed. The owner approved the durable invalidation separation. The
+revised document waits for review.
 
 Issue: `CHAT-fpwpfrfj`.
 
@@ -22,10 +23,13 @@ Store each `IndexJob` in the existing key-value store.
 
 Give each job one topic. Use the topic key as the job root key.
 
-Publish `JobRecord` messages on that topic. The `record` Boolean recommends
-whether a consumer should store each message.
+Publish `JobRecord` messages on that topic. The `record` Boolean carries no
+handling policy for this path.
 
 Keep the active claim in process. Durable job state never acts as a lock.
+
+Keep the current invalidation target in the same in-process state. Never find
+that target through a latest-job query.
 
 A policy reads finished jobs and answers two independent questions:
 
@@ -59,8 +63,7 @@ The record holds these values:
 - Outcome. One of `RUNNING`, `SUCCEEDED`, `FAILED`, or `RELEASED`.
 - Attempted, indexed, skipped, and failed counts.
 - Failure summary, or null.
-- Current invalidation generation.
-- Covered generation, or null.
+- Invalidation count.
 - Last invalidation time, or null.
 
 The worker key identifies the entity that performs the job. One process
@@ -130,49 +133,125 @@ The active rebuild uses the existing in-process atomic claim.
 The service updates the same key-value pair when counts or terminal state change.
 All current key-value backends overwrite an existing value with the same key.
 
-A successful job sets `coveredGeneration` to its final generation.
+A new job starts with `invalidationCount=0` and no invalidation time.
 
-A failed or released job leaves `coveredGeneration` null.
+A successful job can become the in-process invalidation target.
+
+A failed or released job cannot become the invalidation target.
 
 A process crash can leave a durable `RUNNING` job. A new process treats that job
 as historical evidence and can mark it `RELEASED` on a best-effort basis.
 
-## Job Message Policy
+Startup discovery performs this release sweep before it applies either trust
+policy.
 
-`Message.record` is a retention recommendation. It does not prove persistence.
+## Job Record Write Path
 
-- `true` recommends storage.
-- `false` recommends ephemeral handling.
+The job service creates a `Message` for each encoded `JobRecord`.
 
-The job publishes every `JobRecord` through `PubSubService.sendMessage()`.
+The job service uses one composed writer with this order:
 
-The producer can use pub/sub alone when it does not want local persistence.
-Downstream consumers can inspect `record` and choose whether to store the message.
+1. `MessagePersistence.add()`.
+2. `MessageIndexService.add()`.
+3. `PubSubService.sendMessage()`.
 
-The first policy recommends storage for terminal events and errors. It recommends
-ephemeral handling for routine progress.
+The composed writer never calls `MessagingServiceImpl.send()`.
 
-Stored job messages must not enter message vector recall. Coverage never depends
-on job-message retention.
+That composite method also calls `MessageVectorIndexer.add()`. Job records must
+not enter vector recall.
+
+The writer stores every job record. It also sets `record=true` on each message.
+
+The Boolean does not select writes and carries no advisory meaning here.
+
+Downstream clients still receive the unchanged Boolean.
+
+The message index indexes each record by its job topic.
+
+Readers query that index with `topicIdToQuery`. They resolve the returned keys
+with `MessagePersistence.byIds()`.
+
+Coverage never depends on job-message retention.
 
 A future handling-policy mask can replace the Boolean. Possible flags include
 `SAVE_VECTOR`, `SAVE_PERSIST`, and `FORWARD`. That change remains out of scope.
+
+## Topic Listing And Scan Exclusion
+
+The rebuild creates its job topic before it prepares the scan.
+
+The rebuild then calls `TopicPersistence.all()` once. That result serves job
+discovery and scan exclusion.
+
+The exclusion set contains every reserved job topic from that result. It also
+contains the current job topic explicitly.
+
+A failed topic listing fails the run. The rebuild never scans without the full
+exclusion set.
+
+The message scan still reads the full result from `MessagePersistence.all()`.
+
+The scan rejects messages whose destination is in the exclusion set.
+
+The exclusion filter runs before all attempted, indexed, skipped, and failed
+counters.
+
+The scan does not use `Message.record` as an inclusion rule.
+
+`TopicServiceImpl.listRooms()` filters reserved job topics from user results.
+
+User room creation rejects the same reserved prefix.
 
 ## Durable Invalidation
 
 A live vector add failure removes coverage after a successful job.
 
-The process increments the in-process generation first. It then updates the
-latest covering `IndexJob` with the generation and invalidation time.
+The process generation remains a process-local race token. It never participates
+in durable coverage comparison.
+
+This token detects a live add failure after the scan passes that message.
+
+The in-process state holds the exact covering job key as its invalidation target.
+
+`invalidate()` atomically increments the process generation and captures that
+target key from the same state transition.
+
+`invalidate()` updates only the captured job. It never queries for the latest
+successful job.
+
+`finish()` performs its generation check through the same atomic state.
+
+If `invalidate()` wins, `finish()` observes the changed generation. The current
+job does not become the target.
+
+If `finish()` wins, it installs the current job as the target. The later
+invalidation updates that job.
+
+The job writer preserves transition order for one job. A terminal success write
+must not overwrite a later non-zero invalidation.
+
+The update increments `invalidationCount` and sets the last invalidation time.
+
+The count acts as a flag for coverage. Its numeric value is advisory and is not
+an audit total.
+
+Concurrent updates can undercount. Any non-zero value still removes coverage.
+
+`MessagingServiceImpl.send()` persists a user message before vector indexing.
+
+Therefore, a later successful full rebuild can restore that message and start a
+new job with zero invalidations.
 
 The process can also publish an error `JobRecord` on that job topic. The emission
-policy recommends storage for this error.
+uses the composed job writer.
 
 A failed job update never fails the original message send. The process stays
 incomplete until a successful rebuild.
 
-A restart can lose an invalidation whose job update failed. The `stored` trust
-policy accepts this risk explicitly.
+The process can stop after the generation increment but before the durable write.
+
+A restart can then lose that invalidation. The `stored` trust policy accepts
+this risk explicitly.
 
 ## Policy
 
@@ -204,14 +283,20 @@ The operator also accepts the failed-update window for durable invalidations.
 
 Recall reports coverage, not job phase.
 
-`indexComplete` is true when one trusted successful job covers the current
-generation.
+The policy selects the newest applicable successful job.
 
-Coverage requires `coveredGeneration == currentGeneration`.
+`indexComplete` is true when that job has `invalidationCount == 0`.
+
+The policy does not compare a stored value with the process generation.
 
 Under `trust=none`, the covering job must have the current incarnation id.
 
 Under `trust=stored`, the covering job can have an earlier incarnation id.
+
+The selected job becomes the in-process invalidation target.
+
+The policy never falls back to an older successful job after invalidating the
+newest applicable successful job.
 
 A new rebuild does not remove an existing covering job. Therefore, a repair
 rebuild keeps `indexComplete=true` while it runs.
@@ -250,12 +335,25 @@ The index remains usable. A record is evidence and never acts as a lock.
 - A known topic key supports an `IndexJob` decode on each backend.
 - The same decode works through the RSocket key-value client.
 - A rebuild of a complete index keeps `indexComplete=true`.
-- A successful job covers its final generation.
+- A failed repair keeps prior coverage when no invalidation occurs.
+- A successful job with zero invalidations provides coverage.
 - A later invalidation removes stored coverage.
+- Coverage never compares stored and process-local generations.
+- `invalidate()` updates the target held by the atomic in-process state.
+- An invalidation that wins the finish race prevents the new job from covering.
+- An invalidation after finish updates the new covering job.
+- A terminal job write never overwrites a later invalidation.
 - A stale `RUNNING` job never rejects a new claim.
-- A `record=false` job message can use pub/sub without persistence.
-- A subscriber receives the unchanged `record` recommendation.
+- The job writer calls persistence, the message index, and pub/sub in order.
+- The job writer never calls `MessagingServiceImpl.send()`.
+- A subscriber receives the unchanged `record` Boolean.
+- Job records can be read with `topicIdToQuery` and `byIds()`.
 - Job messages do not enter vector recall.
+- One topic listing serves discovery and scan exclusion during a rebuild.
+- The scan exclusion set contains the current job topic.
+- A failed topic listing prevents the message scan.
+- The topic filter runs before every rebuild counter.
+- `listRooms()` excludes reserved job topics.
 - A topic-list or job-read failure reports incomplete under `stored`.
 
 ## Out Of Scope
@@ -274,5 +372,16 @@ The index remains usable. A record is evidence and never acts as a lock.
 3. Use the topic key as the `IndexJob` root key.
 4. Give `IndexJob` and `JobRecord` independent root keys.
 5. Use job topics to discover known keys after restart.
-6. Keep `record` as an advisory Boolean.
-7. Use `none` as the default trust policy.
+6. Store and index every job record through the composed job writer.
+7. Exclude `MessagingServiceImpl.send()` from the job-record path.
+8. Keep the process generation separate from durable coverage evidence.
+9. Hold the durable invalidation target in the atomic in-process state.
+10. Treat any non-zero invalidation count as incomplete.
+11. Treat the invalidation count as advisory, not as an audit total.
+12. Use one topic listing for rebuild discovery and scan exclusion.
+13. Include the current job topic in the exclusion set.
+14. Fail the run when its topic listing fails.
+15. Filter job messages before updating rebuild counters.
+16. Keep the full persistence scan.
+17. Give `record` no handling-policy meaning in the job-record path.
+18. Use `none` as the default trust policy.
