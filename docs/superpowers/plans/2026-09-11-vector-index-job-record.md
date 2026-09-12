@@ -897,9 +897,11 @@ git add -A && git commit -m "feat: hold the invalidation target in the vector in
 
 **Files:**
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/VectorIndexJobStore.kt`
+- Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/IndexJobCodec.kt`
 - Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorIndexJobStoreImpl.kt`
 - Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/SerialWriter.kt`
 - Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorTestFakes.kt`
+- Test: `chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexJobStoreImplTests.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/SerialWriterTests.kt`
 
@@ -1396,11 +1398,96 @@ class SerialWriterTests {
 }
 ```
 
-- [ ] **Step 3: Run both suites and confirm they fail**
+- [ ] **Step 2b: Write the failing codec tests**
+
+Create `chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt`.
+
+**A bare `ObjectMapper` cannot read a `Key`.** It is an interface with no type
+information on the wire, so the mapper registers the same modules the
+deployments register.
+
+```kotlin
+package com.demo.chat.test.vector
+
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
+import com.demo.chat.domain.Key
+import com.demo.chat.service.vector.IndexJobCodec
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import java.time.Instant
+
+/**
+ * Each backend hands the store a different shape. The memory store returns the
+ * object, redis returns a map, and cassandra returns the JSON string it stored.
+ */
+class IndexJobCodecTests {
+    // The same modules the deployments register. A bare mapper cannot read a
+    // Key, which is an interface with no type information on the wire.
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+    private val codec = IndexJobCodec<Long>(mapper)
+
+    private val job = IndexJob(
+        key = Key.funKey(500L),
+        nodeId = 7,
+        keyType = "long",
+        incarnationId = "incarnation-a",
+        startedBy = Key.funKey(1000L),
+        startedAt = Instant.parse("2026-09-12T12:00:00Z"),
+        outcome = JobOutcome.SUCCEEDED,
+        indexed = 3L,
+        invalidationCount = 1L,
+    )
+
+    @Test
+    fun `a stored object passes through`() {
+        Assertions.assertThat(codec.decode(job)).isEqualTo(job)
+    }
+
+    @Test
+    fun `a job survives a json string round trip`() {
+        val decoded = codec.decode(mapper.writeValueAsString(job))
+
+        Assertions.assertThat(decoded.key.id).isEqualTo(500L)
+        Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(decoded.indexed).isEqualTo(3L)
+        Assertions.assertThat(decoded.invalidationCount).isEqualTo(1L)
+        Assertions.assertThat(decoded.startedAt).isEqualTo(job.startedAt)
+        Assertions.assertThat(decoded.covers).isFalse()
+    }
+
+    @Test
+    fun `a job survives a map round trip`() {
+        val asMap = mapper.convertValue(job, Map::class.java)
+
+        val decoded = codec.decode(asMap)
+
+        Assertions.assertThat(decoded.nodeId).isEqualTo(7)
+        Assertions.assertThat(decoded.keyType).isEqualTo("long")
+        Assertions.assertThat(decoded.incarnationId).isEqualTo("incarnation-a")
+        Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+    }
+
+    @Test
+    fun `an unknown shape names the runtime class`() {
+        Assertions.assertThatThrownBy { codec.decode(42) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("java.lang.Integer")
+    }
+}
+```
+
+- [ ] **Step 3: Run all three suites and confirm they fail**
 
 ```bash
 JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test \
-  -Dtest=VectorIndexJobStoreImplTests,SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false
+  -Dtest=IndexJobCodecTests,VectorIndexJobStoreImplTests,SerialWriterTests \
+  -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
 Expected: FAIL. The compiler reports unresolved references to
@@ -1413,7 +1500,13 @@ with no red step at all.
 - [ ] **Step 4: Write SerialWriter, the codec, and the store**
 
 The store needs a codec, because each backend hands back a different shape.
-`IndexJobCodec<T>` goes in the same file, above the store:
+`IndexJobCodec<T>` goes in `chat-core`, at
+`com.demo.chat.service.vector.IndexJobCodec`.
+
+**It belongs in `chat-core`, not beside the store.** Task 14 proves the decode
+from the redis and cassandra test sources, and neither module depends on
+`chat-service-composite`. Placing it in `chat-core` keeps those tests inside
+dependencies that already exist, so no POM changes.
 
 ```kotlin
 /**
@@ -1657,14 +1750,19 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
 
 The block above carries every import this file needs.
 
-- [ ] **Step 5: Run both suites and confirm they pass**
+- [ ] **Step 5: Run all three suites and confirm they pass**
 
 ```bash
-JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test \
-  -Dtest=VectorIndexJobStoreImplTests,SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite clean test \
+  -Dtest=IndexJobCodecTests,VectorIndexJobStoreImplTests,SerialWriterTests \
+  -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-Expected: PASS. Seven store tests and six writer tests.
+Expected: PASS, 17 tests. Four codec, seven store, and six writer.
+
+**Use `clean` here.** Surefire runs compiled classes, not sources, so a class
+whose source moved between modules keeps running from the old target directory
+and inflates the count.
 
 - [ ] **Step 6: Commit**
 
@@ -3243,13 +3341,18 @@ git add -A && git commit -m "test: prove recall recovery after index loss (CHAT-
 - Create: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/integration/CassandraIndexJobDecodeTests.kt`
 - Create: `chat-client-rsocket/src/test/kotlin/com/demo/chat/test/rsocket/controller/core/KeyValueJobDecodeRequesterTests.kt`
 
+**No POM changes.** `IndexJobCodec` lives in `chat-core`, which all three modules
+already depend on. Putting it beside the store in `chat-service-composite` would
+have forced a test-scoped dependency into both persistence modules, and neither
+declares one today.
+
 **Why this task exists.** The spec requires that a known topic key supports an
 `IndexJob` decode on each backend, and that the same decode works through the
 RSocket key-value client. `IndexJobCodecTests` proves the branches against a
 mapper. It does not prove that each backend hands back the shape that branch
-expects, and no other task did either.
+expects.
 
-**The three shapes, from the store implementations:**
+**The three shapes, read from the store implementations:**
 
 - Memory returns the stored object. `InMemoryKeyValueStore` holds it in a map.
 - Redis returns a `LinkedHashMap`. `KeyValuePersistenceRedis.get` reads the JSON
@@ -3257,16 +3360,46 @@ expects, and no other task did either.
 - Cassandra returns the JSON `String`. `KeyValuePersistenceCassandra.get` builds
   the pair from `kv.data`, which the table stores as text.
 
-**Interfaces:**
-- Consumes: `IndexJob`, `IndexJobCodec`, and each backend key-value store.
-
 - [ ] **Step 1: Write the redis test**
 
-Follow `RedisKeyValueTypedDomainTests` for the context. It imports
-`RedisPersistenceTestContext` and `RedisPersistenceTestBeans`, and it carries
-`@Tag("integration")`.
-
 ```kotlin
+package com.demo.chat.test.persistence.redis
+
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.persistence.redis.impl.KeyValuePersistenceRedis
+import com.demo.chat.service.vector.IndexJobCodec
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.extension.Extensions
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.junit.jupiter.SpringExtension
+import java.time.Instant
+import java.util.UUID
+
+/**
+ * The redis shape. A JSON round trip returns the value as a map, so the codec
+ * takes its map branch.
+ */
+@Extensions(ExtendWith(SpringExtension::class))
+@Import(RedisPersistenceTestContext::class, RedisPersistenceTestBeans::class)
+@Tag("integration")
+class RedisIndexJobDecodeTests(
+    @Autowired private val keyValuePersistence: KeyValuePersistenceRedis<UUID>,
+) {
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private val codec = IndexJobCodec<UUID>(mapper)
+
     @Test
     fun `a stored job reads back through the codec`() {
         val key = Key.funKey(UUID.randomUUID())
@@ -3282,78 +3415,182 @@ Follow `RedisKeyValueTypedDomainTests` for the context. It imports
         )
 
         keyValuePersistence.add(KeyValuePair.create(key, job as Any)).block()
-
         val stored = keyValuePersistence.get(key).block()!!
 
-        // The redis branch. A JSON round trip gives a map, not the object.
         Assertions.assertThat(stored.data).isInstanceOf(Map::class.java)
 
         val decoded = codec.decode(stored.data)
+
         Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
         Assertions.assertThat(decoded.indexed).isEqualTo(3L)
         Assertions.assertThat(decoded.nodeId).isEqualTo(7)
         Assertions.assertThat(decoded.startedAt).isEqualTo(job.startedAt)
+        Assertions.assertThat(decoded.covers).isTrue()
     }
+}
 ```
 
-`codec` is `IndexJobCodec<UUID>(mapper)`, where `mapper` registers
-`DefaultChatJacksonModules().allModules()` beside `findAndRegisterModules()`. A
-bare mapper cannot read a `Key`, which is an interface with no type information
-on the wire.
+`RedisKeyValueTypedDomainTests` uses the same two imported classes, so the
+context needs nothing new.
 
 - [ ] **Step 2: Write the cassandra test**
 
-Follow `TypedKeyValueStoreTests` for the context and the keyspace setup.
+`TypedKeyValueStoreTests` exposes its store as `store` and keeps its id counter
+private, so this class builds its own store from the injected repository and
+makes its own ids.
 
 ```kotlin
+package com.demo.chat.test.persistence.integration
+
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.persistence.cassandra.impl.KeyValuePersistenceCassandra
+import com.demo.chat.persistence.cassandra.repository.KeyValuePairRepository
+import com.demo.chat.service.vector.IndexJobCodec
+import com.demo.chat.test.TestLongKeyService
+import com.demo.chat.test.repository.RepositoryTestConfiguration
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.junit.jupiter.SpringExtension
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicLong
+
+/**
+ * The cassandra shape. The kv_pair table stores text, so the codec takes its
+ * string branch.
+ */
+@ExtendWith(SpringExtension::class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [RepositoryTestConfiguration::class]
+)
+@TestPropertySource(properties = ["app.key.type=long"])
+@Tag("integration")
+class CassandraIndexJobDecodeTests {
+
+    @Autowired
+    lateinit var repo: KeyValuePairRepository<Long>
+
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private val codec = IndexJobCodec<Long>(mapper)
+    private val ids = AtomicLong(9_000L)
+
+    private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
+
     @Test
     fun `a stored job reads back through the codec`() {
-        val key = Key.funKey(nextLongId())
+        val store = store()
+        val key = Key.funKey(ids.incrementAndGet())
         val job = IndexJob(
             key = key,
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
-            startedBy = Key.funKey(nextLongId()),
+            startedBy = Key.funKey(ids.incrementAndGet()),
             startedAt = Instant.parse("2026-09-12T12:00:00Z"),
             outcome = JobOutcome.FAILED,
             failed = 2L,
         )
 
-        keyValueStore.add(KeyValuePair.create(key, job as Any)).block()
+        store.add(KeyValuePair.create(key, job as Any)).block()
+        val stored = store.get(key).block()!!
 
-        val stored = keyValueStore.get(key).block()!!
-
-        // The cassandra branch. The table stores text, so data is the JSON.
         Assertions.assertThat(stored.data).isInstanceOf(String::class.java)
 
         val decoded = codec.decode(stored.data)
+
         Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.FAILED)
         Assertions.assertThat(decoded.failed).isEqualTo(2L)
         Assertions.assertThat(decoded.covers).isFalse()
     }
+}
 ```
+
+If `RepositoryTestConfiguration` does not start the container for this class,
+copy the container and keyspace setup from `TypedKeyValueStoreTests`, which
+holds it in that module.
 
 - [ ] **Step 3: Write the RSocket test**
 
-Follow `KeyValueIndexRequesterTests` for the requester setup. The server side
-holds a mocked `KeyValueStore` that returns the pair, and the client reads it
-with `get`, never with `typedGet`.
+`KeyValueIndexRequesterTests` installs an index controller and mocks a
+`KeyValueIndexService`, which is the wrong pair here. This test follows
+`UserPersistenceRequesterTests` instead: a controller that extends
+`PersistenceServiceController`, a mocked store, and the routes with no prefix.
 
 ```kotlin
+package com.demo.chat.test.rsocket.controller.core
+
+import com.demo.chat.client.rsocket.clients.core.KeyValueStoreClient
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.controller.core.PersistenceServiceController
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.service.core.KeyValueStore
+import com.demo.chat.service.vector.IndexJobCodec
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.rsocket.RSocketTestBase
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.mockito.BDDMockito
+import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Import
+import org.springframework.stereotype.Controller
+import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
+import java.time.Instant
+
+/**
+ * The client reads with get and decodes locally. It never calls typedGet,
+ * whose route carries only the key, so the server receives no class and cannot
+ * bind the value.
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Import(KeyValueJobDecodeRequesterTests.KeyValueStoreTestConfiguration::class)
+class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
+
+    @MockBean
+    private lateinit var keyValueStore: KeyValueStore<Long, Any>
+
+    private val svcPrefix = ""
+
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private val codec = IndexJobCodec<Long>(mapper)
+
+    private val key = Key.funKey(1000L)
+
+    private val job = IndexJob(
+        key = key,
+        nodeId = 7,
+        keyType = "long",
+        incarnationId = "incarnation-a",
+        startedBy = Key.funKey(2000L),
+        startedAt = Instant.parse("2026-09-12T12:00:00Z"),
+        outcome = JobOutcome.SUCCEEDED,
+    )
+
     @Test
     fun `a job decodes through the key value client`() {
-        val key = Key.funKey(1000L)
-        val job = IndexJob(
-            key = key,
-            nodeId = 7,
-            keyType = "long",
-            incarnationId = "incarnation-a",
-            startedBy = Key.funKey(2000L),
-            startedAt = Instant.parse("2026-09-12T12:00:00Z"),
-            outcome = JobOutcome.SUCCEEDED,
-        )
-
         BDDMockito
             .given(keyValueStore.get(anyObject()))
             .willReturn(Mono.just(KeyValuePair.create(key, job as Any)))
@@ -3364,25 +3601,36 @@ with `get`, never with `typedGet`.
             .create(client.get(key))
             .assertNext { pair ->
                 val decoded = codec.decode(pair.data)
+
                 Assertions.assertThat(decoded.outcome).isEqualTo(JobOutcome.SUCCEEDED)
                 Assertions.assertThat(decoded.nodeId).isEqualTo(7)
+                Assertions.assertThat(decoded.incarnationId).isEqualTo("incarnation-a")
             }
             .verifyComplete()
     }
-```
 
-**The client never calls `typedGet`.** That route sends only the key, so the
-server receives no class and cannot bind the value. The design reads with `get`
-and decodes locally for that reason.
+    class KeyValueStoreTestConfiguration {
+        @Controller
+        class TestKeyValueController<T>(
+            store: KeyValueStore<T, Any>,
+        ) : PersistenceServiceController<T, KeyValuePair<T, Any>>(store)
+    }
+}
+```
 
 - [ ] **Step 4: Run the three suites**
 
 ```bash
 JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -B -DskipTests install -q
-JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-redis -Pintegration test -Dtest=RedisIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
-JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-cassandra -Pintegration test -Dtest=CassandraIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
-JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-client-rsocket -am test -Dtest=KeyValueJobDecodeRequesterTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-redis -Pintegration test \
+  -Dtest=RedisIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-persistence-cassandra -Pintegration test \
+  -Dtest=CassandraIndexJobDecodeTests -Dsurefire.failIfNoSpecifiedTests=false
+JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-client-rsocket -am test \
+  -Dtest=KeyValueJobDecodeRequesterTests -Dsurefire.failIfNoSpecifiedTests=false
 ```
+
+Expected: PASS, one test in each suite.
 
 The redis and cassandra suites start containers. `CHAT-sgyaaivp` records that the
 cassandra integration job alternates red on unchanged code, so confirm a failure

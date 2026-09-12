@@ -4,7 +4,7 @@ import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
-import com.demo.chat.service.composite.impl.IndexJobCodec
+import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.service.composite.impl.VectorIndexJobStoreImpl
 import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.VectorIndexJobStore

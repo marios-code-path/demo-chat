@@ -1,11 +1,11 @@
-package com.demo.chat.test.service.composite
+package com.demo.chat.test.vector
 
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
-import com.demo.chat.service.composite.impl.IndexJobCodec
+import com.demo.chat.service.vector.IndexJobCodec
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
