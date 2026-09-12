@@ -320,6 +320,10 @@ Recall reports coverage, not job phase.
 
 The policy selects the newest applicable successful job.
 
+Two applicable jobs can hold one start instant. The policy then selects the
+higher root key. The policy compares the key through `TypeUtil.compare`, in the
+key type. A text compare puts "9" above "10", which is the wrong order.
+
 `indexComplete` is true when that job has `invalidationCount == 0`.
 
 The policy does not compare a stored value with the process generation.
@@ -398,6 +402,7 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The job service never calls `addRoom()`.
 - `addRoom()` rejects the reserved prefix.
 - A topic-list or job-read failure reports incomplete under `stored`.
+- Two jobs of one instant select the higher root key, compared as a key.
 
 ## Out Of Scope
 

@@ -1843,6 +1843,8 @@ the next rebuild would read its own output back out of
 - [ ] **Step 1: Write the failing test**
 
 ```kotlin
+    // The exact sequence is the boundary. A writer that called the composite
+    // send would show four steps, and the vector indexer would be one of them.
     @Test
     fun `the writer calls persistence, then the index, then pub sub`() {
         val writer = writerUnderTest()
@@ -1962,9 +1964,6 @@ steps, in that order, and no fourth.
             asValue = { text -> text },
         )
     }
-
-    // The exact sequence is the boundary. A writer that called the composite
-    // send would show four steps, and the vector indexer would be one of them.
 ```
 
 The three doubles come from `VectorTestFakes.kt`, which Task 5 creates. Each one
@@ -2362,10 +2361,20 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
 `jobStore.failFinish`, `jobStore.finishCalls`, `messageTo`, and a job id a test
 can address. Add these beside `RecordingIndexer`.
 
-`configureService` also gains three arguments: the job store, a
+`configureService` also gains two constructor arguments: the job store, and a
 `ComposedJobRecordWriter` over `FakeMessagePersistence`, `FakeMessageIndex` and
-`FakePubSub`, and a key supplier for record ids. **The writer is real, not a
-double**, so a record has to reach all three services to be seen.
+`FakePubSub`. **The writer is real, not a double**, so a record has to reach all
+three services to be seen.
+
+The constructor takes no key supplier. `MessageReindexServiceImpl` reads
+`persistence.key()` for each record id, so `configureService` stubs that call:
+
+```kotlin
+        // Record ids come from the message store, as every message id does.
+        given(persistence.key()).willAnswer { Mono.just(Key.funKey(nextRecordId++)) }
+```
+
+Declare the counter beside the other fields: `private var nextRecordId = 7000L`.
 
 ```kotlin
     private fun messageTo(id: Long, dest: Long): Message<Long, String> =
@@ -2542,6 +2551,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.service.composite.impl.VectorCoveragePolicyImpl
 import com.demo.chat.service.vector.JobTopicNames
@@ -2575,13 +2585,23 @@ class VectorCoveragePolicyImplTests {
         /** Every key this store was asked to read. */
         val readKeys = mutableListOf<Long>()
 
-        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
             readKeys.add(topicKey.id)
             if (topicKey.id == malformedId) {
                 Mono.error(ChatException("cannot decode the stored job"))
             } else {
                 Mono.justOrEmpty(jobs[topicKey.id])
             }
+        }
+
+        /**
+         * A topic name for a job, when it must disagree with the record.
+         *
+         * The name and the record are two stored things. A double that always
+         * derives one from the other cannot express a disagreement, and a test
+         * for that case would silently test topic exclusion instead.
+         */
+        val names = mutableMapOf<Long, String>()
 
         override fun listJobTopics(): Flux<out MessageTopic<Long>> =
             if (failListing) {
@@ -2591,7 +2611,12 @@ class VectorCoveragePolicyImplTests {
                     jobs.values.map { job ->
                         MessageTopic.create(
                             job.key,
-                            JobTopicNames.nameFor(job.nodeId, job.keyType, job.startedAt, job.incarnationId)
+                            names[job.key.id] ?: JobTopicNames.nameFor(
+                                job.nodeId,
+                                job.keyType,
+                                job.startedAt,
+                                job.incarnationId,
+                            )
                         )
                     }
                 )
@@ -2628,7 +2653,7 @@ class VectorCoveragePolicyImplTests {
     )
 
     private fun policy(trust: VectorTrust) =
-        VectorCoveragePolicyImpl(store, trust, thisIncarnation, nodeId = 7, keyType = "long")
+        VectorCoveragePolicyImpl(store, trust, thisIncarnation, nodeId = 7, keyType = "long", typeUtil = LongUtil())
 
     @Test
     fun `a successful job with no invalidation covers`() {
@@ -2722,6 +2747,10 @@ class VectorCoveragePolicyImplTests {
     fun `a record that disagrees with its topic name reports no covering job`() {
         store.write(job(1L, startedAt = start)).block()
         store.write(job(2L, startedAt = start.plusSeconds(60)).copy(keyType = "uuid")).block()
+        // The topic says this node and key type, and the record says another.
+        // Without the override the name would say uuid too, the topic filter
+        // would drop it, and this would test exclusion rather than a mismatch.
+        store.names[2L] = JobTopicNames.nameFor(7, "long", start.plusSeconds(60), thisIncarnation)
 
         StepVerifier
             .create(policy(VectorTrust.STORED).selectCoveringJob())
@@ -2734,6 +2763,19 @@ class VectorCoveragePolicyImplTests {
     fun `two jobs of one instant order by root key`() {
         store.write(job(1L, startedAt = start)).block()
         store.write(job(2L, startedAt = start, invalidations = 1L)).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .verifyComplete()
+    }
+
+    // Keys 9 and 10 separate a number order from a text order. As text, "9"
+    // sorts above "10", so a text order would select job 9 and report
+    // coverage. As a number, job 10 wins and it does not cover.
+    @Test
+    fun `an equal instant orders root keys as numbers, not as text`() {
+        store.write(job(9L, startedAt = start)).block()
+        store.write(job(10L, startedAt = start, invalidations = 1L)).block()
 
         StepVerifier
             .create(policy(VectorTrust.NONE).selectCoveringJob())
@@ -2797,6 +2839,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.service.vector.JobTopicNames
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.vector.VectorCoveragePolicy
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorTrust
@@ -2819,6 +2862,7 @@ class VectorCoveragePolicyImpl<T>(
     private val incarnationId: String,
     private val nodeId: Int,
     private val keyType: String,
+    private val typeUtil: TypeUtil<T>,
 ) : VectorCoveragePolicy<T> {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -2848,9 +2892,13 @@ class VectorCoveragePolicyImpl<T>(
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }
             // Newest first. Two jobs of one millisecond order by root key, so
-            // the choice never depends on which read completed first.
-            .sort(compareByDescending<IndexJob<T>> { job -> job.startedAt }
-                .thenByDescending { job -> job.key.id.toString() })
+            // the choice never depends on which read completed first. The
+            // higher key wins. TypeUtil compares the key in its own type,
+            // because a text compare puts "9" above "10".
+            .sort(
+                compareByDescending<IndexJob<T>> { job -> job.startedAt }
+                    .thenByDescending(Comparator<T> { a, b -> typeUtil.compare(a, b) }) { job -> job.key.id }
+            )
             .next()
             .filter { job -> job.covers }
             .onErrorResume { error ->
@@ -2866,7 +2914,7 @@ reach the same empty result, which is the fail-closed rule.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorCoveragePolicyImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 11 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -3549,6 +3597,9 @@ interfaces, as `CompositeServiceBeansConfiguration.kt:33` does.
 
 `incarnationId` is one `UUID.randomUUID().toString()` per context. `nodeId` comes
 from `@Value("\${app.nodeid}")`. `keyType` comes from `@Value("\${app.key.type}")`.
+
+`VectorCoveragePolicyImpl` also takes the `TypeUtil<T>` bean. It breaks a tie
+between two jobs of one instant, and a text compare would order the keys wrong.
 
 Add `app.vector.index.startup`. Only `rebuild` starts one job, and it runs on
 `ApplicationReadyEvent`. `report` is the default and starts nothing. At startup the
