@@ -1,19 +1,14 @@
 package com.demo.chat.test.service.composite
 
-import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
-import com.demo.chat.domain.MessageTopic
 import com.demo.chat.service.composite.impl.VectorCoveragePolicyImpl
 import com.demo.chat.service.vector.JobTopicNames
-import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorTrust
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.time.Instant
 
@@ -22,71 +17,7 @@ class VectorCoveragePolicyImplTests {
     private val otherIncarnation = "incarnation-b"
     private val start = Instant.parse("2026-09-11T12:00:00Z")
 
-    private class FakeJobStore : VectorIndexJobStore<Long> {
-        val jobs = linkedMapOf<Long, IndexJob<Long>>()
-        var failListing = false
-        var malformedId: Long? = null
-
-        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> =
-            Mono.error(UnsupportedOperationException("the policy never creates a job"))
-
-        override fun write(job: IndexJob<Long>): Mono<Void> =
-            Mono.fromRunnable { jobs[job.key.id] = job }
-
-        override fun finishJob(job: IndexJob<Long>): Mono<Void> = write(job)
-
-        /** Every key this store was asked to read. */
-        val readKeys = mutableListOf<Long>()
-
-        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
-            readKeys.add(topicKey.id)
-            if (topicKey.id == malformedId) {
-                Mono.error(ChatException("cannot decode the stored job"))
-            } else {
-                Mono.justOrEmpty(jobs[topicKey.id])
-            }
-        }
-
-        /**
-         * A topic name for a job, when it must disagree with the record.
-         *
-         * The name and the record are two stored things. A double that always
-         * derives one from the other cannot express a disagreement, and a test
-         * for that case would silently test topic exclusion instead.
-         */
-        val names = mutableMapOf<Long, String>()
-
-        override fun listJobTopics(): Flux<out MessageTopic<Long>> =
-            if (failListing) {
-                Flux.error(IllegalStateException("topic listing failed"))
-            } else {
-                Flux.fromIterable(
-                    jobs.values.map { job ->
-                        MessageTopic.create(
-                            job.key,
-                            names[job.key.id] ?: JobTopicNames.nameFor(
-                                job.nodeId,
-                                job.keyType,
-                                job.startedAt,
-                                job.incarnationId,
-                            )
-                        )
-                    }
-                )
-            }
-
-        override fun invalidate(jobKey: Key<Long>, at: Instant): Mono<Void> =
-            Mono.fromRunnable {
-                jobs[jobKey.id]?.let { job ->
-                    jobs[jobKey.id] = job.copy(
-                        invalidationCount = job.invalidationCount + 1,
-                        lastInvalidationAt = at,
-                    )
-                }
-            }
-    }
-
-    private val store = FakeJobStore()
+    private val store = FakeVectorIndexJobStore()
 
     private fun job(
         id: Long,

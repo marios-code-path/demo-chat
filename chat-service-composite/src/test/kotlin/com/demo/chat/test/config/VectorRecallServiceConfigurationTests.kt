@@ -3,6 +3,8 @@ package com.demo.chat.test.config
 import com.demo.chat.config.service.composite.VectorRecallServiceConfiguration
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.service.vector.MessageVectorIndexer
+import com.demo.chat.service.vector.VectorIndexJobStore
+import com.demo.chat.service.vector.VectorIndexState
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -54,6 +56,38 @@ class VectorRecallServiceConfigurationTests {
             Assertions
                 .assertThat(context.getBean(MessageVectorIndexer::class.java))
                 .isNotNull
+        } finally {
+            context.close()
+        }
+    }
+
+    // Task 11 of the plan adds the job store bean. This context has none, and
+    // the indexer bean must still exist. Task 11 deletes this test.
+    @Test
+    fun `the indexer bean exists with no job store bean`() {
+        val context = AnnotationConfigApplicationContext()
+        context.environment.propertySources.addFirst(
+            MapPropertySource(
+                "test",
+                mapOf(
+                    "app.service.composite" to "true",
+                    "app.service.core.vector" to "simple",
+                    "app.service.core.embedding" to "mock",
+                    "app.key.type" to "long",
+                )
+            )
+        )
+        context.beanFactory.registerSingleton("typeUtil", LongUtil())
+        context.beanFactory.registerSingleton("vectorStore", MockVectorStore())
+        context.register(VectorRecallServiceConfiguration::class.java)
+        context.refresh()
+
+        try {
+            Assertions
+                .assertThat(context.getBeanNamesForType(VectorIndexJobStore::class.java))
+                .isEmpty()
+            Assertions.assertThat(context.getBean(MessageVectorIndexer::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(VectorIndexState::class.java)).isNotNull
         } finally {
             context.close()
         }

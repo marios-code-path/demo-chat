@@ -185,12 +185,12 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(service.start().block()!!.running).isTrue()
     }
 
-    private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus {
+    private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus<Long> {
         Assertions.assertThat(service.start().block()!!.running).isTrue()
         return awaitFinished(service)
     }
 
-    private fun awaitFinished(service: MessageReindexService<Long>): VectorIndexStatus =
+    private fun awaitFinished(service: MessageReindexService<Long>): VectorIndexStatus<Long> =
         Flux.interval(Duration.ZERO, Duration.ofMillis(10))
             .map { service.status() }
             .filter { !it.running }
@@ -444,5 +444,21 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(indexer.ids).isEmpty()
         Assertions.assertThat(status.complete).isFalse()
         verify(persistence, never()).all()
+    }
+
+    // The first record write happens after createJob() and before the scan. A
+    // capture at that moment proves the order that the plan states. A read
+    // after the run cannot see the value, because every finish clears it.
+    @Test
+    fun `the run names its active job before the first record`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        val activeAtFirstRecord = mutableListOf<Key<Long>?>()
+        recordPersistence.onAdd = { activeAtFirstRecord.add(state.status().activeJob) }
+
+        runAndAwait(service)
+
+        Assertions.assertThat(activeAtFirstRecord.first())
+            .isEqualTo(Key.funKey(FakeJobStore.FIRST_JOB_ID))
+        Assertions.assertThat(state.status().activeJob).isNull()
     }
 }

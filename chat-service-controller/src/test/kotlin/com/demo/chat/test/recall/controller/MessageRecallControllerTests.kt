@@ -5,6 +5,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TopicRecallRequest
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.service.vector.MessageRecallHit
+import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketServerTestConfiguration
@@ -16,7 +17,6 @@ import org.mockito.BDDMockito
 import org.springframework.boot.test.mock.mockito.MockBean
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ContextConfiguration
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
@@ -42,12 +42,15 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
     private lateinit var secretsStore: SecretsStore<Long>
 
     @Test
-    fun `recall topic route returns hits over the shared DTOs`() {
+    fun `recall topic route returns one result over the shared DTOs`() {
         BDDMockito
             .given(recallService.recallInTopic(anyObject()))
             .willReturn(
-                Flux.just(
-                    MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)),
+                    )
                 )
             )
 
@@ -55,13 +58,11 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
             requester
                 .route("message-recall-topic")
                 .data(Mono.just(TopicRecallRequest(30L, "apple")), TopicRecallRequest::class.java)
-                .retrieveFlux(MessageRecallHit::class.java)
+                .retrieveMono(MessageRecallResult::class.java)
         )
-            .assertNext { hit ->
-                Assertions.assertThat(hit.score).isEqualTo(0.9)
-                Assertions.assertThat(hit.key.id).isEqualTo(10L)
-                Assertions.assertThat(hit.key.from).isEqualTo(20L)
-                Assertions.assertThat(hit.key.dest).isEqualTo(30L)
+            .assertNext { result ->
+                Assertions.assertThat(result.indexComplete).isTrue()
+                Assertions.assertThat(result.hits).hasSize(1)
             }
             .verifyComplete()
     }

@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
@@ -11,8 +13,11 @@ import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPersistence
 import com.demo.chat.service.core.TopicPubSubService
+import com.demo.chat.service.vector.JobTopicNames
+import com.demo.chat.service.vector.VectorIndexJobStore
 import reactor.core.publisher.Flux
 import java.time.Duration
+import java.time.Instant
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 
@@ -116,10 +121,15 @@ internal class FakeMessagePersistence(
 ) : MessagePersistence<Long, String> {
     val added = mutableListOf<Message<Long, String>>()
     private var nextId = 900L
+
+    /** Runs before each add. A test uses it to read state at write time. */
+    var onAdd: (() -> Unit)? = null
+
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
     override fun add(ent: Message<Long, String>): Mono<Void> =
         Mono.delay(delay).then(
             Mono.defer {
+                onAdd?.invoke()
                 calls?.add("persistence")
                 if (failure != null) {
                     Mono.error(failure)
@@ -159,4 +169,76 @@ internal class FakeMessageIndex(
     override fun findBy(query: Map<String, String>): Flux<out Key<Long>> =
         Flux.fromIterable(added.filter { it.key.dest.toString() == query["topic"] }.map { it.key })
     override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
+}
+
+/**
+ * A job store double for the coverage policy tests and the indexer tests.
+ *
+ * [names] overrides the derived topic name for one job. The name and the record
+ * are two stored things. A double that always derives one from the other cannot
+ * express a disagreement, and a test for that case would silently test topic
+ * exclusion instead.
+ */
+internal class FakeVectorIndexJobStore : VectorIndexJobStore<Long> {
+    val jobs = linkedMapOf<Long, IndexJob<Long>>()
+
+    /** Every key this store was asked to read. */
+    val readKeys = mutableListOf<Long>()
+    val names = mutableMapOf<Long, String>()
+    var failListing = false
+    var malformedId: Long? = null
+
+    /** Fails every invalidate call. The durable count then never rises. */
+    var failWrites = false
+
+    override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> =
+        Mono.error(UnsupportedOperationException("this double never creates a job"))
+
+    override fun write(job: IndexJob<Long>): Mono<Void> =
+        Mono.fromRunnable { jobs[job.key.id] = job }
+
+    override fun finishJob(job: IndexJob<Long>): Mono<Void> = write(job)
+
+    override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
+        readKeys.add(topicKey.id)
+        if (topicKey.id == malformedId) {
+            Mono.error(ChatException("cannot decode the stored job"))
+        } else {
+            Mono.justOrEmpty(jobs[topicKey.id])
+        }
+    }
+
+    override fun listJobTopics(): Flux<out MessageTopic<Long>> =
+        if (failListing) {
+            Flux.error(IllegalStateException("topic listing failed"))
+        } else {
+            Flux.fromIterable(
+                jobs.values.map { job ->
+                    MessageTopic.create(
+                        job.key,
+                        names[job.key.id] ?: JobTopicNames.nameFor(
+                            job.nodeId,
+                            job.keyType,
+                            job.startedAt,
+                            job.incarnationId,
+                        )
+                    )
+                }
+            )
+        }
+
+    override fun invalidate(jobKey: Key<Long>, at: Instant): Mono<Void> = Mono.defer {
+        if (failWrites) {
+            Mono.error(IllegalStateException("the invalidation write failed"))
+        } else {
+            Mono.fromRunnable {
+                jobs[jobKey.id]?.let { job ->
+                    jobs[jobKey.id] = job.copy(
+                        invalidationCount = job.invalidationCount + 1,
+                        lastInvalidationAt = at,
+                    )
+                }
+            }
+        }
+    }
 }

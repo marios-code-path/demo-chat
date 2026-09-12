@@ -89,7 +89,9 @@ class InMemoryVectorIndexStateTests {
         )
 
         Assertions.assertThat(result.succeeded).isFalse()
-        Assertions.assertThat(result.status.complete).isFalse()
+        // complete reads the covering job, not the phase. The first run
+        // installed job 11, and a failed repair never removes it.
+        Assertions.assertThat(result.status.complete).isTrue()
         Assertions.assertThat(result.status.lastReport!!.failed).isEqualTo(1L)
         Assertions.assertThat(result.status.lastSuccessAt).isEqualTo(finishedAt)
         Assertions.assertThat(result.status.lastSuccessCount).isEqualTo(2L)
@@ -215,7 +217,7 @@ class InMemoryVectorIndexStateTests {
                 val claim = state.claim()
                 val barrier = CyclicBarrier(2)
 
-                val finishing = pool.submit<VectorFinishResult> {
+                val finishing = pool.submit<VectorFinishResult<Long>> {
                     barrier.await(10, TimeUnit.SECONDS)
                     state.finish(
                         claim,
@@ -249,5 +251,62 @@ class InMemoryVectorIndexStateTests {
         } finally {
             pool.shutdownNow()
         }
+    }
+
+    // The trap the run verdict exists to close. An earlier job still covers, so
+    // the index reports complete while this run failed. A durable outcome taken
+    // from status.complete would store SUCCEEDED for a failed run.
+    @Test
+    fun `a failed run reports a false verdict while an earlier job still covers`() {
+        val state = InMemoryVectorIndexState<Long>()
+        state.adoptCoveringJob(Key.funKey(500L))
+        val claim = state.claim()
+
+        val result = state.finish(
+            claim,
+            VectorRebuildReport(startedAt, finishedAt, 2L, 1L, 0L, 1L),
+            null,
+            Key.funKey(11L),
+        )
+
+        Assertions.assertThat(result.succeeded).isFalse()
+        Assertions.assertThat(result.status.complete).isTrue()
+    }
+
+    @Test
+    fun `a running rebuild reports its active job`() {
+        val state = InMemoryVectorIndexState<Long>()
+        state.claim()
+
+        state.markActiveJob(Key.funKey(600L))
+
+        Assertions.assertThat(state.status().activeJob).isEqualTo(Key.funKey(600L))
+    }
+
+    @Test
+    fun `every finish clears the active job`() {
+        val state = InMemoryVectorIndexState<Long>()
+        val claim = state.claim()
+        state.markActiveJob(Key.funKey(600L))
+
+        state.finish(
+            claim,
+            VectorRebuildReport(startedAt, finishedAt, 1L, 0L, 0L, 1L),
+            "it failed",
+            null,
+        )
+
+        Assertions.assertThat(state.status().activeJob).isNull()
+    }
+
+    // The running flag is the only guard. A late call from a finished run must
+    // not name a job that no longer runs.
+    @Test
+    fun `markActiveJob outside a running state changes nothing`() {
+        val state = InMemoryVectorIndexState<Long>()
+
+        state.markActiveJob(Key.funKey(600L))
+
+        Assertions.assertThat(state.status().activeJob).isNull()
     }
 }

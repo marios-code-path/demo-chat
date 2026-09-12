@@ -3,6 +3,7 @@ package com.demo.chat.test.controller.webflux.composite
 import com.demo.chat.controller.webflux.ChatMessageRecallController
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.vector.MessageRecallHit
+import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
@@ -18,7 +19,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
-import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 
 /**
  * REST recall routes. The module has no mockito-kotlin dependency, so the
@@ -41,13 +42,18 @@ class MessageRecallRestTests {
     private lateinit var recallService: MessageRecallService<Long>
 
     @Test
-    fun `recall topic returns NDJSON hits`() {
+    fun `recall topic returns one NDJSON result`() {
         BDDMockito
             .given(recallService.recallInTopic(anyObject()))
             .willReturn(
-                Flux.just(
-                    MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9),
-                    MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.5),
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(
+                            MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9),
+                            MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.5),
+                        ),
+                    )
                 )
             )
 
@@ -63,8 +69,11 @@ class MessageRecallRestTests {
             .returnResult()
 
         val lines = response.responseBody!!.trim().lines()
-        Assertions.assertThat(lines).hasSize(2)
-        val first = mapper.readValue<MessageRecallHit<Long>>(lines[0])
+        Assertions.assertThat(lines).hasSize(1)
+        val result = mapper.readValue<MessageRecallResult<Long>>(lines[0])
+        Assertions.assertThat(result.indexComplete).isTrue()
+        Assertions.assertThat(result.hits).hasSize(2)
+        val first = result.hits[0]
         Assertions.assertThat(first.key.id).isEqualTo(10L)
         Assertions.assertThat(first.key.from).isEqualTo(20L)
         Assertions.assertThat(first.key.dest).isEqualTo(30L)
@@ -73,12 +82,16 @@ class MessageRecallRestTests {
 
     @Test
     fun `recall user and global routes exist`() {
+        val oneHit = MessageRecallResult(
+            indexComplete = true,
+            hits = listOf(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)),
+        )
         BDDMockito
             .given(recallService.recallByUser(anyObject()))
-            .willReturn(Flux.just(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)))
+            .willReturn(Mono.just(oneHit))
         BDDMockito
             .given(recallService.recallGlobal(anyObject()))
-            .willReturn(Flux.just(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)))
+            .willReturn(Mono.just(oneHit))
 
         client.post().uri("/message/recall/user")
             .contentType(MediaType.APPLICATION_JSON)

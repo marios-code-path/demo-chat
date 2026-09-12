@@ -41,8 +41,19 @@ class MockVectorStore : VectorStore {
     val ids: List<String>
         get() = entries.keys.toList()
 
+    /**
+     * Fails the next add call, then clears itself.
+     *
+     * One failure per set. A test can then prove that the next add succeeds.
+     */
+    var failNextAdd: Boolean = false
+
     override fun add(documents: List<Document>) {
         lastWriteThread = Thread.currentThread().name
+        if (failNextAdd) {
+            failNextAdd = false
+            throw IllegalStateException("vector store is down")
+        }
         for (doc in documents) {
             entries[doc.id] = Entry(doc, bigramVector(doc.text ?: ""))
         }

@@ -6,11 +6,12 @@ import com.demo.chat.domain.TopicRecallRequest
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.UserRecallRequest
 import com.demo.chat.service.vector.MessageRecallHit
+import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.service.vector.MessageRecallService
+import com.demo.chat.service.vector.VectorIndexState
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.SearchRequest
 import org.springframework.ai.vectorstore.VectorStore
-import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
@@ -18,39 +19,48 @@ import reactor.core.scheduler.Schedulers
  * Read-only recall. Returns keys and scores only; the caller reloads full
  * messages through existing persistence. Covers only messages sent while
  * recall was active. There is no backfill.
+ *
+ * Each answer carries the coverage of the index. An empty hit list has two
+ * meanings, and only that flag separates them.
  */
 class MessageRecallServiceImpl<T>(
     private val vectorStore: VectorStore,
     private val typeUtil: TypeUtil<T>,
     private val keyType: String,
+    private val state: VectorIndexState<T>,
 ) : MessageRecallService<T> {
 
-    override fun recallInTopic(req: TopicRecallRequest<T>): Flux<MessageRecallHit<T>> =
+    override fun recallInTopic(req: TopicRecallRequest<T>): Mono<MessageRecallResult<T>> =
         // Validation runs at subscribe time. A bad request becomes an error
         // signal, not an exception from this method.
-        Flux.defer {
+        Mono.defer {
             req.validate()
             val filter =
                 "kind == 'message' && keyType == '$keyType' && topicId == '${typeUtil.toString(req.topicId)}'"
             search(req.query, req.limit, req.threshold, filter)
         }
 
-    override fun recallByUser(req: UserRecallRequest<T>): Flux<MessageRecallHit<T>> =
-        Flux.defer {
+    override fun recallByUser(req: UserRecallRequest<T>): Mono<MessageRecallResult<T>> =
+        Mono.defer {
             req.validate()
             val filter =
                 "kind == 'message' && keyType == '$keyType' && userId == '${typeUtil.toString(req.userId)}'"
             search(req.query, req.limit, req.threshold, filter)
         }
 
-    override fun recallGlobal(req: GlobalRecallRequest): Flux<MessageRecallHit<T>> =
-        Flux.defer {
+    override fun recallGlobal(req: GlobalRecallRequest): Mono<MessageRecallResult<T>> =
+        Mono.defer {
             req.validate()
             val filter = "kind == 'message' && keyType == '$keyType'"
             search(req.query, req.limit, req.threshold, filter)
         }
 
-    private fun search(query: String, limit: Int, threshold: Double, filter: String): Flux<MessageRecallHit<T>> {
+    private fun search(
+        query: String,
+        limit: Int,
+        threshold: Double,
+        filter: String,
+    ): Mono<MessageRecallResult<T>> {
         val builder = SearchRequest.builder()
             .query(query)
             .topK(limit)
@@ -63,7 +73,15 @@ class MessageRecallServiceImpl<T>(
 
         return Mono.fromCallable { vectorStore.similaritySearch(request) }
             .subscribeOn(Schedulers.boundedElastic())
-            .flatMapMany { documents -> Flux.fromIterable(documents.map { toHit(it) }) }
+            // The coverage read runs after the search, and it runs once. A live
+            // failure during the search removes coverage, and a read taken
+            // before the search would report the value it removed.
+            .map { documents ->
+                MessageRecallResult(
+                    indexComplete = state.coveringJob() != null,
+                    hits = documents.map { toHit(it) },
+                )
+            }
     }
 
     private fun toHit(document: Document): MessageRecallHit<T> {

@@ -35,9 +35,9 @@ class MessageReindexServiceImpl<T, V>(
 ) : MessageReindexService<T> {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun status(): VectorIndexStatus = state.status()
+    override fun status(): VectorIndexStatus<T> = state.status()
 
-    override fun start(): Mono<VectorIndexStatus> = Mono.fromSupplier {
+    override fun start(): Mono<VectorIndexStatus<T>> = Mono.fromSupplier {
         val claim = state.claim()
         if (claim.accepted) {
             val startedAt = clock.instant()
@@ -61,7 +61,7 @@ class MessageReindexServiceImpl<T, V>(
      * phase stays REBUILDING and every later trigger reports busy.
      */
     private fun release(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         startedAt: Instant,
         error: Throwable,
     ) {
@@ -78,11 +78,15 @@ class MessageReindexServiceImpl<T, V>(
     }
 
     private fun rebuild(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         startedAt: Instant,
     ): Mono<Void> =
         jobStore.createJob(startedAt)
             .flatMap { job ->
+                // The status names the running job from here on. This call runs
+                // before the first record, so a reader of the job topic can
+                // always find that job in the status.
+                state.markActiveJob(job.key)
                 // Two events per run, and both go to the job topic. A reader
                 // of that topic learns when the run began and how it ended.
                 emit(job, "rebuild started", null)
@@ -133,7 +137,7 @@ class MessageReindexServiceImpl<T, V>(
      * terminal write would re-enter it.
      */
     private fun exclusionFor(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         startedAt: Instant,
         job: IndexJob<T>,
     ): Mono<Set<T>> =
@@ -157,7 +161,7 @@ class MessageReindexServiceImpl<T, V>(
             }
 
     private fun scanWith(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         startedAt: Instant,
         job: IndexJob<T>,
         exclusion: Set<T>,
@@ -203,7 +207,7 @@ class MessageReindexServiceImpl<T, V>(
     }
 
     private fun finish(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         job: IndexJob<T>,
         startedAt: Instant,
         attempted: AtomicLong,
@@ -236,7 +240,7 @@ class MessageReindexServiceImpl<T, V>(
      * SUCCEEDED if the outcome came from there.
      */
     private fun finishRun(
-        claim: VectorIndexClaim,
+        claim: VectorIndexClaim<T>,
         job: IndexJob<T>,
         report: VectorRebuildReport,
         failure: String?,

@@ -1,12 +1,16 @@
 package com.demo.chat.config.service.composite
 
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
 import com.demo.chat.service.composite.impl.MessageRecallServiceImpl
 import com.demo.chat.service.composite.impl.VectorStoreMessageVectorIndexer
 import com.demo.chat.service.vector.MessageDocumentMapper
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageVectorIndexer
+import com.demo.chat.service.vector.VectorIndexJobStore
+import com.demo.chat.service.vector.VectorIndexState
 import org.springframework.ai.vectorstore.VectorStore
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
@@ -28,17 +32,31 @@ class VectorRecallServiceConfiguration<T, V, Q>(
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
+    fun vectorIndexState(): VectorIndexState<T> = InMemoryVectorIndexState()
+
+    @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun messageVectorIndexer(
         vectorStore: VectorStore,
         @Value("\${app.key.type}") keyType: String,
+        state: VectorIndexState<T>,
+        // Task 11 of the plan creates the job store bean. Until then the
+        // indexer removes coverage in process and writes no durable count.
+        jobStores: ObjectProvider<VectorIndexJobStore<T>>,
     ): MessageVectorIndexer<T> =
-        VectorStoreMessageVectorIndexer(vectorStore, MessageDocumentMapper(typeUtil, keyType))
+        VectorStoreMessageVectorIndexer(
+            vectorStore,
+            MessageDocumentMapper(typeUtil, keyType),
+            state,
+            jobStores.getIfAvailable(),
+        )
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun messageRecallService(
         vectorStore: VectorStore,
         @Value("\${app.key.type}") keyType: String,
+        state: VectorIndexState<T>,
     ): MessageRecallService<T> =
-        MessageRecallServiceImpl(vectorStore, typeUtil, keyType)
+        MessageRecallServiceImpl(vectorStore, typeUtil, keyType, state)
 }

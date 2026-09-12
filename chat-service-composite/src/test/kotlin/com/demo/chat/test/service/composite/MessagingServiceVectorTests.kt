@@ -6,6 +6,7 @@ import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageSendRequest
+import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.VectorStoreMessageVectorIndexer
 import com.demo.chat.service.core.MessageIndexService
@@ -31,7 +32,10 @@ class MessagingServiceVectorTests {
     private val pubsub = mock<TopicPubSubService<Long, String>>()
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
-    private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper)
+    private val indexState = InMemoryVectorIndexState<Long>()
+
+    // Task 11 of the plan supplies the job store bean and removes this null.
+    private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, null)
 
     private fun givenKey() {
         BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(Key.funKey(100L)))
