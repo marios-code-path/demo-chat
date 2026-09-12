@@ -1090,6 +1090,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
@@ -1097,7 +1098,9 @@ import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPersistence
 import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
+import java.time.Duration
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Sinks
 
 /**
  * In-memory doubles for the composite vector tests.
@@ -1840,8 +1843,6 @@ the next rebuild would read its own output back out of
 - [ ] **Step 1: Write the failing test**
 
 ```kotlin
-    // The exact sequence is the boundary. A writer that called the composite
-    // send would show four steps, and the vector indexer would be one of them.
     @Test
     fun `the writer calls persistence, then the index, then pub sub`() {
         val writer = writerUnderTest()
@@ -1880,7 +1881,6 @@ the next rebuild would read its own output back out of
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
-    }
 
         StepVerifier.create(writer.write(record)).verifyComplete()
 
@@ -1961,6 +1961,10 @@ steps, in that order, and no fourth.
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
+    }
+
+    // The exact sequence is the boundary. A writer that called the composite
+    // send would show four steps, and the vector indexer would be one of them.
 ```
 
 The three doubles come from `VectorTestFakes.kt`, which Task 5 creates. Each one
@@ -2371,7 +2375,8 @@ double**, so a record has to reach all three services to be seen.
      * Records every durable write. [topics] is what one listing returns, and
      * [failListing] makes that listing fail.
      */
-    private class FakeJobStore : VectorIndexJobStore<Long> {
+    /** Opens the job topic, as the real store does, so a send can be delivered. */
+    private class FakeJobStore(private val pubsub: FakePubSub) : VectorIndexJobStore<Long> {
         val written = mutableListOf<IndexJob<Long>>()
         val topics = mutableListOf<MessageTopic<Long>>()
         var failListing = false
@@ -2379,7 +2384,7 @@ double**, so a record has to reach all three services to be seen.
         var finishCalls = 0
         private var nextId = FIRST_JOB_ID
 
-        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier {
+        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier<IndexJob<Long>> {
             val job = IndexJob(
                 key = Key.funKey(nextId++),
                 nodeId = 7,
@@ -2390,7 +2395,7 @@ double**, so a record has to reach all three services to be seen.
             )
             written.add(job)
             job
-        }
+        }.flatMap { job -> pubsub.open(job.key.id).thenReturn(job) }
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
@@ -2565,14 +2570,20 @@ class VectorCoveragePolicyImplTests {
         override fun write(job: IndexJob<Long>): Mono<Void> =
             Mono.fromRunnable { jobs[job.key.id] = job }
 
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = write(job)
+
+        /** Every key this store was asked to read. */
+        val readKeys = mutableListOf<Long>()
+
         override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+            readKeys.add(topicKey.id)
             if (topicKey.id == malformedId) {
                 Mono.error(ChatException("cannot decode the stored job"))
             } else {
                 Mono.justOrEmpty(jobs[topicKey.id])
             }
 
-        override fun listJobTopics(): Flux<MessageTopic<Long>> =
+        override fun listJobTopics(): Flux<out MessageTopic<Long>> =
             if (failListing) {
                 Flux.error(IllegalStateException("topic listing failed"))
             } else {
@@ -2692,11 +2703,40 @@ class VectorCoveragePolicyImplTests {
     // The listing carries every node. A job of another node must not cover
     // this one, because each node holds its own index.
     @Test
-    fun `another node's job does not cover`() {
+    fun `another node's job is never read`() {
         store.write(job(1L).copy(nodeId = 8)).block()
 
         StepVerifier
             .create(policy(VectorTrust.STORED).selectCoveringJob())
+            .verifyComplete()
+
+        // No coverage is not enough. The name decides before the read, so a
+        // foreign job is never read at all, and a policy that filtered after
+        // the read would record this key.
+        Assertions.assertThat(store.readKeys).isEmpty()
+    }
+
+    // A mismatch fails the read. Dropping the job would let the older clean
+    // job below it cover the index, which is the opposite of fail closed.
+    @Test
+    fun `a record that disagrees with its topic name reports no covering job`() {
+        store.write(job(1L, startedAt = start)).block()
+        store.write(job(2L, startedAt = start.plusSeconds(60)).copy(keyType = "uuid")).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.STORED).selectCoveringJob())
+            .verifyComplete()
+    }
+
+    // Equal timestamps must not leave the choice to whichever read finished
+    // first. The root key decides, and the higher one wins.
+    @Test
+    fun `two jobs of one instant order by root key`() {
+        store.write(job(1L, startedAt = start)).block()
+        store.write(job(2L, startedAt = start, invalidations = 1L)).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
             .verifyComplete()
     }
 
@@ -2753,6 +2793,7 @@ The implementation goes in `chat-service-composite`:
 ```kotlin
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.service.vector.JobTopicNames
@@ -2789,12 +2830,27 @@ class VectorCoveragePolicyImpl<T>(
             // means this node never reads another node's job at all.
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
             .flatMap { topic -> jobStore.readJob(topic.key) }
-            // The decoded fields are checked too. A name and a record that
-            // disagree must not produce coverage.
-            .filter { job -> job.nodeId == nodeId && job.keyType == keyType }
+            // A name and a record that disagree fail the read rather than
+            // dropping that job. Dropping it would expose an older clean job,
+            // and the spec requires the read to fail closed.
+            .flatMap { job ->
+                if (job.nodeId == nodeId && job.keyType == keyType) {
+                    Mono.just(job)
+                } else {
+                    Mono.error(
+                        ChatException(
+                            "A job topic of node $nodeId and key type '$keyType' holds a record " +
+                                "of node ${job.nodeId} and key type '${job.keyType}'."
+                        )
+                    )
+                }
+            }
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }
-            .sort(compareByDescending { job -> job.startedAt })
+            // Newest first. Two jobs of one millisecond order by root key, so
+            // the choice never depends on which read completed first.
+            .sort(compareByDescending<IndexJob<T>> { job -> job.startedAt }
+                .thenByDescending { job -> job.key.id.toString() })
             .next()
             .filter { job -> job.covers }
             .onErrorResume { error ->
@@ -2810,7 +2866,7 @@ reach the same empty result, which is the fail-closed rule.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorCoveragePolicyImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 9 tests.
+Expected: PASS, 11 tests.
 
 - [ ] **Step 5: Commit**
 
