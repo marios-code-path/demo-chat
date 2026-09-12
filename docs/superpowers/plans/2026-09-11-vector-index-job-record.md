@@ -604,34 +604,25 @@ difference therefore lives in Task 9, not here.
 
 - [ ] **Step 1: Write the failing tests**
 
-Add these to `InMemoryVectorIndexStateTests`. Change the class field to
-`InMemoryVectorIndexState<Long>()`.
+Add these seven to `InMemoryVectorIndexStateTests`, and change the class field to
+`InMemoryVectorIndexState<Long>()`. The five tests already in the class keep
+their names. Each one gains the `jobKey` argument, and each reads its assertions
+from `result.status` rather than from a returned status.
+
+They need five imports beyond the ones the class already holds:
+`com.demo.chat.service.vector.VectorFinishResult`,
+`com.demo.chat.service.vector.VectorInvalidation`,
+`java.util.concurrent.CyclicBarrier`, `java.util.concurrent.Executors`, and
+`java.util.concurrent.TimeUnit`.
+
+**The last two need contention, and one race is not enough.** The window between
+a read and a write is small, so a single round lets a broken implementation
+pass. Measured on this code: a claim race of one round passed against a claim
+that wrote without compare-and-set, and two hundred rounds failed it at round
+104. A finish race of two hundred rounds passed against the same fault in
+finish, and two thousand rounds failed it.
 
 ```kotlin
-    /**
-     * The compare-and-set loops need contention, and one race is not enough.
-     * The window between a read and a write is small, so a single round lets a
-     * broken implementation pass. Both races repeat.
-     *
-     * A claim race of one round passed against a claim that wrote without
-     * compare-and-set. Two hundred rounds caught it. A finish race of two
-     * hundred rounds passed against the same fault in finish. Two thousand
-     * caught it.
-     */
-    @Test
-    fun `only one of many concurrent claims is accepted`() {
-        // 16 callers behind one barrier, 200 rounds, exactly one accepted each
-        // round. See the test file for the body.
-    }
-
-    @Test
-    fun `a concurrent finish and invalidation reach one coherent outcome`() {
-        // 2000 rounds. A finish that wins installs its job, so the invalidation
-        // reports the new key. An invalidation that wins moves the generation,
-        // so the finish fails and reports the earlier key. The target is null
-        // after either outcome.
-    }
-
     @Test
     fun `a successful finish installs its job as the invalidation target`() {
         val state = InMemoryVectorIndexState<Long>()
@@ -688,9 +679,104 @@ Add these to `InMemoryVectorIndexStateTests`. Change the class field to
 
         Assertions.assertThat(result.succeeded).isFalse()
         Assertions.assertThat(result.status.complete).isFalse()
-        // invalidate() cleared the target, and a losing finish installs nothing.
-        // So no job covers until the next successful run.
+        // invalidate() cleared the target, and a losing finish installs
+        // nothing. So no job covers until the next successful run.
         Assertions.assertThat(state.coveringJob()).isNull()
+    }
+
+    /**
+     * The sequential claim test cannot reach the compare-and-set loop.
+     *
+     * One race is not enough either. The window between a read and a write is
+     * small, so a single round lets a broken implementation pass. The race
+     * repeats, and every round must accept exactly one caller.
+     */
+    @Test
+    fun `only one of many concurrent claims is accepted`() {
+        val callers = 16
+        val pool = Executors.newFixedThreadPool(callers)
+
+        try {
+            repeat(200) { round ->
+                val state = InMemoryVectorIndexState<Long>()
+                val barrier = CyclicBarrier(callers)
+
+                val results = (0 until callers).map {
+                    pool.submit<Boolean> {
+                        barrier.await(10, TimeUnit.SECONDS)
+                        state.claim().accepted
+                    }
+                }
+
+                val accepted = results.count { result -> result.get(10, TimeUnit.SECONDS) }
+
+                Assertions.assertThat(accepted)
+                    .`as`("round %d accepts one claim", round)
+                    .isEqualTo(1)
+            }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
+    /**
+     * A finish and an invalidation race two hundred times.
+     *
+     * Two outcomes are coherent, and no third exists. A finish that wins
+     * installs its job, so the invalidation that follows reports that new job.
+     * An invalidation that wins moves the generation, so the finish behind it
+     * fails and installs nothing, and the invalidation reports the earlier job.
+     *
+     * The target is null after either outcome, because the invalidation always
+     * clears what it found.
+     */
+    @Test
+    fun `a concurrent finish and invalidation reach one coherent outcome`() {
+        val prior = Key.funKey(9L)
+        val fresh = Key.funKey(11L)
+        val pool = Executors.newFixedThreadPool(2)
+
+        try {
+            repeat(2000) {
+                val state = InMemoryVectorIndexState<Long>()
+                state.adoptCoveringJob(prior)
+                val claim = state.claim()
+                val barrier = CyclicBarrier(2)
+
+                val finishing = pool.submit<VectorFinishResult> {
+                    barrier.await(10, TimeUnit.SECONDS)
+                    state.finish(
+                        claim,
+                        VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L),
+                        null,
+                        fresh,
+                    )
+                }
+                val invalidating = pool.submit<VectorInvalidation<Long>> {
+                    barrier.await(10, TimeUnit.SECONDS)
+                    state.invalidate("live vector add failed")
+                }
+
+                val finished = finishing.get(10, TimeUnit.SECONDS)
+                val invalidated = invalidating.get(10, TimeUnit.SECONDS)
+
+                if (finished.succeeded) {
+                    Assertions.assertThat(invalidated.target)
+                        .`as`("a finish that wins installs its job before the invalidation reads it")
+                        .isEqualTo(fresh)
+                } else {
+                    Assertions.assertThat(invalidated.target)
+                        .`as`("an invalidation that wins reports the job it replaced")
+                        .isEqualTo(prior)
+                }
+
+                Assertions.assertThat(state.coveringJob())
+                    .`as`("the invalidation clears whatever it found")
+                    .isNull()
+            }
+        } finally {
+            pool.shutdownNow()
+        }
     }
 ```
 
