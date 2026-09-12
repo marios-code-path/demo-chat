@@ -1,10 +1,13 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Message
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorIndexClaim
+import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
 import com.demo.chat.service.vector.VectorIndexStatus
 import com.demo.chat.service.vector.VectorRebuildReport
@@ -22,6 +25,7 @@ class MessageReindexServiceImpl<T, V>(
     private val persistence: MessagePersistence<T, V>,
     private val indexer: MessageVectorIndexer<T>,
     private val state: VectorIndexState<T>,
+    private val jobStore: VectorIndexJobStore<T>,
     private val clock: Clock = Clock.systemUTC(),
     private val scheduler: Scheduler = Schedulers.boundedElastic(),
 ) : MessageReindexService<T> {
@@ -72,6 +76,36 @@ class MessageReindexServiceImpl<T, V>(
     private fun rebuild(
         claim: VectorIndexClaim,
         startedAt: Instant,
+    ): Mono<Void> =
+        jobStore.createJob(startedAt)
+            .flatMap { job ->
+                // One listing serves discovery and exclusion. It runs before
+                // the scan, and a failure stops the run, because a scan
+                // without the full exclusion set would index job records.
+                jobStore.listJobTopics()
+                    .map { topic -> topic.key.id }
+                    .collectList()
+                    .flatMap { topicIds ->
+                        // This job writes records to its own topic while the
+                        // scan runs, so that topic joins the set explicitly.
+                        scanWith(claim, startedAt, job, topicIds.toSet() + job.key.id)
+                    }
+                    .onErrorResume { error ->
+                        logger.error("Vector reindex could not list its job topics", error)
+                        finishRun(
+                            claim,
+                            job,
+                            VectorRebuildReport(startedAt, clock.instant(), 0L, 0L, 0L, 0L),
+                            summary(error),
+                        )
+                    }
+            }
+
+    private fun scanWith(
+        claim: VectorIndexClaim,
+        startedAt: Instant,
+        job: IndexJob<T>,
+        exclusion: Set<T>,
     ): Mono<Void> {
         val attempted = AtomicLong()
         val indexed = AtomicLong()
@@ -80,6 +114,9 @@ class MessageReindexServiceImpl<T, V>(
         val lastFailure = AtomicReference<String?>()
 
         val scan = Flux.defer { persistence.all() }
+            // Job records live in the same message store. The filter runs
+            // before every counter, so attempted describes user messages.
+            .filter { message -> message.key.dest !in exclusion }
             .concatMap { message ->
                 attempted.incrementAndGet()
                 if (!message.record) {
@@ -101,6 +138,7 @@ class MessageReindexServiceImpl<T, V>(
             .then(
                 finish(
                     claim,
+                    job,
                     startedAt,
                     attempted,
                     indexed,
@@ -114,6 +152,7 @@ class MessageReindexServiceImpl<T, V>(
                 logger.error("Vector reindex scan failed", error)
                 finish(
                     claim,
+                    job,
                     startedAt,
                     attempted,
                     indexed,
@@ -126,13 +165,14 @@ class MessageReindexServiceImpl<T, V>(
 
     private fun finish(
         claim: VectorIndexClaim,
+        job: IndexJob<T>,
         startedAt: Instant,
         attempted: AtomicLong,
         indexed: AtomicLong,
         skipped: AtomicLong,
         failed: AtomicLong,
         lastFailure: AtomicReference<String?>,
-    ): Mono<Void> = Mono.fromRunnable<Void> {
+    ): Mono<Void> = Mono.defer {
         val report = VectorRebuildReport(
             startedAt,
             clock.instant(),
@@ -141,17 +181,50 @@ class MessageReindexServiceImpl<T, V>(
             skipped.get(),
             failed.get(),
         )
-        // No durable job exists yet. Task 7 passes the job this run created.
-        // A run with no job installs no covering target.
-        state.finish(claim, report, lastFailure.get(), null)
+        finishRun(claim, job, report, lastFailure.get())
+    }
+
+    /**
+     * The state decides, and the durable outcome follows that decision.
+     *
+     * A durable SUCCEEDED written before the generation check can be left
+     * behind by a live failure that arrives between the two steps. This
+     * process would refuse to install that job, and a restart under the stored
+     * trust policy would read a clean job and believe it.
+     *
+     * The verdict describes this run. status.complete describes the index, and
+     * an earlier job can still cover it, so a failed repair would store
+     * SUCCEEDED if the outcome came from there.
+     */
+    private fun finishRun(
+        claim: VectorIndexClaim,
+        job: IndexJob<T>,
+        report: VectorRebuildReport,
+        failure: String?,
+    ): Mono<Void> {
+        val result = state.finish(claim, report, failure, job.key)
+
         logger.info(
-            "Vector reindex finished. attempted={}, indexed={}, skipped={}, failed={}",
+            "Vector reindex finished. succeeded={}, attempted={}, indexed={}, skipped={}, failed={}",
+            result.succeeded,
             report.attempted,
             report.indexed,
             report.skipped,
             report.failed,
         )
-    }.then()
+
+        return jobStore.finishJob(
+            job.copy(
+                finishedAt = report.finishedAt,
+                outcome = if (result.succeeded) JobOutcome.SUCCEEDED else JobOutcome.FAILED,
+                attempted = report.attempted,
+                indexed = report.indexed,
+                skipped = report.skipped,
+                failed = report.failed,
+                failureSummary = failure,
+            )
+        )
+    }
 
     @Suppress("UNCHECKED_CAST")
     private fun asText(message: Message<T, V>): Message<T, String> =

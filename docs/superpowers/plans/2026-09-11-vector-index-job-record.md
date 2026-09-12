@@ -2214,6 +2214,22 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
         Assertions.assertThat(state.coveringJob()).isNull()
     }
 
+    // The job writes records to its own topic while the scan runs, and that
+    // topic is not in the listing the run captured, so it joins the set
+    // explicitly. Without that, a rebuild indexes its own output.
+    @Test
+    fun `the scan drops a message addressed to the running job topic`() {
+        given(persistence.all()).willReturn(
+            Flux.just(message(1L), messageTo(2L, dest = FakeJobStore.FIRST_JOB_ID))
+        )
+
+        val status = runAndAwait(service)
+
+        Assertions.assertThat(jobStore.written.first().key.id).isEqualTo(FakeJobStore.FIRST_JOB_ID)
+        Assertions.assertThat(indexer.ids).containsExactly(1L)
+        Assertions.assertThat(status.lastReport!!.attempted).isEqualTo(1L)
+    }
+
     @Test
     fun `a failed topic listing stops the scan`() {
         jobStore.failListing = true
@@ -2226,6 +2242,68 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
         verify(persistence, never()).all()
     }
 ```
+
+**The class needs a job store double and two helpers.** The plan's tests use
+`jobStore.written`, `jobStore.topics`, `jobStore.failListing`, `messageTo`, and a
+job id a test can address. Add these beside `RecordingIndexer`, and pass
+`jobStore` as the fourth constructor argument in `configureService`.
+
+```kotlin
+    private fun messageTo(id: Long, dest: Long): Message<Long, String> =
+        Message.create(MessageKey.create(id, 10L, dest), "message $id", true)
+
+    /**
+     * Records every durable write. [topics] is what one listing returns, and
+     * [failListing] makes that listing fail.
+     */
+    private class FakeJobStore : VectorIndexJobStore<Long> {
+        val written = mutableListOf<IndexJob<Long>>()
+        val topics = mutableListOf<MessageTopic<Long>>()
+        var failListing = false
+        private var nextId = FIRST_JOB_ID
+
+        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier {
+            val job = IndexJob(
+                key = Key.funKey(nextId++),
+                nodeId = 7,
+                keyType = "long",
+                incarnationId = "incarnation-a",
+                startedBy = Key.funKey(1000L),
+                startedAt = startedAt,
+            )
+            written.add(job)
+            job
+        }
+
+        override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
+
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
+
+        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+            Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == topicKey }) }
+
+        override fun listJobTopics(): Flux<out MessageTopic<Long>> = Flux.defer {
+            if (failListing) {
+                Flux.error(IllegalStateException("topic listing failed"))
+            } else {
+                Flux.fromIterable(topics.toList())
+            }
+        }
+
+        override fun invalidate(jobKey: Key<Long>, at: Instant): Mono<Void> = Mono.empty()
+
+        companion object {
+            /** The first job this store creates. A test can address it. */
+            const val FIRST_JOB_ID = 500L
+        }
+    }
+```
+
+**One claim this task cannot prove yet.** Taking the durable outcome from
+`result.status.complete` instead of `result.succeeded` passes every test here,
+because `complete` still reads the phase and a failed run sets that phase to
+`INCOMPLETE` either way. Task 9 moves `complete` to the covering job, and it adds
+the test that separates them.
 
 - [ ] **Step 2: Run the tests and confirm they fail**
 
@@ -2264,7 +2342,7 @@ Keep the counters after the filter, so `attempted` describes user messages only.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=MessageReindexServiceImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 11 tests.
+Expected: PASS, 12 tests.
 
 - [ ] **Step 5: Commit**
 
