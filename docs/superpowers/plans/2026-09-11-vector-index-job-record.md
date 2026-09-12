@@ -2513,7 +2513,7 @@ git add -A && git commit -m "feat: give a rebuild a durable job and a job topic 
 ### Task 8: The coverage policy
 
 **Files:**
-- Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/VectorCoveragePolicy.kt`
+- Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/VectorCoveragePolicy.kt` (the interface and `VectorTrust`)
 - Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorCoveragePolicyImpl.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorCoveragePolicyImplTests.kt`
 
@@ -2719,7 +2719,49 @@ Expected: FAIL. The compiler reports an unresolved reference to `VectorCoverageP
 
 - [ ] **Step 3: Write the policy**
 
+The contract goes in `chat-core`:
+
 ```kotlin
+package com.demo.chat.service.vector
+
+import com.demo.chat.domain.IndexJob
+import reactor.core.publisher.Mono
+
+enum class VectorTrust {
+    /** Only a successful job of this incarnation counts. */
+    NONE,
+
+    /**
+     * A successful job of this node and key type counts, whatever incarnation
+     * wrote it.
+     *
+     * This is an operator assertion. The vector store and the key-value store
+     * must survive the same restart, and `VectorStore` cannot count documents,
+     * so no read can check it.
+     */
+    STORED,
+}
+
+fun interface VectorCoveragePolicy<T> {
+    /** Empty when no job covers the index. */
+    fun selectCoveringJob(): Mono<IndexJob<T>>
+}
+```
+
+The implementation goes in `chat-service-composite`:
+
+```kotlin
+package com.demo.chat.service.composite.impl
+
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
+import com.demo.chat.service.vector.JobTopicNames
+import com.demo.chat.service.vector.VectorCoveragePolicy
+import com.demo.chat.service.vector.VectorIndexJobStore
+import com.demo.chat.service.vector.VectorTrust
+import org.slf4j.LoggerFactory
+import reactor.core.publisher.Mono
+
 /**
  * Selects the newest applicable successful job.
  *
@@ -2737,6 +2779,7 @@ class VectorCoveragePolicyImpl<T>(
     private val nodeId: Int,
     private val keyType: String,
 ) : VectorCoveragePolicy<T> {
+    private val logger = LoggerFactory.getLogger(javaClass)
 
     override fun selectCoveringJob(): Mono<IndexJob<T>> =
         jobStore.listJobTopics()

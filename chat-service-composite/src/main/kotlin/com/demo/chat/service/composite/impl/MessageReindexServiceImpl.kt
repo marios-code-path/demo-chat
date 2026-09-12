@@ -100,7 +100,7 @@ class MessageReindexServiceImpl<T, V>(
         // The id comes from the message store, like every other message id.
         // PersistenceStore.key() answers with a Mono, so this reads it rather
         // than taking a synchronous supplier that no deployment could provide.
-        messagePersistenceKey()
+        persistence.key()
             .flatMap { recordKey ->
                 recordWriter.write(
                     JobRecord(
@@ -120,10 +120,6 @@ class MessageReindexServiceImpl<T, V>(
                 logger.error("Vector reindex could not write a job record", error)
                 Mono.empty()
             }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun messagePersistenceKey(): Mono<Key<T>> =
-        persistence.key().map { key -> key as Key<T> }
 
     /**
      * The exclusion set for one run, or empty when the listing failed.
