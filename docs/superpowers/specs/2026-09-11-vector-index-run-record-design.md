@@ -356,6 +356,33 @@ A first rebuild reports incomplete until it succeeds.
 
 The status gains the active job and covering job. Either value can be null.
 
+Both new fields hold a key, so the status carries the key type.
+
+### The active job lifecycle
+
+The active job names the job of the run that holds the claim.
+
+The reindex service sets it through `markActiveJob(jobKey)`.
+
+The service calls that method after the job store creates the job.
+
+The service calls that method before the first job record write.
+
+`markActiveJob` writes the value only while the state reports running.
+
+A call outside a running state changes nothing.
+
+The claim generation cannot identify a run. An invalidation raises the
+generation during the same run.
+
+The running flag is the only guard. One process runs at most one rebuild.
+
+Every finish path clears the active job. Every release path clears it too.
+
+A state with no running rebuild reports a null active job.
+
+The active job never decides coverage. The covering job alone decides coverage.
+
 The actuator read operation returns the status and recent job records.
 
 ## Failure Behavior
@@ -388,6 +415,9 @@ The index remains usable. A record is evidence and never acts as a lock.
 - An invalidation after finish updates the new covering job.
 - A terminal job write never overwrites a later invalidation.
 - A stale `RUNNING` job never rejects a new claim.
+- The status reports the active job while a rebuild runs.
+- Every finish path and every release path clears the active job.
+- A `markActiveJob` call outside a running state changes nothing.
 - The job writer calls persistence, the message index, and pub/sub in order.
 - A failed job-record write stops later writes and keeps earlier writes.
 - The job writer never calls `MessagingServiceImpl.send()`.
@@ -442,3 +472,4 @@ The index remains usable. A record is evidence and never acts as a lock.
 20. Keep system-topic exceptions out of `addRoom()`.
 21. Stop later job-record writes after failure without rolling back earlier writes.
 22. Open the job topic for pub/sub as the third step of job topic creation.
+23. Guard `markActiveJob` with the running flag, not with the claim generation.
