@@ -98,10 +98,20 @@ Create one persisted topic before each rebuild. Use a reserved topic-name prefix
 
 The topic name includes the node id, key type, start time, and incarnation id.
 
-The job service creates this topic through `TopicPersistence.add()` and
-`TopicIndexService.add()`.
+The job service creates this topic with this sequence, in this order:
+
+1. `TopicPersistence.add()`.
+2. `TopicIndexService.add()`.
+3. `PubSubService.open()`.
 
 The job service never calls `TopicServiceImpl.addRoom()`.
+
+`PubSubService.open()` is required, not optional. The memory backend keeps its
+pub/sub state in instance maps. It answers `sendMessage()` on a topic it never
+opened with `Object not Found`. `CHAT-qonhhtuq` records that defect.
+
+`addRoom()` performs the same three writes for a user room. The job service
+repeats the sequence rather than calling that method.
 
 `addRoom()` rejects the reserved prefix without a system-topic exception.
 
@@ -365,7 +375,9 @@ The index remains usable. A record is evidence and never acts as a lock.
 - A failed topic listing prevents the message scan.
 - The topic filter runs before every rebuild counter.
 - `listRooms()` excludes reserved job topics.
-- The job service creates its topic through persistence and the topic index.
+- The job service creates its topic through persistence, the topic index, and
+  `PubSubService.open()`, in that order.
+- A job record reaches a subscriber of the job topic, which proves the open call.
 - The job service never calls `addRoom()`.
 - `addRoom()` rejects the reserved prefix.
 - A topic-list or job-read failure reports incomplete under `stored`.
@@ -402,3 +414,4 @@ The index remains usable. A record is evidence and never acts as a lock.
 19. Create job topics through persistence and the topic index.
 20. Keep system-topic exceptions out of `addRoom()`.
 21. Stop later job-record writes after failure without rolling back earlier writes.
+22. Open the job topic for pub/sub as the third step of job topic creation.
