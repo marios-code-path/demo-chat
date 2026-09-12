@@ -1896,8 +1896,13 @@ the next rebuild would read its own output back out of
     }
 ```
 
-`writerUnderTest(failOn: String? = null)` builds the writer from three recording
-fakes and one vector indexer that must stay untouched.
+`writerUnderTest(failOn: String? = null)` builds the writer from three doubles in
+`VectorTestFakes`. It passes no vector indexer, because the writer takes none.
+
+**That is why the call list is the proof.** A test cannot assert that an
+indexer stayed untouched when the writer never holds one, so
+`containsExactly("persistence", "index", "pubsub")` carries the boundary: three
+steps, in that order, and no fourth.
 
 ```kotlin
     private val calls = mutableListOf<String>()
@@ -1925,10 +1930,6 @@ fakes and one vector indexer that must stay untouched.
 The three doubles come from `VectorTestFakes.kt`, which Task 5 creates. Each one
 appends its own name to `calls`, and `FakeMessageIndex(calls, "index")` is what
 the third test uses to fail the second step.
-
-The writer takes three services and no vector indexer, so a test cannot assert
-that an indexer stayed untouched. The `containsExactly` check on `calls` is what
-proves the boundary: three steps, in that order, and no fourth.
 
 - [ ] **Step 1b: Write the failing codec tests**
 
@@ -2005,7 +2006,9 @@ class JobRecordCodecTests {
 - [ ] **Step 2: Run both suites and confirm they fail**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=JobRecordCodecTests,ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL. The compiler reports an unresolved reference to `ComposedJobRecordWriter`.
+Expected: FAIL. The compiler reports unresolved references to `JobRecordWriter`,
+`JobRecordCodec`, and `ComposedJobRecordWriter`. All three are new in this task,
+and the codec tests name two of them before the writer test is reached.
 
 - [ ] **Step 3: Write the writer**
 
