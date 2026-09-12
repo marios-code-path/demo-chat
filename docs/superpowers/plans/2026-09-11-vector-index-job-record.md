@@ -759,7 +759,10 @@ git add -A && git commit -m "feat: hold the invalidation target in the vector in
 **Files:**
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/VectorIndexJobStore.kt`
 - Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorIndexJobStoreImpl.kt`
+- Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/SerialWriter.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorTestFakes.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexJobStoreImplTests.kt`
+- Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/SerialWriterTests.kt`
 
 **Interfaces:**
 - Consumes: `IndexJob<T>`, `JobOutcome`, `JobTopicNames`, `TopicPersistence<T>`,
@@ -935,58 +938,132 @@ fakes. `readDelay` is what makes the contention test possible: the key-value fak
 waits on it before each read, so two operations can overlap on demand.
 
 ```kotlin
+**These doubles are shared.** Task 6 and Task 11 use them too, so they go in one
+file rather than as private classes inside a test. Create
+`chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorTestFakes.kt`:
+
+```kotlin
+package com.demo.chat.test.service.composite
+
+import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.service.core.KeyValueStore
+import com.demo.chat.service.core.MessageIndexService
+import com.demo.chat.service.core.MessagePersistence
+import com.demo.chat.service.core.TopicIndexService
+import com.demo.chat.service.core.TopicPersistence
+import com.demo.chat.service.core.TopicPubSubService
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+
+/**
+ * In-memory doubles for the composite vector tests.
+ *
+ * They are internal rather than private, because three tasks use them. A
+ * private class cannot leave its own file.
+ *
+ * A double that takes [calls] appends its own name on each write, so a test
+ * can assert the order in which services were called.
+ */
+internal class FakeTopicPersistence : TopicPersistence<Long> {
+    val saved = mutableListOf<MessageTopic<Long>>()
+    private var nextId = 500L
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+    override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(ent) }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { saved.removeIf { it.key == key } }
+    override fun get(key: Key<Long>): Mono<out MessageTopic<Long>> =
+        Mono.justOrEmpty(saved.firstOrNull { it.key == key })
+    override fun all(): Flux<out MessageTopic<Long>> = Flux.fromIterable(saved.toList())
+}
+
+internal class FakeTopicIndex : TopicIndexService<Long, Map<String, String>> {
+    val saved = mutableListOf<MessageTopic<Long>>()
+    override fun add(entity: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(entity) }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { saved.removeIf { it.key == key } }
+    override fun findBy(query: Map<String, String>): Flux<out Key<Long>> =
+        Flux.fromIterable(saved.filter { it.data == query["name"] }.map { it.key })
+    override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
+}
+
+internal class FakePubSub(private val calls: MutableList<String>? = null) : TopicPubSubService<Long, String> {
+    val opened = mutableListOf<Long>()
+    val sent = mutableListOf<Message<Long, String>>()
+    override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
+    override fun close(topicId: Long): Mono<Void> = Mono.empty()
+    override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
+    override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
+    override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+    override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+    override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
+    override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
+    override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+        calls?.add("pubsub")
+        sent.add(message)
+    }
+    override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
+    override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
+}
+
+/**
+ * The read waits on [readDelay] before it answers, so a caller can hold one
+ * operation inside its read and start a second one.
+ */
+internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty()) : KeyValueStore<Long, Any> {
+    val values = linkedMapOf<Long, KeyValuePair<Long, Any>>()
+    override fun key(): Mono<out Key<Long>> = Mono.empty()
+    override fun add(ent: KeyValuePair<Long, Any>): Mono<Void> = Mono.fromRunnable { values[ent.key.id] = ent }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { values.remove(key.id) }
+    override fun get(key: Key<Long>): Mono<out KeyValuePair<Long, Any>> =
+        readDelay.then(Mono.justOrEmpty(values[key.id]))
+    override fun all(): Flux<out KeyValuePair<Long, Any>> = Flux.fromIterable(values.values.toList())
+}
+
+internal class FakeMessagePersistence(private val calls: MutableList<String>? = null) :
+    MessagePersistence<Long, String> {
+    val added = mutableListOf<Message<Long, String>>()
+    private var nextId = 900L
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+    override fun add(ent: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+        calls?.add("persistence")
+        added.add(ent)
+    }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
+    override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
+        Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id })
+    override fun all(): Flux<out Message<Long, String>> = Flux.fromIterable(added.toList())
+    override fun byIds(keys: List<Key<Long>>): Flux<out Message<Long, String>> =
+        Flux.fromIterable(added.filter { message -> keys.any { it.id == message.key.id } })
+}
+
+internal class FakeMessageIndex(
+    private val calls: MutableList<String>? = null,
+    private val failOn: String? = null,
+) : MessageIndexService<Long, String, Map<String, String>> {
+    val added = mutableListOf<Message<Long, String>>()
+    override fun add(entity: Message<Long, String>): Mono<Void> = Mono.defer {
+        calls?.add("index")
+        if (failOn == "index") {
+            Mono.error(IllegalStateException("index is down"))
+        } else {
+            added.add(entity)
+            Mono.empty()
+        }
+    }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
+    override fun findBy(query: Map<String, String>): Flux<out Key<Long>> =
+        Flux.fromIterable(added.filter { it.key.dest.toString() == query["topic"] }.map { it.key })
+    override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
+}
+```
+
+The store test then holds instances and one builder:
+
+```kotlin
     private val topics = FakeTopicPersistence()
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
-
-    private class FakeTopicPersistence : TopicPersistence<Long> {
-        val saved = mutableListOf<MessageTopic<Long>>()
-        private var nextId = 500L
-        override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
-        override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(ent) }
-        override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { saved.removeIf { it.key == key } }
-        override fun get(key: Key<Long>): Mono<out MessageTopic<Long>> =
-            Mono.justOrEmpty(saved.firstOrNull { it.key == key })
-        override fun all(): Flux<out MessageTopic<Long>> = Flux.fromIterable(saved.toList())
-    }
-
-    private class FakeTopicIndex : TopicIndexService<Long, Map<String, String>> {
-        val saved = mutableListOf<MessageTopic<Long>>()
-        override fun add(entity: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(entity) }
-        override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
-        override fun findBy(query: Map<String, String>): Flux<out Key<Long>> = Flux.empty()
-        override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = Mono.empty()
-    }
-
-    private class FakePubSub : TopicPubSubService<Long, String> {
-        val opened = mutableListOf<Long>()
-        override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
-        override fun close(topicId: Long): Mono<Void> = Mono.empty()
-        override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
-        override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
-        override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
-        override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.empty()
-        override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
-        override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
-    }
-
-    /**
-     * The read waits on [readDelay] before it answers. A caller can therefore
-     * hold one operation inside its read and start a second one.
-     */
-    private class FakeKeyValueStore(private val readDelay: Mono<Void>) : KeyValueStore<Long, Any> {
-        val values = linkedMapOf<Long, KeyValuePair<Long, Any>>()
-        override fun key(): Mono<out Key<Long>> = Mono.empty()
-        override fun add(ent: KeyValuePair<Long, Any>): Mono<Void> =
-            Mono.fromRunnable { values[ent.key.id] = ent }
-        override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { values.remove(key.id) }
-        override fun get(key: Key<Long>): Mono<out KeyValuePair<Long, Any>> =
-            readDelay.then(Mono.justOrEmpty(values[key.id]))
-        override fun all(): Flux<out KeyValuePair<Long, Any>> = Flux.fromIterable(values.values.toList())
-    }
 
     private fun storeUnderTest(readDelay: Mono<Void> = Mono.empty()): VectorIndexJobStore<Long> =
         VectorIndexJobStoreImpl(
@@ -1162,7 +1239,19 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
      */
     fun close(): Mono<Void> = Mono.defer {
         closed.set(true)
-        queue.tryEmitComplete()
+        try {
+            // The same policy the submit path uses. A submit that is emitting
+            // at this moment produces FAIL_NON_SERIALIZED here too, and an
+            // ignored result would leave the queue open, so drained would
+            // never complete and this Mono would never finish.
+            queue.emitComplete(Sinks.EmitFailureHandler.busyLooping(emitTimeout))
+        } catch (error: Sinks.EmissionException) {
+            // FAIL_TERMINATED means the queue is already complete. A second
+            // close is not an error.
+            if (error.reason != Sinks.EmitResult.FAIL_TERMINATED) {
+                return@defer Mono.error(error)
+            }
+        }
         drained.asMono().doFinally { worker.dispose() }
     }
 }
@@ -1194,6 +1283,7 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import reactor.test.StepVerifier
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -1228,10 +1318,13 @@ class SerialWriterTests {
         val running = AtomicBoolean(false)
         val overlapped = AtomicBoolean(false)
 
-        val body = Mono.fromRunnable<Void> {
-            if (!running.compareAndSet(false, true)) overlapped.set(true)
-        }
+        // fromRunnable completes empty, and delayElement only delays an onNext.
+        // An empty completion passes straight through, so a delay after
+        // fromRunnable creates no window at all. fromCallable emits a value,
+        // which the delay can hold.
+        val body = Mono.fromCallable { !running.compareAndSet(false, true) }
             .delayElement(Duration.ofMillis(5))
+            .doOnNext { collided -> if (collided) overlapped.set(true) }
             .doFinally { running.set(false) }
             .then()
 
@@ -1249,15 +1342,25 @@ class SerialWriterTests {
     @Test
     fun `close drains queued work`() {
         val writer = SerialWriter()
+        val started = AtomicInteger()
         val done = AtomicInteger()
-        val slow = Mono.delay(Duration.ofMillis(20)).then(Mono.fromRunnable<Void> { done.incrementAndGet() })
+        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
+            .then(Mono.delay(Duration.ofMillis(20)))
+            .then(Mono.fromRunnable<Void> { done.incrementAndGet() })
 
-        val results = (0 until 10).map { writer.submit(slow) }
-        val all = Flux.merge(results).then()
+        // submit returns a deferred Mono, so nothing reaches the queue until
+        // something subscribes. toFuture subscribes now. Closing before this
+        // would reject every submission instead of draining it.
+        val all = Flux.merge((0 until 10).map { writer.submit(slow) }).then().toFuture()
+
+        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
+            .filter { started.get() > 0 }
+            .next()
+            .block(Duration.ofSeconds(10))
 
         writer.close().block(Duration.ofSeconds(10))
+        all.get(10, TimeUnit.SECONDS)
 
-        StepVerifier.create(all).verifyComplete()
         Assertions.assertThat(done.get()).isEqualTo(10)
     }
 
@@ -1367,40 +1470,8 @@ fakes and one vector indexer that must stay untouched.
 
 ```kotlin
     private val calls = mutableListOf<String>()
-    private val persistence = RecordingPersistence(calls)
-    private val pubsub = RecordingPubSub(calls)
-
-    private class RecordingPersistence(private val calls: MutableList<String>) :
-        MessagePersistence<Long, String> {
-        val added = mutableListOf<Message<Long, String>>()
-        override fun key(): Mono<out Key<Long>> = Mono.empty()
-        override fun add(ent: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
-            calls.add("persistence")
-            added.add(ent)
-        }
-        override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
-        override fun get(key: Key<Long>): Mono<out Message<Long, String>> = Mono.empty()
-        override fun all(): Flux<out Message<Long, String>> = Flux.empty()
-    }
-
-    private class RecordingPubSub(private val calls: MutableList<String>) :
-        TopicPubSubService<Long, String> {
-        val sent = mutableListOf<Message<Long, String>>()
-        override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
-            calls.add("pubsub")
-            sent.add(message)
-        }
-        override fun open(topicId: Long): Mono<Void> = Mono.empty()
-        override fun close(topicId: Long): Mono<Void> = Mono.empty()
-        override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
-        override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
-        override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
-        override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
-        override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
-        override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
-    }
+    private val persistence = FakeMessagePersistence(calls)
+    private val pubsub = FakePubSub(calls)
 
     private val record = JobRecord(
         key = Key.funKey(7L),
@@ -1410,27 +1481,19 @@ fakes and one vector indexer that must stay untouched.
         message = "rebuild started",
     )
 
-    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> {
-        val index = object : MessageIndexService<Long, String, Map<String, String>> {
-            override fun add(entity: Message<Long, String>): Mono<Void> = Mono.defer {
-                calls.add("index")
-                if (failOn == "index") Mono.error(IllegalStateException("index is down"))
-                else Mono.empty()
-            }
-            override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
-            override fun findBy(query: Map<String, String>): Flux<out Key<Long>> = Flux.empty()
-            override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = Mono.empty()
-        }
-
-        return ComposedJobRecordWriter(
+    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> =
+        ComposedJobRecordWriter(
             messagePersistence = persistence,
-            messageIndex = index,
+            messageIndex = FakeMessageIndex(calls, failOn),
             pubsub = pubsub,
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
-    }
 ```
+
+The three doubles come from `VectorTestFakes.kt`, which Task 5 creates. Each one
+appends its own name to `calls`, and `FakeMessageIndex(calls, "index")` is what
+the third test uses to fail the second step.
 
 The writer takes three services and no vector indexer, so a test cannot assert
 that an indexer stayed untouched. The `containsExactly` check on `calls` is what
@@ -2281,19 +2344,20 @@ class VectorRecallServiceConfigurationTests {
      * Registers every bean the configuration reads, and nothing else.
      *
      * The three provider interfaces come from chat-core, so this module can
-     * implement them. The in-memory fakes live in InMemoryServiceBeans beside
-     * this test, and they reuse the shapes that VectorIndexJobStoreImplTests
-     * already declares.
+     * implement them. InMemoryServiceBeans backs them with the doubles in
+     * VectorTestFakes, which Task 5 creates.
      */
+    private val beans = InMemoryServiceBeans()
+
     private fun contextWith(properties: Map<String, String>): AnnotationConfigApplicationContext {
         val context = AnnotationConfigApplicationContext()
         context.environment.propertySources.addFirst(MapPropertySource("test", properties))
         context.beanFactory.registerSingleton("typeUtil", LongUtil())
         context.beanFactory.registerSingleton("vectorStore", MockVectorStore())
-        context.beanFactory.registerSingleton("persistenceBeans", InMemoryServiceBeans.persistence())
-        context.beanFactory.registerSingleton("indexBeans", InMemoryServiceBeans.index())
-        context.beanFactory.registerSingleton("pubSubBeans", InMemoryServiceBeans.pubSub())
-        context.beanFactory.registerSingleton("queryConverters", InMemoryServiceBeans.converters())
+        context.beanFactory.registerSingleton("persistenceBeans", beans.persistence())
+        context.beanFactory.registerSingleton("indexBeans", beans.index())
+        context.beanFactory.registerSingleton("pubSubBeans", beans.pubSub())
+        context.beanFactory.registerSingleton("queryConverters", beans.converters())
         context.register(VectorRecallServiceConfiguration::class.java)
         context.refresh()
         return context
@@ -2404,14 +2468,113 @@ class VectorRecallServiceConfigurationTests {
 }
 ```
 
-**Files this task also creates:** `InMemoryServiceBeans` in
-`chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`.
-It returns one `PersistenceServiceBeans<Long, String>`, one
-`IndexServiceBeans<Long, String, Map<String, String>>`, one
-`PubSubServiceBeans<Long, String>`, and one
-`RequestToQueryConverters<Map<String, String>>`, all backed by the map-based fakes
-from Task 5 and Task 6. The unused members return the existing dummies in
-`com.demo.chat.service.dummy`, because the configuration never calls them.
+Create `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`:
+
+```kotlin
+package com.demo.chat.test.config
+
+import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.PubSubServiceBeans
+import com.demo.chat.domain.*
+import com.demo.chat.service.core.*
+import com.demo.chat.service.dummy.DummyIndexService
+import com.demo.chat.service.dummy.DummyKeyValueIndexService
+import com.demo.chat.service.dummy.DummyPersistenceStore
+import com.demo.chat.service.security.AuthMetaIndex
+import com.demo.chat.service.security.AuthMetaPersistence
+import com.demo.chat.test.service.composite.FakeKeyValueStore
+import com.demo.chat.test.service.composite.FakeMessageIndex
+import com.demo.chat.test.service.composite.FakeMessagePersistence
+import com.demo.chat.test.service.composite.FakePubSub
+import com.demo.chat.test.service.composite.FakeTopicIndex
+import com.demo.chat.test.service.composite.FakeTopicPersistence
+
+/**
+ * The provider beans the vector configuration reads, backed by the doubles in
+ * VectorTestFakes.
+ *
+ * The configuration calls six provider methods. Every other member returns an
+ * existing dummy, because nothing under test reaches it.
+ */
+internal class InMemoryServiceBeans {
+    val topics = FakeTopicPersistence()
+    val topicIndex = FakeTopicIndex()
+    val pubsub = FakePubSub()
+    val messages = FakeMessagePersistence()
+    val messageIndex = FakeMessageIndex()
+    val keyValues = FakeKeyValueStore()
+
+    fun persistence(): PersistenceServiceBeans<Long, String> =
+        object : PersistenceServiceBeans<Long, String> {
+            override fun userPersistence(): UserPersistence<Long> =
+                object : DummyPersistenceStore<Long, User<Long>>(), UserPersistence<Long> {}
+
+            override fun topicPersistence(): TopicPersistence<Long> = topics
+
+            override fun messagePersistence(): MessagePersistence<Long, String> = messages
+
+            override fun membershipPersistence(): MembershipPersistence<Long> =
+                object : DummyPersistenceStore<Long, TopicMembership<Long>>(), MembershipPersistence<Long> {}
+
+            override fun authMetaPersistence(): AuthMetaPersistence<Long> =
+                object : DummyPersistenceStore<Long, AuthMetadata<Long>>(), AuthMetaPersistence<Long> {}
+
+            override fun keyValuePersistence(): KeyValueStore<Long, Any> = keyValues
+        }
+
+    fun index(): IndexServiceBeans<Long, String, Map<String, String>> =
+        object : IndexServiceBeans<Long, String, Map<String, String>> {
+            override fun userIndex(): UserIndexService<Long, Map<String, String>> =
+                object : DummyIndexService<Long, User<Long>, Map<String, String>>(),
+                    UserIndexService<Long, Map<String, String>> {}
+
+            override fun messageIndex(): MessageIndexService<Long, String, Map<String, String>> = messageIndex
+
+            override fun topicIndex(): TopicIndexService<Long, Map<String, String>> = topicIndex
+
+            override fun membershipIndex(): MembershipIndexService<Long, Map<String, String>> =
+                object : DummyIndexService<Long, TopicMembership<Long>, Map<String, String>>(),
+                    MembershipIndexService<Long, Map<String, String>> {
+                    override fun size(query: Map<String, String>) = reactor.core.publisher.Mono.just(0L)
+                }
+
+            override fun authMetadataIndex(): AuthMetaIndex<Long, Map<String, String>> =
+                object : DummyIndexService<Long, AuthMetadata<Long>, Map<String, String>>(),
+                    AuthMetaIndex<Long, Map<String, String>> {}
+
+            override fun KVPairIndex(): KeyValueIndexService<Long, Map<String, String>> =
+                DummyKeyValueIndexService()
+        }
+
+    fun pubSub(): PubSubServiceBeans<Long, String> =
+        object : PubSubServiceBeans<Long, String> {
+            override fun pubSubService(): TopicPubSubService<Long, String> = pubsub
+        }
+
+    fun converters(): RequestToQueryConverters<Map<String, String>> =
+        object : RequestToQueryConverters<Map<String, String>> {
+            override fun topicNameToQuery(req: ByStringRequest) = mapOf("name" to req.name)
+            override fun <T> topicIdToQuery(req: ByIdRequest<T>) = mapOf("topic" to req.id.toString())
+            override fun userHandleToQuery(req: ByStringRequest) = mapOf("handle" to req.name)
+            override fun <T> authPrincipalToQuery(req: ByIdRequest<T>) = mapOf("principal" to req.id.toString())
+            override fun <T> authTargetToQuery(req: ByIdRequest<T>) = mapOf("target" to req.id.toString())
+            override fun <T> membershipIdToQuery(req: ByIdRequest<T>) = mapOf("member" to req.id.toString())
+            override fun <T> membershipRequestToQuery(req: MembershipRequest<T>) =
+                mapOf("member" to req.uid.toString())
+        }
+}
+```
+
+The test holds one instance and registers its four provider objects:
+
+```kotlin
+    private val beans = InMemoryServiceBeans()
+```
+
+Then `contextWith` registers `beans.persistence()`, `beans.index()`,
+`beans.pubSub()`, and `beans.converters()`. `MembershipIndexService` declares an
+extra `size` member, which is why that one dummy overrides a method.
 
 - [ ] **Step 2: Run and confirm they fail**
 
