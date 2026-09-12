@@ -1169,8 +1169,16 @@ class VectorIndexJobStoreImpl<T, V, Q>(
                 }
         )
 
-    /** The configuration registers this as the bean destroy method. */
-    fun close() = writer.close()
+    /**
+     * The configuration registers this as the bean destroy method.
+     *
+     * `block()` takes no timeout. `close()` is already bounded, and an outer
+     * timeout would cancel it, which would dispose the worker while work is
+     * still queued.
+     */
+    fun close() {
+        writer.close().block()
+    }
 }
 ```
 
@@ -1201,11 +1209,24 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
     private val drained = Sinks.empty<Void>()
     private val queue = Sinks.many().unicast().onBackpressureBuffer<Work>()
 
+    /**
+     * Every submitted piece of work that has not finished.
+     *
+     * Shutdown reads this. A piece that never ran must still terminate its
+     * caller, because a caller that waits forever is the failure this class
+     * exists to prevent.
+     */
+    private val pending = ConcurrentLinkedQueue<Work>()
+
     private val worker: Disposable = queue.asFlux()
         .concatMap { work ->
             work.body
-                .doOnSuccess { work.result.tryEmitEmpty() }
+                .doOnSuccess {
+                    pending.remove(work)
+                    work.result.tryEmitEmpty()
+                }
                 .onErrorResume { error ->
+                    pending.remove(work)
                     work.result.tryEmitError(error)
                     Mono.empty()
                 }
@@ -1219,6 +1240,7 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
         }
 
         val work = Work(body, Sinks.empty())
+        pending.add(work)
         try {
             // Two concurrent submissions produce FAIL_NON_SERIALIZED, and
             // busyLooping retries that case. A closed queue produces
@@ -1226,6 +1248,7 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
             // signal rather than a Mono that never completes.
             queue.emitNext(work, Sinks.EmitFailureHandler.busyLooping(emitTimeout))
         } catch (error: Throwable) {
+            pending.remove(work)
             return@defer Mono.error(error)
         }
 
@@ -1233,11 +1256,18 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
     }
 
     /**
-     * Stops new work, waits for the queued work to finish, and only then
-     * disposes the worker. An immediate dispose would strand every queued
-     * result.
+     * Stops new work, waits up to [timeout] for the queued work to finish, and
+     * then disposes the worker.
+     *
+     * **Every caller terminates.** Work that the timeout cuts short receives an
+     * error, because disposing the worker leaves its result sink unfinished
+     * otherwise, and that caller would wait forever.
+     *
+     * The wait happens here rather than in the caller. An outer
+     * `block(timeout)` would cancel this Mono, and a cancel would dispose the
+     * worker with work still queued.
      */
-    fun close(): Mono<Void> = Mono.defer {
+    fun close(timeout: Duration = Duration.ofSeconds(10)): Mono<Void> = Mono.defer {
         closed.set(true)
         try {
             // The same policy the submit path uses. A submit that is emitting
@@ -1252,19 +1282,28 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
                 return@defer Mono.error(error)
             }
         }
-        drained.asMono().doFinally { worker.dispose() }
+
+        drained.asMono()
+            .timeout(timeout)
+            .onErrorResume(TimeoutException::class.java) { Mono.empty() }
+            .then(Mono.fromRunnable<Void> { abandonPending() })
+    }
+
+    private fun abandonPending() {
+        worker.dispose()
+
+        while (true) {
+            val work = pending.poll() ?: break
+            work.result.tryEmitError(
+                ChatException("The job writer shut down before this work ran.")
+            )
+        }
     }
 }
 ```
 
-The store's `close()` blocks, because a Spring destroy method takes no
-subscriber:
-
-```kotlin
-    /** The configuration registers this as the bean destroy method. */
-    fun close() {
-        writer.close().block(Duration.ofSeconds(10))
-    }
+Imports for this file: `java.util.concurrent.ConcurrentLinkedQueue` and
+`java.util.concurrent.TimeoutException` beside the ones above.
 ```
 
 - [ ] **Step 3b: Write the SerialWriter tests**
@@ -1307,7 +1346,7 @@ class SerialWriterTests {
             .verifyComplete()
 
         Assertions.assertThat(done.get()).isEqualTo(200)
-        writer.close().block(Duration.ofSeconds(10))
+        writer.close().block()
     }
 
     // One at a time means one at a time. A second body must not start while
@@ -1333,7 +1372,7 @@ class SerialWriterTests {
             .verifyComplete()
 
         Assertions.assertThat(overlapped.get()).isFalse()
-        writer.close().block(Duration.ofSeconds(10))
+        writer.close().block()
     }
 
     // close() must let queued work finish. An immediate dispose would strand
@@ -1358,16 +1397,45 @@ class SerialWriterTests {
             .next()
             .block(Duration.ofSeconds(10))
 
-        writer.close().block(Duration.ofSeconds(10))
+        writer.close().block()
         all.get(10, TimeUnit.SECONDS)
 
         Assertions.assertThat(done.get()).isEqualTo(10)
     }
 
+    // The hazard this test exists for. Work outlasts the shutdown timeout, so
+    // the worker is disposed before it runs. Every caller must still terminate,
+    // with a completion or with an error. A stranded caller shows up here as a
+    // future that never resolves.
+    @Test
+    fun `work that outlasts the shutdown timeout still terminates its callers`() {
+        val writer = SerialWriter()
+        val started = AtomicInteger()
+        val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
+            .then(Mono.delay(Duration.ofMillis(400)))
+            .then()
+
+        val outcomes = (0 until 5).map { writer.submit(slow).materialize().toFuture() }
+
+        Flux.interval(Duration.ZERO, Duration.ofMillis(5))
+            .filter { started.get() > 0 }
+            .next()
+            .block(Duration.ofSeconds(10))
+
+        writer.close(Duration.ofMillis(50)).block()
+
+        outcomes.forEach { outcome ->
+            val signal = outcome.get(10, TimeUnit.SECONDS)
+            Assertions.assertThat(signal.isOnComplete || signal.hasError())
+                .`as`("every caller terminates")
+                .isTrue()
+        }
+    }
+
     @Test
     fun `a submission after close fails rather than hanging`() {
         val writer = SerialWriter()
-        writer.close().block(Duration.ofSeconds(10))
+        writer.close().block()
 
         StepVerifier
             .create(writer.submit(Mono.empty()))
@@ -1386,13 +1454,13 @@ class SerialWriterTests {
             .create(writer.submit(Mono.empty()))
             .verifyComplete()
 
-        writer.close().block(Duration.ofSeconds(10))
+        writer.close().block()
     }
 }
 ```
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 5 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
