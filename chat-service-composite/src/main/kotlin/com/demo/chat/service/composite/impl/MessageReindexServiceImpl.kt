@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReference
 class MessageReindexServiceImpl<T, V>(
     private val persistence: MessagePersistence<T, V>,
     private val indexer: MessageVectorIndexer<T>,
-    private val state: VectorIndexState,
+    private val state: VectorIndexState<T>,
     private val clock: Clock = Clock.systemUTC(),
     private val scheduler: Scheduler = Schedulers.boundedElastic(),
 ) : MessageReindexService<T> {
@@ -65,6 +65,7 @@ class MessageReindexServiceImpl<T, V>(
             claim,
             VectorRebuildReport(startedAt, clock.instant(), 0L, 0L, 0L, 0L),
             summary(error),
+            null,
         )
     }
 
@@ -140,7 +141,9 @@ class MessageReindexServiceImpl<T, V>(
             skipped.get(),
             failed.get(),
         )
-        state.finish(claim, report, lastFailure.get())
+        // No durable job exists yet. Task 7 passes the job this run created.
+        // A run with no job installs no covering target.
+        state.finish(claim, report, lastFailure.get(), null)
         logger.info(
             "Vector reindex finished. attempted={}, indexed={}, skipped={}, failed={}",
             report.attempted,

@@ -32,7 +32,7 @@ class MessageReindexServiceImplTests {
     private val finishedAt = Instant.parse("2026-09-10T12:00:01Z")
     private val persistence = mock<MessagePersistence<Long, String>>()
     private val indexer = RecordingIndexer()
-    private val state = InMemoryVectorIndexState()
+    private val state = InMemoryVectorIndexState<Long>()
     private val clock = mock<Clock>()
     private lateinit var scheduler: Scheduler
     private lateinit var service: MessageReindexServiceImpl<Long, String>

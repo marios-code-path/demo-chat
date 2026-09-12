@@ -597,6 +597,11 @@ git commit -m "feat: reject and hide reserved job topic names (CHAT-fpwpfrfj)"
 **Why the state becomes generic:** the target is a `Key<T>`. A raw `Key<*>` would
 push an unchecked cast into every caller.
 
+**`complete` still reads the phase in this task.** It moves to the covering job
+in Task 9. The verdict and the index state cannot differ until then, because a
+failed run sets the phase to `INCOMPLETE` either way. The test that pins that
+difference therefore lives in Task 9, not here.
+
 - [ ] **Step 1: Write the failing tests**
 
 Add these to `InMemoryVectorIndexStateTests`. Change the class field to
@@ -625,21 +630,6 @@ Add these to `InMemoryVectorIndexStateTests`. Change the class field to
 
         Assertions.assertThat(result.succeeded).isFalse()
         Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(9L))
-    }
-
-    // The trap this verdict exists to close. An earlier job still covers, so
-    // the index reports complete while this run failed. A durable outcome
-    // taken from status.complete would store SUCCEEDED for a failed run.
-    @Test
-    fun `a failed run reports a false verdict while an earlier job still covers`() {
-        val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(9L))
-        val claim = state.claim()
-
-        val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 2L, 1L, 0L, 1L), null, Key.funKey(11L))
-
-        Assertions.assertThat(result.succeeded).isFalse()
-        Assertions.assertThat(result.status.complete).isTrue()
     }
 
     @Test
@@ -763,7 +753,7 @@ to null in the same `updateAndGet` result. In `finish`, set `coveringJob = jobKe
 - [ ] **Step 5: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=InMemoryVectorIndexStateTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 11 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 6: Repair the reindex service call site**
 
@@ -2089,6 +2079,26 @@ raises the durable invalidation count on the covering job.
             .verifyComplete()
     }
 
+    // The trap the run verdict exists to close, and the first task where it can
+    // be seen. An earlier job still covers, so the index reports complete while
+    // this run failed. A durable outcome taken from status.complete would store
+    // SUCCEEDED for a failed run.
+    @Test
+    fun `a failed run reports a false verdict while an earlier job still covers`() {
+        state.adoptCoveringJob(coveringKey)
+        val claim = state.claim()
+
+        val result = state.finish(
+            claim,
+            VectorRebuildReport(startedAt, finishedAt, 2L, 1L, 0L, 1L),
+            null,
+            Key.funKey(11L),
+        )
+
+        Assertions.assertThat(result.succeeded).isFalse()
+        Assertions.assertThat(result.status.complete).isTrue()
+    }
+
     @Test
     fun `a live add failure raises the durable count and removes coverage`() {
         state.adoptCoveringJob(coveringKey)
@@ -2172,7 +2182,7 @@ replaces the original error.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=MessageRecallServiceImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS. Eight existing tests plus five new ones.
+Expected: PASS. Eight existing tests plus six new ones.
 
 - [ ] **Step 5: Commit**
 
