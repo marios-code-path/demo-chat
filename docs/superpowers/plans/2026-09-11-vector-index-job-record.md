@@ -937,7 +937,6 @@ interface VectorIndexJobStore<T> {
 fakes. `readDelay` is what makes the contention test possible: the key-value fake
 waits on it before each read, so two operations can overlap on demand.
 
-```kotlin
 **These doubles are shared.** Task 6 and Task 11 use them too, so they go in one
 file rather than as private classes inside a test. Create
 `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorTestFakes.kt`:
@@ -1304,7 +1303,6 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
 
 Imports for this file: `java.util.concurrent.ConcurrentLinkedQueue` and
 `java.util.concurrent.TimeoutException` beside the ones above.
-```
 
 - [ ] **Step 3b: Write the SerialWriter tests**
 
@@ -1403,12 +1401,18 @@ class SerialWriterTests {
         Assertions.assertThat(done.get()).isEqualTo(10)
     }
 
-    // The hazard this test exists for. Work outlasts the shutdown timeout, so
-    // the worker is disposed before it runs. Every caller must still terminate,
-    // with a completion or with an error. A stranded caller shows up here as a
-    // future that never resolves.
+    /**
+     * The hazard this test exists for.
+     *
+     * Each body needs 400 milliseconds and the shutdown timeout is 50, so no
+     * body can finish. Every caller must receive the shutdown error.
+     *
+     * The assertion demands that error rather than accepting any termination.
+     * A writer that ignored the timeout and drained normally would complete all
+     * five callers, and a weaker assertion would pass it.
+     */
     @Test
-    fun `work that outlasts the shutdown timeout still terminates its callers`() {
+    fun `work that outlasts the shutdown timeout fails every caller`() {
         val writer = SerialWriter()
         val started = AtomicInteger()
         val slow = Mono.fromRunnable<Void> { started.incrementAndGet() }
@@ -1425,10 +1429,15 @@ class SerialWriterTests {
         writer.close(Duration.ofMillis(50)).block()
 
         outcomes.forEach { outcome ->
+            // A stranded caller appears here as a future that never resolves.
             val signal = outcome.get(10, TimeUnit.SECONDS)
-            Assertions.assertThat(signal.isOnComplete || signal.hasError())
-                .`as`("every caller terminates")
+
+            Assertions.assertThat(signal.hasError())
+                .`as`("no body can finish inside the shutdown timeout")
                 .isTrue()
+            Assertions.assertThat(signal.throwable)
+                .isInstanceOf(ChatException::class.java)
+                .hasMessageContaining("shut down before this work ran")
         }
     }
 
