@@ -349,7 +349,7 @@ object JobTopicNames {
 - [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core test -Dtest=JobTopicNamesTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 7 tests.
+Expected: PASS, 4 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1474,7 +1474,7 @@ Expected: PASS, 6 tests.
 - [ ] **Step 4: Run the test and confirm it passes**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorIndexJobStoreImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 4 tests.
+Expected: PASS, 7 tests.
 
 - [ ] **Step 5: Commit**
 
