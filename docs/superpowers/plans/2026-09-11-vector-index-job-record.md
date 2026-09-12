@@ -4077,6 +4077,13 @@ stub one result. A commit without that carry would not compile.
 JSON. It adds the full route-shape tests. It proves the empty-result flag. It
 proves the RSocket serialization of the result.
 
+**A hit key sits one level deeper than its field name.** `Key` carries
+`@JsonTypeInfo(WRAPPER_OBJECT)` with the name `key`, at
+`KeyValuePair.kt:15`. So a hit serializes as
+`{"key":{"key":{"id":10,...}},"score":0.9}`, and the REST path is
+`$.hits[0].key.key.id`. The earlier NDJSON test never showed this, because it
+decoded whole objects through the chat mapper.
+
 **Interfaces:**
 - Consumes: `MessageRecallResult<T>` from Task 9.
 - Produces: three REST routes returning one JSON object, and three RSocket routes
@@ -4117,7 +4124,9 @@ mockito-kotlin dependency.
             .expectBody()
             .jsonPath("$.indexComplete").isEqualTo(true)
             .jsonPath("$.hits.length()").isEqualTo(2)
-            .jsonPath("$.hits[0].key.id").isEqualTo(10)
+            // Key carries a WRAPPER_OBJECT named key, so the id sits one level
+            // deeper than the field name suggests. KeyValuePair.kt declares it.
+            .jsonPath("$.hits[0].key.key.id").isEqualTo(10)
     }
 
     // The empty case is the reason this contract changed. A stream of hits
@@ -4162,6 +4171,7 @@ mockito-kotlin dependency.
             .expectStatus().isOk
             .expectBody()
             .jsonPath("$.hits.length()").isEqualTo(1)
+            .jsonPath("$.hits[0].key.key.id").isEqualTo(12)
     }
 ```
 
@@ -4255,8 +4265,15 @@ Expected: FAIL. The route still produces NDJSON.
 - [ ] **Step 3: Change both controllers**
 
 Drop `produces = [MediaType.APPLICATION_NDJSON_VALUE]` from all three REST
-routes. Task 9 already changed every return type, so no signature moves here.
-The route names do not change. The RSocket mapping needs no change in this task.
+routes, and drop the `MediaType` import with them. Task 9 already changed every
+return type, so no signature moves here. The route names do not change. The
+RSocket mapping needs no change in this task.
+
+The class comment changes with the routes. A Mono of one value serializes as one
+JSON object, and NDJSON would frame that object as a stream of one line.
+
+`MessageRecallRestTests` also drops its `ObjectMapper` field. The tests read the
+body through `jsonPath`, so nothing decodes a line any more.
 
 - [ ] **Step 4: Run both module suites**
 

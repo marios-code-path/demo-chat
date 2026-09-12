@@ -7,9 +7,6 @@ import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
@@ -35,14 +32,11 @@ class MessageRecallRestTests {
     @Autowired
     private lateinit var client: WebTestClient
 
-    @Autowired
-    private lateinit var mapper: ObjectMapper
-
     @MockBean
     private lateinit var recallService: MessageRecallService<Long>
 
     @Test
-    fun `recall topic returns one NDJSON result`() {
+    fun `recall topic returns one object with the flag`() {
         BDDMockito
             .given(recallService.recallInTopic(anyObject()))
             .willReturn(
@@ -57,54 +51,66 @@ class MessageRecallRestTests {
                 )
             )
 
-        val response = client
+        client
             .post()
             .uri("/message/recall/topic")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"type":"TopicRecallRequest","topicId":30,"query":"apple"}""")
             .exchange()
             .expectStatus().isOk
-            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
-            .expectBody(String::class.java)
-            .returnResult()
-
-        val lines = response.responseBody!!.trim().lines()
-        Assertions.assertThat(lines).hasSize(1)
-        val result = mapper.readValue<MessageRecallResult<Long>>(lines[0])
-        Assertions.assertThat(result.indexComplete).isTrue()
-        Assertions.assertThat(result.hits).hasSize(2)
-        val first = result.hits[0]
-        Assertions.assertThat(first.key.id).isEqualTo(10L)
-        Assertions.assertThat(first.key.from).isEqualTo(20L)
-        Assertions.assertThat(first.key.dest).isEqualTo(30L)
-        Assertions.assertThat(first.score).isEqualTo(0.9)
+            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.indexComplete").isEqualTo(true)
+            .jsonPath("$.hits.length()").isEqualTo(2)
+            // Key carries a WRAPPER_OBJECT named key, so the id sits one level
+            // deeper than the field name suggests. KeyValuePair.kt declares it.
+            .jsonPath("$.hits[0].key.key.id").isEqualTo(10)
     }
 
+    // The empty case is the reason this contract changed. A stream of hits
+    // cannot carry a flag when it carries no hit.
     @Test
-    fun `recall user and global routes exist`() {
-        val oneHit = MessageRecallResult(
-            indexComplete = true,
-            hits = listOf(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)),
-        )
-        BDDMockito
-            .given(recallService.recallByUser(anyObject()))
-            .willReturn(Mono.just(oneHit))
+    fun `an empty recall still carries the flag`() {
         BDDMockito
             .given(recallService.recallGlobal(anyObject()))
-            .willReturn(Mono.just(oneHit))
+            .willReturn(Mono.just(MessageRecallResult(indexComplete = false, hits = emptyList())))
 
-        client.post().uri("/message/recall/user")
-            .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue("""{"type":"UserRecallRequest","userId":20,"query":"apple"}""")
-            .exchange()
-            .expectStatus().isOk
-            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
-
-        client.post().uri("/message/recall/global")
+        client
+            .post()
+            .uri("/message/recall/global")
             .contentType(MediaType.APPLICATION_JSON)
             .bodyValue("""{"type":"GlobalRecallRequest","query":"apple"}""")
             .exchange()
             .expectStatus().isOk
-            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_NDJSON)
+            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.indexComplete").isEqualTo(false)
+            .jsonPath("$.hits.length()").isEqualTo(0)
+    }
+
+    @Test
+    fun `recall user returns one object`() {
+        BDDMockito
+            .given(recallService.recallByUser(anyObject()))
+            .willReturn(
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(MessageRecallHit(MessageKey.create(12L, 20L, 30L), 0.7)),
+                    )
+                )
+            )
+
+        client
+            .post()
+            .uri("/message/recall/user")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"type":"UserRecallRequest","userId":20,"query":"apple"}""")
+            .exchange()
+            .expectStatus().isOk
+            .expectHeader().contentTypeCompatibleWith(MediaType.APPLICATION_JSON)
+            .expectBody()
+            .jsonPath("$.hits.length()").isEqualTo(1)
+            .jsonPath("$.hits[0].key.key.id").isEqualTo(12)
     }
 }

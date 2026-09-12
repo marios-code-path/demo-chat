@@ -1,8 +1,10 @@
 package com.demo.chat.test.recall.controller
 
 import com.demo.chat.controller.composite.mapping.MessageRecallControllerMapping
+import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TopicRecallRequest
+import com.demo.chat.domain.UserRecallRequest
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.service.vector.MessageRecallHit
 import com.demo.chat.service.vector.MessageRecallResult
@@ -42,7 +44,7 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
     private lateinit var secretsStore: SecretsStore<Long>
 
     @Test
-    fun `recall topic route returns one result over the shared DTOs`() {
+    fun `the topic route returns one result`() {
         BDDMockito
             .given(recallService.recallInTopic(anyObject()))
             .willReturn(
@@ -54,16 +56,66 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
                 )
             )
 
-        StepVerifier.create(
-            requester
-                .route("message-recall-topic")
-                .data(Mono.just(TopicRecallRequest(30L, "apple")), TopicRecallRequest::class.java)
-                .retrieveMono(MessageRecallResult::class.java)
-        )
+        StepVerifier
+            .create(
+                requester
+                    .route("message-recall-topic")
+                    .data(TopicRecallRequest(30L, "apple", 10, 0.0))
+                    .retrieveMono(MessageRecallResult::class.java)
+            )
             .assertNext { result ->
                 Assertions.assertThat(result.indexComplete).isTrue()
                 Assertions.assertThat(result.hits).hasSize(1)
+                Assertions.assertThat(result.hits[0].key.id).isEqualTo(10L)
+                Assertions.assertThat(result.hits[0].score).isEqualTo(0.9)
             }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `the user route returns one result`() {
+        BDDMockito
+            .given(recallService.recallByUser(anyObject()))
+            .willReturn(Mono.just(MessageRecallResult(indexComplete = false, hits = emptyList())))
+
+        StepVerifier
+            .create(
+                requester
+                    .route("message-recall-user")
+                    .data(UserRecallRequest(20L, "apple", 10, 0.0))
+                    .retrieveMono(MessageRecallResult::class.java)
+            )
+            .assertNext { result ->
+                Assertions.assertThat(result.indexComplete).isFalse()
+                Assertions.assertThat(result.hits).isEmpty()
+            }
+            .verifyComplete()
+    }
+
+    // One response, not a stream. A stream of one would still decode here, so
+    // the assertion that matters is the single completion above and the route
+    // signature itself.
+    @Test
+    fun `the global route returns one result`() {
+        BDDMockito
+            .given(recallService.recallGlobal(anyObject()))
+            .willReturn(
+                Mono.just(
+                    MessageRecallResult(
+                        indexComplete = true,
+                        hits = listOf(MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.4)),
+                    )
+                )
+            )
+
+        StepVerifier
+            .create(
+                requester
+                    .route("message-recall-global")
+                    .data(GlobalRecallRequest("apple", 10, 0.0))
+                    .retrieveMono(MessageRecallResult::class.java)
+            )
+            .assertNext { result -> Assertions.assertThat(result.hits).hasSize(1) }
             .verifyComplete()
     }
 }
