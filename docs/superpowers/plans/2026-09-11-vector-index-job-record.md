@@ -1248,6 +1248,48 @@ internal class FakeMessageIndex(
 }
 ```
 
+Two tests cover the root key check. Add them beside the others:
+
+```kotlin
+    // The storage key and the stored root key are two separate facts, and only
+    // this read can compare them. A record under key A that holds key B makes
+    // the coverage policy invalidate B. Key A stays clean, and it covers the
+    // index again after a restart.
+    @Test
+    fun `a job whose root key differs from its storage key fails the read`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+        val other = Key.funKey(4242L)
+
+        keyValues.values[job.key.id] = KeyValuePair.create(job.key, job.copy(key = other) as Any)
+
+        StepVerifier
+            .create(store.readJob(job.key))
+            .expectErrorSatisfies { error ->
+                Assertions.assertThat(error).isInstanceOf(ChatException::class.java)
+                Assertions.assertThat(error.message).contains(job.key.id.toString(), "4242")
+            }
+            .verify()
+    }
+
+    // The cassandra backend stores the JSON text. The decoded key must still
+    // equal the storage key, or the check above would fail every read on that
+    // backend.
+    @Test
+    fun `a job stored as json text passes the root key check`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+
+        keyValues.values[job.key.id] =
+            KeyValuePair.create(job.key, mapper.writeValueAsString(job) as Any)
+
+        Assertions.assertThat(store.readJob(job.key).block()!!.key).isEqualTo(job.key)
+    }
+```
+
+These two tests need three more imports: `com.demo.chat.config.DefaultChatJacksonModules`,
+`com.demo.chat.domain.ChatException`, and `com.demo.chat.domain.KeyValuePair`.
+
 The store test then holds instances and one builder:
 
 ```kotlin
@@ -1255,24 +1297,39 @@ The store test then holds instances and one builder:
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
 
-    private fun storeUnderTest(readDelay: Mono<Void> = Mono.empty()): VectorIndexJobStore<Long> =
-        VectorIndexJobStoreImpl(
+    /** The store of the most recent [storeUnderTest]. Each test builds one. */
+    private lateinit var keyValues: FakeKeyValueStore
+
+    // The same modules the deployments register. A bare mapper cannot read a
+    // Key, and the cassandra shape is a JSON string.
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private fun storeUnderTest(readDelay: Mono<Void> = Mono.empty()): VectorIndexJobStore<Long> {
+        keyValues = FakeKeyValueStore(readDelay)
+        return VectorIndexJobStoreImpl(
             topicPersistence = topics,
             topicIndex = topicIndex,
             pubsub = pubsub,
-            keyValueStore = FakeKeyValueStore(readDelay),
-            codec = IndexJobCodec(ObjectMapper().findAndRegisterModules()),
+            keyValueStore = keyValues,
+            codec = IndexJobCodec(mapper),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
             workerKey = Key.funKey(1000L),
         )
+    }
 ```
 
-The memory key-value store returns the stored object, so these tests exercise the
-pass-through branch. `IndexJobCodecTests` covers the map and the JSON string
-branches directly against a mapper carrying the chat modules. **Task 14 proves
-the same decode against each real backend**, which is what the spec requires.
+The test holds the double, because `write()` always stores a job under its own
+key. Only direct access to `keyValues.values` can store a record under one key
+that holds another.
+
+The memory key-value store returns the stored object, so most of these tests
+exercise the pass-through branch. `IndexJobCodecTests` covers the map and the
+JSON string branches directly. **Task 14 proves the same decode against each
+real backend**, which is what the spec requires.
 
 - [ ] **Step 2: Write the failing SerialWriter tests**
 
@@ -1622,8 +1679,29 @@ class VectorIndexJobStoreImpl<T, V, Q>(
     override fun write(job: IndexJob<T>): Mono<Void> =
         keyValueStore.add(KeyValuePair.create(job.key, job as Any))
 
+    /**
+     * Reads the job that [topicKey] names.
+     *
+     * The stored value must hold the key it is stored under. The two are
+     * separate facts, and only this read can compare them. A record under key
+     * A that holds key B makes every later caller act on B. The coverage
+     * policy adopts B as its invalidation target, key A stays clean, and key A
+     * can cover the index again after a restart.
+     */
     override fun readJob(topicKey: Key<T>): Mono<IndexJob<T>> =
-        keyValueStore.get(topicKey).map { pair -> codec.decode(pair.data) }
+        keyValueStore.get(topicKey)
+            .map { pair -> codec.decode(pair.data) }
+            .flatMap { job ->
+                if (job.key == topicKey) {
+                    Mono.just(job)
+                } else {
+                    Mono.error(
+                        ChatException(
+                            "A job stored under key '$topicKey' holds root key '${job.key}'."
+                        )
+                    )
+                }
+            }
 
     override fun listJobTopics(): Flux<out MessageTopic<T>> =
         topicPersistence.all()
@@ -1805,7 +1883,7 @@ JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service
   -Dsurefire.failIfNoSpecifiedTests=false
 ```
 
-Expected: PASS, 17 tests. Four codec, seven store, and six writer.
+Expected: PASS, 19 tests. Four codec, nine store, and six writer.
 
 **Use `clean` here.** Surefire runs compiled classes, not sources, so a class
 whose source moved between modules keeps running from the old target directory
@@ -2877,6 +2955,10 @@ class VectorCoveragePolicyImpl<T>(
             // A name and a record that disagree fail the read rather than
             // dropping that job. Dropping it would expose an older clean job,
             // and the spec requires the read to fail closed.
+            //
+            // The root key needs no check here. The topic key leaves this
+            // chain at readJob, and only readJob can compare it with the key
+            // the record holds. Task 5 makes that comparison.
             .flatMap { job ->
                 if (job.nodeId == nodeId && job.keyType == keyType) {
                     Mono.just(job)

@@ -43,6 +43,10 @@ implement `KeyBearer<T>` and hold its own `Key<T>` root key.
 
 The key-value pair that stores an `IndexJob` must use `IndexJob.key`.
 
+A read of a stored job must compare the two keys. The read fails when the
+decoded root key differs from the key it was stored under. Only the read holds
+both keys. A caller that accepts a wrong key acts on another job.
+
 A `JobRecord` message must use `JobRecord.key.id` as its message id. The message
 key also carries the worker and job relationships.
 
@@ -371,6 +375,7 @@ The index remains usable. A record is evidence and never acts as a lock.
 - `IndexJob` has its own root key.
 - `JobRecord` has its own root key.
 - The job topic key equals the `IndexJob` root key.
+- A read of a record whose root key differs from its storage key fails.
 - A known topic key supports an `IndexJob` decode on each backend.
 - The same decode works through the RSocket key-value client.
 - A rebuild of a complete index keeps `indexComplete=true`.

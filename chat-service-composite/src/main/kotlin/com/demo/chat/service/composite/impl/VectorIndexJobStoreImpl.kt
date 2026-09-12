@@ -1,5 +1,6 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -56,8 +57,29 @@ class VectorIndexJobStoreImpl<T, V, Q>(
     override fun write(job: IndexJob<T>): Mono<Void> =
         keyValueStore.add(KeyValuePair.create(job.key, job as Any))
 
+    /**
+     * Reads the job that [topicKey] names.
+     *
+     * The stored value must hold the key it is stored under. The two are
+     * separate facts, and only this read can compare them. A record under key
+     * A that holds key B makes every later caller act on B. The coverage
+     * policy adopts B as its invalidation target, key A stays clean, and key A
+     * can cover the index again after a restart.
+     */
     override fun readJob(topicKey: Key<T>): Mono<IndexJob<T>> =
-        keyValueStore.get(topicKey).map { pair -> codec.decode(pair.data) }
+        keyValueStore.get(topicKey)
+            .map { pair -> codec.decode(pair.data) }
+            .flatMap { job ->
+                if (job.key == topicKey) {
+                    Mono.just(job)
+                } else {
+                    Mono.error(
+                        ChatException(
+                            "A job stored under key '$topicKey' holds root key '${job.key}'."
+                        )
+                    )
+                }
+            }
 
     /**
      * Every reserved topic, from every node.

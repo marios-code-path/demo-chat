@@ -1,8 +1,11 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.service.composite.impl.VectorIndexJobStoreImpl
@@ -135,20 +138,66 @@ class VectorIndexJobStoreImplTests {
         StepVerifier.create(store.listJobTopics()).expectNextCount(2).verifyComplete()
     }
 
+    // The storage key and the stored root key are two separate facts, and only
+    // this read can compare them. A record under key A that holds key B makes
+    // the coverage policy invalidate B. Key A stays clean, and it covers the
+    // index again after a restart.
+    @Test
+    fun `a job whose root key differs from its storage key fails the read`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+        val other = Key.funKey(4242L)
+
+        keyValues.values[job.key.id] = KeyValuePair.create(job.key, job.copy(key = other) as Any)
+
+        StepVerifier
+            .create(store.readJob(job.key))
+            .expectErrorSatisfies { error ->
+                Assertions.assertThat(error).isInstanceOf(ChatException::class.java)
+                Assertions.assertThat(error.message).contains(job.key.id.toString(), "4242")
+            }
+            .verify()
+    }
+
+    // The cassandra backend stores the JSON text. The decoded key must still
+    // equal the storage key, or the check above would fail every read on that
+    // backend.
+    @Test
+    fun `a job stored as json text passes the root key check`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+
+        keyValues.values[job.key.id] =
+            KeyValuePair.create(job.key, mapper.writeValueAsString(job) as Any)
+
+        Assertions.assertThat(store.readJob(job.key).block()!!.key).isEqualTo(job.key)
+    }
+
     private val topics = FakeTopicPersistence()
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
 
-    private fun storeUnderTest(readDelay: Mono<Void> = Mono.empty()): VectorIndexJobStore<Long> =
-        VectorIndexJobStoreImpl(
+    /** The store of the most recent [storeUnderTest]. Each test builds one. */
+    private lateinit var keyValues: FakeKeyValueStore
+
+    // The same modules the deployments register. A bare mapper cannot read a
+    // Key, and the cassandra shape is a JSON string.
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private fun storeUnderTest(readDelay: Mono<Void> = Mono.empty()): VectorIndexJobStore<Long> {
+        keyValues = FakeKeyValueStore(readDelay)
+        return VectorIndexJobStoreImpl(
             topicPersistence = topics,
             topicIndex = topicIndex,
             pubsub = pubsub,
-            keyValueStore = FakeKeyValueStore(readDelay),
-            codec = IndexJobCodec(ObjectMapper().findAndRegisterModules()),
+            keyValueStore = keyValues,
+            codec = IndexJobCodec(mapper),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
             workerKey = Key.funKey(1000L),
         )
+    }
 }
