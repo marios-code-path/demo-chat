@@ -1171,15 +1171,23 @@ internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty(
 internal class FakeMessagePersistence(
     private val calls: MutableList<String>? = null,
     private val delay: Duration = Duration.ZERO,
+    private val failure: Throwable? = null,
 ) : MessagePersistence<Long, String> {
     val added = mutableListOf<Message<Long, String>>()
     private var nextId = 900L
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
     override fun add(ent: Message<Long, String>): Mono<Void> =
-        Mono.delay(delay).then(Mono.fromRunnable {
-            calls?.add("persistence")
-            added.add(ent)
-        })
+        Mono.delay(delay).then(
+            Mono.defer {
+                calls?.add("persistence")
+                if (failure != null) {
+                    Mono.error(failure)
+                } else {
+                    added.add(ent)
+                    Mono.empty()
+                }
+            }
+        )
     override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
     override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
         Mono.defer { Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id }) }
@@ -1786,6 +1794,7 @@ git add -A && git commit -m "feat: add the durable vector index job store (CHAT-
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/JobRecordWriter.kt`
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/vector/JobRecordCodec.kt`
 - Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/ComposedJobRecordWriter.kt`
+- Test: `chat-core/src/test/kotlin/com/demo/chat/test/vector/JobRecordCodecTests.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/ComposedJobRecordWriterTests.kt`
 
 **Interfaces:**
@@ -1847,6 +1856,35 @@ the next rebuild would read its own output back out of
         Assertions.assertThat(slowCalls).containsExactly("persistence", "index", "pubsub")
     }
 
+    // The spec says any failed step stops the steps after it. The index case
+    // alone would leave the first step unproven.
+    @Test
+    fun `a failed persistence write stops the index and pub sub`() {
+        val failedCalls = mutableListOf<String>()
+        val index = FakeMessageIndex(failedCalls)
+        val sink = FakePubSub(failedCalls)
+        val writer = ComposedJobRecordWriter(
+            messagePersistence = FakeMessagePersistence(
+                failedCalls,
+                failure = IllegalStateException("persistence is down"),
+            ),
+            messageIndex = index,
+            pubsub = sink,
+            codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
+            asValue = { text -> text },
+        )
+
+        StepVerifier
+            .create(writer.write(record))
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error).hasMessage("persistence is down")
+            }
+
+        Assertions.assertThat(index.added).isEmpty()
+        Assertions.assertThat(sink.sent).isEmpty()
+        Assertions.assertThat(failedCalls).containsExactly("persistence")
+    }
+
     @Test
     fun `a failed index write stops pub sub and keeps the persisted record`() {
         val writer = writerUnderTest(failOn = "index")
@@ -1892,9 +1930,81 @@ The writer takes three services and no vector indexer, so a test cannot assert
 that an indexer stayed untouched. The `containsExactly` check on `calls` is what
 proves the boundary: three steps, in that order, and no fourth.
 
-- [ ] **Step 2: Run the test and confirm it fails**
+- [ ] **Step 1b: Write the failing codec tests**
 
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
+Create `chat-core/src/test/kotlin/com/demo/chat/test/vector/JobRecordCodecTests.kt`.
+
+**`decode` must read what `encode` wrote.** Nothing else in this task calls
+`decode`, so without these tests the round trip is never exercised.
+
+```kotlin
+package com.demo.chat.test.vector
+
+import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.JobRecord
+import com.demo.chat.domain.Key
+import com.demo.chat.service.vector.JobRecordCodec
+import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import java.time.Instant
+
+/**
+ * A job record travels as text, so the codec must read back what it wrote.
+ */
+class JobRecordCodecTests {
+    private val mapper: ObjectMapper = ObjectMapper()
+        .findAndRegisterModules()
+        .apply { registerModules(DefaultChatJacksonModules().allModules()) }
+
+    private val codec = JobRecordCodec(mapper)
+
+    private val record = JobRecord(
+        key = Key.funKey(7L),
+        jobKey = Key.funKey(500L),
+        workerKey = Key.funKey(1000L),
+        at = Instant.parse("2026-09-12T12:00:00Z"),
+        message = "rebuild started",
+        indexed = 3L,
+    )
+
+    @Test
+    fun `a known version completes an encode and decode round trip`() {
+        val decoded = codec.decode<Long>(codec.encode(record))
+
+        Assertions.assertThat(decoded.key.id).isEqualTo(7L)
+        Assertions.assertThat(decoded.jobKey.id).isEqualTo(500L)
+        Assertions.assertThat(decoded.workerKey.id).isEqualTo(1000L)
+        Assertions.assertThat(decoded.message).isEqualTo("rebuild started")
+        Assertions.assertThat(decoded.at).isEqualTo(record.at)
+        Assertions.assertThat(decoded.indexed).isEqualTo(3L)
+    }
+
+    // The version is checked before the payload binds. The payload here could
+    // never bind, so a binding error would prove the check ran too late.
+    @Test
+    fun `an unknown version fails before the payload binds`() {
+        val text = """{"version":99,"record":{"nonsense":true}}"""
+
+        Assertions.assertThatThrownBy { codec.decode<Long>(text) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("99")
+    }
+
+    @Test
+    fun `an envelope with no record fails`() {
+        val text = """{"version":1}"""
+
+        Assertions.assertThatThrownBy { codec.decode<Long>(text) }
+            .isInstanceOf(ChatException::class.java)
+    }
+}
+```
+
+- [ ] **Step 2: Run both suites and confirm they fail**
+
+Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=JobRecordCodecTests,ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: FAIL. The compiler reports an unresolved reference to `ComposedJobRecordWriter`.
 
 - [ ] **Step 3: Write the writer**
@@ -1963,23 +2073,32 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 /**
- * Encodes one job record as a versioned JSON string.
+ * Encodes one job record as a versioned JSON envelope.
  *
  * Every current deployment binds message data to String, so a record travels as
- * text. The version is written first so a later reader can refuse a shape it
- * does not know, rather than bind it wrongly.
+ * text.
+ *
+ * The version sits beside the record, not inside it. A version written among
+ * the record fields reaches the binder as an unknown property, and the mapper
+ * the deployments use refuses one. Field order gives no protection from that,
+ * because a binder reads a whole object.
  */
 class JobRecordCodec(private val mapper: ObjectMapper) {
 
     fun encode(record: JobRecord<*>): String {
-        val node = mapper.valueToTree<ObjectNode>(record)
-        node.put(VERSION_FIELD, VERSION)
-        return mapper.writeValueAsString(node)
+        val envelope = mapper.createObjectNode()
+        envelope.put(VERSION_FIELD, VERSION)
+        envelope.set<ObjectNode>(RECORD_FIELD, mapper.valueToTree(record))
+        return mapper.writeValueAsString(envelope)
     }
 
+    /**
+     * Reads the version before it binds anything. An unknown version stops the
+     * read there, so a payload this reader cannot understand is never bound.
+     */
     fun <T> decode(text: String): JobRecord<T> {
-        val node = mapper.readTree(text)
-        val version = node.get(VERSION_FIELD)?.asInt()
+        val envelope = mapper.readTree(text)
+        val version = envelope.get(VERSION_FIELD)?.asInt()
 
         if (version != VERSION) {
             throw ChatException(
@@ -1987,24 +2106,30 @@ class JobRecordCodec(private val mapper: ObjectMapper) {
             )
         }
 
+        val payload = envelope.get(RECORD_FIELD)
+            ?: throw ChatException("A job record envelope carries no '$RECORD_FIELD' field.")
+
         @Suppress("UNCHECKED_CAST")
-        return mapper.treeToValue(node, JobRecord::class.java) as JobRecord<T>
+        return mapper.treeToValue(payload, JobRecord::class.java) as JobRecord<T>
     }
 
     companion object {
         const val VERSION_FIELD = "version"
+        const val RECORD_FIELD = "record"
         const val VERSION = 1
     }
 }
 ```
 
-The version is written after the record fields, so a reader can refuse a shape
-it does not know rather than bind it wrongly.
+The version sits beside the record, not inside it. A version among the record
+fields reaches the binder as an unknown property, and the mapper the deployments
+use refuses one. **Field order gives no protection**, because a binder reads a
+whole object.
 
-- [ ] **Step 4: Run the test and confirm it passes**
+- [ ] **Step 4: Run both suites and confirm they pass**
 
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 4 tests.
+Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=JobRecordCodecTests,ComposedJobRecordWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
+Expected: PASS, 8 tests. Three codec and five writer.
 
 - [ ] **Step 5: Commit**
 

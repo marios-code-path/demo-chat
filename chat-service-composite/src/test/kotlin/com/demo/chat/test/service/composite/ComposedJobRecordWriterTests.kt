@@ -82,6 +82,35 @@ class ComposedJobRecordWriterTests {
         Assertions.assertThat(slowCalls).containsExactly("persistence", "index", "pubsub")
     }
 
+    // The spec says any failed step stops the steps after it. The index case
+    // alone would leave the first step unproven.
+    @Test
+    fun `a failed persistence write stops the index and pub sub`() {
+        val failedCalls = mutableListOf<String>()
+        val index = FakeMessageIndex(failedCalls)
+        val sink = FakePubSub(failedCalls)
+        val writer = ComposedJobRecordWriter(
+            messagePersistence = FakeMessagePersistence(
+                failedCalls,
+                failure = IllegalStateException("persistence is down"),
+            ),
+            messageIndex = index,
+            pubsub = sink,
+            codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
+            asValue = { text -> text },
+        )
+
+        StepVerifier
+            .create(writer.write(record))
+            .verifyErrorSatisfies { error ->
+                Assertions.assertThat(error).hasMessage("persistence is down")
+            }
+
+        Assertions.assertThat(index.added).isEmpty()
+        Assertions.assertThat(sink.sent).isEmpty()
+        Assertions.assertThat(failedCalls).containsExactly("persistence")
+    }
+
     @Test
     fun `a failed index write stops pub sub and keeps the persisted record`() {
         val writer = writerUnderTest(failOn = "index")

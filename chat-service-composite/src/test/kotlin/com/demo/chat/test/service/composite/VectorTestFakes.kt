@@ -88,15 +88,23 @@ internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty(
 internal class FakeMessagePersistence(
     private val calls: MutableList<String>? = null,
     private val delay: Duration = Duration.ZERO,
+    private val failure: Throwable? = null,
 ) : MessagePersistence<Long, String> {
     val added = mutableListOf<Message<Long, String>>()
     private var nextId = 900L
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
     override fun add(ent: Message<Long, String>): Mono<Void> =
-        Mono.delay(delay).then(Mono.fromRunnable {
-            calls?.add("persistence")
-            added.add(ent)
-        })
+        Mono.delay(delay).then(
+            Mono.defer {
+                calls?.add("persistence")
+                if (failure != null) {
+                    Mono.error(failure)
+                } else {
+                    added.add(ent)
+                    Mono.empty()
+                }
+            }
+        )
     override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
     override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
         Mono.defer { Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id }) }
