@@ -2835,6 +2835,34 @@ class VectorCoveragePolicyImplTests {
             .verifyComplete()
     }
 
+    // A repair rebuild keeps prior coverage while it runs. The running job is
+    // the newest job, so the policy must drop it before the sort. A policy
+    // that dropped it after the sort would select the repair, find that it
+    // does not cover, and report no coverage during every repair.
+    @Test
+    fun `a running repair keeps the coverage of the older successful job`() {
+        store.write(job(1L, startedAt = start)).block()
+        store.write(job(2L, outcome = JobOutcome.RUNNING, startedAt = start.plusSeconds(60))).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .assertNext { found -> Assertions.assertThat(found.key.id).isEqualTo(1L) }
+            .verifyComplete()
+    }
+
+    // A failed repair keeps prior coverage when no invalidation happened. The
+    // failure removed no document, so the older job still describes the index.
+    @Test
+    fun `a failed repair keeps the coverage of the older successful job`() {
+        store.write(job(1L, startedAt = start)).block()
+        store.write(job(2L, outcome = JobOutcome.FAILED, startedAt = start.plusSeconds(60))).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .assertNext { found -> Assertions.assertThat(found.key.id).isEqualTo(1L) }
+            .verifyComplete()
+    }
+
     // Equal timestamps must not leave the choice to whichever read finished
     // first. The root key decides, and the higher one wins.
     @Test
@@ -2971,6 +2999,11 @@ class VectorCoveragePolicyImpl<T>(
                     )
                 }
             }
+            // This filter runs before the sort, and that order is the rule.
+            // A running or failed repair is the newest job. Dropping it here
+            // leaves the older successful job as the newest applicable one,
+            // which keeps coverage during a repair. Dropping it after the
+            // sort would select the repair and report no coverage.
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }
             // Newest first. Two jobs of one millisecond order by root key, so
@@ -2996,7 +3029,7 @@ reach the same empty result, which is the fail-closed rule.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorCoveragePolicyImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 12 tests.
+Expected: PASS, 14 tests.
 
 - [ ] **Step 5: Commit**
 
