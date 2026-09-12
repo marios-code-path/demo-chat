@@ -1131,23 +1131,45 @@ internal class FakeTopicIndex : TopicIndexService<Long, Map<String, String>> {
     override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
 }
 
+/**
+ * Delivers to listeners, and refuses a topic nobody opened.
+ *
+ * A double that only records a send cannot show that a subscriber received
+ * anything. The memory backend also answers a send on an unopened topic with
+ * Object not Found, so this one does the same and keeps the open call
+ * load bearing.
+ */
 internal class FakePubSub(private val calls: MutableList<String>? = null) : TopicPubSubService<Long, String> {
     val opened = mutableListOf<Long>()
     val sent = mutableListOf<Message<Long, String>>()
-    override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
-    override fun close(topicId: Long): Mono<Void> = Mono.empty()
+    private val sinks = mutableMapOf<Long, Sinks.Many<Message<Long, String>>>()
+
+    override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable {
+        opened.add(topicId)
+        sinks.getOrPut(topicId) { Sinks.many().replay().all() }
+    }
+
+    override fun close(topicId: Long): Mono<Void> = Mono.fromRunnable { sinks.remove(topicId) }
     override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
     override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
     override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
     override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
     override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
     override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
-    override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+
+    override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.defer {
         calls?.add("pubsub")
+        val sink = sinks[message.key.dest]
+            ?: return@defer Mono.error(NotFoundException)
         sent.add(message)
+        sink.tryEmitNext(message)
+        Mono.empty()
     }
-    override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
-    override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
+
+    override fun listenTo(topic: Long): Flux<out Message<Long, String>> =
+        sinks[topic]?.asFlux() ?: Flux.error(NotFoundException)
+
+    override fun exists(topic: Long): Mono<Boolean> = Mono.just(sinks.containsKey(topic))
 }
 
 /**
@@ -1203,9 +1225,13 @@ internal class FakeMessageIndex(
     private val failOn: String? = null,
 ) : MessageIndexService<Long, String, Map<String, String>> {
     val added = mutableListOf<Message<Long, String>>()
+
+    /** Fails every write, whatever the constructor said. */
+    var failEvery = false
+
     override fun add(entity: Message<Long, String>): Mono<Void> = Mono.defer {
         calls?.add("index")
-        if (failOn == "index") {
+        if (failEvery || failOn == "index") {
             Mono.error(IllegalStateException("index is down"))
         } else {
             added.add(entity)
@@ -1845,13 +1871,16 @@ the next rebuild would read its own output back out of
     fun `a slow first step still completes before the second starts`() {
         val slowCalls = mutableListOf<String>()
         val slowPersistence = FakeMessagePersistence(slowCalls, Duration.ofMillis(60))
+        val slowPubSub = FakePubSub(slowCalls)
+        slowPubSub.open(record.jobKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = slowPersistence,
             messageIndex = FakeMessageIndex(slowCalls),
-            pubsub = FakePubSub(slowCalls),
+            pubsub = slowPubSub,
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
+    }
 
         StepVerifier.create(writer.write(record)).verifyComplete()
 
@@ -1865,6 +1894,7 @@ the next rebuild would read its own output back out of
         val failedCalls = mutableListOf<String>()
         val index = FakeMessageIndex(failedCalls)
         val sink = FakePubSub(failedCalls)
+        sink.open(record.jobKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = FakeMessagePersistence(
                 failedCalls,
@@ -1919,8 +1949,12 @@ steps, in that order, and no fourth.
         message = "rebuild started",
     )
 
-    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> =
-        ComposedJobRecordWriter(
+    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> {
+        // The double refuses a topic nobody opened, as the memory backend
+        // does. The real store opens a job topic when it creates the job.
+        pubsub.open(record.jobKey.id).block()
+
+        return ComposedJobRecordWriter(
             messagePersistence = persistence,
             messageIndex = FakeMessageIndex(calls, failOn),
             pubsub = pubsub,
@@ -2249,6 +2283,41 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
             .anyMatch { text -> text.contains("rebuild succeeded") }
     }
 
+    // Receipt, not a call. A subscriber of the job topic must actually get the
+    // two records, which is what proves the topic was opened.
+    @Test
+    fun `a subscriber of the job topic receives both records`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        // The run creates its own job, so the topic is known only afterwards.
+        // The double replays, so a later subscriber still receives both.
+        val jobTopicId = jobStore.written.first().key.id
+        val messages = recordPubSub.listenTo(jobTopicId)
+            .take(2)
+            .collectList()
+            .block(Duration.ofSeconds(10))!!
+
+        Assertions.assertThat(messages.map { it.data })
+            .anyMatch { text -> text.contains("rebuild started") }
+            .anyMatch { text -> text.contains("rebuild succeeded") }
+    }
+
+    // A record is a report. Losing one must not turn a healthy rebuild into a
+    // failed one, so the run still succeeds when every record write fails.
+    @Test
+    fun `a failed record write leaves the run successful`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        recordIndex.failEvery = true
+
+        val status = runAndAwait(service)
+
+        Assertions.assertThat(status.complete).isTrue()
+        Assertions.assertThat(jobStore.written.last().outcome).isEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(indexer.ids).containsExactly(1L)
+    }
+
     @Test
     fun `a failed rebuild reports the failure in its terminal record`() {
         indexer.failOn.add(1L)
@@ -2413,6 +2482,15 @@ Keep the counters after the filter, so `attempted` describes user messages only.
 run, because a record is a report and losing one must not turn a healthy rebuild
 into a failed one.
 
+**The record id comes from message persistence.** `PersistenceStore.key()`
+answers with a `Mono`, so `emit` reads it. A synchronous supplier would have no
+production source.
+
+**The pub/sub double delivers and refuses an unopened topic.** A double that only
+records a send cannot show receipt, and the memory backend answers a send on an
+unopened topic with `Object not Found`. One test subscribes to the job topic and
+requires both records.
+
 **Each recovery covers one step.** The listing handler sits on the listing alone
 and returns empty, so the scan never runs after it finishes the run. The scan
 handler sits on the scan alone, so the terminal write runs once whether the scan
@@ -2422,7 +2500,7 @@ a nested pair would finish it three times.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=MessageReindexServiceImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 15 tests.
+Expected: PASS, 17 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2662,10 +2740,14 @@ class VectorCoveragePolicyImpl<T>(
 
     override fun selectCoveringJob(): Mono<IndexJob<T>> =
         jobStore.listJobTopics()
+            // The name decides which topics to read. The listing carries every
+            // reserved topic, from every node, because the scan exclusion
+            // needs all of them. Narrowing here rather than after the read
+            // means this node never reads another node's job at all.
+            .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
             .flatMap { topic -> jobStore.readJob(topic.key) }
-            // The listing carries every reserved topic, from every node,
-            // because the scan exclusion needs all of them. Coverage is per
-            // node and per key type, so the policy narrows it here.
+            // The decoded fields are checked too. A name and a record that
+            // disagree must not produce coverage.
             .filter { job -> job.nodeId == nodeId && job.keyType == keyType }
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }

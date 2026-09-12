@@ -30,7 +30,6 @@ class MessageReindexServiceImpl<T, V>(
     private val state: VectorIndexState<T>,
     private val jobStore: VectorIndexJobStore<T>,
     private val recordWriter: JobRecordWriter<T>,
-    private val recordKeys: () -> Key<T>,
     private val clock: Clock = Clock.systemUTC(),
     private val scheduler: Scheduler = Schedulers.boundedElastic(),
 ) : MessageReindexService<T> {
@@ -98,24 +97,33 @@ class MessageReindexServiceImpl<T, V>(
      * losing it must not turn a healthy rebuild into a failed one.
      */
     private fun emit(job: IndexJob<T>, message: String, report: VectorRebuildReport?): Mono<Void> =
-        Mono.defer {
-            recordWriter.write(
-                JobRecord(
-                    key = recordKeys(),
-                    jobKey = job.key,
-                    workerKey = job.startedBy,
-                    at = clock.instant(),
-                    message = message,
-                    attempted = report?.attempted,
-                    indexed = report?.indexed,
-                    skipped = report?.skipped,
-                    failed = report?.failed,
+        // The id comes from the message store, like every other message id.
+        // PersistenceStore.key() answers with a Mono, so this reads it rather
+        // than taking a synchronous supplier that no deployment could provide.
+        messagePersistenceKey()
+            .flatMap { recordKey ->
+                recordWriter.write(
+                    JobRecord(
+                        key = recordKey,
+                        jobKey = job.key,
+                        workerKey = job.startedBy,
+                        at = clock.instant(),
+                        message = message,
+                        attempted = report?.attempted,
+                        indexed = report?.indexed,
+                        skipped = report?.skipped,
+                        failed = report?.failed,
+                    )
                 )
-            )
-        }.onErrorResume { error ->
-            logger.error("Vector reindex could not write a job record", error)
-            Mono.empty()
-        }
+            }
+            .onErrorResume { error ->
+                logger.error("Vector reindex could not write a job record", error)
+                Mono.empty()
+            }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun messagePersistenceKey(): Mono<Key<T>> =
+        persistence.key().map { key -> key as Key<T> }
 
     /**
      * The exclusion set for one run, or empty when the listing failed.
@@ -136,9 +144,11 @@ class MessageReindexServiceImpl<T, V>(
         jobStore.listJobTopics()
             .map { topic -> topic.key.id }
             .collectList()
-            // This job writes records to its own topic while the scan runs,
-            // and the listing it captured predates that topic, so the topic
-            // joins the set explicitly.
+            // The store writes this job's topic before the listing runs, so a
+            // store that reads its own writes already returns it. The union
+            // makes the rule independent of that. A store listing from a
+            // cache or a replica could omit a topic written moments earlier,
+            // and the run would then index its own records.
             .map { topicIds -> topicIds.toSet() + job.key.id }
             .onErrorResume { error ->
                 logger.error("Vector reindex could not list its job topics", error)

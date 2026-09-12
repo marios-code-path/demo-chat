@@ -184,6 +184,21 @@ The writer stores every job record. It also sets `record=true` on each message.
 
 The Boolean does not select writes and carries no advisory meaning here.
 
+## Job Record Cadence
+
+A run emits two events. It emits one when it creates its job, and one beside its
+terminal write. The second names the outcome of the run.
+
+Both events carry the job key, so both reach the job topic.
+
+The record id comes from message persistence, like every other message id.
+`PersistenceStore.key()` answers with a `Mono`, so the emitter reads it rather
+than taking a synchronous supplier that no deployment could provide.
+
+**A record is a report, and a failed record write never fails the run.** Losing
+a report must not turn a healthy rebuild into a failed one. It must not stop the
+scan, and it must not stop the terminal write.
+
 Downstream clients still receive the unchanged Boolean.
 
 The message index indexes each record by its job topic.
@@ -378,6 +393,8 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The job service creates its topic through persistence, the topic index, and
   `PubSubService.open()`, in that order.
 - A job record reaches a subscriber of the job topic, which proves the open call.
+- A run emits one record when it starts and one when it finishes.
+- A failed record write leaves the run successful and its job SUCCEEDED.
 - The job service never calls `addRoom()`.
 - `addRoom()` rejects the reserved prefix.
 - A topic-list or job-read failure reports incomplete under `stored`.

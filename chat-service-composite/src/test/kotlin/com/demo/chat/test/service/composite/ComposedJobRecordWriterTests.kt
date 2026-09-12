@@ -29,14 +29,19 @@ class ComposedJobRecordWriterTests {
         message = "rebuild started",
     )
 
-    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> =
-        ComposedJobRecordWriter(
+    private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> {
+        // The double refuses a topic nobody opened, as the memory backend
+        // does. The real store opens a job topic when it creates the job.
+        pubsub.open(record.jobKey.id).block()
+
+        return ComposedJobRecordWriter(
             messagePersistence = persistence,
             messageIndex = FakeMessageIndex(calls, failOn),
             pubsub = pubsub,
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
+    }
 
     // The exact sequence is the boundary. A writer that called the composite
     // send would show four steps, and the vector indexer would be one of them.
@@ -69,10 +74,12 @@ class ComposedJobRecordWriterTests {
     fun `a slow first step still completes before the second starts`() {
         val slowCalls = mutableListOf<String>()
         val slowPersistence = FakeMessagePersistence(slowCalls, Duration.ofMillis(60))
+        val slowPubSub = FakePubSub(slowCalls)
+        slowPubSub.open(record.jobKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = slowPersistence,
             messageIndex = FakeMessageIndex(slowCalls),
-            pubsub = FakePubSub(slowCalls),
+            pubsub = slowPubSub,
             codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
             asValue = { text -> text },
         )
@@ -89,6 +96,7 @@ class ComposedJobRecordWriterTests {
         val failedCalls = mutableListOf<String>()
         val index = FakeMessageIndex(failedCalls)
         val sink = FakePubSub(failedCalls)
+        sink.open(record.jobKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = FakeMessagePersistence(
                 failedCalls,

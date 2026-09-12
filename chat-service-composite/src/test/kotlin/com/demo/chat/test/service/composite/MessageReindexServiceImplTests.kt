@@ -35,6 +35,7 @@ import reactor.core.scheduler.Schedulers
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.TimeUnit
 
 class MessageReindexServiceImplTests {
     private val startedAt = Instant.parse("2026-09-10T12:00:00Z")
@@ -43,14 +44,14 @@ class MessageReindexServiceImplTests {
     private val indexer = RecordingIndexer()
     private val state = InMemoryVectorIndexState<Long>()
     private val clock = mock<Clock>()
-    private val jobStore = FakeJobStore()
+    private val recordPubSub = FakePubSub()
+    private val jobStore = FakeJobStore(recordPubSub)
+    private var nextRecordId = 7000L
 
     // The real writer over the three doubles, so a record has to reach
     // persistence, the message index, and pub/sub to be seen here.
     private val recordPersistence = FakeMessagePersistence()
     private val recordIndex = FakeMessageIndex()
-    private val recordPubSub = FakePubSub()
-    private var nextRecordId = 7000L
     private val jobTopicName = JobTopicNames.nameFor(7, "long", Instant.EPOCH, "incarnation-a")
     private lateinit var scheduler: Scheduler
     private lateinit var service: MessageReindexServiceImpl<Long, String>
@@ -58,6 +59,8 @@ class MessageReindexServiceImplTests {
     @BeforeEach
     fun configureService() {
         given(clock.instant()).willReturn(startedAt, finishedAt)
+        // Record ids come from the message store, as every message id does.
+        given(persistence.key()).willAnswer { Mono.just(Key.funKey(nextRecordId++)) }
         scheduler = Schedulers.newSingle("reindex-test")
         service = MessageReindexServiceImpl(
             persistence,
@@ -71,7 +74,6 @@ class MessageReindexServiceImplTests {
                 codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
                 asValue = { text: String -> text },
             ),
-            { Key.funKey(nextRecordId++) },
             clock,
             scheduler,
         )
@@ -210,7 +212,8 @@ class MessageReindexServiceImplTests {
      * Records every durable write. [topics] is what one listing returns, and
      * [failListing] makes that listing fail.
      */
-    private class FakeJobStore : VectorIndexJobStore<Long> {
+    /** Opens the job topic, as the real store does, so a send can be delivered. */
+    private class FakeJobStore(private val pubsub: FakePubSub) : VectorIndexJobStore<Long> {
         val written = mutableListOf<IndexJob<Long>>()
         val topics = mutableListOf<MessageTopic<Long>>()
         var failListing = false
@@ -218,7 +221,7 @@ class MessageReindexServiceImplTests {
         var finishCalls = 0
         private var nextId = FIRST_JOB_ID
 
-        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier {
+        override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier<IndexJob<Long>> {
             val job = IndexJob(
                 key = Key.funKey(nextId++),
                 nodeId = 7,
@@ -229,7 +232,7 @@ class MessageReindexServiceImplTests {
             )
             written.add(job)
             job
-        }
+        }.flatMap { job -> pubsub.open(job.key.id).thenReturn(job) }
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
@@ -370,6 +373,41 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(recordPubSub.sent.map { it.data })
             .anyMatch { text -> text.contains("rebuild started") }
             .anyMatch { text -> text.contains("rebuild succeeded") }
+    }
+
+    // Receipt, not a call. A subscriber of the job topic must actually get the
+    // two records, which is what proves the topic was opened.
+    @Test
+    fun `a subscriber of the job topic receives both records`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        // The run creates its own job, so the topic is known only afterwards.
+        // The double replays, so a later subscriber still receives both.
+        val jobTopicId = jobStore.written.first().key.id
+        val messages = recordPubSub.listenTo(jobTopicId)
+            .take(2)
+            .collectList()
+            .block(Duration.ofSeconds(10))!!
+
+        Assertions.assertThat(messages.map { it.data })
+            .anyMatch { text -> text.contains("rebuild started") }
+            .anyMatch { text -> text.contains("rebuild succeeded") }
+    }
+
+    // A record is a report. Losing one must not turn a healthy rebuild into a
+    // failed one, so the run still succeeds when every record write fails.
+    @Test
+    fun `a failed record write leaves the run successful`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        recordIndex.failEvery = true
+
+        val status = runAndAwait(service)
+
+        Assertions.assertThat(status.complete).isTrue()
+        Assertions.assertThat(jobStore.written.last().outcome).isEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(indexer.ids).containsExactly(1L)
     }
 
     @Test

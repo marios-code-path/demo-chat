@@ -4,6 +4,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
@@ -13,6 +14,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
 import java.time.Duration
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Sinks
 
 /**
  * In-memory doubles for the composite vector tests.
@@ -46,23 +48,45 @@ internal class FakeTopicIndex : TopicIndexService<Long, Map<String, String>> {
     override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
 }
 
+/**
+ * Delivers to listeners, and refuses a topic nobody opened.
+ *
+ * A double that only records a send cannot show that a subscriber received
+ * anything. The memory backend also answers a send on an unopened topic with
+ * Object not Found, so this one does the same and keeps the open call
+ * load bearing.
+ */
 internal class FakePubSub(private val calls: MutableList<String>? = null) : TopicPubSubService<Long, String> {
     val opened = mutableListOf<Long>()
     val sent = mutableListOf<Message<Long, String>>()
-    override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
-    override fun close(topicId: Long): Mono<Void> = Mono.empty()
+    private val sinks = mutableMapOf<Long, Sinks.Many<Message<Long, String>>>()
+
+    override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable {
+        opened.add(topicId)
+        sinks.getOrPut(topicId) { Sinks.many().replay().all() }
+    }
+
+    override fun close(topicId: Long): Mono<Void> = Mono.fromRunnable { sinks.remove(topicId) }
     override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
     override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
     override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
     override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
     override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
     override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
-    override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+
+    override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.defer {
         calls?.add("pubsub")
+        val sink = sinks[message.key.dest]
+            ?: return@defer Mono.error(NotFoundException)
         sent.add(message)
+        sink.tryEmitNext(message)
+        Mono.empty()
     }
-    override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
-    override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
+
+    override fun listenTo(topic: Long): Flux<out Message<Long, String>> =
+        sinks[topic]?.asFlux() ?: Flux.error(NotFoundException)
+
+    override fun exists(topic: Long): Mono<Boolean> = Mono.just(sinks.containsKey(topic))
 }
 
 /**
@@ -118,9 +142,13 @@ internal class FakeMessageIndex(
     private val failOn: String? = null,
 ) : MessageIndexService<Long, String, Map<String, String>> {
     val added = mutableListOf<Message<Long, String>>()
+
+    /** Fails every write, whatever the constructor said. */
+    var failEvery = false
+
     override fun add(entity: Message<Long, String>): Mono<Void> = Mono.defer {
         calls?.add("index")
-        if (failOn == "index") {
+        if (failEvery || failOn == "index") {
             Mono.error(IllegalStateException("index is down"))
         } else {
             added.add(entity)
