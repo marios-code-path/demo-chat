@@ -98,6 +98,13 @@ Create one persisted topic before each rebuild. Use a reserved topic-name prefix
 
 The topic name includes the node id, key type, start time, and incarnation id.
 
+The job service creates this topic through `TopicPersistence.add()` and
+`TopicIndexService.add()`.
+
+The job service never calls `TopicServiceImpl.addRoom()`.
+
+`addRoom()` rejects the reserved prefix without a system-topic exception.
+
 Use the generated topic key as `IndexJob.key`. Store the job with
 `KeyValuePair.create(job.key, job)`.
 
@@ -154,6 +161,9 @@ The job service uses one composed writer with this order:
 1. `MessagePersistence.add()`.
 2. `MessageIndexService.add()`.
 3. `PubSubService.sendMessage()`.
+
+A failed step stops later steps without rollback. Persistence can therefore hold
+a record that the topic index cannot discover.
 
 The composed writer never calls `MessagingServiceImpl.send()`.
 
@@ -345,6 +355,7 @@ The index remains usable. A record is evidence and never acts as a lock.
 - A terminal job write never overwrites a later invalidation.
 - A stale `RUNNING` job never rejects a new claim.
 - The job writer calls persistence, the message index, and pub/sub in order.
+- A failed job-record write stops later writes and keeps earlier writes.
 - The job writer never calls `MessagingServiceImpl.send()`.
 - A subscriber receives the unchanged `record` Boolean.
 - Job records can be read with `topicIdToQuery` and `byIds()`.
@@ -354,6 +365,9 @@ The index remains usable. A record is evidence and never acts as a lock.
 - A failed topic listing prevents the message scan.
 - The topic filter runs before every rebuild counter.
 - `listRooms()` excludes reserved job topics.
+- The job service creates its topic through persistence and the topic index.
+- The job service never calls `addRoom()`.
+- `addRoom()` rejects the reserved prefix.
 - A topic-list or job-read failure reports incomplete under `stored`.
 
 ## Out Of Scope
@@ -385,3 +399,6 @@ The index remains usable. A record is evidence and never acts as a lock.
 16. Keep the full persistence scan.
 17. Give `record` no handling-policy meaning in the job-record path.
 18. Use `none` as the default trust policy.
+19. Create job topics through persistence and the topic index.
+20. Keep system-topic exceptions out of `addRoom()`.
+21. Stop later job-record writes after failure without rolling back earlier writes.
