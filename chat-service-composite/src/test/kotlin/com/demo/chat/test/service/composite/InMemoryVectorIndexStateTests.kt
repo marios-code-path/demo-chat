@@ -50,6 +50,9 @@ class InMemoryVectorIndexStateTests {
 
         Assertions.assertThat(result.succeeded).isTrue()
         Assertions.assertThat(result.status.complete).isTrue()
+        // No code reads COMPLETE. The actuator publishes the phase, and the
+        // value there means the last run succeeded.
+        Assertions.assertThat(result.status.phase).isEqualTo(VectorIndexPhase.COMPLETE)
         Assertions.assertThat(result.status.lastSuccessAt).isEqualTo(finishedAt)
         Assertions.assertThat(result.status.lastSuccessCount).isEqualTo(2L)
     }
@@ -297,6 +300,21 @@ class InMemoryVectorIndexStateTests {
         )
 
         Assertions.assertThat(state.status().activeJob).isNull()
+    }
+
+    // An invalidation does not end a run. The run keeps its name, and it can
+    // still finish. Only the coverage goes away.
+    @Test
+    fun `an invalidation keeps the active job`() {
+        val state = InMemoryVectorIndexState<Long>()
+        state.adoptCoveringJob(Key.funKey(500L))
+        state.claim()
+        state.markActiveJob(Key.funKey(600L))
+
+        state.invalidate("live vector add failed")
+
+        Assertions.assertThat(state.status().activeJob).isEqualTo(Key.funKey(600L))
+        Assertions.assertThat(state.coveringJob()).isNull()
     }
 
     // The running flag is the only guard. A late call from a finished run must

@@ -144,6 +144,20 @@ class MessageRecallServiceImplTests {
         Assertions.assertThat(result.indexComplete).isFalse()
     }
 
+    // The coverage read runs after the search. A live failure during the search
+    // removes coverage, and a read taken before the search would report the
+    // value that the failure removed.
+    @Test
+    fun `a failure during the search lowers the reported coverage`() {
+        state.adoptCoveringJob(coveringKey)
+        store.onSearch = { state.invalidate("live vector add failed") }
+
+        val result = service.recallGlobal(GlobalRecallRequest("apple banana")).block()!!
+
+        Assertions.assertThat(result.hits).isNotEmpty()
+        Assertions.assertThat(result.indexComplete).isFalse()
+    }
+
     // A repair rebuild must not lower the reported coverage. The phase moves to
     // REBUILDING, and the covering job stays.
     @Test

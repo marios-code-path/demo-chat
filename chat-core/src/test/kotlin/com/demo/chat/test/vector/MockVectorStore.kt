@@ -68,7 +68,14 @@ class MockVectorStore : VectorStore {
         throw UnsupportedOperationException("MockVectorStore does not support filter deletes")
     }
 
+    /**
+     * Runs at the start of each search. A test uses it to change state while
+     * the search is in flight.
+     */
+    var onSearch: (() -> Unit)? = null
+
     override fun similaritySearch(request: SearchRequest): List<Document> {
+        onSearch?.invoke()
         lastSearchThread = Thread.currentThread().name
         val filter = request.filterExpression
         lastFilter = filter

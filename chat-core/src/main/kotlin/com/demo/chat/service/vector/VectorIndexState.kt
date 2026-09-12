@@ -19,6 +19,13 @@ data class VectorRebuildReport(
 )
 
 data class VectorIndexStatus<T>(
+    /**
+     * The result of the last run, or the run in progress.
+     *
+     * No code reads COMPLETE. `complete` reads the covering job, and `running`
+     * reads REBUILDING. The actuator publishes this value to an operator, and
+     * COMPLETE there means the last run succeeded.
+     */
     val phase: VectorIndexPhase,
     val lastReport: VectorRebuildReport? = null,
     val lastSuccessAt: Instant? = null,

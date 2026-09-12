@@ -3133,6 +3133,21 @@ fields.
     }
 ```
 
+Add a second hook, which runs at the start of each search. A test uses it to
+change state while the search is in flight.
+
+```kotlin
+    /**
+     * Runs at the start of each search. A test uses it to change state while
+     * the search is in flight.
+     */
+    var onSearch: (() -> Unit)? = null
+
+    override fun similaritySearch(request: SearchRequest): List<Document> {
+        onSearch?.invoke()
+        lastSearchThread = Thread.currentThread().name
+```
+
 Move the job-store double out of `VectorCoveragePolicyImplTests` into
 `VectorTestFakes.kt`, which already holds the shared doubles. Rename it to
 `FakeVectorIndexJobStore`, make it `internal`, and add the write failure flag.
@@ -3248,6 +3263,20 @@ Each `blockLast()` in the existing tests becomes `block()`. Add these three.
         Assertions.assertThat(result.indexComplete).isFalse()
     }
 
+    // The coverage read runs after the search. A live failure during the search
+    // removes coverage, and a read taken before the search would report the
+    // value that the failure removed.
+    @Test
+    fun `a failure during the search lowers the reported coverage`() {
+        state.adoptCoveringJob(coveringKey)
+        store.onSearch = { state.invalidate("live vector add failed") }
+
+        val result = service.recallGlobal(GlobalRecallRequest("apple banana")).block()!!
+
+        Assertions.assertThat(result.hits).isNotEmpty()
+        Assertions.assertThat(result.indexComplete).isFalse()
+    }
+
     // A repair rebuild must not lower the reported coverage. The phase moves to
     // REBUILDING, and the covering job stays.
     @Test
@@ -3312,6 +3341,21 @@ Add four tests to `InMemoryVectorIndexStateTests`.
         Assertions.assertThat(state.status().activeJob).isNull()
     }
 
+    // An invalidation does not end a run. The run keeps its name, and it can
+    // still finish. Only the coverage goes away.
+    @Test
+    fun `an invalidation keeps the active job`() {
+        val state = InMemoryVectorIndexState<Long>()
+        state.adoptCoveringJob(Key.funKey(500L))
+        state.claim()
+        state.markActiveJob(Key.funKey(600L))
+
+        state.invalidate("live vector add failed")
+
+        Assertions.assertThat(state.status().activeJob).isEqualTo(Key.funKey(600L))
+        Assertions.assertThat(state.coveringJob()).isNull()
+    }
+
     // The running flag is the only guard. A late call from a finished run must
     // not name a job that no longer runs.
     @Test
@@ -3322,6 +3366,22 @@ Add four tests to `InMemoryVectorIndexStateTests`.
 
         Assertions.assertThat(state.status().activeJob).isNull()
     }
+```
+
+**Two existing state tests change with the new rule.**
+
+`failed rebuild preserves the last successful values` asserts that
+`status.complete` is false. The first run in that test installs job 11, and a
+failed repair never removes a covering job. The assertion becomes `isTrue()`,
+with a comment that names the reason.
+
+`zero failures and unchanged generation mark complete` gains one line. Nothing
+else pins the phase after a successful run, and no code reads `COMPLETE`.
+
+```kotlin
+        // No code reads COMPLETE. The actuator publishes the phase, and the
+        // value there means the last run succeeded.
+        Assertions.assertThat(result.status.phase).isEqualTo(VectorIndexPhase.COMPLETE)
 ```
 
 - [ ] **Step 4: Write the failing indexer tests**
@@ -3551,6 +3611,13 @@ method.
 
 ```kotlin
 data class VectorIndexStatus<T>(
+    /**
+     * The result of the last run, or the run in progress.
+     *
+     * No code reads COMPLETE. `complete` reads the covering job, and `running`
+     * reads REBUILDING. The actuator publishes this value to an operator, and
+     * COMPLETE there means the last run succeeded.
+     */
     val phase: VectorIndexPhase,
     val lastReport: VectorRebuildReport? = null,
     val lastSuccessAt: Instant? = null,
@@ -3882,10 +3949,9 @@ Task 11 replaces that null with a `FakeVectorIndexJobStore`.
 - [ ] **Step 10: Run the two-module gate**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test`
-Expected: PASS. `chat-service-composite` reports 14 more tests than Task 8, which
-is 97. Three are recall tests, four are state tests, six are indexer tests, and
-one is the configuration test. `MessageReindexServiceImplTests` adds one more, so
-the total is 98.
+Expected: PASS. `chat-service-composite` reports 17 more tests than Task 8, so
+the total is 100. Four are recall tests, six are state tests, six are indexer
+tests, and one is the configuration test.
 
 - [ ] **Step 11: Carry the transport signatures**
 
