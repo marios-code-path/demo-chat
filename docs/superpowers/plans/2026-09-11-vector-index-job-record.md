@@ -4257,20 +4257,53 @@ Replace `recall topic route returns one result over the shared DTOs` in
 Keep the existing `RSocketTestBase` setup and the `anyObject` helper. Build each
 request with the constructor the sealed request types already declare.
 
+Add one refusal test for each route. A route that names JSON refuses a request
+for NDJSON.
+
+```kotlin
+    // An absent media type does not stop NDJSON. Content negotiation would
+    // answer this request with NDJSON, and the specification says these routes
+    // no longer produce it. Each route names JSON, so this request gets 406.
+    //
+    // The service mock holds no stub here. A handler that ran would answer with
+    // a null Mono and 500, so the status separates the two outcomes.
+    @Test
+    fun `the topic route refuses a request for NDJSON`() {
+        client
+            .post()
+            .uri("/message/recall/topic")
+            .contentType(MediaType.APPLICATION_JSON)
+            .accept(MediaType.APPLICATION_NDJSON)
+            .bodyValue("""{"type":"TopicRecallRequest","topicId":30,"query":"apple"}""")
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.NOT_ACCEPTABLE)
+    }
+```
+
+Write the same test for `/user` and for `/global`, with the request body each
+route takes.
+
 - [ ] **Step 2: Run the tests and confirm they fail**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-webflux test -Dtest=MessageRecallRestTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL. The route still produces NDJSON.
+Expected: FAIL. The route still produces NDJSON, and it answers a request for
+NDJSON with status 200.
 
 - [ ] **Step 3: Change both controllers**
 
-Drop `produces = [MediaType.APPLICATION_NDJSON_VALUE]` from all three REST
-routes, and drop the `MediaType` import with them. Task 9 already changed every
-return type, so no signature moves here. The route names do not change. The
-RSocket mapping needs no change in this task.
+Set `produces = [MediaType.APPLICATION_JSON_VALUE]` on all three REST routes,
+in place of the NDJSON value. Task 9 already changed every return type, so no
+signature moves here. The route names do not change. The RSocket mapping needs
+no change in this task.
 
-The class comment changes with the routes. A Mono of one value serializes as one
-JSON object, and NDJSON would frame that object as a stream of one line.
+**Do not simply drop the attribute.** A route with no `produces` still answers
+an `Accept: application/x-ndjson` request with NDJSON, and with status 200.
+Content negotiation picks the encoder from the request. The specification says
+these routes no longer produce NDJSON, at
+`docs/superpowers/specs/2026-09-10-vector-reindex-design.md:143`. Only a named
+media type holds that rule. A request for NDJSON then gets 406.
+
+The class comment changes with the routes, and it states this reason.
 
 `MessageRecallRestTests` also drops its `ObjectMapper` field. The tests read the
 body through `jsonPath`, so nothing decodes a line any more.
