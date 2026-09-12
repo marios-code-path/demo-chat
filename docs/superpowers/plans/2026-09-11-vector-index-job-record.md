@@ -941,7 +941,7 @@ interface VectorIndexJobStore<T> {
     fun readJob(topicKey: Key<T>): Mono<IndexJob<T>>
 
     /** One listing. The caller uses it for discovery and for scan exclusion. */
-    fun listJobTopics(): Flux<MessageTopic<T>>
+    fun listJobTopics(): Flux<out MessageTopic<T>>
 
     fun invalidate(jobKey: Key<T>, at: Instant): Mono<Void>
 }
@@ -1221,6 +1221,35 @@ Expected: FAIL. The compiler reports an unresolved reference to `VectorIndexJobS
 
 - [ ] **Step 3: Write the implementation**
 
+The store needs a codec, because each backend hands back a different shape.
+`IndexJobCodec<T>` goes in the same file, above the store:
+
+```kotlin
+/**
+ * Reads one stored job back from any backend shape.
+ *
+ * The memory store returns the object it was given. Redis returns a map after
+ * its JSON round trip. Cassandra returns the JSON string it stored.
+ */
+class IndexJobCodec<T>(private val mapper: ObjectMapper) {
+
+    @Suppress("UNCHECKED_CAST")
+    fun decode(data: Any): IndexJob<T> = when (data) {
+        is IndexJob<*> -> data as IndexJob<T>
+        is Map<*, *> -> mapper.convertValue(data, IndexJob::class.java) as IndexJob<T>
+        is String -> mapper.readValue(data, IndexJob::class.java) as IndexJob<T>
+        else -> throw ChatException(
+            "A stored index job cannot be read from '${data.javaClass.name}'."
+        )
+    }
+}
+```
+
+The file also needs these imports: `ChatException`, `IndexJob`, `Key`,
+`KeyValuePair`, `MessageTopic`, the four `com.demo.chat.service.core` stores,
+`JobTopicNames`, `VectorIndexJobStore`, `ObjectMapper`, `Flux`, `Mono`,
+`Duration`, and `Instant`.
+
 ```kotlin
 class VectorIndexJobStoreImpl<T, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
@@ -1265,7 +1294,7 @@ class VectorIndexJobStoreImpl<T, V, Q>(
     override fun readJob(topicKey: Key<T>): Mono<IndexJob<T>> =
         keyValueStore.get(topicKey).map { pair -> codec.decode(pair.data) }
 
-    override fun listJobTopics(): Flux<MessageTopic<T>> =
+    override fun listJobTopics(): Flux<out MessageTopic<T>> =
         topicPersistence.all()
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
 
@@ -1323,6 +1352,8 @@ import reactor.core.Disposable
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 import java.time.Duration
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -1416,7 +1447,7 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
 
         drained.asMono()
             .timeout(timeout)
-            .onErrorResume(TimeoutException::class.java) { Mono.empty() }
+            .onErrorResume(TimeoutException::class.java) { Mono.empty<Void>() }
             .then(Mono.fromRunnable<Void> { abandonPending() })
     }
 
@@ -1433,8 +1464,7 @@ class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
 }
 ```
 
-Imports for this file: `java.util.concurrent.ConcurrentLinkedQueue` and
-`java.util.concurrent.TimeoutException` beside the ones above.
+The block above carries every import this file needs.
 
 - [ ] **Step 3b: Write the SerialWriter tests**
 
