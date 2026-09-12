@@ -3102,6 +3102,12 @@ full deployment context with both recall selectors set. A required
 an `ObjectProvider` and accepts a null store. A deployment with no job store
 still removes coverage in process, and it writes no durable count.
 
+**This optional mode is temporary, and it is safe only in this task.** Task 9
+cannot establish stored coverage in a configured deployment, because no bean
+adopts a covering job yet. Task 11 supplies the store, makes the parameter
+required, and deletes the two tests that pin the optional mode. They are marked
+below.
+
 - [ ] **Step 1: Add the shared test support**
 
 Add a one-shot failure flag to `MockVectorStore`, beside the existing capture
@@ -3435,6 +3441,7 @@ class VectorStoreMessageVectorIndexerTests {
 
     // Task 11 is the first task that can supply a job store bean. Until then a
     // deployment runs with none, and a live failure must still remove coverage.
+    // Task 11 deletes this test with the optional mode it pins.
     @Test
     fun `a failure with no job store still removes coverage`() {
         state.adoptCoveringJob(coveringKey)
@@ -3736,6 +3743,9 @@ class VectorStoreMessageVectorIndexer<T>(
      * A rebuild scan also reaches this path. A failed message then raises the
      * generation, and the run cannot install its job. That outcome is correct,
      * because the index lost a message.
+     *
+     * The null store branch is temporary. Task 11 supplies the bean, makes the
+     * parameter required, and removes that branch. The null target check stays.
      */
     private fun recordFailure(error: Throwable): Mono<Void> {
         val invalidation = state.invalidate(summary(error))
@@ -3829,7 +3839,7 @@ configuration builds the state itself.
 
 ```kotlin
     // Task 11 adds the job store bean. This context has none, and the indexer
-    // bean must still exist.
+    // bean must still exist. Task 11 deletes this test.
     @Test
     fun `the indexer bean exists with no job store bean`() {
         val context = AnnotationConfigApplicationContext()
@@ -3866,6 +3876,8 @@ arguments.
     private val indexState = InMemoryVectorIndexState<Long>()
     private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, null)
 ```
+
+Task 11 replaces that null with a `FakeVectorIndexJobStore`.
 
 - [ ] **Step 10: Run the two-module gate**
 
@@ -4194,7 +4206,10 @@ git add -A && git commit -m "feat: return one recall result on both transports (
 
 **Files:**
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/VectorRecallServiceConfiguration.kt`
+- Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorStoreMessageVectorIndexer.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/VectorRecallServiceConfigurationTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorStoreMessageVectorIndexerTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/MessagingServiceVectorTests.kt`
 - Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`
 
 **The old issue text is superseded.** It named one configuration file and four
@@ -4507,9 +4522,39 @@ from `@Value("\${app.nodeid}")`. `keyType` comes from `@Value("\${app.key.type}"
 between two jobs of one instant, and a text compare would order the keys wrong.
 
 **Task 9 already created the `vectorIndexState` bean.** Keep that method and do
-not add a second one. The indexer bean reads an `ObjectProvider` of the job
-store, and this task is the first that supplies one. Change that parameter to a
-required `VectorIndexJobStore<T>` only if every context in this file provides it.
+not add a second one.
+
+**This task closes the optional job store.** Task 9 read the store through an
+`ObjectProvider`, because no bean existed then. That state was safe only because
+Task 9 cannot establish stored coverage in a configured deployment. Policy
+adoption and the rebuild wiring land here, so the store becomes required here.
+
+Make these six changes together. A partial change leaves a mode that no test
+covers.
+
+1. Replace `jobStores: ObjectProvider<VectorIndexJobStore<T>>` with
+   `jobStore: VectorIndexJobStore<T>` in `messageVectorIndexer`. Remove the
+   `ObjectProvider` import.
+2. Change the `VectorStoreMessageVectorIndexer` constructor parameter from
+   `VectorIndexJobStore<T>?` to `VectorIndexJobStore<T>`.
+3. Remove the `jobStore == null` branch from `recordFailure`. The null target
+   check stays, because a state with no covering job still has no target.
+4. Delete `a failure with no job store still removes coverage` from
+   `VectorStoreMessageVectorIndexerTests`. It pinned a mode that ends here.
+   Every other test in that class stays, and each passes the fake store.
+5. Change `MessagingServiceVectorTests` to pass a `FakeVectorIndexJobStore`
+   instead of null.
+6. Delete `the indexer bean exists with no job store bean` from
+   `VectorRecallServiceConfigurationTests`. The rewritten class registers every
+   provider bean, so every context in that file supplies a store.
+
+**No optional job store mode remains after this task.** A deployment that starts
+the recall beans also starts the job store.
+
+`ObjectProvider<MessageVectorIndexer<T>>` in
+`CompositeServiceBeansConfiguration.kt:27` is not a precedent for keeping the
+optional store. Composite messaging stays valid with no vector selector set. A
+recall deployment with no job store has no such reason.
 
 Add `app.vector.index.startup`. Only `rebuild` starts one job, and it runs on
 `ApplicationReadyEvent`. `report` is the default and starts nothing. At startup the
