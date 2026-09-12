@@ -1102,17 +1102,26 @@ Write `SerialWriter` beside the store:
 ```kotlin
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.ChatException
 import reactor.core.Disposable
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Runs submitted work one piece at a time, and waits for each piece to
  * complete before it starts the next.
+ *
+ * Every emission result is handled. An ignored result leaves the caller with a
+ * Mono that never completes, which is worse than an error, because nothing
+ * upstream can react to it.
  */
-class SerialWriter {
+class SerialWriter(private val emitTimeout: Duration = Duration.ofSeconds(10)) {
     private class Work(val body: Mono<Void>, val result: Sinks.Empty<Void>)
 
+    private val closed = AtomicBoolean(false)
+    private val drained = Sinks.empty<Void>()
     private val queue = Sinks.many().unicast().onBackpressureBuffer<Work>()
 
     private val worker: Disposable = queue.asFlux()
@@ -1124,25 +1133,163 @@ class SerialWriter {
                     Mono.empty()
                 }
         }
+        .doFinally { drained.tryEmitEmpty() }
         .subscribe()
 
     fun submit(body: Mono<Void>): Mono<Void> = Mono.defer {
+        if (closed.get()) {
+            return@defer Mono.error(ChatException("The job writer is closed and accepts no work."))
+        }
+
         val work = Work(body, Sinks.empty())
-        queue.tryEmitNext(work)
+        try {
+            // Two concurrent submissions produce FAIL_NON_SERIALIZED, and
+            // busyLooping retries that case. A closed queue produces
+            // FAIL_TERMINATED, which throws, so the caller sees an error
+            // signal rather than a Mono that never completes.
+            queue.emitNext(work, Sinks.EmitFailureHandler.busyLooping(emitTimeout))
+        } catch (error: Throwable) {
+            return@defer Mono.error(error)
+        }
+
         work.result.asMono()
     }
 
-    fun close() {
+    /**
+     * Stops new work, waits for the queued work to finish, and only then
+     * disposes the worker. An immediate dispose would strand every queued
+     * result.
+     */
+    fun close(): Mono<Void> = Mono.defer {
+        closed.set(true)
         queue.tryEmitComplete()
-        worker.dispose()
+        drained.asMono().doFinally { worker.dispose() }
     }
 }
 ```
 
-Write `IndexJobCodec<T>` beside it. `decode(data: Any): IndexJob<T>` handles the
-three backend shapes: an `IndexJob` passes through, a `Map` goes through
-`ObjectMapper.convertValue`, and a `String` goes through `ObjectMapper.readValue`.
-A shape it cannot read throws `ChatException` naming the runtime class.
+The store's `close()` blocks, because a Spring destroy method takes no
+subscriber:
+
+```kotlin
+    /** The configuration registers this as the bean destroy method. */
+    fun close() {
+        writer.close().block(Duration.ofSeconds(10))
+    }
+```
+
+- [ ] **Step 3b: Write the SerialWriter tests**
+
+Create `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/SerialWriterTests.kt`.
+
+```kotlin
+package com.demo.chat.test.service.composite
+
+import com.demo.chat.domain.ChatException
+import com.demo.chat.service.composite.impl.SerialWriter
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import reactor.test.StepVerifier
+import java.time.Duration
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+
+class SerialWriterTests {
+
+    // Concurrent submission is what produces FAIL_NON_SERIALIZED. Every caller
+    // must still receive a completion.
+    @Test
+    fun `concurrent submissions all complete`() {
+        val writer = SerialWriter()
+        val done = AtomicInteger()
+
+        StepVerifier
+            .create(
+                Flux.range(0, 200)
+                    .parallel(8)
+                    .runOn(Schedulers.boundedElastic())
+                    .flatMap { writer.submit(Mono.fromRunnable { done.incrementAndGet() }) }
+                    .then()
+            )
+            .verifyComplete()
+
+        Assertions.assertThat(done.get()).isEqualTo(200)
+        writer.close().block(Duration.ofSeconds(10))
+    }
+
+    // One at a time means one at a time. A second body must not start while
+    // the first is still running.
+    @Test
+    fun `work never overlaps`() {
+        val writer = SerialWriter()
+        val running = AtomicBoolean(false)
+        val overlapped = AtomicBoolean(false)
+
+        val body = Mono.fromRunnable<Void> {
+            if (!running.compareAndSet(false, true)) overlapped.set(true)
+        }
+            .delayElement(Duration.ofMillis(5))
+            .doFinally { running.set(false) }
+            .then()
+
+        StepVerifier
+            .create(Flux.range(0, 50).flatMap { writer.submit(body) }.then())
+            .verifyComplete()
+
+        Assertions.assertThat(overlapped.get()).isFalse()
+        writer.close().block(Duration.ofSeconds(10))
+    }
+
+    // close() must let queued work finish. An immediate dispose would strand
+    // every queued result, and the caller would wait for a completion that
+    // never arrives.
+    @Test
+    fun `close drains queued work`() {
+        val writer = SerialWriter()
+        val done = AtomicInteger()
+        val slow = Mono.delay(Duration.ofMillis(20)).then(Mono.fromRunnable<Void> { done.incrementAndGet() })
+
+        val results = (0 until 10).map { writer.submit(slow) }
+        val all = Flux.merge(results).then()
+
+        writer.close().block(Duration.ofSeconds(10))
+
+        StepVerifier.create(all).verifyComplete()
+        Assertions.assertThat(done.get()).isEqualTo(10)
+    }
+
+    @Test
+    fun `a submission after close fails rather than hanging`() {
+        val writer = SerialWriter()
+        writer.close().block(Duration.ofSeconds(10))
+
+        StepVerifier
+            .create(writer.submit(Mono.empty()))
+            .verifyError(ChatException::class.java)
+    }
+
+    @Test
+    fun `a failed body reaches its own caller only`() {
+        val writer = SerialWriter()
+
+        StepVerifier
+            .create(writer.submit(Mono.error(IllegalStateException("write failed"))))
+            .verifyError(IllegalStateException::class.java)
+
+        StepVerifier
+            .create(writer.submit(Mono.empty()))
+            .verifyComplete()
+
+        writer.close().block(Duration.ofSeconds(10))
+    }
+}
+```
+
+Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=SerialWriterTests -Dsurefire.failIfNoSpecifiedTests=false`
+Expected: PASS, 5 tests.
 
 - [ ] **Step 4: Run the test and confirm it passes**
 
@@ -1180,6 +1327,8 @@ the next rebuild would read its own output back out of
 - [ ] **Step 1: Write the failing test**
 
 ```kotlin
+    // The exact sequence is the boundary. A writer that called the composite
+    // send would show four steps, and the vector indexer would be one of them.
     @Test
     fun `the writer calls persistence, then the index, then pub sub`() {
         val writer = writerUnderTest()
@@ -1187,7 +1336,6 @@ the next rebuild would read its own output back out of
         StepVerifier.create(writer.write(record)).verifyComplete()
 
         Assertions.assertThat(calls).containsExactly("persistence", "index", "pubsub")
-        Assertions.assertThat(vectorIndexer.added).isEmpty()
     }
 
     @Test
@@ -1219,9 +1367,40 @@ fakes and one vector indexer that must stay untouched.
 
 ```kotlin
     private val calls = mutableListOf<String>()
-    private val persistence = RecordingPersistence()
-    private val pubsub = RecordingPubSub()
-    private val vectorIndexer = RecordingIndexer()
+    private val persistence = RecordingPersistence(calls)
+    private val pubsub = RecordingPubSub(calls)
+
+    private class RecordingPersistence(private val calls: MutableList<String>) :
+        MessagePersistence<Long, String> {
+        val added = mutableListOf<Message<Long, String>>()
+        override fun key(): Mono<out Key<Long>> = Mono.empty()
+        override fun add(ent: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+            calls.add("persistence")
+            added.add(ent)
+        }
+        override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
+        override fun get(key: Key<Long>): Mono<out Message<Long, String>> = Mono.empty()
+        override fun all(): Flux<out Message<Long, String>> = Flux.empty()
+    }
+
+    private class RecordingPubSub(private val calls: MutableList<String>) :
+        TopicPubSubService<Long, String> {
+        val sent = mutableListOf<Message<Long, String>>()
+        override fun sendMessage(message: Message<Long, String>): Mono<Void> = Mono.fromRunnable {
+            calls.add("pubsub")
+            sent.add(message)
+        }
+        override fun open(topicId: Long): Mono<Void> = Mono.empty()
+        override fun close(topicId: Long): Mono<Void> = Mono.empty()
+        override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
+        override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
+        override fun subscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+        override fun unSubscribe(member: Long, topic: Long): Mono<Void> = Mono.empty()
+        override fun unSubscribeAll(member: Long): Mono<Void> = Mono.empty()
+        override fun unSubscribeAllIn(topic: Long): Mono<Void> = Mono.empty()
+        override fun listenTo(topic: Long): Flux<out Message<Long, String>> = Flux.empty()
+        override fun exists(topic: Long): Mono<Boolean> = Mono.just(true)
+    }
 
     private val record = JobRecord(
         key = Key.funKey(7L),
@@ -1253,11 +1432,9 @@ fakes and one vector indexer that must stay untouched.
     }
 ```
 
-`RecordingPersistence` adds `"persistence"` to `calls` and keeps each message in
-`added`. `RecordingPubSub` adds `"pubsub"` and keeps each message in `sent`.
-`RecordingIndexer` implements `MessageVectorIndexer<Long>` and keeps every id in
-`added`. **No wiring passes it to the writer.** It exists so the first test can
-assert that it stays empty, which is the rule this task protects.
+The writer takes three services and no vector indexer, so a test cannot assert
+that an indexer stayed untouched. The `containsExactly` check on `calls` is what
+proves the boundary: three steps, in that order, and no fourth.
 
 - [ ] **Step 2: Run the test and confirm it fails**
 
@@ -2043,6 +2220,7 @@ git add -A && git commit -m "feat: return one recall result on both transports (
 **Files:**
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/VectorRecallServiceConfiguration.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/VectorRecallServiceConfigurationTests.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`
 
 **The old issue text is superseded.** It named one configuration file and four
 beans. The wiring now also builds the job store, the job record writer, the
@@ -2056,149 +2234,85 @@ coverage policy, and the startup action.
 
 - [ ] **Step 1: Write the failing context tests**
 
+**Build the context the way this file already does.** `chat-service-composite`
+does not depend on `chat-persistence-memory` or `chat-index-lucene`, so a test
+cannot name `MemoryPersistenceBeans` or `LuceneIndexBeans`. The existing tests in
+this file use `AnnotationConfigApplicationContext` and register the few beans the
+configuration reads. Keep that, and add fakes for the three provider interfaces,
+which all live in `chat-core`.
+
 ```kotlin
 package com.demo.chat.test.config
 
+import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.service.composite.VectorRecallServiceConfiguration
-import com.demo.chat.service.vector.JobRecordWriter
+import com.demo.chat.domain.LongUtil
+import com.demo.chat.domain.RequestToQueryConverters
+import com.demo.chat.service.dummy.DummyKeyValueIndexService
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorCoveragePolicy
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
-import org.assertj.core.api.Assertions.assertThat
+import com.demo.chat.test.vector.MockVectorStore
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.springframework.boot.test.context.runner.ApplicationContextRunner
-import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.SpringApplication
-import org.springframework.context.ConfigurableApplicationContext
-import org.springframework.beans.factory.ObjectProvider
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-import com.demo.chat.service.core.KeyValueIndexFieldsEntry
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.annotation.AnnotationConfigApplicationContext
+import org.springframework.core.env.MapPropertySource
 import reactor.core.publisher.Flux
 import java.time.Duration
 
-/**
- * The class gate is the composite selector. Each bean gate is both recall
- * selectors. A bean must not appear when either gate is absent.
- */
 class VectorRecallServiceConfigurationTests {
 
-    private val allProperties = arrayOf(
-        "app.service.composite=true",
-        "app.service.core.vector=embedded",
-        "app.service.core.embedding=embedded",
-        "app.key.type=long",
-        "app.nodeid=1",
+    private val allProperties = mapOf(
+        "app.service.composite" to "true",
+        "app.service.core.vector" to "simple",
+        "app.service.core.embedding" to "mock",
+        "app.key.type" to "long",
+        "app.nodeid" to "1",
     )
 
     /**
-     * Every dependency the configuration reads, in memory.
+     * Registers every bean the configuration reads, and nothing else.
      *
-     * The composite context exposes no MessagePersistence bean by type. It
-     * reads every store through the three provider interfaces, so this
-     * configuration supplies those, not the stores themselves.
+     * The three provider interfaces come from chat-core, so this module can
+     * implement them. The in-memory fakes live in InMemoryServiceBeans beside
+     * this test, and they reuse the shapes that VectorIndexJobStoreImplTests
+     * already declares.
      */
-    @Configuration(proxyBeanMethods = false)
-    class VectorRecallTestBeans {
-        @Bean
-        fun typeUtil(): TypeUtil<Long> = LongUtil()
-
-        @Bean
-        fun persistenceBeans(): PersistenceServiceBeans<Long, String> =
-            MemoryPersistenceBeans(LongUtil())
-
-        // Spring supplies the ObjectProvider. There is no ObjectProvider.empty()
-        // in this Spring version, and a provider that resolves to nothing is
-        // exactly what a context without a KeyValueIndexFieldsEntry bean gives.
-        @Bean
-        fun indexBeans(
-            fieldEntries: ObjectProvider<KeyValueIndexFieldsEntry>,
-        ): IndexServiceBeans<Long, String, IndexSearchRequest> =
-            LuceneIndexBeans(LongUtil(), fieldEntries)
-
-        @Bean
-        fun pubSubBeans(): PubSubServiceBeans<Long, String> = MemoryPubSubBeans()
-
-        @Bean
-        fun queryConverters(): RequestToQueryConverters<IndexSearchRequest> =
-            LuceneRequestToQueryConverters()
-
-        @Bean
-        fun vectorStore(): VectorStore = MockVectorStore()
+    private fun contextWith(properties: Map<String, String>): AnnotationConfigApplicationContext {
+        val context = AnnotationConfigApplicationContext()
+        context.environment.propertySources.addFirst(MapPropertySource("test", properties))
+        context.beanFactory.registerSingleton("typeUtil", LongUtil())
+        context.beanFactory.registerSingleton("vectorStore", MockVectorStore())
+        context.beanFactory.registerSingleton("persistenceBeans", InMemoryServiceBeans.persistence())
+        context.beanFactory.registerSingleton("indexBeans", InMemoryServiceBeans.index())
+        context.beanFactory.registerSingleton("pubSubBeans", InMemoryServiceBeans.pubSub())
+        context.beanFactory.registerSingleton("queryConverters", InMemoryServiceBeans.converters())
+        context.register(VectorRecallServiceConfiguration::class.java)
+        context.refresh()
+        return context
     }
 
-    private fun runner() = ApplicationContextRunner()
-        .withUserConfiguration(VectorRecallTestBeans::class.java)
-        .withUserConfiguration(VectorRecallServiceConfiguration::class.java)
-
-    @Test
-    fun `every vector bean exists with the composite and both selectors`() {
-        runner()
-            .withPropertyValues(*allProperties)
-            .run { context ->
-                assertThat(context).hasSingleBean(VectorIndexState::class.java)
-                assertThat(context).hasSingleBean(VectorIndexJobStore::class.java)
-                assertThat(context).hasSingleBean(JobRecordWriter::class.java)
-                assertThat(context).hasSingleBean(VectorCoveragePolicy::class.java)
-                assertThat(context).hasSingleBean(MessageVectorIndexer::class.java)
-                assertThat(context).hasSingleBean(MessageRecallService::class.java)
-                assertThat(context).hasSingleBean(MessageReindexService::class.java)
-            }
-    }
-
-    @Test
-    fun `no vector bean exists without the composite selector`() {
-        runner()
-            .withPropertyValues(
-                "app.service.core.vector=embedded",
-                "app.service.core.embedding=embedded",
-                "app.key.type=long",
-                "app.nodeid=1",
-            )
-            .run { context ->
-                assertThat(context).doesNotHaveBean(VectorIndexState::class.java)
-                assertThat(context).doesNotHaveBean(VectorIndexJobStore::class.java)
-                assertThat(context).doesNotHaveBean(MessageReindexService::class.java)
-            }
-    }
-
-    @Test
-    fun `no vector bean exists when one recall selector is absent`() {
-        runner()
-            .withPropertyValues(
-                "app.service.composite=true",
-                "app.service.core.vector=embedded",
-                "app.key.type=long",
-                "app.nodeid=1",
-            )
-            .run { context ->
-                assertThat(context).doesNotHaveBean(MessageRecallService::class.java)
-                assertThat(context).doesNotHaveBean(MessageReindexService::class.java)
-                assertThat(context).doesNotHaveBean(VectorIndexJobStore::class.java)
-            }
-    }
-
-    /**
-     * ApplicationContextRunner refreshes a context. It never publishes
-     * ApplicationReadyEvent, so a listener bound to that event never fires
-     * unless the test publishes it.
-     */
-    private fun publishReady(context: ConfigurableApplicationContext) {
+    private fun publishReady(context: AnnotationConfigApplicationContext) {
         context.publishEvent(
             ApplicationReadyEvent(SpringApplication(), arrayOf(), context, Duration.ZERO)
         )
     }
 
-    private fun jobCount(context: ConfigurableApplicationContext): Long =
+    private fun jobCount(context: AnnotationConfigApplicationContext): Long =
         context.getBean(VectorIndexJobStore::class.java)
             .listJobTopics()
             .count()
             .block(Duration.ofSeconds(10))!!
 
-    private fun awaitNotRunning(reindex: MessageReindexService<*>) {
+    private fun awaitNotRunning(context: AnnotationConfigApplicationContext) {
+        val reindex = context.getBean(MessageReindexService::class.java)
         Flux.interval(Duration.ZERO, Duration.ofMillis(20))
             .map { reindex.status() }
             .filter { status -> !status.running }
@@ -2206,42 +2320,98 @@ class VectorRecallServiceConfigurationTests {
             .block(Duration.ofSeconds(30))
     }
 
+    @Test
+    fun `every vector bean exists with the composite and both selectors`() {
+        val context = contextWith(allProperties)
+
+        try {
+            Assertions.assertThat(context.getBean(VectorIndexState::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(VectorIndexJobStore::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(VectorCoveragePolicy::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(MessageVectorIndexer::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(MessageRecallService::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(MessageReindexService::class.java)).isNotNull
+        } finally {
+            context.close()
+        }
+    }
+
+    @Test
+    fun `no vector bean exists without the composite selector`() {
+        val context = contextWith(allProperties - "app.service.composite")
+
+        try {
+            Assertions.assertThat(context.getBeanNamesForType(VectorIndexState::class.java)).isEmpty()
+            Assertions.assertThat(context.getBeanNamesForType(MessageReindexService::class.java)).isEmpty()
+        } finally {
+            context.close()
+        }
+    }
+
+    @Test
+    fun `no vector bean exists when one recall selector is absent`() {
+        val context = contextWith(allProperties - "app.service.core.embedding")
+
+        try {
+            Assertions.assertThat(context.getBeanNamesForType(MessageRecallService::class.java)).isEmpty()
+            Assertions.assertThat(context.getBeanNamesForType(VectorIndexJobStore::class.java)).isEmpty()
+        } finally {
+            context.close()
+        }
+    }
+
     // The default must start no rebuild. Real embedding throughput is still
     // unmeasured, so an automatic rebuild could delay readiness or send
     // uncontrolled external requests.
     @Test
     fun `the default startup action starts no job`() {
-        runner()
-            .withPropertyValues(*allProperties)
-            .run { context ->
-                publishReady(context)
+        val context = contextWith(allProperties)
 
-                assertThat(jobCount(context)).isEqualTo(0L)
-            }
+        try {
+            publishReady(context)
+
+            Assertions.assertThat(jobCount(context)).isEqualTo(0L)
+        } finally {
+            context.close()
+        }
     }
 
+    // AnnotationConfigApplicationContext refreshes. It never publishes
+    // ApplicationReadyEvent, so a listener bound to that event fires only when
+    // the test publishes it.
     @Test
     fun `the rebuild startup action starts exactly one job`() {
-        runner()
-            .withPropertyValues(*allProperties, "app.vector.index.startup=rebuild")
-            .run { context ->
-                publishReady(context)
-                awaitNotRunning(context.getBean(MessageReindexService::class.java))
+        val context = contextWith(allProperties + ("app.vector.index.startup" to "rebuild"))
 
-                assertThat(jobCount(context)).isEqualTo(1L)
-            }
+        try {
+            publishReady(context)
+            awaitNotRunning(context)
+
+            Assertions.assertThat(jobCount(context)).isEqualTo(1L)
+        } finally {
+            context.close()
+        }
     }
 
     @Test
     fun `an unknown trust value fails the context`() {
-        runner()
-            .withPropertyValues(*allProperties, "app.vector.index.trust=maybe")
-            .run { context ->
-                assertThat(context).hasFailed()
+        Assertions
+            .assertThatThrownBy {
+                contextWith(allProperties + ("app.vector.index.trust" to "maybe")).close()
             }
+            .hasMessageContaining("app.vector.index.trust")
     }
 }
 ```
+
+**Files this task also creates:** `InMemoryServiceBeans` in
+`chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`.
+It returns one `PersistenceServiceBeans<Long, String>`, one
+`IndexServiceBeans<Long, String, Map<String, String>>`, one
+`PubSubServiceBeans<Long, String>`, and one
+`RequestToQueryConverters<Map<String, String>>`, all backed by the map-based fakes
+from Task 5 and Task 6. The unused members return the existing dummies in
+`com.demo.chat.service.dummy`, because the configuration never calls them.
 
 - [ ] **Step 2: Run and confirm they fail**
 
