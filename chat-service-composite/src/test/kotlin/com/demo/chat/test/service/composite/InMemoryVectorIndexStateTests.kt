@@ -50,8 +50,8 @@ class InMemoryVectorIndexStateTests {
 
         Assertions.assertThat(result.succeeded).isTrue()
         Assertions.assertThat(result.status.complete).isTrue()
-        // No code reads COMPLETE. The actuator publishes the phase, and the
-        // value there means the last run succeeded.
+        // No production decision uses COMPLETE. The actuator publishes the
+        // phase, and the value there means the last run succeeded.
         Assertions.assertThat(result.status.phase).isEqualTo(VectorIndexPhase.COMPLETE)
         Assertions.assertThat(result.status.lastSuccessAt).isEqualTo(finishedAt)
         Assertions.assertThat(result.status.lastSuccessCount).isEqualTo(2L)

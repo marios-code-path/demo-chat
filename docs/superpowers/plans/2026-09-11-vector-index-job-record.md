@@ -3379,8 +3379,8 @@ with a comment that names the reason.
 else pins the phase after a successful run, and no code reads `COMPLETE`.
 
 ```kotlin
-        // No code reads COMPLETE. The actuator publishes the phase, and the
-        // value there means the last run succeeded.
+        // No production decision uses COMPLETE. The actuator publishes the
+        // phase, and the value there means the last run succeeded.
         Assertions.assertThat(result.status.phase).isEqualTo(VectorIndexPhase.COMPLETE)
 ```
 
@@ -3614,9 +3614,12 @@ data class VectorIndexStatus<T>(
     /**
      * The result of the last run, or the run in progress.
      *
-     * No code reads COMPLETE. `complete` reads the covering job, and `running`
-     * reads REBUILDING. The actuator publishes this value to an operator, and
-     * COMPLETE there means the last run succeeded.
+     * No production decision uses COMPLETE. `complete` reads the covering job,
+     * and `running` reads REBUILDING. The actuator publishes this value to an
+     * operator, and COMPLETE there means the last run succeeded.
+     *
+     * INCOMPLETE means one of three things. The process started and no run has
+     * succeeded yet. An invalidation removed the coverage. The last run failed.
      */
     val phase: VectorIndexPhase,
     val lastReport: VectorRebuildReport? = null,
@@ -4650,6 +4653,23 @@ git add -A && git commit -m "feat: wire the vector job, policy, and writer beans
 - Produces: actuator id `vectorindex`. `@ReadOperation` returns the status with the
   active job, the covering job, and recent job records. `@WriteOperation` starts one
   rebuild and returns at once.
+
+**Two items to resolve before this task starts.** The owner review of Task 9
+found both.
+
+1. **The endpoint contract disagrees with its own test code.** The Interfaces
+   block above promises recent job records, and the read needs
+   `VectorIndexJobStore<T>` for them. The test code in Step 1 builds
+   `VectorIndexEndpoint(service)` with one argument. Choose one contract. Either
+   the endpoint takes the job store and reads the records, or the read returns
+   the status alone and this block drops the promise.
+
+2. **The write operation cannot report the active job.** `start()` returns
+   `claim.status`, and `claim()` snapshots the status before the run creates its
+   job. So the value a trigger returns always carries `activeJob = null`. A
+   `status()` call straight after `start()` is also racy, because job creation
+   runs on another scheduler. Document polling as the way to read the active
+   job. Do not present a second read as a fix.
 
 **Gates:** `@ConditionalOnProperty("app.service.composite")` and
 `@ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])`.
