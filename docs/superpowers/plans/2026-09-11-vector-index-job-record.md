@@ -1029,19 +1029,18 @@ interface VectorIndexJobStore<T> {
     // so a writer that did not wait would read before the first write landed.
     @Test
     fun `an overlapping invalidation does not interleave with a terminal write`() {
-        val gate = Sinks.empty<Void>()
-        val store = storeUnderTest(readDelay = gate.asMono())
+        // Each read waits on its own timer rather than on one shared gate. A
+        // single sink resumes its subscribers one after another on the
+        // emitting thread, so two operations behind it never truly overlap and
+        // the test passes even without serialization.
+        val store = storeUnderTest(readDelay = Mono.delay(Duration.ofMillis(50)).then())
         val job = store.createJob(startedAt).block()!!
 
-        val terminal = store.finishJob(job.copy(outcome = JobOutcome.SUCCEEDED, indexed = 3L)).subscribe()
-        val invalidation = store.invalidate(job.key, finishedAt).subscribe()
+        val terminal = store.finishJob(job.copy(outcome = JobOutcome.SUCCEEDED, indexed = 3L)).toFuture()
+        val invalidation = store.invalidate(job.key, finishedAt).toFuture()
 
-        gate.tryEmitEmpty()
-
-        Flux.interval(Duration.ZERO, Duration.ofMillis(10))
-            .filter { terminal.isDisposed && invalidation.isDisposed }
-            .next()
-            .block(Duration.ofSeconds(10))
+        terminal.get(10, TimeUnit.SECONDS)
+        invalidation.get(10, TimeUnit.SECONDS)
 
         val read = store.readJob(job.key).block()!!
         Assertions.assertThat(read.outcome).isEqualTo(JobOutcome.SUCCEEDED)
@@ -1101,9 +1100,12 @@ internal class FakeTopicPersistence : TopicPersistence<Long> {
     override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
     override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(ent) }
     override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { saved.removeIf { it.key == key } }
+    // Every read defers. A real store reads when a caller subscribes, and a
+    // fake that reads at assembly time would hand back a value from before an
+    // earlier write, which makes correct serialization look broken.
     override fun get(key: Key<Long>): Mono<out MessageTopic<Long>> =
-        Mono.justOrEmpty(saved.firstOrNull { it.key == key })
-    override fun all(): Flux<out MessageTopic<Long>> = Flux.fromIterable(saved.toList())
+        Mono.defer { Mono.justOrEmpty(saved.firstOrNull { it.key == key }) }
+    override fun all(): Flux<out MessageTopic<Long>> = Flux.defer { Flux.fromIterable(saved.toList()) }
 }
 
 internal class FakeTopicIndex : TopicIndexService<Long, Map<String, String>> {
@@ -1144,8 +1146,9 @@ internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty(
     override fun add(ent: KeyValuePair<Long, Any>): Mono<Void> = Mono.fromRunnable { values[ent.key.id] = ent }
     override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { values.remove(key.id) }
     override fun get(key: Key<Long>): Mono<out KeyValuePair<Long, Any>> =
-        readDelay.then(Mono.justOrEmpty(values[key.id]))
-    override fun all(): Flux<out KeyValuePair<Long, Any>> = Flux.fromIterable(values.values.toList())
+        readDelay.then(Mono.defer { Mono.justOrEmpty(values[key.id]) })
+    override fun all(): Flux<out KeyValuePair<Long, Any>> =
+        Flux.defer { Flux.fromIterable(values.values.toList()) }
 }
 
 internal class FakeMessagePersistence(private val calls: MutableList<String>? = null) :
@@ -1159,10 +1162,10 @@ internal class FakeMessagePersistence(private val calls: MutableList<String>? = 
     }
     override fun rem(key: Key<Long>): Mono<Void> = Mono.empty()
     override fun get(key: Key<Long>): Mono<out Message<Long, String>> =
-        Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id })
-    override fun all(): Flux<out Message<Long, String>> = Flux.fromIterable(added.toList())
+        Mono.defer { Mono.justOrEmpty(added.firstOrNull { it.key.id == key.id }) }
+    override fun all(): Flux<out Message<Long, String>> = Flux.defer { Flux.fromIterable(added.toList()) }
     override fun byIds(keys: List<Key<Long>>): Flux<out Message<Long, String>> =
-        Flux.fromIterable(added.filter { message -> keys.any { it.id == message.key.id } })
+        Flux.defer { Flux.fromIterable(added.filter { message -> keys.any { it.id == message.key.id } }) }
 }
 
 internal class FakeMessageIndex(
@@ -1488,10 +1491,17 @@ class SerialWriterTests {
         // An empty completion passes straight through, so a delay after
         // fromRunnable creates no window at all. fromCallable emits a value,
         // which the delay can hold.
+        //
+        // The flag clears inside doOnNext, not in doFinally. Reactor runs a
+        // doFinally callback after it propagates the terminal signal, so the
+        // next body would start before the previous one cleared the flag, and
+        // a correct writer would look like it overlapped.
         val body = Mono.fromCallable { !running.compareAndSet(false, true) }
             .delayElement(Duration.ofMillis(5))
-            .doOnNext { collided -> if (collided) overlapped.set(true) }
-            .doFinally { running.set(false) }
+            .doOnNext { collided ->
+                if (collided) overlapped.set(true)
+                running.set(false)
+            }
             .then()
 
         StepVerifier
