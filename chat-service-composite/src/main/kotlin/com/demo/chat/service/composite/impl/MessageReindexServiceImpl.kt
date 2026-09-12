@@ -2,11 +2,14 @@ package com.demo.chat.service.composite.impl
 
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorIndexClaim
+import com.demo.chat.domain.JobRecord
+import com.demo.chat.service.vector.JobRecordWriter
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
 import com.demo.chat.service.vector.VectorIndexStatus
@@ -26,6 +29,8 @@ class MessageReindexServiceImpl<T, V>(
     private val indexer: MessageVectorIndexer<T>,
     private val state: VectorIndexState<T>,
     private val jobStore: VectorIndexJobStore<T>,
+    private val recordWriter: JobRecordWriter<T>,
+    private val recordKeys: () -> Key<T>,
     private val clock: Clock = Clock.systemUTC(),
     private val scheduler: Scheduler = Schedulers.boundedElastic(),
 ) : MessageReindexService<T> {
@@ -79,26 +84,70 @@ class MessageReindexServiceImpl<T, V>(
     ): Mono<Void> =
         jobStore.createJob(startedAt)
             .flatMap { job ->
-                // One listing serves discovery and exclusion. It runs before
-                // the scan, and a failure stops the run, because a scan
-                // without the full exclusion set would index job records.
-                jobStore.listJobTopics()
-                    .map { topic -> topic.key.id }
-                    .collectList()
-                    .flatMap { topicIds ->
-                        // This job writes records to its own topic while the
-                        // scan runs, so that topic joins the set explicitly.
-                        scanWith(claim, startedAt, job, topicIds.toSet() + job.key.id)
-                    }
-                    .onErrorResume { error ->
-                        logger.error("Vector reindex could not list its job topics", error)
-                        finishRun(
-                            claim,
-                            job,
-                            VectorRebuildReport(startedAt, clock.instant(), 0L, 0L, 0L, 0L),
-                            summary(error),
-                        )
-                    }
+                // Two events per run, and both go to the job topic. A reader
+                // of that topic learns when the run began and how it ended.
+                emit(job, "rebuild started", null)
+                    .then(exclusionFor(claim, startedAt, job))
+                    .flatMap { exclusion -> scanWith(claim, startedAt, job, exclusion) }
+            }
+
+    /**
+     * Publishes one job record.
+     *
+     * A failed record write never fails the run. The record is a report, and
+     * losing it must not turn a healthy rebuild into a failed one.
+     */
+    private fun emit(job: IndexJob<T>, message: String, report: VectorRebuildReport?): Mono<Void> =
+        Mono.defer {
+            recordWriter.write(
+                JobRecord(
+                    key = recordKeys(),
+                    jobKey = job.key,
+                    workerKey = job.startedBy,
+                    at = clock.instant(),
+                    message = message,
+                    attempted = report?.attempted,
+                    indexed = report?.indexed,
+                    skipped = report?.skipped,
+                    failed = report?.failed,
+                )
+            )
+        }.onErrorResume { error ->
+            logger.error("Vector reindex could not write a job record", error)
+            Mono.empty()
+        }
+
+    /**
+     * The exclusion set for one run, or empty when the listing failed.
+     *
+     * One listing serves discovery and exclusion. A failure stops the run
+     * before the scan, because a scan without the full exclusion set would
+     * index job records.
+     *
+     * The recovery sits on the listing alone. A handler that also covered the
+     * scan and the terminal write would finish one run twice, because a failed
+     * terminal write would re-enter it.
+     */
+    private fun exclusionFor(
+        claim: VectorIndexClaim,
+        startedAt: Instant,
+        job: IndexJob<T>,
+    ): Mono<Set<T>> =
+        jobStore.listJobTopics()
+            .map { topic -> topic.key.id }
+            .collectList()
+            // This job writes records to its own topic while the scan runs,
+            // and the listing it captured predates that topic, so the topic
+            // joins the set explicitly.
+            .map { topicIds -> topicIds.toSet() + job.key.id }
+            .onErrorResume { error ->
+                logger.error("Vector reindex could not list its job topics", error)
+                finishRun(
+                    claim,
+                    job,
+                    VectorRebuildReport(startedAt, clock.instant(), 0L, 0L, 0L, 0L),
+                    summary(error),
+                ).then(Mono.empty())
             }
 
     private fun scanWith(
@@ -119,48 +168,32 @@ class MessageReindexServiceImpl<T, V>(
             .filter { message -> message.key.dest !in exclusion }
             .concatMap { message ->
                 attempted.incrementAndGet()
-                if (!message.record) {
-                    skipped.incrementAndGet()
-                    Mono.empty()
-                } else {
-                    Mono.defer { indexer.add(asText(message)) }
-                        .doOnSuccess { indexed.incrementAndGet() }
-                        .onErrorResume { error ->
-                            failed.incrementAndGet()
-                            lastFailure.set(summary(error))
-                            logger.error("Vector reindex message failed", error)
-                            Mono.empty()
-                        }
-                }
+                // record is not an inclusion rule here. MessagingServiceImpl
+                // sets it true on every message it sends, and the indexer
+                // applies its own rule, so a rebuild offers every message
+                // that is not a job record.
+                Mono.defer { indexer.add(asText(message)) }
+                    .doOnSuccess { indexed.incrementAndGet() }
+                    .onErrorResume { error ->
+                        failed.incrementAndGet()
+                        lastFailure.set(summary(error))
+                        logger.error("Vector reindex message failed", error)
+                        Mono.empty()
+                    }
             }
 
+        // The recovery covers the scan alone, so the terminal write runs once
+        // whether the scan completed or failed. A handler wrapping both would
+        // run the terminal write a second time when the first one failed.
         return scan
-            .then(
-                finish(
-                    claim,
-                    job,
-                    startedAt,
-                    attempted,
-                    indexed,
-                    skipped,
-                    failed,
-                    lastFailure,
-                )
-            )
             .onErrorResume { error ->
                 lastFailure.set(summary(error))
                 logger.error("Vector reindex scan failed", error)
-                finish(
-                    claim,
-                    job,
-                    startedAt,
-                    attempted,
-                    indexed,
-                    skipped,
-                    failed,
-                    lastFailure,
-                )
+                Flux.empty()
             }
+            .then(
+                finish(claim, job, startedAt, attempted, indexed, skipped, failed, lastFailure)
+            )
     }
 
     private fun finish(
@@ -213,15 +246,21 @@ class MessageReindexServiceImpl<T, V>(
             report.failed,
         )
 
-        return jobStore.finishJob(
-            job.copy(
-                finishedAt = report.finishedAt,
-                outcome = if (result.succeeded) JobOutcome.SUCCEEDED else JobOutcome.FAILED,
-                attempted = report.attempted,
-                indexed = report.indexed,
-                skipped = report.skipped,
-                failed = report.failed,
-                failureSummary = failure,
+        return emit(
+            job,
+            if (result.succeeded) "rebuild succeeded" else "rebuild failed",
+            report,
+        ).then(
+            jobStore.finishJob(
+                job.copy(
+                    finishedAt = report.finishedAt,
+                    outcome = if (result.succeeded) JobOutcome.SUCCEEDED else JobOutcome.FAILED,
+                    attempted = report.attempted,
+                    indexed = report.indexed,
+                    skipped = report.skipped,
+                    failed = report.failed,
+                    failureSummary = failure,
+                )
             )
         )
     }

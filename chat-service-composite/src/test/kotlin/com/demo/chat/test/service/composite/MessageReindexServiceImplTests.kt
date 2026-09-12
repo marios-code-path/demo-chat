@@ -7,7 +7,10 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.service.vector.JobTopicNames
+import com.demo.chat.service.vector.JobRecordCodec
 import com.demo.chat.service.vector.VectorIndexJobStore
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.demo.chat.service.composite.impl.ComposedJobRecordWriter
 import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
 import com.demo.chat.service.composite.impl.MessageReindexServiceImpl
 import com.demo.chat.service.core.MessagePersistence
@@ -41,6 +44,13 @@ class MessageReindexServiceImplTests {
     private val state = InMemoryVectorIndexState<Long>()
     private val clock = mock<Clock>()
     private val jobStore = FakeJobStore()
+
+    // The real writer over the three doubles, so a record has to reach
+    // persistence, the message index, and pub/sub to be seen here.
+    private val recordPersistence = FakeMessagePersistence()
+    private val recordIndex = FakeMessageIndex()
+    private val recordPubSub = FakePubSub()
+    private var nextRecordId = 7000L
     private val jobTopicName = JobTopicNames.nameFor(7, "long", Instant.EPOCH, "incarnation-a")
     private lateinit var scheduler: Scheduler
     private lateinit var service: MessageReindexServiceImpl<Long, String>
@@ -54,6 +64,14 @@ class MessageReindexServiceImplTests {
             indexer,
             state,
             jobStore,
+            ComposedJobRecordWriter(
+                messagePersistence = recordPersistence,
+                messageIndex = recordIndex,
+                pubsub = recordPubSub,
+                codec = JobRecordCodec(ObjectMapper().findAndRegisterModules()),
+                asValue = { text: String -> text },
+            ),
+            { Key.funKey(nextRecordId++) },
             clock,
             scheduler,
         )
@@ -64,8 +82,11 @@ class MessageReindexServiceImplTests {
         scheduler.dispose()
     }
 
+    // record is not an inclusion rule. The spec forbids it, MessagingServiceImpl
+    // sets it true on every message it sends, and the indexer applies its own
+    // rule, so a rebuild offers every message that is not a job record.
     @Test
-    fun `rebuild indexes recorded messages and skips alerts`() {
+    fun `rebuild offers every message that is not a job record`() {
         given(persistence.all()).willReturn(
             Flux.just(
                 message(1L, "apple", true),
@@ -76,10 +97,10 @@ class MessageReindexServiceImplTests {
 
         val final = runAndAwait(service)
 
-        Assertions.assertThat(indexer.ids).containsExactly(1L, 3L)
+        Assertions.assertThat(indexer.ids).containsExactly(1L, 2L, 3L)
         Assertions.assertThat(final.complete).isTrue()
         Assertions.assertThat(final.lastReport).isEqualTo(
-            VectorRebuildReport(startedAt, finishedAt, 3L, 2L, 1L, 0L)
+            VectorRebuildReport(startedAt, finishedAt, 3L, 3L, 0L, 0L)
         )
     }
 
@@ -193,6 +214,8 @@ class MessageReindexServiceImplTests {
         val written = mutableListOf<IndexJob<Long>>()
         val topics = mutableListOf<MessageTopic<Long>>()
         var failListing = false
+        var failFinish = false
+        var finishCalls = 0
         private var nextId = FIRST_JOB_ID
 
         override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier {
@@ -210,7 +233,15 @@ class MessageReindexServiceImplTests {
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
-        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.defer {
+            finishCalls += 1
+            if (failFinish) {
+                Mono.error(IllegalStateException("the terminal write failed"))
+            } else {
+                written.add(job)
+                Mono.empty()
+            }
+        }
 
         override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
             Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == topicKey }) }
@@ -319,6 +350,50 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(jobStore.written.first().key.id).isEqualTo(FakeJobStore.FIRST_JOB_ID)
         Assertions.assertThat(indexer.ids).containsExactly(1L)
         Assertions.assertThat(status.lastReport!!.attempted).isEqualTo(1L)
+    }
+
+    // Both events reach all three services. A record that only reached pub/sub
+    // would vanish on restart, and one that skipped the index could not be
+    // found from its job topic.
+    @Test
+    fun `a rebuild writes a start record and a terminal record to the job topic`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        val jobTopicId = jobStore.written.first().key.id
+
+        Assertions.assertThat(recordPersistence.added).hasSize(2)
+        Assertions.assertThat(recordIndex.added).hasSize(2)
+        Assertions.assertThat(recordPubSub.sent).hasSize(2)
+        Assertions.assertThat(recordPubSub.sent.map { it.key.dest }).containsOnly(jobTopicId)
+        Assertions.assertThat(recordPubSub.sent.map { it.data })
+            .anyMatch { text -> text.contains("rebuild started") }
+            .anyMatch { text -> text.contains("rebuild succeeded") }
+    }
+
+    @Test
+    fun `a failed rebuild reports the failure in its terminal record`() {
+        indexer.failOn.add(1L)
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        Assertions.assertThat(recordPubSub.sent.map { it.data })
+            .anyMatch { text -> text.contains("rebuild failed") }
+    }
+
+    // The terminal write runs once. A recovery handler that also covered the
+    // terminal write would call state.finish a second time.
+    @Test
+    fun `a failed terminal write finishes the run once`() {
+        jobStore.failFinish = true
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        service.start().block()
+        awaitFinished(service)
+
+        Assertions.assertThat(jobStore.finishCalls).isEqualTo(1)
     }
 
     @Test

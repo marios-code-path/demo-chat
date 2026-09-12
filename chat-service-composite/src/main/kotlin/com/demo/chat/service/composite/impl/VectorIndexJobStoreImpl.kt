@@ -59,9 +59,17 @@ class VectorIndexJobStoreImpl<T, V, Q>(
     override fun readJob(topicKey: Key<T>): Mono<IndexJob<T>> =
         keyValueStore.get(topicKey).map { pair -> codec.decode(pair.data) }
 
+    /**
+     * Every reserved topic, from every node.
+     *
+     * The scan exclusion needs all of them. Another node's job records sit in
+     * the same message store, and a listing narrowed to this node would let
+     * them into vector recall. A caller that wants this node's own jobs, such
+     * as the coverage policy, narrows the result itself.
+     */
     override fun listJobTopics(): Flux<out MessageTopic<T>> =
         topicPersistence.all()
-            .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
+            .filter { topic -> JobTopicNames.isJobTopic(topic.data) }
 
     // Every read and write pair below runs to completion before the next one
     // starts. Two callers that both read, change, and write one job would

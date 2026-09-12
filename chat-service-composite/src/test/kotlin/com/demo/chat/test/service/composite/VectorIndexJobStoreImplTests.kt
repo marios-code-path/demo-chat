@@ -123,14 +123,16 @@ class VectorIndexJobStoreImplTests {
         Assertions.assertThat(read.invalidationCount).isEqualTo(1L)
     }
 
+    // Every reserved topic, from every node. The scan exclusion needs all of
+    // them, because another node's job records sit in the same message store.
     @Test
-    fun `listJobTopics returns reserved topics of this node only`() {
+    fun `listJobTopics returns every reserved topic and no user topic`() {
         val store = storeUnderTest()
         store.createJob(startedAt).block()
         topics.saved.add(MessageTopic.create(Key.funKey(99L), "general"))
         topics.saved.add(MessageTopic.create(Key.funKey(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
 
-        StepVerifier.create(store.listJobTopics()).expectNextCount(1).verifyComplete()
+        StepVerifier.create(store.listJobTopics()).expectNextCount(2).verifyComplete()
     }
 
     private val topics = FakeTopicPersistence()

@@ -1062,14 +1062,16 @@ interface VectorIndexJobStore<T> {
         Assertions.assertThat(read.invalidationCount).isEqualTo(1L)
     }
 
+    // Every reserved topic, from every node. The scan exclusion needs all of
+    // them, because another node's job records sit in the same message store.
     @Test
-    fun `listJobTopics returns reserved topics of this node only`() {
+    fun `listJobTopics returns every reserved topic and no user topic`() {
         val store = storeUnderTest()
         store.createJob(startedAt).block()
         topics.saved.add(MessageTopic.create(Key.funKey(99L), "general"))
         topics.saved.add(MessageTopic.create(Key.funKey(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
 
-        StepVerifier.create(store.listJobTopics()).expectNextCount(1).verifyComplete()
+        StepVerifier.create(store.listJobTopics()).expectNextCount(2).verifyComplete()
     }
 ```
 
@@ -2231,6 +2233,45 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
     }
 
     @Test
+    fun `a rebuild writes a start record and a terminal record to the job topic`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        val jobTopicId = jobStore.written.first().key.id
+
+        Assertions.assertThat(recordPersistence.added).hasSize(2)
+        Assertions.assertThat(recordIndex.added).hasSize(2)
+        Assertions.assertThat(recordPubSub.sent).hasSize(2)
+        Assertions.assertThat(recordPubSub.sent.map { it.key.dest }).containsOnly(jobTopicId)
+        Assertions.assertThat(recordPubSub.sent.map { it.data })
+            .anyMatch { text -> text.contains("rebuild started") }
+            .anyMatch { text -> text.contains("rebuild succeeded") }
+    }
+
+    @Test
+    fun `a failed rebuild reports the failure in its terminal record`() {
+        indexer.failOn.add(1L)
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        runAndAwait(service)
+
+        Assertions.assertThat(recordPubSub.sent.map { it.data })
+            .anyMatch { text -> text.contains("rebuild failed") }
+    }
+
+    @Test
+    fun `a failed terminal write finishes the run once`() {
+        jobStore.failFinish = true
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        service.start().block()
+        awaitFinished(service)
+
+        Assertions.assertThat(jobStore.finishCalls).isEqualTo(1)
+    }
+
+    @Test
     fun `a failed topic listing stops the scan`() {
         jobStore.failListing = true
         given(persistence.all()).willReturn(Flux.just(message(1L)))
@@ -2243,10 +2284,15 @@ git add -A && git commit -m "feat: add the composed job record writer (CHAT-fpwp
     }
 ```
 
-**The class needs a job store double and two helpers.** The plan's tests use
-`jobStore.written`, `jobStore.topics`, `jobStore.failListing`, `messageTo`, and a
-job id a test can address. Add these beside `RecordingIndexer`, and pass
-`jobStore` as the fourth constructor argument in `configureService`.
+**The class needs a job store double and two helpers.** The tests use
+`jobStore.written`, `jobStore.topics`, `jobStore.failListing`,
+`jobStore.failFinish`, `jobStore.finishCalls`, `messageTo`, and a job id a test
+can address. Add these beside `RecordingIndexer`.
+
+`configureService` also gains three arguments: the job store, a
+`ComposedJobRecordWriter` over `FakeMessagePersistence`, `FakeMessageIndex` and
+`FakePubSub`, and a key supplier for record ids. **The writer is real, not a
+double**, so a record has to reach all three services to be seen.
 
 ```kotlin
     private fun messageTo(id: Long, dest: Long): Message<Long, String> =
@@ -2260,6 +2306,8 @@ job id a test can address. Add these beside `RecordingIndexer`, and pass
         val written = mutableListOf<IndexJob<Long>>()
         val topics = mutableListOf<MessageTopic<Long>>()
         var failListing = false
+        var failFinish = false
+        var finishCalls = 0
         private var nextId = FIRST_JOB_ID
 
         override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier {
@@ -2277,7 +2325,15 @@ job id a test can address. Add these beside `RecordingIndexer`, and pass
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
-        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.defer {
+            finishCalls += 1
+            if (failFinish) {
+                Mono.error(IllegalStateException("the terminal write failed"))
+            } else {
+                written.add(job)
+                Mono.empty()
+            }
+        }
 
         override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
             Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == topicKey }) }
@@ -2299,6 +2355,7 @@ job id a test can address. Add these beside `RecordingIndexer`, and pass
     }
 ```
 
+
 **One claim this task cannot prove yet.** Taking the durable outcome from
 `result.status.complete` instead of `result.succeeded` passes every test here,
 because `complete` still reads the phase and a failed run sets that phase to
@@ -2319,7 +2376,18 @@ Order inside `rebuild`:
    call `state.finish(...)`, and stop. **`persistence.all()` is never subscribed.**
 3. Build `exclusion = topics.map { it.key.id }.toSet() + job.key.id`.
 4. `Flux.defer { persistence.all() }.filter { it.key.dest !in exclusion }` and only
-   then the existing `concatMap` with the counters.
+   then the `concatMap` with the counters.
+
+**`record` is not an inclusion rule.** The spec forbids it, and the scan drops
+its `record == false` branch. `MessagingServiceImpl` sets `record` true on every
+message it sends, and the indexer applies its own rule, so a rebuild offers every
+message that is not a job record. Nothing skips a message any more, and a rebuild
+leaves the `skipped` count at zero.
+
+**The listing carries every node.** `listJobTopics` returns every reserved topic,
+not this node's alone. Another node's job records sit in the same message store,
+and a narrowed listing would let them into vector recall. The coverage policy in
+Task 8 narrows by node itself.
 5. On termination, call `state.finish(claim, report, failure, job.key)` **first**.
    That call decides this run's outcome atomically and installs the target. Then
    call `jobStore.finishJob(...)` with the outcome that verdict gives:
@@ -2339,10 +2407,22 @@ would read a clean `SUCCEEDED` job and trust it. Deciding first, and merging in
 
 Keep the counters after the filter, so `attempted` describes user messages only.
 
+**Two events reach the job topic, through the composed writer.** A run emits
+`rebuild started` after it creates its job, and `rebuild succeeded` or
+`rebuild failed` beside the terminal write. A failed record write never fails the
+run, because a record is a report and losing one must not turn a healthy rebuild
+into a failed one.
+
+**Each recovery covers one step.** The listing handler sits on the listing alone
+and returns empty, so the scan never runs after it finishes the run. The scan
+handler sits on the scan alone, so the terminal write runs once whether the scan
+completed or failed. A handler that wrapped both would finish one run twice, and
+a nested pair would finish it three times.
+
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=MessageReindexServiceImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 12 tests.
+Expected: PASS, 15 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -2459,7 +2539,7 @@ class VectorCoveragePolicyImplTests {
     )
 
     private fun policy(trust: VectorTrust) =
-        VectorCoveragePolicyImpl(store, trust, thisIncarnation)
+        VectorCoveragePolicyImpl(store, trust, thisIncarnation, nodeId = 7, keyType = "long")
 
     @Test
     fun `a successful job with no invalidation covers`() {
@@ -2531,6 +2611,17 @@ class VectorCoveragePolicyImplTests {
             .verifyComplete()
     }
 
+    // The listing carries every node. A job of another node must not cover
+    // this one, because each node holds its own index.
+    @Test
+    fun `another node's job does not cover`() {
+        store.write(job(1L).copy(nodeId = 8)).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.STORED).selectCoveringJob())
+            .verifyComplete()
+    }
+
     @Test
     fun `a malformed job record reports no covering job`() {
         store.write(job(1L)).block()
@@ -2565,11 +2656,17 @@ class VectorCoveragePolicyImpl<T>(
     private val jobStore: VectorIndexJobStore<T>,
     private val trust: VectorTrust,
     private val incarnationId: String,
+    private val nodeId: Int,
+    private val keyType: String,
 ) : VectorCoveragePolicy<T> {
 
     override fun selectCoveringJob(): Mono<IndexJob<T>> =
         jobStore.listJobTopics()
             .flatMap { topic -> jobStore.readJob(topic.key) }
+            // The listing carries every reserved topic, from every node,
+            // because the scan exclusion needs all of them. Coverage is per
+            // node and per key type, so the policy narrows it here.
+            .filter { job -> job.nodeId == nodeId && job.keyType == keyType }
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }
             .sort(compareByDescending { job -> job.startedAt })
@@ -2588,7 +2685,7 @@ reach the same empty result, which is the fail-closed rule.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-service-composite test -Dtest=VectorCoveragePolicyImplTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: PASS, 8 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Commit**
 
