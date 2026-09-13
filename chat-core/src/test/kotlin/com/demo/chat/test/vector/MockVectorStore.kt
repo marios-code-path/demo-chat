@@ -48,19 +48,44 @@ class MockVectorStore : VectorStore {
      */
     var failNextAdd: Boolean = false
 
+    /**
+     * Refuses a repeated document id, the way the embedded provider does.
+     *
+     * That provider answers a second write of one id with
+     * `IllegalArgumentException: Duplicate id`. A double that overwrites
+     * instead cannot hold the replacement contract.
+     */
+    var rejectDuplicateId: Boolean = false
+
+    /** Every store call, in order. A test asserts the order of a replacement. */
+    val calls = mutableListOf<String>()
+
+    /** Fails every delete call, whatever the id. */
+    var failDelete: Boolean = false
+
     override fun add(documents: List<Document>) {
         lastWriteThread = Thread.currentThread().name
+        calls.add("add")
         if (failNextAdd) {
             failNextAdd = false
             throw IllegalStateException("vector store is down")
         }
         for (doc in documents) {
+            if (rejectDuplicateId && entries.containsKey(doc.id)) {
+                throw IllegalArgumentException("Duplicate id: ${doc.id}")
+            }
             entries[doc.id] = Entry(doc, bigramVector(doc.text ?: ""))
         }
     }
 
+    // An unknown id is not a failure. The pinned provider answers false for
+    // one, so a first write must not break on the removal that precedes it.
     override fun delete(idsToDrop: List<String>) {
         lastWriteThread = Thread.currentThread().name
+        calls.add("delete")
+        if (failDelete) {
+            throw IllegalStateException("vector store cannot delete")
+        }
         idsToDrop.forEach { entries.remove(it) }
     }
 

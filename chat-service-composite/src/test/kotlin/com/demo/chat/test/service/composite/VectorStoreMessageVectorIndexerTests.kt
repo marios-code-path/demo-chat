@@ -4,6 +4,7 @@ import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
@@ -12,6 +13,7 @@ import com.demo.chat.service.vector.MessageDocumentMapper
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.springframework.ai.vectorstore.SearchRequest
 import reactor.test.StepVerifier
 import java.time.Clock
 import java.time.Instant
@@ -33,6 +35,33 @@ class VectorStoreMessageVectorIndexerTests {
         VectorStoreMessageVectorIndexer(
             vectorStore = vectorStore,
             mapper = MessageDocumentMapper(LongUtil(), "long"),
+            state = state,
+            jobStore = jobStore,
+            clock = Clock.fixed(now, ZoneOffset.UTC),
+        )
+
+    /**
+     * A mapper that fails inside toDocument and not inside documentId.
+     *
+     * It throws for the topic value alone. documentId converts the message id,
+     * so it still answers, and only the wider mapping breaks. A double that
+     * threw for every value would fail in both methods, and the order of the
+     * mapping and the removal would then make no difference to the test.
+     */
+    private fun failingMapperIndexer() =
+        VectorStoreMessageVectorIndexer(
+            vectorStore = vectorStore,
+            mapper = MessageDocumentMapper(
+                object : TypeUtil<Long> by LongUtil() {
+                    override fun toString(t: Long): String =
+                        if (t == 100L) {
+                            throw IllegalStateException("the mapper is broken")
+                        } else {
+                            t.toString()
+                        }
+                },
+                "long",
+            ),
             state = state,
             jobStore = jobStore,
             clock = Clock.fixed(now, ZoneOffset.UTC),
@@ -109,6 +138,100 @@ class VectorStoreMessageVectorIndexerTests {
             .verifyError(IllegalStateException::class.java)
 
         Assertions.assertThat(jobStore.jobs[coveringKey.id]!!.invalidationCount).isEqualTo(0L)
+    }
+
+    // The document id comes from the message id, so a rebuild meets an id it
+    // already wrote. The write must replace, not refuse.
+    @Test
+    fun `a first add succeeds when the store holds no document`() {
+        vectorStore.rejectDuplicateId = true
+        jobStore.write(coveringJob()).block()
+        state.adoptCoveringJob(coveringKey)
+
+        indexer().add(message).block()
+
+        Assertions.assertThat(vectorStore.ids).containsExactly("message:long:1")
+        Assertions.assertThat(state.coveringJob()).isEqualTo(coveringKey)
+    }
+
+    @Test
+    fun `the removal runs before the write`() {
+        indexer().add(message).block()
+
+        Assertions.assertThat(vectorStore.calls).containsExactly("delete", "add")
+    }
+
+    // The store that refuses a repeat is the one this repair exists for. A
+    // double that overwrites would pass with no replacement at all.
+    @Test
+    fun `a repeated add replaces the document instead of failing`() {
+        vectorStore.rejectDuplicateId = true
+        jobStore.write(coveringJob()).block()
+        state.adoptCoveringJob(coveringKey)
+
+        indexer().add(message).block()
+        indexer().add(Message.create(MessageKey.create(1L, 10L, 100L), "pear", true)).block()
+
+        Assertions.assertThat(vectorStore.ids).containsExactly("message:long:1")
+        Assertions.assertThat(state.coveringJob()).isEqualTo(coveringKey)
+    }
+
+    @Test
+    fun `a repeated add stores the new content`() {
+        vectorStore.rejectDuplicateId = true
+
+        indexer().add(message).block()
+        indexer().add(Message.create(MessageKey.create(1L, 10L, 100L), "pear", true)).block()
+
+        val hits = vectorStore.similaritySearch(
+            SearchRequest.builder().query("pear").topK(1).similarityThresholdAll().build()
+        )
+        Assertions.assertThat(hits.single().text).isEqualTo("pear")
+    }
+
+    // The mapping runs before the removal, so a mapping failure leaves the
+    // stored document in place.
+    @Test
+    fun `a mapping failure keeps the prior document`() {
+        indexer().add(message).block()
+        state.adoptCoveringJob(coveringKey)
+
+        StepVerifier
+            .create(failingMapperIndexer().add(message))
+            .verifyError(IllegalStateException::class.java)
+
+        Assertions.assertThat(vectorStore.ids).containsExactly("message:long:1")
+        Assertions.assertThat(vectorStore.calls).containsExactly("delete", "add")
+    }
+
+    // A half finished replacement is worse than no replacement. The caller
+    // keeps the document it had.
+    @Test
+    fun `a removal failure stops the write`() {
+        indexer().add(message).block()
+        vectorStore.calls.clear()
+        vectorStore.failDelete = true
+
+        StepVerifier
+            .create(indexer().add(message))
+            .verifyError(IllegalStateException::class.java)
+
+        Assertions.assertThat(vectorStore.calls).containsExactly("delete")
+        Assertions.assertThat(vectorStore.ids).containsExactly("message:long:1")
+    }
+
+    @Test
+    fun `a write failure inside a replacement removes coverage`() {
+        jobStore.write(coveringJob()).block()
+        state.adoptCoveringJob(coveringKey)
+        vectorStore.failNextAdd = true
+
+        StepVerifier
+            .create(indexer().add(message))
+            .verifyError(IllegalStateException::class.java)
+
+        Assertions.assertThat(state.coveringJob()).isNull()
+        Assertions.assertThat(jobStore.jobs[coveringKey.id]!!.invalidationCount).isEqualTo(1L)
     }
 
     @Test

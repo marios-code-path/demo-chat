@@ -11,6 +11,7 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
+import com.demo.chat.service.vector.VectorIndexPhase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -140,10 +141,20 @@ class VectorIndexRecoveryTests {
         reindex.start().block()
         awaitFinished()
 
+        // The second run must succeed, not merely finish. The document id comes
+        // from the message id, so the second run meets the id the first one
+        // wrote. A store that refused the repeat failed here with a duplicate
+        // id, and the run reported one failed message.
+        val second = reindex.status()
+        Assertions.assertThat(second.lastReport!!.attempted).isEqualTo(1L)
+        Assertions.assertThat(second.lastReport!!.indexed).isEqualTo(1L)
+        Assertions.assertThat(second.lastReport!!.failed).isEqualTo(0L)
+        Assertions.assertThat(second.phase).isEqualTo(VectorIndexPhase.COMPLETE)
+
         // The threshold accepts every document, so this read returns the whole
         // recall corpus. Only the one user message may appear in it.
         val hits = recall.recallGlobal(GlobalRecallRequest("rebuild", 50, 0.0)).block()!!
         Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(1L)
-        Assertions.assertThat(reindex.status().lastReport!!.attempted).isEqualTo(1L)
+        Assertions.assertThat(hits.indexComplete).isTrue()
     }
 }

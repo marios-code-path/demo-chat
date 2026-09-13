@@ -19,6 +19,10 @@ import java.time.Clock
  *
  * A failed add removes coverage. The index lost a message, so the covering job
  * no longer describes the index.
+ *
+ * A write replaces. The document id is derived from the message id, so a
+ * rebuild meets an id it already wrote. The embedded store refuses a repeat
+ * with `Duplicate id`, which failed every rebuild after the first one.
  */
 class VectorStoreMessageVectorIndexer<T>(
     private val vectorStore: VectorStore,
@@ -33,13 +37,38 @@ class VectorStoreMessageVectorIndexer<T>(
         if (!message.record) {
             Mono.empty()
         } else {
-            Mono.fromCallable {
-                vectorStore.add(listOf(mapper.toDocument(message)))
-            }
+            // One callable holds both store calls, so the pair runs on one
+            // bounded elastic worker and never splits across two.
+            Mono.fromCallable { replace(message) }
                 .subscribeOn(Schedulers.boundedElastic())
                 .then()
                 .onErrorResume { error -> recordFailure(error) }
         }
+
+    /**
+     * Writes the document of one message, over any document it already has.
+     *
+     * The mapping runs first. A mapping failure then leaves the stored document
+     * in place, because nothing was removed yet.
+     *
+     * The removal runs before the write. A store that refuses a repeated id
+     * needs the old document gone, and the id is derived from the message id,
+     * so a rebuild always meets its own earlier write.
+     *
+     * **The pair is not atomic.** Recall can miss this message between the two
+     * calls. The window is one store call wide, and a reader in it sees one
+     * document fewer. A rebuild already reports an incomplete index while it
+     * runs, so this window adds no new state that a caller can observe.
+     *
+     * A removal failure stops the write. The caller then keeps the document it
+     * had, rather than losing it to a half finished replacement. An unknown id
+     * is not a failure, because the store contract answers false for one.
+     */
+    private fun replace(message: Message<T, String>) {
+        val document = mapper.toDocument(message)
+        vectorStore.delete(listOf(document.id))
+        vectorStore.add(listOf(document))
+    }
 
     // A failed delete leaves a stale document. Stale document removal is out of
     // scope for this design, so this path keeps its current behavior.
