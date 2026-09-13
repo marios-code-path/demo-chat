@@ -434,8 +434,14 @@ the two calls.
 
 **The index still reports complete during that window.** A repair keeps the
 coverage of the older successful job, so a caller can read
-`indexComplete=true` and miss one message. This is an accepted transient false
-positive. The window is one store call wide.
+`indexComplete=true` and miss one message. This is an accepted false positive.
+
+The window runs from the completion of the removal to the completion of the
+write. The write embeds the text and then commits it in the provider, so the
+window covers both steps.
+
+**The design gives that interval no duration bound.** A slow embedding call or
+a slow commit holds the message absent for as long as it takes.
 
 A removal failure stops the write. It promises nothing about the old document,
 because a provider can remove the document and then fail while it commits.
@@ -482,6 +488,7 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The actuator read runs no store call before a subscriber arrives.
 - The embedded provider removes a document before it writes that id.
 - The mock, simple, and redis providers write one document once.
+- An unknown vector selector has no write mode and fails.
 - A removal failure stops the write and removes coverage.
 - The job writer calls persistence, the message index, and pub/sub in order.
 - A failed job-record write stops later writes and keeps earlier writes.

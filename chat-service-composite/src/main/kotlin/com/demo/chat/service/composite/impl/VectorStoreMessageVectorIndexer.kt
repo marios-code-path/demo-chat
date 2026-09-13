@@ -66,7 +66,13 @@ class VectorStoreMessageVectorIndexer<T>(
      * the two calls. **The index still reports complete during that window**,
      * because a repair keeps the coverage of the older successful job. So a
      * caller can read `indexComplete=true` and miss one message. That is an
-     * accepted transient false positive, and the window is one store call wide.
+     * accepted false positive.
+     *
+     * The window runs from the completion of the removal to the completion of
+     * the write. The write embeds the text and then commits it in the provider,
+     * so the window covers both. **The design gives that interval no duration
+     * bound.** A slow embedding call or a slow commit holds the message absent
+     * for as long as it takes.
      *
      * A removal failure stops the write. It does **not** promise that the old
      * document survives. A provider can remove the document and then fail while

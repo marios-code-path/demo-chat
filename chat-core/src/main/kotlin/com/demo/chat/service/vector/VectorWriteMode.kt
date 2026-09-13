@@ -1,5 +1,7 @@
 package com.demo.chat.service.vector
 
+import com.demo.chat.domain.ChatException
+
 /**
  * How the indexer writes a document that may already exist.
  *
@@ -31,13 +33,21 @@ enum class VectorWriteMode {
         /**
          * The mode that one vector selector needs.
          *
-         * Only `embedded` refuses a repeat. Every other provider overwrites,
-         * so it takes the single call.
+         * Every current selector is named here, and every other value is
+         * refused. A default would give a new provider a write policy without
+         * a decision, and the wrong policy is silent on three of the four
+         * providers. A new provider must state its own answer.
          */
         fun forVectorSelector(selector: String): VectorWriteMode =
             when (selector.lowercase()) {
                 "embedded" -> DELETE_THEN_ADD
-                else -> UPSERT
+                "simple" -> UPSERT
+                "redis" -> UPSERT
+                "mock" -> UPSERT
+                else -> throw ChatException(
+                    "app.service.core.vector=$selector has no vector write mode. " +
+                        "The known values are embedded, simple, redis, and mock."
+                )
             }
     }
 }
