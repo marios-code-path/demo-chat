@@ -5309,23 +5309,27 @@ git add -A && git commit -m "feat: add the protected vector index endpoint (CHAT
 **Interfaces:**
 - Consumes: every bean from Task 11 and the endpoint from Task 12.
 
-**Two prerequisites block this task.** Both are production defects that these
-tests exposed, and neither belongs in this task.
+**This task found two production defects, and both are repaired.** Neither
+belonged in this task, so each took its own issue.
 
-1. `CHAT-jhfptxiw`. `topicIdToQuery` emits `TopicIndexService.ID`, which is the
-   string `ID`. The message index stores the destination under `topic`. So the
-   job record test finds nothing. `MessagingServiceImpl.listenTopic` is the one
-   production consumer, so message history from the index has never been
-   returned. A probe that replaced the converter call with a `TOPIC` query made
-   the test pass, which isolates the converter as the cause.
-2. `CHAT-muuaovqn`. A second rebuild fails with `Duplicate id: message:long:1`.
-   The embedded store does not replace a document. The third test below cannot
-   see that, because it never reads the second run verdict. **Once the repair
-   lands, this task adds those two assertions.**
+1. `CHAT-jhfptxiw`. `topicIdToQuery` emitted `TopicIndexService.ID`, which is
+   the string `ID`. The message index stores the destination under `topic`, so
+   the job record test found nothing. `MessagingServiceImpl.listenTopic` is the
+   one production consumer, so message history from the index had never been
+   returned on either backend.
+2. `CHAT-muuaovqn`. A second rebuild failed with
+   `Duplicate id: message:long:1`, in one process. The embedded provider
+   refuses a repeated document id, and the indexer now follows a write mode per
+   provider.
 
 **The test shape matters.** Write messages straight to persistence with no
 indexing. That reproduces a lost index deterministically. **Do not delete a
 memory-mapped storage directory inside a running process.**
+
+**The third test reads the second run verdict.** An earlier version asserted
+`attempted` alone, and that value is one whether the run succeeded or failed.
+So the test passed while every second rebuild failed. It now asserts
+`attempted`, `indexed`, `failed`, the phase, and the reported coverage.
 
 **Two selector facts, learned by running this test.**
 
@@ -5342,8 +5346,8 @@ configuration needs both provider beans.
 - [ ] **Step 1: Write the test**
 
 The whole class follows. `messagesOfTopic` reads a job topic the same way
-`MessagingServiceImpl.listenTopic` reads a room, which is why it meets the
-converter defect that `CHAT-jhfptxiw` repairs.
+`MessagingServiceImpl.listenTopic` reads a room, which is why it met the
+converter defect that `CHAT-jhfptxiw` repaired.
 
 The memory composition binds `Q` to `IndexSearchRequest`. A cassandra
 composition binds it to a map, so this test stays on the memory deployment.
@@ -5362,6 +5366,7 @@ import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
+import com.demo.chat.service.vector.VectorIndexPhase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -5491,11 +5496,21 @@ class VectorIndexRecoveryTests {
         reindex.start().block()
         awaitFinished()
 
+        // The second run must succeed, not merely finish. The document id comes
+        // from the message id, so the second run meets the id the first one
+        // wrote. A store that refused the repeat failed here with a duplicate
+        // id, and the run reported one failed message.
+        val second = reindex.status()
+        Assertions.assertThat(second.lastReport!!.attempted).isEqualTo(1L)
+        Assertions.assertThat(second.lastReport!!.indexed).isEqualTo(1L)
+        Assertions.assertThat(second.lastReport!!.failed).isEqualTo(0L)
+        Assertions.assertThat(second.phase).isEqualTo(VectorIndexPhase.COMPLETE)
+
         // The threshold accepts every document, so this read returns the whole
         // recall corpus. Only the one user message may appear in it.
         val hits = recall.recallGlobal(GlobalRecallRequest("rebuild", 50, 0.0)).block()!!
         Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(1L)
-        Assertions.assertThat(reindex.status().lastReport!!.attempted).isEqualTo(1L)
+        Assertions.assertThat(hits.indexComplete).isTrue()
     }
 }
 ```
@@ -5512,12 +5527,13 @@ Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o test`
 `chat-deploy` from the local repository, and a stale jar there reports a missing
 bean that the current source defines.
 
-**This task has no red step, and that is deliberate.** Tasks 1 to 12 already
+**This task had no red step, and that was deliberate.** Tasks 1 to 12 already
 built every part. This test only proves that the assembled parts recover a lost
-index, so a passing first run is the expected result.
+index, so a passing first run was the expected result.
 
-A failure here names a real gap in an earlier task. Fix it in that task, and
-never with a special case in this test.
+**It did not pass.** Two failures named real production defects, and each was
+repaired in its own issue rather than with a special case here. That is the
+rule this step states, and it held.
 
 - [ ] **Step 3: Commit**
 
