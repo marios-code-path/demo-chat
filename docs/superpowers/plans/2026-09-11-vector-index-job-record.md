@@ -4722,6 +4722,17 @@ running one.
 marks the `RUNNING` jobs of earlier incarnations as `RELEASED`. It matches only
 this node and this key type, because another node's job can still be running.
 
+**The topic name is not enough.** A name and a record are two stored things, and
+only the record can confirm what the name claims. Validate the decoded record
+against this node and this key type, the way `VectorCoveragePolicyImpl` does,
+and run that check **before** the outcome filter. Without it a local topic name
+over a foreign record marks another deployment's live job as finished.
+
+The two sides handle a mismatch differently, and the difference is the point.
+The coverage policy fails closed, because a wrong job would decide coverage.
+This sweep logs and skips one job, because the sweep is best effort and a wrong
+release would end a job that another process still runs.
+
 Use `finishJob`, not `write`. `finishJob` never lowers the stored invalidation
 fields, and a plain write would drop an invalidation that the crashed process
 recorded.

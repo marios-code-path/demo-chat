@@ -35,10 +35,12 @@ class VectorIndexStartupActionTests {
         outcome: JobOutcome = JobOutcome.SUCCEEDED,
         incarnationId: String = earlierIncarnation,
         invalidations: Long = 0L,
+        nodeId: Int = 7,
+        keyType: String = "long",
     ): IndexJob<Long> = IndexJob(
         key = Key.funKey(id),
-        nodeId = 7,
-        keyType = "long",
+        nodeId = nodeId,
+        keyType = keyType,
         incarnationId = incarnationId,
         startedBy = Key.funKey(1000L),
         startedAt = start,
@@ -136,6 +138,44 @@ class VectorIndexStartupActionTests {
         action(RecordingPolicy(null)).run().block()
 
         Assertions.assertThat(store.jobs[1L]!!.outcome).isEqualTo(JobOutcome.RUNNING)
+    }
+
+    // The name and the record are two stored things. This test gives a local
+    // topic a foreign record, which is the direction the topic filter alone
+    // cannot catch. Another node's process can still be running that job.
+    @Test
+    fun `a local topic with another node's record stays unchanged`() {
+        store.write(job(1L, outcome = JobOutcome.RUNNING, nodeId = 9)).block()
+        store.names[1L] = JobTopicNames.nameFor(7, "long", start, earlierIncarnation)
+
+        action(RecordingPolicy(null)).run().block()
+
+        Assertions.assertThat(store.jobs[1L]!!.outcome).isEqualTo(JobOutcome.RUNNING)
+    }
+
+    @Test
+    fun `a local topic with another key type's record stays unchanged`() {
+        store.write(job(1L, outcome = JobOutcome.RUNNING, keyType = "uuid")).block()
+        store.names[1L] = JobTopicNames.nameFor(7, "long", start, earlierIncarnation)
+
+        action(RecordingPolicy(null)).run().block()
+
+        Assertions.assertThat(store.jobs[1L]!!.outcome).isEqualTo(JobOutcome.RUNNING)
+    }
+
+    // A mismatch skips one job and startup continues. The sweep is best
+    // effort, so a foreign record must not stop the rest of it.
+    @Test
+    fun `a mismatched record does not stop the sweep`() {
+        store.write(job(1L, outcome = JobOutcome.RUNNING, nodeId = 9)).block()
+        store.names[1L] = JobTopicNames.nameFor(7, "long", start, earlierIncarnation)
+        store.write(job(2L, outcome = JobOutcome.RUNNING)).block()
+
+        action(RecordingPolicy(job(3L))).run().block()
+
+        Assertions.assertThat(store.jobs[1L]!!.outcome).isEqualTo(JobOutcome.RUNNING)
+        Assertions.assertThat(store.jobs[2L]!!.outcome).isEqualTo(JobOutcome.RELEASED)
+        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(3L))
     }
 
     // The sweep runs first. A released job must not reach the policy as a

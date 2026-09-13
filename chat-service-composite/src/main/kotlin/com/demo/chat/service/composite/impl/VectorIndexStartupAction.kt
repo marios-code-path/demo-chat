@@ -73,6 +73,10 @@ class VectorIndexStartupAction<T>(
 
     private fun releaseOne(jobKey: Key<T>): Mono<Void> =
         jobStore.readJob(jobKey)
+            // The identity check runs before the outcome filter. A topic name
+            // and a record are two stored things, and only the record can
+            // confirm what the name claims.
+            .filter { job -> ownedByThisDeployment(job, jobKey) }
             .filter { job -> job.outcome == JobOutcome.RUNNING && job.incarnationId != incarnationId }
             // finishJob applies a terminal outcome and never lowers the stored
             // invalidation fields. A plain write would drop an invalidation that
@@ -82,6 +86,34 @@ class VectorIndexStartupAction<T>(
                 logger.error("Vector index could not release the stale job {}", jobKey, error)
                 Mono.empty()
             }
+
+    /**
+     * True when the record agrees with the topic name it was found under.
+     *
+     * The coverage policy fails closed on this mismatch, because a wrong job
+     * would decide coverage. This sweep skips instead, because the sweep is
+     * best effort and a wrong release would mark another deployment's live job
+     * as finished.
+     *
+     * The mismatch logs. A record of another node or another key type belongs
+     * to a process this one cannot see, and that process can still be running
+     * the job.
+     */
+    private fun ownedByThisDeployment(job: IndexJob<T>, jobKey: Key<T>): Boolean =
+        if (job.nodeId == nodeId && job.keyType == keyType) {
+            true
+        } else {
+            logger.error(
+                "A job topic of node {} and key type '{}' holds a record of node {} and key type '{}'. " +
+                    "The job {} stays unchanged.",
+                nodeId,
+                keyType,
+                job.nodeId,
+                job.keyType,
+                jobKey,
+            )
+            false
+        }
 
     private fun released(job: IndexJob<T>): IndexJob<T> = job.copy(
         outcome = JobOutcome.RELEASED,
