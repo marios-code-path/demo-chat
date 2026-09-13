@@ -13,6 +13,7 @@ import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
+import reactor.core.publisher.Mono
 import java.time.Duration
 
 /** One actuator answer. The status is in process, and the jobs are durable. */
@@ -59,19 +60,29 @@ class VectorIndexEndpoint<T>(
     /**
      * The status and the recent jobs, newest first.
      *
-     * An actuator operation returns a value, not a publisher, so this read
-     * waits with a bound.
+     * The operation answers with a publisher. `ReactiveWebOperationAdapter`
+     * treats an operation result as a `Publisher`, and it unwraps a `Mono`
+     * before it builds the response. So no thread blocks here.
      *
-     * A store failure empties the job list and keeps the status. The status
+     * The bound sits inside the chain. A store that hangs then returns the
+     * status with an empty job list, exactly as a store error does. The status
      * lives in process and is always available, so one durable failure must not
      * take the whole view away from an operator.
      */
     @ReadOperation
-    fun readVectorIndex(): VectorIndexReport<T> =
-        VectorIndexReport(
-            status = reindex.status(),
-            jobs = recentJobs(),
-        )
+    fun readVectorIndex(): Mono<VectorIndexReport<T>> =
+        recentJobs()
+            .timeout(READ_TIMEOUT)
+            .onErrorResume { error ->
+                logger.error("The vector index endpoint could not read its jobs", error)
+                Mono.just(emptyList())
+            }
+            .map { jobs ->
+                VectorIndexReport(
+                    status = reindex.status(),
+                    jobs = jobs,
+                )
+            }
 
     /**
      * Starts one rebuild and returns at once.
@@ -82,13 +93,12 @@ class VectorIndexEndpoint<T>(
      *
      * A client polls the read operation until the active job is not null, or
      * until running is false. An immediate second read does not close that
-     * race.
+     * race, so this method performs none.
      */
     @WriteOperation
-    fun startVectorIndexRebuild(): VectorIndexStatus<T> =
-        reindex.start().block(READ_TIMEOUT) ?: reindex.status()
+    fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
 
-    private fun recentJobs(): List<IndexJob<T>> =
+    private fun recentJobs(): Mono<List<IndexJob<T>>> =
         jobStore.listJobTopics()
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
             .flatMap { topic -> jobStore.readJob(topic.key) }
@@ -103,12 +113,6 @@ class VectorIndexEndpoint<T>(
             )
             .take(MAX_JOBS)
             .collectList()
-            .onErrorResume { error ->
-                logger.error("The vector index endpoint could not read its jobs", error)
-                reactor.core.publisher.Mono.just(emptyList())
-            }
-            .block(READ_TIMEOUT)
-            ?: emptyList()
 
     private fun ownedByThisDeployment(job: IndexJob<T>): Boolean =
         if (job.nodeId == nodeId && job.keyType == keyType) {
@@ -129,6 +133,7 @@ class VectorIndexEndpoint<T>(
         /** The recall limit cap, at RequestResponse.kt. One bound for both reads. */
         const val MAX_JOBS = 50L
 
-        private val READ_TIMEOUT: Duration = Duration.ofSeconds(10)
+        /** The bound on one durable read. It runs inside the chain. */
+        val READ_TIMEOUT: Duration = Duration.ofSeconds(10)
     }
 }

@@ -1,6 +1,7 @@
 package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
+import com.demo.chat.config.deploy.actuator.VectorIndexEndpoint
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -44,6 +45,16 @@ class MemoryVectorRecallBootTests {
         Assertions
             .assertThat(context.containsBean("messageVectorIndexer"))
             .isTrue
+    }
+
+    // The three gate tests in chat-deploy build their context by hand. This one
+    // proves the bean appears in a deployment that a person can start. The
+    // gate reads app.service.composite, which a deployment sets with no value.
+    @Test
+    fun vectorIndexEndpointIsActive() {
+        Assertions
+            .assertThat(context.getBeansOfType(VectorIndexEndpoint::class.java))
+            .hasSize(1)
     }
 
     @Test

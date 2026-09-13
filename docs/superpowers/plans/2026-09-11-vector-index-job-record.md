@@ -4764,7 +4764,9 @@ git add -A && git commit -m "feat: wire the vector job, policy, and writer beans
 
 **Files:**
 - Create: `chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/actuator/VectorIndexEndpoint.kt`
-- Test: `chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/VectorIndexEndpointTests.kt`
+- Create: `chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/VectorIndexEndpointTests.kt`
+- Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorIndexActuatorTests.kt`
+- Modify: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/MemoryVectorRecallBootTests.kt`
 
 **Interfaces:**
 - Consumes: `MessageReindexService<T>`, `VectorIndexJobStore<T>`, `TypeUtil<T>`,
@@ -5027,6 +5029,17 @@ class VectorIndexEndpointTests {
         Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(2L)
     }
 
+    @Test
+    fun `the read skips a topic name of another key type`() {
+        store.write(job(1L)).block()
+        store.names[1L] = JobTopicNames.nameFor(7, "uuid", start, "incarnation-a")
+        store.write(job(2L)).block()
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(2L)
+    }
+
     // The status is in process and always available. A store failure must not
     // take the whole operation away from an operator.
     @Test
@@ -5127,18 +5140,44 @@ Expected: FAIL. The class does not exist.
 
 - [ ] **Step 3: Write the endpoint**
 
-Model it on `RootKeyEndpoint`. `ActuatorWebSecurityConfiguration` already protects
-`/actuator/**` with the `ACTUATOR` role, so this class adds no security code.
-An operator must still expose `vectorindex` through the normal actuator exposure
-property. **This plan adds no deployment selector and no exposure value.**
+Model it on `RootKeyEndpoint`. `ActuatorWebSecurityConfiguration` already
+protects every actuator path with the ACTUATOR role, so this class adds no
+security code.
 
-The read blocks. An actuator operation returns a value, not a publisher, so the
-job read waits with a bound. A store that cannot answer must fail the operation
-rather than hold the actuator thread.
+**Both operations answer with a publisher.** `ReactiveWebOperationAdapter`
+treats an operation result as a `Publisher`. It unwraps a `Mono` and collects a
+`Flux` before it builds the response. So no thread blocks, and no null fallback
+exists.
 
-The read never fails on one bad job. A record that disagrees with its topic name
-is skipped and logged, as the release sweep does. A read error empties the job
-list and keeps the status, because the status is in process and always available.
+```kotlin
+@ReadOperation
+fun readVectorIndex(): Mono<VectorIndexReport<T>> =
+    recentJobs()
+        .timeout(READ_TIMEOUT)
+        .onErrorResume { error ->
+            logger.error("The vector index endpoint could not read its jobs", error)
+            Mono.just(emptyList())
+        }
+        .map { jobs ->
+            VectorIndexReport(
+                status = reindex.status(),
+                jobs = jobs,
+            )
+        }
+
+@WriteOperation
+fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
+```
+
+`recentJobs()` returns `Mono<List<IndexJob<T>>>` and ends with `collectList()`.
+
+**The bound sits inside the chain.** A `block(Duration)` throws outside the
+chain, so `onErrorResume` cannot catch it and the operator loses the status too.
+A `timeout` before `onErrorResume` gives a hanging store the same answer as a
+failing store: the status, with an empty job list.
+
+**The write performs no second status read.** A second read does not close the
+active-job race, and a reader of the code must not think it does.
 
 ```kotlin
 data class VectorIndexReport<T>(
@@ -5146,6 +5185,57 @@ data class VectorIndexReport<T>(
     val jobs: List<IndexJob<T>>,
 )
 ```
+
+**An operator must enable the endpoint and expose it.** The deployments load
+`management-defaults.yml`, which sets `management.endpoints.enabled-by-default`
+to false. So `@Endpoint(enableByDefault = true)` is not enough on its own, and
+an id that is only exposed still answers 404.
+
+```
+management.endpoint.vectorindex.enabled=true
+management.endpoints.web.exposure.include=vectorindex
+```
+
+**This plan adds neither value to any deployment.** Both appear in the actuator
+test only.
+
+- [ ] **Step 3b: Prove the wiring outside this module**
+
+The unit tests build the endpoint by hand, and the three gate tests build a
+context by hand. Neither shows that a deployment a person can start holds the
+bean, and neither shows that WebFlux unwraps the `Mono`.
+
+Add one bean assertion to `MemoryVectorRecallBootTests`.
+
+```kotlin
+    @Test
+    fun vectorIndexEndpointIsActive() {
+        Assertions
+            .assertThat(context.getBeansOfType(VectorIndexEndpoint::class.java))
+            .hasSize(1)
+    }
+```
+
+Add one HTTP test, `MemoryVectorIndexActuatorTests`, with
+`webEnvironment = RANDOM_PORT`. It copies the property list of
+`MemoryVectorRecallBootTests`, adds the two management values, and asserts the
+response shape.
+
+```kotlin
+        client
+            .get()
+            .uri("/actuator/vectorindex")
+            .headers { headers -> headers.setBasicAuth("actuator", "actuator") }
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.status").exists()
+            .jsonPath("$.jobs").isArray
+```
+
+**Run these two through the full reactor.** A scoped `-pl` run resolves
+`chat-service-composite` and `chat-deploy` from the local repository, and a
+stale jar there reports a missing bean that the current source defines.
 
 - [ ] **Step 4: Run and confirm they pass, then commit**
 
