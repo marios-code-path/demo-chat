@@ -24,7 +24,7 @@ class VectorStoreMessageVectorIndexer<T>(
     private val vectorStore: VectorStore,
     private val mapper: MessageDocumentMapper<T>,
     private val state: VectorIndexState<T>,
-    private val jobStore: VectorIndexJobStore<T>?,
+    private val jobStore: VectorIndexJobStore<T>,
     private val clock: Clock = Clock.systemUTC(),
 ) : MessageVectorIndexer<T> {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -63,16 +63,12 @@ class VectorStoreMessageVectorIndexer<T>(
      * generation, and the run cannot install its job. That outcome is correct,
      * because the index lost a message.
      *
-     * The null store branch is temporary. Task 11 of the plan supplies the
-     * bean, makes the parameter required, and removes that branch. The null
-     * target check stays, because a state with no covering job has no target.
+     * A null target is not a failure. No job covered the index, so no durable
+     * count can fall. The process generation still moves.
      */
     private fun recordFailure(error: Throwable): Mono<Void> {
         val invalidation = state.invalidate(summary(error))
-        val target = invalidation.target
-        if (target == null || jobStore == null) {
-            return Mono.error(error)
-        }
+        val target = invalidation.target ?: return Mono.error(error)
         return jobStore.invalidate(target, clock.instant())
             .onErrorResume { writeError ->
                 logger.error("Vector index could not raise the invalidation count", writeError)

@@ -4324,12 +4324,15 @@ git add -A && git commit -m "feat: return one recall result on both transports (
 ### Task 11: Wiring (`CHAT-awauccrm`, rewritten)
 
 **Files:**
+- Create: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorIndexStartupAction.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexStartupActionTests.kt`
+- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/VectorRecallServiceConfiguration.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorStoreMessageVectorIndexer.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/VectorRecallServiceConfigurationTests.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorStoreMessageVectorIndexerTests.kt`
 - Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/MessagingServiceVectorTests.kt`
-- Create: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/InMemoryServiceBeans.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorTestFakes.kt`
 
 **The old issue text is superseded.** It named one configuration file and four
 beans. The wiring now also builds the job store, the job record writer, the
@@ -4637,6 +4640,26 @@ interfaces, as `CompositeServiceBeansConfiguration.kt:33` does.
 `incarnationId` is one `UUID.randomUUID().toString()` per context. `nodeId` comes
 from `@Value("\${app.nodeid}")`. `keyType` comes from `@Value("\${app.key.type}")`.
 
+**Three wiring values that no earlier task named.**
+
+1. **The worker key.** It comes from `topicPersistence.key()`, which the job
+   store also calls for every job topic. **This makes the context refresh depend
+   on key generation.** The read blocks once, during the refresh, and it runs
+   under every startup value, `report` included. A key generator that cannot
+   answer therefore fails the startup of a deployment that would never have
+   built a job. Bound the wait at 30 seconds, so the failure is loud rather than
+   a hang.
+2. **`asValue: (String) -> V`.** No bean converts a String to the message value
+   type. Use an unchecked cast with a narrow `@Suppress`. The design states that
+   every current deployment binds message data to `String`, so the cast holds
+   for every composition this repository builds. Record that constraint beside
+   it.
+3. **The codec `ObjectMapper`.** Inject the context bean. Do not build a private
+   one. `JacksonModules` declares one `@Bean` for each chat module, so the
+   deployed mapper can read a `Key`. Task 14 binds that same bean, and a private
+   mapper would let the stored shape and the deployed shape drift apart.
+
+
 `VectorCoveragePolicyImpl` also takes the `TypeUtil<T>` bean. It breaks a tie
 between two jobs of one instant, and a text compare would order the keys wrong.
 
@@ -4676,8 +4699,42 @@ optional store. Composite messaging stays valid with no vector selector set. A
 recall deployment with no job store has no such reason.
 
 Add `app.vector.index.startup`. Only `rebuild` starts one job, and it runs on
-`ApplicationReadyEvent`. `report` is the default and starts nothing. At startup the
-policy selects the covering job, and `state.adoptCoveringJob(...)` installs it.
+`ApplicationReadyEvent`. `report` is the default and starts nothing.
+
+**The startup action is one ordered pipeline.** `VectorIndexStartupAction` holds
+it, and the configuration only wires it. It is its own class so the order can be
+tested with a delayed policy, which a lambda inside the configuration cannot.
+
+```
+release stale jobs -> select coverage -> adopt coverage -> optionally rebuild
+```
+
+**Steps 3 and 4 must not race.** Two independent subscriptions let a rebuild
+finish before a slow coverage read. The rebuild installs its own job, and the
+late read then replaces that new job with an older one. The index would report
+coverage from a job that no longer describes it.
+
+The sweep runs first, because a released job must not reach the policy as a
+running one.
+
+**The release sweep is a settled requirement**, at
+`docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md:163`. It
+marks the `RUNNING` jobs of earlier incarnations as `RELEASED`. It matches only
+this node and this key type, because another node's job can still be running.
+
+Use `finishJob`, not `write`. `finishJob` never lowers the stored invalidation
+fields, and a plain write would drop an invalidation that the crashed process
+recorded.
+
+**The sweep is best effort, and the failure behavior is part of the contract.** A
+durable job is evidence and never a lock, so a job left running blocks nothing.
+A failed listing skips the whole sweep and startup continues. A failed read or
+write skips one job and the sweep continues with the rest. Both paths log.
+
+A running job of this incarnation is never released. No rebuild of this process
+has started yet, so such a job would be another live process on one node id, and
+the node claim lease already refuses that.
+
 
 - [ ] **Step 4: Run and confirm they pass, then run the module**
 

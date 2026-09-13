@@ -29,12 +29,12 @@ class VectorStoreMessageVectorIndexerTests {
     private val state = InMemoryVectorIndexState<Long>()
     private val message = Message.create(MessageKey.create(1L, 10L, 100L), "apple", true)
 
-    private fun indexer(store: FakeVectorIndexJobStore? = jobStore) =
+    private fun indexer() =
         VectorStoreMessageVectorIndexer(
             vectorStore = vectorStore,
             mapper = MessageDocumentMapper(LongUtil(), "long"),
             state = state,
-            jobStore = store,
+            jobStore = jobStore,
             clock = Clock.fixed(now, ZoneOffset.UTC),
         )
 
@@ -109,21 +109,6 @@ class VectorStoreMessageVectorIndexerTests {
             .verifyError(IllegalStateException::class.java)
 
         Assertions.assertThat(jobStore.jobs[coveringKey.id]!!.invalidationCount).isEqualTo(0L)
-    }
-
-    // Task 11 is the first task that can supply a job store bean. Until then a
-    // deployment runs with none, and a live failure must still remove coverage.
-    // Task 11 deletes this test with the optional mode it pins.
-    @Test
-    fun `a failure with no job store still removes coverage`() {
-        state.adoptCoveringJob(coveringKey)
-        vectorStore.failNextAdd = true
-
-        StepVerifier
-            .create(indexer(store = null).add(message))
-            .verifyError(IllegalStateException::class.java)
-
-        Assertions.assertThat(state.coveringJob()).isNull()
     }
 
     @Test

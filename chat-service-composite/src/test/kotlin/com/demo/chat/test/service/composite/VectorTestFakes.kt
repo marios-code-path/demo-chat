@@ -191,13 +191,26 @@ internal class FakeVectorIndexJobStore : VectorIndexJobStore<Long> {
     /** Fails every invalidate call. The durable count then never rises. */
     var failWrites = false
 
+    /** Fails the terminal write of this one job. */
+    var failFinishFor: Long? = null
+
+    /** Runs before each terminal write. A test uses it to record the order. */
+    var onFinish: (() -> Unit)? = null
+
     override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> =
         Mono.error(UnsupportedOperationException("this double never creates a job"))
 
     override fun write(job: IndexJob<Long>): Mono<Void> =
         Mono.fromRunnable { jobs[job.key.id] = job }
 
-    override fun finishJob(job: IndexJob<Long>): Mono<Void> = write(job)
+    override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.defer {
+        onFinish?.invoke()
+        if (job.key.id == failFinishFor) {
+            Mono.error(IllegalStateException("the terminal write failed"))
+        } else {
+            write(job)
+        }
+    }
 
     override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
         readKeys.add(topicKey.id)

@@ -33,9 +33,8 @@ class MessagingServiceVectorTests {
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
     private val indexState = InMemoryVectorIndexState<Long>()
-
-    // Task 11 of the plan supplies the job store bean and removes this null.
-    private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, null)
+    private val indexJobStore = FakeVectorIndexJobStore()
+    private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, indexJobStore)
 
     private fun givenKey() {
         BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(Key.funKey(100L)))
