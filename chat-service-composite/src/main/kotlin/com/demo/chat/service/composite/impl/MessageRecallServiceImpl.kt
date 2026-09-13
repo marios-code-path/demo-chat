@@ -19,9 +19,11 @@ import reactor.core.scheduler.Schedulers
  * Read-only recall. Returns keys and scores only, and the caller reloads full
  * messages through existing persistence.
  *
- * A rebuild covers the messages that recall missed. `MessageReindexService`
- * scans persistence and offers every message to the indexer, so a message sent
- * while recall was inactive can still enter the corpus.
+ * A successful rebuild covers the messages that recall missed.
+ * `MessageReindexService` scans persistence and offers every non-job message to
+ * the indexer, so a message sent while recall was inactive can still enter the
+ * corpus. The scan excludes the job topics before every counter, because a job
+ * record must never reach the recall corpus.
  *
  * Each answer carries the coverage of the index. An empty hit list has two
  * meanings, and only that flag separates them.

@@ -33,7 +33,7 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
-| B10 | A scoped `-pl` run resolves upstream modules from `~/.m2` | correctness of any scoped run | Workaround only |
+| B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
 
 ---
 
@@ -50,7 +50,11 @@ This occurred during the selector work. Three tests failed. No source file in th
 
 ---
 
-### B10 — a scoped run reads an upstream module from the local repository
+### B10 — a bare scoped run reads a changed upstream module from the local repository
+
+**Scope.** This is a bare `-pl` run that omits a module the branch changed.
+`-pl <module> -am` builds the upstream modules from source and is not affected.
+A scoped run that names every changed module is not affected either.
 
 **Symptom.** `mvn -o -pl <module> test` resolves every module it does not name
 from `~/.m2`. A jar there can predate the tree. The run then reports a failure
@@ -70,9 +74,11 @@ stale build output outside it.
 **Mitigation.**
 
 1. Run the full reactor for any test that starts a deployment context.
-2. Run `mvn -o -B -DskipTests install` first when a scoped run is unavoidable.
-3. A failure that names a symbol the tree defines is this, until measured
-   otherwise.
+2. Add `-am`, or name every changed module, when a scoped run is unavoidable.
+   `mvn -o -B -DskipTests install` first has the same effect.
+3. **Measure before classifying.** A failure that names a symbol the tree
+   defines is a candidate for B10, and not a diagnosis. Repeat it in a clean
+   full-reactor run. A failure that survives that run is real.
 
 ---
 

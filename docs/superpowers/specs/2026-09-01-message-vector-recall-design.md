@@ -487,8 +487,12 @@ specs supersede that line.**
   durable job record, the coverage policy, and the actuator.
 
 A rebuild path exists now. `MessageReindexService` scans persistence and offers
-every message to the indexer. Recall answers with one result that carries
-`indexComplete`, so a caller can separate an empty result from a lost index.
+every non-job message to the indexer. The scan excludes the job topics before
+every counter, so a job record never reaches the recall corpus.
+
+A rebuild covers those messages only when it succeeds. Recall answers with one
+result that carries `indexComplete`, so a caller can separate an empty result
+from a lost index.
 
 The paragraphs below describe the state before that work. They stay for the
 record.

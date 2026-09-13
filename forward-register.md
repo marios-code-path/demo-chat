@@ -11,11 +11,11 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master`, clean, in sync with `origin`. Head `d709dacc`. |
-| Register state | Updated 2026-09-10, after PR #78 |
-| Last merged PR | #78, merge commit `d709dacc` |
+| Checkout | `master`, clean, head `af30dfd2`. **Not in sync with `origin`.** Ahead by 3 commits, behind by 5. |
+| Register state | Updated 2026-09-13, after the vector index job record work |
+| Last merged PR | #78, merge commit `d709dacc`. Nothing has merged since. |
 | Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
-| Worktrees | main checkout only |
+| Worktrees | Three. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of this plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
 | Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
@@ -814,8 +814,10 @@ rather than the phase of the active job.
 
 ### Four production defects that the tests found
 
-Each one was repaired in its own issue, never with a special case in the test
-that found it.
+Three took their own issue. The fourth was repaired inside `CHAT-fpwpfrfj`, in
+revision `c7dac773`, because the owner review found it before Task 8 started and
+it sat inside the store that task built. None was repaired with a special case
+in the test that found it.
 
 1. `CHAT-jhfptxiw`. `topicIdToQuery` named `TopicIndexService.ID`, and the
    message index stores a destination under `topic`. **Persisted room history
