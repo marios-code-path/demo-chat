@@ -383,7 +383,31 @@ A state with no running rebuild reports a null active job.
 
 The active job never decides coverage. The covering job alone decides coverage.
 
-The actuator read operation returns the status and recent job records.
+### The actuator contract
+
+The actuator read operation returns the status and the recent jobs.
+
+It returns jobs, not job records. `IndexJob` holds the outcome, the four counts,
+the failure summary, the timestamps, and the invalidation count. A `JobRecord`
+adds no operator value beside that, and the records stay readable on the job
+topic.
+
+The read returns at most 50 jobs. That bound is the recall limit cap, at
+`RequestResponse.kt`.
+
+It sorts by start instant, then by the root key, both descending. It compares
+the key through `TypeUtil.compare`, in the key type, for the same reason the
+coverage rule does.
+
+It selects the jobs of this node and this key type. It filters the topic names
+first, and it then validates the identity of each decoded record.
+
+The write operation returns the claim snapshot. An accepted first trigger
+reports `running=true` and `activeJob=null`. **It never promises the job key.**
+The run creates its job after the claim, and on another scheduler.
+
+A client polls the read operation until the active job is not null, or until
+running is false. An immediate second read does not close that race.
 
 ## Failure Behavior
 
@@ -418,6 +442,10 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The status reports the active job while a rebuild runs.
 - Every finish path and every release path clears the active job.
 - A `markActiveJob` call outside a running state changes nothing.
+- The actuator read returns at most 50 jobs of this node and key type.
+- The actuator read sorts jobs by instant, then by the typed root key.
+- The actuator read skips a job whose record disagrees with its topic name.
+- The actuator write reports a null active job on an accepted trigger.
 - The job writer calls persistence, the message index, and pub/sub in order.
 - A failed job-record write stops later writes and keeps earlier writes.
 - The job writer never calls `MessagingServiceImpl.send()`.

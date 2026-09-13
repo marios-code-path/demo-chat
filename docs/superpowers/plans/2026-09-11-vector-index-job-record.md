@@ -4767,27 +4767,41 @@ git add -A && git commit -m "feat: wire the vector job, policy, and writer beans
 - Test: `chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/VectorIndexEndpointTests.kt`
 
 **Interfaces:**
-- Consumes: `MessageReindexService<T>`, `VectorIndexJobStore<T>`.
-- Produces: actuator id `vectorindex`. `@ReadOperation` returns the status with the
-  active job, the covering job, and recent job records. `@WriteOperation` starts one
-  rebuild and returns at once.
+- Consumes: `MessageReindexService<T>`, `VectorIndexJobStore<T>`, `TypeUtil<T>`,
+  `app.nodeid`, and `app.key.type`.
+- Produces: actuator id `vectorindex`. `@ReadOperation` returns one object with
+  the status and the recent jobs. `@WriteOperation` starts one rebuild and
+  returns at once.
 
-**Two items to resolve before this task starts.** The owner review of Task 9
-found both.
+**Both contract questions are settled.** The owner decided them after Task 11.
 
-1. **The endpoint contract disagrees with its own test code.** The Interfaces
-   block above promises recent job records, and the read needs
-   `VectorIndexJobStore<T>` for them. The test code in Step 1 builds
-   `VectorIndexEndpoint(service)` with one argument. Choose one contract. Either
-   the endpoint takes the job store and reads the records, or the read returns
-   the status alone and this block drops the promise.
+**The read returns jobs, not job records.** `VectorIndexJobStore` supplies a
+listing and a read, and nothing else. It holds `IndexJob` values. A `JobRecord`
+is a message on the job topic, and reading one needs the message index and
+persistence. **Do not add a `JobRecordReader`.** `IndexJob` already holds the
+outcome, the four counts, the failure summary, the timestamps, and the
+invalidation count, which is the operator data. The records stay readable on the
+job topic.
 
-2. **The write operation cannot report the active job.** `start()` returns
-   `claim.status`, and `claim()` snapshots the status before the run creates its
-   job. So the value a trigger returns always carries `activeJob = null`. A
-   `status()` call straight after `start()` is also racy, because job creation
-   runs on another scheduler. Document polling as the way to read the active
-   job. Do not present a second read as a fix.
+So the endpoint needs more than the store. It also takes `nodeId`, `keyType`,
+and `TypeUtil<T>`:
+
+- It filters the topic names first, with `JobTopicNames.matches`.
+- It then validates the identity of each decoded record, as the coverage policy
+  and the release sweep both do.
+- It sorts by start instant, then by the root key, both descending. It compares
+  the key through `TypeUtil.compare`, because a text compare puts "9" above
+  "10".
+- It returns at most 50 jobs. That bound is the recall limit cap, at
+  `RequestResponse.kt:80`.
+
+**The write operation never promises the job key.** `start()` returns
+`claim.status`, and `claim()` snapshots the status before the run creates its
+job. An accepted first trigger therefore reports `running=true` and
+`activeJob=null`. A `status()` call straight after `start()` is racy for the
+same reason, because job creation runs on another scheduler. **Do not add an
+immediate second read.** The endpoint documents polling instead: a client reads
+until the active job is not null, or until running is false.
 
 **Gates:** `@ConditionalOnProperty("app.service.composite")` and
 `@ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])`.
@@ -4797,21 +4811,33 @@ the endpoint in a deployment with no composite services.
 
 - [ ] **Step 1: Write the failing tests**
 
+The doubles come from the composite test fakes in spirit, but `chat-deploy` has
+its own test source. Declare a small job store double in this file.
+
 ```kotlin
 package com.demo.chat.deploy.test
 
 import com.demo.chat.config.deploy.actuator.VectorIndexEndpoint
+import com.demo.chat.domain.IndexJob
+import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.LongUtil
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.MessageReindexService
+import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexPhase
 import com.demo.chat.service.vector.VectorIndexStatus
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 
 class VectorIndexEndpointTests {
+    private val start = Instant.parse("2026-09-12T12:00:00Z")
 
     /**
      * Records how many starts reached the service. The endpoint must start one
@@ -4835,32 +4861,157 @@ class VectorIndexEndpointTests {
             )
     }
 
+    private class FakeJobStore : VectorIndexJobStore<Long> {
+        val jobs = linkedMapOf<Long, IndexJob<Long>>()
+        val names = mutableMapOf<Long, String>()
+        var failListing = false
+
+        override fun createJob(startedAt: Instant) =
+            Mono.error<IndexJob<Long>>(UnsupportedOperationException("the endpoint never creates a job"))
+
+        override fun write(job: IndexJob<Long>): Mono<Void> =
+            Mono.fromRunnable { jobs[job.key.id] = job }
+
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = write(job)
+
+        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+            Mono.defer { Mono.justOrEmpty(jobs[topicKey.id]) }
+
+        override fun listJobTopics(): Flux<out MessageTopic<Long>> =
+            if (failListing) {
+                Flux.error(IllegalStateException("topic listing failed"))
+            } else {
+                Flux.fromIterable(
+                    jobs.values.map { job ->
+                        MessageTopic.create(
+                            job.key,
+                            names[job.key.id] ?: JobTopicNames.nameFor(
+                                job.nodeId,
+                                job.keyType,
+                                job.startedAt,
+                                job.incarnationId,
+                            )
+                        )
+                    }
+                )
+            }
+
+        override fun invalidate(jobKey: Key<Long>, at: Instant): Mono<Void> = Mono.empty()
+    }
+
     private val service = RecordingReindexService()
+    private val store = FakeJobStore()
+
+    private fun job(
+        id: Long,
+        startedAt: Instant = start,
+        nodeId: Int = 7,
+        keyType: String = "long",
+    ): IndexJob<Long> = IndexJob(
+        key = Key.funKey(id),
+        nodeId = nodeId,
+        keyType = keyType,
+        incarnationId = "incarnation-a",
+        startedBy = Key.funKey(1000L),
+        startedAt = startedAt,
+        outcome = JobOutcome.SUCCEEDED,
+    )
+
+    private fun endpoint() = VectorIndexEndpoint(service, store, LongUtil(), 7, "long")
 
     @Test
-    fun `the read operation returns the current status`() {
-        val endpoint = VectorIndexEndpoint(service)
+    fun `the read operation returns the status and no job`() {
+        val report = endpoint().readVectorIndex()
 
-        val status = endpoint.readVectorIndex()
-
-        Assertions.assertThat(status.running).isFalse()
-        Assertions.assertThat(status.complete).isFalse()
+        Assertions.assertThat(report.status.running).isFalse()
+        Assertions.assertThat(report.status.complete).isFalse()
+        Assertions.assertThat(report.jobs).isEmpty()
         Assertions.assertThat(service.starts.get()).isEqualTo(0)
     }
 
     @Test
-    fun `the write operation starts one job and returns at once`() {
-        val endpoint = VectorIndexEndpoint(service)
+    fun `the read operation returns the jobs of this node`() {
+        store.write(job(1L)).block()
 
-        val status = endpoint.startVectorIndexRebuild()
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(1L)
+    }
+
+    // Newest first. An operator reads the last run at the top.
+    @Test
+    fun `the read sorts by instant, then by the typed root key`() {
+        store.write(job(9L, startedAt = start)).block()
+        store.write(job(10L, startedAt = start)).block()
+        store.write(job(3L, startedAt = start.plusSeconds(60))).block()
+
+        val report = endpoint().readVectorIndex()
+
+        // 10 above 9 proves the number compare. A text compare inverts them.
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(3L, 10L, 9L)
+    }
+
+    @Test
+    fun `the read returns at most fifty jobs`() {
+        (1L..60L).forEach { id -> store.write(job(id, startedAt = start.plusSeconds(id))).block() }
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs).hasSize(50)
+        // The newest survives the bound, and the oldest falls off it.
+        Assertions.assertThat(report.jobs.first().key.id).isEqualTo(60L)
+        Assertions.assertThat(report.jobs.map { it.key.id }).doesNotContain(1L)
+    }
+
+    @Test
+    fun `the read skips another node's job topic`() {
+        store.write(job(1L)).block()
+        store.write(job(2L, nodeId = 9)).block()
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(1L)
+    }
+
+    // The name and the record are two stored things. A local name over a
+    // foreign record must not reach an operator as this deployment's job.
+    @Test
+    fun `the read skips a record that disagrees with its topic name`() {
+        store.write(job(1L, nodeId = 9)).block()
+        store.names[1L] = JobTopicNames.nameFor(7, "long", start, "incarnation-a")
+        store.write(job(2L)).block()
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(2L)
+    }
+
+    // The status is in process and always available. A store failure must not
+    // take the whole operation away from an operator.
+    @Test
+    fun `a failed listing keeps the status and empties the jobs`() {
+        store.failListing = true
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.status.running).isFalse()
+        Assertions.assertThat(report.jobs).isEmpty()
+    }
+
+    // An accepted trigger never promises the job key. The run creates its job
+    // after the claim, and on another scheduler. A client polls the read.
+    @Test
+    fun `the write operation starts one job and reports no active job`() {
+        val status = endpoint().startVectorIndexRebuild()
 
         Assertions.assertThat(service.starts.get()).isEqualTo(1)
         Assertions.assertThat(status.running).isTrue()
+        Assertions.assertThat(status.activeJob).isNull()
     }
 
     @Test
     fun `a second write returns busy and starts no second job`() {
-        val endpoint = VectorIndexEndpoint(service)
+        val endpoint = endpoint()
 
         endpoint.startVectorIndexRebuild()
         val second = endpoint.startVectorIndexRebuild()
@@ -4868,16 +5019,28 @@ class VectorIndexEndpointTests {
         Assertions.assertThat(service.starts.get()).isEqualTo(1)
         Assertions.assertThat(second.running).isTrue()
     }
+}
+```
+
+Keep the three gate tests below. They build the context with
+`ApplicationContextRunner`, and each one needs the four beans the endpoint reads.
+
+```kotlin
+    private fun runnerWithBeans() = ApplicationContextRunner()
+        .withBean(MessageReindexService::class.java, { service })
+        .withBean(VectorIndexJobStore::class.java, { store })
+        .withBean(TypeUtil::class.java, { LongUtil() })
+        .withUserConfiguration(VectorIndexEndpoint::class.java)
 
     // Both gates matter. VectorRecallServiceConfiguration carries the composite
     // gate at class level and the selectors at bean level, so a selector-only
     // gate would expose this endpoint where no composite service exists.
     @Test
     fun `the endpoint is absent without the composite gate`() {
-        ApplicationContextRunner()
-            .withBean(MessageReindexService::class.java, { service })
-            .withUserConfiguration(VectorIndexEndpoint::class.java)
+        runnerWithBeans()
             .withPropertyValues(
+                "app.nodeid=7",
+                "app.key.type=long",
                 "app.service.core.vector=embedded",
                 "app.service.core.embedding=embedded",
             )
@@ -4888,10 +5051,10 @@ class VectorIndexEndpointTests {
 
     @Test
     fun `the endpoint is absent when one recall selector is missing`() {
-        ApplicationContextRunner()
-            .withBean(MessageReindexService::class.java, { service })
-            .withUserConfiguration(VectorIndexEndpoint::class.java)
+        runnerWithBeans()
             .withPropertyValues(
+                "app.nodeid=7",
+                "app.key.type=long",
                 "app.service.composite=true",
                 "app.service.core.vector=embedded",
             )
@@ -4902,10 +5065,10 @@ class VectorIndexEndpointTests {
 
     @Test
     fun `the endpoint exists with both gates`() {
-        ApplicationContextRunner()
-            .withBean(MessageReindexService::class.java, { service })
-            .withUserConfiguration(VectorIndexEndpoint::class.java)
+        runnerWithBeans()
             .withPropertyValues(
+                "app.nodeid=7",
+                "app.key.type=long",
                 "app.service.composite=true",
                 "app.service.core.vector=embedded",
                 "app.service.core.embedding=embedded",
@@ -4914,7 +5077,6 @@ class VectorIndexEndpointTests {
                 Assertions.assertThat(context).hasSingleBean(VectorIndexEndpoint::class.java)
             }
     }
-}
 ```
 
 - [ ] **Step 2: Run and confirm they fail**
@@ -4928,6 +5090,21 @@ Model it on `RootKeyEndpoint`. `ActuatorWebSecurityConfiguration` already protec
 `/actuator/**` with the `ACTUATOR` role, so this class adds no security code.
 An operator must still expose `vectorindex` through the normal actuator exposure
 property. **This plan adds no deployment selector and no exposure value.**
+
+The read blocks. An actuator operation returns a value, not a publisher, so the
+job read waits with a bound. A store that cannot answer must fail the operation
+rather than hold the actuator thread.
+
+The read never fails on one bad job. A record that disagrees with its topic name
+is skipped and logged, as the release sweep does. A read error empties the job
+list and keeps the status, because the status is in process and always available.
+
+```kotlin
+data class VectorIndexReport<T>(
+    val status: VectorIndexStatus<T>,
+    val jobs: List<IndexJob<T>>,
+)
+```
 
 - [ ] **Step 4: Run and confirm they pass, then commit**
 
