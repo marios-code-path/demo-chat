@@ -1,6 +1,7 @@
 package com.demo.chat.domain
 
 import com.demo.chat.service.core.MembershipIndexService
+import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
@@ -12,8 +13,17 @@ class MapRequestConverters : RequestToQueryConverters<Map<String, String>> {
         Pair("SAMPLE_SIZE", "100")
     )
 
+    /**
+     * Names the message destination field, not the topic id field.
+     *
+     * The one consumer is `MessagingServiceImpl.listenTopic`, and it reads the
+     * message index. The cassandra message index reads `query.keys.first()`, so
+     * `MessageIndexService.TOPIC` must stay the first entry. A map that led with
+     * another key fell to the empty branch, and persisted room history never
+     * reached a caller.
+     */
     override fun <T> topicIdToQuery(req: ByIdRequest<T>) = mapOf(
-        Pair(TopicIndexService.ID, req.id.toString()),
+        Pair(MessageIndexService.TOPIC, req.id.toString()),
         Pair("SAMPLE_SIZE", "100")
     )
 
