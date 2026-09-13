@@ -38,7 +38,7 @@ class JsonNodeToAnyConverterTests {
         val converted = objectOf("""{"failureSummary":null}""")
 
         Assertions.assertThat(converted["failureSummary"]).isNull()
-        // The assertion that bites. The old branch produced this exact text.
+        // The old branch produced this exact text.
         Assertions.assertThat(converted["failureSummary"]).isNotEqualTo("null")
     }
 

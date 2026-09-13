@@ -5561,6 +5561,18 @@ RSocket key-value client. `IndexJobCodecTests` proves the branches against a
 mapper. It does not prove that each backend hands back the shape that branch
 expects.
 
+**It found one production defect, and that is the point.** `CHAT-auglbxrm`.
+`JsonNodeToAnyConverter` had no null branch, so a null node became the four
+character string `"null"`. The redis test and the RSocket test both failed with
+`Cannot deserialize value of type java.time.Instant from String "null"`. The
+cassandra test passed, because the string branch binds the JSON directly and
+never meets that converter.
+
+A `String?` field would have taken that text in silence rather than failing, so
+the crash was the louder half of the defect. The repair returns `Any?` and
+answers null for a null node. It also repairs nested maps and arrays, because
+both branches recurse through the same method.
+
 **The three shapes, read from the store implementations:**
 
 - Memory returns the stored object. `InMemoryKeyValueStore` holds it in a map.
