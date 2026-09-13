@@ -1,5 +1,6 @@
 package com.demo.chat.test.repository
 
+import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.Message
@@ -62,9 +63,11 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         val topic = UUID.randomUUID()
         val otherTopic = UUID.randomUUID()
         val user = UUID.randomUUID()
-        val first = UUID.randomUUID()
-        val second = UUID.randomUUID()
-        val other = UUID.randomUUID()
+        // msg_id is a TIMEUUID column, so a message identifier must be time
+        // based. A version 4 uuid is rejected by the schema.
+        val first = Uuids.timeBased()
+        val second = Uuids.timeBased()
+        val other = Uuids.timeBased()
 
         index.add(Message.create(MessageKey.create(first, user, topic), "apple", true)).block()
         index.add(Message.create(MessageKey.create(second, user, topic), "banana", true)).block()
@@ -78,13 +81,15 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         Assertions.assertThat(found.map { it.id }).containsExactlyInAnyOrder(first, second)
     }
 
+    // The topic and the user are ordinary uuid columns, so a random value is
+    // correct for them.
     @Test
     fun `a topic with no message returns nothing`() {
         val index = index()
         val topic = UUID.randomUUID()
         val user = UUID.randomUUID()
 
-        index.add(Message.create(MessageKey.create(UUID.randomUUID(), user, topic), "apple", true)).block()
+        index.add(Message.create(MessageKey.create(Uuids.timeBased(), user, topic), "apple", true)).block()
 
         val found = index
             .findBy(converters.topicIdToQuery(ByIdRequest(UUID.randomUUID())))
