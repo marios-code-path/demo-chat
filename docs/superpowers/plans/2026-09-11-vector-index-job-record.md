@@ -4803,11 +4803,38 @@ same reason, because job creation runs on another scheduler. **Do not add an
 immediate second read.** The endpoint documents polling instead: a client reads
 until the active job is not null, or until running is false.
 
-**Gates:** `@ConditionalOnProperty("app.service.composite")` and
-`@ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])`.
-Both are needed. `VectorRecallServiceConfiguration` carries the composite gate at
-class level and the selectors at bean level, so a selector-only gate would expose
-the endpoint in a deployment with no composite services.
+**Gates:** the endpoint needs the composite selector and both recall selectors.
+`VectorRecallServiceConfiguration` carries the composite gate at class level and
+the selectors at bean level, so a selector-only gate would expose the endpoint
+in a deployment with no composite services.
+
+**One annotation names all three properties.** A class takes one
+`@ConditionalOnProperty`, and the annotation is not repeatable, so the two split
+gates of the configuration cannot be copied here.
+
+```kotlin
+@ConditionalOnProperty(
+    name = [
+        "app.service.composite",
+        "app.service.core.vector",
+        "app.service.core.embedding",
+    ]
+)
+```
+
+**A KDoc comment must not hold the text `/actuator` followed by two stars.**
+Kotlin nests block comments, so that sequence opens a comment the compiler never
+closes. Name the actuator paths in words instead.
+
+**Two directions of mismatch, and two filters.** The topic name filter and the
+record identity check catch different cases, and a test for one does not cover
+the other.
+
+- A foreign name over a local record: only the name filter catches it.
+- A local name over a foreign record: only the identity check catches it.
+
+Write a test for each direction. A suite with one direction lets the name filter
+be deleted with no failure.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -4979,6 +5006,20 @@ class VectorIndexEndpointTests {
     fun `the read skips a record that disagrees with its topic name`() {
         store.write(job(1L, nodeId = 9)).block()
         store.names[1L] = JobTopicNames.nameFor(7, "long", start, "incarnation-a")
+        store.write(job(2L)).block()
+
+        val report = endpoint().readVectorIndex()
+
+        Assertions.assertThat(report.jobs.map { it.key.id }).containsExactly(2L)
+    }
+
+    // The inverse of the test above. A foreign topic name over a local record
+    // must not appear either. Another node named that topic, so the record is
+    // not this deployment's to report.
+    @Test
+    fun `the read skips a foreign topic name over a local record`() {
+        store.write(job(1L)).block()
+        store.names[1L] = JobTopicNames.nameFor(9, "long", start, "incarnation-a")
         store.write(job(2L)).block()
 
         val report = endpoint().readVectorIndex()
