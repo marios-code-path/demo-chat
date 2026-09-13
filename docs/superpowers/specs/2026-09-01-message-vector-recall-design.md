@@ -478,15 +478,25 @@ The issue must cover:
 Issue `CHAT-oghjsnad` records the vector reindex path. It is scheduled for a
 following sprint.
 
-This spec lists message repair and reindex jobs under Out Of Scope. That stays
-true for this sprint. The embedded provider added later made the gap concrete:
-the store is a derived cache on ephemeral storage, so a lost storage directory
-must be rebuilt from the persisted messages.
+This spec lists message repair and reindex jobs under Out Of Scope. **Two later
+specs supersede that line.**
 
-No rebuild path exists today. `MessageVectorIndexer` declares `add` and `remove`
-only. A lost index makes recall return fewer hits. It does not throw and it does
-not warn, so a caller cannot tell an empty result from a lost index.
+- `docs/superpowers/specs/2026-09-10-vector-reindex-design.md` adds the rebuild
+  and the recall completeness contract.
+- `docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md` adds the
+  durable job record, the coverage policy, and the actuator.
 
-This is safe while recall stays test only. It is not safe once recall serves
-users. Check `CHAT-oghjsnad` against `CHAT-ruduojeu` before starting, because
-that issue already names repair.
+A rebuild path exists now. `MessageReindexService` scans persistence and offers
+every message to the indexer. Recall answers with one result that carries
+`indexComplete`, so a caller can separate an empty result from a lost index.
+
+The paragraphs below describe the state before that work. They stay for the
+record.
+
+The embedded provider made the gap concrete. The store is a derived cache on
+ephemeral storage, so a lost storage directory must be rebuilt from the
+persisted messages.
+
+`MessageVectorIndexer` declared `add` and `remove` only. A lost index made
+recall return fewer hits. It did not throw and it did not warn, so a caller
+could not tell an empty result from a lost index.

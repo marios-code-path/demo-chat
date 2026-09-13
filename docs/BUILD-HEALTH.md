@@ -20,6 +20,10 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
+Measured on 2026-09-13, after the vector index job record work. Default mode
+reports 750 tests with 30 skipped. Integration mode reports 964 tests with 52
+skipped. Both report zero failures and zero errors.
+
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
@@ -29,6 +33,7 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
+| B10 | A scoped `-pl` run resolves upstream modules from `~/.m2` | correctness of any scoped run | Workaround only |
 
 ---
 
@@ -42,6 +47,32 @@ This occurred during the selector work. Three tests failed. No source file in th
 
 1. Use `mvn clean test` after you change branches.
 2. The verifier script always cleans. It is not affected.
+
+---
+
+### B10 — a scoped run reads an upstream module from the local repository
+
+**Symptom.** `mvn -o -pl <module> test` resolves every module it does not name
+from `~/.m2`. A jar there can predate the tree. The run then reports a failure
+that the current source does not have, and it names a bean or a symbol that the
+tree defines.
+
+This occurred twice during the vector index job record work. A run of
+`-pl chat-core,chat-deploy,chat-deploy-memory` reported
+`No qualifying bean of type MessageReindexService`. The bean existed in
+`chat-service-composite`, which the run did not name, and the installed jar was
+two days old. A second run of `-pl chat-deploy-memory` alone reported
+`Unresolved reference VectorIndexEndpoint` for the same reason.
+
+This is the mirror of B6. B6 is a stale build output inside the tree. B10 is a
+stale build output outside it.
+
+**Mitigation.**
+
+1. Run the full reactor for any test that starts a deployment context.
+2. Run `mvn -o -B -DskipTests install` first when a scoped run is unavoidable.
+3. A failure that names a symbol the tree defines is this, until measured
+   otherwise.
 
 ---
 

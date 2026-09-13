@@ -16,9 +16,12 @@ import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 
 /**
- * Read-only recall. Returns keys and scores only; the caller reloads full
- * messages through existing persistence. Covers only messages sent while
- * recall was active. There is no backfill.
+ * Read-only recall. Returns keys and scores only, and the caller reloads full
+ * messages through existing persistence.
+ *
+ * A rebuild covers the messages that recall missed. `MessageReindexService`
+ * scans persistence and offers every message to the indexer, so a message sent
+ * while recall was inactive can still enter the corpus.
  *
  * Each answer carries the coverage of the index. An empty hit list has two
  * meanings, and only that flag separates them.

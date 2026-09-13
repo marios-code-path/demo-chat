@@ -787,6 +787,103 @@ No suppression file exists. `CHAT-icgifzbv` adds one.
 - `kotlin-stdlib` 2.4.10 shows CVE-2026-53914 at 9.8 on the current release. Check
   whether a fixed version exists at all.
 
+## Vector index job record (2026-09-11/13)
+
+Issue `CHAT-fpwpfrfj`, under `CHAT-oghjsnad`. Fifteen tasks. Spec:
+`docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md`. Plan:
+`docs/superpowers/plans/2026-09-11-vector-index-job-record.md`.
+
+Recall now reports the coverage of the newest trusted successful rebuild job,
+rather than the phase of the active job.
+
+### What exists
+
+- `IndexJob` and `JobRecord`, each with its own root key. A job owns one
+  persisted topic, and the topic key is the job root key.
+- `VectorIndexJobStore` writes the job through the key-value store, and it
+  creates the topic through persistence, the topic index, and `pubsub.open()`.
+- `ComposedJobRecordWriter` publishes progress messages. It never calls
+  `MessagingServiceImpl.send()`, so a job record never enters vector recall.
+- `VectorCoveragePolicy` selects the covering job. `app.vector.index.trust`
+  takes `none` or `stored`, and `none` is the default.
+- `MessageRecallResult` carries `indexComplete` beside the bounded hits. Both
+  transports answer with one object.
+- `VectorIndexStartupAction` releases stale jobs, selects coverage, adopts it,
+  and only then starts a rebuild when `app.vector.index.startup` is `rebuild`.
+- The `vectorindex` actuator endpoint returns the status and the recent jobs.
+
+### Four production defects that the tests found
+
+Each one was repaired in its own issue, never with a special case in the test
+that found it.
+
+1. `CHAT-jhfptxiw`. `topicIdToQuery` named `TopicIndexService.ID`, and the
+   message index stores a destination under `topic`. **Persisted room history
+   had never been returned from the index, on either backend.** Live delivery
+   hid it, because `listenTopic` concatenates the pub/sub stream after the
+   history.
+2. `CHAT-muuaovqn`. The embedded provider refuses a repeated document id, so
+   every rebuild after the first one failed in one process. `VectorWriteMode`
+   now follows the provider. Only `embedded` removes before it writes, because
+   a removal that removes nothing makes `RedisVectorStore` log an error.
+3. `CHAT-auglbxrm`. `JsonNodeToAnyConverter` had no null branch, so a null node
+   became the four character string `"null"`. Redis and RSocket both failed to
+   read an `IndexJob` back. A `String?` field would have taken that text in
+   silence.
+4. The root key of a stored job was never checked. A record under key A holding
+   key B would make the policy adopt B while A stayed clean. `readJob` compares
+   the two keys now.
+
+### Rules that are easy to lose
+
+- **A repair keeps the coverage of the older successful job.** So the index
+  reports complete while a repair runs, and the `SUCCEEDED` filter must run
+  before the sort. Filtering after it would select the repair and report no
+  coverage.
+- **The write mode is per provider, and an unknown selector is refused.** A
+  default would give a new provider a policy with no decision, and the wrong
+  policy is silent on three of the four.
+- **The remove and write pair is not atomic, and the interval has no duration
+  bound.** It runs from the completion of the removal to the completion of the
+  write, which includes the embedding call and the provider commit. The index
+  reports complete throughout, so this is an accepted false positive.
+- **The claim generation cannot identify a run.** An invalidation raises it
+  during the same run, so `markActiveJob` guards on the running flag instead.
+- **An actuator operation may answer with a publisher.**
+  `ReactiveWebOperationAdapter` unwraps a `Mono`, so nothing blocks. A
+  `block(Duration)` throws outside the chain, where `onErrorResume` cannot see
+  it.
+- **An operator must enable an actuator id and expose it.**
+  `management-defaults.yml` disables endpoints by default, so exposure alone
+  answers 404.
+- **A scoped `-pl` run resolves upstream modules from `~/.m2`.** A stale jar
+  there reports a missing bean that the current source defines. Boot tests need
+  the full reactor.
+
+### What this work did not deliver
+
+- **No deployment sets `app.service.core.vector`.** Every proof is a test.
+- **Embeddings are still the mock model.** `DummyEmbeddingModel` makes character
+  bigram vectors. `local` and `gateway` still fail at startup.
+- **No job topic retention.** The first version reads every matching job topic.
+- **No deployment sets the actuator id or the exposure value.**
+- `CHAT-edzvpxil` the handling policy mask, and `CHAT-tekzakdd` a data stream in
+  place of the full scan, both stay out of scope.
+
+### Open, low priority
+
+- `CHAT-aoqghxmf`. An illegal selector pair fails with a missing provider bean
+  rather than the validation message, because the validation runs after regular
+  singleton creation.
+- `CHAT-cxduiwjj`. One reindex test is timing sensitive. It failed once under
+  load and passed every later run.
+
+### Gate at the end of the work
+
+- Default mode: 750 tests, 0 failures, 30 skipped.
+- Integration mode: 964 tests, 0 failures, 52 skipped.
+- `drift check` and `git diff --check` pass.
+
 ## Where the next session starts
 
 The owner's direction on 2026-09-10: **move on to features. Make a security pass
