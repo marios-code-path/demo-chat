@@ -53,6 +53,9 @@ class VectorIndexEndpointTests {
         var failListing = false
         var hangListing = false
 
+        /** Counts every call of listJobTopics, at assembly time or later. */
+        var listings = 0
+
         override fun createJob(startedAt: Instant) =
             Mono.error<IndexJob<Long>>(UnsupportedOperationException("the endpoint never creates a job"))
 
@@ -69,8 +72,9 @@ class VectorIndexEndpointTests {
                 Mono.justOrEmpty(jobs[topicKey.id])
             }
 
-        override fun listJobTopics(): Flux<out MessageTopic<Long>> =
-            if (hangListing) {
+        override fun listJobTopics(): Flux<out MessageTopic<Long>> {
+            listings += 1
+            return if (hangListing) {
                 Flux.never()
             } else if (failListing) {
                 Flux.error(IllegalStateException("topic listing failed"))
@@ -89,6 +93,7 @@ class VectorIndexEndpointTests {
                     }
                 )
             }
+        }
 
         override fun invalidate(jobKey: Key<Long>, at: Instant): Mono<Void> = Mono.empty()
     }
@@ -259,14 +264,16 @@ class VectorIndexEndpointTests {
             .verify(Duration.ofSeconds(10))
     }
 
-    // The read answers with a publisher, and nothing blocks inside it. A
-    // subscriber that never arrives means no work runs.
+    // The read answers with a publisher, and nothing runs inside it until a
+    // subscriber arrives. The listing counts too, because a store that reads at
+    // assembly time would run before that moment.
     @Test
     fun `the read runs nothing before a subscriber arrives`() {
         store.write(job(1L)).block()
 
         endpoint().readVectorIndex()
 
+        Assertions.assertThat(store.listings).isEqualTo(0)
         Assertions.assertThat(store.reads).isEmpty()
     }
 

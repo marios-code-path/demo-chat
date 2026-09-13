@@ -5171,6 +5171,11 @@ fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
 
 `recentJobs()` returns `Mono<List<IndexJob<T>>>` and ends with `collectList()`.
 
+**Wrap its body in `Mono.defer`.** An actuator result is assembled early, and a
+store that reads at assembly time would run before a subscriber arrives. The
+laziness test then counts the listing calls as well as the record reads, because
+a test that counts only the reads cannot see an eager listing.
+
 **The bound sits inside the chain.** A `block(Duration)` throws outside the
 chain, so `onErrorResume` cannot catch it and the operator loses the status too.
 A `timeout` before `onErrorResume` gives a hanging store the same answer as a
@@ -5197,7 +5202,8 @@ management.endpoints.web.exposure.include=vectorindex
 ```
 
 **This plan adds neither value to any deployment.** Both appear in the actuator
-test only.
+test only. The endpoint KDoc and the specification both name the pair, because
+an operator who sets exposure alone meets a 404 with no explanation.
 
 - [ ] **Step 3b: Prove the wiring outside this module**
 

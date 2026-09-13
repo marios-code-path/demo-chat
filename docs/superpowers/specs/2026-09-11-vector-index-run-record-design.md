@@ -402,6 +402,14 @@ coverage rule does.
 It selects the jobs of this node and this key type. It filters the topic names
 first, and it then validates the identity of each decoded record.
 
+An operator must set two properties to reach the endpoint. The deployments
+disable every actuator endpoint by default, so exposure alone is not enough.
+
+- `management.endpoint.vectorindex.enabled=true`
+- `management.endpoints.web.exposure.include=vectorindex`
+
+No deployment in this repository sets either value.
+
 The write operation returns the claim snapshot. An accepted first trigger
 reports `running=true` and `activeJob=null`. **It never promises the job key.**
 The run creates its job after the claim, and on another scheduler.
@@ -446,6 +454,7 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The actuator read sorts jobs by instant, then by the typed root key.
 - The actuator read skips a job whose record disagrees with its topic name.
 - The actuator write reports a null active job on an accepted trigger.
+- The actuator read runs no store call before a subscriber arrives.
 - The job writer calls persistence, the message index, and pub/sub in order.
 - A failed job-record write stops later writes and keeps earlier writes.
 - The job writer never calls `MessagingServiceImpl.send()`.

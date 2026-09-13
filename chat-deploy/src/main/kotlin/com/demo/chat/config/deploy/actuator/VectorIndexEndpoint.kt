@@ -26,9 +26,20 @@ data class VectorIndexReport<T>(
  * The operator view of the vector index, and the one manual rebuild trigger.
  *
  * `ActuatorWebSecurityConfiguration` protects every actuator path with the
- * ACTUATOR role, so this class adds no security code. An operator must still
- * expose
- * `vectorindex` through the normal actuator exposure property.
+ * ACTUATOR role, so this class adds no security code.
+ *
+ * **An operator must set two properties.** The deployments load
+ * `management-defaults.yml`, which sets
+ * `management.endpoints.enabled-by-default` to false. So `enableByDefault` on
+ * the annotation is not enough on its own, and an id that is only exposed still
+ * answers 404.
+ *
+ * ```
+ * management.endpoint.vectorindex.enabled=true
+ * management.endpoints.web.exposure.include=vectorindex
+ * ```
+ *
+ * No deployment in this repository sets either value.
  *
  * Both gates are needed. `VectorRecallServiceConfiguration` carries the
  * composite gate at class level and the selectors at bean level, so a
@@ -98,7 +109,9 @@ class VectorIndexEndpoint<T>(
     @WriteOperation
     fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
 
-    private fun recentJobs(): Mono<List<IndexJob<T>>> =
+    // The listing defers. A store that reads at assembly time would run before
+    // a subscriber arrives, and an actuator result is assembled early.
+    private fun recentJobs(): Mono<List<IndexJob<T>>> = Mono.defer {
         jobStore.listJobTopics()
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
             .flatMap { topic -> jobStore.readJob(topic.key) }
@@ -113,6 +126,7 @@ class VectorIndexEndpoint<T>(
             )
             .take(MAX_JOBS)
             .collectList()
+    }
 
     private fun ownedByThisDeployment(job: IndexJob<T>): Boolean =
         if (job.nodeId == nodeId && job.keyType == keyType) {
