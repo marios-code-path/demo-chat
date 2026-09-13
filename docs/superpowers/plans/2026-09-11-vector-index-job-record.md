@@ -5309,25 +5309,63 @@ git add -A && git commit -m "feat: add the protected vector index endpoint (CHAT
 **Interfaces:**
 - Consumes: every bean from Task 11 and the endpoint from Task 12.
 
+**Two prerequisites block this task.** Both are production defects that these
+tests exposed, and neither belongs in this task.
+
+1. `CHAT-jhfptxiw`. `topicIdToQuery` emits `TopicIndexService.ID`, which is the
+   string `ID`. The message index stores the destination under `topic`. So the
+   job record test finds nothing. `MessagingServiceImpl.listenTopic` is the one
+   production consumer, so message history from the index has never been
+   returned. A probe that replaced the converter call with a `TOPIC` query made
+   the test pass, which isolates the converter as the cause.
+2. `CHAT-muuaovqn`. A second rebuild fails with `Duplicate id: message:long:1`.
+   The embedded store does not replace a document. The third test below cannot
+   see that, because it never reads the second run verdict. **Once the repair
+   lands, this task adds those two assertions.**
+
 **The test shape matters.** Write messages straight to persistence with no
 indexing. That reproduces a lost index deterministically. **Do not delete a
 memory-mapped storage directory inside a running process.**
 
-- [ ] **Step 1: Write the failing test**
+**Two selector facts, learned by running this test.**
+
+- `app.service.core.embedding=embedded` is illegal. `VectorSelectorValidation`
+  lists `mock` as the only embedding, so the pair is `embedded` with `mock`.
+- `MessageRecallService` cannot be injected by type. The recall controller
+  implements the same interface, so a deployment that sets `app.controller.recall`
+  holds two beans of that type. The injection names `messageRecallService`.
+
+**Copy the property list of `MemoryVectorRecallBootTests`.** A short list omits
+`app.service.core.index` and `app.service.core.pubsub`, and the vector
+configuration needs both provider beans.
+
+- [ ] **Step 1: Write the test**
+
+The whole class follows. `messagesOfTopic` reads a job topic the same way
+`MessagingServiceImpl.listenTopic` reads a room, which is why it meets the
+converter defect that `CHAT-jhfptxiw` repairs.
+
+The memory composition binds `Q` to `IndexSearchRequest`. A cassandra
+composition binds it to a map, so this test stays on the memory deployment.
 
 ```kotlin
 package com.demo.chat.test.deploy.memory
 
+import com.demo.chat.ChatApp
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.GlobalRecallRequest
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.RequestToQueryConverters
+import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
-import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageRecallService
+import com.demo.chat.service.vector.MessageReindexService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
@@ -5345,21 +5383,27 @@ import java.time.Duration
  * The test activates memory key and memory persistence, so it claims no node
  * id. See docs/NODEID-CLAIM.md.
  */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    classes = [ChatApp::class]
+)
 // Each test needs an empty index, an empty store, and no prior job. The beans
 // hold that state in memory, so a shared context would let test order decide
 // the initial conditions.
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(
     properties = [
-        "app.service.composite=true",
+        "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
+        "spring.application.name=test-deployment-vector-recovery", "app.server.proto=rsocket",
+        "server.port=0", "spring.rsocket.server.port=0", "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory",
-        "app.service.core.persistence=memory",
-        "app.service.core.vector=embedded",
-        "app.service.core.embedding=embedded",
-        "app.key.type=long",
-        "app.nodeid=1",
+        "app.service.core.pubsub=memory", "app.service.core.index=lucene", "app.service.core.persistence=memory",
+        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth",
+        "app.service.core.vector=embedded", "app.service.core.embedding=mock",
+        "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
+        "app.controller.user", "app.controller.message", "app.controller.topic", "app.controller.pubsub",
+        "app.controller.recall",
+        "app.service.security.userdetails"
     ]
 )
 class VectorIndexRecoveryTests {
@@ -5367,22 +5411,42 @@ class VectorIndexRecoveryTests {
     @Autowired
     lateinit var persistence: MessagePersistence<Long, String>
 
+    // The recall controller delegates to this service and implements the same
+    // interface, so the type alone names two beans in a deployment that sets
+    // app.controller.recall. The name picks the service.
     @Autowired
+    @Qualifier("messageRecallService")
     lateinit var recall: MessageRecallService<Long>
 
     @Autowired
     lateinit var reindex: MessageReindexService<Long>
 
+    @Autowired
+    lateinit var messageIndex: MessageIndexService<Long, String, IndexSearchRequest>
+
+    @Autowired
+    lateinit var queryConverters: RequestToQueryConverters<IndexSearchRequest>
+
     private fun persistOnly(id: Long, text: String): Mono<Void> =
         persistence.add(Message.create(MessageKey.create(id, 10L, 20L), text, true))
 
-    private fun awaitFinished(): Unit {
+    private fun awaitFinished() {
         Flux.interval(Duration.ZERO, Duration.ofMillis(20))
             .map { reindex.status() }
             .filter { status -> !status.running }
             .next()
             .block(Duration.ofSeconds(30))
     }
+
+    // The memory composition binds Q to IndexSearchRequest. A cassandra
+    // composition binds it to a map, so this test stays on this deployment.
+    private fun messagesOfTopic(topicId: Long): List<Message<Long, String>> =
+        messageIndex
+            .findBy(queryConverters.topicIdToQuery(ByIdRequest(topicId)))
+            .collectList()
+            .flatMapMany { keys -> persistence.byIds(keys) }
+            .collectList()
+            .block(Duration.ofSeconds(10))!!
 
     @Test
     fun `recall finds persisted messages after one rebuild`() {
@@ -5424,39 +5488,17 @@ class VectorIndexRecoveryTests {
         reindex.start().block()
         awaitFinished()
 
-        val second = reindex.start().block()
+        reindex.start().block()
         awaitFinished()
 
+        // The threshold accepts every document, so this read returns the whole
+        // recall corpus. Only the one user message may appear in it.
         val hits = recall.recallGlobal(GlobalRecallRequest("rebuild", 50, 0.0)).block()!!
-        Assertions.assertThat(hits.hits).isEmpty()
+        Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(1L)
         Assertions.assertThat(reindex.status().lastReport!!.attempted).isEqualTo(1L)
-        Assertions.assertThat(second).isNotNull
     }
 }
 ```
-
-`messagesOfTopic` reads a job topic the same way `MessagingServiceImpl.listenTopic`
-reads a room. Add it to the class, with these two injected beans:
-
-```kotlin
-    @Autowired
-    lateinit var messageIndex: MessageIndexService<Long, String, IndexSearchRequest>
-
-    @Autowired
-    lateinit var queryConverters: RequestToQueryConverters<IndexSearchRequest>
-
-    private fun messagesOfTopic(topicId: Long): List<Message<Long, String>> =
-        messageIndex
-            .findBy(queryConverters.topicIdToQuery(ByIdRequest(topicId)))
-            .collectList()
-            .flatMapMany { keys -> persistence.byIds(keys) }
-            .collectList()
-            .block(Duration.ofSeconds(10))!!
-            .map { message -> message as Message<Long, String> }
-```
-
-The memory composition binds `Q` to `IndexSearchRequest`. A cassandra composition
-binds it to `Map<String, String>`, so this test stays on the memory deployment.
 
 **The third test is the load-bearing one.** `attempted` stays at one after two
 rebuilds. If the exclusion filter is missing, the second rebuild counts the job
@@ -5464,7 +5506,11 @@ records of the first.
 
 - [ ] **Step 2: Run the test**
 
-Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o -pl chat-core,chat-deploy-memory test -Dtest=VectorIndexRecoveryTests -Dsurefire.failIfNoSpecifiedTests=false`
+Run: `JAVA_HOME=~/.sdkman/candidates/java/25.0.4-tem mvn -o test`
+
+**Use the full reactor.** A scoped run resolves `chat-service-composite` and
+`chat-deploy` from the local repository, and a stale jar there reports a missing
+bean that the current source defines.
 
 **This task has no red step, and that is deliberate.** Tasks 1 to 12 already
 built every part. This test only proves that the assembled parts recover a lost
