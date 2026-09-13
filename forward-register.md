@@ -11,9 +11,9 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master`, clean, head `af30dfd2`. **Not in sync with `origin`.** Ahead by 3 commits, behind by 5. |
+| Checkout | `master`, head `af30dfd2`. **Not clean.** Four tracked entries changed and six are untracked. **Not in sync with `origin`.** Ahead by 3 commits, behind by 5. |
 | Register state | Updated 2026-09-13, after the vector index job record work |
-| Last merged PR | #78, merge commit `d709dacc`. Nothing has merged since. |
+| Last merged PR | #86, commit `934a3287` on `origin/master`. Local `master` carries PRs through #82 only. The five commits it lacks carry #83, #84, #85, #86, and one register correction, `d8cdd111`. |
 | Merged feature branches | All local refs removed. Remote refs survive every merge — this repo has no auto-delete. `origin/{b5-docs, b5-red-proof, ci-integration-execution, b7-launch-fix, b8-send-fix, shell-recipe, hangup-tests}` await the owner's word; all except `b5-red-proof` are merged. |
 | Worktrees | Three. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of this plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
 | Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
