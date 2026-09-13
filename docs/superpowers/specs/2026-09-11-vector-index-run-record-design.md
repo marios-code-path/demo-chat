@@ -417,6 +417,31 @@ The run creates its job after the claim, and on another scheduler.
 A client polls the read operation until the active job is not null, or until
 running is false. An immediate second read does not close that race.
 
+### Vector Write Mode
+
+The document id of a message is derived from the message id. So a rebuild
+always meets an id it wrote before.
+
+Only the embedded provider refuses a repeat. It answers a second write of one
+id with `Duplicate id`. That provider removes the document and then writes it.
+
+The mock, simple, and redis providers overwrite. They write once. A removal
+before the write would be wasted work, and `RedisVectorStore` logs an error
+when a delete removes no document.
+
+The remove and write pair is not atomic. Recall can miss the message between
+the two calls.
+
+**The index still reports complete during that window.** A repair keeps the
+coverage of the older successful job, so a caller can read
+`indexComplete=true` and miss one message. This is an accepted transient false
+positive. The window is one store call wide.
+
+A removal failure stops the write. It promises nothing about the old document,
+because a provider can remove the document and then fail while it commits.
+Three things hold. The write does not run. The caller receives the removal
+error. The failure removes coverage.
+
 ## Failure Behavior
 
 A topic-list failure at startup reports no covering job.
@@ -455,6 +480,9 @@ The index remains usable. A record is evidence and never acts as a lock.
 - The actuator read skips a job whose record disagrees with its topic name.
 - The actuator write reports a null active job on an accepted trigger.
 - The actuator read runs no store call before a subscriber arrives.
+- The embedded provider removes a document before it writes that id.
+- The mock, simple, and redis providers write one document once.
+- A removal failure stops the write and removes coverage.
 - The job writer calls persistence, the message index, and pub/sub in order.
 - A failed job-record write stops later writes and keeps earlier writes.
 - The job writer never calls `MessagingServiceImpl.send()`.

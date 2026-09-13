@@ -6,6 +6,7 @@ import com.demo.chat.service.vector.MessageDocumentMapper
 import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
+import com.demo.chat.service.vector.VectorWriteMode
 import org.slf4j.LoggerFactory
 import org.springframework.ai.vectorstore.VectorStore
 import reactor.core.publisher.Mono
@@ -22,13 +23,18 @@ import java.time.Clock
  *
  * A write replaces. The document id is derived from the message id, so a
  * rebuild meets an id it already wrote. The embedded store refuses a repeat
- * with `Duplicate id`, which failed every rebuild after the first one.
+ * with `Duplicate id`, which failed every rebuild after the first one in one
+ * process.
+ *
+ * [writeMode] follows the provider. Only the embedded provider needs the
+ * removal, and a removal on redis would log an error for every new message.
  */
 class VectorStoreMessageVectorIndexer<T>(
     private val vectorStore: VectorStore,
     private val mapper: MessageDocumentMapper<T>,
     private val state: VectorIndexState<T>,
     private val jobStore: VectorIndexJobStore<T>,
+    private val writeMode: VectorWriteMode,
     private val clock: Clock = Clock.systemUTC(),
 ) : MessageVectorIndexer<T> {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -49,24 +55,32 @@ class VectorStoreMessageVectorIndexer<T>(
      * Writes the document of one message, over any document it already has.
      *
      * The mapping runs first. A mapping failure then leaves the stored document
-     * in place, because nothing was removed yet.
+     * in place, because no store call has run yet.
      *
-     * The removal runs before the write. A store that refuses a repeated id
-     * needs the old document gone, and the id is derived from the message id,
-     * so a rebuild always meets its own earlier write.
+     * [VectorWriteMode] decides the rest. `UPSERT` writes once, because the
+     * provider overwrites a document of the same id. `DELETE_THEN_ADD` removes
+     * the old document first, because the embedded provider refuses a repeated
+     * id.
      *
-     * **The pair is not atomic.** Recall can miss this message between the two
-     * calls. The window is one store call wide, and a reader in it sees one
-     * document fewer. A rebuild already reports an incomplete index while it
-     * runs, so this window adds no new state that a caller can observe.
+     * **`DELETE_THEN_ADD` is not atomic.** Recall can miss this message between
+     * the two calls. **The index still reports complete during that window**,
+     * because a repair keeps the coverage of the older successful job. So a
+     * caller can read `indexComplete=true` and miss one message. That is an
+     * accepted transient false positive, and the window is one store call wide.
      *
-     * A removal failure stops the write. The caller then keeps the document it
-     * had, rather than losing it to a half finished replacement. An unknown id
-     * is not a failure, because the store contract answers false for one.
+     * A removal failure stops the write. It does **not** promise that the old
+     * document survives. A provider can remove the document and then fail while
+     * it commits. Three things hold:
+     *
+     * - The write does not run.
+     * - The caller receives the removal error.
+     * - The failure removes coverage, through [recordFailure].
      */
     private fun replace(message: Message<T, String>) {
         val document = mapper.toDocument(message)
-        vectorStore.delete(listOf(document.id))
+        if (writeMode == VectorWriteMode.DELETE_THEN_ADD) {
+            vectorStore.delete(listOf(document.id))
+        }
         vectorStore.add(listOf(document))
     }
 

@@ -14,6 +14,7 @@ import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.service.vector.MessageDocumentMapper
 import com.demo.chat.service.vector.MessageVectorIndexer
+import com.demo.chat.service.vector.VectorWriteMode
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -34,7 +35,8 @@ class MessagingServiceVectorTests {
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
     private val indexState = InMemoryVectorIndexState<Long>()
     private val indexJobStore = FakeVectorIndexJobStore()
-    private val realIndexer = VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, indexJobStore)
+    private val realIndexer =
+        VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, indexJobStore, VectorWriteMode.UPSERT)
 
     private fun givenKey() {
         BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(Key.funKey(100L)))

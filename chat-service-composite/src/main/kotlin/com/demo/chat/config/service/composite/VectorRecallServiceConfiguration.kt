@@ -24,6 +24,7 @@ import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorCoveragePolicy
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
+import com.demo.chat.service.vector.VectorWriteMode
 import com.demo.chat.service.vector.VectorTrust
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.ai.vectorstore.VectorStore
@@ -155,6 +156,10 @@ class VectorRecallServiceConfiguration<T, V, Q>(
     fun messageVectorIndexer(
         vectorStore: VectorStore,
         @Value("\${app.key.type}") keyType: String,
+        // The write mode follows the provider. Only the embedded provider
+        // refuses a repeated document id, and a removal on redis would log an
+        // error for every new message.
+        @Value("\${app.service.core.vector}") vectorSelector: String,
         state: VectorIndexState<T>,
         jobStore: VectorIndexJobStore<T>,
     ): MessageVectorIndexer<T> =
@@ -163,6 +168,7 @@ class VectorRecallServiceConfiguration<T, V, Q>(
             MessageDocumentMapper(typeUtil, keyType),
             state,
             jobStore,
+            VectorWriteMode.forVectorSelector(vectorSelector),
         )
 
     @Bean

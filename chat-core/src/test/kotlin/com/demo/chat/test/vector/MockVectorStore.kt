@@ -60,8 +60,17 @@ class MockVectorStore : VectorStore {
     /** Every store call, in order. A test asserts the order of a replacement. */
     val calls = mutableListOf<String>()
 
-    /** Fails every delete call, whatever the id. */
+    /** Fails every delete call, whatever the id. The entries survive. */
     var failDelete: Boolean = false
+
+    /**
+     * Removes the documents and then fails.
+     *
+     * A provider can drop a document and then fail while it commits. A double
+     * that only ever fails before the removal would let a test claim that the
+     * old document always survives a removal failure.
+     */
+    var dropThenFailDelete: Boolean = false
 
     override fun add(documents: List<Document>) {
         lastWriteThread = Thread.currentThread().name
@@ -87,6 +96,9 @@ class MockVectorStore : VectorStore {
             throw IllegalStateException("vector store cannot delete")
         }
         idsToDrop.forEach { entries.remove(it) }
+        if (dropThenFailDelete) {
+            throw IllegalStateException("vector store cannot delete")
+        }
     }
 
     override fun delete(expression: Filter.Expression) {
