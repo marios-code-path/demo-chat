@@ -44,6 +44,9 @@ Project Reactor, JUnit 5, AssertJ, Maven.
   status of `tail`, which hides a failure. Redirect to a file, test the status,
   and then read the file.
 - Mention `CHAT-etfnihnu` in each commit message.
+- Prefix every `fp` command with `FP_AGENT_NAME='sigma'`. This repository sets
+  that convention. See `docs/superpowers/plans/2026-09-10-vector-reindex.md`,
+  line 29.
 - End each commit message with
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
 
@@ -2959,7 +2962,7 @@ that this work owns.
 - [ ] **Step 1: Confirm the prerequisite is done**
 
 ```bash
-fp issue show CHAT-xvtsffqh | head -5
+FP_AGENT_NAME='sigma' fp issue show CHAT-xvtsffqh | head -5
 ```
 
 Expected: `Status: done`.
@@ -3175,6 +3178,14 @@ two failure names a module that `CHAT-xvtsffqh` owns. That issue carries the two
 work rather than this task's.
 
 Report the failure on `CHAT-xvtsffqh` with the module name and the artifact.
+
+```bash
+FP_AGENT_NAME='sigma' fp comment CHAT-xvtsffqh "The production classpath guard \
+reports <module>, artifact <artifact>. Rule <one or two> named it. This issue \
+owns that scope change. CHAT-etfnihnu Task 7 installs the guard and changes no \
+pom."
+```
+
 Then wait. This task installs the rule that keeps the breach from returning. It
 does not repair a breach that another issue owns.
 
@@ -3277,8 +3288,8 @@ test. The owner asked for automated checks rather than manual procedures.
 **Files:**
 - Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt`
 - Create: `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt`
-- Modify: `chat-deploy-memory/pom.xml`, only when Step 1 finds no
-  `--add-modules jdk.incubator.vector` on its surefire `argLine`.
+
+This task changes no pom.
 
 **Interfaces:**
 - Consumes: Task 6. Both deployments declare both provider modules, so an
@@ -3437,15 +3448,10 @@ class DeadEmbeddingEndpointTests {
 ```
 
 The `embedded` test needs `--add-modules jdk.incubator.vector` on the surefire
-JVM of `chat-deploy-memory`. Confirm that the module already passes it.
-
-```bash
-grep -n 'add-modules' chat-deploy-memory/pom.xml
-```
-
-Add the argument to the surefire `argLine` of that module when the search finds
-nothing. `MemoryEmbeddedVectorRecallBootTests` already runs `vector=embedded`
-there, so the flag is present when that test passes today.
+JVM of `chat-deploy-memory`. **That argument is already there.**
+`chat-deploy-memory/pom.xml:124` declares
+`<argLine>--add-modules jdk.incubator.vector</argLine>`, with a comment that
+records why. So this task adds nothing to that pom.
 
 - [ ] **Step 2: Run the two proofs**
 
@@ -3638,7 +3644,7 @@ this gate runs outside a test classpath.
 - [ ] **Step 1: Confirm the prerequisite is done**
 
 ```bash
-fp issue show CHAT-jdsamcia | head -5
+FP_AGENT_NAME='sigma' fp issue show CHAT-jdsamcia | head -5
 ```
 
 Expected: `Status: done`.
@@ -4163,12 +4169,22 @@ MSG
 
 - [ ] **Step 7: Close the issue**
 
+Write the closing comment into a file first. A heredoc keeps the blank lines
+and the list shape, and `fp comment` takes the file through a command
+substitution.
+
 ```bash
-fp issue assign CHAT-etfnihnu --rev $(git rev-parse --short=8 HEAD)
+FP_AGENT_NAME='sigma' fp issue assign CHAT-etfnihnu --rev $(git rev-parse --short=8 HEAD)
+
+NOTE=$(mktemp)
+cat > "$NOTE" <<'EOF'
+<the filled template below>
+EOF
+FP_AGENT_NAME='sigma' fp comment CHAT-etfnihnu "$(cat "$NOTE")"
 ```
 
-Then write the closing comment from this template. Replace each angle bracket
-with a value that Step 5 measured. Delete any line this session did not
+Fill the template below before you run those commands. Replace each angle
+bracket with a value that Step 5 measured. Delete any line this session did not
 measure, rather than guess at it.
 
 ```
@@ -4315,7 +4331,18 @@ the identity exists to prevent.
 
 **No task repairs a breach that another issue owns.** Task 7 stops and reports
 when either guard rule fails, because `CHAT-xvtsffqh` owns every scope change
-that a rule can report.
+that a rule can report. It carries the exact `fp comment` command for that
+report.
+
+**No task carries a conditional pom edit.** Task 8 needs
+`--add-modules jdk.incubator.vector` on the surefire JVM of
+`chat-deploy-memory`, and `chat-deploy-memory/pom.xml:124` already declares it.
+So that task changes no pom, and its file list says so.
+
+**Every `fp` command carries `FP_AGENT_NAME='sigma'`.** This repository sets
+that convention, at line 29 of
+`docs/superpowers/plans/2026-09-10-vector-reindex.md`. The two prerequisite
+checks, the Task 7 report, and both closing commands each carry it.
 
 **Every commit body and the closing comment carry a template.** Each template
 uses angle brackets for a value that only the run can supply, and each says to
