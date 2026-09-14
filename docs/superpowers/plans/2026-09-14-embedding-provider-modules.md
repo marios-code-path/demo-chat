@@ -1481,6 +1481,16 @@ checksum to match what arrived.
 This download needs network access. It runs once. The files stay outside the
 repository, and no build commits them.
 
+**The whole task downloads near 260 MiB.** One file set is 90871461 bytes,
+which is 86.7 MiB. This step takes one set. Step 12 and Step 13 each run the
+remote test once, and that test takes two sets, one per identity. So three sets
+arrive over the network beyond this one, and the total is four sets, which is
+346.6 MiB.
+
+Step 12's second mutation runs without the remote property, so it downloads
+nothing. Run the steps in order, and do not run the remote test more often than
+the plan says.
+
 - [ ] **Step 11: Write the real model tests**
 
 Create
@@ -1643,57 +1653,53 @@ class LocalEmbeddingModelTests {
 
     @Test
     @EnabledIf("remoteEnabled")
-    fun `a remote model caches under the identity directory`() {
+    fun `a remote model caches under a directory per identity`() {
         // This test uses https, and that choice is the point of it.
         // ResourceCacheService copies a remote resource into the cache
         // directory. It does not copy a file: resource, so a file: test can
         // never show that the bean passed the right cache directory. A
         // hardcoded setter would pass every other test in this class.
         //
-        // This test needs network access, so it needs an explicit opt in.
-        // The design document keeps every run of this module manual.
+        // Two identities in one test, and not two tests. Each identity
+        // downloads near 87 MiB, so one test of two identities costs half of
+        // what two tests of one identity each would cost.
+        //
+        // The second identity is the point. A new identity with unchanged
+        // URIs must not load the old bytes, which is the defect this cache
+        // directory exists to prevent.
+        //
+        // This test needs network access, so it needs its own opt in beside
+        // the class opt in. The design document keeps every run of this module
+        // manual.
         val cache = Files.createTempDirectory("local-model-cache-test")
-        val identity = "cache-proof-v1"
+        val identities = listOf("cache-one", "cache-two")
 
-        runnerFor("$BASE/onnx/model.onnx", "$BASE/tokenizer.json", cache, identity)
-            .run { context ->
-                assertThat(context).hasNotFailed()
-
-                val identityDirectory = cache.resolve(identity)
-
-                assertThat(Files.isDirectory(identityDirectory))
-                    .describedAs("the bean must cache under the identity directory")
-                    .isTrue()
-
-                val cached = Files.walk(identityDirectory).use { walk ->
-                    walk.filter { Files.isRegularFile(it) }.toList()
-                }
-
-                assertThat(cached)
-                    .describedAs("the cache directory of this identity must hold the copies")
-                    .isNotEmpty()
-
-                assertThat(cached.sumOf { Files.size(it) })
-                    .describedAs("a cached ONNX model is tens of megabytes")
-                    .isGreaterThan(1_000_000L)
-            }
-    }
-
-    @Test
-    @EnabledIf("remoteEnabled")
-    fun `two identities cache in two directories`() {
-        // A new identity with unchanged URIs must not load the old bytes. That
-        // is the defect this cache directory exists to prevent. This test also
-        // needs network access, so it also needs the opt in.
-        val cache = Files.createTempDirectory("local-model-cache-test")
-
-        for (identity in listOf("cache-one", "cache-two")) {
+        for (identity in identities) {
             runnerFor("$BASE/onnx/model.onnx", "$BASE/tokenizer.json", cache, identity)
-                .run { context -> assertThat(context).hasNotFailed() }
+                .run { context ->
+                    assertThat(context).describedAs(identity).hasNotFailed()
+                }
         }
 
-        assertThat(Files.isDirectory(cache.resolve("cache-one"))).isTrue()
-        assertThat(Files.isDirectory(cache.resolve("cache-two"))).isTrue()
+        for (identity in identities) {
+            val identityDirectory = cache.resolve(identity)
+
+            assertThat(Files.isDirectory(identityDirectory))
+                .describedAs("the bean must cache under the directory of %s", identity)
+                .isTrue()
+
+            val cached = Files.walk(identityDirectory).use { walk ->
+                walk.filter { Files.isRegularFile(it) }.toList()
+            }
+
+            assertThat(cached)
+                .describedAs("the cache directory of %s must hold the copies", identity)
+                .isNotEmpty()
+
+            assertThat(cached.sumOf { Files.size(it) })
+                .describedAs("a cached ONNX model is tens of megabytes")
+                .isGreaterThan(1_000_000L)
+        }
     }
 
     private fun cosine(a: FloatArray, b: FloatArray): Double {
@@ -1742,12 +1748,13 @@ that all four tests report as run rather than skipped.
 for the run. Read the module pom first and append to the existing value when
 one appears there.
 
-Expected: FAIL, in `a remote model caches under the identity directory` and in
-`two identities cache in two directories`. The two `file:` tests still pass,
-which is why this class carries the two remote ones.
+Expected: FAIL, in `a remote model caches under a directory per identity`. The
+two `file:` tests still pass, which is why this class carries a remote one.
 
 `LocalEmbeddingConfigurationTests` also still passes, because it calls
 `cacheDirectoryFor` rather than the bean. That is the gap this step closes.
+
+This run downloads two file sets, which is 173.3 MiB.
 
 Now break the model load. Restore the cache line, then replace
 
@@ -1761,10 +1768,18 @@ with a call that passes the model URI to the tokenizer.
         model.setTokenizerResource(modelUri)
 ```
 
-Run the same command.
+Run with the class property only. This mutation needs no remote test, and
+leaving the remote property off saves two file sets of download.
+
+```bash
+mvn -o -pl chat-core,chat-embedding-local -Pintegration \
+    -DargLine="-Dchat.embedding.local.manual=true" \
+    -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
+```
 
 Expected: FAIL, in `the bean loads a real model and embeds text` and in
-`two texts that share meaning score above two that do not`.
+`two texts that share meaning score above two that do not`. The remote test
+reports as skipped.
 
 Restore both lines.
 
@@ -1776,9 +1791,10 @@ mvn -o -pl chat-core,chat-embedding-local -Pintegration \
     -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
 ```
 
-Expected: PASS, 4 tests, and none skipped. A skipped test among the first two
-means the two files are absent. Run Step 10 and repeat. A skipped test among
-the last two means a property did not reach the surefire JVM.
+Expected: PASS, 3 tests, and none skipped. This run downloads two file sets,
+which is 173.3 MiB. A skipped test among the first two
+means the two files are absent. Run Step 10 and repeat. A skipped remote test
+means a property did not reach the surefire JVM.
 
 Then run the module once more with neither property, and with the downloaded
 files still in place.
@@ -1787,7 +1803,7 @@ files still in place.
 mvn -o -pl chat-core,chat-embedding-local -Pintegration clean verify
 ```
 
-Expected: all four tests report as skipped. That is the check that matters. The
+Expected: all three tests report as skipped. That is the check that matters. The
 files are on this machine now, so a gate on their presence alone would run a
 90 MiB model load in every later integration build. The design document
 requires that a run of this module never runs unattended.
@@ -1827,15 +1843,16 @@ would load the old bytes.
 Evidence, measured on <DATE>.
 
 - <N> tests pass in LocalEmbeddingConfigurationTests.
-- 4 tests pass in LocalEmbeddingModelTests, under -Pintegration with both
+- 3 tests pass in LocalEmbeddingModelTests, under -Pintegration with both
   opt in properties. None is skipped.
-- With the downloaded files in place and neither property set, all four
+- With the downloaded files in place and neither property set, all three
   report as skipped. So no unattended build loads the model.
+- The task downloaded four file sets, which is 346.6 MiB.
 - The dependency tree carries spring-ai-transformers and no artifact named
   spring-ai-starter or spring-ai-autoconfigure.
 - The model is all-MiniLM-L6-v2 at revision
   1110a243fdf4706b3f48f1d95db1a4f5529b4d41. Both checksums matched.
-- Mutation one: a hardcoded cache directory failed the two remote tests and
+- Mutation one: a hardcoded cache directory failed the remote test and
   passed the two file tests.
 - Mutation two: a tokenizer resource that took the model URI failed the two
   file tests.
@@ -4313,11 +4330,40 @@ first two files must match what Step 3 records.
 
 - [ ] **Step 6: Commit**
 
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
+
 ```bash
 drift check && git diff --check
 git add docs/EMBEDDING-PROVIDERS.md docs/BUILD-HEALTH.md forward-register.md
 git commit -F - <<'MSG'
 docs: record the embedding providers and the guard (CHAT-etfnihnu)
+
+docs/EMBEDDING-PROVIDERS.md is the operator document for this feature. It
+names the three embedding values, the ten legal selector pairs, the
+identity rule, the properties of each provider, what orphans, and the
+failure moment of each vector store.
+
+It also carries the two procedures that stay manual. A run against a real
+OpenAI endpoint needs a key. A run of chat-embedding-local needs an ONNX
+model and a tokenizer, which this repository does not carry. Each one runs
+only when an operator asks for it.
+
+forward-register.md records the defect and the lesson. A test jar carried
+the only EmbeddingModel in this repository onto a production classpath, and
+no test could detect it, because a Spring Boot test puts test jars on its
+classpath by construction. That is why the gate runs outside a test
+classpath and why the guard reads a resolved runtime classpath.
+
+Evidence, measured on <DATE>.
+
+- Default build: <N> tests, <N> failures, <N> errors, <N> skipped.
+- Integration build: <N> tests, <N> failures, <N> errors, <N> skipped.
+- The reactor reports <N> modules.
+- check-production-classpath.sh exits 0.
+- check-dependency-versions.sh exits 0.
+- gate-embedding-launch.sh exits 0.
+- docs/BUILD-HEALTH.md carries these numbers and no other.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -4519,16 +4565,24 @@ a live server each fail the test rather than passing it.
 **The manual requirement is honored by a mechanism, not by prose.** The spec
 says that a run of `chat-embedding-local` never runs unattended.
 `LocalEmbeddingModelTests` carries the integration tag, and every test in it
-needs `-Dchat.embedding.local.manual=true`. The two remote tests need a second
+needs `-Dchat.embedding.local.manual=true`. The remote test needs a second
 property as well. Task 3 Step 13 runs the module a second time with neither
-property, with the downloaded files still in place, and requires all four to
+property, with the downloaded files still in place, and requires all three to
 report as skipped.
+
+**The download cost is stated and bounded.** One file set is 90871461 bytes,
+which is 86.7 MiB. The remote test takes two sets, one per identity, and it
+runs twice across the task. With the one set that Step 10 takes, the task
+downloads four sets, which is 346.6 MiB. Two identities sit in one test rather
+than in two tests, and Step 12's second mutation runs without the remote
+property. Each choice removes one run of two sets.
 
 A gate on the downloaded files alone would not hold the rule. A developer who
 ran the download once would load a 90 MiB model in every later integration
 build on that machine. So the switch is a property and not a file check.
 
-**Every commit template sits inside its own heredoc.** A template printed
+**All ten commits carry a body, and every template sits inside its own
+heredoc.** A template printed
 beside the command would leave a subject only message, because the command
 would already carry the whole message. Each `git commit -F - <<'MSG'` block now
 holds the subject, the body, and the trailer, and the instruction to replace
