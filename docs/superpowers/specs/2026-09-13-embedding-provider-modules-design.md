@@ -455,6 +455,10 @@ endpoint needs a key. A run of `chat-embedding-local` needs an ONNX model and a
 tokenizer, which are large files that this repository does not carry. Each gets
 a recorded procedure and neither runs unattended.
 
+**A recorded procedure may be a test that needs an opt in.** That is still
+manual, because no unattended build runs it, and it is repeatable in a way that
+prose is not. The plan takes that route for `chat-embedding-local`.
+
 ## Security Prerequisite
 
 **`CHAT-jdsamcia` must land first.** It gives the actuator chain and the
