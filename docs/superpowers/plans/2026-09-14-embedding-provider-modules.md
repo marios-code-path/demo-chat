@@ -1359,6 +1359,9 @@ import java.nio.file.Path
  * the cache does not copy.
  *
  * The model loads when the bean builds, so an absent file fails startup.
+ *
+ * Both URI properties are required, and the module reads each one with an
+ * empty default. See the required function below for the reason.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["embedding"], havingValue = "local")
@@ -1367,8 +1370,8 @@ class LocalEmbeddingConfiguration {
     @Bean
     fun localEmbeddingModel(
         identity: EmbeddingIdentity,
-        @Value("\${app.service.core.embedding.local.model-uri}") modelUri: String,
-        @Value("\${app.service.core.embedding.local.tokenizer-uri}") tokenizerUri: String,
+        @Value("\${app.service.core.embedding.local.model-uri:}") modelUri: String,
+        @Value("\${app.service.core.embedding.local.tokenizer-uri:}") tokenizerUri: String,
         @Value("\${app.service.core.embedding.local.cache-path:#{systemProperties['java.io.tmpdir']}/chat-embedding-local}")
         cachePath: String,
     ): EmbeddingModel {
@@ -1376,11 +1379,31 @@ class LocalEmbeddingConfiguration {
         Files.createDirectories(cacheDirectory)
 
         val model = TransformersEmbeddingModel()
-        model.setModelResource(modelUri)
-        model.setTokenizerResource(tokenizerUri)
+        model.setModelResource(required("app.service.core.embedding.local.model-uri", modelUri))
+        model.setTokenizerResource(
+            required("app.service.core.embedding.local.tokenizer-uri", tokenizerUri)
+        )
         model.setResourceCacheDirectory(cacheDirectory.toString())
         model.afterPropertiesSet()
         return model
+    }
+
+    /**
+     * Each URI property carries an empty default, and this function rejects it.
+     *
+     * A @Value with no default fails the context, and the property name then
+     * sits in the cause of the failure rather than in its message. An operator
+     * reads the property name. The openai provider uses the same function for
+     * the same reason.
+     */
+    private fun required(property: String, value: String): String {
+        if (value.isBlank()) {
+            throw IllegalStateException(
+                "$property is not set, and app.service.core.embedding=local. " +
+                    "This provider requires a value that is not blank."
+            )
+        }
+        return value
     }
 
     companion object {
@@ -1403,6 +1426,14 @@ mvn -o -pl chat-core,chat-embedding-local -Dtest=LocalEmbeddingConfigurationTest
 ```
 
 Expected: PASS, 6 tests.
+
+An earlier shape of this configuration read each URI property with no default.
+Two tests then failed. Measured on 2026-09-14: an ApplicationContextRunner
+registers no PropertySourcesPlaceholderConfigurer, so an absent property
+reaches the bean as the placeholder text. A runner that registers that bean
+fails, and the message reads "Unexpected exception during bean creation". The
+property name sits in the cause. So this module rejects a blank value the way
+the openai module does.
 
 - [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
 
@@ -1772,13 +1803,13 @@ This run downloads two file sets, which is 173.3 MiB.
 Now break the model load. Restore the cache line, then replace
 
 ```kotlin
-        model.setTokenizerResource(tokenizerUri)
+            required("app.service.core.embedding.local.tokenizer-uri", tokenizerUri)
 ```
 
 with a call that passes the model URI to the tokenizer.
 
 ```kotlin
-        model.setTokenizerResource(modelUri)
+            required("app.service.core.embedding.local.tokenizer-uri", modelUri)
 ```
 
 Run with the class property only. This mutation needs no remote test, and
