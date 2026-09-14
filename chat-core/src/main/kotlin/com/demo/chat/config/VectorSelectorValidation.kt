@@ -1,5 +1,6 @@
 package com.demo.chat.config
 
+import com.demo.chat.domain.EmbeddingIdentity
 import org.springframework.beans.factory.SmartInitializingSingleton
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
@@ -17,6 +18,12 @@ object VectorSelectorValidation {
         "simple" to "mock",
         "redis" to "mock",
         "embedded" to "mock",
+        "simple" to "openai",
+        "redis" to "openai",
+        "embedded" to "openai",
+        "simple" to "local",
+        "redis" to "local",
+        "embedded" to "local",
     )
 
     const val EMBEDDED = "embedded"
@@ -41,7 +48,7 @@ object VectorSelectorValidation {
             "vector=$vector with embedding=$embedding"
         }
 
-    fun validate(vector: String?, embedding: String?) {
+    fun validate(vector: String?, embedding: String?, identity: String?) {
         val vectorSet = !vector.isNullOrBlank()
         val embeddingSet = !embedding.isNullOrBlank()
         if (!vectorSet && !embeddingSet) return
@@ -60,6 +67,10 @@ object VectorSelectorValidation {
                     "$legalPairsDescription."
             )
         }
+
+        // Checked after the pair. An illegal pair is the larger error, and the
+        // identity rule reads the embedding value that the pair check accepts.
+        EmbeddingIdentity.of(embedding!!, identity)
 
         // Checked last. An illegal pair is a configuration error and must be
         // reported as one, whatever this JVM can load.
@@ -80,14 +91,16 @@ object VectorSelectorValidation {
 open class VectorSelectorValidationConfiguration(
     @Value("\${app.service.core.vector:}") vector: String,
     @Value("\${app.service.core.embedding:}") embedding: String,
+    @Value("\${app.service.core.embedding.identity:}") identity: String,
 ) {
 
     private val vectorSelector = vector
     private val embeddingSelector = embedding
+    private val identityValue = identity
 
     @Bean
     open fun vectorSelectorValidation(): SmartInitializingSingleton =
         SmartInitializingSingleton {
-            VectorSelectorValidation.validate(vectorSelector, embeddingSelector)
+            VectorSelectorValidation.validate(vectorSelector, embeddingSelector, identityValue)
         }
 }
