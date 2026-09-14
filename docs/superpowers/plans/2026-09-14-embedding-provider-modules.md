@@ -49,7 +49,7 @@ Project Reactor, JUnit 5, AssertJ, Maven.
 
 ## Prerequisites
 
-Two issues must close before Task 8 runs.
+Two issues must close. Each gates a different task, and neither gates Task 1.
 
 - `CHAT-xvtsffqh` moves nine test jar dependencies to test scope. **Task 7**
   needs it, because rule one of the guard fails until those nine move. That
@@ -59,9 +59,10 @@ Two issues must close before Task 8 runs.
   ownership. **Task 9** needs it, because the packaged gate calls actuator
   routes under credentials and application routes without them.
 
-`CHAT-incuynpc` is not a prerequisite. Task 7 Step 4 closes it, because rule
-two catches the two `chat-shell` testcontainers dependencies that rule one
-cannot see.
+`CHAT-incuynpc` is not a separate prerequisite. `CHAT-xvtsffqh` carries the two
+`chat-shell` testcontainers declarations that close it. Rule two of the Task 7
+guard is what keeps that breach from returning, because those are ordinary jars
+and rule one cannot see them.
 
 One build prerequisite has no issue. Neither `spring-ai-openai` nor
 `spring-ai-transformers` resolves offline today. A read on 2026-09-13 found
@@ -1378,33 +1379,54 @@ appear. No artifact whose name begins `spring-ai-starter` or
 Use `grep -Eq` inside an `if`. A bare `grep -c` exits with status 1 when it
 counts zero, so the success case would read as a failure.
 
-- [ ] **Step 10: Build and verify a real local model bean**
+- [ ] **Step 10: Download the pinned model files**
 
 Every test so far proves that the bean stays behind its selector, and that the
 cache path carries the identity. None of them loads a model. So none of them
 proves that this module can supply a working `EmbeddingModel`.
 
-This step downloads one small ONNX model and its tokenizer, then builds the
-bean through the configuration and embeds real text.
-
 The model is `all-MiniLM-L6-v2`, which Spring AI documents for this provider.
-It emits 384 dimensions. The two files total near 90 MB.
+It emits 384 dimensions.
+
+**The revision is pinned and both checksums are measured.** A `main` URL serves
+whatever that branch holds today. The identity states which model wrote a
+corpus, so a mutable URL under a fixed identity would let two different models
+share one name. That is the exact failure the identity exists to prevent.
+
+The values below were measured on 2026-09-14 against the pinned revision.
+
+| File | Bytes | sha256 |
+|---|---|---|
+| `onnx/model.onnx` | 90405214 | `6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452` |
+| `tokenizer.json` | 466247 | `be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037` |
 
 ```bash
+REV=1110a243fdf4706b3f48f1d95db1a4f5529b4d41
+BASE="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/$REV"
 CACHE="$HOME/.cache/chat-embedding-local-model"
 mkdir -p "$CACHE"
-curl -sSfL -o "$CACHE/model.onnx" \
-  https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx
-curl -sSfL -o "$CACHE/tokenizer.json" \
-  https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json
-ls -l "$CACHE"
+
+curl -sSfL -o "$CACHE/model.onnx"     "$BASE/onnx/model.onnx"
+curl -sSfL -o "$CACHE/tokenizer.json" "$BASE/tokenizer.json"
+
+shasum -a 256 -c - <<'SUMS'
+6fd5d72fe4589f189f8ebc006442dbb529bb7ce38f8082112682524616046452  model.onnx
+be50c3628f2bf5bb5e3a7f17b1f74611b2561a3a27eeab05e5aa30f411572037  tokenizer.json
+SUMS
 ```
 
-Expected: two files. `model.onnx` is near 90 MB and `tokenizer.json` is near
-700 KB.
+Run the `shasum` command from inside `$CACHE`.
+
+Expected: two `OK` lines.
+
+**Stop on any mismatch.** A mismatch means the pinned revision served other
+bytes. Report it to the owner. Do not download from `main`, and do not change a
+checksum to match what arrived.
 
 This download needs network access. It runs once. The files stay outside the
 repository, and no build commits them.
+
+- [ ] **Step 11: Write the real model tests**
 
 Create
 `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingModelTests.kt`.
@@ -1426,19 +1448,28 @@ import java.nio.file.Path
 /**
  * Builds a real model through the configuration, and embeds real text.
  *
- * The other tests in this module prove the selector rule and the cache path.
- * None of them loads a model, so none of them proves that this module can
- * supply a working EmbeddingModel. This one does.
+ * The other tests in this module prove the selector rule and the cache path
+ * function. None of them loads a model, so none of them proves that this
+ * module can supply a working EmbeddingModel.
  *
- * The model files live outside the repository, because they total near 90 MB.
- * The plan step beside this class carries the two download commands. The test
- * is skipped when the files are absent, and the integration tag keeps it out
- * of the default build.
+ * The revision is pinned. A main URL serves whatever that branch holds today,
+ * and the identity states which model wrote a corpus. A mutable URL under a
+ * fixed identity would let two different models share one name.
+ *
+ * The model files live outside the repository, because they total near 87 MiB.
+ * The plan step beside this class carries the download and the two checksums.
+ * Each local test is skipped when the files are absent, and the integration
+ * tag keeps every test here out of the default build.
  */
 @Tag("integration")
 class LocalEmbeddingModelTests {
 
     companion object {
+        const val REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+        const val BASE =
+            "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/$REVISION"
+        const val EXPECTED_DIMENSIONS = 384
+
         val modelPath: Path = Path.of(
             System.getProperty("user.home"), ".cache", "chat-embedding-local-model", "model.onnx"
         )
@@ -1449,24 +1480,30 @@ class LocalEmbeddingModelTests {
         @JvmStatic
         fun modelFilesPresent(): Boolean =
             Files.isRegularFile(modelPath) && Files.isRegularFile(tokenizerPath)
-
-        const val EXPECTED_DIMENSIONS = 384
     }
+
+    private fun runnerFor(
+        modelUri: String,
+        tokenizerUri: String,
+        cache: Path,
+        identity: String,
+    ): ApplicationContextRunner =
+        ApplicationContextRunner()
+            .withPropertyValues(
+                "app.service.core.embedding=local",
+                "app.service.core.embedding.local.model-uri=$modelUri",
+                "app.service.core.embedding.local.tokenizer-uri=$tokenizerUri",
+                "app.service.core.embedding.local.cache-path=$cache",
+            )
+            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity(identity) })
+            .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
 
     @Test
     @EnabledIf("modelFilesPresent")
     fun `the bean loads a real model and embeds text`() {
         val cache = Files.createTempDirectory("local-model-test")
 
-        ApplicationContextRunner()
-            .withPropertyValues(
-                "app.service.core.embedding=local",
-                "app.service.core.embedding.local.model-uri=file:$modelPath",
-                "app.service.core.embedding.local.tokenizer-uri=file:$tokenizerPath",
-                "app.service.core.embedding.local.cache-path=$cache",
-            )
-            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity("minilm-l6-v2") })
-            .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
+        runnerFor("file:$modelPath", "file:$tokenizerPath", cache, "minilm-l6-v2")
             .run { context ->
                 assertThat(context).hasNotFailed()
 
@@ -1481,10 +1518,6 @@ class LocalEmbeddingModelTests {
                 assertThat(vector.any { it != 0f })
                     .describedAs("a real model returns a vector that is not all zero")
                     .isTrue()
-
-                assertThat(Files.isDirectory(cache.resolve("minilm-l6-v2")))
-                    .describedAs("the bean must cache under the identity directory")
-                    .isTrue()
             }
     }
 
@@ -1493,20 +1526,18 @@ class LocalEmbeddingModelTests {
     fun `two texts that share meaning score above two that do not`() {
         val cache = Files.createTempDirectory("local-model-test")
 
-        ApplicationContextRunner()
-            .withPropertyValues(
-                "app.service.core.embedding=local",
-                "app.service.core.embedding.local.model-uri=file:$modelPath",
-                "app.service.core.embedding.local.tokenizer-uri=file:$tokenizerPath",
-                "app.service.core.embedding.local.cache-path=$cache",
-            )
-            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity("minilm-l6-v2") })
-            .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
+        runnerFor("file:$modelPath", "file:$tokenizerPath", cache, "minilm-l6-v2")
             .run { context ->
                 val model = context.getBean(EmbeddingModel::class.java)
 
-                val near = cosine(model.embed("a recipe for apple pie"), model.embed("how to bake an apple tart"))
-                val far = cosine(model.embed("a recipe for apple pie"), model.embed("the compiler emits bytecode"))
+                val near = cosine(
+                    model.embed("a recipe for apple pie"),
+                    model.embed("how to bake an apple tart"),
+                )
+                val far = cosine(
+                    model.embed("a recipe for apple pie"),
+                    model.embed("the compiler emits bytecode"),
+                )
 
                 // This is the whole point of a real model. The mock matches on
                 // shared substrings, and this one matches on meaning.
@@ -1514,6 +1545,57 @@ class LocalEmbeddingModelTests {
                     .describedAs("near %s must beat far %s", near, far)
                     .isGreaterThan(far)
             }
+    }
+
+    @Test
+    fun `a remote model caches under the identity directory`() {
+        // This test uses https, and that choice is the point of it.
+        // ResourceCacheService copies a remote resource into the cache
+        // directory. It does not copy a file: resource, so a file: test can
+        // never show that the bean passed the right cache directory. A
+        // hardcoded setter would pass every other test in this class.
+        //
+        // This test needs network access. It is not gated on the local files.
+        val cache = Files.createTempDirectory("local-model-cache-test")
+        val identity = "cache-proof-v1"
+
+        runnerFor("$BASE/onnx/model.onnx", "$BASE/tokenizer.json", cache, identity)
+            .run { context ->
+                assertThat(context).hasNotFailed()
+
+                val identityDirectory = cache.resolve(identity)
+
+                assertThat(Files.isDirectory(identityDirectory))
+                    .describedAs("the bean must cache under the identity directory")
+                    .isTrue()
+
+                val cached = Files.walk(identityDirectory).use { walk ->
+                    walk.filter { Files.isRegularFile(it) }.toList()
+                }
+
+                assertThat(cached)
+                    .describedAs("the cache directory of this identity must hold the copies")
+                    .isNotEmpty()
+
+                assertThat(cached.sumOf { Files.size(it) })
+                    .describedAs("a cached ONNX model is tens of megabytes")
+                    .isGreaterThan(1_000_000L)
+            }
+    }
+
+    @Test
+    fun `two identities cache in two directories`() {
+        // A new identity with unchanged URIs must not load the old bytes. That
+        // is the defect this cache directory exists to prevent.
+        val cache = Files.createTempDirectory("local-model-cache-test")
+
+        for (identity in listOf("cache-one", "cache-two")) {
+            runnerFor("$BASE/onnx/model.onnx", "$BASE/tokenizer.json", cache, identity)
+                .run { context -> assertThat(context).hasNotFailed() }
+        }
+
+        assertThat(Files.isDirectory(cache.resolve("cache-one"))).isTrue()
+        assertThat(Files.isDirectory(cache.resolve("cache-two"))).isTrue()
     }
 
     private fun cosine(a: FloatArray, b: FloatArray): Double {
@@ -1530,20 +1612,71 @@ class LocalEmbeddingModelTests {
 }
 ```
 
-- [ ] **Step 11: Run the real model test**
+- [ ] **Step 12: Run the tests red, against a broken production path**
+
+The configuration already exists, so these tests cannot fail for the usual
+reason. Break the production path instead, and watch each test catch it. A test
+that passes under a broken path proves nothing.
+
+Change `LocalEmbeddingConfiguration.localEmbeddingModel`. Replace
+
+```kotlin
+        val cacheDirectory = cacheDirectoryFor(cachePath, identity)
+```
+
+with a hardcoded directory that ignores both arguments.
+
+```kotlin
+        val cacheDirectory = Path.of(cachePath, "shared")
+```
 
 ```bash
 mvn -o -pl chat-core,chat-embedding-local -Pintegration \
     -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
 ```
 
-Expected: PASS, 2 tests. A skipped test means the two files are absent. Run the
-download commands in Step 10 and repeat.
+Expected: FAIL, in `a remote model caches under the identity directory` and in
+`two identities cache in two directories`. The two `file:` tests still pass,
+which is why this class carries the two remote ones.
 
-A `dimensions()` answer other than 384 means the download gave another model.
-Check the two URLs. Do not change the expected value to match the answer.
+`LocalEmbeddingConfigurationTests` also still passes, because it calls
+`cacheDirectoryFor` rather than the bean. That is the gap this step closes.
 
-- [ ] **Step 12: Build the whole reactor**
+Now break the model load. Restore the cache line, then replace
+
+```kotlin
+        model.setTokenizerResource(tokenizerUri)
+```
+
+with a call that passes the model URI to the tokenizer.
+
+```kotlin
+        model.setTokenizerResource(modelUri)
+```
+
+Run the same command.
+
+Expected: FAIL, in `the bean loads a real model and embeds text` and in
+`two texts that share meaning score above two that do not`.
+
+Restore both lines.
+
+- [ ] **Step 13: Run the real model tests green**
+
+```bash
+mvn -o -pl chat-core,chat-embedding-local -Pintegration \
+    -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
+```
+
+Expected: PASS, 4 tests. A skipped test among the first two means the two files
+are absent. Run Step 10 and repeat.
+
+A `dimensions()` answer other than 384 means the pinned revision served another
+model. Step 10 catches that first, through the checksums. Do not change the
+expected value to match the answer.
+
+
+- [ ] **Step 14: Build the whole reactor**
 
 ```bash
 mvn -o -B clean test
@@ -1551,13 +1684,37 @@ mvn -o -B clean test
 
 Expected: BUILD SUCCESS. The reactor now reports 37 modules.
 
-- [ ] **Step 13: Commit**
+- [ ] **Step 15: Commit**
 
 ```bash
 drift check && git diff --check
 git add pom.xml chat-embedding-local
 git commit -F - <<'MSG'
 feat: add the local embedding provider module (CHAT-etfnihnu)
+
+The module supplies an EmbeddingModel when app.service.core.embedding is
+local. It depends on spring-ai-transformers and not on a starter, because a
+starter carries auto-configuration and both providers sit on one classpath.
+
+The cache directory carries the identity. ResourceCacheService caches a
+remote resource by its location, so a new identity with unchanged URIs
+would load the old bytes.
+
+Evidence, measured on <DATE>.
+
+- <N> tests pass in LocalEmbeddingConfigurationTests.
+- 4 tests pass in LocalEmbeddingModelTests, under -Pintegration.
+- The dependency tree carries spring-ai-transformers and no artifact named
+  spring-ai-starter or spring-ai-autoconfigure.
+- The model is all-MiniLM-L6-v2 at revision
+  1110a243fdf4706b3f48f1d95db1a4f5529b4d41. Both checksums matched.
+- Mutation one: a hardcoded cache directory failed the two remote tests and
+  passed the two file tests.
+- Mutation two: a tokenizer resource that took the model URI failed the two
+  file tests.
+
+Replace <DATE> with the date of the run. Replace <N> with the measured
+count. State a number only after this session measured it.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -2069,7 +2226,35 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
 ```
 
-State the Step 14 mutation results in the message body.
+Write the message body from this template. Replace each angle bracket with a
+measured value, and delete a line rather than guess at it.
+
+```
+The redis index name and the embedded collection directory each carry the
+embedding identity. A metadata field does not isolate a redis index, and
+two models rarely share a vector width.
+
+Every index and every directory that an earlier build wrote orphans. Their
+names carry no identity segment. The corpus is a derived cache, so a
+rebuild replaces it.
+
+chat-vector-embedded gained a compile scope chat-core dependency. It
+declared that artifact only as a test jar, and it cannot read
+EmbeddingIdentity without one.
+
+Evidence, measured on <DATE>.
+
+- <N> tests pass in RedisVectorNamesTests.
+- <N> tests pass in EmbeddedStorageDirectoryTests.
+- <N> tests pass in RedisVectorStoreConfigurationTests, under -Pintegration.
+- Mutation one: an identity that storageDirectoryFor ignored failed the
+  wiring test and the three companion tests.
+- Mutation two: a bean that passed a fixed identity failed the wiring test
+  alone. The three companion tests passed, which is why the wiring test
+  exists.
+- Mutation three: a literal redis index name failed the redis wiring test.
+  RedisVectorNamesTests passed.
+```
 
 ---
 
@@ -2560,7 +2745,31 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
 ```
 
-State the Step 11 mutation result in the message body.
+Write the message body from this template.
+
+```
+Every new job records the identity of the model that wrote it. Coverage
+selects a job only when its identity matches the one this process resolved.
+
+The filter runs before the sort and before next(). A newer job of a foreign
+identity would otherwise reach next() first, and a valid older job of this
+identity would hide behind it.
+
+A record written before this change carries null. Null names no model, so
+the first start after this change reports an incomplete index and waits for
+a rebuild. Those vectors came from a model that no longer has a name.
+
+Evidence, measured on <DATE>.
+
+- <N> tests pass in VectorCoveragePolicyImplTests.
+- <N> tests pass in VectorIndexJobStoreImplTests.
+- <N> tests pass in IndexJobCodecTests, including two legacy decodes.
+- Mutation: the identity filter moved after next() failed the test named
+  'a newer job of a foreign identity does not hide a current covering job'.
+- One test class needed an edit. VectorRecallServiceConfigurationTests now
+  registers the identity bean. Five boot tests needed none, because each
+  sets embedding=mock and ChatApp scans com.demo.chat.config.
+```
 
 ---
 
@@ -2706,7 +2915,25 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
 ```
 
-State the Step 4 result in the message body.
+Write the message body from this template.
+
+```
+Both deployments declare both production embedding modules at compile
+scope. chat-deploy-memory also moves its chat-core test jar to test scope.
+
+That scope is the defect this issue exists for. The jar carried the only
+EmbeddingModel in this repository onto a launched classpath. No test could
+detect it, because a Spring Boot test puts test jars on its classpath by
+construction.
+
+Evidence, measured on <DATE>.
+
+- The runtime classpath of chat-deploy-memory carries no file whose name
+  ends tests.jar. It carried chat-core-0.0.1-tests.jar before this change.
+- <N> tests pass in chat-deploy-memory.
+- <N> tests pass in chat-deploy-redis.
+- The full reactor reports <N> modules SUCCESS.
+```
 
 ---
 
@@ -2719,7 +2946,10 @@ tenth.
 **Files:**
 - Create: `shell-scripts/check-production-classpath.sh`
 - Modify: `justfile`
-- Modify: `chat-shell/pom.xml`, only when rule two reports it. See Step 4.
+
+This task changes no pom. `CHAT-xvtsffqh` owns every scope change that rule one
+or rule two reports, `chat-shell` included. Task 6 already moved the one module
+that this work owns.
 
 **Interfaces:**
 - Consumes: the scope change from Task 6.
@@ -2886,7 +3116,10 @@ FORBIDDEN = [
 
 directory = sys.argv[1]
 violations = []
-for name in sorted(os.listdir(directory)):
+# Only the classpath outputs. The same directory holds install.log and one
+# .log per module, and a Maven log names every artifact it downloads. Reading
+# those would report a violation for a test library that no classpath carries.
+for name in sorted(n for n in os.listdir(directory) if n.endswith('.txt')):
     module = name[:-4]
     entries = open(os.path.join(directory, name)).read().split(os.pathsep)
     for entry in entries:
@@ -2936,10 +3169,14 @@ chmod +x shell-scripts/check-production-classpath.sh
 
 Expected: exit status 0. Both rules report `ok`.
 
-A rule two failure in `chat-shell` means `CHAT-incuynpc` is still open. Read
-the two testcontainers declarations in `chat-shell/pom.xml` and add
-`<scope>test</scope>` to each. That closes `CHAT-incuynpc`. Record the closure
-on that issue.
+**Stop this task on any failure, and change no pom here.** A rule one or rule
+two failure names a module that `CHAT-xvtsffqh` owns. That issue carries the two
+`chat-shell` testcontainers declarations, and closing `CHAT-incuynpc` is its
+work rather than this task's.
+
+Report the failure on `CHAT-xvtsffqh` with the module name and the artifact.
+Then wait. This task installs the rule that keeps the breach from returning. It
+does not repair a breach that another issue owns.
 
 - [ ] **Step 5: Prove rule one catches a breach**
 
@@ -3000,7 +3237,28 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
 ```
 
-State both mutation results in the message body.
+Write the message body from this template.
+
+```
+One script holds two rules, and both run over every module.
+
+Rule one reads the poms. Every test-jar dependency must declare test scope.
+Rule two reads the resolved runtime classpath. A known test library must
+not appear on it. A transitive leak never appears in a pom, which is why
+rule two resolves rather than reads.
+
+The script changes no pom. CHAT-xvtsffqh owns every scope change that
+either rule reports.
+
+Evidence, measured on <DATE>.
+
+- The guard exits 0 over all <N> modules.
+- Mutation one: chat-deploy-memory without test scope on its test jar
+  failed rule one. The script named the pom.
+- Mutation two: chat-embedding-openai without test scope on
+  spring-boot-starter-test failed rule two. The script named the module and
+  the artifact. Rule one passed, because that artifact is an ordinary jar.
+```
 
 ---
 
@@ -3019,7 +3277,7 @@ test. The owner asked for automated checks rather than manual procedures.
 **Files:**
 - Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt`
 - Create: `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt`
-- Modify: `chat-deploy-memory/pom.xml`, only when Step 2 finds no
+- Modify: `chat-deploy-memory/pom.xml`, only when Step 1 finds no
   `--add-modules jdk.incubator.vector` on its surefire `argLine`.
 
 **Interfaces:**
@@ -3031,17 +3289,13 @@ Each test points the base URL at a closed loopback port. So each test needs no
 external network and no secret key. A closed loopback port refuses at once, and
 no test waits for a timeout.
 
-- [ ] **Step 1: Find a closed port helper**
+Each class below carries its own `closedPort()`. It opens a
+`java.net.ServerSocket(0)`, reads `localPort`, and closes the socket. A port
+that the helper closes stays closed for the test that follows. `CLAUDE.md`
+forbids a text search for a symbol, so this plan writes the helper rather than
+telling the implementer to find one.
 
-```bash
-grep -rn 'ServerSocket(0)' --include='*.kt' . | grep -v '/target/' | head
-```
-
-Use the pattern that this repository already carries, when the search finds
-one. Otherwise open a `java.net.ServerSocket(0)`, read `localPort`, and close
-it. A port that a test closes is closed for the test that follows.
-
-- [ ] **Step 2: Write the embedded and simple proofs**
+- [ ] **Step 1: Write the embedded and simple proofs**
 
 Create
 `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt`.
@@ -3056,6 +3310,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.ai.document.Document
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.boot.builder.SpringApplicationBuilder
+import java.net.ConnectException
 import java.net.ServerSocket
 
 /**
@@ -3063,8 +3318,8 @@ import java.net.ServerSocket
  * vector store. EmbeddingModel.dimensions() is the reason. Spring AI can reach
  * the remote service to answer it, and each store asks at a different time.
  *
- * Every launch here points at a closed loopback port, so no test needs a
- * network or a key. A closed port answers at once.
+ * Every launch here points at a closed loopback port, so no test needs an
+ * external network or a secret key. A closed loopback port refuses at once.
  *
  * SpringApplicationBuilder.properties() writes to defaultProperties, which is
  * the lowest precedence source. So each value below is a command line
@@ -3165,6 +3420,15 @@ class DeadEmbeddingEndpointTests {
             .describedAs("the failure must not be a missing bean: %s", text)
             .doesNotContain("org.springframework.beans.factory.NoSuchBeanDefinitionException")
 
+        // The type, and not only the text. A port number can appear in a
+        // message that a live server returned, so the text check alone would
+        // pass on an HTTP 500. A refused TCP connection is always a
+        // ConnectException. Netty's AnnotatedConnectException extends it, so
+        // one check covers every client this repository builds.
+        assertThat(chain.any { it is ConnectException })
+            .describedAs("the failure must be a refused connection: %s", text)
+            .isTrue()
+
         assertThat(text)
             .describedAs("the failure must name the closed endpoint")
             .contains(port.toString())
@@ -3183,7 +3447,7 @@ Add the argument to the surefire `argLine` of that module when the search finds
 nothing. `MemoryEmbeddedVectorRecallBootTests` already runs `vector=embedded`
 there, so the flag is present when that test passes today.
 
-- [ ] **Step 3: Run the two proofs**
+- [ ] **Step 2: Run the two proofs**
 
 ```bash
 mvn -o -pl chat-core,chat-deploy-memory -Dtest=DeadEmbeddingEndpointTests -Dsurefire.failIfNoSpecifiedTests=false test
@@ -3196,7 +3460,7 @@ A failure in the `simple` test that reports a refused context means
 then wrong. Record that as a spec correction and tell the owner. Do not change
 the test to match.
 
-- [ ] **Step 4: Write the redis proof**
+- [ ] **Step 3: Write the redis proof**
 
 Create
 `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt`.
@@ -3211,6 +3475,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
+import java.net.ConnectException
 import java.net.ServerSocket
 import java.util.UUID
 
@@ -3305,6 +3570,15 @@ class RedisDeadEmbeddingEndpointTests {
             .describedAs("the failure must not be a missing bean: %s", text)
             .doesNotContain("org.springframework.beans.factory.NoSuchBeanDefinitionException")
 
+        // The type, and not only the text. A port number can appear in a
+        // message that a live server returned, so the text check alone would
+        // pass on an HTTP 500. A refused TCP connection is always a
+        // ConnectException. Netty's AnnotatedConnectException extends it, so
+        // one check covers every client this repository builds.
+        assertThat(chain.any { it is ConnectException })
+            .describedAs("the failure must be a refused connection: %s", text)
+            .isTrue()
+
         assertThat(text)
             .describedAs("the failure must name the closed endpoint")
             .contains(port.toString())
@@ -3320,7 +3594,7 @@ the index is always absent. The base URL names the closed port.
 `docs/NODEID-CLAIM.md` needs no new row. This test claims no node id, for the
 same reason that `RedisVectorRecallBootTests` claims none.
 
-- [ ] **Step 5: Run the redis proof**
+- [ ] **Step 4: Run the redis proof**
 
 ```bash
 mvn -o -pl chat-core,chat-deploy-redis -Pintegration -Dtest=RedisDeadEmbeddingEndpointTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
@@ -3328,7 +3602,7 @@ mvn -o -pl chat-core,chat-deploy-redis -Pintegration -Dtest=RedisDeadEmbeddingEn
 
 Expected: PASS, 1 test. This run needs Docker.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 drift check && git diff --check
@@ -3719,7 +3993,30 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
 ```
 
-State the Step 7 mutation result in the message body.
+Write the message body from this template.
+
+```
+The gate proves this feature outside a test classpath. Every test gate in
+this repository puts test outputs on the classpath, which is what hid the
+original defect.
+
+The gate builds a packaged deployment, asserts that no test output is
+inside the artifact, launches it against a synthetic OpenAI endpoint, seeds
+three messages through persistence, rebuilds the index, and runs one
+search. Production client code runs against a synthetic endpoint, so the
+gate needs no external network and no secret key.
+
+Evidence, measured on <DATE>.
+
+- The gate exits 0.
+- The packaged artifact holds no file whose name ends tests.jar.
+- An actuator call without credentials answered 401.
+- Three seeds through PUT /persist/message/add each answered 201.
+- The newest job carried the identity that the launch set.
+- One recall returned <N> hits with indexComplete true.
+- Mutation: a launch with embedding=mock and no identity failed to start.
+  That is the defect CHAT-etfnihnu records.
+```
 
 ---
 
@@ -3815,25 +4112,32 @@ that a review names.
 ```bash
 LOG=$(mktemp -d)
 STATUS=0
-for gate in \
-    "./shell-scripts/build-health.sh" \
-    "./shell-scripts/build-health.sh --integration" \
-    "./shell-scripts/check-production-classpath.sh" \
-    "./shell-scripts/check-dependency-versions.sh" \
-    "./shell-scripts/vector/gate-embedding-launch.sh" ; do
-    name=$(echo "$gate" | tr ' /.' '___')
-    $gate > "$LOG/$name.txt" 2>&1
+
+run_gate() {
+    # Each argument stays a separate word. A loop over command strings would
+    # break under zsh, which is this repository's shell. Zsh does not word
+    # split an unquoted scalar, so "build-health.sh --integration" would read
+    # as one executable name.
+    name="$1"; shift
+    "$@" > "$LOG/$name.txt" 2>&1
     code=$?
-    echo "$code  $gate"
+    echo "$code  $name"
     if [ "$code" -ne 0 ]; then STATUS=1; fi
-done
+}
+
+run_gate default      ./shell-scripts/build-health.sh
+run_gate integration  ./shell-scripts/build-health.sh --integration
+run_gate classpath    ./shell-scripts/check-production-classpath.sh
+run_gate versions     ./shell-scripts/check-dependency-versions.sh
+run_gate launch       ./shell-scripts/vector/gate-embedding-launch.sh
+
 echo "logs: $LOG"
 echo "overall: $STATUS"
 [ "$STATUS" -eq 0 ] || { echo "AT LEAST ONE GATE FAILED. Do not commit."; false; }
 ```
 
-Expected: every line begins with `0`, and `overall: 0`. The last line prints
-nothing.
+Expected: five lines that each begin with `0`, then `overall: 0`. The last
+line prints nothing.
 
 The final test is what makes this step fail. Without it the block ends on an
 `echo`, which always succeeds, and a failed gate would read as a pass.
@@ -3861,11 +4165,58 @@ MSG
 
 ```bash
 fp issue assign CHAT-etfnihnu --rev $(git rev-parse --short=8 HEAD)
-fp comment CHAT-etfnihnu "..."
 ```
 
-Write the comment with the measured numbers from Step 5. Name each mutation
-proof and its result. Do not claim a number that this session did not measure.
+Then write the closing comment from this template. Replace each angle bracket
+with a value that Step 5 measured. Delete any line this session did not
+measure, rather than guess at it.
+
+```
+The work is complete and it waits for review.
+
+What landed. Two production embedding modules, one selector value each.
+chat-embedding-openai reaches an OpenAI compatible endpoint.
+chat-embedding-local loads an ONNX model in the process. The mock stays
+test only, in the chat-core test jar.
+
+The defect is closed. chat-deploy-memory declared the chat-core test jar
+with no scope element, so the only EmbeddingModel in this repository
+resolved at compile and reached a launch. That dependency now declares test
+scope, and both deployments declare both production modules.
+
+Every production model carries an identity that the operator names. The
+identity reaches the redis index name, the embedded collection directory,
+the local resource cache directory, every new IndexJob, and the coverage
+filter.
+
+Evidence, measured on <DATE>.
+
+- Default build: <N> tests, <N> failures, <N> errors, <N> skipped.
+- Integration build: <N> tests, <N> failures, <N> errors, <N> skipped.
+- The reactor reports <N> modules.
+- check-production-classpath.sh exits 0.
+- check-dependency-versions.sh exits 0.
+- gate-embedding-launch.sh exits 0.
+
+Mutation proofs, and each result.
+
+- The coverage identity filter moved after next(): the foreign newer job
+  test failed.
+- A hardcoded embedded storage directory: the wiring test failed and the
+  companion tests passed.
+- A literal redis index name: the redis wiring test failed and the name
+  tests passed.
+- A hardcoded local cache directory: the two remote cache tests failed and
+  the two file tests passed.
+- Guard rule one, with the memory test jar scope removed: rule one failed.
+- Guard rule two, with spring-boot-starter-test scope removed: rule two
+  failed and rule one passed.
+- The packaged gate with embedding=mock and no identity: the launch failed
+  to start.
+
+What is not proven here. <List anything a step could not measure, or write
+'Nothing. Every step in the plan ran.'>
+```
 
 Leave the status at `in-progress`. The owner closes the issue after review.
 
@@ -3913,10 +4264,14 @@ the owner's direction.
 
 **What the tasks prove beyond the spec's own list.**
 
-- Task 3 Step 11 loads a real ONNX model through the configuration, asserts 384
+- Task 3 Step 13 loads a real ONNX model through the configuration, asserts 384
   dimensions, and asserts that two texts which share meaning score above two
-  that do not. Every other test in that module proves only that the bean stays
-  behind its selector.
+  that do not. Two further tests use `https:` resources, because
+  `ResourceCacheService` does not copy a `file:` resource and only a remote one
+  can show that the bean passed the right cache directory.
+- Task 3 Step 12 runs those tests against a broken production path first. The
+  configuration already exists by then, so a red step must break the
+  implementation rather than omit it.
 - Task 4 Step 14 proves that each vector store bean calls the identity function
   rather than a hardcoded name. The companion tests alone cannot show that.
 - Task 5 Step 12 proves that a record written before this change decodes with a
@@ -3948,9 +4303,23 @@ measured ones. Each task carries a step that reads the real signatures from the
 downloaded jar before the configuration is written.
 
 **Two library surfaces that a step measures rather than assumes.** Task 2 and
-Task 3 each read the real signatures from the downloaded jar. Task 3 Step 11
-also states what to do when the model answers a width other than 384. Check the
-two URLs, and do not change the expected value to match the answer.
+Task 3 each read the real signatures from the downloaded jar.
+
+**The model is pinned, and both checksums were measured.** The revision is
+`1110a243fdf4706b3f48f1d95db1a4f5529b4d41`. `onnx/model.onnx` is 90405214 bytes
+and `tokenizer.json` is 466247 bytes. I fetched both on 2026-09-14 and computed
+each sha256, and the model checksum also matches the one the host publishes. A
+`main` URL would serve whatever that branch holds today, and a mutable URL under
+a fixed identity would let two models share one name. That is the exact failure
+the identity exists to prevent.
+
+**No task repairs a breach that another issue owns.** Task 7 stops and reports
+when either guard rule fails, because `CHAT-xvtsffqh` owns every scope change
+that a rule can report.
+
+**Every commit body and the closing comment carry a template.** Each template
+uses angle brackets for a value that only the run can supply, and each says to
+delete a line rather than guess at it.
 
 **One unverified spec statement that Task 8 can overturn.** The spec says
 `SimpleVectorStore` never calls `dimensions()` at build time. Task 8 Step 3
@@ -3958,10 +4327,11 @@ says what to do when that proves false. Record a spec correction and tell the
 owner. Do not change the test to match.
 
 **Every assertion names what it rejects.** No test in this plan asserts only
-that something was thrown. Task 8 reads the whole cause chain, requires the
-closed port number in it, and refuses a `NoSuchBeanDefinitionException`. A
-missing bean, a misspelled property, or a port that another process holds each
-fails the test rather than passing it.
+that something was thrown. Task 8 reads the whole cause chain, requires a
+`java.net.ConnectException` in it, requires the closed port number in the
+message text, and refuses a `NoSuchBeanDefinitionException`. A missing bean, a
+misspelled property, a port that another process holds, and an HTTP error from
+a live server each fail the test rather than passing it.
 
 **Every fixture is derived, not hand written.** Task 5 Step 12 builds the
 legacy record by removing one field from the mapper's own output. A hand
