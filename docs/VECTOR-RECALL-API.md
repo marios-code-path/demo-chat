@@ -277,7 +277,9 @@ are derived and not hidden.
 The scores are illustrative. The bigram model decides them, and the values
 depend on the text.
 
-## Specifications
+## Related
 
+- `docs/VECTOR-BUILD-CONTROLS.md` for what the build decides and what launch
+  decides.
 - `docs/superpowers/specs/2026-09-10-vector-reindex-design.md`
 - `docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md`
