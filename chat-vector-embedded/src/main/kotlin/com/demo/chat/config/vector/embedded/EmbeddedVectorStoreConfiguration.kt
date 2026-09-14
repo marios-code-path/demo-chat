@@ -19,8 +19,9 @@ import java.nio.file.Path
  *
  * The store is a derived cache. The persisted messages are the source of
  * truth. A lost storage directory is a rebuild, not a data loss, so the
- * default path is ephemeral and no deployment mounts a volume. Issue
- * CHAT-oghjsnad tracks the rebuild path, which does not exist yet.
+ * default path is ephemeral and no deployment mounts a volume.
+ * MessageReindexServiceImpl and VectorIndexStartupAction supply the rebuild.
+ * Issue CHAT-oghjsnad delivered them.
  *
  * The index is FLAT with the cosine metric and no quantization. FLAT is
  * exact and needs no tuning. A measured query over 100000 vectors at topK
