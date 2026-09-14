@@ -385,43 +385,44 @@ app.controller.persistence=true
 app.controller.recall=true
 ```
 
-**Every call carries credentials.** `ActuatorWebSecurityConfiguration` protects
-**every** exchange, and not only the actuator paths. `anyExchange()` requires the
-ACTUATOR role, and `/actuator/health` is the one open path. A seed, a trigger, a
-poll, or a recall without credentials answers 401.
+**The actuator calls carry credentials. The application calls do not.**
+`CHAT-jdsamcia` is a prerequisite of this work, and it gives the two filter
+chains disjoint ownership. This section states the contract that issue delivers,
+because the gate rests on it.
 
-That chain authenticates against one in-memory user, which
-`app.actuator.username` and `app.actuator.password` name. So the gate
-authenticates as that user on every call, and no chat user takes part.
+After `CHAT-jdsamcia`, the actuator chain matches actuator routes only, and it
+takes the higher priority. `/actuator/health` stays open. Every other actuator
+route requires the ACTUATOR role. `WebFluxSecurity` owns all remaining routes,
+and it permits them today.
 
-**Open question. `expose-webflux` adds a second filter chain.**
-`chat-webflux` declares `WebFluxSecurity`, whose chain answers
-`anyExchange().permitAll()`. The actuator chain answers
-`anyExchange().hasRole("ACTUATOR")`. Neither bean declares an order.
+So the trigger and the poll carry Basic credentials for the actuator user.
+`app.actuator.username` and `app.actuator.password` name that user, which lives
+in memory in that chain alone. The seed and the recall reach application routes,
+and they need no credentials.
 
-Two chains that both match every exchange make the winner depend on bean
-ordering, and the gate would then rest on an undefined outcome. A deployment
-without `chat-webflux` has one chain, which is why the existing actuator test is
-deterministic.
-
-This must be settled before the gate is built. Three ways out. Order the two
-chains, which is a production change and its own issue. Drive RSocket and drop
-`expose-webflux`. Or have the gate assert the observed behaviour rather than
-assume one.
+**Why this is a prerequisite and not a note.** Today
+`ActuatorWebSecurityConfiguration` answers `anyExchange()` with the ACTUATOR
+role, so it owns every route. `chat-webflux` declares `WebFluxSecurity`, which
+answers `anyExchange()` with `permitAll()`. Neither bean declares an order.
+`expose-webflux` puts both on one classpath, so the winner depends on bean
+ordering. The gate cannot rest on an undefined outcome, and a gate that asserted
+the current behaviour would make bean ordering a security contract.
 
 1. Build `chat-deploy-memory` with `-Pexpose-webflux`, and repackage it.
 2. Assert that no test output is on the launched classpath.
 3. Launch with `vector=simple`, `embedding=openai`, an identity, both actuator
    properties, both controller properties, and a base URL that names the stub.
-4. Seed messages with `PUT /persist/message/add`, under Basic credentials. The
-   write reaches persistence and creates no vector.
+4. Seed messages with `PUT /persist/message/add`. That route belongs to
+   `WebFluxSecurity`, which permits it. The write reaches persistence and creates
+   no vector.
 5. Trigger a rebuild through `POST /actuator/vectorindex`, under Basic
-   credentials. The rebuild embeds every seeded message through the production
-   client.
-6. Poll `GET /actuator/vectorindex` under Basic credentials, until `running` is
-   false.
+   credentials for the actuator user. The rebuild embeds every seeded message
+   through the production client.
+6. Poll `GET /actuator/vectorindex` under the same credentials, until `running`
+   is false.
 7. Assert that the newest job carries the identity the launch set.
-8. Run one recall under Basic credentials. Assert the hits and `indexComplete`.
+8. Run one recall. That route belongs to `WebFluxSecurity`. Assert the hits and
+   `indexComplete`.
 
 ### The endpoint is synthetic and the client is production code
 
@@ -442,6 +443,13 @@ OpenAI-compatible endpoint, so a compatible endpoint is a valid subject.
 endpoint needs a key. A run of `chat-embedding-local` needs an ONNX model and a
 tokenizer, which are large files that this repository does not carry. Each gets
 a recorded procedure and neither runs unattended.
+
+## Security Prerequisite
+
+**`CHAT-jdsamcia` must land first.** It gives the actuator chain and the
+application chain disjoint ownership, and the gate above depends on that split.
+It also corrects `docs/VECTOR-RECALL-API.md`, whose seven curl commands pass a
+chat user that the current actuator chain cannot authenticate.
 
 ## Build Prerequisite
 
@@ -510,7 +518,9 @@ A job written before this change never covers, because it carries null.
 - An unreachable endpoint fails the first vector operation under `simple`.
 - A packaged deployment launches with no test output on its classpath.
 - The gate seeds through persistence and never through `/message/send/{id}`.
-- **Every gate call carries Basic credentials, and one without them answers 401.**
+- **Each actuator gate call carries Basic credentials, and one without them
+  answers 401. The seed and the recall carry none, because `WebFluxSecurity`
+  owns those routes after `CHAT-jdsamcia`.**
 - That deployment embeds text through the production client, during the rebuild.
 - That deployment rebuilds, and its job carries the identity.
 - That deployment completes one search.
@@ -524,6 +534,8 @@ A job written before this change never covers, because it carries null.
 - Automatic selection between two embedding providers at runtime.
 - Any change to `MessageRecallResult` or to either transport.
 - The test scope cleanup of the other nine modules, which is a prerequisite.
+- The security chain split, which `CHAT-jdsamcia` owns as a prerequisite. This
+  work states the contract it needs and changes no security code.
 
 ## Decisions
 
@@ -553,6 +565,9 @@ A job written before this change never covers, because it carries null.
     endpoint.
 20. The OpenAI key is required by this design rather than by Spring AI.
 21. A real endpoint and a real ONNX model stay manual.
+22. The two filter chains take disjoint ownership in `CHAT-jdsamcia`, which is a
+    prerequisite. The owner chose that over dropping `expose-webflux` and over a
+    gate that asserts the current behaviour.
 
 ## Decisions The Owner Has Not Made
 
@@ -564,4 +579,3 @@ reversal.
 - `expose-webflux` for the gate, in place of an RSocket client.
 - An identity-specific cache directory, in place of disabled caching.
 - The order of the gate steps after the rebuild.
-- The way out of the two unordered filter chains, listed in the gate section.
