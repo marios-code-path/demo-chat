@@ -612,6 +612,9 @@ Expected: PASS. No other test reads `validate`.
 
 - [ ] **Step 11: Commit**
 
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
+
 ```bash
 drift check && git diff --check
 git add chat-core/src/main/kotlin/com/demo/chat/domain/EmbeddingIdentity.kt \
@@ -621,6 +624,29 @@ git add chat-core/src/main/kotlin/com/demo/chat/domain/EmbeddingIdentity.kt \
         chat-core/src/test/kotlin/com/demo/chat/test/config/VectorSelectorValidationTests.kt
 git commit -F - <<'MSG'
 feat: add the typed embedding identity and its rules (CHAT-etfnihnu)
+
+Every production model carries an identity that the operator sets. The
+code never derives one. A base URL and a model name do not identify the
+output of a remote service, because a compatible service can change its
+model behind both values and return different vectors for the same text.
+
+A mock embedding resolves the fixed identity mock, and it refuses an
+operator value. A production embedding requires one. Any value must match
+[a-z0-9][a-z0-9-]{0,63}, because a redis key prefix and a directory name
+both carry it.
+
+One bean resolves the value, and it is absent when both vector selectors
+are absent. Most deployments set neither selector today, and they must keep
+starting.
+
+The legal selector pair set grows from four to ten. No mock vector store
+takes a production model, because no mock configuration can receive one.
+
+Evidence, measured on <DATE>.
+
+- <N> tests pass in EmbeddingIdentityTests.
+- <N> tests pass in VectorSelectorValidationTests.
+- chat-core passes in full.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -1014,11 +1040,35 @@ counts zero, so the success case would read as a failure.
 
 - [ ] **Step 10: Commit**
 
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
+
 ```bash
 drift check && git diff --check
 git add pom.xml chat-embedding-openai
 git commit -F - <<'MSG'
 feat: add the openai embedding provider module (CHAT-etfnihnu)
+
+The module supplies an EmbeddingModel when app.service.core.embedding is
+openai. Spring AI reaches an OpenAI compatible endpoint through a base URL,
+so this provider serves OpenAI and any service that speaks the same API.
+
+The module depends on spring-ai-openai and not on a starter. A starter
+carries auto-configuration, both provider modules sit on one classpath, and
+two starters would let Spring AI build models that no selector asked for.
+The selector must be the only thing that decides.
+
+All three properties are required and none may be blank. OpenAiApi accepts
+a NoopApiKey in Spring AI 1.0.3, so the library does not force a key. This
+design requires one anyway, because a blank key reaches a remote service as
+an anonymous call and an operator cannot tell a missing key from an
+intended one.
+
+Evidence, measured on <DATE>.
+
+- <N> tests pass in OpenAiEmbeddingConfigurationTests.
+- The dependency tree carries spring-ai-openai and no artifact named
+  spring-ai-starter or spring-ai-autoconfigure.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -1465,12 +1515,18 @@ import java.nio.file.Path
  * requires. It says that a run of this module stays manual and never runs
  * unattended.
  *
- * The integration tag keeps all four out of the default build. The two file
- * tests also need the two downloaded files, which live outside the repository
- * because they total near 87 MiB. The two remote tests also need
- * -Dchat.embedding.local.remote=true, because each one downloads that much
- * again. The plan step beside this class carries the download, the two
- * checksums, and the property.
+ * The integration tag keeps all four out of the default build.
+ * -Dchat.embedding.local.manual=true is the switch for the class. Without it
+ * every test here is skipped, whatever sits in the cache directory. A check on
+ * the downloaded files alone would not hold the rule, because a developer who
+ * ran the download once would load a 90 MiB model in every later integration
+ * build.
+ *
+ * The two file tests also need the two downloaded files, which live outside
+ * the repository because they total near 87 MiB. The two remote tests also
+ * need -Dchat.embedding.local.remote=true, because each one downloads that
+ * much again. The plan step beside this class carries the download, the two
+ * checksums, and both properties.
  */
 @Tag("integration")
 class LocalEmbeddingModelTests {
@@ -1488,20 +1544,36 @@ class LocalEmbeddingModelTests {
             System.getProperty("user.home"), ".cache", "chat-embedding-local-model", "tokenizer.json"
         )
 
-        @JvmStatic
-        fun modelFilesPresent(): Boolean =
-            Files.isRegularFile(modelPath) && Files.isRegularFile(tokenizerPath)
-
         /**
-         * The two remote tests download near 87 MiB each time they run.
+         * The opt in that every test in this class needs.
          *
          * The design document states that a run of this module stays manual
-         * and never runs unattended. So these tests need an explicit opt in,
-         * and no unattended build reaches the network because of them.
+         * and never runs unattended. A check on the downloaded files alone
+         * would not hold that rule. Once a developer runs the download, every
+         * later integration build on that machine would load a 90 MiB model
+         * without anyone asking for it.
+         */
+        @JvmStatic
+        fun manualEnabled(): Boolean =
+            System.getProperty("chat.embedding.local.manual") == "true"
+
+        /** The opt in, and the two downloaded files. */
+        @JvmStatic
+        fun localModelEnabled(): Boolean =
+            manualEnabled() &&
+                Files.isRegularFile(modelPath) &&
+                Files.isRegularFile(tokenizerPath)
+
+        /**
+         * The opt in, and a second one for the network.
+         *
+         * Each remote test downloads near 87 MiB again, so it carries its own
+         * switch beside the class switch.
          */
         @JvmStatic
         fun remoteEnabled(): Boolean =
-            System.getProperty("chat.embedding.local.remote") == "true"
+            manualEnabled() &&
+                System.getProperty("chat.embedding.local.remote") == "true"
     }
 
     private fun runnerFor(
@@ -1521,7 +1593,7 @@ class LocalEmbeddingModelTests {
             .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
 
     @Test
-    @EnabledIf("modelFilesPresent")
+    @EnabledIf("localModelEnabled")
     fun `the bean loads a real model and embeds text`() {
         val cache = Files.createTempDirectory("local-model-test")
 
@@ -1544,7 +1616,7 @@ class LocalEmbeddingModelTests {
     }
 
     @Test
-    @EnabledIf("modelFilesPresent")
+    @EnabledIf("localModelEnabled")
     fun `two texts that share meaning score above two that do not`() {
         val cache = Files.createTempDirectory("local-model-test")
 
@@ -1658,14 +1730,17 @@ with a hardcoded directory that ignores both arguments.
 
 ```bash
 mvn -o -pl chat-core,chat-embedding-local -Pintegration \
-    -Dchat.embedding.local.remote=true \
-    -DargLine="-Dchat.embedding.local.remote=true" \
+    -DargLine="-Dchat.embedding.local.manual=true -Dchat.embedding.local.remote=true" \
     -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
 ```
 
-The property must reach the surefire JVM, which is a separate process. Pass it
-through `argLine` as well, and confirm that the two remote tests report as run
-rather than skipped.
+Both properties must reach the surefire JVM, which is a separate process. So
+they travel in `argLine` rather than as plain `-D` arguments to Maven. Confirm
+that all four tests report as run rather than skipped.
+
+`chat-embedding-local` declares no `argLine` of its own, so this value sets it
+for the run. Read the module pom first and append to the existing value when
+one appears there.
 
 Expected: FAIL, in `a remote model caches under the identity directory` and in
 `two identities cache in two directories`. The two `file:` tests still pass,
@@ -1697,23 +1772,25 @@ Restore both lines.
 
 ```bash
 mvn -o -pl chat-core,chat-embedding-local -Pintegration \
-    -Dchat.embedding.local.remote=true \
-    -DargLine="-Dchat.embedding.local.remote=true" \
+    -DargLine="-Dchat.embedding.local.manual=true -Dchat.embedding.local.remote=true" \
     -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
 ```
 
 Expected: PASS, 4 tests, and none skipped. A skipped test among the first two
 means the two files are absent. Run Step 10 and repeat. A skipped test among
-the last two means the property did not reach the surefire JVM.
+the last two means a property did not reach the surefire JVM.
 
-Then run the module once more without the property.
+Then run the module once more with neither property, and with the downloaded
+files still in place.
 
 ```bash
 mvn -o -pl chat-core,chat-embedding-local -Pintegration clean verify
 ```
 
-Expected: the two remote tests report as skipped. That is what keeps an
-unattended build off the network, which the design document requires.
+Expected: all four tests report as skipped. That is the check that matters. The
+files are on this machine now, so a gate on their presence alone would run a
+90 MiB model load in every later integration build. The design document
+requires that a run of this module never runs unattended.
 
 A `dimensions()` answer other than 384 means the pinned revision served another
 model. Step 10 catches that first, through the checksums. Do not change the
@@ -1729,6 +1806,9 @@ mvn -o -B clean test
 Expected: BUILD SUCCESS. The reactor now reports 37 modules.
 
 - [ ] **Step 15: Commit**
+
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
 ```bash
 drift check && git diff --check
@@ -1747,10 +1827,10 @@ would load the old bytes.
 Evidence, measured on <DATE>.
 
 - <N> tests pass in LocalEmbeddingConfigurationTests.
-- 4 tests pass in LocalEmbeddingModelTests, under -Pintegration with
-  -Dchat.embedding.local.remote=true. None is skipped.
-- Without that property the two remote tests report as skipped, so no
-  unattended build reaches the network.
+- 4 tests pass in LocalEmbeddingModelTests, under -Pintegration with both
+  opt in properties. None is skipped.
+- With the downloaded files in place and neither property set, all four
+  report as skipped. So no unattended build loads the model.
 - The dependency tree carries spring-ai-transformers and no artifact named
   spring-ai-starter or spring-ai-autoconfigure.
 - The model is all-MiniLM-L6-v2 at revision
@@ -1759,9 +1839,6 @@ Evidence, measured on <DATE>.
   passed the two file tests.
 - Mutation two: a tokenizer resource that took the model URI failed the two
   file tests.
-
-Replace <DATE> with the date of the run. Replace <N> with the measured
-count. State a number only after this session measured it.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -2263,10 +2340,15 @@ Record both results in the commit message.
 
 - [ ] **Step 15: Commit**
 
-Write the message body from this template. Replace each angle bracket with a
-measured value, and delete a line rather than guess at it.
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
-```
+```bash
+drift check && git diff --check
+git add chat-vector-redis chat-vector-embedded
+git commit -F - <<'MSG'
+feat: carry the embedding identity into both vector stores (CHAT-etfnihnu)
+
 The redis index name and the embedded collection directory each carry the
 embedding identity. A metadata field does not isolate a redis index, and
 two models rarely share a vector width.
@@ -2291,15 +2373,6 @@ Evidence, measured on <DATE>.
   exists.
 - Mutation three: a literal redis index name failed the redis wiring test.
   RedisVectorNamesTests passed.
-```
-
-Then commit.
-
-```bash
-drift check && git diff --check
-git add chat-vector-redis chat-vector-embedded
-git commit -F - <<'MSG'
-feat: carry the embedding identity into both vector stores (CHAT-etfnihnu)
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -2782,9 +2855,17 @@ Expected: PASS on all three.
 
 - [ ] **Step 17: Commit**
 
-Write the message body from this template.
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
-```
+```bash
+drift check && git diff --check
+git add chat-core/src/main/kotlin/com/demo/chat/domain/IndexJob.kt \
+        chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt \
+        chat-service-composite
+git commit -F - <<'MSG'
+feat: record and match the embedding identity on every job (CHAT-etfnihnu)
+
 Every new job records the identity of the model that wrote it. Coverage
 selects a job only when its identity matches the one this process resolved.
 
@@ -2806,17 +2887,6 @@ Evidence, measured on <DATE>.
 - One test class needed an edit. VectorRecallServiceConfigurationTests now
   registers the identity bean. Five boot tests needed none, because each
   sets embedding=mock and ChatApp scans com.demo.chat.config.
-```
-
-Then commit.
-
-```bash
-drift check && git diff --check
-git add chat-core/src/main/kotlin/com/demo/chat/domain/IndexJob.kt \
-        chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt \
-        chat-service-composite
-git commit -F - <<'MSG'
-feat: record and match the embedding identity on every job (CHAT-etfnihnu)
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -2956,9 +3026,15 @@ Expected: BUILD SUCCESS.
 
 - [ ] **Step 9: Commit**
 
-Write the message body from this template.
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
-```
+```bash
+drift check && git diff --check
+git add chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml
+git commit -F - <<'MSG'
+feat: declare both embedding providers in both deployments (CHAT-etfnihnu)
+
 Both deployments declare both production embedding modules at compile
 scope. chat-deploy-memory also moves its chat-core test jar to test scope.
 
@@ -2974,15 +3050,6 @@ Evidence, measured on <DATE>.
 - <N> tests pass in chat-deploy-memory.
 - <N> tests pass in chat-deploy-redis.
 - The full reactor reports <N> modules SUCCESS.
-```
-
-Then commit.
-
-```bash
-drift check && git diff --check
-git add chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml
-git commit -F - <<'MSG'
-feat: declare both embedding providers in both deployments (CHAT-etfnihnu)
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -3288,9 +3355,15 @@ Expected: exit status 0.
 
 - [ ] **Step 9: Commit**
 
-Write the message body from this template.
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
-```
+```bash
+drift check && git diff --check
+git add shell-scripts/check-production-classpath.sh justfile
+git commit -F - <<'MSG'
+feat: guard production classpaths against test artifacts (CHAT-etfnihnu)
+
 One script holds two rules, and both run over every module.
 
 Rule one reads the poms. Every test-jar dependency must declare test scope.
@@ -3309,15 +3382,6 @@ Evidence, measured on <DATE>.
 - Mutation two: chat-embedding-openai without test scope on
   spring-boot-starter-test failed rule two. The script named the module and
   the artifact. Rule one passed, because that artifact is an ordinary jar.
-```
-
-Then commit.
-
-```bash
-drift check && git diff --check
-git add shell-scripts/check-production-classpath.sh justfile
-git commit -F - <<'MSG'
-feat: guard production classpaths against test artifacts (CHAT-etfnihnu)
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -3662,12 +3726,37 @@ Expected: PASS, 1 test. This run needs Docker.
 
 - [ ] **Step 5: Commit**
 
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
+
 ```bash
 drift check && git diff --check
 git add chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt \
         chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt
 git commit -F - <<'MSG'
 test: prove each failure moment of an unreachable endpoint (CHAT-etfnihnu)
+
+An unreachable embedding endpoint fails at a different moment for each
+vector store. EmbeddingModel.dimensions() is the reason, and each store
+asks at a different time.
+
+embedded fails at startup always, because the collection bean takes its
+width from that call. redis fails at startup only when the index is new,
+because schema initialization skips the call when the index exists. simple
+never asks at build time, so it fails at the first vector operation.
+
+Each test points at a closed loopback port, so none needs an external
+network or a secret key. Each one reads the whole cause chain, requires a
+java.net.ConnectException in it, requires the closed port number in the
+message text, and refuses a NoSuchBeanDefinitionException. A bare check for
+any exception would pass on a missing bean or a held port.
+
+Evidence, measured on <DATE>.
+
+- 2 tests pass in DeadEmbeddingEndpointTests.
+- 1 test passes in RedisDeadEmbeddingEndpointTests, under -Pintegration.
+- The simple case refreshed its context and failed at the first add, which
+  is what the design document states.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -4041,9 +4130,15 @@ again and confirm it passes.
 
 - [ ] **Step 8: Commit**
 
-Write the message body from this template.
+Replace each angle bracket in the body below with a measured value, and
+delete a line rather than guess at it. Then run the block.
 
-```
+```bash
+drift check && git diff --check
+git add shell-scripts/vector/gate-embedding-launch.sh shell-scripts/vector/openai-stub-server.py
+git commit -F - <<'MSG'
+test: prove the embedding feature outside a test classpath (CHAT-etfnihnu)
+
 The gate proves this feature outside a test classpath. Every test gate in
 this repository puts test outputs on the classpath, which is what hid the
 original defect.
@@ -4064,15 +4159,6 @@ Evidence, measured on <DATE>.
 - One recall returned <N> hits with indexComplete true.
 - Mutation: a launch with embedding=mock and no identity failed to start.
   That is the defect CHAT-etfnihnu records.
-```
-
-Then commit.
-
-```bash
-drift check && git diff --check
-git add shell-scripts/vector/gate-embedding-launch.sh shell-scripts/vector/openai-stub-server.py
-git commit -F - <<'MSG'
-test: prove the embedding feature outside a test classpath (CHAT-etfnihnu)
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -4432,12 +4518,21 @@ a live server each fail the test rather than passing it.
 
 **The manual requirement is honored by a mechanism, not by prose.** The spec
 says that a run of `chat-embedding-local` never runs unattended.
-`LocalEmbeddingModelTests` carries the integration tag, its two file tests skip
-when the downloaded files are absent, and its two remote tests skip without
-`-Dchat.embedding.local.remote=true`. Task 3 Step 13 runs the module a second
-time without that property and requires the two remote tests to report as
-skipped. So the recorded procedure is repeatable and no unattended build
-reaches the network.
+`LocalEmbeddingModelTests` carries the integration tag, and every test in it
+needs `-Dchat.embedding.local.manual=true`. The two remote tests need a second
+property as well. Task 3 Step 13 runs the module a second time with neither
+property, with the downloaded files still in place, and requires all four to
+report as skipped.
+
+A gate on the downloaded files alone would not hold the rule. A developer who
+ran the download once would load a 90 MiB model in every later integration
+build on that machine. So the switch is a property and not a file check.
+
+**Every commit template sits inside its own heredoc.** A template printed
+beside the command would leave a subject only message, because the command
+would already carry the whole message. Each `git commit -F - <<'MSG'` block now
+holds the subject, the body, and the trailer, and the instruction to replace
+each angle bracket sits above the block rather than inside it.
 
 **Every fixture is derived, not hand written.** Task 5 Step 12 builds the
 legacy record by removing one field from the mapper's own output. A hand
