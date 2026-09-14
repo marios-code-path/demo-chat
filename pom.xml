@@ -69,6 +69,7 @@
         <module>chat-vector-redis</module>
         <module>chat-vector-embedded</module>
         <module>chat-embedding-openai</module>
+        <module>chat-embedding-local</module>
 
         <module>chat-messaging-kafka</module>
 
