@@ -574,26 +574,59 @@ Add the import.
 import com.demo.chat.domain.EmbeddingIdentity
 ```
 
-Change the configuration class to read the third property.
+Change the configuration class to read the third property, and move the check
+to a BeanFactoryPostProcessor.
+
+A BeanFactoryPostProcessor runs before the container builds any singleton, and
+a SmartInitializingSingleton runs after every singleton exists. The later
+moment is too late for two reasons. An incomplete pair removes the
+EmbeddingIdentity bean, so a provider that injects the identity fails with
+NoSuchBeanDefinitionException and hides the real error. An illegal pair loads
+an 86.2 MiB ONNX model before anything reports the pair.
 
 ```kotlin
-@Configuration
-open class VectorSelectorValidationConfiguration(
-    @Value("\${app.service.core.vector:}") vector: String,
-    @Value("\${app.service.core.embedding:}") embedding: String,
-    @Value("\${app.service.core.embedding.identity:}") identity: String,
-) {
+/**
+ * Runs the selector check before the container builds any singleton.
+ *
+ * The class reads the Environment and not a bean, because no bean exists at
+ * this moment.
+ */
+open class VectorSelectorValidationPostProcessor(
+    private val environment: Environment,
+) : BeanFactoryPostProcessor {
 
-    private val vectorSelector = vector
-    private val embeddingSelector = embedding
-    private val identityValue = identity
-
-    @Bean
-    open fun vectorSelectorValidation(): SmartInitializingSingleton =
-        SmartInitializingSingleton {
-            VectorSelectorValidation.validate(vectorSelector, embeddingSelector, identityValue)
-        }
+    override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
+        VectorSelectorValidation.validate(
+            environment.getProperty("app.service.core.vector"),
+            environment.getProperty("app.service.core.embedding"),
+            environment.getProperty(EmbeddingIdentity.PROPERTY),
+        )
+    }
 }
+
+@Configuration
+open class VectorSelectorValidationConfiguration {
+
+    companion object {
+        /**
+         * The method is static, which is what Spring requires of a
+         * BeanFactoryPostProcessor bean. A method on the instance would build
+         * the configuration class before every bean post processor exists.
+         */
+        @Bean
+        @JvmStatic
+        fun vectorSelectorValidation(environment: Environment): BeanFactoryPostProcessor =
+            VectorSelectorValidationPostProcessor(environment)
+    }
+}
+```
+
+Replace the SmartInitializingSingleton import with these three imports.
+
+```kotlin
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
+import org.springframework.core.env.Environment
 ```
 
 - [ ] **Step 9: Run both test classes and confirm they pass**
@@ -1087,6 +1120,7 @@ MSG
 - Create: `chat-embedding-local/src/main/kotlin/com/demo/chat/config/embedding/local/LocalEmbeddingConfiguration.kt`
 - Create: `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingConfigurationTests.kt`
 - Create: `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingModelTests.kt`
+- Create: `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/ComposedLocalSelectorTests.kt`
 - Modify: `pom.xml`
 
 **Interfaces:**
@@ -1358,7 +1392,11 @@ import java.nio.file.Path
  * An operator who wants no caching names the local resources with file:, which
  * the cache does not copy.
  *
- * The model loads when the bean builds, so an absent file fails startup.
+ * TransformersEmbeddingModel implements InitializingBean, so the container
+ * loads the model after this factory method returns. The method must not call
+ * afterPropertiesSet itself. A direct call loads the 86.2 MiB ONNX file twice
+ * and builds two ONNX sessions, and the second session replaces the first.
+ * The model still loads during startup, so an absent file still fails startup.
  *
  * Both URI properties are required, and the module reads each one with an
  * empty default. See the required function below for the reason.
@@ -1384,7 +1422,6 @@ class LocalEmbeddingConfiguration {
             required("app.service.core.embedding.local.tokenizer-uri", tokenizerUri)
         )
         model.setResourceCacheDirectory(cacheDirectory.toString())
-        model.afterPropertiesSet()
         return model
     }
 
@@ -1434,6 +1471,39 @@ reaches the bean as the placeholder text. A runner that registers that bean
 fails, and the message reads "Unexpected exception during bean creation". The
 property name sits in the cause. So this module rejects a blank value the way
 the openai module does.
+
+- [ ] **Step 8a: Write the composed context tests**
+
+Create
+`chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/ComposedLocalSelectorTests.kt`.
+
+`LocalEmbeddingConfigurationTests` supplies the identity as a test bean, so it
+cannot show what happens when the resolver refuses to supply one. This class
+composes `VectorSelectorValidationConfiguration`,
+`EmbeddingIdentityConfiguration`, and `LocalEmbeddingConfiguration`, which is
+the shape a deployment builds.
+
+Three tests, one for each moment.
+
+1. `app.service.core.embedding=local` with no vector reports both selectors.
+2. `vector=mock` with `embedding=local` reports the illegal pair.
+3. A legal pair with no identity reports the identity property.
+
+Every model URI names a file that does not exist. A message that names that
+file proves that the container built the model, so each test also asserts that
+the message does not name it.
+
+```bash
+mvn -o -pl chat-core,chat-embedding-local -Dtest=ComposedLocalSelectorTests -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Expected: PASS, 3 tests.
+
+Prove that these three tests hold the rule. Make
+`VectorSelectorValidationPostProcessor.postProcessBeanFactory` return before it
+calls `validate`, run the class again, and restore the line. Measured on
+2026-09-14: two of the three failed, and the first reported
+`No qualifying bean of type 'com.demo.chat.domain.EmbeddingIdentity'`.
 
 - [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
 
@@ -1568,7 +1638,7 @@ import java.nio.file.Path
  * requires. It says that a run of this module stays manual and never runs
  * unattended.
  *
- * The integration tag keeps all four out of the default build.
+ * The integration tag keeps all three out of the default build.
  * -Dchat.embedding.local.manual=true is the switch for the class. Without it
  * every test here is skipped, whatever sits in the cache directory. A check on
  * the downloaded files alone would not hold the rule, because a developer who
@@ -1786,7 +1856,7 @@ mvn -o -pl chat-core,chat-embedding-local -Pintegration \
 
 Both properties must reach the surefire JVM, which is a separate process. So
 they travel in `argLine` rather than as plain `-D` arguments to Maven. Confirm
-that all four tests report as run rather than skipped.
+that all three tests report as run rather than skipped.
 
 `chat-embedding-local` declares no `argLine` of its own, so this value sets it
 for the run. Read the module pom first and append to the existing value when
@@ -4468,8 +4538,8 @@ Mutation proofs, and each result.
   companion tests passed.
 - A literal redis index name: the redis wiring test failed and the name
   tests passed.
-- A hardcoded local cache directory: the two remote cache tests failed and
-  the two file tests passed.
+- A hardcoded local cache directory: the remote cache test failed and the
+  two file tests passed.
 - Guard rule one, with the memory test jar scope removed: rule one failed.
 - Guard rule two, with spring-boot-starter-test scope removed: rule two
   failed and rule one passed.
@@ -4528,9 +4598,10 @@ the owner's direction.
 
 - Task 3 Step 13 loads a real ONNX model through the configuration, asserts 384
   dimensions, and asserts that two texts which share meaning score above two
-  that do not. Two further tests use `https:` resources, because
+  that do not. One further test uses `https:` resources, because
   `ResourceCacheService` does not copy a `file:` resource and only a remote one
-  can show that the bean passed the right cache directory.
+  can show that the bean passed the right cache directory. That test builds two
+  identities, so it also shows that a new identity reads no old bytes.
 - Task 3 Step 12 runs those tests against a broken production path first. The
   configuration already exists by then, so a red step must break the
   implementation rather than omit it.

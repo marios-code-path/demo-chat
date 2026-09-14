@@ -26,7 +26,7 @@ import java.nio.file.Path
  * requires. It says that a run of this module stays manual and never runs
  * unattended.
  *
- * The integration tag keeps all four out of the default build.
+ * The integration tag keeps all three out of the default build.
  * -Dchat.embedding.local.manual=true is the switch for the class. Without it
  * every test here is skipped, whatever sits in the cache directory. A check on
  * the downloaded files alone would not hold the rule, because a developer who
