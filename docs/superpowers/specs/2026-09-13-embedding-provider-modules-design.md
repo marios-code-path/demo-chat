@@ -385,17 +385,43 @@ app.controller.persistence=true
 app.controller.recall=true
 ```
 
+**Every call carries credentials.** `ActuatorWebSecurityConfiguration` protects
+**every** exchange, and not only the actuator paths. `anyExchange()` requires the
+ACTUATOR role, and `/actuator/health` is the one open path. A seed, a trigger, a
+poll, or a recall without credentials answers 401.
+
+That chain authenticates against one in-memory user, which
+`app.actuator.username` and `app.actuator.password` name. So the gate
+authenticates as that user on every call, and no chat user takes part.
+
+**Open question. `expose-webflux` adds a second filter chain.**
+`chat-webflux` declares `WebFluxSecurity`, whose chain answers
+`anyExchange().permitAll()`. The actuator chain answers
+`anyExchange().hasRole("ACTUATOR")`. Neither bean declares an order.
+
+Two chains that both match every exchange make the winner depend on bean
+ordering, and the gate would then rest on an undefined outcome. A deployment
+without `chat-webflux` has one chain, which is why the existing actuator test is
+deterministic.
+
+This must be settled before the gate is built. Three ways out. Order the two
+chains, which is a production change and its own issue. Drive RSocket and drop
+`expose-webflux`. Or have the gate assert the observed behaviour rather than
+assume one.
+
 1. Build `chat-deploy-memory` with `-Pexpose-webflux`, and repackage it.
 2. Assert that no test output is on the launched classpath.
 3. Launch with `vector=simple`, `embedding=openai`, an identity, both actuator
    properties, both controller properties, and a base URL that names the stub.
-4. Seed messages with `PUT /persist/message/add`, which writes to persistence
-   and creates no vector.
-5. Trigger a rebuild through `POST /actuator/vectorindex`. The rebuild embeds
-   every seeded message through the production client.
-6. Poll `GET /actuator/vectorindex` until `running` is false.
+4. Seed messages with `PUT /persist/message/add`, under Basic credentials. The
+   write reaches persistence and creates no vector.
+5. Trigger a rebuild through `POST /actuator/vectorindex`, under Basic
+   credentials. The rebuild embeds every seeded message through the production
+   client.
+6. Poll `GET /actuator/vectorindex` under Basic credentials, until `running` is
+   false.
 7. Assert that the newest job carries the identity the launch set.
-8. Run one recall, and assert the hits and `indexComplete`.
+8. Run one recall under Basic credentials. Assert the hits and `indexComplete`.
 
 ### The endpoint is synthetic and the client is production code
 
@@ -404,8 +430,10 @@ embeddings API with fixed vectors. `OpenAiEmbeddingModel` builds, serializes a
 request, reads a response, and returns vectors.
 
 **Production client code runs against a synthetic endpoint.** The gate needs no
-key and no network. The stub receives a dummy key that is not a secret, because
-`OpenAiApi` requires one.
+secret key and no network.
+
+Project policy requires a key value, which the section above states. So the
+launch supplies a dummy that is not a secret, and the stub ignores it.
 
 This rests on the feature itself. The provider exists to serve any
 OpenAI-compatible endpoint, so a compatible endpoint is a valid subject.
@@ -482,6 +510,7 @@ A job written before this change never covers, because it carries null.
 - An unreachable endpoint fails the first vector operation under `simple`.
 - A packaged deployment launches with no test output on its classpath.
 - The gate seeds through persistence and never through `/message/send/{id}`.
+- **Every gate call carries Basic credentials, and one without them answers 401.**
 - That deployment embeds text through the production client, during the rebuild.
 - That deployment rebuilds, and its job carries the identity.
 - That deployment completes one search.
@@ -535,3 +564,4 @@ reversal.
 - `expose-webflux` for the gate, in place of an RSocket client.
 - An identity-specific cache directory, in place of disabled caching.
 - The order of the gate steps after the rebuild.
+- The way out of the two unordered filter chains, listed in the gate section.
