@@ -28,7 +28,11 @@ import java.nio.file.Path
  * An operator who wants no caching names the local resources with file:, which
  * the cache does not copy.
  *
- * The model loads when the bean builds, so an absent file fails startup.
+ * TransformersEmbeddingModel implements InitializingBean, so the container
+ * loads the model after this factory method returns. The method must not call
+ * afterPropertiesSet itself. A direct call loads the 86.2 MiB ONNX file twice
+ * and builds two ONNX sessions, and the second session replaces the first.
+ * The model still loads during startup, so an absent file still fails startup.
  *
  * Both URI properties are required, and the module reads each one with an
  * empty default. See the required function below for the reason.
@@ -54,7 +58,6 @@ class LocalEmbeddingConfiguration {
             required("app.service.core.embedding.local.tokenizer-uri", tokenizerUri)
         )
         model.setResourceCacheDirectory(cacheDirectory.toString())
-        model.afterPropertiesSet()
         return model
     }
 
