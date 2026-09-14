@@ -461,10 +461,16 @@ prefix with `management.endpoints.web.base-path`.
 
 It also corrects `docs/VECTOR-RECALL-API.md`. Four of that document's curl
 commands pass a chat user, and three pass the actuator user. The three actuator
-commands stay correct. The four chat user commands seed through
-`POST /message/send/{id}`, which binds a `ChatUserDetails` principal that no
-application chain supplies. That issue changes the guide to seed through
-persistence.
+commands stay correct.
+
+One of the four chat user commands seeds through `POST /message/send/{id}`,
+which binds a `ChatUserDetails` principal that no application chain supplies.
+The other three call recall routes, which bind no principal. That issue changes
+the seed to `PUT /persist/message/add` and drops the credentials from all four.
+
+A persistence write creates no vector. So that issue also adds
+`app.controller.persistence` to the document's property list, and it adds a
+rebuild trigger and a poll before the first search.
 
 ## Build Prerequisite
 
