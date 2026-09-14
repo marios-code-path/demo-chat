@@ -2139,8 +2139,15 @@ Expected: PASS, 5 tests.
 
 - [ ] **Step 5: Add the chat-core dependency to the embedded module**
 
-Modify `chat-vector-embedded/pom.xml`. Add this dependency before the existing
-`chat-core` test jar entry.
+Modify `chat-vector-embedded/pom.xml`. Add a test source directory as well. The
+module held no test source before this task, so its pom names only a source
+directory, and the Kotlin plugin compiles no test without this line.
+
+```xml
+        <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+```
+
+Then add this dependency before the existing `chat-core` test jar entry.
 
 ```xml
         <!-- chat-core supplies EmbeddingIdentity. The storage directory
