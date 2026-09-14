@@ -51,10 +51,17 @@ Project Reactor, JUnit 5, AssertJ, Maven.
 
 Two issues must close before Task 8 runs.
 
-- `CHAT-xvtsffqh` moves nine test jar dependencies to test scope. Task 7 needs
-  it, because the guard fails until those nine move.
+- `CHAT-xvtsffqh` moves nine test jar dependencies to test scope. **Task 7**
+  needs it, because rule one of the guard fails until those nine move. That
+  issue owns nine modules. This work owns the tenth, `chat-deploy-memory`, in
+  Task 6. Neither issue owns a module of the other, so neither deadlocks.
 - `CHAT-jdsamcia` gives the actuator chain and the application chain disjoint
-  ownership. Task 8 needs it, because the gate calls both kinds of route.
+  ownership. **Task 9** needs it, because the packaged gate calls actuator
+  routes under credentials and application routes without them.
+
+`CHAT-incuynpc` is not a prerequisite. Task 7 Step 4 closes it, because rule
+two catches the two `chat-shell` testcontainers dependencies that rule one
+cannot see.
 
 One build prerequisite has no issue. Neither `spring-ai-openai` nor
 `spring-ai-transformers` resolves offline today. A read on 2026-09-13 found
@@ -106,7 +113,6 @@ cache.
 | `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/VectorRecallServiceConfigurationTests.kt` | The identity bean |
 | `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorCoveragePolicyImplTests.kt` | The identity filter tests |
 | `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexJobStoreImplTests.kt` | The identity write test |
-| `docs/NODEID-CLAIM.md` | One row for the new redis test |
 | `chat-deploy-memory/pom.xml` | Both provider modules, and the test jar scope move |
 | `chat-deploy-redis/pom.xml` | Both provider modules |
 | `justfile` | One recipe for the guard |
@@ -609,7 +615,11 @@ git add chat-core/src/main/kotlin/com/demo/chat/domain/EmbeddingIdentity.kt \
         chat-core/src/main/kotlin/com/demo/chat/config/VectorSelectorValidation.kt \
         chat-core/src/test/kotlin/com/demo/chat/test/config/EmbeddingIdentityTests.kt \
         chat-core/src/test/kotlin/com/demo/chat/test/config/VectorSelectorValidationTests.kt
-git commit -m "feat: add the typed embedding identity and its rules (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: add the typed embedding identity and its rules (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 ---
@@ -856,19 +866,6 @@ class OpenAiEmbeddingConfigurationTests {
         }
     }
 
-    @Test
-    fun `the module carries no spring ai starter`() {
-        // A starter carries auto-configuration. Two starters on one classpath
-        // would let Spring AI build a model that no selector asked for.
-        val autoConfig = javaClass.classLoader.getResource(
-            "META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports"
-        )
-        if (autoConfig != null) {
-            assertThat(autoConfig.readText())
-                .doesNotContain("org.springframework.ai.model.openai")
-        }
-    }
-
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
         ApplicationContextRunner()
             .withPropertyValues(*properties.map { "${it.key}=${it.value}" }.toTypedArray())
@@ -977,23 +974,50 @@ class OpenAiEmbeddingConfiguration {
 mvn -o -pl chat-embedding-openai test
 ```
 
-Expected: PASS, 6 tests.
+Expected: PASS, 5 tests.
 
-- [ ] **Step 9: Confirm the module carries no starter**
+- [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
+
+A starter carries auto-configuration. Both provider modules sit on one
+classpath, and a starter would let Spring AI build a model that no selector
+asked for.
+
+A Kotlin test cannot prove this. `ClassLoader.getResource` returns the first
+match on the whole test classpath, and `spring-boot-starter-test` supplies its
+own copy of the auto-configuration import file. So the check reads the resolved
+dependency tree instead.
 
 ```bash
-mvn -o -pl chat-embedding-openai dependency:tree | grep -i starter
+TREE=$(mktemp)
+mvn -o -pl chat-embedding-openai dependency:tree -DoutputFile="$TREE" -DoutputType=text \
+    || { echo "resolution failed"; exit 1; }
+if grep -Eq 'org\.springframework\.ai:spring-ai-(starter|autoconfigure)' "$TREE"; then
+    echo "a Spring AI starter or auto-configuration artifact resolves here:"
+    grep -E 'org\.springframework\.ai:spring-ai-(starter|autoconfigure)' "$TREE"
+    exit 1
+fi
+echo "ok, no Spring AI starter and no Spring AI auto-configuration"
+grep 'org.springframework.ai' "$TREE"
 ```
 
-Expected: `spring-boot-starter` and `spring-boot-starter-test` only. No
-artifact named `spring-ai-starter-*` appears.
+Expected: `ok, no Spring AI starter and no Spring AI auto-configuration`. The
+last command lists the Spring AI artifacts that do resolve. `spring-ai-openai` must
+appear. No artifact whose name begins `spring-ai-starter` or
+`spring-ai-autoconfigure` may appear.
+
+Use `grep -Eq` inside an `if`. A bare `grep -c` exits with status 1 when it
+counts zero, so the success case would read as a failure.
 
 - [ ] **Step 10: Commit**
 
 ```bash
 drift check && git diff --check
 git add pom.xml chat-embedding-openai
-git commit -m "feat: add the openai embedding provider module (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: add the openai embedding provider module (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 ---
@@ -1004,6 +1028,8 @@ git commit -m "feat: add the openai embedding provider module (CHAT-etfnihnu)"
 - Create: `chat-embedding-local/pom.xml`
 - Create: `chat-embedding-local/src/main/kotlin/com/demo/chat/config/embedding/local/LocalEmbeddingConfiguration.kt`
 - Create: `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingConfigurationTests.kt`
+- Create: `chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingModelTests.kt`
+- Modify: `pom.xml`
 
 **Interfaces:**
 - Consumes: `com.demo.chat.domain.EmbeddingIdentity` from Task 1.
@@ -1320,15 +1346,204 @@ mvn -o -pl chat-core,chat-embedding-local -Dtest=LocalEmbeddingConfigurationTest
 
 Expected: PASS, 6 tests.
 
-- [ ] **Step 9: Confirm the module carries no starter**
+- [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
+
+A starter carries auto-configuration. Both provider modules sit on one
+classpath, and a starter would let Spring AI build a model that no selector
+asked for.
+
+A Kotlin test cannot prove this. `ClassLoader.getResource` returns the first
+match on the whole test classpath, and `spring-boot-starter-test` supplies its
+own copy of the auto-configuration import file. So the check reads the resolved
+dependency tree instead.
 
 ```bash
-mvn -o -pl chat-embedding-local dependency:tree | grep -i starter
+TREE=$(mktemp)
+mvn -o -pl chat-embedding-local dependency:tree -DoutputFile="$TREE" -DoutputType=text \
+    || { echo "resolution failed"; exit 1; }
+if grep -Eq 'org\.springframework\.ai:spring-ai-(starter|autoconfigure)' "$TREE"; then
+    echo "a Spring AI starter or auto-configuration artifact resolves here:"
+    grep -E 'org\.springframework\.ai:spring-ai-(starter|autoconfigure)' "$TREE"
+    exit 1
+fi
+echo "ok, no Spring AI starter and no Spring AI auto-configuration"
+grep 'org.springframework.ai' "$TREE"
 ```
 
-Expected: `spring-boot-starter` and `spring-boot-starter-test` only.
+Expected: `ok, no Spring AI starter and no Spring AI auto-configuration`. The
+last command lists the Spring AI artifacts that do resolve. `spring-ai-transformers` must
+appear. No artifact whose name begins `spring-ai-starter` or
+`spring-ai-autoconfigure` may appear.
 
-- [ ] **Step 10: Build the whole reactor**
+Use `grep -Eq` inside an `if`. A bare `grep -c` exits with status 1 when it
+counts zero, so the success case would read as a failure.
+
+- [ ] **Step 10: Build and verify a real local model bean**
+
+Every test so far proves that the bean stays behind its selector, and that the
+cache path carries the identity. None of them loads a model. So none of them
+proves that this module can supply a working `EmbeddingModel`.
+
+This step downloads one small ONNX model and its tokenizer, then builds the
+bean through the configuration and embeds real text.
+
+The model is `all-MiniLM-L6-v2`, which Spring AI documents for this provider.
+It emits 384 dimensions. The two files total near 90 MB.
+
+```bash
+CACHE="$HOME/.cache/chat-embedding-local-model"
+mkdir -p "$CACHE"
+curl -sSfL -o "$CACHE/model.onnx" \
+  https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx
+curl -sSfL -o "$CACHE/tokenizer.json" \
+  https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer.json
+ls -l "$CACHE"
+```
+
+Expected: two files. `model.onnx` is near 90 MB and `tokenizer.json` is near
+700 KB.
+
+This download needs network access. It runs once. The files stay outside the
+repository, and no build commits them.
+
+Create
+`chat-embedding-local/src/test/kotlin/com/demo/chat/test/embedding/local/LocalEmbeddingModelTests.kt`.
+
+```kotlin
+package com.demo.chat.test.embedding.local
+
+import com.demo.chat.config.embedding.local.LocalEmbeddingConfiguration
+import com.demo.chat.domain.EmbeddingIdentity
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.condition.EnabledIf
+import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import java.nio.file.Files
+import java.nio.file.Path
+
+/**
+ * Builds a real model through the configuration, and embeds real text.
+ *
+ * The other tests in this module prove the selector rule and the cache path.
+ * None of them loads a model, so none of them proves that this module can
+ * supply a working EmbeddingModel. This one does.
+ *
+ * The model files live outside the repository, because they total near 90 MB.
+ * The plan step beside this class carries the two download commands. The test
+ * is skipped when the files are absent, and the integration tag keeps it out
+ * of the default build.
+ */
+@Tag("integration")
+class LocalEmbeddingModelTests {
+
+    companion object {
+        val modelPath: Path = Path.of(
+            System.getProperty("user.home"), ".cache", "chat-embedding-local-model", "model.onnx"
+        )
+        val tokenizerPath: Path = Path.of(
+            System.getProperty("user.home"), ".cache", "chat-embedding-local-model", "tokenizer.json"
+        )
+
+        @JvmStatic
+        fun modelFilesPresent(): Boolean =
+            Files.isRegularFile(modelPath) && Files.isRegularFile(tokenizerPath)
+
+        const val EXPECTED_DIMENSIONS = 384
+    }
+
+    @Test
+    @EnabledIf("modelFilesPresent")
+    fun `the bean loads a real model and embeds text`() {
+        val cache = Files.createTempDirectory("local-model-test")
+
+        ApplicationContextRunner()
+            .withPropertyValues(
+                "app.service.core.embedding=local",
+                "app.service.core.embedding.local.model-uri=file:$modelPath",
+                "app.service.core.embedding.local.tokenizer-uri=file:$tokenizerPath",
+                "app.service.core.embedding.local.cache-path=$cache",
+            )
+            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity("minilm-l6-v2") })
+            .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
+            .run { context ->
+                assertThat(context).hasNotFailed()
+
+                val model = context.getBean(EmbeddingModel::class.java)
+
+                assertThat(model.dimensions())
+                    .describedAs("all-MiniLM-L6-v2 emits %d dimensions", EXPECTED_DIMENSIONS)
+                    .isEqualTo(EXPECTED_DIMENSIONS)
+
+                val vector = model.embed("apple pie recipe")
+                assertThat(vector).hasSize(EXPECTED_DIMENSIONS)
+                assertThat(vector.any { it != 0f })
+                    .describedAs("a real model returns a vector that is not all zero")
+                    .isTrue()
+
+                assertThat(Files.isDirectory(cache.resolve("minilm-l6-v2")))
+                    .describedAs("the bean must cache under the identity directory")
+                    .isTrue()
+            }
+    }
+
+    @Test
+    @EnabledIf("modelFilesPresent")
+    fun `two texts that share meaning score above two that do not`() {
+        val cache = Files.createTempDirectory("local-model-test")
+
+        ApplicationContextRunner()
+            .withPropertyValues(
+                "app.service.core.embedding=local",
+                "app.service.core.embedding.local.model-uri=file:$modelPath",
+                "app.service.core.embedding.local.tokenizer-uri=file:$tokenizerPath",
+                "app.service.core.embedding.local.cache-path=$cache",
+            )
+            .withBean(EmbeddingIdentity::class.java, { EmbeddingIdentity("minilm-l6-v2") })
+            .withUserConfiguration(LocalEmbeddingConfiguration::class.java)
+            .run { context ->
+                val model = context.getBean(EmbeddingModel::class.java)
+
+                val near = cosine(model.embed("a recipe for apple pie"), model.embed("how to bake an apple tart"))
+                val far = cosine(model.embed("a recipe for apple pie"), model.embed("the compiler emits bytecode"))
+
+                // This is the whole point of a real model. The mock matches on
+                // shared substrings, and this one matches on meaning.
+                assertThat(near)
+                    .describedAs("near %s must beat far %s", near, far)
+                    .isGreaterThan(far)
+            }
+    }
+
+    private fun cosine(a: FloatArray, b: FloatArray): Double {
+        var dot = 0.0
+        var na = 0.0
+        var nb = 0.0
+        for (i in a.indices) {
+            dot += a[i] * b[i]
+            na += a[i] * a[i]
+            nb += b[i] * b[i]
+        }
+        return dot / (Math.sqrt(na) * Math.sqrt(nb))
+    }
+}
+```
+
+- [ ] **Step 11: Run the real model test**
+
+```bash
+mvn -o -pl chat-core,chat-embedding-local -Pintegration \
+    -Dtest=LocalEmbeddingModelTests -Dsurefire.failIfNoSpecifiedTests=false clean verify
+```
+
+Expected: PASS, 2 tests. A skipped test means the two files are absent. Run the
+download commands in Step 10 and repeat.
+
+A `dimensions()` answer other than 384 means the download gave another model.
+Check the two URLs. Do not change the expected value to match the answer.
+
+- [ ] **Step 12: Build the whole reactor**
 
 ```bash
 mvn -o -B clean test
@@ -1336,12 +1551,16 @@ mvn -o -B clean test
 
 Expected: BUILD SUCCESS. The reactor now reports 37 modules.
 
-- [ ] **Step 11: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
 drift check && git diff --check
-git add chat-embedding-local
-git commit -m "feat: add the local embedding provider module (CHAT-etfnihnu)"
+git add pom.xml chat-embedding-local
+git commit -F - <<'MSG'
+feat: add the local embedding provider module (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 ---
@@ -1352,8 +1571,9 @@ git commit -m "feat: add the local embedding provider module (CHAT-etfnihnu)"
 - Modify: `chat-vector-redis/src/main/kotlin/com/demo/chat/config/vector/redis/RedisVectorStoreConfiguration.kt`
 - Modify: `chat-vector-embedded/pom.xml`
 - Modify: `chat-vector-embedded/src/main/kotlin/com/demo/chat/config/vector/embedded/EmbeddedVectorStoreConfiguration.kt`
-- Test: `chat-vector-redis/src/test/kotlin/com/demo/chat/test/vector/redis/RedisVectorNamesTests.kt` (create)
-- Test: `chat-vector-embedded/src/test/kotlin/com/demo/chat/test/vector/embedded/EmbeddedStorageDirectoryTests.kt` (create)
+- Modify: `chat-vector-redis/src/test/kotlin/com/demo/chat/test/vector/redis/RedisVectorStoreConfigurationTests.kt`
+- Create: `chat-vector-redis/src/test/kotlin/com/demo/chat/test/vector/redis/RedisVectorNamesTests.kt`
+- Create: `chat-vector-embedded/src/test/kotlin/com/demo/chat/test/vector/embedded/EmbeddedStorageDirectoryTests.kt`
 
 **Interfaces:**
 - Consumes: `com.demo.chat.domain.EmbeddingIdentity` from Task 1.
@@ -1842,7 +2062,11 @@ Record both results in the commit message.
 ```bash
 drift check && git diff --check
 git add chat-vector-redis chat-vector-embedded
-git commit -m "feat: carry the embedding identity into both vector stores (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: carry the embedding identity into both vector stores (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 State the Step 14 mutation results in the message body.
@@ -1856,8 +2080,10 @@ State the Step 14 mutation results in the message body.
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorIndexJobStoreImpl.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/VectorCoveragePolicyImpl.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/VectorRecallServiceConfiguration.kt`
-- Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorCoveragePolicyImplTests.kt`
-- Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexJobStoreImplTests.kt`
+- Modify: `chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorCoveragePolicyImplTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/VectorIndexJobStoreImplTests.kt`
+- Modify: `chat-service-composite/src/test/kotlin/com/demo/chat/test/config/VectorRecallServiceConfigurationTests.kt`
 
 **Interfaces:**
 - Consumes: `com.demo.chat.domain.EmbeddingIdentity` from Task 1.
@@ -2171,39 +2397,41 @@ Add these tests to
         // A record written before the field existed carries no key for it.
         // Null states that the writer named no model. That is the fact the
         // coverage filter reads.
-        val legacy = """
-            {
-              "key": {"key": {"id": 500}},
-              "nodeId": 7,
-              "keyType": "long",
-              "incarnationId": "incarnation-a",
-              "startedBy": {"key": {"id": 1000}},
-              "startedAt": "2026-09-12T12:00:00Z",
-              "outcome": "SUCCEEDED",
-              "indexed": 3,
-              "invalidationCount": 1
-            }
-        """.trimIndent()
+        //
+        // The fixture is derived rather than written by hand. This mapper
+        // already round trips `job` in the test above, so removing one field
+        // from its own output cannot disagree with the real wire shape. A
+        // hand written literal could, because Key carries a wrapper object and
+        // the path to an id is one level deeper than its field name.
+        val legacy = mapper.writeValueAsString(withoutIdentity())
 
         Assertions.assertThat(codec.decode(legacy).embeddingIdentity).isNull()
     }
 
     @Test
     fun `a legacy map decodes with a null identity`() {
-        val legacy: Map<String, Any?> =
-            mapper.readValue(mapper.writeValueAsString(job), Map::class.java)
-                .let { read -> read.entries.associate { (k, v) -> k.toString() to v } }
-                .filterKeys { it != "embeddingIdentity" }
+        Assertions.assertThat(codec.decode(withoutIdentity()).embeddingIdentity).isNull()
+    }
 
-        Assertions.assertThat(codec.decode(legacy).embeddingIdentity).isNull()
+    /**
+     * The map shape of [job], with the new field removed.
+     *
+     * Redis hands the codec a map after its JSON round trip, and cassandra
+     * hands it the JSON string. So one fixture serves both tests.
+     */
+    private fun withoutIdentity(): Map<String, Any?> {
+        @Suppress("UNCHECKED_CAST")
+        val asMap = mapper.convertValue(job, Map::class.java) as Map<String, Any?>
+        return asMap.filterKeys { it != "embeddingIdentity" }
     }
 ```
 
-Read the shape that `a job survives a json string round trip` already writes,
-and match the field names exactly. `Key` carries a wrapper object named `key`,
-so the path to an id is one level deeper than its field name. Print
-`mapper.writeValueAsString(job)` once and copy the real shape if the literal
-above does not decode.
+The fixture removes the field from the mapper's own output. So it needs no
+hand written JSON, and it cannot drift from the real wire shape.
+
+Set `embeddingIdentity = "acme-e5"` on the `job` fixture at the top of the
+class first. The field must be present in the output before a test can remove
+it.
 
 - [ ] **Step 13: Run the codec tests**
 
@@ -2325,7 +2553,11 @@ drift check && git diff --check
 git add chat-core/src/main/kotlin/com/demo/chat/domain/IndexJob.kt \
         chat-core/src/test/kotlin/com/demo/chat/test/vector/IndexJobCodecTests.kt \
         chat-service-composite
-git commit -m "feat: record and match the embedding identity on every job (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: record and match the embedding identity on every job (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 State the Step 11 mutation result in the message body.
@@ -2467,7 +2699,11 @@ Expected: BUILD SUCCESS.
 ```bash
 drift check && git diff --check
 git add chat-deploy-memory/pom.xml chat-deploy-redis/pom.xml
-git commit -m "feat: declare both embedding providers in both deployments (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: declare both embedding providers in both deployments (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 State the Step 4 result in the message body.
@@ -2483,6 +2719,7 @@ tenth.
 **Files:**
 - Create: `shell-scripts/check-production-classpath.sh`
 - Modify: `justfile`
+- Modify: `chat-shell/pom.xml`, only when rule two reports it. See Step 4.
 
 **Interfaces:**
 - Consumes: the scope change from Task 6.
@@ -2535,6 +2772,19 @@ set -uo pipefail
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT="$( cd "$DIR/.." && pwd )"
 cd "$ROOT" || exit 1
+
+# CLAUDE.md requires miniforge for Python. Both rules read their input with
+# Python, so the activation happens once, here, and it must succeed.
+# shellcheck disable=SC1090
+if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniforge3/etc/profile.d/conda.sh"
+    conda activate base || { echo "conda activate base failed"; exit 1; }
+else
+    echo "miniforge is not installed at ~/miniforge3."
+    echo "CLAUDE.md requires miniforge for Python. Ask the owner for guidance."
+    exit 1
+fi
+command -v python3 > /dev/null || { echo "no python3 after conda activate base"; exit 1; }
 
 FAILED=0
 
@@ -2743,7 +2993,11 @@ Expected: exit status 0.
 ```bash
 drift check && git diff --check
 git add shell-scripts/check-production-classpath.sh justfile
-git commit -m "feat: guard production classpaths against test artifacts (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+feat: guard production classpaths against test artifacts (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 State both mutation results in the message body.
@@ -2765,6 +3019,8 @@ test. The owner asked for automated checks rather than manual procedures.
 **Files:**
 - Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt`
 - Create: `chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt`
+- Modify: `chat-deploy-memory/pom.xml`, only when Step 2 finds no
+  `--add-modules jdk.incubator.vector` on its surefire `argLine`.
 
 **Interfaces:**
 - Consumes: Task 6. Both deployments declare both provider modules, so an
@@ -2772,8 +3028,8 @@ test. The owner asked for automated checks rather than manual procedures.
 - Produces: no production code.
 
 Each test points the base URL at a closed loopback port. So each test needs no
-network and no key. A closed port answers at once, and no test waits for a
-timeout.
+external network and no secret key. A closed loopback port refuses at once, and
+no test waits for a timeout.
 
 - [ ] **Step 1: Find a closed port helper**
 
@@ -2795,8 +3051,10 @@ package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
 import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Test
+import org.springframework.ai.document.Document
+import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.boot.builder.SpringApplicationBuilder
 import java.net.ServerSocket
 
@@ -2817,7 +3075,7 @@ class DeadEmbeddingEndpointTests {
     private fun closedPort(): Int =
         ServerSocket(0).use { socket -> socket.localPort }
 
-    private fun launchArguments(vector: String): Array<String> = arrayOf(
+    private fun launchArguments(vector: String, port: Int): Array<String> = arrayOf(
         "--app.nodeid=1",
         "--app.key.type=long",
         "--spring.application.name=dead-endpoint-$vector",
@@ -2836,7 +3094,7 @@ class DeadEmbeddingEndpointTests {
         "--app.service.core.vector=$vector",
         "--app.service.core.embedding=openai",
         "--app.service.core.embedding.identity=dead-endpoint-v1",
-        "--app.service.core.embedding.openai.base-url=http://127.0.0.1:${closedPort()}",
+        "--app.service.core.embedding.openai.base-url=http://127.0.0.1:$port",
         "--app.service.core.embedding.openai.api-key=not-a-secret",
         "--app.service.core.embedding.openai.model=stub-embedding",
     )
@@ -2845,38 +3103,71 @@ class DeadEmbeddingEndpointTests {
     fun `an unreachable endpoint fails startup under embedded`() {
         // The collection bean takes its width from dimensions(), so the call
         // happens while the context refreshes.
-        assertThatThrownBy {
+        val port = closedPort()
+
+        val thrown = catchThrowable {
             SpringApplicationBuilder(ChatApp::class.java)
-                .run(*launchArguments("embedded"))
+                .run(*launchArguments("embedded", port))
                 .close()
-        }.isNotNull()
+        }
+
+        assertReachedTheEndpoint(thrown, port)
     }
 
     @Test
     fun `an unreachable endpoint starts under simple and fails the first operation`() {
         // SimpleVectorStore never calls dimensions() at build time. So the
         // context refreshes, and the failure waits for a vector operation.
+        val port = closedPort()
         val context = SpringApplicationBuilder(ChatApp::class.java)
-            .run(*launchArguments("simple"))
+            .run(*launchArguments("simple", port))
 
         try {
-            assertThat(context.isActive).isTrue()
+            assertThat(context.isActive)
+                .describedAs("the context must refresh under simple")
+                .isTrue()
 
-            val store = context.getBean(org.springframework.ai.vectorstore.VectorStore::class.java)
+            val store = context.getBean(VectorStore::class.java)
 
-            assertThatThrownBy {
+            val thrown = catchThrowable {
                 store.add(
                     listOf(
-                        org.springframework.ai.document.Document.builder()
+                        Document.builder()
                             .id("message:long:1")
                             .text("apple pie recipe")
                             .build()
                     )
                 )
-            }.isNotNull()
+            }
+
+            assertReachedTheEndpoint(thrown, port)
         } finally {
             context.close()
         }
+    }
+
+    /**
+     * Asserts that the failure came from the endpoint and from nothing else.
+     *
+     * A bare `isNotNull` would pass on a missing bean, a bad property name, or
+     * a port that another process holds. Each of those is a defect in the
+     * test, not the behaviour under test. So this check reads the whole cause
+     * chain and requires the closed port number in it, and it refuses a
+     * missing bean.
+     */
+    private fun assertReachedTheEndpoint(thrown: Throwable?, port: Int) {
+        assertThat(thrown).describedAs("expected a failure").isNotNull()
+
+        val chain = generateSequence(thrown) { it.cause }.toList()
+        val text = chain.joinToString(" | ") { "${it.javaClass.name}: ${it.message}" }
+
+        assertThat(chain.map { it.javaClass.name })
+            .describedAs("the failure must not be a missing bean: %s", text)
+            .doesNotContain("org.springframework.beans.factory.NoSuchBeanDefinitionException")
+
+        assertThat(text)
+            .describedAs("the failure must name the closed endpoint")
+            .contains(port.toString())
     }
 }
 ```
@@ -2913,10 +3204,12 @@ Create
 ```kotlin
 package com.demo.chat.test.deploy.redis
 
-import com.demo.chat.ChatApp
-import org.assertj.core.api.Assertions.assertThatThrownBy
+import com.redis.testcontainers.RedisStackContainer
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.builder.SpringApplicationBuilder
 import java.net.ServerSocket
 import java.util.UUID
@@ -2926,35 +3219,106 @@ import java.util.UUID
  *
  * Schema initialization skips dimensions() when the index already exists. A
  * new identity creates a new index name, so the first run under a new identity
- * does reach dimensions().
+ * does reach dimensions(). This test uses a fresh identity, so the index is
+ * always absent.
  *
- * This test uses a fresh identity, so the index is always absent.
+ * The launch values come from RedisVectorRecallBootTests, which is the boot
+ * test of this backend. That class uses @SpringBootTest, which cannot express
+ * a refused context. So this class drives SpringApplicationBuilder instead.
+ *
+ * SpringApplicationBuilder.properties() writes to defaultProperties, the
+ * lowest precedence source, so every value below is a command line argument.
+ * See forward-register.md.
+ *
+ * This test claims no node id. Key, persistence, index, and secrets all use
+ * memory selectors, so no claim store activates. See docs/NODEID-CLAIM.md and
+ * the same note on RedisVectorRecallBootTests.
  */
 @Tag("integration")
-class RedisDeadEmbeddingEndpointTests : RedisTestContainerBase() {
+class RedisDeadEmbeddingEndpointTests {
+
+    companion object {
+        val redisStack = RedisStackContainer(
+            RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG)
+        ).apply { start() }
+    }
+
+    /** Mirrors the BootApp of RedisVectorRecallBootTests. */
+    @SpringBootApplication(proxyBeanMethods = false, scanBasePackages = ["com.demo.chat.config"])
+    class BootApp
 
     private fun closedPort(): Int =
         ServerSocket(0).use { socket -> socket.localPort }
 
+    private fun launchArguments(identity: String, port: Int): Array<String> = arrayOf(
+        "--spring.application.name=redis-dead-endpoint-test",
+        "--spring.main.web-application-type=reactive",
+        "--server.port=0",
+        "--spring.rsocket.server.port=0",
+        "--app.server.proto=rsocket",
+        "--app.key.type=long",
+        "--app.nodeid=1",
+        "--app.service.core.key=memory",
+        "--app.service.core.pubsub=redis-pubsub",
+        "--app.service.core.index=lucene",
+        "--app.service.core.persistence=memory",
+        "--app.service.core.secrets=memory",
+        "--app.service.composite=true",
+        "--app.service.composite.auth=true",
+        "--app.service.core.vector=redis",
+        "--app.service.core.embedding=openai",
+        "--app.service.core.embedding.identity=$identity",
+        "--app.service.core.embedding.openai.base-url=http://127.0.0.1:$port",
+        "--app.service.core.embedding.openai.api-key=not-a-secret",
+        "--app.service.core.embedding.openai.model=stub-embedding",
+        "--app.controller.message=true",
+        "--app.controller.recall=true",
+        "--spring.redis.host=${redisStack.host}",
+        "--spring.redis.port=${redisStack.firstMappedPort}",
+        "--redis-topics.host=${redisStack.host}",
+        "--redis-topics.port=${redisStack.firstMappedPort}",
+        "--spring.cloud.consul.enabled=false",
+        "--spring.cloud.consul.discovery.enabled=false",
+        "--spring.cloud.consul.config.enabled=false",
+    )
+
     @Test
     fun `an unreachable endpoint fails startup under redis when the index is new`() {
         val identity = "dead-" + UUID.randomUUID().toString().take(8)
+        val port = closedPort()
 
-        assertThatThrownBy {
-            SpringApplicationBuilder(ChatApp::class.java)
-                .run(*redisLaunchArguments(identity, closedPort()))
+        val thrown = catchThrowable {
+            SpringApplicationBuilder(BootApp::class.java)
+                .run(*launchArguments(identity, port))
                 .close()
-        }.isNotNull()
+        }
+
+        // A bare isNotNull would pass on a missing bean or a bad property
+        // name. Each of those is a defect in the test, not the behaviour under
+        // test. So this check reads the whole cause chain.
+        assertThat(thrown).describedAs("expected a failure").isNotNull()
+
+        val chain = generateSequence(thrown) { it.cause }.toList()
+        val text = chain.joinToString(" | ") { "${it.javaClass.name}: ${it.message}" }
+
+        assertThat(chain.map { it.javaClass.name })
+            .describedAs("the failure must not be a missing bean: %s", text)
+            .doesNotContain("org.springframework.beans.factory.NoSuchBeanDefinitionException")
+
+        assertThat(text)
+            .describedAs("the failure must name the closed endpoint")
+            .contains(port.toString())
     }
 }
 ```
 
-Read `chat-deploy-redis/src/test/.../RedisVectorRecallBootTests.kt` first. Copy
-its container base class name, its property list, and its node id. Write
-`redisLaunchArguments` in this class from that list. Change only the vector
-selector to `redis`, the embedding selector to `openai`, the identity to the
-argument, and the base URL to the closed port. Claim a node id that
-`docs/NODEID-CLAIM.md` does not list, and add the new row to that document.
+The launch values above come from `RedisVectorRecallBootTests`. Four values
+differ, and each difference is deliberate. The vector selector stays `redis`.
+The embedding selector becomes `openai`. The identity is fresh for each run, so
+the index is always absent. The base URL names the closed port.
+
+`docs/NODEID-CLAIM.md` needs no new row. This test claims no node id, for the
+same reason that `RedisVectorRecallBootTests` claims none.
 
 - [ ] **Step 5: Run the redis proof**
 
@@ -2969,9 +3333,12 @@ Expected: PASS, 1 test. This run needs Docker.
 ```bash
 drift check && git diff --check
 git add chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/DeadEmbeddingEndpointTests.kt \
-        chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt \
-        docs/NODEID-CLAIM.md
-git commit -m "test: prove each failure moment of an unreachable endpoint (CHAT-etfnihnu)"
+        chat-deploy-redis/src/test/kotlin/com/demo/chat/test/deploy/redis/RedisDeadEmbeddingEndpointTests.kt
+git commit -F - <<'MSG'
+test: prove each failure moment of an unreachable endpoint (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 ---
@@ -3153,6 +3520,22 @@ fail() {
     exit 1
 }
 
+# CLAUDE.md requires miniforge for Python. The stub runs under it, and so does
+# every JSON read below. The activation happens once, here, and it must
+# succeed. A later step that silently used a system python3 would break the one
+# rule this repository sets.
+# shellcheck disable=SC1090
+if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
+    source "$HOME/miniforge3/etc/profile.d/conda.sh"
+    conda activate base || fail "conda activate base failed"
+else
+    fail "miniforge is not installed at ~/miniforge3. See CLAUDE.md."
+fi
+command -v python3 > /dev/null || fail "no python3 after conda activate base"
+
+echo "0. Python runs under miniforge."
+python3 -c "import sys; print('   ' + sys.executable)"
+
 echo "1. Build and package chat-deploy-memory with expose-webflux."
 mvn -o -B -Pexpose-webflux -Dmaven.test.skip=true \
     -pl chat-deploy-memory -am \
@@ -3169,12 +3552,6 @@ TESTS=$(unzip -l "$JAR" | grep -c 'tests\.jar')
 echo "   ok, no test jar inside the artifact"
 
 echo "3. Start the synthetic embeddings endpoint."
-# CLAUDE.md requires miniforge for Python. The stub uses the standard library
-# only, so any interpreter runs it, and the activation keeps one rule for the
-# repository.
-# shellcheck disable=SC1090
-source ~/miniforge3/etc/profile.d/conda.sh 2>/dev/null && conda activate base
-command -v python3 > /dev/null || fail "no python3 on PATH, and conda did not activate"
 python3 "$DIR/openai-stub-server.py" "$STUB_PORT" > "$WORK/stub.log" 2>&1 &
 STUB_PID=$!
 sleep 1
@@ -3335,7 +3712,11 @@ again and confirm it passes.
 ```bash
 drift check && git diff --check
 git add shell-scripts/vector/gate-embedding-launch.sh shell-scripts/vector/openai-stub-server.py
-git commit -m "test: prove the embedding feature outside a test classpath (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+test: prove the embedding feature outside a test classpath (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 State the Step 7 mutation result in the message body.
@@ -3444,13 +3825,18 @@ for gate in \
     $gate > "$LOG/$name.txt" 2>&1
     code=$?
     echo "$code  $gate"
-    [ "$code" -ne 0 ] && STATUS=1
+    if [ "$code" -ne 0 ]; then STATUS=1; fi
 done
 echo "logs: $LOG"
 echo "overall: $STATUS"
+[ "$STATUS" -eq 0 ] || { echo "AT LEAST ONE GATE FAILED. Do not commit."; false; }
 ```
 
-Expected: every line begins with `0`, and `overall: 0`.
+Expected: every line begins with `0`, and `overall: 0`. The last line prints
+nothing.
+
+The final test is what makes this step fail. Without it the block ends on an
+`echo`, which always succeeds, and a failed gate would read as a pass.
 
 Each gate writes to its own file, and the loop reads each exit status before it
 continues. A pipeline into `tail` would report the status of `tail` and hide a
@@ -3464,7 +3850,11 @@ first two files must match what Step 3 records.
 ```bash
 drift check && git diff --check
 git add docs/EMBEDDING-PROVIDERS.md docs/BUILD-HEALTH.md forward-register.md
-git commit -m "docs: record the embedding providers and the guard (CHAT-etfnihnu)"
+git commit -F - <<'MSG'
+docs: record the embedding providers and the guard (CHAT-etfnihnu)
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+MSG
 ```
 
 - [ ] **Step 7: Close the issue**
@@ -3490,8 +3880,9 @@ I checked the plan against the spec.
 | Spec verification line | Task |
 |---|---|
 | Each provider supplies a model behind its value | 2, 3 |
+| The local provider loads a real model and embeds text | 3 |
 | Each provider supplies no bean for another value | 2, 3 |
-| Neither module depends on a starter | 2, 3 |
+| Neither module depends on a starter | 2, 3, by dependency tree |
 | A production embedding without an identity fails | 1 |
 | A mock embedding with an identity fails | 1 |
 | An illegal character fails | 1 |
@@ -3522,6 +3913,10 @@ the owner's direction.
 
 **What the tasks prove beyond the spec's own list.**
 
+- Task 3 Step 11 loads a real ONNX model through the configuration, asserts 384
+  dimensions, and asserts that two texts which share meaning score above two
+  that do not. Every other test in that module proves only that the bean stays
+  behind its selector.
 - Task 4 Step 14 proves that each vector store bean calls the identity function
   rather than a hardcoded name. The companion tests alone cannot show that.
 - Task 5 Step 12 proves that a record written before this change decodes with a
@@ -3552,15 +3947,43 @@ constructor and setter names in Task 2 and Task 3 are expected shapes and not
 measured ones. Each task carries a step that reads the real signatures from the
 downloaded jar before the configuration is written.
 
+**Two library surfaces that a step measures rather than assumes.** Task 2 and
+Task 3 each read the real signatures from the downloaded jar. Task 3 Step 11
+also states what to do when the model answers a width other than 384. Check the
+two URLs, and do not change the expected value to match the answer.
+
 **One unverified spec statement that Task 8 can overturn.** The spec says
 `SimpleVectorStore` never calls `dimensions()` at build time. Task 8 Step 3
 says what to do when that proves false. Record a spec correction and tell the
 owner. Do not change the test to match.
 
+**Every assertion names what it rejects.** No test in this plan asserts only
+that something was thrown. Task 8 reads the whole cause chain, requires the
+closed port number in it, and refuses a `NoSuchBeanDefinitionException`. A
+missing bean, a misspelled property, or a port that another process holds each
+fails the test rather than passing it.
+
+**Every fixture is derived, not hand written.** Task 5 Step 12 builds the
+legacy record by removing one field from the mapper's own output. A hand
+written JSON literal could disagree with the real wire shape, because `Key`
+carries a wrapper object and the path to an id is one level deeper than its
+field name.
+
+**Every commit carries the trailer.** All ten commits use a `git commit -F -`
+heredoc, so each message ends with the required `Co-Authored-By` line. A
+`git commit -m` one liner cannot carry it.
+
+**Every script that runs Python enforces miniforge.** The guard script and the
+gate script each activate it once, near the top, and each exits when the
+activation fails. A later step cannot fall back to a system interpreter in
+silence.
+
+**Every gate reports its own exit status.** No step pipes a build or a launch
+into `tail`. Task 10 Step 5 ends on a test rather than an `echo`, so a failed
+gate fails the step.
+
 **Placeholder scan.** The plan carries no `TBD` and no `implement later`. Each
-code step carries the code. Three steps name a file to read first, rather than
-copy a shape this session did not measure. Task 8 Step 4 reads the redis
-container base class. Task 5 Step 12 reads the codec test's own JSON shape.
+code step carries the code, including both dead endpoint test classes in full.
 Task 10 Step 2 lists nine sections rather than the prose, because an operator
 document is prose that the writer must measure.
 
