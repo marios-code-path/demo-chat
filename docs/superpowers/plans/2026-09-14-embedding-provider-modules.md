@@ -1481,15 +1481,23 @@ checksum to match what arrived.
 This download needs network access. It runs once. The files stay outside the
 repository, and no build commits them.
 
-**The whole task downloads near 260 MiB.** One file set is 90871461 bytes,
-which is 86.7 MiB. This step takes one set. Step 12 and Step 13 each run the
-remote test once, and that test takes two sets, one per identity. So three sets
-arrive over the network beyond this one, and the total is four sets, which is
-346.6 MiB.
+**The whole task downloads five file sets, which is 433.3 MiB.** One file set
+is 90871461 bytes, which is 86.7 MiB. Five sets are 454357305 bytes.
 
-Step 12's second mutation runs without the remote property, so it downloads
-nothing. Run the steps in order, and do not run the remote test more often than
-the plan says.
+| Run | Sets | MiB |
+|---|---|---|
+| This step, the two `curl` commands | 1 | 86.7 |
+| Step 12, the first mutation, remote property on | 2 | 173.3 |
+| Step 12, the second mutation, remote property off | 0 | 0 |
+| Step 13, the green run, remote property on | 2 | 173.3 |
+| Step 13, the skip check, neither property | 0 | 0 |
+| **Total** | **5** | **433.3** |
+
+The remote test takes two sets, because it builds two identities and a new
+identity must not read the cache of the old one.
+
+Run the steps in order, and do not run the remote test more often than the plan
+says. Each extra run with the remote property costs another 173.3 MiB.
 
 - [ ] **Step 11: Write the real model tests**
 
@@ -1847,7 +1855,7 @@ Evidence, measured on <DATE>.
   opt in properties. None is skipped.
 - With the downloaded files in place and neither property set, all three
   report as skipped. So no unattended build loads the model.
-- The task downloaded four file sets, which is 346.6 MiB.
+- The task downloaded five file sets, which is 433.3 MiB.
 - The dependency tree carries spring-ai-transformers and no artifact named
   spring-ai-starter or spring-ai-autoconfigure.
 - The model is all-MiniLM-L6-v2 at revision
@@ -4572,10 +4580,12 @@ report as skipped.
 
 **The download cost is stated and bounded.** One file set is 90871461 bytes,
 which is 86.7 MiB. The remote test takes two sets, one per identity, and it
-runs twice across the task. With the one set that Step 10 takes, the task
-downloads four sets, which is 346.6 MiB. Two identities sit in one test rather
+runs twice across the task, which is four sets. With the one set that Step 10
+takes, the task
+downloads five sets, which is 433.3 MiB. Two identities sit in one test rather
 than in two tests, and Step 12's second mutation runs without the remote
-property. Each choice removes one run of two sets.
+property. Each choice removes one run of two sets, and the first revision of
+this figure miscounted the remaining runs as four sets rather than five.
 
 A gate on the downloaded files alone would not hold the rule. A developer who
 ran the download once would load a 90 MiB model in every later integration
