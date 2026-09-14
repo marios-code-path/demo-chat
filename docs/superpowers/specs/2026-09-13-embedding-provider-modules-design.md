@@ -390,15 +390,23 @@ app.controller.recall=true
 chains disjoint ownership. This section states the contract that issue delivers,
 because the gate rests on it.
 
-After `CHAT-jdsamcia`, the actuator chain matches actuator routes only, and it
-takes the higher priority. `/actuator/health` stays open. Every other actuator
-route requires the ACTUATOR role. `WebFluxSecurity` owns all remaining routes,
-and it permits them today.
+After `CHAT-jdsamcia`, the actuator chain matches actuator routes only, through
+a management aware matcher, and it takes the higher priority. The health
+endpoint stays open. Every other actuator route requires the ACTUATOR role.
+`WebFluxSecurity` owns all remaining routes, and it permits them today.
 
 So the trigger and the poll carry Basic credentials for the actuator user.
 `app.actuator.username` and `app.actuator.password` name that user, which lives
 in memory in that chain alone. The seed and the recall reach application routes,
 and they need no credentials.
+
+**No application route authenticates today, and this work does not change that.**
+`WebFluxSecurity` wires no `httpBasic` and no authentication manager, so no
+`Authentication` reaches a route it owns. The gate seeds through
+`PUT /persist/message/add`, which binds no principal, and it recalls through
+`ChatMessageRecallController`, which binds only a request body. So the gate never
+needs an application identity. `POST /message/send/{id}` does need one, at
+`ChatMessageServiceRestMapping.kt:33`, and the gate does not use that route.
 
 **Why this is a prerequisite and not a note.** Today
 `ActuatorWebSecurityConfiguration` answers `anyExchange()` with the ACTUATOR
@@ -431,7 +439,7 @@ embeddings API with fixed vectors. `OpenAiEmbeddingModel` builds, serializes a
 request, reads a response, and returns vectors.
 
 **Production client code runs against a synthetic endpoint.** The gate needs no
-secret key and no network.
+secret key and no external network.
 
 Project policy requires a key value, which the section above states. So the
 launch supplies a dummy that is not a secret, and the stub ignores it.
@@ -448,8 +456,15 @@ a recorded procedure and neither runs unattended.
 
 **`CHAT-jdsamcia` must land first.** It gives the actuator chain and the
 application chain disjoint ownership, and the gate above depends on that split.
-It also corrects `docs/VECTOR-RECALL-API.md`, whose seven curl commands pass a
-chat user that the current actuator chain cannot authenticate.
+Its matcher must be management aware, because an operator can move the actuator
+prefix with `management.endpoints.web.base-path`.
+
+It also corrects `docs/VECTOR-RECALL-API.md`. Four of that document's curl
+commands pass a chat user, and three pass the actuator user. The three actuator
+commands stay correct. The four chat user commands seed through
+`POST /message/send/{id}`, which binds a `ChatUserDetails` principal that no
+application chain supplies. That issue changes the guide to seed through
+persistence.
 
 ## Build Prerequisite
 
