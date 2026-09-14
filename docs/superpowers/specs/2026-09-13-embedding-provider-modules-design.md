@@ -1,6 +1,7 @@
 # Embedding Provider Modules
 
-Status: proposed. The owner chose this shape. The document waits for review.
+Status: proposed. The owner chose this shape and corrected the first draft. The
+revised document waits for review.
 
 Issue: `CHAT-etfnihnu`.
 
@@ -41,15 +42,30 @@ one selector value.
 The mock stays where it is. It remains test only, in the `chat-core` test jar,
 and it keeps the `mock` selector value.
 
-Every production model carries an operator-supplied identity. That identity
-reaches the store names and the durable job record.
+`chat-core` gains a typed identity and one resolver bean. Four call sites inject
+the resolved value.
 
 A guard refuses a test artifact on a production classpath.
 
-The final proof launches a packaged deployment with no test output on its
-classpath. That deployment creates an embedding and completes one search.
+The final gate launches a packaged deployment with no test output on its
+classpath. That deployment embeds text, rebuilds, and searches.
 
 ## The Two Providers
+
+### Dependencies, and why not the starters
+
+Each module depends on the model library alone.
+
+- `chat-embedding-openai` depends on `spring-ai-openai`.
+- `chat-embedding-local` depends on `spring-ai-transformers`.
+
+**Neither module depends on a starter.** Both modules sit on one classpath, and
+a starter carries auto-configuration. Two starters would let Spring AI build
+models that no selector asked for. The selector must be the only thing that
+decides.
+
+So each module constructs its own model inside a configuration class, behind
+`@ConditionalOnProperty`. The construction is explicit and it is conditional.
 
 ### chat-embedding-openai
 
@@ -59,8 +75,12 @@ The module owns three values. The operator sets all three.
 - `app.service.core.embedding.openai.api-key`
 - `app.service.core.embedding.openai.model`
 
-Spring AI supports an OpenAI-compatible endpoint through a base URL. So this
+Spring AI reaches an OpenAI-compatible endpoint through a base URL. So this
 provider serves OpenAI and any service that speaks the same API.
+
+**`OpenAiApi` requires an API key when it builds, in Spring AI 1.0.3.** A launch
+against a service that needs no key must still supply a value. The gate supplies
+a dummy value that is not a secret.
 
 ### chat-embedding-local
 
@@ -72,15 +92,29 @@ The module owns two values. The operator sets both.
 Spring AI reads `file:`, `classpath:`, and `https:` resources. So an operator
 supplies a model from disk, from the artifact, or from a remote host.
 
+**The remote cache ignores the identity.** `ResourceCacheService` in Spring AI
+1.0.3 caches a remote resource by its location. A new identity with unchanged
+URIs would load the old bytes, and the corpus would carry vectors from the
+previous model under the new name.
+
+So this module sets a cache directory that carries the identity.
+
+```
+<cache root>/<identity>
+```
+
+An operator who wants no caching sets the local resources with `file:`, which
+the cache does not copy.
+
 **This module builds against Spring AI 1.0.3.** The root pom pins that version
-and forbids 2.0.0. The ONNX documentation for 2.0 describes a different surface,
-so the implementation follows the 1.0 surface of `spring-ai-transformers`.
+and a comment beside the pin advises against 2.0.0. **No enforcer rule bans
+2.0.0.** The ONNX documentation for 2.0 describes a different surface, so the
+implementation follows the 1.0 surface of `spring-ai-transformers`.
 
 ### Neither provider changes a vector store
 
 A vector store receives an `EmbeddingModel` and asks nothing about its origin.
-The embedded store also reads `dimensions()` from it. No store needs a second
-loading mode.
+No store needs a second loading mode.
 
 ## Model Identity
 
@@ -91,7 +125,7 @@ app.service.core.embedding.identity=acme-e5-small-v2
 ```
 
 The value is required when `embedding` is `openai` or `local`. It is refused
-when `embedding` is `mock`, which carries the fixed identity `mock`.
+when `embedding` is `mock`, which resolves to the fixed identity `mock`.
 
 The value must match `[a-z0-9][a-z0-9-]{0,63}`. A redis key prefix and a
 directory name both carry it, so the character set is narrow. Startup fails on
@@ -104,6 +138,31 @@ knows that a change happened, so only an operator can name the identity.
 
 **The identity is immutable for a corpus.** A new identity means a new corpus.
 It does not mean a migration.
+
+### The typed contract
+
+`chat-core` declares the type and one resolver.
+
+```kotlin
+@JvmInline
+value class EmbeddingIdentity(val value: String)
+```
+
+One bean resolves it. The bean reads the embedding selector and the identity
+property, applies the rules above, and fails startup on a breach.
+
+**Four call sites inject the resolved value.** None of them reads the property.
+
+| Call site | Use |
+|-----------|-----|
+| `RedisVectorStoreConfiguration` | the index name and the key prefix |
+| `EmbeddedVectorStoreConfiguration` | the collection directory |
+| `VectorIndexJobStoreImpl.createJob` | the value it writes on a new `IndexJob` |
+| `VectorCoveragePolicyImpl` | the value it matches when it selects coverage |
+
+A typed value stops a raw string from reaching the wrong parameter. Three of
+those four call sites already take a `keyType` string, and a second string
+beside it would be easy to swap.
 
 ## Where Identity Is Used
 
@@ -134,27 +193,35 @@ change cannot meet a collection of the wrong width.
 
 **Existing embedded directories orphan.** The rule is the same as redis.
 
-### The durable job record
+### The stored IndexJob
 
 `IndexJob` gains one field.
 
 ```kotlin
-val embeddingIdentity: String = ""
+val embeddingIdentity: String? = null
 ```
 
-The default is the empty string, so a record written before this change still
-decodes. That record then carries an identity that no valid value can equal.
+The field is nullable. A record written before this change carries null, which
+states that the writer named no model. An empty string would state that the
+writer named an empty model, and those are different facts.
 
 ### Coverage selection
 
 `VectorCoveragePolicyImpl` adds one filter. A job covers only when its
-`embeddingIdentity` equals the identity this process runs.
+`embeddingIdentity` equals the identity this process resolved.
+
+**The filter runs before the sort and before `next()`.** That order is the rule,
+and it repeats the rule the `SUCCEEDED` filter already follows.
+
+A newer job of a foreign identity would otherwise reach `next()` first. The
+policy would select it, reject it, and report no coverage. A valid older job of
+this identity would then be hidden behind it, and the index would rebuild for no
+reason.
 
 **This change invalidates every covering job that exists today.** Each one
-carries the empty identity, and the empty string is not a legal identity. So the
-first start after this change reports an incomplete index and waits for a
-rebuild. That outcome is correct, because those vectors came from a model that
-no longer has a name.
+carries null, and null equals no identity. So the first start after this change
+reports an incomplete index and waits for a rebuild. That outcome is correct,
+because those vectors came from a model that no longer has a name.
 
 ### Where identity is not used
 
@@ -169,16 +236,17 @@ the reader can tell them apart.
 ## Selector Pairs
 
 `VectorSelectorValidation` holds the legal pairs. The set grows from four to
-twelve.
+ten.
 
-| vector | embedding |
-|--------|-----------|
-| `mock`, `simple`, `redis`, `embedded` | `mock` |
-| `mock`, `simple`, `redis`, `embedded` | `openai` |
-| `mock`, `simple`, `redis`, `embedded` | `local` |
+| vector | embedding | Note |
+|--------|-----------|------|
+| `mock`, `simple`, `redis`, `embedded` | `mock` | the four that exist today |
+| `simple`, `redis`, `embedded` | `openai` | new |
+| `simple`, `redis`, `embedded` | `local` | new |
 
-Every vector store accepts every embedding. A store receives a model and asks
-nothing about it.
+**`mock` with `openai` and `mock` with `local` are not legal.** No mock vector
+configuration exists to receive a production model, so the pair would name a
+store that cannot build.
 
 The validation also gains the identity rule. A production embedding without an
 identity fails startup. A `mock` embedding with an identity fails startup.
@@ -201,9 +269,8 @@ modules at compile scope.
 </dependency>
 ```
 
-**`chat-deploy-memory` also loses its compile-scope test jar.** That dependency
-gains `<scope>test</scope>`, which matches every other module. The mock then
-reaches tests and never reaches a launch.
+**`chat-deploy-memory` also moves its test jar dependency to test scope.** The
+mock then reaches tests and never reaches a launch.
 
 A deployment can select only an embedding it declares, exactly as it can select
 only a vector store it declares.
@@ -216,16 +283,15 @@ One script holds two rules. Both run over every module.
 declare `<scope>test</scope>`.
 
 **Rule two reads the resolved classpath.** A known test library must not appear
-on a compile or runtime classpath. The rule reads
-`dependency:build-classpath` with runtime scope, because a transitive leak does
-not appear in a pom.
+on a compile or runtime classpath. The rule reads `dependency:build-classpath`
+with runtime scope, because a transitive leak never appears in a pom.
 
 The known list starts with these groups and artifacts.
 
 - `org.testcontainers`
 - `com.redis:testcontainers-redis`
 - `org.junit.jupiter`, `org.junit.platform`
-- `org.mockito`, `org.mockito.kotlin`
+- `org.mockito`
 - `org.assertj`
 - `io.projectreactor:reactor-test`
 - `org.springframework.boot:spring-boot-starter-test`
@@ -235,30 +301,75 @@ The known list starts with these groups and artifacts.
 testcontainers artifacts resolving at compile scope in `chat-shell`. They are
 ordinary jars and not test jars, so rule one does not see them.
 
-The guard joins `just check-deps` beside `check-dependency-versions.sh`.
+### The guard fails on ten modules today
 
-## The Packaged Launch Proof
+A read on 2026-09-13 found a test jar dependency with no scope element in every
+module below.
+
+`chat-client-consul`, `chat-client-rsocket`, `chat-deploy-memory`,
+`chat-messaging-memory`, `chat-persistence-memory`, `chat-security`,
+`chat-service-composite`, `chat-service-controller`, `chat-shell`,
+`chat-webflux`.
+
+**So the guard cannot land with this work.** Ten modules must move first, and
+each move can break a compile that relied on the wider scope. That cleanup is a
+prerequisite issue, and it carries the two `chat-shell` testcontainers
+dependencies with it.
+
+This work moves one of the ten, `chat-deploy-memory`, because the whole point is
+to stop that module shipping the mock.
+
+## The Packaged Launch Gate
 
 **A test classpath cannot prove this feature works.** Every gate in this
 repository puts test outputs on the classpath, which is what hid the defect. So
-the proof runs outside a test classpath.
+the gate runs outside a test classpath.
 
-The proof builds the deployment jar, launches it with `java -jar`, and drives it
-over HTTP.
+### What the deployment needs first
 
-1. Build `chat-deploy-memory` and repackage it.
+**`chat-deploy-memory` carries no `chat-webflux`.** It has the webflux
+framework, so an actuator answers over HTTP, and it has none of this
+repository's REST routes. The root pom carries an `expose-webflux` profile that
+adds `chat-webflux`, and the gate builds with it.
+
+The alternative is an RSocket client, because `app.server.proto` is `rsocket`.
+The profile is smaller, and it already exists for this purpose.
+
+The launch also sets both actuator properties, because the deployments disable
+every endpoint by default.
+
+```properties
+management.endpoint.vectorindex.enabled=true
+management.endpoints.web.exposure.include=vectorindex
+```
+
+### The sequence
+
+**A send and a recall create no `IndexJob`.** A live add writes one vector and
+records nothing durable. So the gate triggers a rebuild, which is the only path
+that writes a job.
+
+1. Build `chat-deploy-memory` with `-Pexpose-webflux`, and repackage it.
 2. Assert that no test output is on the launched classpath.
-3. Launch with `embedding=openai`, `vector=simple`, and an identity.
-4. Send one message, which creates one embedding.
-5. Run one recall, which completes one search.
-6. Read `/actuator/vectorindex`, and assert the job carries the identity.
+3. Launch with `vector=simple`, `embedding=openai`, an identity, and a base URL
+   that names the stub.
+4. Send messages over REST, which embeds text through the production client.
+5. Trigger a rebuild through `POST /actuator/vectorindex`.
+6. Poll `GET /actuator/vectorindex` until `running` is false.
+7. Assert that the newest job carries the identity the launch set.
+8. Run one recall, and assert the hits and `indexComplete`.
 
-**The endpoint is a stub, and the model is real.** The launch points its base URL
-at a local process that answers the OpenAI embeddings API with fixed vectors.
-`OpenAiEmbeddingModel` builds, serializes a request, and reads a response. So
-the provider path is exercised, and the gate needs no key and no network.
+### The endpoint is synthetic and the client is production code
 
-This choice rests on the feature itself. The provider exists to serve any
+The launch points its base URL at a local process that answers the OpenAI
+embeddings API with fixed vectors. `OpenAiEmbeddingModel` builds, serializes a
+request, reads a response, and returns vectors.
+
+**Production client code runs against a synthetic endpoint.** The gate needs no
+key and no network. The stub receives a dummy key that is not a secret, because
+`OpenAiApi` requires one.
+
+This rests on the feature itself. The provider exists to serve any
 OpenAI-compatible endpoint, so a compatible endpoint is a valid subject.
 
 **Two checks stay manual and out of the gate.** A run against a real OpenAI
@@ -269,13 +380,29 @@ a recorded procedure and neither runs unattended.
 ## Build Prerequisite
 
 **Neither provider resolves offline today.** A read on 2026-09-13 found only
-metadata under `~/.m2` for `spring-ai-openai`, `spring-ai-transformers`, and
-both starters. No jar exists at any version.
+metadata under `~/.m2` for `spring-ai-openai` and `spring-ai-transformers`. No
+jar exists at any version.
 
 One online build populates the cache. CI needs the same, and the dependency
 audit workflow sees new artifacts.
 
 ## Failure Behavior
+
+**An unreachable endpoint fails at a different moment for each vector store.**
+`EmbeddingModel.dimensions()` is the reason. Spring AI can reach the remote
+service to answer it.
+
+| Vector store | When it calls `dimensions()` | Failure moment |
+|--------------|------------------------------|----------------|
+| `embedded` | when the collection bean builds | startup |
+| `redis` | when it initializes its schema | startup |
+| `simple` | never, at build time | the first add |
+
+So an operator sees a failed startup on two providers, and a failed send on the
+third. Each message names the endpoint.
+
+An absent ONNX model file fails startup, because the model loads when the bean
+builds.
 
 A production embedding with no identity fails startup.
 
@@ -283,33 +410,32 @@ A `mock` embedding with an identity fails startup.
 
 An identity outside the character set fails startup.
 
-An unreachable OpenAI endpoint fails the first embedding, and the live add path
-removes coverage. The failure reaches the sender, which is the existing rule.
-
-An absent ONNX model file fails startup, because the model loads when the bean
-builds.
-
-A job written before this change never covers, because it carries no identity.
+A job written before this change never covers, because it carries null.
 
 ## Verification
 
 - Each provider module supplies an `EmbeddingModel` behind its selector value.
-- Each provider module supplies no bean when its selector names another value.
+- Each provider module supplies no bean when the selector names another value.
+- Neither module depends on a Spring AI starter.
 - A production embedding without an identity fails startup.
 - A `mock` embedding with an identity fails startup.
 - An identity with an illegal character fails startup.
+- A `mock` embedding resolves the identity `mock`.
 - The redis index name and prefix carry the identity.
 - The embedded collection directory carries the identity.
-- A successful job records the identity of the model that wrote it.
+- The local cache directory carries the identity.
+- A successful `IndexJob` records the identity of the model that wrote it.
 - A job of another identity does not cover.
 - A job written before this change does not cover.
+- **A newer job of a foreign identity does not hide a current covering job.**
 - The release sweep releases a stale job of another identity.
 - The actuator read returns a job of another identity.
-- Every test jar dependency declares test scope.
-- No known test library resolves on a runtime classpath.
+- An unreachable endpoint fails startup under `embedded` and under `redis`.
+- An unreachable endpoint fails the first add under `simple`.
 - A packaged deployment launches with no test output on its classpath.
-- That deployment creates an embedding and completes one search.
-- That deployment records the identity on its job.
+- That deployment embeds text through the production client.
+- That deployment rebuilds, and its job carries the identity.
+- That deployment completes one search.
 
 ## Out Of Scope
 
@@ -319,30 +445,39 @@ A job written before this change never covers, because it carries no identity.
 - The Spring AI 2.0 move, which `CHAT-ygllyglb` tracks.
 - Automatic selection between two embedding providers at runtime.
 - Any change to `MessageRecallResult` or to either transport.
+- The test scope cleanup of the other nine modules, which is a prerequisite.
 
 ## Decisions
 
 1. Two production modules, one selector value each.
-2. The mock stays test only, in the `chat-core` test jar.
-3. Both deployments declare both production modules at compile scope.
-4. `chat-deploy-memory` moves its test jar dependency to test scope.
-5. The operator supplies an identity, and the code never derives one.
-6. A `mock` embedding carries the fixed identity `mock`.
-7. The identity reaches redis names, the embedded namespace, and the job record.
-8. Coverage selection is the only place that filters on identity.
-9. `IndexJob.embeddingIdentity` defaults to the empty string, so old records
-   decode and never cover.
-10. One guard holds two rules, and rule two closes `CHAT-incuynpc`.
-11. The gate proves the feature from a packaged jar, against a stub endpoint.
-12. A real endpoint and a real ONNX model stay manual.
+2. Each module depends on a model library and not on a starter.
+3. Each module constructs one model, behind a condition.
+4. The mock stays test only, in the `chat-core` test jar.
+5. Both deployments declare both production modules at compile scope.
+6. `chat-deploy-memory` moves its test jar dependency to test scope.
+7. The operator supplies an identity, and the code never derives one.
+8. A `mock` embedding resolves the fixed identity `mock`.
+9. `chat-core` declares a typed `EmbeddingIdentity` and one resolver bean.
+10. Four call sites inject the resolved value, and none reads the property.
+11. `IndexJob.embeddingIdentity` is nullable, so a legacy record states that it
+    named no model.
+12. Coverage selection is the only place that filters on identity.
+13. The identity filter runs before the sort and before `next()`.
+14. Ten legal selector pairs, and no mock store takes a production model.
+15. The local module sets a cache directory that carries the identity.
+16. One guard holds two rules, and rule two closes `CHAT-incuynpc`.
+17. The ten unscoped test jar dependencies move in a prerequisite issue.
+18. The gate builds with `expose-webflux`, rebuilds through the actuator, and
+    runs production client code against a synthetic endpoint.
+19. A real endpoint and a real ONNX model stay manual.
 
 ## Decisions The Owner Has Not Made
 
-These are my choices inside the shape the owner set. Each one is open to reversal.
+These are my choices inside the shape the owner set. Each one is open to
+reversal.
 
 - The identity property name and its character set.
-- The fixed `mock` identity, in place of a nullable field.
-- The empty string default on `IndexJob`, in place of a nullable field.
-- The release sweep and the actuator read ignoring identity.
-- The stub endpoint as the gate, in place of a real endpoint or a real model.
-- The twelve legal pairs, in place of a narrower set.
+- The typed value class, in place of a plain string.
+- `expose-webflux` for the gate, in place of an RSocket client.
+- An identity-specific cache directory, in place of disabled caching.
+- The order of the gate steps after the rebuild.
