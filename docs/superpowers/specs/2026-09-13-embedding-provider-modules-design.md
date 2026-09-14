@@ -156,9 +156,14 @@ It does not mean a migration.
 `chat-core` declares the type and one resolver.
 
 ```kotlin
-@JvmInline
-value class EmbeddingIdentity(val value: String)
+data class EmbeddingIdentity(val value: String)
 ```
+
+**The type is a data class, and it is not a `@JvmInline value class`.** Kotlin
+unboxes a value class at a return type. A bean method then supplies a `String`
+bean, and every injection point asks for a type that no bean has. Measured on
+2026-09-14: the bean method compiled to `embeddingIdentity-Xzz6TTw()` with the
+return type `java.lang.String`.
 
 One bean resolves it. The bean reads the embedding selector and the identity
 property, applies the rules above, and fails startup on a breach.

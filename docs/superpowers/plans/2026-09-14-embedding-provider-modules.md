@@ -140,8 +140,9 @@ adds no provider. A later task adds each provider.
 **Interfaces:**
 - Consumes: nothing from an earlier task.
 - Produces:
-  - `com.demo.chat.domain.EmbeddingIdentity`, a `@JvmInline value class` over
-    `String`.
+  - `com.demo.chat.domain.EmbeddingIdentity`, a `data class` over `String`.
+    It is not a `@JvmInline value class`. Kotlin unboxes a value class at a
+    return type, so a bean method would supply a `String` bean.
   - `EmbeddingIdentity.Companion.PATTERN: Regex`.
   - `EmbeddingIdentity.Companion.MOCK: EmbeddingIdentity`.
   - `EmbeddingIdentity.Companion.of(embedding: String, identity: String?): EmbeddingIdentity`.
@@ -279,9 +280,12 @@ package com.demo.chat.domain
  * The type exists to stop a raw string from reaching the wrong parameter.
  * Three call sites already take a keyType string, and a second string beside
  * it would be easy to swap.
+ *
+ * The type is a data class, and it is not a JvmInline value class. Kotlin
+ * unboxes a value class at a return type, so a bean method would supply a
+ * String bean. Spring must see this type.
  */
-@JvmInline
-value class EmbeddingIdentity(val value: String) {
+data class EmbeddingIdentity(val value: String) {
 
     companion object {
         /** A redis key prefix and a directory name both carry this value. */
