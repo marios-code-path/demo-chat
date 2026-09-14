@@ -1541,10 +1541,10 @@ import java.nio.file.Path
  * build.
  *
  * The two file tests also need the two downloaded files, which live outside
- * the repository because they total near 87 MiB. The two remote tests also
- * need -Dchat.embedding.local.remote=true, because each one downloads that
- * much again. The plan step beside this class carries the download, the two
- * checksums, and both properties.
+ * the repository because they total near 87 MiB. The one remote test also
+ * needs -Dchat.embedding.local.remote=true, because it downloads two more
+ * sets of that size. The plan step beside this class carries the download,
+ * the two checksums, and both properties.
  */
 @Tag("integration")
 class LocalEmbeddingModelTests {
@@ -1585,8 +1585,8 @@ class LocalEmbeddingModelTests {
         /**
          * The opt in, and a second one for the network.
          *
-         * Each remote test downloads near 87 MiB again, so it carries its own
-         * switch beside the class switch.
+         * The one remote test downloads two file sets, which is near 173 MiB.
+         * So it carries its own switch beside the class switch.
          */
         @JvmStatic
         fun remoteEnabled(): Boolean =
@@ -1668,9 +1668,10 @@ class LocalEmbeddingModelTests {
         // never show that the bean passed the right cache directory. A
         // hardcoded setter would pass every other test in this class.
         //
-        // Two identities in one test, and not two tests. Each identity
-        // downloads near 87 MiB, so one test of two identities costs half of
-        // what two tests of one identity each would cost.
+        // Two identities in one test, and not two tests. An earlier shape of
+        // this class held one test of a single identity beside one test of
+        // two, which cost three file sets per run. This shape costs two, and
+        // it proves the same two facts.
         //
         // The second identity is the point. A new identity with unchanged
         // URIs must not load the old bytes, which is the defect this cache
@@ -4582,10 +4583,18 @@ report as skipped.
 which is 86.7 MiB. The remote test takes two sets, one per identity, and it
 runs twice across the task, which is four sets. With the one set that Step 10
 takes, the task
-downloads five sets, which is 433.3 MiB. Two identities sit in one test rather
-than in two tests, and Step 12's second mutation runs without the remote
-property. Each choice removes one run of two sets, and the first revision of
-this figure miscounted the remaining runs as four sets rather than five.
+downloads five sets, which is 433.3 MiB.
+
+Two changes cut that figure, and each cuts a different amount. Merging the two
+remote tests into one removed **one set from every remote run**, because the
+earlier pair cost three sets and the single test costs two. Running Step 12's
+second mutation without the remote property removed **one whole run of two
+sets**, because that mutation breaks the tokenizer resource and no remote test
+reads it.
+
+The first revision of this figure also miscounted the remaining runs as four
+sets rather than five. The table in Step 10 now carries one row per run, so the
+sum is visible rather than derived in prose.
 
 A gate on the downloaded files alone would not hold the rule. A developer who
 ran the download once would load a 90 MiB model in every later integration
