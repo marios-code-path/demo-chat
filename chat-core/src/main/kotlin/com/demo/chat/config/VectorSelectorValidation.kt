@@ -1,10 +1,11 @@
 package com.demo.chat.config
 
 import com.demo.chat.domain.EmbeddingIdentity
-import org.springframework.beans.factory.SmartInitializingSingleton
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
 
 /**
  * Startup check for the recall selector pair. The capability mechanism does
@@ -85,22 +86,46 @@ object VectorSelectorValidation {
     }
 }
 
+/**
+ * Runs the selector check before the container builds any singleton.
+ *
+ * A BeanFactoryPostProcessor runs at that moment, and a
+ * SmartInitializingSingleton runs after every singleton exists. The later
+ * moment is too late for two reasons. An incomplete pair removes the
+ * EmbeddingIdentity bean, so a provider that injects the identity fails with
+ * NoSuchBeanDefinitionException and hides the real error. An illegal pair
+ * loads an 86.2 MiB ONNX model before anything reports the pair.
+ *
+ * The class reads the Environment and not a bean, because no bean exists at
+ * this moment.
+ */
+open class VectorSelectorValidationPostProcessor(
+    private val environment: Environment,
+) : BeanFactoryPostProcessor {
+
+    override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
+        VectorSelectorValidation.validate(
+            environment.getProperty("app.service.core.vector"),
+            environment.getProperty("app.service.core.embedding"),
+            environment.getProperty(EmbeddingIdentity.PROPERTY),
+        )
+    }
+}
+
 // The module does not enable the Kotlin all-open compiler plugin. A
 // configuration class must be open, like BaseDomainConfiguration.
 @Configuration
-open class VectorSelectorValidationConfiguration(
-    @Value("\${app.service.core.vector:}") vector: String,
-    @Value("\${app.service.core.embedding:}") embedding: String,
-    @Value("\${app.service.core.embedding.identity:}") identity: String,
-) {
+open class VectorSelectorValidationConfiguration {
 
-    private val vectorSelector = vector
-    private val embeddingSelector = embedding
-    private val identityValue = identity
-
-    @Bean
-    open fun vectorSelectorValidation(): SmartInitializingSingleton =
-        SmartInitializingSingleton {
-            VectorSelectorValidation.validate(vectorSelector, embeddingSelector, identityValue)
-        }
+    companion object {
+        /**
+         * The method is static, which is what Spring requires of a
+         * BeanFactoryPostProcessor bean. A method on the instance would build
+         * the configuration class before every bean post processor exists.
+         */
+        @Bean
+        @JvmStatic
+        fun vectorSelectorValidation(environment: Environment): BeanFactoryPostProcessor =
+            VectorSelectorValidationPostProcessor(environment)
+    }
 }
