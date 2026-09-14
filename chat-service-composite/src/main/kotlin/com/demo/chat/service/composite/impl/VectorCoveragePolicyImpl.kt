@@ -1,6 +1,7 @@
 package com.demo.chat.service.composite.impl
 
 import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.service.vector.JobTopicNames
@@ -27,6 +28,7 @@ class VectorCoveragePolicyImpl<T>(
     private val incarnationId: String,
     private val nodeId: Int,
     private val keyType: String,
+    private val embeddingIdentity: EmbeddingIdentity,
     private val typeUtil: TypeUtil<T>,
 ) : VectorCoveragePolicy<T> {
     private val logger = LoggerFactory.getLogger(javaClass)
@@ -64,6 +66,19 @@ class VectorCoveragePolicyImpl<T>(
             // which keeps coverage during a repair. Dropping it after the
             // sort would select the repair and report no coverage.
             .filter { job -> job.outcome == JobOutcome.SUCCEEDED }
+            // This filter runs before the sort and before next(), and that
+            // order is the rule. A newer job of a foreign identity would
+            // otherwise reach next() first. The policy would select it, reject
+            // it, and report no coverage. A valid older job of this identity
+            // would then be hidden behind it, and the index would rebuild for
+            // no reason.
+            //
+            // A legacy record carries null, which never equals an identity
+            // value. So the first start after this change reports an
+            // incomplete index and waits for a rebuild. That outcome is
+            // correct, because those vectors came from a model that no longer
+            // has a name.
+            .filter { job -> job.embeddingIdentity == embeddingIdentity.value }
             .filter { job -> trust == VectorTrust.STORED || job.incarnationId == incarnationId }
             // Newest first. Two jobs of one millisecond order by root key, so
             // the choice never depends on which read completed first. The

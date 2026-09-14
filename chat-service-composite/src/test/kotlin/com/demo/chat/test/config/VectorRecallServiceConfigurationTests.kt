@@ -2,6 +2,7 @@ package com.demo.chat.test.config
 
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.service.composite.VectorRecallServiceConfiguration
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
@@ -44,6 +45,7 @@ class VectorRecallServiceConfigurationTests {
         context.environment.propertySources.addFirst(MapPropertySource("test", properties))
         context.beanFactory.registerSingleton("typeUtil", LongUtil())
         context.beanFactory.registerSingleton("vectorStore", MockVectorStore())
+        context.beanFactory.registerSingleton("embeddingIdentity", EmbeddingIdentity.MOCK)
         context.beanFactory.registerSingleton("persistenceBeans", beans.persistence())
         context.beanFactory.registerSingleton("indexBeans", beans.index())
         context.beanFactory.registerSingleton("pubSubBeans", beans.pubSub())

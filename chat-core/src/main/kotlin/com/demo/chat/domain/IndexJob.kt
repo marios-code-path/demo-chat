@@ -24,6 +24,15 @@ data class IndexJob<T>(
     override val key: Key<T>,
     val nodeId: Int,
     val keyType: String,
+    /**
+     * The model that wrote this corpus, as the operator named it.
+     *
+     * The field is nullable. A record written before this field existed
+     * carries null, which states that the writer named no model. An empty
+     * string would state that the writer named an empty model, and those are
+     * different facts.
+     */
+    val embeddingIdentity: String? = null,
     val incarnationId: String,
     val startedBy: Key<T>,
     val startedAt: Instant,

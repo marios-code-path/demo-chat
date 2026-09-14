@@ -2,6 +2,7 @@ package com.demo.chat.test.service.composite
 
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -177,6 +178,17 @@ class VectorIndexJobStoreImplTests {
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
 
+    @Test
+    fun `a new job carries the identity of this process`() {
+        val store = storeUnderTest()
+
+        StepVerifier.create(store.createJob(Instant.now()))
+            .assertNext { job ->
+                Assertions.assertThat(job.embeddingIdentity).isEqualTo("acme-e5-small-v2")
+            }
+            .verifyComplete()
+    }
+
     /** The store of the most recent [storeUnderTest]. Each test builds one. */
     private lateinit var keyValues: FakeKeyValueStore
 
@@ -196,6 +208,7 @@ class VectorIndexJobStoreImplTests {
             codec = IndexJobCodec(mapper),
             nodeId = 7,
             keyType = "long",
+            embeddingIdentity = EmbeddingIdentity("acme-e5-small-v2"),
             incarnationId = "incarnation-a",
             workerKey = Key.funKey(1000L),
         )

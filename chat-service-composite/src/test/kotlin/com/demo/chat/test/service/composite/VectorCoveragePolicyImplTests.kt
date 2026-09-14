@@ -1,5 +1,6 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -16,6 +17,7 @@ class VectorCoveragePolicyImplTests {
     private val thisIncarnation = "incarnation-a"
     private val otherIncarnation = "incarnation-b"
     private val start = Instant.parse("2026-09-11T12:00:00Z")
+    private val thisIdentity = EmbeddingIdentity("acme-e5")
 
     private val store = FakeVectorIndexJobStore()
 
@@ -25,10 +27,12 @@ class VectorCoveragePolicyImplTests {
         incarnationId: String = thisIncarnation,
         invalidations: Long = 0L,
         startedAt: Instant = start,
+        embeddingIdentity: String? = thisIdentity.value,
     ): IndexJob<Long> = IndexJob(
         key = Key.funKey(id),
         nodeId = 7,
         keyType = "long",
+        embeddingIdentity = embeddingIdentity,
         incarnationId = incarnationId,
         startedBy = Key.funKey(1000L),
         startedAt = startedAt,
@@ -37,7 +41,52 @@ class VectorCoveragePolicyImplTests {
     )
 
     private fun policy(trust: VectorTrust) =
-        VectorCoveragePolicyImpl(store, trust, thisIncarnation, nodeId = 7, keyType = "long", typeUtil = LongUtil())
+        VectorCoveragePolicyImpl(
+            store,
+            trust,
+            thisIncarnation,
+            nodeId = 7,
+            keyType = "long",
+            embeddingIdentity = thisIdentity,
+            typeUtil = LongUtil(),
+        )
+
+    @Test
+    fun `a job of another identity does not cover`() {
+        store.write(job(1L, embeddingIdentity = "other-model")).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .verifyComplete()
+    }
+
+    @Test
+    fun `a job written before this change does not cover`() {
+        // A legacy record carries null. Null names no model, and the vectors
+        // it wrote came from a model that has no name.
+        store.write(job(1L, embeddingIdentity = null)).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .verifyComplete()
+    }
+
+    @Test
+    fun `a newer job of a foreign identity does not hide a current covering job`() {
+        // The identity filter runs before the sort and before next(). A newer
+        // foreign job would otherwise reach next() first. The policy would
+        // select it, reject it, and report no coverage. The valid older job
+        // would then be hidden, and the index would rebuild for no reason.
+        store.write(job(1L, startedAt = start)).block()
+        store.write(
+            job(2L, startedAt = start.plusSeconds(60), embeddingIdentity = "other-model")
+        ).block()
+
+        StepVerifier
+            .create(policy(VectorTrust.NONE).selectCoveringJob())
+            .assertNext { found -> Assertions.assertThat(found.key.id).isEqualTo(1L) }
+            .verifyComplete()
+    }
 
     @Test
     fun `a successful job with no invalidation covers`() {

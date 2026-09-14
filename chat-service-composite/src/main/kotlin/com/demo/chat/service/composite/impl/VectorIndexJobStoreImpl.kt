@@ -1,6 +1,7 @@
 package com.demo.chat.service.composite.impl
 
 import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -25,6 +26,7 @@ class VectorIndexJobStoreImpl<T, V, Q>(
     private val codec: IndexJobCodec<T>,
     private val nodeId: Int,
     private val keyType: String,
+    private val embeddingIdentity: EmbeddingIdentity,
     private val incarnationId: String,
     private val workerKey: Key<T>,
 ) : VectorIndexJobStore<T> {
@@ -41,6 +43,7 @@ class VectorIndexJobStoreImpl<T, V, Q>(
                     key = key,
                     nodeId = nodeId,
                     keyType = keyType,
+                    embeddingIdentity = embeddingIdentity.value,
                     incarnationId = incarnationId,
                     startedBy = workerKey,
                     startedAt = startedAt,

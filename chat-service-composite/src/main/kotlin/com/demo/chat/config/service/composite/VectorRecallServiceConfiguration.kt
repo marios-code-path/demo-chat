@@ -4,6 +4,7 @@ import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.impl.ComposedJobRecordWriter
@@ -88,6 +89,7 @@ class VectorRecallServiceConfiguration<T, V, Q>(
     @Bean(destroyMethod = "close")
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun vectorIndexJobStore(
+        embeddingIdentity: EmbeddingIdentity,
         @Value("\${app.nodeid}") nodeId: Int,
         @Value("\${app.key.type}") keyType: String,
     ): VectorIndexJobStoreImpl<T, V, Q> {
@@ -104,6 +106,7 @@ class VectorRecallServiceConfiguration<T, V, Q>(
             codec = IndexJobCodec(codecMapper),
             nodeId = nodeId,
             keyType = keyType,
+            embeddingIdentity = embeddingIdentity,
             incarnationId = incarnationId,
             workerKey = workerKey,
         )
@@ -138,6 +141,7 @@ class VectorRecallServiceConfiguration<T, V, Q>(
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun vectorCoveragePolicy(
         jobStore: VectorIndexJobStore<T>,
+        embeddingIdentity: EmbeddingIdentity,
         @Value("\${app.nodeid}") nodeId: Int,
         @Value("\${app.key.type}") keyType: String,
         @Value("\${app.vector.index.trust:none}") trust: String,
@@ -148,6 +152,7 @@ class VectorRecallServiceConfiguration<T, V, Q>(
             incarnationId = incarnationId,
             nodeId = nodeId,
             keyType = keyType,
+            embeddingIdentity = embeddingIdentity,
             typeUtil = typeUtil,
         )
 

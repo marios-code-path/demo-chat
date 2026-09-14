@@ -2888,6 +2888,11 @@ Expected: PASS.
 
 - [ ] **Step 14: Pass the identity through the wiring**
 
+Do this step as soon as Step 5 changes the job store constructor.
+`VectorRecallServiceConfiguration` calls both constructors, so
+`chat-service-composite` does not compile between Step 5 and this step. The
+step stays here in the plan for its explanation.
+
 Modify
 `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/VectorRecallServiceConfiguration.kt`.
 
@@ -2982,12 +2987,20 @@ resolves the fixed identity. So `EmbeddingIdentity.MOCK` is the right value.
 
 ```bash
 mvn -o -pl chat-core,chat-service-composite clean test
-mvn -o -pl chat-core,chat-deploy-memory clean test
-mvn -o -pl chat-core,chat-deploy-redis clean test
+mvn -o -pl chat-deploy-memory -am clean test
+mvn -o -pl chat-deploy-redis -am clean test
 ```
 
 Run each command on its own. A module build halts at the first failing module,
 and a combined run would hide a later failure.
+
+Each deployment command needs `-am`. Both deployments read
+`chat-service-composite`, which this task changes. A list of
+`chat-core,chat-deploy-memory` resolves the composite from `~/.m2` instead.
+Measured on 2026-09-14: that narrow list gave three timeouts in
+`VectorIndexRecoveryTests`, and the cause was
+`NoSuchMethodError: IndexJob.<init>` from the stale jar. With `-am` the same
+three tests pass in 10.3 seconds.
 
 Expected: PASS on all three.
 

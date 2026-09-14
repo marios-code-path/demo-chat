@@ -27,6 +27,7 @@ class IndexJobCodecTests {
         key = Key.funKey(500L),
         nodeId = 7,
         keyType = "long",
+        embeddingIdentity = "acme-e5",
         incarnationId = "incarnation-a",
         startedBy = Key.funKey(1000L),
         startedAt = Instant.parse("2026-09-12T12:00:00Z"),
@@ -69,5 +70,38 @@ class IndexJobCodecTests {
         Assertions.assertThatThrownBy { codec.decode(42) }
             .isInstanceOf(ChatException::class.java)
             .hasMessageContaining("java.lang.Integer")
+    }
+
+    @Test
+    fun `a legacy json string decodes with a null identity`() {
+        // A record written before the field existed carries no key for it.
+        // Null states that the writer named no model. That is the fact the
+        // coverage filter reads.
+        //
+        // The fixture is derived rather than written by hand. This mapper
+        // already round trips `job` in the test above, so removing one field
+        // from its own output cannot disagree with the real wire shape. A
+        // hand written literal could, because Key carries a wrapper object and
+        // the path to an id is one level deeper than its field name.
+        val legacy = mapper.writeValueAsString(withoutIdentity())
+
+        Assertions.assertThat(codec.decode(legacy).embeddingIdentity).isNull()
+    }
+
+    @Test
+    fun `a legacy map decodes with a null identity`() {
+        Assertions.assertThat(codec.decode(withoutIdentity()).embeddingIdentity).isNull()
+    }
+
+    /**
+     * The map shape of [job], with the new field removed.
+     *
+     * Redis hands the codec a map after its JSON round trip, and cassandra
+     * hands it the JSON string. So one fixture serves both tests.
+     */
+    private fun withoutIdentity(): Map<String, Any?> {
+        @Suppress("UNCHECKED_CAST")
+        val asMap = mapper.convertValue(job, Map::class.java) as Map<String, Any?>
+        return asMap.filterKeys { it != "embeddingIdentity" }
     }
 }
