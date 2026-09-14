@@ -1,7 +1,10 @@
 # Embedding Provider Modules
 
-Status: proposed. The owner chose this shape and corrected the first draft. The
-revised document waits for review.
+Status: approved. The owner approved this document at `1b791951`, after four
+reviews. Two prerequisites must land first. See Security Prerequisite and Build
+Prerequisite.
+
+Plan: `docs/superpowers/plans/2026-09-14-embedding-provider-modules.md`.
 
 Issue: `CHAT-etfnihnu`.
 
