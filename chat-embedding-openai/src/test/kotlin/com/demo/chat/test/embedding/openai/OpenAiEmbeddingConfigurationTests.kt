@@ -94,6 +94,43 @@ class OpenAiEmbeddingConfigurationTests {
         }
     }
 
+    @Test
+    fun `a max attempts value of one supplies an embedding model`() {
+        // A test of a dead endpoint needs one attempt. The default policy
+        // makes 10 attempts and needs near 10 minutes to give up.
+        runner(
+            mapOf(
+                "app.service.core.embedding" to "openai",
+                "app.service.core.embedding.openai.base-url" to "http://localhost:9999",
+                "app.service.core.embedding.openai.api-key" to "not-a-secret",
+                "app.service.core.embedding.openai.model" to "text-embedding-3-small",
+                "app.service.core.embedding.openai.max-attempts" to "1",
+            )
+        ).run { context ->
+            assertThat(context).hasNotFailed()
+            assertThat(context).hasSingleBean(EmbeddingModel::class.java)
+        }
+    }
+
+    @Test
+    fun `an illegal max attempts value fails the context and names that property`() {
+        for (illegal in listOf("0", "-1", "two", "1.5")) {
+            val failure = failureFor(
+                mapOf(
+                    "app.service.core.embedding" to "openai",
+                    "app.service.core.embedding.openai.base-url" to "http://localhost:9999",
+                    "app.service.core.embedding.openai.api-key" to "not-a-secret",
+                    "app.service.core.embedding.openai.model" to "text-embedding-3-small",
+                    "app.service.core.embedding.openai.max-attempts" to illegal,
+                )
+            )
+
+            assertThat(failure)
+                .describedAs("expected a failure for '%s'", illegal)
+                .hasMessageContaining("app.service.core.embedding.openai.max-attempts")
+        }
+    }
+
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
         ApplicationContextRunner()
             .withPropertyValues(*properties.map { "${it.key}=${it.value}" }.toTypedArray())
