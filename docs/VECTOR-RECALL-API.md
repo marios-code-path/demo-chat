@@ -19,20 +19,32 @@ not read the examples below as semantic search.
 of truth. A lost store is rebuilt from them, and no deployment mounts a volume
 for it.
 
+**The REST application routes carry no authentication today.** The application
+filter chain permits every route it owns, and it wires no HTTP Basic and no
+authentication manager. So no `Authentication` reaches a chat route, and the
+commands below send no credentials. The actuator routes are the exception. They
+sit behind their own chain and they need the actuator user. See
+`CHAT-jdsamcia`.
+
 ## Turn it on
 
-Four properties start the recall beans. All four are required.
+Five properties start the recall beans and the seed route. All five are
+required.
 
 ```properties
 app.service.composite=true
 app.service.core.vector=simple
 app.service.core.embedding=mock
 app.controller.recall=true
+app.controller.persistence=true
 ```
 
 `app.service.core.vector` takes `mock`, `simple`, `redis`, or `embedded`.
-`app.service.core.embedding` takes `mock` and nothing else. An illegal pair
-fails the startup.
+`app.service.core.embedding` takes `mock`, `openai`, or `local`. A mock vector
+store takes the mock model alone. A production model also needs
+`app.service.core.embedding.identity`. An illegal pair fails the startup.
+
+`app.controller.persistence` opens the seed route of the first scenario.
 
 Two more properties reach the operator endpoint. The deployments disable every
 actuator endpoint by default, so exposure alone answers 404.
@@ -58,26 +70,48 @@ happens at `ApplicationReadyEvent`. `report` is the default and starts no job.
 The messages below share the word `recipe`. The bigram model matches on that
 shared text.
 
-### Step 1. Send three messages
+### Step 1. Write three messages
 
-Each send indexes the message at once. The route authenticates the caller, and
-the caller becomes the message sender.
+`POST /message/send/{id}` binds `@AuthenticationPrincipal`, and that parameter
+is always null on this chain. So this scenario writes through the persistence
+route, which binds a request body alone.
 
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
-  curl -sS -u "$USER:$PASS" \
-    -X POST "http://localhost:8080/message/send/20" \
-    -H 'Content-Type: text/plain' \
-    --data "$text"
+  curl -sS \
+    -X PUT http://localhost:8080/persist/message/add \
+    -H 'Content-Type: application/json' \
+    -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":10,\"dest\":20}"
 done
 ```
 
-`20` is the topic id. The response carries the new message key.
+`10` is the sender id and `20` is the topic id. Each answer carries the new
+message key, and the status is 201.
 
-### Step 2. Search the topic
+### Step 2. Rebuild the index
+
+**A persistence write creates no vector.** The send route indexed each message
+as it arrived. This route does not. So a search now returns no hit until a
+rebuild reads the persisted messages.
 
 ```bash
-curl -sS -u "$USER:$PASS" \
+curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
+```
+
+### Step 3. Wait for the rebuild to finish
+
+```bash
+until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
+  | jq -e '.status.running == false' > /dev/null; do sleep 1; done
+```
+
+The rebuild runs on another scheduler, so an immediate search can read an
+incomplete index. The `indexComplete` flag names that state.
+
+### Step 4. Search the topic
+
+```bash
+curl -sS \
   -X POST http://localhost:8080/message/recall/topic \
   -H 'Content-Type: application/json' \
   -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":10}'
@@ -102,16 +136,16 @@ wrapper object named `key`, at `KeyValuePair.kt`. So the path to a message id is
 A hit carries the key and the score and nothing else. Reload the message body
 through `GET /message/id/{id}`.
 
-### Step 3. The other two searches
+### Step 5. The other two searches
 
 ```bash
 # One sender, across every topic.
-curl -sS -u "$USER:$PASS" -X POST http://localhost:8080/message/recall/user \
+curl -sS -X POST http://localhost:8080/message/recall/user \
   -H 'Content-Type: application/json' \
   -d '{"type":"UserRecallRequest","userId":10,"query":"recipe"}'
 
 # Every message this node indexed.
-curl -sS -u "$USER:$PASS" -X POST http://localhost:8080/message/recall/global \
+curl -sS -X POST http://localhost:8080/message/recall/global \
   -H 'Content-Type: application/json' \
   -d '{"type":"GlobalRecallRequest","query":"recipe","limit":5,"threshold":0.4}'
 ```
