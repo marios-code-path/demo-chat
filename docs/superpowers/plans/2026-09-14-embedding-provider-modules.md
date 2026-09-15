@@ -703,7 +703,9 @@ MSG
 - Consumes: nothing from Task 1. This module reads no identity.
 - Produces: a bean of type `org.springframework.ai.embedding.EmbeddingModel`,
   named `openAiEmbeddingModel`. It is present only when
-  `app.service.core.embedding` is `openai`.
+  `app.service.core.embedding` is `openai`. The bean reads an optional
+  `app.service.core.embedding.openai.max-attempts`. Task 8 needs that property.
+  See the retry note in that task.
 
 - [ ] **Step 1: Add this module to the reactor**
 
@@ -1000,6 +1002,7 @@ class OpenAiEmbeddingConfiguration {
         @Value("\${app.service.core.embedding.openai.base-url:}") baseUrl: String,
         @Value("\${app.service.core.embedding.openai.api-key:}") apiKey: String,
         @Value("\${app.service.core.embedding.openai.model:}") model: String,
+        @Value("\${app.service.core.embedding.openai.max-attempts:}") maxAttempts: String,
     ): EmbeddingModel {
         val api = OpenAiApi.builder()
             .baseUrl(required("app.service.core.embedding.openai.base-url", baseUrl))
@@ -1012,7 +1015,49 @@ class OpenAiEmbeddingConfiguration {
             OpenAiEmbeddingOptions.builder()
                 .model(required("app.service.core.embedding.openai.model", model))
                 .build(),
+            retryTemplateFor(maxAttempts),
         )
+    }
+
+    /**
+     * The retry policy of one embedding call.
+     *
+     * An unset property gives RetryUtils.DEFAULT_RETRY_TEMPLATE, which is what
+     * the library uses. That template makes 10 attempts and waits between
+     * them, and it needs near 10 minutes to give up on an endpoint that
+     * refuses every connection.
+     *
+     * A set value gives the same policy with that number of attempts. The
+     * value 1 makes one attempt and no retry, which a test needs. Task 8 needs
+     * it, because a test of a dead endpoint cannot wait 10 minutes.
+     *
+     * The built template matches the library template in every other way. It
+     * retries the same two exception types, and it waits 2 seconds, then 5
+     * times longer each attempt, up to 180 seconds. It carries no log
+     * listener, which is the one difference.
+     */
+    private fun retryTemplateFor(maxAttempts: String): RetryTemplate {
+        if (maxAttempts.isBlank()) return RetryUtils.DEFAULT_RETRY_TEMPLATE
+
+        val attempts = maxAttempts.trim().toIntOrNull()
+        if (attempts == null || attempts < 1) {
+            throw IllegalStateException(
+                "app.service.core.embedding.openai.max-attempts=$maxAttempts is not a " +
+                    "whole number of 1 or more. Remove the property to use the default " +
+                    "policy of 10 attempts."
+            )
+        }
+
+        return RetryTemplate.builder()
+            .maxAttempts(attempts)
+            .retryOn(TransientAiException::class.java)
+            .retryOn(ResourceAccessException::class.java)
+            .exponentialBackoff(
+                Duration.ofMillis(2000),
+                5.0,
+                Duration.ofMillis(180000),
+            )
+            .build()
     }
 
     /**
@@ -1041,7 +1086,8 @@ class OpenAiEmbeddingConfiguration {
 mvn -o -pl chat-embedding-openai test
 ```
 
-Expected: PASS, 5 tests.
+Expected: PASS, 7 tests. Five cover the selector and the three required
+properties. Two cover max-attempts.
 
 - [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
 
@@ -3564,8 +3610,15 @@ This task changes no pom.
 - Produces: no production code.
 
 Each test points the base URL at a closed loopback port. So each test needs no
-external network and no secret key. A closed loopback port refuses at once, and
-no test waits for a timeout.
+external network and no secret key. A closed loopback port refuses at once.
+
+**Each launch must also set `app.service.core.embedding.openai.max-attempts=1`.**
+The connection is refused at once, but the default retry policy makes 10
+attempts and waits between them. Measured on 2026-09-14: that policy is
+`RetryUtils.DEFAULT_RETRY_TEMPLATE`, which is 10 attempts, a 2 second first
+wait, a multiplier of 5, and a 180 second cap. It needs near 10 minutes to give
+up on one call, and the two memory tests are not tagged, so the default build
+would carry 20 minutes. Task 2 gained the property for this reason.
 
 Each class below carries its own `closedPort()`. It opens a
 `java.net.ServerSocket(0)`, reads `localPort`, and closes the socket. A port
