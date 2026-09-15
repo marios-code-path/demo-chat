@@ -3643,20 +3643,28 @@ Restore the scope element. Run the guard again and confirm exit status 0.
 
 - [ ] **Step 6: Prove rule two catches a breach**
 
-Remove `<scope>test</scope>` from the `spring-boot-starter-test` entry in
-`chat-embedding-openai/pom.xml`. Run the guard.
+Remove `<scope>test</scope>` from the `testcontainers` entry in
+`chat-shell/pom.xml`. Run the guard.
 
 ```bash
 ./shell-scripts/check-production-classpath.sh
 ```
 
-Expected: exit status 1. The output names `chat-embedding-openai` and
-`spring-boot-starter-test`.
+Expected: exit status 1. The output names `chat-shell` and
+`testcontainers-1.21.4.jar`.
 
 Restore the scope element. Run the guard again and confirm exit status 0.
 
-Rule one does not catch this breach. `spring-boot-starter-test` is an ordinary
-jar and not a test jar. That difference is why two rules exist.
+Rule one does not catch this breach. `testcontainers` is an ordinary jar and
+not a test jar. That difference is why two rules exist. This mutation also
+repeats the exact breach that `CHAT-incuynpc` recorded.
+
+**Do not use `spring-boot-starter-test` for this mutation.** An earlier
+revision of this plan named that artifact in `chat-embedding-openai`. Measured
+on 2026-09-15: the install inside rule two then fails first, in the enforcer,
+with `RequireUpperBoundDeps` on `net.bytebuddy:byte-buddy`. The starter brings
+`assertj-core`, which needs a higher byte-buddy than the managed one. The guard
+exits 1 on that failure, so the run proves nothing about rule two.
 
 - [ ] **Step 7: Add the recipe**
 
