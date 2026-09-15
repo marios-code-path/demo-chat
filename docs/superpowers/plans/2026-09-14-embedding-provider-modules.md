@@ -4112,6 +4112,29 @@ A test classpath cannot prove this feature works. Every test gate in this
 repository puts test outputs on the classpath, which is what hid the defect. So
 this gate runs outside a test classpath.
 
+**Four facts that the first run of this gate measured.** Each one cost a run,
+and each is now inside the two files below.
+
+1. **The REST recall route could not start beside the RSocket controllers.**
+   `MessageRecallController` implements `MessageRecallService` by delegation,
+   so a classpath with both controller sets held two beans of that type, and
+   `ChatMessageRecallController` took that type. The launch failed with
+   "expected single matching bean but found 2". `CoreRecallBeans` in
+   `chat-core` closes it. Every controller now takes that interface, and
+   `VectorRecallBeansConfiguration` supplies it. This gate found a defect that
+   no test could see, which is the reason the gate exists.
+2. **The `expose-webflux` profile cannot run in a reactor.** It declares its
+   dependencies on the parent, so `chat-webflux` reads itself as a dependency
+   and maven stops before it builds. `-pl` does not avoid that. So the gate
+   installs the reactor with no profile, then packages one pom file.
+3. **`conda activate base` does not put miniforge first on the PATH here.** A
+   bare `python3` resolved to the homebrew interpreter. The gate names
+   `$CONDA_PREFIX/bin/python3` and refuses anything outside miniforge.
+4. **The client sends a chunked request body.** A stub that reads only
+   `Content-Length` sees no input, answers a vector for nothing, and the caller
+   fails inside `dimensions()`. The stub also needs HTTP/1.1 and a thread for
+   each connection, because Reactor Netty pools connections.
+
 - [ ] **Step 1: Confirm the prerequisite is done**
 
 ```bash
@@ -4148,7 +4171,7 @@ Project policy requires a key value, so the launch supplies a dummy.
 
 import json
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 DIMENSIONS = 256
 
@@ -4167,9 +4190,41 @@ def bigram_vector(text):
 
 class Handler(BaseHTTPRequestHandler):
 
-    def do_POST(self):
+    # HTTP/1.1, and a thread for each connection. Reactor Netty keeps a
+    # connection pool. A HTTP/1.0 server closes after each answer, and the
+    # next request on that pooled connection fails with "Connection
+    # prematurely closed BEFORE response". The client then retries, and the
+    # default policy needs 19 minutes to give up. Measured on 2026-09-14.
+    #
+    # Every answer below carries Content-Length, which HTTP/1.1 needs to hold
+    # the connection open.
+    protocol_version = "HTTP/1.1"
+
+    def read_body(self):
+        """Reads one request body, in either framing.
+
+        The client sends a chunked body. RestClient streams the request, and it
+        then sets Transfer-Encoding rather than Content-Length. A read of
+        Content-Length alone returns zero bytes, and this process answers a
+        vector for no input at all. The caller then reads an empty list and
+        fails inside dimensions(). Measured on 2026-09-14.
+        """
+        if "chunked" in self.headers.get("Transfer-Encoding", "").lower():
+            chunks = []
+            while True:
+                size = int(self.rfile.readline().split(b";")[0], 16)
+                if size == 0:
+                    self.rfile.readline()
+                    break
+                chunks.append(self.rfile.read(size))
+                self.rfile.read(2)
+            return b"".join(chunks)
+
         length = int(self.headers.get("Content-Length", "0"))
-        body = json.loads(self.rfile.read(length) or b"{}")
+        return self.rfile.read(length) if length > 0 else b""
+
+    def do_POST(self):
+        body = json.loads(self.read_body() or b"{}")
 
         given = body.get("input", [])
         texts = [given] if isinstance(given, str) else list(given)
@@ -4184,6 +4239,11 @@ class Handler(BaseHTTPRequestHandler):
             "usage": {"prompt_tokens": 0, "total_tokens": 0},
         }
 
+        sys.stderr.write(
+            "stub: model=%s inputs=%d vectors=%d width=%d\n"
+            % (body.get("model"), len(texts), len(payload["data"]), DIMENSIONS)
+        )
+
         encoded = json.dumps(payload).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -4197,7 +4257,7 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 9099
-    HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
 ```
 
 - [ ] **Step 3: Confirm the stub answers**
@@ -4282,33 +4342,62 @@ if [ -f "$HOME/miniforge3/etc/profile.d/conda.sh" ]; then
 else
     fail "miniforge is not installed at ~/miniforge3. See CLAUDE.md."
 fi
-command -v python3 > /dev/null || fail "no python3 after conda activate base"
+# conda activate base sets CONDA_PREFIX, and on this machine it does not put
+# the miniforge bin directory first. A bare python3 then resolves to the
+# homebrew interpreter. Measured on 2026-09-14. So every call below names the
+# interpreter of the active environment.
+PYTHON="$CONDA_PREFIX/bin/python3"
+[ -x "$PYTHON" ] || fail "no python3 at $PYTHON after conda activate base"
+case "$PYTHON" in
+    "$HOME/miniforge3"/*) ;;
+    *) fail "python3 resolves to $PYTHON, which is outside miniforge. See CLAUDE.md." ;;
+esac
 
 echo "0. Python runs under miniforge."
-python3 -c "import sys; print('   ' + sys.executable)"
+"$PYTHON" -c "import sys; print('   ' + sys.executable)"
 
-echo "1. Build and package chat-deploy-memory with expose-webflux."
-mvn -o -B -Pexpose-webflux -Dmaven.test.skip=true \
-    -pl chat-deploy-memory -am \
-    clean package > "$WORK/build.log" 2>&1 \
-    || { tail -40 "$WORK/build.log"; fail "the build did not finish"; }
+# Two commands, and not one. The expose-webflux profile declares its
+# dependencies on the parent, so every module inherits them. chat-webflux then
+# reads itself as a dependency, and maven stops with "is referencing itself"
+# before it builds anything. -pl does not avoid that, because maven reads every
+# module of the reactor first. So the package below names one pom file and
+# builds no reactor, and the install before it carries no profile.
+#
+# The package also needs the deploy profile. The root build sets the Boot
+# repackage skip to true, and the deploy profile is what sets it to false. The
+# gate launches the artifact with java -jar, so it needs the executable one.
+echo "1. Install the reactor."
+mvn -o -B -Dmaven.test.skip=true clean install > "$WORK/build.log" 2>&1 \
+    || { tail -40 "$WORK/build.log"; fail "the install did not finish"; }
+
+echo "2. Package chat-deploy-memory with expose-webflux."
+mvn -o -B -Pexpose-webflux,deploy -Dmaven.test.skip=true \
+    -f chat-deploy-memory/pom.xml \
+    clean package >> "$WORK/build.log" 2>&1 \
+    || { tail -40 "$WORK/build.log"; fail "the package did not finish"; }
 
 JAR=$(find chat-deploy-memory/target -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*.original' | head -1)
 [ -n "$JAR" ] || fail "no packaged jar in chat-deploy-memory/target"
 echo "   jar: $JAR"
 
-echo "2. Assert that no test output is on the launched classpath."
+echo "3. Assert that no test output is on the launched classpath."
+# The library count first. A plain jar carries no BOOT-INF/lib entry at all,
+# and the test jar check below would then pass on an artifact that holds no
+# library. That would be a false green.
+LIBS=$(unzip -l "$JAR" | grep -c 'BOOT-INF/lib/')
+[ "$LIBS" -gt 0 ] || fail "the artifact holds no BOOT-INF/lib entry, so it is not the executable jar"
+echo "   $LIBS libraries inside the artifact"
 TESTS=$(unzip -l "$JAR" | grep -c 'tests\.jar')
 [ "$TESTS" -eq 0 ] || { unzip -l "$JAR" | grep 'tests\.jar'; fail "a test jar is inside the packaged artifact"; }
 echo "   ok, no test jar inside the artifact"
 
-echo "3. Start the synthetic embeddings endpoint."
-python3 "$DIR/openai-stub-server.py" "$STUB_PORT" > "$WORK/stub.log" 2>&1 &
+echo "4. Start the synthetic embeddings endpoint."
+"$PYTHON" "$DIR/openai-stub-server.py" "$STUB_PORT" > "$WORK/stub.log" 2>&1 &
 STUB_PID=$!
 sleep 1
 kill -0 "$STUB_PID" 2>/dev/null || fail "the stub did not start"
 
-echo "4. Launch the packaged deployment."
+echo "5. Launch the packaged deployment."
 java --enable-native-access=ALL-UNNAMED -jar "$JAR" \
     --app.nodeid=1 \
     --app.key.type=long \
@@ -4353,12 +4442,12 @@ curl -sf "http://127.0.0.1:$APP_PORT/actuator/health" > /dev/null \
     || { tail -40 "$WORK/app.log"; fail "the deployment did not answer health"; }
 echo "   ok, the deployment is up"
 
-echo "5. Assert that an actuator call without credentials answers 401."
+echo "6. Assert that an actuator call without credentials answers 401."
 CODE=$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$APP_PORT/actuator/vectorindex")
 [ "$CODE" = "401" ] || fail "an actuator call without credentials answered $CODE, expected 401"
 echo "   ok, 401"
 
-echo "6. Seed three messages through persistence, with no credentials."
+echo "7. Seed three messages through persistence, with no credentials."
 # MessageSendRequest carries msg, from, and dest. RequestResponse declares
 # @JsonTypeInfo as a property named type, and MessageSendRequest declares
 # @JsonTypeName, so the body must carry that discriminator. The route declares
@@ -4372,16 +4461,16 @@ for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
 done
 echo "   ok, three messages persisted"
 
-echo "7. Trigger a rebuild, under Basic credentials."
+echo "8. Trigger a rebuild, under Basic credentials."
 curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
     -X POST "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/trigger.json" \
     || fail "the trigger did not answer"
 
-echo "8. Poll until running is false."
+echo "9. Poll until running is false."
 for _ in $(seq 1 60); do
     curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
         "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/status.json"
-    RUNNING=$(python3 -c "
+    RUNNING=$("$PYTHON" -c "
 import json
 print(json.load(open('$WORK/status.json'))['status']['running'])
 " 2>/dev/null)
@@ -4391,8 +4480,8 @@ done
 [ "$RUNNING" = "False" ] || { cat "$WORK/status.json"; fail "the rebuild did not finish"; }
 echo "   ok, the rebuild finished"
 
-echo "9. Assert that the newest job carries the identity."
-JOB_IDENTITY=$(python3 -c "
+echo "10. Assert that the newest job carries the identity."
+JOB_IDENTITY=$("$PYTHON" -c "
 import json
 jobs = json.load(open('$WORK/status.json'))['jobs']
 jobs.sort(key=lambda j: j['startedAt'], reverse=True)
@@ -4402,13 +4491,13 @@ print(jobs[0].get('embeddingIdentity'))
     || fail "the newest job carries identity '$JOB_IDENTITY', expected '$IDENTITY'"
 echo "   ok, the job carries $IDENTITY"
 
-echo "10. Run one recall, with no credentials."
+echo "11. Run one recall, with no credentials."
 curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
     -H 'Content-Type: application/json' \
     -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":10}' \
     > "$WORK/recall.json" || fail "the recall did not answer"
 
-python3 -c "
+"$PYTHON" -c "
 import json, sys
 body = json.load(open('$WORK/recall.json'))
 if body.get('indexComplete') is not True:
@@ -4419,7 +4508,7 @@ if len(hits) < 3:
     print('hits', len(hits), 'expected at least 3')
     sys.exit(1)
 print('   ok,', len(hits), 'hits and indexComplete true')
-" || { cat "$WORK/recall.json"; fail "the recall answer is wrong"; }
+" || { cat "$WORK/recall.json"; echo; tail -40 "$WORK/app.log"; fail "the recall answer is wrong"; }
 
 echo
 echo "PASS. The packaged deployment embedded, rebuilt, and searched."
