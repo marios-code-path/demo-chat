@@ -24,8 +24,9 @@ import java.util.UUID
  * a refused context. So this class drives SpringApplicationBuilder instead.
  *
  * The launch sets max-attempts to 1. The connection is refused at once, but
- * the default retry policy makes 10 attempts and waits between them. It needs
- * near 10 minutes to give up. Measured on 2026-09-14.
+ * the default retry policy makes 10 attempts and waits between them. Ten
+ * attempts make nine waits of 2, 10, 50, and then six of 180 seconds. That is
+ * 1142 seconds, which is 19 minutes for one call. Measured on 2026-09-14.
  *
  * SpringApplicationBuilder.properties() writes to defaultProperties, the
  * lowest precedence source, so every value below is a command line argument.

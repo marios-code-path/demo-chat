@@ -1024,19 +1024,20 @@ class OpenAiEmbeddingConfiguration {
      *
      * An unset property gives RetryUtils.DEFAULT_RETRY_TEMPLATE, which is what
      * the library uses. That template makes 10 attempts and waits between
-     * them, and it needs near 10 minutes to give up on an endpoint that
-     * refuses every connection.
+     * them. It needs 19 minutes to give up on an endpoint that refuses every
+     * connection, because ten attempts make nine waits of 2, 10, 50, and then
+     * six of 180 seconds. That is 1142 seconds.
      *
      * A set value gives the same policy with that number of attempts. The
      * value 1 makes one attempt and no retry, which a test needs. Task 8 needs
-     * it, because a test of a dead endpoint cannot wait 10 minutes.
+     * it, because a test of a dead endpoint cannot wait 19 minutes.
      *
      * The built template matches the library template in every other way. It
      * retries the same two exception types, and it waits 2 seconds, then 5
      * times longer each attempt, up to 180 seconds. It carries no log
      * listener, which is the one difference.
      */
-    private fun retryTemplateFor(maxAttempts: String): RetryTemplate {
+    fun retryTemplateFor(maxAttempts: String): RetryTemplate {
         if (maxAttempts.isBlank()) return RetryUtils.DEFAULT_RETRY_TEMPLATE
 
         val attempts = maxAttempts.trim().toIntOrNull()
@@ -1086,8 +1087,21 @@ class OpenAiEmbeddingConfiguration {
 mvn -o -pl chat-embedding-openai test
 ```
 
-Expected: PASS, 7 tests. Five cover the selector and the three required
-properties. Two cover max-attempts.
+Put `retryTemplateFor` in a companion object. A test calls it, because a test
+cannot read the retry template of a built model. The library keeps that field
+private. `RedisVectorStoreConfiguration` and `EmbeddedVectorStoreConfiguration`
+expose their own tested seams the same way.
+
+Test the values and not only the bean. Three tests cover the function. An unset
+value must give the same instance as `RetryUtils.DEFAULT_RETRY_TEMPLATE`, the
+values 1 and 2 must each make that many attempts, and a set value must not give
+the library instance. Two values are enough, because a template that ignored
+the value would report the builder default of 3. A third value would add 10
+seconds to every build, because the waits are 2, 10, 50, and then 180 seconds.
+
+Expected: PASS, 10 tests. Five cover the selector and the three required
+properties. Two cover an illegal and a legal max-attempts value at the bean.
+Three cover the retry template itself.
 
 - [ ] **Step 9: Prove the module carries no Spring AI starter and no Spring AI auto-configuration**
 
@@ -3616,9 +3630,10 @@ external network and no secret key. A closed loopback port refuses at once.
 The connection is refused at once, but the default retry policy makes 10
 attempts and waits between them. Measured on 2026-09-14: that policy is
 `RetryUtils.DEFAULT_RETRY_TEMPLATE`, which is 10 attempts, a 2 second first
-wait, a multiplier of 5, and a 180 second cap. It needs near 10 minutes to give
-up on one call, and the two memory tests are not tagged, so the default build
-would carry 20 minutes. Task 2 gained the property for this reason.
+wait, a multiplier of 5, and a 180 second cap. Ten attempts make nine waits of
+2, 10, 50, and then six of 180 seconds. That is 1142 seconds, which is 19
+minutes for one call. The two memory tests are not tagged, so the default build
+would carry near 38 minutes. Task 2 gained the property for this reason.
 
 Each class below carries its own `closedPort()`. It opens a
 `java.net.ServerSocket(0)`, reads `localPort`, and closes the socket. A port

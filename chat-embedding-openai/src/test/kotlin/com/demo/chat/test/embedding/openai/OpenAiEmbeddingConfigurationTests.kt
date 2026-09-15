@@ -4,7 +4,10 @@ import com.demo.chat.config.embedding.openai.OpenAiEmbeddingConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.ai.retry.RetryUtils
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.retry.support.RetryTemplate
+import org.springframework.web.client.ResourceAccessException
 
 /**
  * The bean builds and it stays behind its selector.
@@ -97,7 +100,7 @@ class OpenAiEmbeddingConfigurationTests {
     @Test
     fun `a max attempts value of one supplies an embedding model`() {
         // A test of a dead endpoint needs one attempt. The default policy
-        // makes 10 attempts and needs near 10 minutes to give up.
+        // makes 10 attempts and needs 19 minutes to give up.
         runner(
             mapOf(
                 "app.service.core.embedding" to "openai",
@@ -129,6 +132,64 @@ class OpenAiEmbeddingConfigurationTests {
                 .describedAs("expected a failure for '%s'", illegal)
                 .hasMessageContaining("app.service.core.embedding.openai.max-attempts")
         }
+    }
+
+    @Test
+    fun `an unset value gives the library template`() {
+        // The identity check, and not a count. A template that this class
+        // built could make 10 attempts and still differ from the library
+        // template, because the library template also carries a log listener.
+        // No deployment may lose that template.
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor(""))
+            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("   "))
+            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    }
+
+    @Test
+    fun `each value makes that many attempts`() {
+        // The value must reach the template. A hardcoded one attempt would
+        // pass every other test in this class, and so would a template that
+        // ignored the value.
+        //
+        // The values stop at 2, which costs one wait of 2 seconds. The waits
+        // are 2, 10, 50, and then 180 seconds, so a third value would add 10
+        // seconds to every build. Two values are enough. A template that
+        // ignored the value would report the builder default of 3, and a
+        // hardcoded template would report one number for both values.
+        for (attempts in 1..2) {
+            assertThat(attemptsUnder(OpenAiEmbeddingConfiguration.retryTemplateFor("$attempts")))
+                .describedAs("max-attempts=%d", attempts)
+                .isEqualTo(attempts)
+        }
+    }
+
+    @Test
+    fun `a value other than one does not give the library template`() {
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("2"))
+            .isNotSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    }
+
+    /**
+     * Counts the calls that one template makes before it gives up.
+     *
+     * The callback throws ResourceAccessException, which is one of the two
+     * types the library template retries. A refused connection reaches the
+     * caller as that type.
+     */
+    private fun attemptsUnder(template: RetryTemplate): Int {
+        var calls = 0
+
+        try {
+            template.execute<Unit, ResourceAccessException> {
+                calls++
+                throw ResourceAccessException("the endpoint refused the connection")
+            }
+        } catch (expected: ResourceAccessException) {
+            // Every attempt failed, which is the case under test.
+        }
+
+        return calls
     }
 
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
