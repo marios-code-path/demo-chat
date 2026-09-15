@@ -9,7 +9,6 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.impl.ComposedJobRecordWriter
 import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
-import com.demo.chat.service.composite.impl.MessageRecallServiceImpl
 import com.demo.chat.service.composite.impl.MessageReindexServiceImpl
 import com.demo.chat.service.composite.impl.VectorCoveragePolicyImpl
 import com.demo.chat.service.composite.impl.VectorIndexJobStoreImpl
@@ -19,7 +18,6 @@ import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.service.vector.JobRecordCodec
 import com.demo.chat.service.vector.JobRecordWriter
 import com.demo.chat.service.vector.MessageDocumentMapper
-import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageVectorIndexer
 import com.demo.chat.service.vector.VectorCoveragePolicy

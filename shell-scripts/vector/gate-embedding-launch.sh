@@ -32,9 +32,18 @@ WORK=$(mktemp -d)
 STUB_PID=""
 APP_PID=""
 
+# Each child is signalled and then reaped. A kill with no wait leaves the
+# shell to report the job later, and it then writes "Terminated: 15" after the
+# last line of this script. Step 6 of the plan reads that last line.
 cleanup() {
-    [ -n "$APP_PID" ] && kill "$APP_PID" 2>/dev/null
-    [ -n "$STUB_PID" ] && kill "$STUB_PID" 2>/dev/null
+    if [ -n "$APP_PID" ]; then
+        kill "$APP_PID" 2>/dev/null
+        wait "$APP_PID" 2>/dev/null
+    fi
+    if [ -n "$STUB_PID" ]; then
+        kill "$STUB_PID" 2>/dev/null
+        wait "$STUB_PID" 2>/dev/null
+    fi
     rm -rf "$WORK"
 }
 trap cleanup EXIT
