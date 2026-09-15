@@ -4657,9 +4657,19 @@ Expected: both exit lines read `0`.
 Never pipe the gate into `tail`. The pipeline reports the exit status of
 `tail`, so a failed build would read as a pass.
 
-Write down the module count, the test count, the failure count, and the skip
-count from each mode. Use the measured numbers in Step 3. Do not copy the
-numbers from an earlier session.
+Each run prints one count line before its drift result, in this shape:
+
+```
+28 modules ran tests: 800 tests, 0 failures, 0 errors, 30 skipped
+```
+
+Write down that line for each mode, and take the module count from
+`grep -c '<module>' pom.xml` plus the root. Use the measured numbers in Step 3.
+Do not copy the numbers from an earlier session.
+
+`build-health.sh` prints those counts because it deletes its Maven log on exit.
+An earlier revision of this plan asked the implementer to read counts that the
+gate never printed, and the measurement then needed a second full build.
 
 - [ ] **Step 2: Write the operator document**
 
@@ -4695,8 +4705,18 @@ Create `docs/EMBEDDING-PROVIDERS.md`. Cover these sections.
 - [ ] **Step 3: Update the build health record**
 
 Modify `docs/BUILD-HEALTH.md`. Change the module count to the measured value.
-Change both test counts to the measured values. Add one row that names the two
-new modules.
+Change both test counts to the measured values. Name the two new modules.
+
+State the executed count beside each total. A reader comparing the two modes
+wants the difference in tests that ran, and the totals include the skipped
+ones. Measured on 2026-09-15: 800 total and 770 run by default, 1019 total and
+964 run under integration, so 194 more tests run under integration and not 219.
+
+**The table in that document records a deficiency**, with the columns
+Deficiency, Blocks, and Status. Neither new module is a deficiency, so a row
+would leave all three columns empty or false. Name the modules in the prose of
+the Current state section instead, and say there that this is a deliberate
+departure from this step.
 
 - [ ] **Step 4: Update the forward register**
 
@@ -4760,8 +4780,12 @@ Each gate writes to its own file, and the loop reads each exit status before it
 continues. A pipeline into `tail` would report the status of `tail` and hide a
 failed build or a failed launch.
 
-Read the matching file when a line does not begin with `0`. The numbers in the
-first two files must match what Step 3 records.
+Read the matching file when a line does not begin with `0`. The count line in
+each of the first two files must match what Step 3 records. Compare them:
+
+```bash
+grep 'modules ran tests' "$LOG/default.txt" "$LOG/integration.txt"
+```
 
 - [ ] **Step 6: Commit**
 

@@ -12,7 +12,7 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master`, head `af30dfd2`. **Not clean.** Four tracked entries changed and six are untracked. **Not in sync with `origin`.** Ahead by 3 commits, behind by 5. |
-| Register state | Updated 2026-09-13, after the vector index job record work |
+| Register state | Updated 2026-09-15, after the embedding provider work |
 | Last merged PR | #86, commit `934a3287` on `origin/master`. Local `master` carries PRs through #82 only. The five commits it lacks carry #83, #84, #85, #86, and one register correction, `d8cdd111`. |
 | Local branches | Seven, beside `master`. Four carry this plan: `chat-oghjsnad-vector-reindex`, `chat-jhfptxiw-topic-query`, `chat-muuaovqn-vector-replace`, `chat-auglbxrm-null-converter`. Three predate it: `audit-doc`, `register-refresh`, `recovery/vector-reindex-pre-pr83-rebase`. **The earlier claim that all local refs were removed is wrong.** |
 | Remote branches | `master`, `chat-eroapfub-vector-runtime-flags`, and two dependabot refs. Nothing else. **The earlier claim that remote refs survive every merge is wrong as of 2026-09-11.** A merge now removes the remote branch, so the seven refs this row used to list are gone. `d8cdd111` on `origin/master` records the same finding, and this row agrees with it. |
@@ -151,10 +151,12 @@ built on top of them inherits the risk.
 - **Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone.** A
   single-module run resolves `chat-core` from `~/.m2` and reports failures that are
   not real. This cost a false debugging detour in the redis work.
-- **`chat-shell` reporting 17 skipped under `-Pintegration` is not missing
+- **`chat-shell` reporting 23 skipped under `-Pintegration` is not missing
   coverage.** `@Disabled` sits on the generic base classes, surefire counts them as
   test classes, and JUnit does not inherit `@Disabled`, so the concrete `Long*`
-  subclasses run. Documented in `docs/BUILD-HEALTH.md`.
+  subclasses run. Measured on 2026-09-15: 48 tests with 23 skipped, so 25 run. The
+  count was 36 with 17 skipped until the vector work added tests. Documented in
+  `docs/BUILD-HEALTH.md`.
 - **A wire-format change makes the shell integration image stale.** The
   chat-shell tests run the client against the
   `chat-deploy-long-memory-integration-test` Docker image, not against the

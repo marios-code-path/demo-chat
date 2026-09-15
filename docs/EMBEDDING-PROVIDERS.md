@@ -75,8 +75,8 @@ app.service.core.embedding.openai.model=text-embedding-3-small
 app.service.core.embedding.openai.max-attempts=10
 ```
 
-The first three are required, and a blank value fails the startup the same way
-an absent one does. A blank key reaches a remote service as an anonymous call,
+`base-url`, `api-key`, and `model` are each required, and a blank value fails
+the startup the same way an absent one does. A blank key reaches a remote service as an anonymous call,
 and an operator cannot tell a missing key from an intended one.
 
 `max-attempts` is optional. An unset value gives the Spring AI default policy,

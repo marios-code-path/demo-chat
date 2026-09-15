@@ -21,14 +21,23 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
 Measured on 2026-09-15, after the embedding provider work. Default mode
-reports 800 tests with 30 skipped. Integration mode reports 1019 tests with 55
-skipped. Both report zero failures and zero errors.
+reports 800 tests with 30 skipped, so 770 run. Integration mode reports 1019
+tests with 55 skipped, so 964 run. Both report zero failures and zero errors.
+`build-health.sh` prints these counts on every run, so a later reader measures
+them rather than trusts this paragraph.
 
-The reactor holds 37 modules. `chat-embedding-openai` and `chat-embedding-local`
-are the two newest. Each supplies one `EmbeddingModel` behind one value of
-`app.service.core.embedding`. See `docs/EMBEDDING-PROVIDERS.md`.
+The reactor holds 37 modules, and 28 of them run tests. `chat-embedding-openai`
+and `chat-embedding-local` are the two newest. Each supplies one
+`EmbeddingModel` behind one value of `app.service.core.embedding`. See
+`docs/EMBEDDING-PROVIDERS.md`.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 219 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+These two modules appear here as prose and not as a row in the table below.
+That table records a deficiency, and it carries the columns Deficiency, Blocks,
+and Status. Neither module is a deficiency, and a row would have to leave all
+three columns empty or false. Task 10 of the embedding provider plan asked for
+a row, and this is the deliberate departure from it.
+
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 194 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
