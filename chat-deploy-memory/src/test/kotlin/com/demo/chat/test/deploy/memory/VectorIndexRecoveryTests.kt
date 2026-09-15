@@ -65,7 +65,7 @@ class VectorIndexRecoveryTests {
     // interface, so the type alone names two beans in a deployment that sets
     // app.controller.recall. The name picks the service.
     @Autowired
-    @Qualifier("messageRecallService")
+    @Qualifier("recallService")
     lateinit var recall: MessageRecallService<Long>
 
     @Autowired

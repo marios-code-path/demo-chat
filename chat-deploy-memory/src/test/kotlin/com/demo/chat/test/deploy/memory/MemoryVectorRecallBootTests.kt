@@ -36,7 +36,7 @@ class MemoryVectorRecallBootTests {
     @Test
     fun recallServiceIsActive() {
         Assertions
-            .assertThat(context.containsBean("messageRecallService"))
+            .assertThat(context.containsBean("recallService"))
             .isTrue
     }
 

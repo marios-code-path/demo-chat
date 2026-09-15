@@ -1,5 +1,6 @@
 package com.demo.chat.controller.webflux
 
+import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.TopicRecallRequest
 import com.demo.chat.domain.UserRecallRequest
@@ -25,9 +26,13 @@ import reactor.core.publisher.Mono
 @RestController
 @RequestMapping("/message/recall")
 @ConditionalOnProperty(prefix = "app.controller", name = ["recall"])
-class ChatMessageRecallController<T>(
-    private val recallService: MessageRecallService<T>,
-) {
+class ChatMessageRecallController<T>(beans: CoreRecallBeans<T>) {
+
+    // The beans interface, and not the service type. The RSocket controller
+    // implements MessageRecallService by delegation, so a classpath that
+    // carries both controller sets holds two beans of that type. A parameter
+    // of that type is then ambiguous and the launch fails.
+    private val recallService: MessageRecallService<T> = beans.recallService()
 
     @PostMapping("/topic", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun recallInTopic(@RequestBody req: TopicRecallRequest<T>): Mono<MessageRecallResult<T>> =

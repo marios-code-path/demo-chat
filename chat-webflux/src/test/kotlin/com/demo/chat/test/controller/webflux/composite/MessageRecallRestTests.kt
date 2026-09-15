@@ -1,5 +1,6 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.controller.webflux.ChatMessageRecallController
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.service.vector.MessageRecallHit
@@ -11,7 +12,9 @@ import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.context.annotation.Bean
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.context.ContextConfiguration
@@ -25,7 +28,11 @@ import reactor.core.publisher.Mono
  */
 @WebFluxTest
 @ContextConfiguration(
-    classes = [WebFluxTestConfiguration::class, ChatMessageRecallController::class]
+    classes = [
+        WebFluxTestConfiguration::class,
+        ChatMessageRecallController::class,
+        MessageRecallRestTests.RecallBeans::class,
+    ]
 )
 @TestPropertySource(properties = ["app.controller.recall"])
 class MessageRecallRestTests {
@@ -35,6 +42,23 @@ class MessageRecallRestTests {
 
     @MockBean
     private lateinit var recallService: MessageRecallService<Long>
+
+    /**
+     * The controller takes CoreRecallBeans, so the context needs one.
+     *
+     * The method returns the mock bean itself, and it does not stub a call.
+     * The controller reads the service while it builds, and a test stubs the
+     * mock later, so a stubbed answer would be null at that moment.
+     */
+    @TestConfiguration
+    class RecallBeans {
+
+        @Bean
+        fun coreRecallBeans(service: MessageRecallService<Long>): CoreRecallBeans<Long> =
+            object : CoreRecallBeans<Long> {
+                override fun recallService(): MessageRecallService<Long> = service
+            }
+    }
 
     @Test
     fun `recall topic returns one object with the flag`() {

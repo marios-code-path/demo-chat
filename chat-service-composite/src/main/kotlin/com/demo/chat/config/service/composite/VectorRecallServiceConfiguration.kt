@@ -178,15 +178,6 @@ class VectorRecallServiceConfiguration<T, V, Q>(
 
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
-    fun messageRecallService(
-        vectorStore: VectorStore,
-        @Value("\${app.key.type}") keyType: String,
-        state: VectorIndexState<T>,
-    ): MessageRecallService<T> =
-        MessageRecallServiceImpl(vectorStore, typeUtil, keyType, state)
-
-    @Bean
-    @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun messageReindexService(
         indexer: MessageVectorIndexer<T>,
         state: VectorIndexState<T>,

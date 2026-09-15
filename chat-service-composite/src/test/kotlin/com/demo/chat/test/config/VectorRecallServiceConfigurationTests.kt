@@ -1,9 +1,11 @@
 package com.demo.chat.test.config
 
 import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.config.service.composite.VectorRecallBeansConfiguration
 import com.demo.chat.config.service.composite.VectorRecallServiceConfiguration
 import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.LongUtil
+import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.MessageVectorIndexer
@@ -52,7 +54,13 @@ class VectorRecallServiceConfigurationTests {
         // A deployment builds this mapper from the Module beans that
         // JacksonModules declares. The registration repeats that result.
         context.beanFactory.registerSingleton("codecMapper", chatMapper())
-        context.register(VectorRecallServiceConfiguration::class.java)
+        // Two configurations. VectorRecallBeansConfiguration supplies
+        // CoreRecallBeans, and every controller takes that interface rather
+        // than MessageRecallService.
+        context.register(
+            VectorRecallServiceConfiguration::class.java,
+            VectorRecallBeansConfiguration::class.java,
+        )
         context.refresh()
         return context
     }
@@ -92,6 +100,7 @@ class VectorRecallServiceConfigurationTests {
             Assertions.assertThat(context.getBean(VectorCoveragePolicy::class.java)).isNotNull
             Assertions.assertThat(context.getBean(MessageVectorIndexer::class.java)).isNotNull
             Assertions.assertThat(context.getBean(MessageRecallService::class.java)).isNotNull
+            Assertions.assertThat(context.getBean(CoreRecallBeans::class.java).recallService()).isNotNull
             Assertions.assertThat(context.getBean(MessageReindexService::class.java)).isNotNull
         } finally {
             context.close()
@@ -127,6 +136,7 @@ class VectorRecallServiceConfigurationTests {
 
         try {
             Assertions.assertThat(context.getBeanNamesForType(MessageRecallService::class.java)).isEmpty()
+            Assertions.assertThat(context.getBeanNamesForType(CoreRecallBeans::class.java)).isEmpty()
             Assertions.assertThat(context.getBeanNamesForType(VectorIndexJobStore::class.java)).isEmpty()
         } finally {
             context.close()
