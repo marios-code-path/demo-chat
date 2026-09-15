@@ -933,3 +933,116 @@ real.
 
 The capability mechanism `CHAT-zqyrsrrg` still has six decomposed tasks and has not
 been started since the original design sprint.
+
+## Embedding provider modules (2026-09-14/15)
+
+`CHAT-etfnihnu`. Spec:
+`docs/superpowers/specs/2026-09-13-embedding-provider-modules-design.md`. Plan:
+`docs/superpowers/plans/2026-09-14-embedding-provider-modules.md`. Operator
+document: `docs/EMBEDDING-PROVIDERS.md`.
+
+### The defect this work closes
+
+`chat-deploy-memory` declared the `chat-core` test jar with no scope element,
+so it resolved at compile. The only `EmbeddingModel` in this repository lived
+in that jar, which means the recall feature ran on a mock in every test and
+would have failed at a launch.
+
+**No test could detect it.** A Spring Boot test puts test jars on its classpath
+by construction, so every test saw a model that no deployment would have.
+
+### What exists now
+
+- `chat-embedding-openai` supplies an `EmbeddingModel` when
+  `app.service.core.embedding` is `openai`. It reaches any OpenAI-compatible
+  endpoint through a base URL.
+- `chat-embedding-local` supplies one when the value is `local`. It loads an
+  ONNX model in the process.
+- Neither module depends on a Spring AI starter. A starter carries
+  auto-configuration, both modules sit on one classpath, and two starters would
+  let Spring AI build models that no selector asked for.
+- Both deployments declare both modules. `chat-deploy-memory` moved its test
+  jar to test scope.
+- The legal selector pair set grew from four to ten. A mock vector store
+  refuses a production model.
+
+### The identity
+
+`app.service.core.embedding.identity` names the model that wrote a corpus, and
+**the operator names it.** The code never derives one, because a base URL and a
+model name do not identify the output of a remote service. A compatible service
+can change its model behind both values and return different vectors for the
+same text.
+
+The value reaches five call sites: the redis index name, the embedded
+collection directory, the local resource cache directory, every new `IndexJob`,
+and the coverage filter.
+
+**A record written before this change carries null, and null never covers.** So
+the first start after this change reports an incomplete index and waits for a
+rebuild. Every existing redis index and every existing embedded directory
+orphans, because neither name carries an identity segment.
+
+### Two gates, and why each exists
+
+`just check-production-classpath` holds two rules. Rule one reads the poms and
+requires test scope on every test-jar dependency. Rule two resolves the runtime
+classpath of each module and refuses a known test library there.
+
+**Neither rule replaces the other.** A transitive leak never appears in a pom.
+An ordinary jar such as `testcontainers` is not a test jar, so rule one cannot
+see it either.
+
+`shell-scripts/vector/gate-embedding-launch.sh` runs the feature outside a test
+classpath. It packages a deployment, asserts that no test output is inside the
+artifact, launches it against a synthetic OpenAI endpoint, seeds, rebuilds, and
+searches. **Every test gate in this repository puts test outputs on the
+classpath, which is what hid the original defect.** That is the whole reason
+this gate exists, and it earned its place on its first run by finding a defect
+that no test could see.
+
+### Traps found, each of which cost a cycle
+
+- **A `@JvmInline value class` cannot be a Spring bean.** Kotlin unboxes a value
+  class at a return type, so the `@Bean` method compiled to
+  `embeddingIdentity-Xzz6TTw()` returning `java.lang.String`. `EmbeddingIdentity`
+  is a data class for that reason.
+- **A `SmartInitializingSingleton` check runs too late.** It runs after every
+  singleton exists, so an incomplete selector pair failed with
+  `NoSuchBeanDefinitionException` and an illegal pair loaded an 86.2 MiB model
+  before anything reported the pair. The selector check is a
+  `BeanFactoryPostProcessor` now.
+- **`TransformersEmbeddingModel` implements `InitializingBean`.** A factory
+  method that also calls `afterPropertiesSet` loads the model twice and builds
+  two ONNX sessions.
+- **Kotlin nests a block comment.** An actuator path pattern inside a KDoc opens
+  a nested comment, and the file fails to compile with `Unclosed comment` at the
+  last line.
+- **`conda activate base` does not put miniforge first on the PATH here.** A
+  bare `python3` resolves to the homebrew interpreter. Both new scripts name
+  `$CONDA_PREFIX/bin/python3` and refuse anything outside miniforge.
+- **The `expose-webflux` profile cannot run in a reactor build.** It declares
+  its dependencies on the parent, so `chat-webflux` reads itself as a dependency
+  and maven stops before it builds. `-pl` does not avoid it. `CHAT-xwycjyla`
+  holds it.
+- **A Spring AI client sends a chunked request body.** A stub that reads only
+  `Content-Length` sees no input, answers a vector for no text, and the caller
+  fails inside `dimensions()`. Reactor Netty also pools connections, so a
+  HTTP/1.0 stub breaks the next request on that connection.
+- **The default Spring AI retry policy needs 19 minutes to give up.** Ten
+  attempts make nine waits of 2, 10, 50, and then six of 180 seconds.
+  `app.service.core.embedding.openai.max-attempts` exists so a test of a dead
+  endpoint can set 1.
+- **The REST recall route could not start beside the RSocket controllers.**
+  `MessageRecallController` implements `MessageRecallService` by delegation, so
+  two beans of that type existed on one classpath. `CoreRecallBeans` closes it,
+  and every controller takes that interface now.
+
+### What this work did not deliver
+
+- **No deployment yml sets the vector or embedding selectors.** Every
+  composition still starts with the feature off.
+- **No automated run calls a paid service.** Both real model procedures are
+  manual, and `docs/EMBEDDING-PROVIDERS.md` carries them.
+- **The house endpoint serves 768 and only 768.** A request for a narrower
+  width answered 768, and this provider does not truncate.

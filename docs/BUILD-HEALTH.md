@@ -2,7 +2,7 @@
 
 Known build-time deficiencies, what causes them, and what they take down with them.
 
-**Verified against master `d81f0859` on 2026-08-23** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift.
+**Verified against `chat-oghjsnad-vector-reindex` `e7171cef` on 2026-09-15** by the default and `--integration` verifier modes, each reporting no drift.
 
 Do not trust this file on its own — run the verifier:
 
@@ -20,15 +20,19 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
-Measured on 2026-09-13, after the vector index job record work. Default mode
-reports 750 tests with 30 skipped. Integration mode reports 964 tests with 52
+Measured on 2026-09-15, after the embedding provider work. Default mode
+reports 800 tests with 30 skipped. Integration mode reports 1019 tests with 55
 skipped. Both report zero failures and zero errors.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+The reactor holds 37 modules. `chat-embedding-openai` and `chat-embedding-local`
+are the two newest. Each supplies one `EmbeddingModel` behind one value of
+`app.service.core.embedding`. See `docs/EMBEDDING-PROVIDERS.md`.
+
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 219 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 36 tests with 17 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class — `ShellUserCommandsTests`, `ShellLoginCommandsTests`, `ShellTopicCommandsTests` — and surefire discovers those as test classes in their own right and reports them skipped. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 19 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-15, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
