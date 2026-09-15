@@ -845,7 +845,10 @@ import com.demo.chat.config.embedding.openai.OpenAiEmbeddingConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.ai.retry.RetryUtils
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.retry.support.RetryTemplate
+import org.springframework.web.client.ResourceAccessException
 
 /**
  * The bean builds and it stays behind its selector.
@@ -935,6 +938,101 @@ class OpenAiEmbeddingConfigurationTests {
         }
     }
 
+    @Test
+    fun `a max attempts value of one supplies an embedding model`() {
+        // A test of a dead endpoint needs one attempt. The default policy
+        // makes 10 attempts and needs 19 minutes to give up.
+        runner(
+            mapOf(
+                "app.service.core.embedding" to "openai",
+                "app.service.core.embedding.openai.base-url" to "http://localhost:9999",
+                "app.service.core.embedding.openai.api-key" to "not-a-secret",
+                "app.service.core.embedding.openai.model" to "text-embedding-3-small",
+                "app.service.core.embedding.openai.max-attempts" to "1",
+            )
+        ).run { context ->
+            assertThat(context).hasNotFailed()
+            assertThat(context).hasSingleBean(EmbeddingModel::class.java)
+        }
+    }
+
+    @Test
+    fun `an illegal max attempts value fails the context and names that property`() {
+        for (illegal in listOf("0", "-1", "two", "1.5")) {
+            val failure = failureFor(
+                mapOf(
+                    "app.service.core.embedding" to "openai",
+                    "app.service.core.embedding.openai.base-url" to "http://localhost:9999",
+                    "app.service.core.embedding.openai.api-key" to "not-a-secret",
+                    "app.service.core.embedding.openai.model" to "text-embedding-3-small",
+                    "app.service.core.embedding.openai.max-attempts" to illegal,
+                )
+            )
+
+            assertThat(failure)
+                .describedAs("expected a failure for '%s'", illegal)
+                .hasMessageContaining("app.service.core.embedding.openai.max-attempts")
+        }
+    }
+
+    @Test
+    fun `an unset value gives the library template`() {
+        // The identity check, and not a count. A template that this class
+        // built could make 10 attempts and still differ from the library
+        // template, because the library template also carries a log listener.
+        // No deployment may lose that template.
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor(""))
+            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("   "))
+            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    }
+
+    @Test
+    fun `each value makes that many attempts`() {
+        // The value must reach the template. A hardcoded one attempt would
+        // pass every other test in this class, and so would a template that
+        // ignored the value.
+        //
+        // The values stop at 2, which costs one wait of 2 seconds. The waits
+        // are 2, 10, 50, and then 180 seconds, so a third value would add 10
+        // seconds to every build. Two values are enough. A template that
+        // ignored the value would report the builder default of 3, and a
+        // hardcoded template would report one number for both values.
+        for (attempts in 1..2) {
+            assertThat(attemptsUnder(OpenAiEmbeddingConfiguration.retryTemplateFor("$attempts")))
+                .describedAs("max-attempts=%d", attempts)
+                .isEqualTo(attempts)
+        }
+    }
+
+    @Test
+    fun `a value other than one does not give the library template`() {
+        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("2"))
+            .isNotSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    }
+
+    /**
+     * Counts the calls that one template makes before it gives up.
+     *
+     * The callback throws ResourceAccessException, which is one of the two
+     * types the library template retries. A refused connection reaches the
+     * caller as that type.
+     */
+    private fun attemptsUnder(template: RetryTemplate): Int {
+        var calls = 0
+
+        try {
+            template.execute<Unit, ResourceAccessException> {
+                calls++
+                throw ResourceAccessException("the endpoint refused the connection")
+            }
+        } catch (expected: ResourceAccessException) {
+            // Every attempt failed, which is the case under test.
+        }
+
+        return calls
+    }
+
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
         ApplicationContextRunner()
             .withPropertyValues(*properties.map { "${it.key}=${it.value}" }.toTypedArray())
@@ -968,6 +1066,8 @@ package com.demo.chat.config.embedding.openai
 
 import org.springframework.ai.document.MetadataMode
 import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.ai.retry.RetryUtils
+import org.springframework.ai.retry.TransientAiException
 import org.springframework.ai.openai.OpenAiEmbeddingModel
 import org.springframework.ai.openai.OpenAiEmbeddingOptions
 import org.springframework.ai.openai.api.OpenAiApi
@@ -975,6 +1075,9 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.retry.support.RetryTemplate
+import org.springframework.web.client.ResourceAccessException
+import java.time.Duration
 
 /**
  * An EmbeddingModel that reaches an OpenAI-compatible endpoint.
@@ -992,6 +1095,12 @@ import org.springframework.context.annotation.Configuration
  * AI 1.0.3, so the library does not force a key. This design requires one
  * anyway. A blank key reaches a remote service as an anonymous call, and an
  * operator cannot tell a missing key from an intended one.
+ *
+ * max-attempts is optional. See retryTemplateFor in the companion object.
+ *
+ * That function sits in the companion object because a test calls it. A test
+ * cannot read the retry template of a built model, because the library keeps
+ * it private.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["embedding"], havingValue = "openai")
@@ -1020,48 +1129,6 @@ class OpenAiEmbeddingConfiguration {
     }
 
     /**
-     * The retry policy of one embedding call.
-     *
-     * An unset property gives RetryUtils.DEFAULT_RETRY_TEMPLATE, which is what
-     * the library uses. That template makes 10 attempts and waits between
-     * them. It needs 19 minutes to give up on an endpoint that refuses every
-     * connection, because ten attempts make nine waits of 2, 10, 50, and then
-     * six of 180 seconds. That is 1142 seconds.
-     *
-     * A set value gives the same policy with that number of attempts. The
-     * value 1 makes one attempt and no retry, which a test needs. Task 8 needs
-     * it, because a test of a dead endpoint cannot wait 19 minutes.
-     *
-     * The built template matches the library template in every other way. It
-     * retries the same two exception types, and it waits 2 seconds, then 5
-     * times longer each attempt, up to 180 seconds. It carries no log
-     * listener, which is the one difference.
-     */
-    fun retryTemplateFor(maxAttempts: String): RetryTemplate {
-        if (maxAttempts.isBlank()) return RetryUtils.DEFAULT_RETRY_TEMPLATE
-
-        val attempts = maxAttempts.trim().toIntOrNull()
-        if (attempts == null || attempts < 1) {
-            throw IllegalStateException(
-                "app.service.core.embedding.openai.max-attempts=$maxAttempts is not a " +
-                    "whole number of 1 or more. Remove the property to use the default " +
-                    "policy of 10 attempts."
-            )
-        }
-
-        return RetryTemplate.builder()
-            .maxAttempts(attempts)
-            .retryOn(TransientAiException::class.java)
-            .retryOn(ResourceAccessException::class.java)
-            .exponentialBackoff(
-                Duration.ofMillis(2000),
-                5.0,
-                Duration.ofMillis(180000),
-            )
-            .build()
-    }
-
-    /**
      * Each property carries an empty default, and this function rejects it.
      *
      * A @Value with no default fails the context, but the message names the
@@ -1077,6 +1144,50 @@ class OpenAiEmbeddingConfiguration {
             )
         }
         return value
+    }
+
+    companion object {
+        /**
+         * The retry policy of one embedding call.
+         *
+         * An unset property gives RetryUtils.DEFAULT_RETRY_TEMPLATE, which is what
+         * the library uses. That template makes 10 attempts and waits between
+         * them. It needs 19 minutes to give up on an endpoint that refuses every
+         * connection, because ten attempts make nine waits of 2, 10, 50, and then
+         * six of 180 seconds. That is 1142 seconds.
+         *
+         * A set value gives the same policy with that number of attempts. The
+         * value 1 makes one attempt and no retry, which a test needs. A test of a
+         * dead endpoint cannot wait 19 minutes.
+         *
+         * The built template matches the library template in every other way. It
+         * retries the same two exception types, and it waits 2 seconds, then 5
+         * times longer each attempt, up to 180 seconds. It carries no log
+         * listener, which is the one difference.
+         */
+        fun retryTemplateFor(maxAttempts: String): RetryTemplate {
+            if (maxAttempts.isBlank()) return RetryUtils.DEFAULT_RETRY_TEMPLATE
+
+            val attempts = maxAttempts.trim().toIntOrNull()
+            if (attempts == null || attempts < 1) {
+                throw IllegalStateException(
+                    "app.service.core.embedding.openai.max-attempts=$maxAttempts is not a " +
+                        "whole number of 1 or more. Remove the property to use the default " +
+                        "policy of 10 attempts."
+                )
+            }
+
+            return RetryTemplate.builder()
+                .maxAttempts(attempts)
+                .retryOn(TransientAiException::class.java)
+                .retryOn(ResourceAccessException::class.java)
+                .exponentialBackoff(
+                    Duration.ofMillis(2000),
+                    5.0,
+                    Duration.ofMillis(180000),
+                )
+                .build()
+        }
     }
 }
 ```
