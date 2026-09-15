@@ -3456,12 +3456,28 @@ else
     echo "CLAUDE.md requires miniforge for Python. Ask the owner for guidance."
     exit 1
 fi
-command -v python3 > /dev/null || { echo "no python3 after conda activate base"; exit 1; }
+# conda activate base sets CONDA_PREFIX, and on this machine it does not put
+# the miniforge bin directory first. A bare python3 then resolves to the
+# homebrew interpreter. Measured on 2026-09-15. So every call below names the
+# interpreter of the active environment.
+PYTHON="$CONDA_PREFIX/bin/python3"
+if [ ! -x "$PYTHON" ]; then
+    echo "no python3 at $PYTHON after conda activate base"
+    exit 1
+fi
+case "$PYTHON" in
+    "$HOME/miniforge3"/*) ;;
+    *)
+        echo "python3 resolves to $PYTHON, which is outside miniforge."
+        echo "CLAUDE.md requires miniforge for Python."
+        exit 1
+        ;;
+esac
 
 FAILED=0
 
 echo "Rule one: every test-jar dependency declares test scope."
-python3 - <<'PY'
+"$PYTHON" - <<'PY'
 import re, glob, sys
 
 violations = []
@@ -3498,7 +3514,7 @@ PY
 echo
 echo "Rule two: no known test library on a runtime classpath."
 
-MODULES=$(python3 -c "
+MODULES=$("$PYTHON" -c "
 import re
 text = open('pom.xml').read()
 for m in re.findall(r'<module>([^<]*)</module>', text):
@@ -3538,7 +3554,7 @@ for module in $MODULES; do
     [ -f "$out" ] || : > "$out"
 done
 
-python3 - "$CPDIR" <<'PY'
+"$PYTHON" - "$CPDIR" <<'PY'
 import os, sys
 
 # Each entry matches a path segment of a resolved artifact. A group id maps to
