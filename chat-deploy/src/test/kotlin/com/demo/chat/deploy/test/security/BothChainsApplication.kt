@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import org.springframework.core.annotation.Order
 import org.springframework.http.MediaType
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
 import org.springframework.security.config.web.server.ServerHttpSecurity
@@ -51,12 +52,20 @@ class BothChainsApplication {
  * there carry no condition, and each one needs service beans that a security
  * test has no reason to build. Those beans decide nothing about which chain
  * owns which route.
+ *
+ * The order comes from the production constant. Spring reads @Order from the
+ * bean method that declares it, and it does not carry the annotation over from
+ * a method that this one calls. So this method must declare its own, and it
+ * must not declare a number of its own. SecurityChainOrderTests reads the
+ * annotation on the production method, because a constant alone does not prove
+ * that the production bean declares it.
  */
 @Configuration(proxyBeanMethods = false)
 @EnableWebFluxSecurity
 class ApplicationChainConfiguration {
 
     @Bean
+    @Order(WebFluxSecurity.APPLICATION_CHAIN_ORDER)
     fun applicationFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain? =
         WebFluxSecurity().filterChain(http)
 }

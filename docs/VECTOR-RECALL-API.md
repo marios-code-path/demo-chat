@@ -23,8 +23,9 @@ for it.
 filter chain permits every route it owns, and it wires no HTTP Basic and no
 authentication manager. So no `Authentication` reaches a chat route, and the
 commands below send no credentials. The actuator routes are the exception. They
-sit behind their own chain and they need the actuator user. See
-`CHAT-jdsamcia`.
+sit behind their own chain, and each one needs the actuator user. The health
+route is the one actuator route that stays open, and it needs no credentials.
+See `CHAT-jdsamcia`.
 
 ## Turn it on
 
