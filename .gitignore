@@ -44,7 +44,8 @@ env.custom
 .mcp.json
 
 # Fiberplane local issue tracking
-.fp/
+.fp/*
+!.fp/remote.toml
 *.versionsBackup
 .claude/
 .worktrees/
@@ -53,3 +54,4 @@ pgdb/data/
 /.codex
 /.envrc
 /agentgateway.yml
+

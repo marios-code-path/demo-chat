@@ -4,4 +4,3 @@ Hi. Theta you are! Welcome to the next level - the beginning of the next level b
 
 
 @AGENTS.md
-@FP_CLAUDE.md
