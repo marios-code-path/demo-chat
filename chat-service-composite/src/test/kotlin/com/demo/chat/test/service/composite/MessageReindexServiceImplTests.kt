@@ -189,9 +189,119 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(service.start().block()!!.status.running).isTrue()
     }
 
+    // The window this test opens is the contract. running=false says the state
+    // decided the outcome, and the durable record follows later.
+    @Test
+    fun `running turns false before the durable record is terminal`() {
+        jobStore.finishDelay = Duration.ofMillis(300)
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        service.start().block()
+
+        val decided = Flux.interval(Duration.ZERO, Duration.ofMillis(5))
+            .map { service.status() }
+            .filter { !it.running }
+            .next()
+            .block(Duration.ofSeconds(10))!!
+
+        Assertions.assertThat(decided.running).isFalse()
+        Assertions.assertThat(jobStore.written.lastOrNull()?.outcome)
+            .describedAs("the durable record is not terminal yet")
+            .isNotEqualTo(JobOutcome.SUCCEEDED)
+
+        val durable = awaitDurableOutcome()
+        Assertions.assertThat(durable.outcome).isEqualTo(JobOutcome.SUCCEEDED)
+    }
+
+    // The bound exists because this state is reachable. A failed terminal
+    // write leaves running=false beside no durable record at all.
+    @Test
+    fun `a failed terminal write leaves no durable record and the inner bound expires`() {
+        jobStore.failFinish = true
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+
+        service.start().block()
+
+        val failure = Assertions.catchThrowable {
+            awaitDurableOutcome(inner = Duration.ofMillis(300))
+        }
+
+        Assertions.assertThat(failure)
+            .describedAs("the reader must stop and say which bound expired")
+            .hasMessageContaining("inner bound")
+        Assertions.assertThat(jobStore.written.map { it.outcome })
+            .describedAs("no terminal record reached the store")
+            .containsOnly(JobOutcome.RUNNING)
+    }
+
+    // RELEASED ends a wait. It does not prove that the rebuild did its work.
+    @Test
+    fun `a released run is terminal and is not success`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        scheduler.dispose()
+
+        service.start().block()
+        val released = awaitFinished(service)
+
+        Assertions.assertThat(released.running).isFalse()
+        Assertions.assertThat(released.complete)
+            .describedAs("a released run covers nothing")
+            .isFalse()
+        Assertions.assertThat(released.lastFailure).isNotNull()
+    }
+
     private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus<Long> {
         Assertions.assertThat(service.start().block()!!.status.running).isTrue()
         return awaitFinished(service)
+    }
+
+    /**
+     * Waits for the durable terminal record of the newest job.
+     *
+     * Two bounds, because two things can fail. The outer bound covers the run,
+     * and the inner bound covers the interval between running=false and the
+     * durable write. A reader that bounded only the second one would hang on a
+     * run that never ends.
+     *
+     * The message of each failure names which bound expired, because the two
+     * mean different things. An expired outer bound says the run did not
+     * finish. An expired inner bound says the run ended with no durable
+     * record.
+     */
+    private fun awaitDurableOutcome(
+        outer: Duration = Duration.ofSeconds(10),
+        inner: Duration = Duration.ofSeconds(5),
+    ): IndexJob<Long> {
+        // timeout carries the message. block(Duration) throws its own timeout
+        // error instead, and a reader could then not tell the two bounds
+        // apart.
+        Flux.interval(Duration.ZERO, Duration.ofMillis(10))
+            .map { service.status() }
+            .filter { !it.running }
+            .next()
+            .timeout(
+                outer,
+                Mono.error(AssertionError("the outer bound expired and the run did not finish")),
+            )
+            .block()
+
+        // justOrEmpty, because a reactor stream carries no null. The store
+        // holds the RUNNING record from the start of the run, so the filter
+        // reads the outcome rather than the presence of a record.
+        return Flux.interval(Duration.ZERO, Duration.ofMillis(10))
+            .flatMap {
+                Mono.justOrEmpty(
+                    jobStore.written.lastOrNull { job -> job.outcome != JobOutcome.RUNNING }
+                )
+            }
+            .next()
+            .timeout(
+                inner,
+                Mono.error(
+                    AssertionError("the inner bound expired and the run left no durable record")
+                ),
+            )
+            .block()!!
     }
 
     private fun awaitFinished(service: MessageReindexService<Long>): VectorIndexStatus<Long> =
@@ -223,6 +333,13 @@ class MessageReindexServiceImplTests {
         var failListing = false
         var failFinish = false
         var finishCalls = 0
+
+        /**
+         * Holds the durable write open. The production order clears running
+         * before this write, and a delay here makes that window wide enough
+         * for a test to observe rather than to race.
+         */
+        var finishDelay: Duration = Duration.ZERO
         private var nextId = FIRST_JOB_ID
 
         override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier<IndexJob<Long>> {
@@ -240,7 +357,9 @@ class MessageReindexServiceImplTests {
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
-        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.defer {
+        // The type is explicit. A trailing operator on the deferred Mono
+        // leaves Kotlin no return type to infer the branches from.
+        override fun finishJob(job: IndexJob<Long>): Mono<Void> = Mono.defer<Void> {
             finishCalls += 1
             if (failFinish) {
                 Mono.error(IllegalStateException("the terminal write failed"))
@@ -248,7 +367,7 @@ class MessageReindexServiceImplTests {
                 written.add(job)
                 Mono.empty()
             }
-        }
+        }.delaySubscription(finishDelay)
 
         override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
             Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == topicKey }) }
@@ -336,9 +455,10 @@ class MessageReindexServiceImplTests {
 
         service.start().block()
         state.invalidate("live vector add failed")
-        awaitFinished(service)
 
-        val written = jobStore.written.last()
+        // awaitFinished alone returns while the durable write is still in
+        // flight, because finishRun clears running before it writes.
+        val written = awaitDurableOutcome()
         Assertions.assertThat(written.outcome).isEqualTo(JobOutcome.FAILED)
         Assertions.assertThat(state.coveringJob()).isNull()
     }
@@ -435,7 +555,20 @@ class MessageReindexServiceImplTests {
         service.start().block()
         awaitFinished(service)
 
-        Assertions.assertThat(jobStore.finishCalls).isEqualTo(1)
+        // The write failed, so no durable record exists and awaitDurableOutcome
+        // would expire its inner bound. This test waits for the call instead.
+        Assertions.assertThat(
+            Flux.interval(Duration.ZERO, Duration.ofMillis(10))
+                .map { jobStore.finishCalls }
+                .filter { calls -> calls >= 1 }
+                .next()
+                .block(Duration.ofSeconds(5))
+        ).isEqualTo(1)
+        // The store still holds the RUNNING record of this run. The write that
+        // failed is the terminal one.
+        Assertions.assertThat(jobStore.written.map { it.outcome })
+            .describedAs("no terminal record reached the store")
+            .containsOnly(JobOutcome.RUNNING)
     }
 
     @Test
