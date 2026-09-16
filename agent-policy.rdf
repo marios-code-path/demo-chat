@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:dagdir="https://dagdir.local/policy#">
+
+  <dagdir:Policy rdf:about="https://dagdir.local/policy/agent-production-vectoring">
+    <rdfs:label>Dagdir Agent Policy</rdfs:label>
+    <dagdir:version>2026-06-17</dagdir:version>
+    <dagdir:status>active</dagdir:status>
+    <dagdir:purpose>
+      Direct agents to select production paths, recover from blockers,
+      and complete verified landing steps.
+    </dagdir:purpose>
+    <dagdir:basis>
+      The repository architecture separates Go kernel code, Python runtime services,
+      Markdown/YAML architecture contracts, and compact operational tooling.
+    </dagdir:basis>
+    <dagdir:designSafetyCore rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">0.5</dagdir:designSafetyCore>
+  </dagdir:Policy>
+
+  <!-- Language lanes -->
+
+  <dagdir:LanguageLane rdf:about="https://dagdir.local/policy/lane/go">
+    <rdfs:label>Go kernel lane</rdfs:label>
+    <dagdir:owns>CLI shells, planner kernel, projection, state machines, MCP seam, drive orchestration, inbox contracts.</dagdir:owns>
+    <dagdir:must>Go work must remain library-first, with Cobra and transport code at adapter edges.</dagdir:must>
+    <dagdir:must>Go package behavior must be reachable through injected interfaces where storage, commands, git, tests, or transport vary.</dagdir:must>
+    <dagdir:style>Package boundaries, explicit errors, typed status values, deterministic projection, table-oriented tests.</dagdir:style>
+    <dagdir:style>Activate user-owned idioms within code bases as a default. Do not assume.</dagdir:style>
+  </dagdir:LanguageLane>
+
+  <dagdir:LanguageLane rdf:about="https://dagdir.local/policy/lane/python">
+    <rdfs:label>Python runtime lane</rdfs:label>
+    <dagdir:owns>Runtime wrapper, intake, project-base selection, plan validation, responder flow, resolution ledgers, LangGraph-facing nodes.</dagdir:owns>
+    <dagdir:must>Python work must enter through services, stores, ledgers, projectors, selectors, or invokers before graph nodes or CLIs depend on it.</dagdir:must>
+    <dagdir:must>Runtime behavior must preserve committed basis, content-addressed evidence, append-only records, and typed terminal outcomes.</dagdir:must>
+    <dagdir:style>Frozen dataclasses, explicit protocols, deterministic replay, artifact-first inputs, conformance fixtures.</dagdir:style>
+  </dagdir:LanguageLane>
+
+  <dagdir:LanguageLane rdf:about="https://dagdir.local/policy/lane/docs-yaml">
+    <rdfs:label>Markdown and YAML contract lane</rdfs:label>
+    <dagdir:owns>Architecture register, specs, plans, conformance fixtures, operator guidance, execution DAGs.</dagdir:owns>
+    <dagdir:must>Documentation must track active ownership boundaries and settled decisions before new work relies on them.</dagdir:must>
+    <dagdir:must>YAML fixtures must express executable contracts with stable vocabulary and clear terminal outcomes.</dagdir:must>
+    <dagdir:style>Directive prose, dated specs, explicit non-goals, drift anchors, fixture-backed claims.</dagdir:style>
+  </dagdir:LanguageLane>
+
+  <dagdir:LanguageLane rdf:about="https://dagdir.local/policy/lane/tooling">
+    <rdfs:label>Tooling lane</rdfs:label>
+    <dagdir:owns>Make targets, install flow, scripts, schema checks, runtime embedding.</dagdir:owns>
+    <dagdir:must>Tooling must preserve one-command verification and explicit runtime selection.</dagdir:must>
+    <dagdir:must>Installed CLI behavior must respect runtime precedence: flag, environment, then embedded interpreter.</dagdir:must>
+    <dagdir:style>Short commands, explicit environment inputs, reproducible local checks.</dagdir:style>
+  </dagdir:LanguageLane>
+
+  <!-- Production vectoring -->
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/vector/choose-authority">
+    <rdfs:label>Choose explicit authority</rdfs:label>
+    <dagdir:must>Agents must identify the authority surface before changing behavior.</dagdir:must>
+    <dagdir:prefer>Committed descriptors, append-only logs, pinned repository basis, published specs, and tested service APIs.</dagdir:prefer>
+    <dagdir:avoid>Ambient inference, generic fallback, hidden derivation, shadow queues, shadow planners, and undocumented state.</dagdir:avoid>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/vector/route-by-lane">
+    <rdfs:label>Route by language lane</rdfs:label>
+    <dagdir:must>Planner kernels and deterministic projection must vector to Go.</dagdir:must>
+    <dagdir:must>Runtime composition, validation, responder, and intake behavior must vector to Python service seams.</dagdir:must>
+    <dagdir:must>Cross-cutting design changes must vector first to project-forward notes or the relevant spec before code hardens the contract.</dagdir:must>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/vector/minimize-surface">
+    <rdfs:label>Minimize production surface</rdfs:label>
+    <dagdir:must>Changes must be narrow enough to verify and broad enough to satisfy the production boundary.</dagdir:must>
+    <dagdir:prefer>Existing local patterns, existing command surfaces, existing conformance families, and typed outcomes.</dagdir:prefer>
+    <dagdir:avoid>Parallel abstractions that duplicate a landed kernel, ledger, queue, selector, or projector.</dagdir:avoid>
+  </dagdir:Directive>
+
+  <!-- Rebounding -->
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/rebound/on-blockage">
+    <rdfs:label>Rebound from blockage</rdfs:label>
+    <dagdir:must>When blocked, agents must classify the blockage as missing authority, stale documentation, failing verification, environment mismatch, or scope collision.</dagdir:must>
+    <dagdir:must>Agents must rebound through the closest authoritative surface instead of inventing an alternate path.</dagdir:must>
+    <dagdir:prefer>Read the active register, inspect package/service boundaries, run focused verification, then patch the smallest authoritative surface.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/rebound/on-stale-docs">
+    <rdfs:label>Rebound from stale docs</rdfs:label>
+    <dagdir:must>If prose diverges from code, agents must update prose before refreshing provenance.</dagdir:must>
+    <dagdir:must>Agents must not relink drift anchors without reviewing the target content.</dagdir:must>
+    <dagdir:prefer>Scoped drift checks for the touched paths and explicit notes for out-of-scope stale docs.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/rebound/on-test-failure">
+    <rdfs:label>Rebound from verification failure</rdfs:label>
+    <dagdir:must>Test failures must be treated as evidence first and implementation guesses second.</dagdir:must>
+    <dagdir:must>Python verification must use the Miniforge base path unless a task supplies a stronger runtime boundary.</dagdir:must>
+    <dagdir:prefer>Focused failing test, source inspection, minimal patch, focused retest, then broader suite.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <!-- Landing -->
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/landing/definition">
+    <rdfs:label>Definition of landed work</rdfs:label>
+    <dagdir:must>Landing must distinguish authored work, committed branch work, opened PR, merged main, and closed issue.</dagdir:must>
+    <dagdir:must>Agents must not report a boundary as landed until the relevant evidence exists.</dagdir:must>
+    <dagdir:prefer>Commit hashes, PR numbers, issue IDs, verification commands, and drift results in closure reports.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/landing/gates">
+    <rdfs:label>Landing gates</rdfs:label>
+    <dagdir:must>Go changes must pass the relevant Go package tests and usually go test ./...</dagdir:must>
+    <dagdir:must>Python runtime changes must pass focused pytest coverage under PYTHONPATH=runtime and Miniforge base.</dagdir:must>
+    <dagdir:must>Doc-bound changes must run the appropriate drift check before completion.</dagdir:must>
+    <dagdir:must>Production-bound behavior must have conformance or regression proof at the closest existing test family.</dagdir:must>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/landing/protect-worktree">
+    <rdfs:label>Protect local worktree</rdfs:label>
+    <dagdir:must>Agents must preserve unrelated dirty files and user work in all landing flows.</dagdir:must>
+    <dagdir:must>Agents must not use destructive git operations unless the user explicitly requests that operation.</dagdir:must>
+    <dagdir:prefer>Worktree-local status checks, scoped diffs, and explicit distinction between touched and untouched files.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <!-- Etiquette -->
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/etiquette/agent-output">
+    <rdfs:label>Agent output</rdfs:label>
+    <dagdir:must>Agent communication must be concise, concrete, and tied to current files, commands, boundaries, or evidence.</dagdir:must>
+    <dagdir:must>Reports must separate observation from recommendation when the user asks for observational review.</dagdir:must>
+    <dagdir:prefer>Short closure notes that name what changed, how it was verified, and what remains unsettled.</dagdir:prefer>
+  </dagdir:Directive>
+
+  <dagdir:Directive rdf:about="https://dagdir.local/policy/etiquette/code">
+    <rdfs:label>Execution</rdfs:label>
+    <dagdir:must>Agents must make concrete repo progress when the user asks for execution.</dagdir:must>
+    <dagdir:must>Agents must preserve architecture boundaries while moving work toward production.</dagdir:must>
+    <dagdir:prefer>Scoped patches, focused tests, accurate docs, and handoff evidence.</dagdir:prefer>
+  </dagdir:Directive>
+
+</rdf:RDF>
