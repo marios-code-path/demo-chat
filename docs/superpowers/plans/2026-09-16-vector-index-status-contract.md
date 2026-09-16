@@ -40,8 +40,9 @@ JUnit 5, AssertJ, Maven.
 - Prefix every `fp` command with `FP_AGENT_NAME='sigma'`.
 - End each commit message with
   `Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>`.
-- Each commit body below carries angle brackets. Replace each one with a
-  measured value before you commit, and delete a line rather than guess at it.
+- Each commit body below carried angle brackets while this plan was open.
+  Every one is now replaced with the value that the run measured on
+  2026-09-16.
 
 ---
 
@@ -416,9 +417,9 @@ Both status flags gained the contract in KDoc. running=false means the
 state decided the outcome, and complete=true means the state holds a
 covering job. Neither proves that the durable job write finished.
 
-Evidence, measured on <DATE>.
+Evidence, measured on 2026-09-16.
 
-- <N> tests pass in VectorIndexTriggerResultWireTests.
+- 4 tests pass in VectorIndexTriggerResultWireTests.
 - chat-core, chat-service-composite, and chat-deploy pass.
 - The full reactor installs.
 
@@ -665,10 +666,10 @@ publisher and asserts the contract directly. One proves that a failed
 terminal write leaves no record and expires the inner bound. One states that
 RELEASED is terminal and is not success.
 
-Evidence, measured on <DATE>.
+Evidence, measured on 2026-09-16.
 
 - The class passes 12 times out of 12. The same loop failed 3 of 8 before.
-- <N> tests in MessageReindexServiceImplTests.
+- 22 tests in MessageReindexServiceImplTests.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -875,10 +876,11 @@ without proving any work.
 The operator guide carries the same two bounds, the new trigger answer, and
 the rule that only SUCCEEDED proves a rebuild.
 
-Evidence, measured on <DATE>.
+Evidence, measured on 2026-09-16.
 
-- The gate exits 0, and PASS is the last line.
-- A rejected trigger fails the gate, and the message names it.
+- The gate exits 0, and PASS is the last line. The durable record reports
+  SUCCEEDED.
+- A rejected trigger answer fails the gate, and the message names it.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 MSG
@@ -934,10 +936,10 @@ git add forward-register.md
 git commit -F - <<'MSG'
 docs: record the vector status contract in the register (CHAT-cxduiwjj)
 
-Evidence, measured on <DATE>.
+Evidence, measured on 2026-09-16.
 
-- Default build: <N> tests, <N> failures, <N> errors, <N> skipped.
-- Integration build: <N> tests, <N> failures, <N> errors, <N> skipped.
+- Default build: 807 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1026 tests, 0 failures, 0 errors, 55 skipped.
 - Five gates each exit 0.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

@@ -234,9 +234,11 @@ class MessageReindexServiceImplTests {
             .containsOnly(JobOutcome.RUNNING)
     }
 
-    // RELEASED ends a wait. It does not prove that the rebuild did its work.
+    // A claim that no rebuild can finish is released in process. No job
+    // exists, so this says nothing about a durable RELEASED record. The test
+    // below covers that.
     @Test
-    fun `a released run is terminal and is not success`() {
+    fun `a claim that no scan can start is released`() {
         given(persistence.all()).willReturn(Flux.just(message(1L)))
         scheduler.dispose()
 
@@ -245,9 +247,40 @@ class MessageReindexServiceImplTests {
 
         Assertions.assertThat(released.running).isFalse()
         Assertions.assertThat(released.complete)
-            .describedAs("a released run covers nothing")
+            .describedAs("a released claim covers nothing")
             .isFalse()
         Assertions.assertThat(released.lastFailure).isNotNull()
+    }
+
+    // RELEASED ends a reader wait. It does not prove that a rebuild did its
+    // work. VectorIndexStartupAction writes this outcome when it clears a job
+    // that an earlier incarnation left behind.
+    @Test
+    fun `a released durable job ends a reader wait and is not success`() {
+        val stale = IndexJob(
+            key = Key.funKey(700L),
+            nodeId = 7,
+            keyType = "long",
+            incarnationId = "incarnation-earlier",
+            startedBy = Key.funKey(1000L),
+            startedAt = startedAt,
+            finishedAt = finishedAt,
+            outcome = JobOutcome.RELEASED,
+        )
+        jobStore.write(stale).block()
+
+        // No run holds the claim, so the outer bound passes at once. The inner
+        // bound must accept RELEASED, or a reader would wait for a terminal
+        // record that already exists.
+        val durable = awaitDurableOutcome(inner = Duration.ofSeconds(2))
+
+        Assertions.assertThat(durable.outcome).isEqualTo(JobOutcome.RELEASED)
+        Assertions.assertThat(durable.outcome)
+            .describedAs("a terminal outcome is not a successful one")
+            .isNotEqualTo(JobOutcome.SUCCEEDED)
+        Assertions.assertThat(service.status().complete)
+            .describedAs("a released job covers nothing")
+            .isFalse()
     }
 
     private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus<Long> {
