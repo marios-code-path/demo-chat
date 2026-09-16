@@ -18,17 +18,18 @@ class KeyValueStoreRegisteredClientRepository<T>(
     val typeUtil: TypeUtil<T>
 ) : RegisteredClientRepository {
 
+    // doOnNext discarded both publishers, so neither write was subscribed and
+    // nothing was ever stored. The reads below block, and this interface is
+    // synchronous, so the write blocks too.
     override fun save(registeredClient: RegisteredClient) {
-        Mono.just(
-            KeyValuePair.create(
-                Key.funKey(typeUtil.fromString(registeredClient.id)),
-                registeredClient as Any
-            )
+        val pair = KeyValuePair.create(
+            Key.funKey(typeUtil.fromString(registeredClient.id)),
+            registeredClient as Any
         )
-            .doOnNext { t -> kvStore.add(t) }
-            .doOnNext { t -> kvIndex.add(t) }
-            .then()
-            .subscribe()
+
+        kvStore.add(pair)
+            .then(kvIndex.add(pair))
+            .block()
     }
 
     override fun findById(id: String): RegisteredClient? =

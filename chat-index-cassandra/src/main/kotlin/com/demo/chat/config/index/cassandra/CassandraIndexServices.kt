@@ -4,10 +4,8 @@ import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.index.cassandra.impl.*
 import com.demo.chat.index.cassandra.repository.*
+import com.demo.chat.service.core.KeyValueIndexFields
 import com.demo.chat.service.core.KeyValueIndexService
-import com.demo.chat.service.dummy.DummyIndexService
-import com.demo.chat.service.dummy.DummyKeyValueIndexService
-import com.demo.chat.service.dummy.DummyKeyValueStore
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 
 
@@ -21,6 +19,9 @@ open class CassandraIndexServices<T>(
     private val byTopicRepo: ChatMessageByTopicRepository<T>,
     private val principalRepo: AuthMetadataByPrincipalRepository<T>,
     private val targetRepo: AuthMetadataByTargetRepository<T>,
+    private val kvIndexRepo: KeyValueIndexRepository<T>,
+    private val kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
+    private val keyValueFields: KeyValueIndexFields,
     private val typeUtil: TypeUtil<T>
 ) : IndexServiceBeans<T, String, Map<String, String>> {
     override fun userIndex() = UserIndex(userHandleRepo)
@@ -33,5 +34,6 @@ open class CassandraIndexServices<T>(
 
     override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo)
 
-    override fun KVPairIndex(): KeyValueIndexService<T, Map<String, String>> = DummyKeyValueIndexService()
+    override fun KVPairIndex(): KeyValueIndexService<T, Map<String, String>> =
+        KeyValueIndex(keyValueFields, kvIndexRepo, kvIndexByIdRepo)
 }

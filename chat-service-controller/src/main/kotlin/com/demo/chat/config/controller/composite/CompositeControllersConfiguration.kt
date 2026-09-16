@@ -9,6 +9,7 @@ import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.security.access.composite.MessageServiceAccess
 import com.demo.chat.security.access.composite.TopicServiceAccess
 import com.demo.chat.security.access.composite.UserServiceAccess
@@ -41,5 +42,5 @@ class UserServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
 @ConditionalOnProperty(prefix = "app.controller", name = ["recall"])
 @Controller
 class MessageRecallController<T>(
-    recallService: MessageRecallService<T>,
-) : MessageRecallControllerMapping<T>, MessageRecallService<T> by recallService
+    b: CoreRecallBeans<T>,
+) : MessageRecallControllerMapping<T>, MessageRecallService<T> by b.recallService()

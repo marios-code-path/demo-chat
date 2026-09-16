@@ -63,6 +63,17 @@ echo
 # shellcheck disable=SC2086
 (cd "$ROOT" && mvn $OFFLINE clean "$PHASE" -fae $INTEGRATION) > "$log" 2>&1
 
+# The counts, printed before the drift check. This gate deletes its Maven log
+# on exit, so a caller that needs the numbers had to run its own build. A
+# module aggregate line carries exactly ten fields, and a per class line
+# carries more, so the field count separates them.
+counts="$(awk '$2 == "Tests" && $3 == "run:" && $9 == "Skipped:" && NF == 10 {
+    gsub(/,/, ""); t += $4; f += $6; e += $8; s += $10; n += 1
+}
+END { printf "%d modules ran tests: %d tests, %d failures, %d errors, %d skipped", n, t, f, e, s }' "$log")"
+echo "$counts"
+echo
+
 summary="$(sed -n '/Reactor Summary/,/^\[INFO\] -\{20,\}$/p' "$log")"
 if [ -z "$summary" ]; then
     echo "could not find a reactor summary in the build output; last 30 lines:" >&2

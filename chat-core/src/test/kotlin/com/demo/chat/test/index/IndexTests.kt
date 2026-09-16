@@ -47,8 +47,12 @@ abstract class IndexTests<T, E, Q>(
                 .verifyComplete()
     }
 
+    /**
+     * Open because a mutable index replaces the entry of a key instead of
+     * holding two. The key-value index overrides this with two keys.
+     */
     @Test
-    fun `should save and find many`() {
+    open fun `should save and find many`() {
         val bar = getIndex()
             .add(valueSupply.get())
             .and(getIndex().add(valueSupply.get()))

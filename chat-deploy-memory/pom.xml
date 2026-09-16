@@ -37,6 +37,16 @@
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
+            <artifactId>chat-embedding-openai</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-embedding-local</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
             <artifactId>chat-persistence-memory</artifactId>
             <version>0.0.1</version>
         </dependency>
@@ -81,6 +91,7 @@
             <artifactId>chat-core</artifactId>
             <type>test-jar</type>
             <version>0.0.1</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>

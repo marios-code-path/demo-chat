@@ -10,8 +10,10 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.springframework.context.annotation.Bean
 
 open class JacksonModules(
-    private val keyConverter: Converter<JsonNode, out Any>,
-    private val dataConverter: Converter<JsonNode, out Any>
+    // Both are nullable now. A null node answers with null, and the key and
+    // data boundaries below assert the values they require.
+    private val keyConverter: Converter<JsonNode, out Any?>,
+    private val dataConverter: Converter<JsonNode, out Any?>
 ) {
 
     @Bean

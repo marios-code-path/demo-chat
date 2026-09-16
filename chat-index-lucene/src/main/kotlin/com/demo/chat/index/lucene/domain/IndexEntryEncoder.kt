@@ -1,20 +1,25 @@
 package com.demo.chat.index.lucene.domain
 
 import com.demo.chat.domain.*
+import com.demo.chat.service.core.KeyValueIndexFields
 import com.demo.chat.service.core.MembershipIndexService
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.security.AuthMetaIndex
-import org.springframework.core.convert.ConversionService
 import java.util.function.Function
 
 
 fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {
 
     companion object Factory {
-        fun <T> ofConversionService(conversionService: ConversionService): IndexEntryEncoder<KeyValuePair<T, Any>> =
-            IndexEntryEncoder { t ->
-                conversionService.convert(t, List::class.java) as List<Pair<String, String>>
-            }
+        /**
+         * Encodes the value of a key-value pair, not the pair itself.
+         *
+         * The pair is only a carrier. The value carries the fields, and the
+         * registered [KeyValueIndexFields] for its type names them. The key
+         * is added by the index, so it is not repeated here.
+         */
+        fun <T> ofKeyValueFields(fields: KeyValueIndexFields): IndexEntryEncoder<KeyValuePair<T, Any>> =
+            IndexEntryEncoder { t -> fields.fieldsOf(t.data) }
 
         fun <T> ofAuthMeta(typeUtil: TypeUtil<T>): IndexEntryEncoder<AuthMetadata<T>> =
             IndexEntryEncoder { t ->

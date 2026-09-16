@@ -1,9 +1,10 @@
 package com.demo.chat.controller.webflux
 
+import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.TopicRecallRequest
 import com.demo.chat.domain.UserRecallRequest
-import com.demo.chat.service.vector.MessageRecallHit
+import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.service.vector.MessageRecallService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.http.MediaType
@@ -11,28 +12,37 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 
 /**
- * REST recall routes. Each route returns NDJSON hits, like the topic listen
- * route. Request bodies use the shared sealed request types.
+ * REST recall routes. Each route returns one JSON object with the coverage
+ * flag. Request bodies use the shared sealed request types.
+ *
+ * Each route names JSON, and it names only JSON. An absent media type does not
+ * stop NDJSON. Content negotiation would still answer an
+ * `Accept: application/x-ndjson` request with NDJSON, and the specification
+ * says these routes no longer produce it. A request for NDJSON now gets 406.
  */
 @RestController
 @RequestMapping("/message/recall")
 @ConditionalOnProperty(prefix = "app.controller", name = ["recall"])
-class ChatMessageRecallController<T>(
-    private val recallService: MessageRecallService<T>,
-) {
+class ChatMessageRecallController<T>(beans: CoreRecallBeans<T>) {
 
-    @PostMapping("/topic", produces = [MediaType.APPLICATION_NDJSON_VALUE])
-    fun recallInTopic(@RequestBody req: TopicRecallRequest<T>): Flux<MessageRecallHit<T>> =
+    // The beans interface, and not the service type. The RSocket controller
+    // implements MessageRecallService by delegation, so a classpath that
+    // carries both controller sets holds two beans of that type. A parameter
+    // of that type is then ambiguous and the launch fails.
+    private val recallService: MessageRecallService<T> = beans.recallService()
+
+    @PostMapping("/topic", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun recallInTopic(@RequestBody req: TopicRecallRequest<T>): Mono<MessageRecallResult<T>> =
         recallService.recallInTopic(req)
 
-    @PostMapping("/user", produces = [MediaType.APPLICATION_NDJSON_VALUE])
-    fun recallByUser(@RequestBody req: UserRecallRequest<T>): Flux<MessageRecallHit<T>> =
+    @PostMapping("/user", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun recallByUser(@RequestBody req: UserRecallRequest<T>): Mono<MessageRecallResult<T>> =
         recallService.recallByUser(req)
 
-    @PostMapping("/global", produces = [MediaType.APPLICATION_NDJSON_VALUE])
-    fun recallGlobal(@RequestBody req: GlobalRecallRequest): Flux<MessageRecallHit<T>> =
+    @PostMapping("/global", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun recallGlobal(@RequestBody req: GlobalRecallRequest): Mono<MessageRecallResult<T>> =
         recallService.recallGlobal(req)
 }

@@ -1,6 +1,7 @@
 package com.demo.chat.test.vector.redis
 
 import com.demo.chat.config.vector.redis.RedisVectorStoreConfiguration
+import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.service.dummy.DummyEmbeddingModel
 import com.redis.testcontainers.RedisStackContainer
 import java.util.UUID
@@ -120,6 +121,7 @@ class RedisVectorStoreConfigurationTests {
             )
         )
         context.beanFactory.registerSingleton("embeddingModel", DummyEmbeddingModel())
+        context.beanFactory.registerSingleton("embeddingIdentity", EmbeddingIdentity("acme-e5"))
         context.register(RedisVectorStoreConfiguration::class.java)
         context.refresh()
 
@@ -127,6 +129,45 @@ class RedisVectorStoreConfigurationTests {
             Assertions
                 .assertThat(context.getBean(VectorStore::class.java))
                 .isInstanceOf(RedisVectorStore::class.java)
+        } finally {
+            context.close()
+        }
+    }
+
+    @Test
+    fun `the store bean writes under the identity prefix`() {
+        // The name tests call the companion functions. This test builds the
+        // bean and writes one document. A hardcoded index name inside the bean
+        // would pass the name tests and fail this one.
+        val identity = "wired-" + UUID.randomUUID().toString().take(8)
+
+        val context = AnnotationConfigApplicationContext()
+        context.environment.propertySources.addFirst(
+            MapPropertySource(
+                "test",
+                mapOf(
+                    "app.service.core.vector" to "redis",
+                    "app.key.type" to "long",
+                    "spring.redis.host" to stack.host,
+                    "spring.redis.port" to stack.firstMappedPort.toString(),
+                )
+            )
+        )
+        context.beanFactory.registerSingleton("embeddingModel", DummyEmbeddingModel())
+        context.beanFactory.registerSingleton("embeddingIdentity", EmbeddingIdentity(identity))
+        context.register(RedisVectorStoreConfiguration::class.java)
+        context.refresh()
+
+        try {
+            context.getBean(VectorStore::class.java)
+                .add(listOf(messageDoc(1L, 20L, 10L, "apple pie recipe")))
+
+            val jedis = JedisPooled(stack.host, stack.firstMappedPort)
+            val keys = jedis.keys("chat:vector:long:$identity:message:*")
+
+            Assertions.assertThat(keys)
+                .describedAs("the bean must write under the identity prefix")
+                .isNotEmpty()
         } finally {
             context.close()
         }

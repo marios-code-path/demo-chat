@@ -1,7 +1,7 @@
 # AGENTS.md
 
 @FP_AGENTS.md
-@continuity_brief.md
+@forward-register.md
 
 Major agenda: clean design. Both the folder should maintine high quality documentation (100% or near 100% accuracy). We will later, reflect this as a score <design_safety_score: float>.
 

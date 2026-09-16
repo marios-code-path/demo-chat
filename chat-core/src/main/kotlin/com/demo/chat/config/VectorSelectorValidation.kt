@@ -1,9 +1,11 @@
 package com.demo.chat.config
 
-import org.springframework.beans.factory.SmartInitializingSingleton
-import org.springframework.beans.factory.annotation.Value
+import com.demo.chat.domain.EmbeddingIdentity
+import org.springframework.beans.factory.config.BeanFactoryPostProcessor
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
 
 /**
  * Startup check for the recall selector pair. The capability mechanism does
@@ -17,6 +19,12 @@ object VectorSelectorValidation {
         "simple" to "mock",
         "redis" to "mock",
         "embedded" to "mock",
+        "simple" to "openai",
+        "redis" to "openai",
+        "embedded" to "openai",
+        "simple" to "local",
+        "redis" to "local",
+        "embedded" to "local",
     )
 
     const val EMBEDDED = "embedded"
@@ -41,7 +49,7 @@ object VectorSelectorValidation {
             "vector=$vector with embedding=$embedding"
         }
 
-    fun validate(vector: String?, embedding: String?) {
+    fun validate(vector: String?, embedding: String?, identity: String?) {
         val vectorSet = !vector.isNullOrBlank()
         val embeddingSet = !embedding.isNullOrBlank()
         if (!vectorSet && !embeddingSet) return
@@ -61,6 +69,10 @@ object VectorSelectorValidation {
             )
         }
 
+        // Checked after the pair. An illegal pair is the larger error, and the
+        // identity rule reads the embedding value that the pair check accepts.
+        EmbeddingIdentity.of(embedding!!, identity)
+
         // Checked last. An illegal pair is a configuration error and must be
         // reported as one, whatever this JVM can load.
         if (vector == EMBEDDED && !vectorApiPresent()) {
@@ -74,20 +86,46 @@ object VectorSelectorValidation {
     }
 }
 
+/**
+ * Runs the selector check before the container builds any singleton.
+ *
+ * A BeanFactoryPostProcessor runs at that moment, and a
+ * SmartInitializingSingleton runs after every singleton exists. The later
+ * moment is too late for two reasons. An incomplete pair removes the
+ * EmbeddingIdentity bean, so a provider that injects the identity fails with
+ * NoSuchBeanDefinitionException and hides the real error. An illegal pair
+ * loads an 86.2 MiB ONNX model before anything reports the pair.
+ *
+ * The class reads the Environment and not a bean, because no bean exists at
+ * this moment.
+ */
+open class VectorSelectorValidationPostProcessor(
+    private val environment: Environment,
+) : BeanFactoryPostProcessor {
+
+    override fun postProcessBeanFactory(beanFactory: ConfigurableListableBeanFactory) {
+        VectorSelectorValidation.validate(
+            environment.getProperty("app.service.core.vector"),
+            environment.getProperty("app.service.core.embedding"),
+            environment.getProperty(EmbeddingIdentity.PROPERTY),
+        )
+    }
+}
+
 // The module does not enable the Kotlin all-open compiler plugin. A
 // configuration class must be open, like BaseDomainConfiguration.
 @Configuration
-open class VectorSelectorValidationConfiguration(
-    @Value("\${app.service.core.vector:}") vector: String,
-    @Value("\${app.service.core.embedding:}") embedding: String,
-) {
+open class VectorSelectorValidationConfiguration {
 
-    private val vectorSelector = vector
-    private val embeddingSelector = embedding
-
-    @Bean
-    open fun vectorSelectorValidation(): SmartInitializingSingleton =
-        SmartInitializingSingleton {
-            VectorSelectorValidation.validate(vectorSelector, embeddingSelector)
-        }
+    companion object {
+        /**
+         * The method is static, which is what Spring requires of a
+         * BeanFactoryPostProcessor bean. A method on the instance would build
+         * the configuration class before every bean post processor exists.
+         */
+        @Bean
+        @JvmStatic
+        fun vectorSelectorValidation(environment: Environment): BeanFactoryPostProcessor =
+            VectorSelectorValidationPostProcessor(environment)
+    }
 }
