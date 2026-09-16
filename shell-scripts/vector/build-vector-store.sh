@@ -20,8 +20,10 @@
 # cannot answer a search is not a viable asset.
 #
 # The provider argument becomes app.service.core.vector at launch. Pair it with
-# app.service.core.embedding=mock, which is the only embedding this repository
-# supplies.
+# an embedding selector. This repository supplies three: mock, which is test
+# only and lives in the chat-core test jar, openai, and local. A production
+# value also needs app.service.core.embedding.identity. See
+# docs/EMBEDDING-PROVIDERS.md.
 
 set -euo pipefail
 
@@ -155,6 +157,10 @@ cat <<DONE
 
     app.service.core.vector=$PROVIDER
     app.service.core.embedding=mock
+
+  mock is test only, and it reaches no launch outside a test classpath. A
+  launch takes openai or local, and either one also takes
+  app.service.core.embedding.identity. See docs/EMBEDDING-PROVIDERS.md.
 
   A deploy module can select only a provider it declares. chat-deploy-memory
   declares simple and embedded. chat-deploy-redis declares redis. See
