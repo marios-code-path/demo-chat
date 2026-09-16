@@ -1284,6 +1284,6 @@ only the second one would hang on a run that never ends.**
 ### Measured
 
 - The class passes 12 times out of 12. The same loop failed 3 of 8 before.
-- Default build: 807 tests, 0 failures, 0 errors, 30 skipped.
-- Integration build: 1026 tests, 0 failures, 0 errors, 55 skipped.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
 - Five gates each exit 0.

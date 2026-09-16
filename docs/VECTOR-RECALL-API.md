@@ -36,8 +36,19 @@ So a reader waits for both, under two bounds.
 **Every loop below counts.** An unbounded `until` hangs when a run stalls, and
 it hangs when a terminal write fails and leaves no record at all.
 
+**Save this as a file and run it. Do not paste it into your own shell**, because
+each failure ends the script with `exit 1`, and that would close an interactive
+session. Each report must stop the run. A reader that printed a rejection and
+carried on would wait for a job that no call had created, and then report a
+missing durable record instead of a refused trigger.
+
 ```bash
+#!/bin/bash
+# wait-for-rebuild.sh — trigger one rebuild and wait for its durable record.
+set -uo pipefail
+
 VECTORINDEX=http://localhost:8080/actuator/vectorindex
+READ="curl -sS -u actuator:actuator $VECTORINDEX"
 
 # Take the instant before the trigger. The trigger never promises the job key,
 # so a reader correlates by start instant. This needs compatible clocks.
@@ -45,35 +56,47 @@ TRIGGER_AT=$(date +%s)
 curl -sS -u actuator:actuator -X POST "$VECTORINDEX" > /tmp/trigger.json
 
 # A rejected trigger starts nothing and creates no job. Do not wait for one.
-jq -e '.accepted == true' /tmp/trigger.json > /dev/null   || { echo "the trigger was rejected, so no run started"; }
+jq -e '.accepted == true' /tmp/trigger.json > /dev/null || {
+    echo "the trigger was rejected, so no run started"
+    exit 1
+}
 
 # The outer bound covers the rebuild, which grows with the corpus.
 OUTER=120
 for _ in $(seq 1 "$OUTER"); do
-  curl -sS -u actuator:actuator "$VECTORINDEX" \
-    | jq -e '.status.running == false' > /dev/null && break
-  sleep 1
+    $READ | jq -e '.status.running == false' > /dev/null && break
+    sleep 1
 done
-curl -sS -u actuator:actuator "$VECTORINDEX" | jq -e '.status.running == false' > /dev/null \
-  || { echo "the outer bound expired and the run did not finish"; }
+$READ | jq -e '.status.running == false' > /dev/null || {
+    echo "the outer bound expired and the run did not finish"
+    exit 1
+}
 
 # The inner bound covers the durable write, which is one event and one store
 # write.
 INNER=15
 TERMINAL='[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0'
 for _ in $(seq 1 "$INNER"); do
-  curl -sS -u actuator:actuator "$VECTORINDEX" \
-    | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null && break
-  sleep 1
+    $READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null && break
+    sleep 1
 done
-curl -sS -u actuator:actuator "$VECTORINDEX" \
-  | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null \
-  || { echo "the inner bound expired and the run ended without a durable record"; }
+$READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null || {
+    echo "the inner bound expired and the run ended without a durable record"
+    exit 1
+}
+
+# Only SUCCEEDED proves that the rebuild did its work.
+OUTCOME=$($READ | jq -r --argjson t "$TRIGGER_AT" '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | sort_by(.startedAt) | last | .outcome')
+[ "$OUTCOME" = "SUCCEEDED" ] || {
+    echo "the newest job reports $OUTCOME, and only SUCCEEDED proves a rebuild"
+    exit 1
+}
+echo "the rebuild succeeded"
 ```
 
-**The two reports differ.** An expired outer bound says the run did not finish.
-An expired inner bound says the run ended with no durable record. See
-`CHAT-cxduiwjj`.
+**The three reports differ.** A rejected trigger says that no run started. An
+expired outer bound says the run did not finish. An expired inner bound says
+the run ended with no durable record. See `CHAT-cxduiwjj`.
 
 **The REST application routes carry no authentication today.** The application
 filter chain permits every route it owns, and it wires no HTTP Basic and no
