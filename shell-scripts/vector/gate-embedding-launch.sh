@@ -78,23 +78,25 @@ esac
 echo "0. Python runs under miniforge."
 "$PYTHON" -c "import sys; print('   ' + sys.executable)"
 
-# Two commands, and not one. The expose-webflux profile declares its
-# dependencies on the parent, so every module inherits them. chat-webflux then
-# reads itself as a dependency, and maven stops with "is referencing itself"
-# before it builds anything. -pl does not avoid that, because maven reads every
-# module of the reactor first. So the package below names one pom file and
-# builds no reactor, and the install before it carries no profile.
+# Two commands, and not one.
 #
-# The package also needs the deploy profile. The root build sets the Boot
-# repackage skip to true, and the deploy profile is what sets it to false. The
-# gate launches the artifact with java -jar, so it needs the executable one.
+# The install carries no profile, and it exists so that the scoped package
+# below resolves every com.demo sibling from the local repository.
+#
+# The package names one module and it does not pass -am. The deploy profile
+# sets the Boot repackage skip to false for every module of the reactor it
+# runs in. With -am, chat-deploy is repackaged as its own executable jar and
+# lands inside this artifact as a 49 MiB library. Measured on 2026-09-16.
+#
+# The package needs the deploy profile, because the root build skips the Boot
+# repackage and this gate launches the artifact with java -jar.
 echo "1. Install the reactor."
 mvn -o -B -Dmaven.test.skip=true clean install > "$WORK/build.log" 2>&1 \
     || { tail -40 "$WORK/build.log"; fail "the install did not finish"; }
 
 echo "2. Package chat-deploy-memory with expose-webflux."
 mvn -o -B -Pexpose-webflux,deploy -Dmaven.test.skip=true \
-    -f chat-deploy-memory/pom.xml \
+    -pl chat-deploy-memory \
     clean package >> "$WORK/build.log" 2>&1 \
     || { tail -40 "$WORK/build.log"; fail "the package did not finish"; }
 
