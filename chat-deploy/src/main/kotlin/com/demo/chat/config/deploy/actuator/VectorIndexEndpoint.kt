@@ -6,6 +6,7 @@ import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexStatus
+import com.demo.chat.service.vector.VectorIndexTriggerResult
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint
@@ -98,16 +99,18 @@ class VectorIndexEndpoint<T>(
     /**
      * Starts one rebuild and returns at once.
      *
-     * The answer is the claim snapshot. An accepted first trigger reports
-     * `running=true` and `activeJob=null`, and **it never promises the job
-     * key**. The run creates its job after the claim, and on another scheduler.
+     * The answer carries `accepted` beside the claim snapshot. A rejected
+     * trigger means another run holds the claim, and it creates no job. An
+     * accepted first trigger reports `running=true` and `activeJob=null`, and
+     * **it never promises the job key**. The run creates its job after the
+     * claim, and on another scheduler.
      *
      * A client polls the read operation until the active job is not null, or
      * until running is false. An immediate second read does not close that
      * race, so this method performs none.
      */
     @WriteOperation
-    fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
+    fun startVectorIndexRebuild(): Mono<VectorIndexTriggerResult<T>> = reindex.start()
 
     // The listing defers. A store that reads at assembly time would run before
     // a subscriber arrives, and an actuator result is assembled early.

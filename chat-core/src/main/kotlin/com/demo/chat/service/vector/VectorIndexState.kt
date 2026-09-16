@@ -42,10 +42,26 @@ data class VectorIndexStatus<T>(
      *
      * `claim()` moves a complete index to REBUILDING, and a repair must not
      * lower the reported coverage while it runs.
+     *
+     * **This value reports in-process coverage, and it does not prove that the
+     * durable job holds a terminal outcome.** A failed terminal write leaves
+     * this value true beside a durable RUNNING job. Under
+     * app.vector.index.trust=stored a restart then reports no coverage, though
+     * the previous process reported complete. IndexJob.outcome is the durable
+     * fact. See CHAT-cxduiwjj.
      */
     val complete: Boolean
         get() = coveringJob != null
 
+    /**
+     * A run holds the claim in this process.
+     *
+     * **A false value means that the state decided the outcome. It does not
+     * prove that the durable terminal IndexJob write finished.** finishRun
+     * clears this flag before it writes the record, so that a failed write
+     * cannot leave a run active forever. A reader that needs the durable fact
+     * waits for a terminal IndexJob.outcome as well. See CHAT-cxduiwjj.
+     */
     val running: Boolean
         get() = phase == VectorIndexPhase.REBUILDING
 }

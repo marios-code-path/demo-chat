@@ -163,8 +163,12 @@ class MessageReindexServiceImplTests {
         val first = service.start().block()!!
         val second = service.start().block()!!
 
-        Assertions.assertThat(first.running).isTrue()
-        Assertions.assertThat(second.running).isTrue()
+        Assertions.assertThat(first.accepted).isTrue()
+        Assertions.assertThat(first.status.running).isTrue()
+        // The second trigger is refused. Before this field existed the status
+        // reported running=true for both, so this test could not see it.
+        Assertions.assertThat(second.accepted).isFalse()
+        Assertions.assertThat(second.status.running).isTrue()
         verify(persistence, timeout(1_000).times(1)).all()
 
         release.tryEmitEmpty()
@@ -182,11 +186,11 @@ class MessageReindexServiceImplTests {
         Assertions.assertThat(released.running).isFalse()
         Assertions.assertThat(released.complete).isFalse()
         Assertions.assertThat(released.lastFailure).isNotNull()
-        Assertions.assertThat(service.start().block()!!.running).isTrue()
+        Assertions.assertThat(service.start().block()!!.status.running).isTrue()
     }
 
     private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus<Long> {
-        Assertions.assertThat(service.start().block()!!.running).isTrue()
+        Assertions.assertThat(service.start().block()!!.status.running).isTrue()
         return awaitFinished(service)
     }
 
