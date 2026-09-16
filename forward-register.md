@@ -1214,3 +1214,76 @@ that no test could see.
   manual, and `docs/EMBEDDING-PROVIDERS.md` carries them.
 - **The house endpoint serves 768 and only 768.** A request for a narrower
   width answered 768, and this provider does not truncate.
+
+## Vector index status contract (2026-09-16)
+
+`CHAT-cxduiwjj`. Spec:
+`docs/superpowers/specs/2026-09-16-vector-index-status-contract-design.md`.
+Plan: `docs/superpowers/plans/2026-09-16-vector-index-status-contract.md`.
+
+### The defect
+
+`MessageReindexServiceImpl.finishRun` clears the running flag with a
+synchronous `state.finish`, then returns a chain that emits a record and only
+then writes the durable job. So `running=false` arrives before the durable
+record is terminal.
+
+**Three readers assumed those were one fact.** The test helper
+`awaitFinished`, both scenarios of `docs/VECTOR-RECALL-API.md`, and the
+packaged launch gate. Two tests raced that window and failed three times in
+eight runs, and once in CI on master.
+
+The gate passed by luck rather than by correctness. It asserted that the newest
+job carried the identity, and `createJob` stamps the identity on the RUNNING
+record too, so it read the right value from the wrong record.
+
+### The contract
+
+`running` and `complete` report in-process state. `IndexJob.outcome` is the
+durable fact after a restart. `SUCCEEDED`, `FAILED`, and `RELEASED` are
+terminal, and **only `SUCCEEDED` proves that a rebuild did its work**.
+
+The production ordering did not change. `state.finish` still runs first, so a
+failed durable write cannot leave a run active forever.
+
+### The one production change
+
+`start()` answers with `VectorIndexTriggerResult`, which carries `accepted`
+beside the status. The status could not carry that fact: a rejected trigger and
+an accepted one both report `running=true`, because the running claim belongs to
+another run in the first case. A reader that could not tell them apart waited
+for a job that no call had created, and then reported a missing durable record.
+
+The read operation keeps its status and jobs shape. A read never asks whether it
+started anything, and a wire test pins that separation.
+
+### Two bounds, and two reports
+
+A reader waits under an outer bound for the run and an inner bound for the
+durable write. An expired outer bound says the run did not finish. An expired
+inner bound says the run ended with no durable record. **A reader that bounded
+only the second one would hang on a run that never ends.**
+
+### Traps found while building it
+
+- **`Mono.block(Duration)` throws its own timeout error rather than returning
+  null.** An elvis after it never runs, so a helper that used one could not name
+  which bound expired. Use `timeout` with an explicit error.
+- **A reactor stream carries no null**, so a poll of a nullable store reads
+  through `Mono.justOrEmpty`.
+- **The job store holds the RUNNING record from the start of a run.** A failed
+  terminal write leaves that record in place, so an assertion reads the outcome
+  rather than the emptiness of the store.
+- **A trailing operator on `Mono.defer` removes the inferred type.** The lambda
+  branches then need an explicit one.
+- **A double trigger does not prove the rejection path.** A rebuild of three
+  messages finishes before the second call arrives, so the second trigger is
+  accepted. That mutation exited 0 three times out of three. The deterministic
+  proof feeds the reader a rejected answer instead.
+
+### Measured
+
+- The class passes 12 times out of 12. The same loop failed 3 of 8 before.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
+- Five gates each exit 0.

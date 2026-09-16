@@ -184,12 +184,33 @@ done
 echo "   ok, three messages persisted"
 
 echo "8. Trigger a rebuild, under Basic credentials."
+# The timestamp comes first. The trigger never promises the job key, so the
+# gate correlates by start instant. This needs the gate clock and the
+# application clock to agree, and both run on this host.
+TRIGGER_AT=$("$PYTHON" -c "import time; print(time.time())")
 curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
     -X POST "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/trigger.json" \
     || fail "the trigger did not answer"
 
-echo "9. Poll until running is false."
-for _ in $(seq 1 60); do
+# A rejected trigger starts nothing and creates no job. Without this check the
+# gate would wait for a job that no call created, and then report a missing
+# durable record. See CHAT-cxduiwjj.
+ACCEPTED=$("$PYTHON" -c "
+import json
+print(json.load(open('$WORK/trigger.json')).get('accepted'))
+")
+[ "$ACCEPTED" = "True" ] \
+    || { cat "$WORK/trigger.json"; fail "the trigger was rejected, so no run started"; }
+echo "   ok, the trigger was accepted"
+
+echo "9. Wait for the run, then for the durable record."
+# Two bounds. The outer one covers the rebuild, which grows with the corpus.
+# The inner one covers the interval between running=false and the durable
+# write, which is one event and one store write. running=false does not prove
+# that the record is written. See CHAT-cxduiwjj.
+OUTER=60
+INNER=15
+for _ in $(seq 1 "$OUTER"); do
     curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
         "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/status.json"
     RUNNING=$("$PYTHON" -c "
@@ -199,13 +220,40 @@ print(json.load(open('$WORK/status.json'))['status']['running'])
     [ "$RUNNING" = "False" ] && break
     sleep 2
 done
-[ "$RUNNING" = "False" ] || { cat "$WORK/status.json"; fail "the rebuild did not finish"; }
-echo "   ok, the rebuild finished"
+[ "$RUNNING" = "False" ] \
+    || { cat "$WORK/status.json"; fail "the outer bound expired and the run did not finish"; }
+echo "   ok, the run finished"
 
-echo "10. Assert that the newest job carries the identity."
+for _ in $(seq 1 "$INNER"); do
+    curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
+        "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/status.json"
+    TERMINAL=$("$PYTHON" -c "
+import json
+jobs = [j for j in json.load(open('$WORK/status.json'))['jobs']
+        if j['startedAt'] >= $TRIGGER_AT and j['outcome'] != 'RUNNING']
+jobs.sort(key=lambda j: j['startedAt'], reverse=True)
+print(jobs[0]['outcome'] if jobs else 'NONE')
+" 2>/dev/null)
+    [ "$TERMINAL" != "NONE" ] && break
+    sleep 1
+done
+[ "$TERMINAL" != "NONE" ] \
+    || { cat "$WORK/status.json"; fail "the inner bound expired and the run left no durable record"; }
+echo "   ok, the durable record reports $TERMINAL"
+
+echo "10. Assert that the newest job succeeded and carries the identity."
+# RELEASED and FAILED both end the wait. Only SUCCEEDED proves the rebuild did
+# its work, and this gate asserts hits below.
+[ "$TERMINAL" = "SUCCEEDED" ] \
+    || { cat "$WORK/status.json"; fail "the newest job reports $TERMINAL, expected SUCCEEDED"; }
+
+# The filter is the point. An unfiltered jobs[0] was the RUNNING record of this
+# run, so the gate read the right identity from the wrong record, and a
+# SUCCEEDED record of an earlier run would also have satisfied it.
 JOB_IDENTITY=$("$PYTHON" -c "
 import json
-jobs = json.load(open('$WORK/status.json'))['jobs']
+jobs = [j for j in json.load(open('$WORK/status.json'))['jobs']
+        if j['startedAt'] >= $TRIGGER_AT and j['outcome'] != 'RUNNING']
 jobs.sort(key=lambda j: j['startedAt'], reverse=True)
 print(jobs[0].get('embeddingIdentity'))
 ")

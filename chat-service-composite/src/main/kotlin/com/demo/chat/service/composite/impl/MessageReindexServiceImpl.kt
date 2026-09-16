@@ -13,6 +13,7 @@ import com.demo.chat.service.vector.JobRecordWriter
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
 import com.demo.chat.service.vector.VectorIndexStatus
+import com.demo.chat.service.vector.VectorIndexTriggerResult
 import com.demo.chat.service.vector.VectorRebuildReport
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -37,7 +38,7 @@ class MessageReindexServiceImpl<T, V>(
 
     override fun status(): VectorIndexStatus<T> = state.status()
 
-    override fun start(): Mono<VectorIndexStatus<T>> = Mono.fromSupplier {
+    override fun start(): Mono<VectorIndexTriggerResult<T>> = Mono.fromSupplier {
         val claim = state.claim()
         if (claim.accepted) {
             val startedAt = clock.instant()
@@ -52,7 +53,7 @@ class MessageReindexServiceImpl<T, V>(
                 release(claim, startedAt, error)
             }
         }
-        claim.status
+        VectorIndexTriggerResult(claim.accepted, claim.status)
     }
 
     /**

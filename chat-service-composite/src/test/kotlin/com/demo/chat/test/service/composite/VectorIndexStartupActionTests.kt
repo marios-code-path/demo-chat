@@ -10,6 +10,7 @@ import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorCoveragePolicy
 import com.demo.chat.service.vector.VectorIndexPhase
 import com.demo.chat.service.vector.VectorIndexStatus
+import com.demo.chat.service.vector.VectorIndexTriggerResult
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import reactor.core.publisher.Mono
@@ -63,10 +64,13 @@ class VectorIndexStartupActionTests {
     private inner class RecordingReindex : MessageReindexService<Long> {
         val coveringAtStart = mutableListOf<Key<Long>?>()
 
-        override fun start(): Mono<VectorIndexStatus<Long>> = Mono.fromSupplier {
+        override fun start(): Mono<VectorIndexTriggerResult<Long>> = Mono.fromSupplier {
             calls.add("rebuild")
             coveringAtStart.add(state.coveringJob())
-            state.status()
+            // The startup action discards this answer through then(). The fake
+            // reports an accepted trigger, which is what a real start reports
+            // when no other run holds the claim.
+            VectorIndexTriggerResult(true, state.status())
         }
 
         override fun status(): VectorIndexStatus<Long> = state.status()

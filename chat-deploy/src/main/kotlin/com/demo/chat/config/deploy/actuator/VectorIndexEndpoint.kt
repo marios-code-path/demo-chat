@@ -6,6 +6,7 @@ import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexStatus
+import com.demo.chat.service.vector.VectorIndexTriggerResult
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint
@@ -98,16 +99,33 @@ class VectorIndexEndpoint<T>(
     /**
      * Starts one rebuild and returns at once.
      *
-     * The answer is the claim snapshot. An accepted first trigger reports
-     * `running=true` and `activeJob=null`, and **it never promises the job
-     * key**. The run creates its job after the claim, and on another scheduler.
+     * The answer carries `accepted` beside the claim snapshot. A rejected
+     * trigger means another run holds the claim, and it creates no job. An
+     * accepted first trigger reports `running=true` and `activeJob=null`, and
+     * **it never promises the job key**. The run creates its job after the
+     * claim, and on another scheduler.
      *
-     * A client polls the read operation until the active job is not null, or
-     * until running is false. An immediate second read does not close that
-     * race, so this method performs none.
+     * **running=false does not prove that the durable job record is written.**
+     * finishRun clears that flag before it writes the record, so that a failed
+     * write cannot leave a run active forever. A client that needs the durable
+     * fact waits for two things, under two bounds.
+     *
+     * 1. An outer bound, until the read operation reports running=false. That
+     *    bound belongs to the client, because a rebuild grows with the corpus.
+     * 2. An inner bound, until the newest job with a startedAt at or after the
+     *    local trigger instant carries a terminal outcome.
+     *
+     * An expired outer bound says the run did not finish. An expired inner
+     * bound says the run ended with no durable record. SUCCEEDED, FAILED and
+     * RELEASED are terminal, and **only SUCCEEDED proves that the rebuild did
+     * its work**.
+     *
+     * This method performs no read of its own. An immediate second read does
+     * not close the race that leaves activeJob null. See CHAT-cxduiwjj and
+     * docs/VECTOR-RECALL-API.md.
      */
     @WriteOperation
-    fun startVectorIndexRebuild(): Mono<VectorIndexStatus<T>> = reindex.start()
+    fun startVectorIndexRebuild(): Mono<VectorIndexTriggerResult<T>> = reindex.start()
 
     // The listing defers. A store that reads at assembly time would run before
     // a subscriber arrives, and an actuator result is assembled early.

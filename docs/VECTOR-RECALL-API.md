@@ -19,6 +19,85 @@ not read the examples below as semantic search.
 of truth. A lost store is rebuilt from them, and no deployment mounts a volume
 for it.
 
+## Waiting for a rebuild
+
+Two facts end a rebuild, and they are not the same fact.
+
+**`running=false` means the state decided the outcome. It does not prove that
+the durable `IndexJob` record is written.** The state finishes first, so that a
+failed write cannot leave a run active forever. `complete=true` reads the same
+way, because the state sets the covering job at that moment too.
+
+**`IndexJob.outcome` is the durable fact.** `SUCCEEDED`, `FAILED`, and
+`RELEASED` are terminal. **Only `SUCCEEDED` proves the rebuild did its work.**
+
+So a reader waits for both, under two bounds.
+
+**Every loop below counts.** An unbounded `until` hangs when a run stalls, and
+it hangs when a terminal write fails and leaves no record at all.
+
+**Save this as a file and run it. Do not paste it into your own shell**, because
+each failure ends the script with `exit 1`, and that would close an interactive
+session. Each report must stop the run. A reader that printed a rejection and
+carried on would wait for a job that no call had created, and then report a
+missing durable record instead of a refused trigger.
+
+```bash
+#!/bin/bash
+# wait-for-rebuild.sh — trigger one rebuild and wait for its durable record.
+set -uo pipefail
+
+VECTORINDEX=http://localhost:8080/actuator/vectorindex
+READ="curl -sS -u actuator:actuator $VECTORINDEX"
+
+# Take the instant before the trigger. The trigger never promises the job key,
+# so a reader correlates by start instant. This needs compatible clocks.
+TRIGGER_AT=$(date +%s)
+curl -sS -u actuator:actuator -X POST "$VECTORINDEX" > /tmp/trigger.json
+
+# A rejected trigger starts nothing and creates no job. Do not wait for one.
+jq -e '.accepted == true' /tmp/trigger.json > /dev/null || {
+    echo "the trigger was rejected, so no run started"
+    exit 1
+}
+
+# The outer bound covers the rebuild, which grows with the corpus.
+OUTER=120
+for _ in $(seq 1 "$OUTER"); do
+    $READ | jq -e '.status.running == false' > /dev/null && break
+    sleep 1
+done
+$READ | jq -e '.status.running == false' > /dev/null || {
+    echo "the outer bound expired and the run did not finish"
+    exit 1
+}
+
+# The inner bound covers the durable write, which is one event and one store
+# write.
+INNER=15
+TERMINAL='[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0'
+for _ in $(seq 1 "$INNER"); do
+    $READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null && break
+    sleep 1
+done
+$READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null || {
+    echo "the inner bound expired and the run ended without a durable record"
+    exit 1
+}
+
+# Only SUCCEEDED proves that the rebuild did its work.
+OUTCOME=$($READ | jq -r --argjson t "$TRIGGER_AT" '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | sort_by(.startedAt) | last | .outcome')
+[ "$OUTCOME" = "SUCCEEDED" ] || {
+    echo "the newest job reports $OUTCOME, and only SUCCEEDED proves a rebuild"
+    exit 1
+}
+echo "the rebuild succeeded"
+```
+
+**The three reports differ.** A rejected trigger says that no run started. An
+expired outer bound says the run did not finish. An expired inner bound says
+the run ended with no durable record. See `CHAT-cxduiwjj`.
+
 **The REST application routes carry no authentication today.** The application
 filter chain permits every route it owns, and it wires no HTTP Basic and no
 authentication manager. So no `Authentication` reaches a chat route, and the
@@ -95,19 +174,22 @@ message key, and the status is 201.
 as it arrived. This route does not. So a search now returns no hit until a
 rebuild reads the persisted messages.
 
+The instant comes first, because Step 3 correlates the job with it.
+
 ```bash
+TRIGGER_AT=$(date +%s)
 curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 ```
 
 ### Step 3. Wait for the rebuild to finish
 
-```bash
-until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
-  | jq -e '.status.running == false' > /dev/null; do sleep 1; done
-```
+Run the bounded pair from `Waiting for a rebuild` above. It reads `TRIGGER_AT`
+from Step 2, it stops the outer loop when `running` is false, and it stops the
+inner loop when the newest job of this run carries a terminal outcome.
 
 The rebuild runs on another scheduler, so an immediate search can read an
-incomplete index. The `indexComplete` flag names that state.
+incomplete index. The `indexComplete` flag names that state. `running=false`
+alone does not prove that the durable record is written.
 
 ### Step 4. Search the topic
 
@@ -168,35 +250,45 @@ nothing. `indexComplete=true` says the search was complete and found nothing.
 
 ### Step 2. Trigger a rebuild
 
+The instant comes first here too, because Step 3 correlates the job with it.
+
 ```bash
+TRIGGER_AT=$(date +%s)
 curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 ```
 
-The answer is the claim snapshot.
+The answer carries `accepted` beside the claim snapshot.
 
 ```json
 {
-  "phase": "REBUILDING",
-  "running": true,
-  "complete": false,
-  "activeJob": null,
-  "coveringJob": null
+  "accepted": true,
+  "status": {
+    "phase": "REBUILDING",
+    "running": true,
+    "complete": false,
+    "activeJob": null,
+    "coveringJob": null
+  }
 }
 ```
+
+**A false `accepted` means another run holds the claim.** This call then starts
+nothing and it creates no job. Do not wait for a new job after a rejected
+trigger, because none arrives.
 
 **`activeJob` is null here, and that is not a defect.** The run creates its job
 after it takes the claim, and on another scheduler. **This call never promises
 the job key.**
 
-### Step 3. Poll the read operation
+### Step 3. Wait for the rebuild to finish
 
-Read until `activeJob` is not null, or until `running` is false. An immediate
-second read does not close that race.
+Run the bounded pair from `Waiting for a rebuild` above, which reads the
+`TRIGGER_AT` that Step 2 set. Do not write an unbounded `until` here: a stalled
+run and a failed terminal write both hang one.
 
-```bash
-until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
-  | jq -e '.status.running == false' > /dev/null; do sleep 1; done
-```
+A read also carries `activeJob`, which names the job key once the run has
+created it. That value is useful for a log line and it is not a completion
+signal. An immediate second read does not close the race that leaves it null.
 
 ### Step 4. Read the result
 

@@ -12,6 +12,7 @@ import com.demo.chat.service.vector.MessageReindexService
 import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexPhase
 import com.demo.chat.service.vector.VectorIndexStatus
+import com.demo.chat.service.vector.VectorIndexTriggerResult
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
@@ -33,12 +34,15 @@ class VectorIndexEndpointTests {
         val starts = AtomicInteger()
         var running = false
 
-        override fun start(): Mono<VectorIndexStatus<Long>> = Mono.fromSupplier {
-            if (!running) {
+        override fun start(): Mono<VectorIndexTriggerResult<Long>> = Mono.fromSupplier {
+            // A second start finds a run in progress, so the claim is
+            // rejected. The endpoint answers with that fact now.
+            val accepted = !running
+            if (accepted) {
                 starts.incrementAndGet()
                 running = true
             }
-            status()
+            VectorIndexTriggerResult(accepted, status())
         }
 
         override fun status(): VectorIndexStatus<Long> =
@@ -226,11 +230,12 @@ class VectorIndexEndpointTests {
     // after the claim, and on another scheduler. A client polls the read.
     @Test
     fun `the write operation starts one job and reports no active job`() {
-        val status = endpoint().startVectorIndexRebuild().block()!!
+        val result = endpoint().startVectorIndexRebuild().block()!!
 
         Assertions.assertThat(service.starts.get()).isEqualTo(1)
-        Assertions.assertThat(status.running).isTrue()
-        Assertions.assertThat(status.activeJob).isNull()
+        Assertions.assertThat(result.accepted).isTrue()
+        Assertions.assertThat(result.status.running).isTrue()
+        Assertions.assertThat(result.status.activeJob).isNull()
     }
 
     @Test
@@ -241,7 +246,10 @@ class VectorIndexEndpointTests {
         val second = endpoint.startVectorIndexRebuild().block()!!
 
         Assertions.assertThat(service.starts.get()).isEqualTo(1)
-        Assertions.assertThat(second.running).isTrue()
+        // The status cannot carry this fact. Both answers report running=true,
+        // because the first run holds the claim.
+        Assertions.assertThat(second.accepted).isFalse()
+        Assertions.assertThat(second.status.running).isTrue()
     }
 
     // A store that never answers must not hold the operation open. Virtual
