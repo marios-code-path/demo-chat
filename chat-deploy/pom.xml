@@ -105,6 +105,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
+        <!-- Test scope only. This module owns the actuator filter chain, and
+             chat-webflux owns the application filter chain. A test of their
+             ownership needs both on one classpath. No deployment gets
+             chat-webflux from here. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-webflux</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>

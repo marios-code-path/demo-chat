@@ -2,7 +2,7 @@
 
 Known build-time deficiencies, what causes them, and what they take down with them.
 
-**Verified against master `d81f0859` on 2026-08-23** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift.
+**Verified against `chat-oghjsnad-vector-reindex` `e7171cef` on 2026-09-15** by the default and `--integration` verifier modes, each reporting no drift.
 
 Do not trust this file on its own — run the verifier:
 
@@ -20,15 +20,33 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so roughly 160 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+Measured on 2026-09-15, after the embedding provider work. Default mode
+reports 800 tests with 30 skipped, so 770 run. Integration mode reports 1019
+tests with 55 skipped, so 964 run. Both report zero failures and zero errors.
+`build-health.sh` prints these counts on every run, so a later reader measures
+them rather than trusts this paragraph.
+
+The reactor holds 37 modules, and 28 of them run tests. `chat-embedding-openai`
+and `chat-embedding-local` are the two newest. Each supplies one
+`EmbeddingModel` behind one value of `app.service.core.embedding`. See
+`docs/EMBEDDING-PROVIDERS.md`.
+
+These two modules appear here as prose and not as a row in the table below.
+That table records a deficiency, and it carries the columns Deficiency, Blocks,
+and Status. Neither module is a deficiency, and a row would have to leave all
+three columns empty or false. Task 10 of the embedding provider plan asked for
+a row, and this is the deliberate departure from it.
+
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 194 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 36 tests with 17 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class — `ShellUserCommandsTests`, `ShellLoginCommandsTests`, `ShellTopicCommandsTests` — and surefire discovers those as test classes in their own right and reports them skipped. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 19 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-15, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
+| B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
 
 ---
 
@@ -42,6 +60,38 @@ This occurred during the selector work. Three tests failed. No source file in th
 
 1. Use `mvn clean test` after you change branches.
 2. The verifier script always cleans. It is not affected.
+
+---
+
+### B10 — a bare scoped run reads a changed upstream module from the local repository
+
+**Scope.** This is a bare `-pl` run that omits a module the branch changed.
+`-pl <module> -am` builds the upstream modules from source and is not affected.
+A scoped run that names every changed module is not affected either.
+
+**Symptom.** `mvn -o -pl <module> test` resolves every module it does not name
+from `~/.m2`. A jar there can predate the tree. The run then reports a failure
+that the current source does not have, and it names a bean or a symbol that the
+tree defines.
+
+This occurred twice during the vector index job record work. A run of
+`-pl chat-core,chat-deploy,chat-deploy-memory` reported
+`No qualifying bean of type MessageReindexService`. The bean existed in
+`chat-service-composite`, which the run did not name, and the installed jar was
+two days old. A second run of `-pl chat-deploy-memory` alone reported
+`Unresolved reference VectorIndexEndpoint` for the same reason.
+
+This is the mirror of B6. B6 is a stale build output inside the tree. B10 is a
+stale build output outside it.
+
+**Mitigation.**
+
+1. Run the full reactor for any test that starts a deployment context.
+2. Add `-am`, or name every changed module, when a scoped run is unavoidable.
+   `mvn -o -B -DskipTests install` first has the same effect.
+3. **Measure before classifying.** A failure that names a symbol the tree
+   defines is a candidate for B10, and not a diagnosis. Repeat it in a clean
+   full-reactor run. A failure that survives that run is real.
 
 ---
 

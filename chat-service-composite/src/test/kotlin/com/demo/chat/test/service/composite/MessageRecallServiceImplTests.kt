@@ -2,28 +2,33 @@ package com.demo.chat.test.service.composite
 
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.InvalidRecallRequestException
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TopicRecallRequest
 import com.demo.chat.domain.UserRecallRequest
+import com.demo.chat.service.composite.impl.InMemoryVectorIndexState
 import com.demo.chat.service.composite.impl.MessageRecallServiceImpl
 import com.demo.chat.service.vector.MessageDocumentMapper
 import com.demo.chat.service.vector.MessageRecallHit
+import com.demo.chat.service.vector.MessageRecallResult
 import com.demo.chat.test.vector.MockVectorStore
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.ai.vectorstore.filter.FilterExpressionTextParser
-import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 class MessageRecallServiceImplTests {
 
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
-    private val service = MessageRecallServiceImpl<Long>(store, LongUtil(), "long")
+    private val state = InMemoryVectorIndexState<Long>()
+    private val service = MessageRecallServiceImpl(store, LongUtil(), "long", state)
     private val parser = FilterExpressionTextParser()
+    private val coveringKey = Key.funKey(500L)
 
     @BeforeEach
     fun seed() {
@@ -37,8 +42,8 @@ class MessageRecallServiceImplTests {
         )
     }
 
-    private fun hits(source: Flux<MessageRecallHit<Long>>): List<MessageRecallHit<Long>> =
-        source.collectList().block()!!
+    private fun hits(source: Mono<MessageRecallResult<Long>>): List<MessageRecallHit<Long>> =
+        source.block()!!.hits
 
     @Test
     fun `topic recall builds the topic filter and returns only that topic`() {
@@ -97,7 +102,7 @@ class MessageRecallServiceImplTests {
 
     @Test
     fun `limit is passed as topK`() {
-        service.recallGlobal(GlobalRecallRequest("apple banana", limit = 3)).blockLast()
+        service.recallGlobal(GlobalRecallRequest("apple banana", limit = 3)).block()
 
         Assertions.assertThat(store.lastTopK).isEqualTo(3)
     }
@@ -114,8 +119,54 @@ class MessageRecallServiceImplTests {
 
     @Test
     fun `search runs on bounded elastic`() {
-        service.recallGlobal(GlobalRecallRequest("apple banana")).blockLast()
+        service.recallGlobal(GlobalRecallRequest("apple banana")).block()
 
         Assertions.assertThat(store.lastSearchThread).startsWith("boundedElastic")
+    }
+
+    // The empty case is the reason this contract exists. A stream of hits
+    // cannot carry a flag when it carries no hit.
+    @Test
+    fun `an empty result still carries the flag`() {
+        state.adoptCoveringJob(coveringKey)
+
+        val result = service.recallInTopic(TopicRecallRequest(999L, "apple")).block()!!
+
+        Assertions.assertThat(result.hits).isEmpty()
+        Assertions.assertThat(result.indexComplete).isTrue()
+    }
+
+    @Test
+    fun `no covering job reports an incomplete index`() {
+        val result = service.recallGlobal(GlobalRecallRequest("apple banana")).block()!!
+
+        Assertions.assertThat(result.hits).isNotEmpty()
+        Assertions.assertThat(result.indexComplete).isFalse()
+    }
+
+    // The coverage read runs after the search. A live failure during the search
+    // removes coverage, and a read taken before the search would report the
+    // value that the failure removed.
+    @Test
+    fun `a failure during the search lowers the reported coverage`() {
+        state.adoptCoveringJob(coveringKey)
+        store.onSearch = { state.invalidate("live vector add failed") }
+
+        val result = service.recallGlobal(GlobalRecallRequest("apple banana")).block()!!
+
+        Assertions.assertThat(result.hits).isNotEmpty()
+        Assertions.assertThat(result.indexComplete).isFalse()
+    }
+
+    // A repair rebuild must not lower the reported coverage. The phase moves to
+    // REBUILDING, and the covering job stays.
+    @Test
+    fun `a rebuild in progress does not change the reported coverage`() {
+        state.adoptCoveringJob(coveringKey)
+        state.claim()
+
+        val result = service.recallGlobal(GlobalRecallRequest("apple banana")).block()!!
+
+        Assertions.assertThat(result.indexComplete).isTrue()
     }
 }

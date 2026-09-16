@@ -11,12 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `origin/master` head `934a3287`. The main checkout is **not** clean. It sits at `af30dfd2`, it holds uncommitted files, and it holds three unpushed documentation commits. See the vector reindex section. |
-| Register state | Updated 2026-09-11, after PR #86 |
-| Last merged PR | #86, merge commit `934a3287`. #83 `f9129f28`, #84 `b3d98cb2`, and #85 `6e3c4e36` came before it. #85 and #86 were squash merged. |
-| Merged feature branches | None remain. **The earlier claim that this repository has no auto-delete is wrong as of 2026-09-11.** A merge now removes the remote branch. The seven older refs that this row used to list are gone, and so are `origin/chat-kv-index`, `origin/ci-setup-java-v5`, `origin/docs-agents-import`, and `origin/docs-register-refresh`. `git ls-remote --heads origin` returned `master`, `chat-eroapfub-vector-runtime-flags`, and two dependabot refs, and nothing else. |
-| Worktrees | Two. The main checkout, and `.worktrees/vector-reindex` (active). The finished worktrees were removed with their branches. |
-| Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
+| Checkout | The main checkout sits on `master` at `af30dfd2`, which is behind `origin/master`. This register is written from `.worktrees/vector-reindex`, on `chat-oghjsnad-vector-reindex`. |
+| Register state | Updated 2026-09-15, after the embedding provider work. This row merges two readings: PR #86 refreshed it on 2026-09-11, and this branch refreshed it again. |
+| Last merged PR | #86, merge commit `934a3287`. #83 `f9129f28`, #84 `b3d98cb2`, and #85 `6e3c4e36` came before it. #85 and #86 were squash merged. `d8cdd111` on `origin/master` is a register correction that followed. |
+| Merged feature branches | None remain. **The earlier claim that this repository has no auto-delete is wrong as of 2026-09-11.** A merge now removes the remote branch. The seven older refs that this row used to list are gone, and so are `origin/chat-kv-index`, `origin/ci-setup-java-v5`, `origin/docs-agents-import`, and `origin/docs-register-refresh`. Measured on 2026-09-15, `git ls-remote --heads origin` returns `master`, `chat-eroapfub-vector-runtime-flags`, `chat-oghjsnad-vector-reindex`, and two dependabot refs. |
+| Local branches | Seven, beside `master`. Four carry the vector work: `chat-oghjsnad-vector-reindex`, `chat-jhfptxiw-topic-query`, `chat-muuaovqn-vector-replace`, `chat-auglbxrm-null-converter`. Three predate it: `audit-doc`, `register-refresh`, `recovery/vector-reindex-pre-pr83-rebase`. |
+| Worktrees | Three, measured on 2026-09-15. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of the embedding plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
+| Open PRs | #87 carries this branch, against `master`. Dependabot holds #8 and #11. #10 is superseded by PR #73. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -150,10 +151,12 @@ built on top of them inherits the risk.
 - **Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone.** A
   single-module run resolves `chat-core` from `~/.m2` and reports failures that are
   not real. This cost a false debugging detour in the redis work.
-- **`chat-shell` reporting 17 skipped under `-Pintegration` is not missing
+- **`chat-shell` reporting 23 skipped under `-Pintegration` is not missing
   coverage.** `@Disabled` sits on the generic base classes, surefire counts them as
   test classes, and JUnit does not inherit `@Disabled`, so the concrete `Long*`
-  subclasses run. Documented in `docs/BUILD-HEALTH.md`.
+  subclasses run. Measured on 2026-09-15: 48 tests with 23 skipped, so 25 run. The
+  count was 36 with 17 skipped until the vector work added tests. Documented in
+  `docs/BUILD-HEALTH.md`.
 - **A wire-format change makes the shell integration image stale.** The
   chat-shell tests run the client against the
   `chat-deploy-long-memory-integration-test` Docker image, not against the
@@ -929,6 +932,12 @@ probability. Do not read this as proof that schema size has no effect.
   handling policy mask. `CHAT-tekzakdd` holds a data stream or data view strategy,
   so a rebuild stops reading every stored message.
 
+**Read every line above as of 2026-09-11.** Three of them no longer hold.
+Measured on 2026-09-15: the branch has a remote upstream, and PR #87 carries it
+against `master`. The blocking generation decision is closed, because the
+durable job record supplies both values. The spec and the plan are on the
+branch. See `Vector index job record` and `Embedding provider modules` below.
+
 ## The AGENTS.md imports (2026-09-11)
 
 `AGENTS.md` imported `@FP_AGENTS.md` and `@continuity_brief.md`. Neither file
@@ -942,6 +951,105 @@ the register that `AGENTS.md` tells a reader to treat as live operational contex
 alone on purpose. The main checkout holds an uncommitted rename of `FP_CLAUDE.md` to
 `FP_AGENTS.md`. That rename resolves this import, and it belongs to the owner. A
 change from this branch would collide with it.
+
+## Vector index job record (2026-09-11/13)
+
+Issue `CHAT-fpwpfrfj`, under `CHAT-oghjsnad`. Fifteen tasks. Spec:
+`docs/superpowers/specs/2026-09-11-vector-index-run-record-design.md`. Plan:
+`docs/superpowers/plans/2026-09-11-vector-index-job-record.md`.
+
+Recall now reports the coverage of the newest trusted successful rebuild job,
+rather than the phase of the active job.
+
+### What exists
+
+- `IndexJob` and `JobRecord`, each with its own root key. A job owns one
+  persisted topic, and the topic key is the job root key.
+- `VectorIndexJobStore` writes the job through the key-value store, and it
+  creates the topic through persistence, the topic index, and `pubsub.open()`.
+- `ComposedJobRecordWriter` publishes progress messages. It never calls
+  `MessagingServiceImpl.send()`, so a job record never enters vector recall.
+- `VectorCoveragePolicy` selects the covering job. `app.vector.index.trust`
+  takes `none` or `stored`, and `none` is the default.
+- `MessageRecallResult` carries `indexComplete` beside the bounded hits. Both
+  transports answer with one object.
+- `VectorIndexStartupAction` releases stale jobs, selects coverage, adopts it,
+  and only then starts a rebuild when `app.vector.index.startup` is `rebuild`.
+- The `vectorindex` actuator endpoint returns the status and the recent jobs.
+
+### Four production defects that the tests found
+
+Three took their own issue. The fourth was repaired inside `CHAT-fpwpfrfj`, in
+revision `c7dac773`, because the owner review found it before Task 8 started and
+it sat inside the store that task built. None was repaired with a special case
+in the test that found it.
+
+1. `CHAT-jhfptxiw`. `topicIdToQuery` named `TopicIndexService.ID`, and the
+   message index stores a destination under `topic`. **Persisted room history
+   had never been returned from the index, on either backend.** Live delivery
+   hid it, because `listenTopic` concatenates the pub/sub stream after the
+   history.
+2. `CHAT-muuaovqn`. The embedded provider refuses a repeated document id, so
+   every rebuild after the first one failed in one process. `VectorWriteMode`
+   now follows the provider. Only `embedded` removes before it writes, because
+   a removal that removes nothing makes `RedisVectorStore` log an error.
+3. `CHAT-auglbxrm`. `JsonNodeToAnyConverter` had no null branch, so a null node
+   became the four character string `"null"`. Redis and RSocket both failed to
+   read an `IndexJob` back. A `String?` field would have taken that text in
+   silence.
+4. The root key of a stored job was never checked. A record under key A holding
+   key B would make the policy adopt B while A stayed clean. `readJob` compares
+   the two keys now.
+
+### Rules that are easy to lose
+
+- **A repair keeps the coverage of the older successful job.** So the index
+  reports complete while a repair runs, and the `SUCCEEDED` filter must run
+  before the sort. Filtering after it would select the repair and report no
+  coverage.
+- **The write mode is per provider, and an unknown selector is refused.** A
+  default would give a new provider a policy with no decision, and the wrong
+  policy is silent on three of the four.
+- **The remove and write pair is not atomic, and the interval has no duration
+  bound.** It runs from the completion of the removal to the completion of the
+  write, which includes the embedding call and the provider commit. The index
+  reports complete throughout, so this is an accepted false positive.
+- **The claim generation cannot identify a run.** An invalidation raises it
+  during the same run, so `markActiveJob` guards on the running flag instead.
+- **An actuator operation may answer with a publisher.**
+  `ReactiveWebOperationAdapter` unwraps a `Mono`, so nothing blocks. A
+  `block(Duration)` throws outside the chain, where `onErrorResume` cannot see
+  it.
+- **An operator must enable an actuator id and expose it.**
+  `management-defaults.yml` disables endpoints by default, so exposure alone
+  answers 404.
+- **A scoped `-pl` run resolves upstream modules from `~/.m2`.** A stale jar
+  there reports a missing bean that the current source defines. Boot tests need
+  the full reactor.
+
+### What this work did not deliver
+
+- **No deployment sets `app.service.core.vector`.** Every proof is a test.
+- **Embeddings are still the mock model.** `DummyEmbeddingModel` makes character
+  bigram vectors. `local` and `gateway` still fail at startup.
+- **No job topic retention.** The first version reads every matching job topic.
+- **No deployment sets the actuator id or the exposure value.**
+- `CHAT-edzvpxil` the handling policy mask, and `CHAT-tekzakdd` a data stream in
+  place of the full scan, both stay out of scope.
+
+### Open, low priority
+
+- `CHAT-aoqghxmf`. An illegal selector pair fails with a missing provider bean
+  rather than the validation message, because the validation runs after regular
+  singleton creation.
+- `CHAT-cxduiwjj`. One reindex test is timing sensitive. It failed once under
+  load and passed every later run.
+
+### Gate at the end of the work
+
+- Default mode: 750 tests, 0 failures, 30 skipped.
+- Integration mode: 964 tests, 0 failures, 52 skipped.
+- `drift check` and `git diff --check` pass.
 
 ## Where the next session starts
 
@@ -993,3 +1101,116 @@ real.
 
 The capability mechanism `CHAT-zqyrsrrg` still has six decomposed tasks and has not
 been started since the original design sprint.
+
+## Embedding provider modules (2026-09-14/15)
+
+`CHAT-etfnihnu`. Spec:
+`docs/superpowers/specs/2026-09-13-embedding-provider-modules-design.md`. Plan:
+`docs/superpowers/plans/2026-09-14-embedding-provider-modules.md`. Operator
+document: `docs/EMBEDDING-PROVIDERS.md`.
+
+### The defect this work closes
+
+`chat-deploy-memory` declared the `chat-core` test jar with no scope element,
+so it resolved at compile. The only `EmbeddingModel` in this repository lived
+in that jar, which means the recall feature ran on a mock in every test and
+would have failed at a launch.
+
+**No test could detect it.** A Spring Boot test puts test jars on its classpath
+by construction, so every test saw a model that no deployment would have.
+
+### What exists now
+
+- `chat-embedding-openai` supplies an `EmbeddingModel` when
+  `app.service.core.embedding` is `openai`. It reaches any OpenAI-compatible
+  endpoint through a base URL.
+- `chat-embedding-local` supplies one when the value is `local`. It loads an
+  ONNX model in the process.
+- Neither module depends on a Spring AI starter. A starter carries
+  auto-configuration, both modules sit on one classpath, and two starters would
+  let Spring AI build models that no selector asked for.
+- Both deployments declare both modules. `chat-deploy-memory` moved its test
+  jar to test scope.
+- The legal selector pair set grew from four to ten. A mock vector store
+  refuses a production model.
+
+### The identity
+
+`app.service.core.embedding.identity` names the model that wrote a corpus, and
+**the operator names it.** The code never derives one, because a base URL and a
+model name do not identify the output of a remote service. A compatible service
+can change its model behind both values and return different vectors for the
+same text.
+
+The value reaches five call sites: the redis index name, the embedded
+collection directory, the local resource cache directory, every new `IndexJob`,
+and the coverage filter.
+
+**A record written before this change carries null, and null never covers.** So
+the first start after this change reports an incomplete index and waits for a
+rebuild. Every existing redis index and every existing embedded directory
+orphans, because neither name carries an identity segment.
+
+### Two gates, and why each exists
+
+`just check-production-classpath` holds two rules. Rule one reads the poms and
+requires test scope on every test-jar dependency. Rule two resolves the runtime
+classpath of each module and refuses a known test library there.
+
+**Neither rule replaces the other.** A transitive leak never appears in a pom.
+An ordinary jar such as `testcontainers` is not a test jar, so rule one cannot
+see it either.
+
+`shell-scripts/vector/gate-embedding-launch.sh` runs the feature outside a test
+classpath. It packages a deployment, asserts that no test output is inside the
+artifact, launches it against a synthetic OpenAI endpoint, seeds, rebuilds, and
+searches. **Every test gate in this repository puts test outputs on the
+classpath, which is what hid the original defect.** That is the whole reason
+this gate exists, and it earned its place on its first run by finding a defect
+that no test could see.
+
+### Traps found, each of which cost a cycle
+
+- **A `@JvmInline value class` cannot be a Spring bean.** Kotlin unboxes a value
+  class at a return type, so the `@Bean` method compiled to
+  `embeddingIdentity-Xzz6TTw()` returning `java.lang.String`. `EmbeddingIdentity`
+  is a data class for that reason.
+- **A `SmartInitializingSingleton` check runs too late.** It runs after every
+  singleton exists, so an incomplete selector pair failed with
+  `NoSuchBeanDefinitionException` and an illegal pair loaded an 86.2 MiB model
+  before anything reported the pair. The selector check is a
+  `BeanFactoryPostProcessor` now.
+- **`TransformersEmbeddingModel` implements `InitializingBean`.** A factory
+  method that also calls `afterPropertiesSet` loads the model twice and builds
+  two ONNX sessions.
+- **Kotlin nests a block comment.** An actuator path pattern inside a KDoc opens
+  a nested comment, and the file fails to compile with `Unclosed comment` at the
+  last line.
+- **`conda activate base` does not put miniforge first on the PATH here.** A
+  bare `python3` resolves to the homebrew interpreter. Both new scripts name
+  `$CONDA_PREFIX/bin/python3` and refuse anything outside miniforge.
+- **The `expose-webflux` profile cannot run in a reactor build.** It declares
+  its dependencies on the parent, so `chat-webflux` reads itself as a dependency
+  and maven stops before it builds. `-pl` does not avoid it. `CHAT-xwycjyla`
+  holds it.
+- **A Spring AI client sends a chunked request body.** A stub that reads only
+  `Content-Length` sees no input, answers a vector for no text, and the caller
+  fails inside `dimensions()`. Reactor Netty also pools connections, so a
+  HTTP/1.0 stub breaks the next request on that connection.
+- **The default Spring AI retry policy needs 19 minutes to give up.** Ten
+  attempts make nine waits of 2, 10, 50, and then six of 180 seconds.
+  `app.service.core.embedding.openai.max-attempts` exists so a test of a dead
+  endpoint can set 1.
+- **The REST recall route could not start beside the RSocket controllers.**
+  `MessageRecallController` implements `MessageRecallService` by delegation, so
+  two beans of that type existed on one classpath. `CoreRecallBeans` closes it,
+  and every controller takes that interface now.
+
+### What this work did not deliver
+
+- **No deployment yml sets the vector or embedding selectors.** Every
+  composition still starts with the feature off.
+- **No automated run calls a paid service.** Both real model procedures are
+  manual, and `docs/EMBEDDING-PROVIDERS.md` carries them.
+- **The house endpoint serves 768 and only 768.** A request for a narrower
+  width answered 768, and this provider does not truncate.

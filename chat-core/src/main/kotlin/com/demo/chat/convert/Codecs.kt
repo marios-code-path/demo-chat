@@ -13,10 +13,23 @@ interface Converter<F, E> {//} : org.springframework.core.convert.converter.Conv
     fun convert(source: F): E
 }
 
-object JsonNodeToAnyConverter : Converter<JsonNode, Any> {
-    override fun convert(record: JsonNode): Any {
+/**
+ * Reads one JSON node as a plain value.
+ *
+ * The result is nullable, and a null node answers with null.
+ *
+ * An explicit null and an absent field are different facts. A null node is a
+ * value the writer chose. A missing node is a field the document never held,
+ * and that stays an error. An earlier version had no null branch, so a null
+ * node fell through to `asText()` and became the four character string
+ * `"null"`. A typed field then failed to bind, and a String field took that
+ * text in silence.
+ */
+object JsonNodeToAnyConverter : Converter<JsonNode, Any?> {
+    override fun convert(record: JsonNode): Any? {
         return when (record.nodeType) {
             JsonNodeType.MISSING -> throw Exception("Missing field")
+            JsonNodeType.NULL -> null
             JsonNodeType.BINARY -> {
                 val cborFactory = CBORFactory()
                 val mapper = ObjectMapper(cborFactory)

@@ -41,23 +41,78 @@ class MockVectorStore : VectorStore {
     val ids: List<String>
         get() = entries.keys.toList()
 
+    /**
+     * Fails the next add call, then clears itself.
+     *
+     * One failure per set. A test can then prove that the next add succeeds.
+     */
+    var failNextAdd: Boolean = false
+
+    /**
+     * Refuses a repeated document id, the way the embedded provider does.
+     *
+     * That provider answers a second write of one id with
+     * `IllegalArgumentException: Duplicate id`. A double that overwrites
+     * instead cannot hold the replacement contract.
+     */
+    var rejectDuplicateId: Boolean = false
+
+    /** Every store call, in order. A test asserts the order of a replacement. */
+    val calls = mutableListOf<String>()
+
+    /** Fails every delete call, whatever the id. The entries survive. */
+    var failDelete: Boolean = false
+
+    /**
+     * Removes the documents and then fails.
+     *
+     * A provider can drop a document and then fail while it commits. A double
+     * that only ever fails before the removal would let a test claim that the
+     * old document always survives a removal failure.
+     */
+    var dropThenFailDelete: Boolean = false
+
     override fun add(documents: List<Document>) {
         lastWriteThread = Thread.currentThread().name
+        calls.add("add")
+        if (failNextAdd) {
+            failNextAdd = false
+            throw IllegalStateException("vector store is down")
+        }
         for (doc in documents) {
+            if (rejectDuplicateId && entries.containsKey(doc.id)) {
+                throw IllegalArgumentException("Duplicate id: ${doc.id}")
+            }
             entries[doc.id] = Entry(doc, bigramVector(doc.text ?: ""))
         }
     }
 
+    // An unknown id is not a failure. The pinned provider answers false for
+    // one, so a first write must not break on the removal that precedes it.
     override fun delete(idsToDrop: List<String>) {
         lastWriteThread = Thread.currentThread().name
+        calls.add("delete")
+        if (failDelete) {
+            throw IllegalStateException("vector store cannot delete")
+        }
         idsToDrop.forEach { entries.remove(it) }
+        if (dropThenFailDelete) {
+            throw IllegalStateException("vector store cannot delete")
+        }
     }
 
     override fun delete(expression: Filter.Expression) {
         throw UnsupportedOperationException("MockVectorStore does not support filter deletes")
     }
 
+    /**
+     * Runs at the start of each search. A test uses it to change state while
+     * the search is in flight.
+     */
+    var onSearch: (() -> Unit)? = null
+
     override fun similaritySearch(request: SearchRequest): List<Document> {
+        onSearch?.invoke()
         lastSearchThread = Thread.currentThread().name
         val filter = request.filterExpression
         lastFilter = filter

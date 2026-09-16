@@ -1,6 +1,7 @@
 package com.demo.chat.domain
 
 import com.demo.chat.service.core.MembershipIndexService
+import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthMetaIndex
@@ -9,8 +10,16 @@ class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest
     override fun topicNameToQuery(req: ByStringRequest) =
             IndexSearchRequest(TopicIndexService.NAME, req.name, 100)
 
+    /**
+     * Names the message destination field, not the topic id field.
+     *
+     * The one consumer is `MessagingServiceImpl.listenTopic`, and it reads the
+     * message index. That index stores the destination of a message under
+     * `MessageIndexService.TOPIC`. A query on the topic index field matched no
+     * message document, so persisted room history never reached a caller.
+     */
     override fun <T> topicIdToQuery(req: ByIdRequest<T>) =
-            IndexSearchRequest(TopicIndexService.ID, req.id.toString(), 100)
+            IndexSearchRequest(MessageIndexService.TOPIC, req.id.toString(), 100)
 
     override fun userHandleToQuery(req: ByStringRequest) =
             IndexSearchRequest(UserIndexService.HANDLE, req.name, 100)

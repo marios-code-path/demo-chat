@@ -54,12 +54,59 @@ class VectorSelectorValidationTests {
     }
 
     @Test
-    fun `embedded vector with a reserved embedding fails startup`() {
+    fun `a mock vector store refuses a production embedding`() {
+        for (embedding in listOf("openai", "local")) {
+            val failure = failureFor(
+                mapOf(
+                    "app.service.core.vector" to "mock",
+                    "app.service.core.embedding" to embedding,
+                    "app.service.core.embedding.identity" to "acme-e5",
+                )
+            )
+
+            assertThat(failure.message)
+                .describedAs("expected a failure for embedding=%s", embedding)
+                .contains("app.service.core.vector=mock")
+                .contains("app.service.core.embedding=$embedding")
+        }
+    }
+
+    @Test
+    fun `a production embedding without an identity fails startup`() {
         val failure = failureFor(
-            mapOf("app.service.core.vector" to "embedded", "app.service.core.embedding" to "local")
+            mapOf(
+                "app.service.core.vector" to "simple",
+                "app.service.core.embedding" to "openai",
+            )
         )
 
-        assertThat(failure.message).contains("app.service.core.embedding=local")
+        assertThat(failure.message).contains("app.service.core.embedding.identity")
+    }
+
+    @Test
+    fun `a mock embedding with an identity fails startup`() {
+        val failure = failureFor(
+            mapOf(
+                "app.service.core.vector" to "simple",
+                "app.service.core.embedding" to "mock",
+                "app.service.core.embedding.identity" to "acme-e5",
+            )
+        )
+
+        assertThat(failure.message).contains("app.service.core.embedding.identity")
+    }
+
+    @Test
+    fun `an identity with an illegal character fails startup`() {
+        val failure = failureFor(
+            mapOf(
+                "app.service.core.vector" to "simple",
+                "app.service.core.embedding" to "openai",
+                "app.service.core.embedding.identity" to "Acme_E5",
+            )
+        )
+
+        assertThat(failure.message).contains("app.service.core.embedding.identity")
     }
 
     @Test
@@ -99,13 +146,15 @@ class VectorSelectorValidationTests {
         // --add-modules jdk.incubator.vector, so the Vector API check
         // rejects it. The positive path is proven in chat-deploy-memory.
         for ((vector, embedding) in LEGAL_PAIRS.filterNot { it.first == "embedded" }) {
-            runner(
-                mapOf(
-                    "app.service.core.vector" to vector,
-                    "app.service.core.embedding" to embedding,
-                )
-            ).run { context ->
-                assertThat(context).hasNotFailed()
+            val properties = mutableMapOf(
+                "app.service.core.vector" to vector,
+                "app.service.core.embedding" to embedding,
+            )
+            if (embedding != "mock") {
+                properties["app.service.core.embedding.identity"] = "acme-e5-small-v2"
+            }
+            runner(properties).run { context ->
+                assertThat(context).describedAs("%s with %s", vector, embedding).hasNotFailed()
             }
         }
     }
@@ -117,6 +166,12 @@ class VectorSelectorValidationTests {
             "simple" to "mock",
             "redis" to "mock",
             "embedded" to "mock",
+            "simple" to "openai",
+            "redis" to "openai",
+            "embedded" to "openai",
+            "simple" to "local",
+            "redis" to "local",
+            "embedded" to "local",
         )
     }
 

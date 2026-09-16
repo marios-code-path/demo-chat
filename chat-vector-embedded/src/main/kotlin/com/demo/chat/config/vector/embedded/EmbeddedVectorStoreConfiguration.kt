@@ -1,5 +1,6 @@
 package com.demo.chat.config.vector.embedded
 
+import com.demo.chat.domain.EmbeddingIdentity
 import com.integrallis.vectors.core.SimilarityFunction
 import com.integrallis.vectors.db.IndexType
 import com.integrallis.vectors.db.VectorCollection
@@ -18,8 +19,9 @@ import java.nio.file.Path
  *
  * The store is a derived cache. The persisted messages are the source of
  * truth. A lost storage directory is a rebuild, not a data loss, so the
- * default path is ephemeral and no deployment mounts a volume. Issue
- * CHAT-oghjsnad tracks the rebuild path, which does not exist yet.
+ * default path is ephemeral and no deployment mounts a volume.
+ * MessageReindexServiceImpl and VectorIndexStartupAction supply the rebuild.
+ * Issue CHAT-oghjsnad delivered them.
  *
  * The index is FLAT with the cosine metric and no quantization. FLAT is
  * exact and needs no tuning. A measured query over 100000 vectors at topK
@@ -40,13 +42,14 @@ class EmbeddedVectorStoreConfiguration {
     @Bean(destroyMethod = "close")
     fun embeddedVectorCollection(
         embeddingModel: EmbeddingModel,
+        identity: EmbeddingIdentity,
         @Value("\${app.service.core.vector.embedded.path:}") configuredPath: String,
     ): VectorCollection =
         VectorCollection.builder()
             .dimension(embeddingModel.dimensions())
             .metric(SimilarityFunction.COSINE)
             .indexType(IndexType.FLAT)
-            .storagePath(storageDirectory(configuredPath))
+            .storagePath(storageDirectoryFor(configuredPath, identity))
             .build()
 
     @Bean(destroyMethod = "close")
@@ -60,19 +63,31 @@ class EmbeddedVectorStoreConfiguration {
             .commitAfterAdd(true)
             .build()
 
-    /**
-     * An unset path gives a temporary directory. That matches the rebuild
-     * on failure decision. A set path is created when it does not exist.
-     */
-    private fun storageDirectory(configuredPath: String): Path =
-        if (configuredPath.isBlank()) {
-            Files.createTempDirectory(TEMP_PREFIX)
-        } else {
-            Files.createDirectories(Path.of(configuredPath))
-        }
-
     companion object {
         const val COLLECTION_NAME = "messages"
         const val TEMP_PREFIX = "chat-vector-embedded"
+
+        /**
+         * The collection directory of one identity.
+         *
+         * An unset path gives a temporary directory. That matches the rebuild
+         * on failure decision. A set path is created when it does not exist.
+         *
+         * The identity is the last segment. The collection takes its width
+         * from the model, and two models rarely share a width. A separate
+         * directory per identity means a model change cannot meet a collection
+         * of the wrong width.
+         *
+         * A directory that an earlier build wrote orphans. Its path has no
+         * identity segment.
+         */
+        fun storageDirectoryFor(configuredPath: String, identity: EmbeddingIdentity): Path {
+            val base = if (configuredPath.isBlank()) {
+                Files.createTempDirectory(TEMP_PREFIX)
+            } else {
+                Path.of(configuredPath)
+            }
+            return Files.createDirectories(base.resolve(identity.value))
+        }
     }
 }

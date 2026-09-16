@@ -24,6 +24,10 @@ check-flags:
 check-deps:
 	./shell-scripts/check-dependency-versions.sh
 
+# Fail when a test artifact can reach a production classpath.
+check-production-classpath:
+	./shell-scripts/check-production-classpath.sh
+
 # Run the same Maven command as the CI build job.
 ci-local:
 	mvn -B clean test

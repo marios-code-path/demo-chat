@@ -3,6 +3,7 @@ package com.demo.chat.service.composite.impl
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.core.*
+import com.demo.chat.service.vector.JobTopicNames
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import reactor.core.publisher.Flux
@@ -30,26 +31,33 @@ open class TopicServiceImpl<T, V, Q>(
     // source, so no backend holds a duplicate and getRoomByName's single() is
     // always safe. Without this, Cassandra orphans the older room in silence
     // and memory throws a raw IllegalStateException. fp issue CHAT-qktlglfa.
+    // A job topic is a system record. The vector job service writes topic
+    // persistence and the topic index itself, so this method needs no
+    // exception for a system caller and rejects the prefix for everyone.
     override fun addRoom(req: ByStringRequest): Mono<out Key<T>> =
-        topicIndex
-            .findBy(topicNameToQuery.apply(req))
-            .hasElements()
-            .flatMap { exists ->
-                if (exists) {
-                    Mono.error(DuplicateException)
-                } else {
-                    topicPersistence
-                        .key()
-                        .map { key -> MessageTopic.create(key, req.name) }
-                        .flatMap { room ->
-                            topicPersistence
-                                .add(room)
-                                .then(topicIndex.add(room))
-                                .then(pubsub.open(room.key.id))
-                                .then(Mono.just(room.key))
-                        }
+        if (JobTopicNames.isJobTopic(req.name)) {
+            Mono.error(ChatException("A room name cannot start with '${JobTopicNames.PREFIX}'."))
+        } else {
+            topicIndex
+                .findBy(topicNameToQuery.apply(req))
+                .hasElements()
+                .flatMap { exists ->
+                    if (exists) {
+                        Mono.error(DuplicateException)
+                    } else {
+                        topicPersistence
+                            .key()
+                            .map { key -> MessageTopic.create(key, req.name) }
+                            .flatMap { room ->
+                                topicPersistence
+                                    .add(room)
+                                    .then(topicIndex.add(room))
+                                    .then(pubsub.open(room.key.id))
+                                    .then(Mono.just(room.key))
+                            }
+                    }
                 }
-            }
+        }
 
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
         topicPersistence
@@ -62,9 +70,14 @@ open class TopicServiceImpl<T, V, Q>(
             }
             .then()
 
+    // Job topics are system records and must not reach a user room list. The
+    // filter belongs here, not in the store. A rebuild reads
+    // TopicPersistence.all() directly and needs every job topic for its
+    // exclusion set.
     override fun listRooms(): Flux<out MessageTopic<T>> =
         topicPersistence
             .all()
+            .filter { topic -> !JobTopicNames.isJobTopic(topic.data) }
 
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>> =
         topicPersistence
