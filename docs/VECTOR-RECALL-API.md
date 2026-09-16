@@ -19,6 +19,42 @@ not read the examples below as semantic search.
 of truth. A lost store is rebuilt from them, and no deployment mounts a volume
 for it.
 
+## Waiting for a rebuild
+
+Two facts end a rebuild, and they are not the same fact.
+
+**`running=false` means the state decided the outcome. It does not prove that
+the durable `IndexJob` record is written.** The state finishes first, so that a
+failed write cannot leave a run active forever. `complete=true` reads the same
+way, because the state sets the covering job at that moment too.
+
+**`IndexJob.outcome` is the durable fact.** `SUCCEEDED`, `FAILED`, and
+`RELEASED` are terminal. **Only `SUCCEEDED` proves the rebuild did its work.**
+
+So a reader waits for both, under two bounds.
+
+```bash
+# Take the instant before the trigger. The trigger never promises the job key,
+# so a reader correlates by start instant. This needs compatible clocks.
+TRIGGER_AT=$(date +%s)
+
+# The outer bound covers the rebuild, which grows with the corpus.
+until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
+  | jq -e '.status.running == false' > /dev/null; do sleep 1; done
+
+# The inner bound covers the durable write, which is one event and one store
+# write.
+until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
+  | jq -e --argjson t "$TRIGGER_AT" \
+    '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0' \
+    > /dev/null; do sleep 1; done
+```
+
+**Bound each loop.** An unbounded loop hangs when a run stalls, and it hangs
+when a terminal write fails and leaves no record at all. An expired outer bound
+says the run did not finish. An expired inner bound says the run ended with no
+durable record. The two are different reports. See `CHAT-cxduiwjj`.
+
 **The REST application routes carry no authentication today.** The application
 filter chain permits every route it owns, and it wires no HTTP Basic and no
 authentication manager. So no `Authentication` reaches a chat route, and the
@@ -101,9 +137,17 @@ curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 
 ### Step 3. Wait for the rebuild to finish
 
+Take `TRIGGER_AT` before the trigger of Step 2, then wait for both facts. See
+`Waiting for a rebuild` above, and bound each loop.
+
 ```bash
 until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
   | jq -e '.status.running == false' > /dev/null; do sleep 1; done
+
+until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
+  | jq -e --argjson t "$TRIGGER_AT" \
+    '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0' \
+    > /dev/null; do sleep 1; done
 ```
 
 The rebuild runs on another scheduler, so an immediate search can read an
@@ -172,17 +216,24 @@ nothing. `indexComplete=true` says the search was complete and found nothing.
 curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 ```
 
-The answer is the claim snapshot.
+The answer carries `accepted` beside the claim snapshot.
 
 ```json
 {
-  "phase": "REBUILDING",
-  "running": true,
-  "complete": false,
-  "activeJob": null,
-  "coveringJob": null
+  "accepted": true,
+  "status": {
+    "phase": "REBUILDING",
+    "running": true,
+    "complete": false,
+    "activeJob": null,
+    "coveringJob": null
+  }
 }
 ```
+
+**A false `accepted` means another run holds the claim.** This call then starts
+nothing and it creates no job. Do not wait for a new job after a rejected
+trigger, because none arrives.
 
 **`activeJob` is null here, and that is not a defect.** The run creates its job
 after it takes the claim, and on another scheduler. **This call never promises
@@ -193,9 +244,17 @@ the job key.**
 Read until `activeJob` is not null, or until `running` is false. An immediate
 second read does not close that race.
 
+Then wait for the durable record. See `Waiting for a rebuild` above, and bound
+each loop.
+
 ```bash
 until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
   | jq -e '.status.running == false' > /dev/null; do sleep 1; done
+
+until curl -sS -u actuator:actuator http://localhost:8080/actuator/vectorindex \
+  | jq -e --argjson t "$TRIGGER_AT" \
+    '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0' \
+    > /dev/null; do sleep 1; done
 ```
 
 ### Step 4. Read the result
