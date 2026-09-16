@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master`, head `af30dfd2`. **Not clean.** Four tracked entries changed and six are untracked. **Not in sync with `origin`.** Ahead by 3 commits, behind by 5. |
-| Register state | Updated 2026-09-15, after the embedding provider work |
-| Last merged PR | #86, commit `934a3287` on `origin/master`. Local `master` carries PRs through #82 only. The five commits it lacks carry #83, #84, #85, #86, and one register correction, `d8cdd111`. |
-| Local branches | Seven, beside `master`. Four carry this plan: `chat-oghjsnad-vector-reindex`, `chat-jhfptxiw-topic-query`, `chat-muuaovqn-vector-replace`, `chat-auglbxrm-null-converter`. Three predate it: `audit-doc`, `register-refresh`, `recovery/vector-reindex-pre-pr83-rebase`. **The earlier claim that all local refs were removed is wrong.** |
-| Remote branches | `master`, `chat-eroapfub-vector-runtime-flags`, and two dependabot refs. Nothing else. **The earlier claim that remote refs survive every merge is wrong as of 2026-09-11.** A merge now removes the remote branch, so the seven refs this row used to list are gone. `d8cdd111` on `origin/master` records the same finding, and this row agrees with it. |
-| Worktrees | Three. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of this plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
-| Open PRs | dependabot only (#8, #11). Nothing of ours is in flight. #10 is superseded by PR #73. |
+| Checkout | The main checkout sits on `master` at `af30dfd2`, which is behind `origin/master`. This register is written from `.worktrees/vector-reindex`, on `chat-oghjsnad-vector-reindex`. |
+| Register state | Updated 2026-09-15, after the embedding provider work. This row merges two readings: PR #86 refreshed it on 2026-09-11, and this branch refreshed it again. |
+| Last merged PR | #86, merge commit `934a3287`. #83 `f9129f28`, #84 `b3d98cb2`, and #85 `6e3c4e36` came before it. #85 and #86 were squash merged. `d8cdd111` on `origin/master` is a register correction that followed. |
+| Merged feature branches | None remain. **The earlier claim that this repository has no auto-delete is wrong as of 2026-09-11.** A merge now removes the remote branch. The seven older refs that this row used to list are gone, and so are `origin/chat-kv-index`, `origin/ci-setup-java-v5`, `origin/docs-agents-import`, and `origin/docs-register-refresh`. Measured on 2026-09-15, `git ls-remote --heads origin` returns `master`, `chat-eroapfub-vector-runtime-flags`, `chat-oghjsnad-vector-reindex`, and two dependabot refs. |
+| Local branches | Seven, beside `master`. Four carry the vector work: `chat-oghjsnad-vector-reindex`, `chat-jhfptxiw-topic-query`, `chat-muuaovqn-vector-replace`, `chat-auglbxrm-null-converter`. Three predate it: `audit-doc`, `register-refresh`, `recovery/vector-reindex-pre-pr83-rebase`. |
+| Worktrees | Three, measured on 2026-09-15. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of the embedding plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
+| Open PRs | #87 carries this branch, against `master`. Dependabot holds #8 and #11. #10 is superseded by PR #73. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -790,6 +790,168 @@ No suppression file exists. `CHAT-icgifzbv` adds one.
 - `kotlin-stdlib` 2.4.10 shows CVE-2026-53914 at 9.8 on the current release. Check
   whether a fixed version exists at all.
 
+## The key-value index (2026-09-11)
+
+PR #83, merge commit `f9129f28`. Issues `CHAT-sgdtqhof` and `CHAT-bgumjhdn`.
+
+**Neither backend had a working key-value index.** The work started as a step
+towards root-key discovery for the vector index job record. It stands on its own,
+and the job design does not depend on it.
+
+- The lucene index raised `ConverterNotFoundException` on its first write, in every
+  composition. `IndexEntryEncoder.ofConversionService` converted the `KeyValuePair`
+  wrapper, not the value. It also cast the field list to `List<Pair<String,
+  String>>`. Neither mattered, because the only converter implements
+  `com.demo.chat.convert.Converter`, and `Codecs.kt:12` shows that interface no
+  longer extends the Spring one. The inheritance is commented out in place. A
+  `ConversionService` never held that converter, and nothing referenced it.
+- `CassandraIndexServices.KVPairIndex()` returned `DummyKeyValueIndexService`.
+  Writes vanished and reads returned empty, with no error.
+
+**The field contract is now shared.** `KeyValueIndexFields` in `chat-core` names the
+index fields of one value type. `TypedKeyValueIndexFields` selects them by the
+runtime class of a value. Both backends take the same instance, so one value type
+indexes the same fields everywhere. A module registers its own type with a
+`KeyValueIndexFieldsEntry` bean.
+
+An unregistered type throws and names the registered types. It does not index
+nothing. An index that silently stored no fields would answer every later query with
+an empty result, and an empty result cannot be told apart from a real miss.
+
+### Four facts that are expensive to relearn
+
+1. **A key-value entry is mutable, so both indexes replace.** An insert alone leaves
+   the entry of the earlier value, because a changed value writes a different
+   document or a different primary key. A job that reached `SUCCEEDED` still
+   answered a query for `RUNNING`. Both indexes now remove before they write.
+2. **The cassandra index needs two tables.** `kv_pair_index` partitions on the field
+   and the value. `kv_pair_index_by_id` partitions on the entity id, because `rem`
+   receives only the entity key and cannot otherwise name the partitions that hold
+   its rows. `TopicIndex.rem` is the cautionary case. It builds a row with an empty
+   name, never matches, and index removal is quietly broken there.
+3. **A lucene removal must match an exact term.** The `key` field is analyzed.
+   StandardAnalyzer split a uuid into segments, and QueryParser joined them with OR
+   inside one required group, measured on lucene 8.7 as `+(key:550e8400 key:e29b
+   key:41d4 key:a716 key:446655440000)`. A document that shared one segment matched
+   the group, so removing one uuid deleted every document that shared a segment.
+   Every document now carries a `StringField` named `_key` that is not analyzed, and
+   `rem` matches it with a `Term`. **A hyphen can mean NOT in other query positions.
+   It created no prohibited clause for this input.**
+4. **`_key` is reserved.** An encoder can name any field. The encoded field is
+   analyzed and the internal field is not, so lucene refuses the document and
+   reports `cannot change field "_key"`. A replacement removes before it writes, so
+   the refusal arrives after the removal and the entry is lost.
+   `requireNoReservedField` rejects it first. The key-value index checks before the
+   removal, and `addEntry` checks again for a caller that adds without removing.
+
+### Three smaller results
+
+- **The fields are read before the removal, and once.** An unregistered type and a
+  reserved name both fail without destroying the entry that the index holds.
+  `LuceneIndex.addEntry` stores fields the caller already read, so the encoder runs
+  once per add.
+- **The authorization save path never stored anything.** It discarded both
+  publishers inside `doOnNext`, so neither write received a subscription. It now
+  subscribes both and blocks, like the two reads beside it.
+- **The exact removal sits in the base index**, so every lucene index gained it. The
+  blast radius is the user, message, topic, membership, and auth indexes, not the
+  key-value one alone.
+
+### Two test notes
+
+- **`IndexTests.should save and find many` is now open.** A mutable index replaces
+  the entry of a key, so two adds of one key give one result. The key-value subclass
+  overrides it with two keys.
+- **A random uuid pair cannot prove exact removal.** The tests use keys that share
+  their first segment on purpose. A cassandra test that stores one value twice
+  proves an upsert, not a replacement, so a changed-value test is a separate case.
+
+### Deferred
+
+`CHAT-aedloxwd` defines backend-neutral index field semantics. It is **not** a
+request to remove the runtime check. A typed field name would move the validation,
+not remove it. Only a closed and backend-neutral field namespace could remove it.
+The current limits are recorded on that issue. Start it when one required semantic
+exceeds the text pair model.
+
+## CI action versions (2026-09-11)
+
+PR #84, merge commit `b3d98cb2`. Issue `CHAT-xzhpuixd`.
+
+`actions/setup-java` moved from v4 to v5 in three places. `maven.yml` has one per
+job, and `dependency-audit.yml` has one.
+
+The only breaking change in v5.0.0 is the node 24 runtime. A runner must be
+v2.327.1 or newer. All three jobs run on `ubuntu-latest`, which meets that. v5
+changes no input and no default.
+
+**`dependency-audit.yml` is unproven.** It runs on a schedule, not on a pull
+request, so PR #84 never exercised it. Its next scheduled run is the first proof.
+
+v6 exists. It removes the legacy Adopt distributions, and it renames `jdkFile` to
+`jdk-file` with an alias. Neither reaches this repository, because every job uses
+`temurin` and no job uses `jdkFile`. A move to v6 is a separate decision.
+
+## Cassandra CI flake, another occurrence (2026-09-11)
+
+`CHAT-sgyaaivp`. Run `34647802262` on the PR #83 branch failed with the recorded
+signature. `CassandraDriverTimeoutException: Query timed out after PT2S`, every
+failure in `chat-persistence-cassandra`, and a failing class set that differs from
+the one recorded on master. A rerun of the same commit passed.
+
+Four runs on that branch, on code that only moves forward: three passed and one
+failed.
+
+**One caution for whoever fixes it.** PR #83 adds two tables to `keyspace-long.cql`
+and `keyspace-uuid.cql`. Those scripts run in the test setup that times out. The
+same schema was present in all four runs and three passed, so the added tables are
+not sufficient to cause the failure. Four runs cannot show whether they raise its
+probability. Do not read this as proof that schema size has no effect.
+
+## Vector reindex, work in flight (2026-09-11)
+
+`CHAT-oghjsnad`. Nothing of this is on `origin/master`.
+
+- The branch is `chat-oghjsnad-vector-reindex`, in `.worktrees/vector-reindex`, head
+  `cd993995`. It has no remote upstream.
+- **The design documents are local only.** Three documentation commits sit on the
+  main checkout's `master` at `af30dfd2` and were never pushed. `origin/master` does
+  not hold the spec or the plan.
+- The branch was rebased onto `f9129f28` after PR #83 merged. Two superseded
+  key-value commits were removed, because they carried the defective versions of
+  code that PR #83 fixed. The recovery branch is
+  `recovery/vector-reindex-pre-pr83-rebase` at `74eaf254`.
+- `CHAT-bvmevhpq`, `CHAT-mwvhqoyt`, and `CHAT-iqtgwcqa` are done on that branch.
+- **One design decision is open and blocking.** The coverage rule compares a covered
+  generation with a current generation, and two values carry that name. The
+  in-process counter restarts at zero on every process start, so a clean earlier run
+  and a fresh process both read zero. Under `trust=stored` that grants coverage with
+  no evidence. Both values must come from the durable record, or the in-process
+  counter must be seeded from the covering job.
+- Two items were deferred out of that design. `CHAT-edzvpxil` holds the message
+  handling policy mask. `CHAT-tekzakdd` holds a data stream or data view strategy,
+  so a rebuild stops reading every stored message.
+
+**Read every line above as of 2026-09-11.** Three of them no longer hold.
+Measured on 2026-09-15: the branch has a remote upstream, and PR #87 carries it
+against `master`. The blocking generation decision is closed, because the
+durable job record supplies both values. The spec and the plan are on the
+branch. See `Vector index job record` and `Embedding provider modules` below.
+
+## The AGENTS.md imports (2026-09-11)
+
+`AGENTS.md` imported `@FP_AGENTS.md` and `@continuity_brief.md`. Neither file
+existed on `origin/master`. The repository holds `FP_CLAUDE.md` and
+`forward-register.md`, so both imports were dangling.
+
+`@continuity_brief.md` now reads `@forward-register.md`. That file exists, and it is
+the register that `AGENTS.md` tells a reader to treat as live operational context.
+
+**`@FP_AGENTS.md` still names a file that `origin/master` does not hold.** It is left
+alone on purpose. The main checkout holds an uncommitted rename of `FP_CLAUDE.md` to
+`FP_AGENTS.md`. That rename resolves this import, and it belongs to the owner. A
+change from this branch would collide with it.
+
 ## Vector index job record (2026-09-11/13)
 
 Issue `CHAT-fpwpfrfj`, under `CHAT-oghjsnad`. Fifteen tasks. Spec:
@@ -928,6 +1090,10 @@ after the embedding model reports a throughput number.
 `CHAT-pkolwuqm` Boot 4, `CHAT-ygllyglb` Spring AI 2.0, `CHAT-gidbchkx` Netty,
 `CHAT-icgifzbv` audit triage, `CHAT-sgyaaivp` Cassandra CI flake, `CHAT-cikgeefc`
 build health.
+
+Open and not yet started, from the 2026-09-11 work: `CHAT-aedloxwd` index field
+semantics, `CHAT-edzvpxil` message handling policy mask, `CHAT-tekzakdd` data stream
+or data view for message scans. All three are deliberately deferred.
 
 `CHAT-sgyaaivp` is worth doing before any Cassandra work. While the integration job
 alternates red on unchanged code, every review has to re-derive whether a failure is
