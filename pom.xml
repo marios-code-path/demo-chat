@@ -352,6 +352,23 @@
                                  Boot artifacts. It overrides the default
                                  skip=true in the `<build>` section. -->
                             <skip>false</skip>
+                            <!-- The executable artifact takes a classifier, so
+                                 it sits beside the plain jar rather than
+                                 replacing it.
+
+                                 This profile reaches every module of the
+                                 reactor it runs in. chat-deploy declares a main
+                                 class and four deploy modules depend on it, so
+                                 a run with -am repackaged chat-deploy and left
+                                 that 49 MiB executable inside the artifact of
+                                 the module under build. Measured on
+                                 2026-09-16, fp issue CHAT-dasmldiw.
+
+                                 A module is launched through its -exec jar.
+                                 spring-boot:run and spring-boot:build-image
+                                 read this same configuration, so both follow
+                                 the classifier. -->
+                            <classifier>exec</classifier>
                             <mainClass>${appMainClass}</mainClass>
                             <image>
                                 <name>${appImageName}</name>

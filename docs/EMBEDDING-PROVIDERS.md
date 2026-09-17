@@ -142,8 +142,16 @@ three.
 **This procedure needs a real key and network access, and it never runs
 unattended.** No automated gate in this repository calls a paid service.
 
+Build the executable artifact first. The `deploy` profile is what repackages
+it, and the `exec` classifier is what names it.
+
 ```bash
-java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1.jar \
+mvn -o -B -Pexpose-webflux,deploy -Dmaven.test.skip=true \
+    -pl chat-deploy-memory -am clean package
+```
+
+```bash
+java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
     --app.nodeid=1 \
     --app.key.type=long \
     --app.server.proto=rest \
