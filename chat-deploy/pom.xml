@@ -18,6 +18,56 @@
     </properties>
     <profiles>
         <profile>
+            <!-- The RSocket controllers. This module declares none of its own. -->
+            <id>expose-rsocket</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-service-controller</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- The REST controllers and the shared deploy configuration. -->
+            <id>expose-webflux</id>
+            <dependencies>
+                <!-- Compile scope here, over the test scope declaration above. That one serves SecurityChainOwnershipTests, and this profile is what puts the REST routes on a launch. -->
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-webflux</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>shared-deploy-configuration</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- The Spring Cloud Gateway edge. -->
+            <id>expose-gateway</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-gateway</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- The E2EE substrate. -->
+            <id>e2ee</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-deploy-e2ee</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>native</id>
             <build>
                 <plugins>

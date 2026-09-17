@@ -48,6 +48,12 @@
         <nimbus-jose-jwt.version>10.0.2</nimbus-jose-jwt.version>
         <!-- Three versions reach the tree: 4.5.5, 4.5.13 and 4.5.14. -->
         <httpclient.version>4.5.14</httpclient.version>
+        <!-- The cassandra driver brings 9.2 through jnr-ffi, and chat-webflux
+             wants 9.7.1 through oauth2-oidc-sdk and accessors-smart. Maven
+             picks the nearer 9.2, so the higher request loses. The pair meets
+             only under -Pexpose-webflux on a cassandra deployment. Pinned here
+             to satisfy requireUpperBoundDeps. See CHAT-xwycjyla. -->
+        <asm.version>9.7.1</asm.version>
         <vector.api.module.flag>--add-modules=jdk.incubator.vector</vector.api.module.flag>
         <!-- Overridden to empty by -Pintegration. See maven-surefire-plugin below. -->
         <excluded.test.groups>integration</excluded.test.groups>
@@ -220,6 +226,11 @@
                 <artifactId>httpclient</artifactId>
                 <version>${httpclient.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.ow2.asm</groupId>
+                <artifactId>asm</artifactId>
+                <version>${asm.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -364,50 +375,36 @@
                 </plugins>
             </build>
         </profile>
+        <!-- The four profiles below carry no dependency here, and they must
+             not carry one again.
+
+             A dependency on this pom reaches every module, because every
+             module inherits it. chat-webflux then reads chat-webflux as its
+             own dependency, and maven stops the whole reactor before it
+             builds anything:
+
+               'dependencies.dependency.[com.demo:chat-webflux:0.0.1]' for
+               com.demo:chat-webflux:0.0.1 is referencing itself
+
+             -pl does not avoid that, because maven reads every module of the
+             reactor first. All four profiles failed that way, and each named
+             its own artifact. Measured on 2026-09-16, fp issue
+             CHAT-xwycjyla.
+
+             The dependencies live in the five deploy modules now, which are
+             the modules that a launch builds. Each id stays here so that a
+             reactor run with -P activates something that exists. -->
         <profile>
             <id>expose-rsocket</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-service-controller</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
         </profile>
         <profile>
             <id>expose-webflux</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-webflux</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>shared-deploy-configuration</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
         </profile>
         <profile>
             <id>expose-gateway</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-gateway</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
         </profile>
         <profile>
             <id>e2ee</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.demo</groupId>
-                    <artifactId>chat-deploy-e2ee</artifactId>
-                    <version>0.0.1</version>
-                </dependency>
-            </dependencies>
         </profile>
         <profile>
             <!-- Runs the tests tagged "integration", which need a Docker daemon.

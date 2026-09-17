@@ -1192,7 +1192,7 @@ that no test could see.
 - **The `expose-webflux` profile cannot run in a reactor build.** It declares
   its dependencies on the parent, so `chat-webflux` reads itself as a dependency
   and maven stops before it builds. `-pl` does not avoid it. `CHAT-xwycjyla`
-  holds it.
+  holds it. **Fixed on 2026-09-16. See the section below.**
 - **A Spring AI client sends a chunked request body.** A stub that reads only
   `Content-Length` sees no input, answers a vector for no text, and the caller
   fails inside `dimensions()`. Reactor Netty also pools connections, so a
@@ -1287,3 +1287,77 @@ only the second one would hang on a run that never ends.**
 - Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
 - Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
 - Five gates each exit 0.
+
+## The expose profiles (2026-09-16)
+
+`CHAT-xwycjyla`.
+
+### The defect
+
+Four profiles declared their dependencies on the parent pom: `expose-rsocket`,
+`expose-webflux`, `expose-gateway`, and `e2ee`. Every module inherits a parent
+dependency, so each profile made one module a dependency of itself, and maven
+stopped the whole reactor before it built anything.
+
+```
+'dependencies.dependency.[com.demo:chat-webflux:0.0.1]' for
+com.demo:chat-webflux:0.0.1 is referencing itself
+```
+
+Measured on 2026-09-16: all four failed, and each named its own artifact.
+`-pl` does not avoid it, because maven reads every module of the reactor first.
+
+**The defect stayed hidden because no launch path builds a reactor.**
+`chat-build` runs maven with `cwd` set to one module directory, so the reactor
+never forms and the self reference never appears.
+
+### The fix
+
+The four profile ids stay on the parent and carry no dependency. Each of the
+five deploy modules declares the same ids with the dependencies it needs.
+
+- `chat-deploy` declares all four in full. It holds none of those artifacts.
+- The four backend modules already declare `chat-service-controller` and
+  `shared-deploy-configuration` at compile scope, so their `expose-rsocket`
+  profile is empty and their `expose-webflux` profile adds `chat-webflux`
+  alone.
+
+**An empty profile is deliberate.** The id must exist in the module that a
+single module build names, or `-Pexpose-rsocket` prints an activation warning.
+
+### Two facts that cost a measurement
+
+- **A profile dependency overrides the scope of a base declaration.**
+  `chat-deploy` declares `chat-webflux` at test scope for
+  `SecurityChainOwnershipTests`. Its `expose-webflux` profile declares the same
+  artifact with no scope, and the effective pom then reports compile. Maven
+  prints no duplicate warning. That is what the profile is for, and the test
+  scope still holds without it.
+- **`-Pdeploy` with `-am` nests one fat jar inside another.** The deploy profile
+  sets the Boot repackage skip to false for every module of the reactor it runs
+  in. A run of `-pl chat-deploy-memory -am` repackaged `chat-deploy` as its own
+  executable jar, and that 49 MiB file landed in `BOOT-INF/lib` of the
+  artifact. The same command without `-am` gives 180 MiB and a 73 KiB
+  `chat-deploy` library. The launch gate names one module and passes no `-am`.
+
+### One dependency pin
+
+`chat-webflux` reaches `asm` 9.7.1 through `oauth2-oidc-sdk` and
+`accessors-smart`. The cassandra driver reaches `asm` 9.2 through `jnr-ffi`,
+and maven picks the nearer 9.2. `requireUpperBoundDeps` fails on that pair,
+which meets only under `-Pexpose-webflux` on a cassandra deployment. The parent
+pins 9.7.1, which is the rule this repository already follows for five other
+artifacts.
+
+### Measured
+
+- Each of the four profiles passes `mvn -o -B -P<id> validate` over the
+  reactor, and all four together pass.
+- Each profile puts its artifact on the runtime classpath of the module that
+  needs it. Without the profile, `chat-webflux` stays off the memory runtime.
+- A single module build from the module directory still works, and it prints no
+  activation warning.
+- The launch gate drops its `-f` workaround for a scoped `-pl` command, and it
+  exits 0.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.

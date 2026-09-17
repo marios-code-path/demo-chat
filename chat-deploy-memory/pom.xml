@@ -156,4 +156,43 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <!-- Empty on purpose. This module already declares chat-service-controller at compile scope, and the id exists so that the flag activates without a warning. -->
+            <id>expose-rsocket</id>
+        </profile>
+        <profile>
+            <!-- Only chat-webflux. This module already declares shared-deploy-configuration. -->
+            <id>expose-webflux</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-webflux</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- The Spring Cloud Gateway edge. -->
+            <id>expose-gateway</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-gateway</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <!-- The E2EE substrate. -->
+            <id>e2ee</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-deploy-e2ee</artifactId>
+                    <version>0.0.1</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>
