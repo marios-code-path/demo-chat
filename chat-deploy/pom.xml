@@ -75,11 +75,53 @@
                         <groupId>org.graalvm.buildtools</groupId>
                         <artifactId>native-maven-plugin</artifactId>
                         <configuration>
+                            <!-- The plugin reads no main class from a plain jar.
+                                 Only the repackaged jar carries a Main-Class
+                                 header, and the native profile does not
+                                 repackage. Without this element the build stops
+                                 with "Please specify class containing the main
+                                 entry point method". CHAT-hvactuvm. -->
+                            <mainClass>${appMainClass}</mainClass>
                             <buildArgs>
                                 <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
                                 <buildArg>${vector.api.module.flag}</buildArg>
                             </buildArgs>
                         </configuration>
+                        <executions>
+                            <!-- Without this binding the profile builds no
+                                 image. The parent native profile only runs AOT
+                                 and collects reachability metadata, so the image
+                                 goal needs a second command that repeats every
+                                 profile and every flag. The binding makes
+                                 `mvn -Pnative package` produce the image.
+                                 CHAT-hvactuvm. -->
+                            <execution>
+                                <id>build-native</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>compile-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <!-- The parent sets the boot plugin skip to true, so no
+                             ordinary build repackages a library. That skip sits
+                             at plugin level, so it also stops process-aot, and a
+                             native image without the AOT output holds no bean
+                             definitions. This override turns the skip off for
+                             that one execution. Repackage keeps the skip.
+                             CHAT-hvactuvm. -->
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>process-aot</id>
+                                <configuration>
+                                    <skip>false</skip>
+                                </configuration>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
