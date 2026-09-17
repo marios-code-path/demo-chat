@@ -36,10 +36,6 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
-        </dependency>
         <!-- https://mvnrepository.com/artifact/org.springframework.security/spring-security-messaging -->
 <!--        <dependency>-->
 <!--            <groupId>org.springframework.security</groupId>-->
