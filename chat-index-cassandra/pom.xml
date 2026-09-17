@@ -73,8 +73,14 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.playtika.testcontainers</groupId>
-			<artifactId>embedded-cassandra</artifactId>
+			<!-- CassandraSchemaTest comes from the chat-persistence-cassandra
+			     test jar and it binds a CassandraContainer. A test scope
+			     dependency is not transitive, so this module declares the
+			     container module itself. Until 2026-09-17 it arrived through
+			     com.playtika.testcontainers:embedded-cassandra, which pinned
+			     the Testcontainers 1.17.6 line. See CHAT-vjsbfecx. -->
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-cassandra</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
