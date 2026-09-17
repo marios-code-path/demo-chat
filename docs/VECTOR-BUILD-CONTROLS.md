@@ -80,6 +80,9 @@ A change to the property reaches all four. Read all four before changing it.
 `--enable-native-access=ALL-UNNAMED` travels beside it in the deploy runtimes.
 That flag is broad on purpose, because Netty uses native access on Java 25.
 
+Both native images build on Java 25 and neither starts. Read
+`docs/NATIVE-IMAGE.md` before you change either `<buildArg>` list.
+
 ### Two profiles decide what runs
 
 `excluded.test.groups` defaults to `integration` in `pom.xml`, and surefire
