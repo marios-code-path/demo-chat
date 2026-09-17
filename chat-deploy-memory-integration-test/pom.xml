@@ -32,14 +32,6 @@
                     <plugin>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-maven-plugin</artifactId>
-                        <!-- This plugin is newer than the managed version.
-                             Spring Boot 3.3.13 hardcodes Docker API v1.24.
-                             Docker Engine 29 refuses API versions below v1.40.
-                             Spring Boot 3.5.x negotiates the API version. Only
-                             this module builds an image, so the version skew
-                             stays here. Remove the pin after the parent uses a
-                             Boot version that negotiates. CHAT-gtcnjyit. -->
-                        <version>3.5.12</version>
                         <configuration>
                             <skip>false</skip>
                             <docker>

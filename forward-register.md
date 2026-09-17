@@ -1404,12 +1404,14 @@ Measured on 2026-09-17: the same `-am` command now gives 180 MiB, and
   procedure in `docs/EMBEDDING-PROVIDERS.md` both do.
 - **`spring-boot:run` and `spring-boot:build-image` read the same plugin
   configuration**, so both follow the classifier without a second entry. The
-  plugin descriptor of 3.5.12 carries the parameter on both goals.
+  plugin descriptor carries the parameter on both goals.
 - **`chat-build` needs no change.** It runs `spring-boot:run` and
   `spring-boot:build-image`, and it never names a jar.
 - **The `test-build` profile of `chat-deploy-memory-integration-test` is
   untouched.** It configures the plugin inside its own module, so the root
-  profile never reaches it.
+  profile never reaches it. That module pinned the plugin at 3.5.12 until
+  2026-09-17. `CHAT-cwsuybox` removed the pin, so the module now uses the
+  managed 3.5.16.
 
 ### The payoff
 
