@@ -1,6 +1,5 @@
 package com.demo.chat.test.index
 
-import com.datastax.driver.core.utils.UUIDs
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.index.cassandra.impl.UserIndex
@@ -23,6 +22,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import java.util.*
+import java.util.UUID
 
 
 @ExtendWith(SpringExtension::class)
@@ -53,7 +53,7 @@ class UserIndexTests {
         BDDMockito.given(byHandleRepo.add(anyObject()))
             .willReturn(Mono.empty())
 
-        val user = User.create(Key.funKey(UUIDs.random()), "test-name", "test-handle", "localhost/test.jpg")
+        val user = User.create(Key.funKey(UUID.randomUUID()), "test-name", "test-handle", "localhost/test.jpg")
 
         StepVerifier.create(userIndex.add(user))
                 .expectSubscription()
