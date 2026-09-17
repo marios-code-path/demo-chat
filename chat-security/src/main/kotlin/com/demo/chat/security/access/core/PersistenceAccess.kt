@@ -6,7 +6,7 @@ import org.springframework.security.access.prepost.PreAuthorize
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface PersistenceAccess<T, E> : PersistenceStore<T, E> {
+interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
     @PreAuthorize("@chatAccess.hasAccessTo(#ent.key, 'PUT')")
     override fun add(ent: E): Mono<Void>
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'DEL')")

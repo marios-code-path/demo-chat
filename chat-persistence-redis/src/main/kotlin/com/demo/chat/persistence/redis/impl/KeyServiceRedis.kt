@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono
  * Key ids are generated locally by the injected [IKeyGenerator] (UUID or Long);
  * Redis only stores the kind association.
  */
-class KeyServiceRedis<T>(
+class KeyServiceRedis<T : Any>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     private val keyGen: IKeyGenerator<T>,
     private val keyRegistryHash: String = "chat:keys",

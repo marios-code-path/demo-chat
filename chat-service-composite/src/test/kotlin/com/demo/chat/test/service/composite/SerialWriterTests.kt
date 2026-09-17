@@ -126,7 +126,10 @@ class SerialWriterTests {
 
         outcomes.forEach { outcome ->
             // A stranded caller appears here as a future that never resolves.
-            val signal = outcome.get(10, TimeUnit.SECONDS)
+            // toFuture() completes with null for an empty Mono, so Reactor 3.8
+            // types it nullable. materialize() always emits one signal, so a
+            // null here is a defect and the assertion says so.
+            val signal = outcome.get(10, TimeUnit.SECONDS)!!
 
             Assertions.assertThat(signal.hasError())
                 .`as`("no body can finish inside the shutdown timeout")

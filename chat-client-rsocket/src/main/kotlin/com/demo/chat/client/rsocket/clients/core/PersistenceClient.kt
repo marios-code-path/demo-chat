@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono
  * There can be a route-matcher for the prefix? Possibly a handler ?
  * Basically, some way to augment the route without sending in the prefix
  */
-open class PersistenceClient<T, E>(
+open class PersistenceClient<T, E : Any>(
     private val prefix: String,
     private val requester: RSocketRequester,
     private val ref: ParameterizedTypeReference<E>,

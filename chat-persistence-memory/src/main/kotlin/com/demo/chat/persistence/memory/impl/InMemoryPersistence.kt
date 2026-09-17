@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 
-open class InMemoryPersistence<T, E>(
+open class InMemoryPersistence<T, E : Any>(
     private val keyService: IKeyService<T>,
     private val entityClass: Class<*>,
     private val keyFromEntity: Function<E, Key<T>>,

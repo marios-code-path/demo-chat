@@ -24,7 +24,7 @@ class LongPubSubCommandsTests : ShellPubSubCommandsTests<Long>()
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @Tag("integration")
-open class ShellPubSubCommandsTests<T> : ShellIntegrationTestBase() {
+open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired
     private lateinit var pubSubCommands: PubSubCommands<T>

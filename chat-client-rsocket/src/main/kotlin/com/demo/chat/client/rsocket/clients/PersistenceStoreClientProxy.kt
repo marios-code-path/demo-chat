@@ -27,7 +27,7 @@ interface UserPersistenceClientProxy: UserPersistence<UUID> {
     override fun add(@Payload ent: User<UUID>): Mono<Void>
 }
 
-interface PersistenceStoreClientProxy<T, E> : PersistenceStore<T, E>{
+interface PersistenceStoreClientProxy<T, E : Any> : PersistenceStore<T, E>{
     @RSocketExchange("persistence.key")
     override fun key(): Mono<out Key<T>>
 

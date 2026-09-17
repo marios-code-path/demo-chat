@@ -14,7 +14,7 @@ import reactor.core.publisher.Flux
 
 @Profile("shell")
 @ShellComponent
-class TopicCommands<T>(
+class TopicCommands<T : Any>(
     private val coreServices: CoreServices<T, String, IndexSearchRequest>,
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,

@@ -20,7 +20,7 @@ import reactor.core.scheduler.Schedulers
 
 @Profile("shell")
 @ShellComponent
-class UserCommands<T>(
+class UserCommands<T : Any>(
     private val coreServices: CoreServices<T, String, IndexSearchRequest>,
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,

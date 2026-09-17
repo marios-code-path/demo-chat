@@ -26,7 +26,7 @@ interface PubSubService<T, V> {
  *  per topic user inventory
  *  per user topic inventory
  */
-interface TopicInventoryService<T> {
+interface TopicInventoryService<T : Any> {
     fun open(topicId: T): Mono<Void>
     fun close(topicId: T): Mono<Void>
     fun getByUser(uid: T): Flux<T>
@@ -36,5 +36,5 @@ interface TopicInventoryService<T> {
 /**
  * Combined (Publish Subscribe + Topic Exchange)
  */
-interface TopicPubSubService<T, V>
+interface TopicPubSubService<T : Any, V>
     : PubSubService<T, V>, TopicInventoryService<T>

@@ -22,7 +22,7 @@ import reactor.core.publisher.Mono
  * persistence can hold a record that the topic index cannot discover. The same
  * rule already governs MessagingServiceImpl.send().
  */
-class ComposedJobRecordWriter<T, V, Q>(
+class ComposedJobRecordWriter<T : Any, V, Q>(
     private val messagePersistence: MessagePersistence<T, V>,
     private val messageIndex: MessageIndexService<T, V, Q>,
     private val pubsub: TopicPubSubService<T, V>,

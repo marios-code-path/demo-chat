@@ -20,7 +20,7 @@ class LongUserCommandsTests : ShellUserCommandsTests<Long>()
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @Tag("integration")
-open class ShellUserCommandsTests<T> : ShellIntegrationTestBase() {
+open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired lateinit var userCommands: UserCommands<T>
 

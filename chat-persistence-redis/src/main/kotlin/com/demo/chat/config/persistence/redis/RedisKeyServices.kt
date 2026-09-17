@@ -14,7 +14,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["key"], havingValue = "redis")
-class RedisKeyServices<T>(
+class RedisKeyServices<T : Any>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     private val keyGen: IKeyGenerator<T>,
 ) : KeyServiceBeans<T> {

@@ -13,7 +13,7 @@ class LongShellTopicCommandsTests : ShellTopicCommandsTests<Long>()
 @Disabled
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 @Tag("integration")
-open class ShellTopicCommandsTests<T> : ShellIntegrationTestBase() {
+open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired
     private lateinit var topicCommands: TopicCommands<T>

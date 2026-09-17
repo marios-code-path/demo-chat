@@ -22,7 +22,7 @@ interface PublishConfiguration<T, E, V> {
     }
 }
 
-class PubSubbedPersistence<T, E, V>(
+class PubSubbedPersistence<T : Any, E : Any, V>(
     val config: PublishConfiguration<T, E, V>,
     val persistence: PersistenceStore<T, E>,
     val pubsub: TopicPubSubService<T, V>,

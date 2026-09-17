@@ -6,7 +6,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.empty
 
-open class DummyPersistenceStore<T, E> : PersistenceStore<T, E> {
+open class DummyPersistenceStore<T, E : Any> : PersistenceStore<T, E> {
     override fun key(): Mono<out Key<T>> = empty()
 
     override fun add(ent: E): Mono<Void> = empty()

@@ -7,7 +7,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class TopicPubSubServiceController<T, V>(private val that: TopicPubSubService<T, V>) : TopicPubSubServiceMapping<T, V>, TopicPubSubService<T, V> by that {
+open class TopicPubSubServiceController<T : Any, V>(private val that: TopicPubSubService<T, V>) : TopicPubSubServiceMapping<T, V>, TopicPubSubService<T, V> by that {
 
     override fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> = subscribe(req.member, req.topic)
 

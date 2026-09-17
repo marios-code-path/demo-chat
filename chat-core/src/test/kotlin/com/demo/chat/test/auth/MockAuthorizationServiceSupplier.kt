@@ -4,5 +4,5 @@ import com.demo.chat.service.security.AuthorizationService
 import org.mockito.kotlin.mock
 
 class MockAuthorizationServiceSupplier {
-    fun <T, M> get(): AuthorizationService<T, M> = mock()
+    fun <T, M : Any> get(): AuthorizationService<T, M> = mock()
 }

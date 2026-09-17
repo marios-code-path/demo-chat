@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-xstream")
-class XStreamPubSubBeans<T>(
+class XStreamPubSubBeans<T : Any>(
     private val config: RedisTemplateConfiguration,
     private val typeUtil: TypeUtil<T>
 ) : PubSubServiceBeans<T, String> {

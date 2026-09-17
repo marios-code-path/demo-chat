@@ -3,5 +3,5 @@ package com.demo.chat.controller.core
 import com.demo.chat.controller.core.mapping.PersistenceStoreMapping
 import com.demo.chat.service.core.PersistenceStore
 
-open class PersistenceServiceController<T, E>(private val that: PersistenceStore<T, E>) : PersistenceStoreMapping<T, E>,
+open class PersistenceServiceController<T, E : Any>(private val that: PersistenceStore<T, E>) : PersistenceStoreMapping<T, E>,
     PersistenceStore<T, E> by that

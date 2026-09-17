@@ -13,7 +13,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 
-interface TopicPubSubRestMapping<T> : TopicPubSubService<T, String> {
+interface TopicPubSubRestMapping<T : Any> : TopicPubSubService<T, String> {
 
     fun keyService(): IKeyService<T>
 

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Mono
 
 
-open class PersistenceRestController<T, E>(
+open class PersistenceRestController<T, E : Any>(
     private val that: PersistenceStore<T, E>,
     private val typeUtil: TypeUtil<T>
 ) : PersistenceRestMapping<T, E>,

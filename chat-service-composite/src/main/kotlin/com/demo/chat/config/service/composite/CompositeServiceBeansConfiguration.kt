@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 @ConditionalOnProperty("app.service.composite")
-class CompositeServiceBeansConfiguration<T, V, Q>(
+class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     val persistenceBeans: PersistenceServiceBeans<T, V>,
     val indexBeans: IndexServiceBeans<T, V, Q>,
     val pubsub: PubSubServiceBeans<T, V>,

@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono
  * M = Authorization Type (out bound)
  * N = Authorization Type (in bound)
  */
-interface AuthorizationService<T, out M> {
+interface AuthorizationService<T, out M : Any> {
     fun authorize(authorization: AuthMetadata<T>, exist: Boolean): Mono<Void>
     fun getAuthorizationsForTarget(uid: Key<T>): Flux<out M>
     fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<out M>

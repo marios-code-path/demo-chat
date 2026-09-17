@@ -32,7 +32,7 @@ interface PubSubAccess<T, V> : PubSubService<T, V> {
     override fun exists(topic: T): Mono<Boolean>
 }
 
-interface TopicInventoryAccess<T> : TopicInventoryService<T> {
+interface TopicInventoryAccess<T : Any> : TopicInventoryService<T> {
 
     @PreAuthorize("@chatAccess.hasAccessTo(#topicId, 'OPEN')")
     override fun open(topicId: T): Mono<Void>

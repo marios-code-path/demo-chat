@@ -17,7 +17,7 @@ import org.springframework.messaging.rsocket.RSocketRequester
 /**
  * This is a bean that declares only the local clients for the core services
  */
-class CoreRSocketClients<T, V, Q>(
+class CoreRSocketClients<T : Any, V, Q>(
     private val requesterFactory: ClientFactory<RSocketRequester>,
     private val clientProperties: RSocketClientProperties,
     private val typeUtil: TypeUtil<T>,

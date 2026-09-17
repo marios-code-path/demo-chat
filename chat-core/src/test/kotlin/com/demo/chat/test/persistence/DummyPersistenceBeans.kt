@@ -7,7 +7,7 @@ import com.demo.chat.service.dummy.DummyKeyValueStore
 import com.demo.chat.service.dummy.DummyPersistenceStore
 import com.demo.chat.service.security.AuthMetaPersistence
 
-class DummyPersistenceBeans<T, V> : PersistenceServiceBeans<T, V> {
+class DummyPersistenceBeans<T, V : Any> : PersistenceServiceBeans<T, V> {
     override fun userPersistence(): UserPersistence<T> = DummyPersistenceStore<T, User<T>>() as UserPersistence<T>
     override fun topicPersistence(): TopicPersistence<T> = DummyPersistenceStore<T, MessageTopic<T>>() as TopicPersistence<T>
     override fun messagePersistence(): MessagePersistence<T, V> = DummyPersistenceStore<T, V>() as MessagePersistence<T, V>
