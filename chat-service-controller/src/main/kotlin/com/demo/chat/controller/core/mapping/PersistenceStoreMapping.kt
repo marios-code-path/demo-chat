@@ -8,7 +8,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface PersistenceStoreMapping<T, E> : PersistenceStore<T, E> {
+interface PersistenceStoreMapping<T, E : Any> : PersistenceStore<T, E> {
     @MessageMapping("key")
     override fun key(): Mono<out Key<T>>
 

@@ -50,7 +50,7 @@ import java.util.UUID
  */
 @Configuration
 @ConditionalOnProperty("app.service.composite")
-class VectorRecallServiceConfiguration<T, V, Q>(
+class VectorRecallServiceConfiguration<T : Any, V, Q>(
     private val typeUtil: TypeUtil<T>,
     private val persistenceBeans: PersistenceServiceBeans<T, V>,
     private val indexBeans: IndexServiceBeans<T, V, Q>,

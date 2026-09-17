@@ -17,7 +17,7 @@ class CompositeServiceConfiguration {
 
     @Bean
     @ConditionalOnProperty("app.service.composite.security")
-    fun <T> serviceAccessCompositeServiceAccessBeans(
+    fun <T : Any> serviceAccessCompositeServiceAccessBeans(
         accessBroker: AccessBroker<T>,
         rootKeys: RootKeys<T>,
         compositeServiceBeansConfiguration: CompositeServiceBeansConfiguration<T, String, IndexSearchRequest>

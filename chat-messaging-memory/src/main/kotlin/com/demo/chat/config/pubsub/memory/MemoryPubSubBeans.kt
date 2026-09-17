@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Configuration
     havingValue = "memory",
     matchIfMissing = true
 )
-class MemoryPubSubBeans<T, V>(val typeUtil: TypeUtil<T>) : PubSubServiceBeans<T, String> {
+class MemoryPubSubBeans<T : Any, V>(val typeUtil: TypeUtil<T>) : PubSubServiceBeans<T, String> {
 
     @Bean
     override fun pubSubService(): TopicPubSubService<T, String> = MemoryTopicPubSubService()

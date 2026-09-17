@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono
 import java.time.Duration
 import java.time.Instant
 
-class VectorIndexJobStoreImpl<T, V, Q>(
+class VectorIndexJobStoreImpl<T : Any, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
     private val topicIndex: TopicIndexService<T, Q>,
     private val pubsub: TopicPubSubService<T, V>,

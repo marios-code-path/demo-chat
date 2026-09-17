@@ -18,7 +18,7 @@ import reactor.kafka.receiver.ReceiverOptions
 // CHAT-ouzjdxun.
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "kafka")
-class KafkaPubSubBeans<T, V>(
+class KafkaPubSubBeans<T : Any, V>(
     private val producer: ReactiveKafkaProducerTemplate<String, Message<T, V>>,
     private val adminClient: AdminClient,
     private val typeUtil: TypeUtil<T>,

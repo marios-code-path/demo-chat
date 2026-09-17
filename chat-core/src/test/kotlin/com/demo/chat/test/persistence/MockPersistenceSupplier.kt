@@ -13,7 +13,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 class MockPersistenceSupplier() {
-    inline fun <reified T, reified E> get(): PersistenceStore<T, E> = mock<PersistenceStore<T, E>>()
+    inline fun <reified T, reified E : Any> get(): PersistenceStore<T, E> = mock<PersistenceStore<T, E>>()
         .apply {
             given(add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
@@ -33,7 +33,7 @@ class MockPersistenceSupplier() {
 inline fun <reified T> generateKey(): Key<T> = mock<Key<T>>()
 
 class MockEnricherPersistenceStoreSupplier() {
-    inline fun <reified T, reified V, reified E> get(): KeyEnricherPersistenceStore<T, V, E> = mock<KeyEnricherPersistenceStore<T, V, E>>()
+    inline fun <reified T, reified V, reified E : Any> get(): KeyEnricherPersistenceStore<T, V, E> = mock<KeyEnricherPersistenceStore<T, V, E>>()
         .apply {
             val genKey = generateKey<T>()
 

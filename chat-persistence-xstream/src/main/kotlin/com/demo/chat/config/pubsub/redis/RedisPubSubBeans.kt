@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Configuration
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "redis-pubsub")
-class RedisPubSubBeans<T>(
+class RedisPubSubBeans<T : Any>(
     private val config: RedisTemplateConfiguration,
     private val typeUtil: TypeUtil<T>
 ) : PubSubServiceBeans<T, String> {

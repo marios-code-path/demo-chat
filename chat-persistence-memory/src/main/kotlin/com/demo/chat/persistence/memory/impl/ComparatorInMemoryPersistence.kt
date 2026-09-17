@@ -6,7 +6,7 @@ import com.demo.chat.service.core.IKeyService
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-open class ComparatorInMemoryPersistence<T, E>(
+open class ComparatorInMemoryPersistence<T, E : Any>(
     val keyService: IKeyService<T>,
     entityClass: Class<*>,
     private val keyFromEntity: Function<E, Key<T>>,

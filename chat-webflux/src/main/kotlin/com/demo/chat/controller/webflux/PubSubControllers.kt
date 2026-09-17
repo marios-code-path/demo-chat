@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/pubsub")
 @ConditionalOnProperty(prefix = "app.controller", name = ["pubsub"])
-class PubSubRestController<T>(
+class PubSubRestController<T : Any>(
     private val keyBeans: KeyServiceBeans<T>,
     private val that: PubSubServiceBeans<T, String>
 ) : TopicPubSubRestMapping<T>,

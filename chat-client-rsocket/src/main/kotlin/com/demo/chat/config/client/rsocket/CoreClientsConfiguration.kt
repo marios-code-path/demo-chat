@@ -6,7 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-open class CoreClientsConfiguration<T, V, Q>(
+open class CoreClientsConfiguration<T : Any, V, Q>(
     private val services: CoreRSocketClients<T, V, Q>
 )  {
     @ConditionalOnProperty(prefix = "app.client.rsocket.core", name = ["pubsub"])

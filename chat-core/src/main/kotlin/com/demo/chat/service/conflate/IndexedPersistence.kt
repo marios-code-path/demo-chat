@@ -6,7 +6,7 @@ import com.demo.chat.service.core.IndexService
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class IndexedPersistence<T, V, E, Q>(
+open class IndexedPersistence<T, V, E : Any, Q>(
     val persistence: EnricherPersistenceStore<T, V, E>,
     val index: IndexService<T, E, Q>
 ) : EnricherPersistenceStore<T, V, E> by persistence {

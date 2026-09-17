@@ -5,7 +5,7 @@ import com.demo.chat.service.core.EnricherPersistenceStore
 import com.demo.chat.service.core.PersistenceStore
 import reactor.core.publisher.Mono
 
-open class KeyEnricherPersistenceStore<T, V, E>(
+open class KeyEnricherPersistenceStore<T, V, E : Any>(
     val store: PersistenceStore<T, E>,
     val enricher: (data: V, key: Key<T>) -> E,
 ) : EnricherPersistenceStore<T, V, E>, PersistenceStore<T, E> by store {

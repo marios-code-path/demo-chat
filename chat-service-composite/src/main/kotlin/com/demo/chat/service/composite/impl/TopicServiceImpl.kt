@@ -12,7 +12,7 @@ import java.util.function.Function
 import java.util.function.Supplier
 
 
-open class TopicServiceImpl<T, V, Q>(
+open class TopicServiceImpl<T : Any, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
     private val topicIndex: TopicIndexService<T, Q>,
     private val pubsub: TopicPubSubService<T, V>,

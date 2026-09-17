@@ -5,7 +5,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Mono.empty
 
-open class DummyTopicInventoryService<T> : TopicInventoryService<T> {
+open class DummyTopicInventoryService<T : Any> : TopicInventoryService<T> {
     override fun open(topicId: T): Mono<Void> = empty()
 
     override fun close(topicId: T): Mono<Void> = empty()

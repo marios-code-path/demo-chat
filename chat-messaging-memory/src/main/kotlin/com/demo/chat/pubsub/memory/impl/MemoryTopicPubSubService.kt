@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap
  * [DirectProcessor] / [ReplayProcessor] and had known resource-leak issues
  * (disposable management was broken).
  */
-class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
+class MemoryTopicPubSubService<T : Any, V> : TopicPubSubService<T, V> {
 
     private val sinks: MutableMap<T, Sinks.Many<Message<T, V>>> = ConcurrentHashMap()
     private val topicMembers: MutableMap<T, MutableSet<T>> = ConcurrentHashMap()
@@ -88,7 +88,10 @@ class MemoryTopicPubSubService<T, V> : TopicPubSubService<T, V> {
 
     override fun sendMessage(message: Message<T, V>): Mono<Void> =
         topicExistsOrError(message.key.dest)
-            .map {
+            // doOnNext, not map. The lookup is nullable, and Mono.map rejects a
+            // null from its mapper at runtime. The emit result was discarded by
+            // the then() below, so nothing reads it.
+            .doOnNext {
                 sinks[message.key.dest]?.tryEmitNext(message)
             }.then()
 

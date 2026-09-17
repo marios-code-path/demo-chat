@@ -5,11 +5,11 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-interface EnricherPersistenceStore<T, V, E> : PersistenceStore<T, E> {
+interface EnricherPersistenceStore<T, V, E : Any> : PersistenceStore<T, E> {
     fun addEnriched(data: V): Mono<E>
 }
 
-interface PersistenceStore<T, E> {
+interface PersistenceStore<T, E : Any> {
     fun key(): Mono<out Key<T>>
     fun add(ent: E): Mono<Void>
     fun rem(key: Key<T>): Mono<Void>
@@ -34,4 +34,4 @@ interface KeyValueStore<T, V> : PersistenceImpl<T, KeyValuePair<T, V>> {
 
 interface InitializingKVStore : KeyValueStore<String, String>
 
-interface PersistenceImpl<T, V> : PersistenceStore<T, V>
+interface PersistenceImpl<T, V : Any> : PersistenceStore<T, V>

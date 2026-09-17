@@ -14,7 +14,7 @@ import reactor.kafka.receiver.KafkaReceiver
 import reactor.kafka.receiver.ReceiverOptions
 import java.util.concurrent.ConcurrentHashMap
 
-class KafkaTopicPubSubService<T, V>(
+class KafkaTopicPubSubService<T : Any, V>(
     private val producer: ReactiveKafkaProducerTemplate<String, Message<T, V>>,
     private val admin: KafkaTopicAdmin<T>,
     private val typeUtil: TypeUtil<T>,

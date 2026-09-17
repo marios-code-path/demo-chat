@@ -7,7 +7,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface TopicPubSubServiceMapping<T, V> : TopicPubSubService<T, V> {
+interface TopicPubSubServiceMapping<T : Any, V> : TopicPubSubService<T, V> {
     @MessageMapping("subscribe")
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void>
 

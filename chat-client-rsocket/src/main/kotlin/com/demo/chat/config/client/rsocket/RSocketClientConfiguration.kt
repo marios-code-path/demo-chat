@@ -39,7 +39,7 @@ class RSocketClientConfiguration {
         RSocketRequester.builder().rsocketStrategies(strategies)
 
     @Bean
-    fun <T> coreClientBeans(
+    fun <T : Any> coreClientBeans(
         requesterFactory: ClientFactory<RSocketRequester>,
         clientProps: RSocketClientProperties,
         typeUtil: TypeUtil<T>

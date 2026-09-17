@@ -12,7 +12,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-open class MessagingServiceImpl<T, V, Q>(
+open class MessagingServiceImpl<T : Any, V, Q>(
     private val messageIndex: MessageIndexService<T, V, Q>,
     private val messagePersistence: MessagePersistence<T, V>,
     private val pubsub: TopicPubSubService<T, V>,

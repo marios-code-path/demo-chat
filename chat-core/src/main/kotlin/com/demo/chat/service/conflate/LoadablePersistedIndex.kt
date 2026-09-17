@@ -4,7 +4,7 @@ import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.LoadableService
 import com.demo.chat.service.core.PersistenceStore
 
-class LoadablePersistedIndex<T, E, Q>(
+class LoadablePersistedIndex<T, E : Any, Q>(
     val persistence: PersistenceStore<T, E>,
     val index: IndexService<T, E, Q>,
 ) : IndexService<T, E, Q> by index, LoadableService {

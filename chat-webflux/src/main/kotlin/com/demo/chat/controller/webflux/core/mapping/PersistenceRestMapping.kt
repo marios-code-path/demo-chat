@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface PersistenceRestMapping<T, E> : PersistenceStore<T, E> {
+interface PersistenceRestMapping<T, E : Any> : PersistenceStore<T, E> {
     // The controller is generic in T, so T is erased where Spring resolves an
     // argument: it cannot bind a path segment as the key type. The segment
     // arrives as the String it is on the wire, and typeUtil() converts it to the

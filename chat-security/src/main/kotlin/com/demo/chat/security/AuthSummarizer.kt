@@ -40,7 +40,7 @@ import reactor.core.publisher.Flux
 
 // 1: requires a principal entity id = Pid
 // 2: requires all wildcard id's = Wid[n]
-interface Summarizer<M, T> {
+interface Summarizer<M : Any, T> {
     fun computeAggregates(elements: Flux<M>, actorIds: Sequence<T>): Flux<M>
 }
 

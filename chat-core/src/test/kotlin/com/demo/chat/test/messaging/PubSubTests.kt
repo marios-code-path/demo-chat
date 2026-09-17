@@ -12,7 +12,7 @@ import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.function.Supplier
 
-abstract class PubSubTests<T, V>(
+abstract class PubSubTests<T : Any, V>(
     val messaging: TopicPubSubService<T, V>,
     val keySvc: IKeyService<T>,
     val valueSupply: Supplier<V>,

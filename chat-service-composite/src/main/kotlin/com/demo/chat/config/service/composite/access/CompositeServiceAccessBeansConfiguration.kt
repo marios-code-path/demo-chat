@@ -11,7 +11,7 @@ import com.demo.chat.service.security.AccessBroker
 import org.reactivestreams.Publisher
 
 // TODO... refactor into a message pattern instead of ...
-class CompositeServiceAccessBeansConfiguration<T, V, Q>(
+class CompositeServiceAccessBeansConfiguration<T : Any, V, Q>(
     private val accessBroker: AccessBroker<T>,
     private val principalKeyPublisher: () -> Publisher<Key<T>>,
     private val rootKeys: RootKeys<T>,

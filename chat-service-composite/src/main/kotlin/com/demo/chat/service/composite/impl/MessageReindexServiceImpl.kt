@@ -25,7 +25,7 @@ import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-class MessageReindexServiceImpl<T, V>(
+class MessageReindexServiceImpl<T : Any, V>(
     private val persistence: MessagePersistence<T, V>,
     private val indexer: MessageVectorIndexer<T>,
     private val state: VectorIndexState<T>,
