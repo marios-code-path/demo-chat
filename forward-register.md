@@ -1333,12 +1333,12 @@ single module build names, or `-Pexpose-rsocket` prints an activation warning.
   artifact with no scope, and the effective pom then reports compile. Maven
   prints no duplicate warning. That is what the profile is for, and the test
   scope still holds without it.
-- **`-Pdeploy` with `-am` nests one fat jar inside another.** The deploy profile
-  sets the Boot repackage skip to false for every module of the reactor it runs
-  in. A run of `-pl chat-deploy-memory -am` repackaged `chat-deploy` as its own
-  executable jar, and that 49 MiB file landed in `BOOT-INF/lib` of the
-  artifact. The same command without `-am` gives 180 MiB and a 73 KiB
-  `chat-deploy` library. The launch gate names one module and passes no `-am`.
+- **`-Pdeploy` with `-am` nested one fat jar inside another.** The deploy
+  profile sets the Boot repackage skip to false for every module of the reactor
+  it runs in. A run of `-pl chat-deploy-memory -am` repackaged `chat-deploy` as
+  its own executable jar, and that 49 MiB file landed in `BOOT-INF/lib` of the
+  artifact. **Fixed on 2026-09-17 by the exec classifier. See the section
+  below.**
 
 ### One dependency pin
 
@@ -1361,3 +1361,68 @@ artifacts.
   exits 0.
 - Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
 - Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped.
+
+## The exec classifier (2026-09-17)
+
+`CHAT-dasmldiw`.
+
+### The defect
+
+The root `deploy` profile repackages every module of the reactor it runs in,
+because a profile on the parent reaches them all. The repackaged jar replaced
+the plain one, so a module that is both an application and a library shipped as
+a fat jar to anything that depended on it.
+
+`chat-deploy` is exactly that module. It declares a main class, and the four
+backend deploy modules depend on it. A run of
+`-pl chat-deploy-memory -am -Pdeploy` gave a 229 MiB artifact whose
+`BOOT-INF/lib` held `chat-deploy-0.0.1.jar` at 49 MiB.
+
+### Why the obvious fix does not work
+
+`CHAT-dasmldiw` proposed gating the repackage on a property that only launchable
+modules set. **That does not fix this case.** `chat-deploy` is launchable, so it
+would set the property and repackage anyway, and the nesting would return.
+
+The property that matters is not "does this module declare a main class". It is
+"is this module a dependency of another module in this build", and maven offers
+no way to express that in plugin configuration.
+
+### The fix
+
+The repackage takes `<classifier>exec</classifier>`. The executable artifact
+becomes `<module>-0.0.1-exec.jar` and the plain `<module>-0.0.1.jar` stays the
+library. An upstream module then reaches `chat-deploy` as a 71 KiB library,
+whatever profile is active.
+
+Measured on 2026-09-17: the same `-am` command now gives 180 MiB, and
+`BOOT-INF/lib/chat-deploy-0.0.1.jar` is 71 KiB.
+
+### What follows the classifier
+
+- **`java -jar` names the `-exec` jar.** The launch gate and the operator
+  procedure in `docs/EMBEDDING-PROVIDERS.md` both do.
+- **`spring-boot:run` and `spring-boot:build-image` read the same plugin
+  configuration**, so both follow the classifier without a second entry. The
+  plugin descriptor of 3.5.12 carries the parameter on both goals.
+- **`chat-build` needs no change.** It runs `spring-boot:run` and
+  `spring-boot:build-image`, and it never names a jar.
+- **The `test-build` profile of `chat-deploy-memory-integration-test` is
+  untouched.** It configures the plugin inside its own module, so the root
+  profile never reaches it.
+
+### The payoff
+
+The launch gate builds with one command again, `-pl chat-deploy-memory -am`,
+because `-am` is safe now. It ran two commands before: an install of the whole
+reactor, then a scoped package.
+
+### Measured
+
+- `-pl chat-deploy-memory -am -Pexpose-webflux,deploy` gives a 180 MiB
+  executable holding a 71 KiB `chat-deploy`.
+- The launch gate exits 0 with 3 hits and `indexComplete` true.
+- Default build: 808 tests, 0 failures, 0 errors, 30 skipped.
+- Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped. That run
+  builds the test image, which is the image path this change could have broken.
+- Every expose profile and the deploy profile pass a reactor validate.
