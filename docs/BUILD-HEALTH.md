@@ -2,7 +2,7 @@
 
 Known build-time deficiencies, what causes them, and what they take down with them.
 
-**Verified against `chat-oghjsnad-vector-reindex` `e7171cef` on 2026-09-15** by the default and `--integration` verifier modes, each reporting no drift.
+**Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 Do not trust this file on its own — run the verifier:
 
@@ -20,9 +20,11 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
-Measured on 2026-09-15, after the embedding provider work. Default mode
-reports 800 tests with 30 skipped, so 770 run. Integration mode reports 1019
-tests with 55 skipped, so 964 run. Both report zero failures and zero errors.
+Measured on 2026-09-17, after the vector index status contract and the two
+build profile fixes. Default mode reports 808 tests with 30 skipped, so 778
+run. Integration mode reports 1027 tests with 55 skipped, so 972 run. Both
+report zero failures and zero errors, and `--install` reports the same counts
+as the default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
@@ -41,7 +43,7 @@ Note what the default run no longer covers. Since #32 the container-backed tests
 
 The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-15, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|
