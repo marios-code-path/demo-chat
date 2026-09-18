@@ -11,7 +11,7 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
 
-interface TopicRepository<T> :
+interface TopicRepository<T : Any> :
         ReactiveCassandraRepository<ChatTopic<T>, T>,
     TopicRepositoryCustom<T> {
     fun findByKeyId(id: T): Mono<ChatTopic<T>>

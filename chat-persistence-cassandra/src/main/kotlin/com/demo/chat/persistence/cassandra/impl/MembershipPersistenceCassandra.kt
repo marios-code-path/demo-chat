@@ -9,7 +9,7 @@ import com.demo.chat.service.core.MembershipPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class MembershipPersistenceCassandra<T>(
+class MembershipPersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
     private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {

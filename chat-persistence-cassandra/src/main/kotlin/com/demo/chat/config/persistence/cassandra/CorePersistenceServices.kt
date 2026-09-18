@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["persistence"], havingValue = "cassandra")
-class CorePersistenceServices<T>(
+class CorePersistenceServices<T : Any>(
     keyService: IKeyService<T>,
     userRepo: ChatUserRepository<T>,
     topicRepo: TopicRepository<T>,

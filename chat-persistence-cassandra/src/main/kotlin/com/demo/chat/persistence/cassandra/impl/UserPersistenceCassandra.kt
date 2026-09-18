@@ -8,7 +8,7 @@ import com.demo.chat.service.core.UserPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class UserPersistenceCassandra<T>(
+open class UserPersistenceCassandra<T : Any>(
     val keyService: IKeyService<T>,
     private val userRepo: ChatUserRepository<T>
 ) : UserPersistence<T> {

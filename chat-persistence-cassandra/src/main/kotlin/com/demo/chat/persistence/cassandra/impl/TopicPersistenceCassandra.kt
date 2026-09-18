@@ -9,7 +9,7 @@ import com.demo.chat.service.core.TopicPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-open class TopicPersistenceCassandra<T>(private val keyService: IKeyService<T>,
+open class TopicPersistenceCassandra<T : Any>(private val keyService: IKeyService<T>,
                                         private val roomRepo: TopicRepository<T>
 )
     : TopicPersistence<T> {
