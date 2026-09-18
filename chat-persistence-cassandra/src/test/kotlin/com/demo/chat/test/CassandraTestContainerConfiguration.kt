@@ -49,14 +49,15 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
         val mappedPort = container.getMappedPort(props.port)
         log.debug("Container is reachable on port: $mappedPort")
 
-        // Spring Boot 4 types the contact points as nullable. The test
-        // resources of this module set them, so an absent list is a broken
-        // fixture rather than a state this code handles.
-        val contactPoints = checkNotNull(props.contactPoints) {
-            "the test resources do not set spring.cassandra.contact-points"
+        // Spring Boot 4 types the contact points as nullable. An absent list
+        // reads as an empty one, which keeps the optional behaviour of the
+        // property. The container host replaces the first entry either way.
+        val contactPoints = props.contactPoints.orEmpty().toMutableList()
+        if (contactPoints.isNotEmpty()) {
+            contactPoints.removeAt(0)
         }
-        contactPoints.removeAt(0)
         contactPoints.add(host)
+        props.contactPoints = contactPoints
         props.port = mappedPort
 
         return container
