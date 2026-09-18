@@ -19,7 +19,7 @@ class InitOnRootKeyInitialized<T>(
     val initialUserService: InitialUsersService<T>,
     val rootKeys: RootKeys<T>
 ) : ApplicationRunner {
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
         initialUserService.initializeUsers(rootKeys)
         eventPublisher.publishEvent(StartupAnnouncementEvent("Initialized Users"))
         eventPublisher.publishEvent(RootKeyUpdatedEvent(rootKeys))

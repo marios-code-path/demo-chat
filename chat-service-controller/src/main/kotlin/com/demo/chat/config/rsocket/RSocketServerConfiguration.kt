@@ -3,7 +3,7 @@ package com.demo.chat.config.rsocket
 import com.demo.chat.domain.knownkey.RootKeys
 //import com.demo.chat.secure.service.CoreReactiveAuthenticationManager
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.autoconfigure.rsocket.RSocketMessageHandlerCustomizer
+import org.springframework.boot.rsocket.autoconfigure.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
