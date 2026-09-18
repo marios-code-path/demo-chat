@@ -52,7 +52,7 @@ READ="curl -sS -u actuator:actuator $VECTORINDEX"
 
 # Take the instant before the trigger. The trigger never promises the job key,
 # so a reader correlates by start instant. This needs compatible clocks.
-TRIGGER_AT=$(date +%s)
+TRIGGER_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 curl -sS -u actuator:actuator -X POST "$VECTORINDEX" > /tmp/trigger.json
 
 # A rejected trigger starts nothing and creates no job. Do not wait for one.
@@ -77,16 +77,16 @@ $READ | jq -e '.status.running == false' > /dev/null || {
 INNER=15
 TERMINAL='[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | length > 0'
 for _ in $(seq 1 "$INNER"); do
-    $READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null && break
+    $READ | jq -e --arg t "$TRIGGER_AT" "$TERMINAL" > /dev/null && break
     sleep 1
 done
-$READ | jq -e --argjson t "$TRIGGER_AT" "$TERMINAL" > /dev/null || {
+$READ | jq -e --arg t "$TRIGGER_AT" "$TERMINAL" > /dev/null || {
     echo "the inner bound expired and the run ended without a durable record"
     exit 1
 }
 
 # Only SUCCEEDED proves that the rebuild did its work.
-OUTCOME=$($READ | jq -r --argjson t "$TRIGGER_AT" '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | sort_by(.startedAt) | last | .outcome')
+OUTCOME=$($READ | jq -r --arg t "$TRIGGER_AT" '[.jobs[] | select(.startedAt >= $t and .outcome != "RUNNING")] | sort_by(.startedAt) | last | .outcome')
 [ "$OUTCOME" = "SUCCEEDED" ] || {
     echo "the newest job reports $OUTCOME, and only SUCCEEDED proves a rebuild"
     exit 1
@@ -177,7 +177,7 @@ rebuild reads the persisted messages.
 The instant comes first, because Step 3 correlates the job with it.
 
 ```bash
-TRIGGER_AT=$(date +%s)
+TRIGGER_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 ```
 
@@ -253,7 +253,7 @@ nothing. `indexComplete=true` says the search was complete and found nothing.
 The instant comes first here too, because Step 3 correlates the job with it.
 
 ```bash
-TRIGGER_AT=$(date +%s)
+TRIGGER_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 curl -sS -u actuator:actuator -X POST http://localhost:8080/actuator/vectorindex
 ```
 
@@ -396,6 +396,19 @@ answer carries. A status also holds `lastSuccessAt` and `lastFailure`. A job
 also holds `incarnationId`, `startedBy`, `startedAt`, `finishedAt`, and
 `lastInvalidationAt`. A report also holds `startedAt` and `finishedAt`. A
 message key also holds `timestamp` and `empty`.
+
+**Every timestamp is an ISO-8601 string in UTC**, such as
+`"2026-09-18T17:53:58.500838Z"`. `startedAt`, `finishedAt`, `lastSuccessAt` and
+`lastInvalidationAt` all read that way, so the comparisons above pass `--arg`
+and compare text.
+
+**This shape changed on Spring Boot 4.** Spring Boot 3.5.16 answered with
+decimal epoch seconds, such as `1789754129.614384`, and every reader compared
+numbers. The numeric form was never a decision: `@EnableWebFlux` made Spring
+Boot back its codec configuration off, and the encoder used its own Jackson 2
+default. `ServerJsonCodecConfiguration` in `chat-deploy` now states the codec,
+so a later framework default cannot move this shape in silence. See
+CHAT-ngevggjk.
 
 A job never carries `covers`, because that value is derived and the type hides
 it from Jackson. A status does carry `complete` and `running`, because those two
