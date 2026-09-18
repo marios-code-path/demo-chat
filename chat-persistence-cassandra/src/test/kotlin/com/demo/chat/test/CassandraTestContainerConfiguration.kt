@@ -3,7 +3,7 @@ package com.demo.chat.test
 import org.assertj.core.api.Assertions
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.context.annotation.Bean
@@ -49,8 +49,14 @@ open class CassandraTestContainerConfiguration(val props: CassandraProperties) {
         val mappedPort = container.getMappedPort(props.port)
         log.debug("Container is reachable on port: $mappedPort")
 
-        props.contactPoints.removeAt(0)
-        props.contactPoints.add(host)
+        // Spring Boot 4 types the contact points as nullable. The test
+        // resources of this module set them, so an absent list is a broken
+        // fixture rather than a state this code handles.
+        val contactPoints = checkNotNull(props.contactPoints) {
+            "the test resources do not set spring.cassandra.contact-points"
+        }
+        contactPoints.removeAt(0)
+        contactPoints.add(host)
         props.port = mappedPort
 
         return container
