@@ -20,7 +20,13 @@ class ConsulClientDiscovery(
     val logger: Logger = LoggerFactory.getLogger(ClientDiscovery::class.java)
 
     override fun getServiceInstance(serviceName: String): Mono<ServiceInstance> {
-        val serviceDest = configProps.getServiceConfig(serviceName).dest
+        // ClientProperty.dest is nullable in this repository, and Spring
+        // Cloud 5 requires a non-null service id. A null destination is a
+        // misconfiguration, and no default can stand in for it, so this
+        // names the service rather than discovering nothing.
+        val serviceDest = checkNotNull(configProps.getServiceConfig(serviceName).dest) {
+            "the client configuration for $serviceName declares no dest"
+        }
         logger.debug("Client Discovering $serviceName via $serviceDest")
 
         return discovery
