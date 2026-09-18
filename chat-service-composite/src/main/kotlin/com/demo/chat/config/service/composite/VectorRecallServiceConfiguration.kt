@@ -25,7 +25,9 @@ import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexState
 import com.demo.chat.service.vector.VectorWriteMode
 import com.demo.chat.service.vector.VectorTrust
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.ai.vectorstore.VectorStore
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -63,7 +65,7 @@ class VectorRecallServiceConfiguration<T : Any, V, Q>(
      * would let the stored shape and the deployed shape drift apart, and the
      * backend decode tests bind this same bean.
      */
-    private val codecMapper: ObjectMapper,
+    @Qualifier(JACKSON_2_OBJECT_MAPPER) private val codecMapper: ObjectMapper,
 ) {
     /** One value per process start. It separates this run from an earlier one. */
     private val incarnationId: String = UUID.randomUUID().toString()
