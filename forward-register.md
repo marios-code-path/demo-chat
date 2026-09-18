@@ -1600,3 +1600,63 @@ failure that names the wrong thing.
    Central served it. A `.lastUpdated` file records a failed fetch, not an absent
    artifact. Check the remote repository before you conclude anything about an
    artifact.
+
+## The Boot 4 dependency entries (2026-09-17)
+
+`CHAT-mndvipyh`, B4-S6. Measured on a throwaway branch at master `c1d98900`.
+**Nothing merged**, because every entry binds only under Boot 4.
+
+**The reactor validates on Boot 4.0.8 with zero enforcer violations.** Five
+validate rounds reached it. The task was written expecting two entries. The
+answer is thirteen, plus one correction.
+
+| Entry | Version | Why |
+|---|---|---|
+| `reactor-kafka` | 1.3.25 | neither new BOM manages it |
+| `micrometer-bom` import | 1.17.1 | spring-ai-model 2.0.1, over a managed 1.16.7 |
+| `spring-data-redis` | 4.1.1 | spring-ai-redis-store 2.0.1, over a managed 4.0.7 |
+| `spring-data-keyvalue` | 4.1.1 | cascade |
+| `spring-data-commons` | 4.1.1 | cascade |
+| `jedis` | 7.4.1 | spring-ai-redis-store, over a managed 7.0.0 |
+| `httpclient5` | 5.6.3 | elasticsearch-rest5-client 9.2.9, over a managed 5.5.2 |
+| `httpcore5`, `httpcore5-h2` | 5.4.3 | cascade |
+| three `victools` artifacts | 5.0.0 | convergence inside Spring AI |
+| `error_prone_annotations` | 2.41.0 | convergence under openai-java-core |
+
+### The correction, and it is the fourth of its kind
+
+**`nimbus-jose-jwt` moves from 10.0.2 to 10.4.** That property is an existing
+parent pin, added under `CHAT-mgtbicsq` to settle three conflicting versions.
+Under Boot 4 it becomes a **downgrade**, because spring-security-oauth2-jose
+7.0.7 requires 10.4.
+
+This repository has now met the stale local override four times: the
+`languageVersion` pins, the `jvmTarget` 1.8 pin, nineteen inline versions, and
+now a parent pin that a framework move overtook. **A parent entry is the right
+mechanism and it is not permanent.** Every pin needs re-reading when the BOM
+under it moves.
+
+### Three findings
+
+1. **A pin inside a family cascades.** `spring-data-redis` alone broke the
+   Spring Data set, and two more entries followed. The cleaner route is a
+   `spring-data-bom` import, but the train carrying redis 4.1.1 is later than
+   the one Boot 4.0.8 manages, and a newer Spring Data train under Boot 4.0.8
+   carries the same risk as the Cloud train. The three pins are measured. The
+   BOM import is an alternative that needs its own measurement.
+2. **Spring AI 2.0.1 ships an internally divergent tree.** `spring-ai-model`
+   pulls victools jsonschema 5.0.0 while `openai-java-core` 4.49.0 pulls 4.38.0.
+   Four of the thirteen entries exist only to converge Spring AI with itself.
+   Most builds never see this. `dependencyConvergence` does.
+3. **Neither enforcer rule fires for reactor-kafka against kafka-clients.** Boot
+   4 manages kafka-clients 4.1.2 and reactor-kafka 1.3.25 declares 3.9.1. An
+   upgrade keeps `requireUpperBoundDeps` quiet, and one resolved version keeps
+   `dependencyConvergence` quiet. **A clean validate says nothing about that
+   pair.** The kafka container tests are the only evidence, and reactor-kafka is
+   discontinued at its 1.3 line. See `CHAT-hazcatpc`.
+
+### What a clean validate does not prove
+
+It runs the enforcer and compiles nothing. The five module repairs under B4-S1
+to B4-S5 are untouched by this result, and the twelve modules that no probe has
+reached stay unmeasured. See `CHAT-ombbesyh`.
