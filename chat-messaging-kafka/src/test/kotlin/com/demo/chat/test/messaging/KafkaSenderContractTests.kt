@@ -31,8 +31,11 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * **A broker cannot show most of this.** An empty sender result, a cancelled
  * subscription, and an unsubscribed chain are states that a healthy broker
- * never produces. `KafkaPubSubTests` covers delivery and acknowledgement
- * against an embedded broker. This class covers the seams beside it.
+ * never produces.
+ *
+ * This class reads the send path only. `KafkaReceiverContractTests` reads the
+ * receive path. `KafkaPubSubTests` covers delivery against an embedded broker,
+ * and **it asserts nothing about offsets**.
  */
 class KafkaSenderContractTests {
 

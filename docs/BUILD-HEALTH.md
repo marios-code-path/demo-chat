@@ -20,12 +20,13 @@ It runs the build, diffs the failing modules against the list below, and exits n
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
-Measured on 2026-09-17, after the Kafka sender contract tests. Default mode
-reports 814 tests with 30 skipped, so 784 run. Integration mode reports 1033
-tests with 55 skipped, so 978 run.
+Measured on 2026-09-17, after the Kafka contract tests. Default mode reports
+818 tests with 30 skipped, so 788 run. Integration mode reports 1037 tests with
+55 skipped, so 982 run.
 
-The default count moved from 808 to 814 on 2026-09-17. `KafkaSenderContractTests`
-adds six tests. `CHAT-hazcatpc` carries the reason. Both
+The default count moved from 808 to 818 on 2026-09-17. `KafkaSenderContractTests`
+adds six tests, and `KafkaReceiverContractTests` adds four. `CHAT-hazcatpc`
+carries the reason. Both
 report zero failures and zero errors, and `--install` reports the same counts
 as the default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures

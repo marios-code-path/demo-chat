@@ -12,6 +12,7 @@ import reactor.core.scheduler.Schedulers
 import org.apache.kafka.clients.producer.ProducerRecord
 import reactor.kafka.receiver.KafkaReceiver
 import reactor.kafka.receiver.ReceiverOptions
+import reactor.kafka.receiver.ReceiverRecord
 import reactor.kafka.sender.KafkaSender
 import reactor.kafka.sender.SenderRecord
 import java.util.concurrent.ConcurrentHashMap
@@ -21,6 +22,16 @@ class KafkaTopicPubSubService<T : Any, V>(
     private val admin: KafkaTopicAdmin<T>,
     private val typeUtil: TypeUtil<T>,
     private val receiverOptions: ReceiverOptions<String, Message<T, V>>,
+    /**
+     * Opens the record stream of one subscription.
+     *
+     * The default calls `KafkaReceiver.create`, which is a static factory and
+     * which no test can replace. A test supplies its own records through this
+     * parameter, so the acknowledgement rule and the termination rule can be
+     * read without a broker. See CHAT-hazcatpc.
+     */
+    private val records: (ReceiverOptions<String, Message<T, V>>) -> Flux<ReceiverRecord<String, Message<T, V>>> =
+        { options -> KafkaReceiver.create(options).receive() },
 ) : TopicPubSubService<T, V> {
 
     private val sinks: MutableMap<T, Sinks.Many<Message<T, V>>> = ConcurrentHashMap()
@@ -46,8 +57,7 @@ class KafkaTopicPubSubService<T : Any, V>(
                 if (!consumers.containsKey(topicId)) {
                     val topicName = typeUtil.toString(topicId)
                     val options = receiverOptions.subscription(setOf(topicName))
-                    val disposable = KafkaReceiver.create(options)
-                        .receive()
+                    val disposable = records(options)
                         .subscribeOn(Schedulers.boundedElastic())
                         .subscribe { record ->
                             sink.tryEmitNext(record.value())
