@@ -23,6 +23,17 @@ open class CommandsUtil<T>(
         }
     }
 
+    /**
+     * The key conversion that a typed option needs.
+     *
+     * **Spring Shell 4 hands every option to the command as text.** The
+     * declarative model converted a `T` parameter through a registered
+     * converter, and the programmatic model does not. So a command that takes
+     * a key converts it here, through the same TypeUtil that `identity` uses
+     * for a value that is not the `_` placeholder.
+     */
+    open fun keyOf(value: String): T = typeUtil.fromString(value)
+
     open fun isAuthenticated(): Availability {
         return when (
             loggedInUser

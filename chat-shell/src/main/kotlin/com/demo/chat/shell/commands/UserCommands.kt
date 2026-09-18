@@ -94,7 +94,7 @@ class UserCommands<T : Any>(
         return userService
             .findByUserId(ByIdRequest(identity(userId)))
             .switchIfEmpty(Mono.error(NotFoundException))
-            .flatMap { passwdStore.addCredential(KeyCredential(it.key, passwordEncoder.encode(password))) }
+            .flatMap { passwdStore.addCredential(KeyCredential(it.key, checkNotNull(passwordEncoder.encode(password)) { "the password encoder returned no value" })) }
             .map { "Password Changed." }
             .block()
     }

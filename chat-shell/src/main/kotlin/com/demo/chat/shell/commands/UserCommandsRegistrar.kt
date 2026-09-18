@@ -24,7 +24,7 @@ import java.util.function.Function
  */
 @Configuration
 @Profile("shell")
-class UserCommandsRegistrar<T>(private val commands: UserCommands<T>) {
+class UserCommandsRegistrar<T : Any>(private val commands: UserCommands<T>) {
     @Bean
     fun kvCommand(): Command = Command.builder()
         .name("kv")
@@ -43,7 +43,7 @@ class UserCommandsRegistrar<T>(private val commands: UserCommands<T>) {
             .options(
                 CommandOption.with().longName("key").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.getKV(ctx.optionValue("key"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.getKV(commands.keyOf(ctx.optionValue("key")))?.toString() ?: "" })
 
     @Bean
     fun allKVCommand(): Command = Command.builder()
