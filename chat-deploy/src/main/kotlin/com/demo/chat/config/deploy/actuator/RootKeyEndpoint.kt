@@ -2,13 +2,14 @@ package com.demo.chat.config.deploy.actuator
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
+import org.springframework.boot.actuate.endpoint.Access
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
 import org.springframework.context.annotation.Bean
 import org.springframework.stereotype.Component
 
 @Component
-@Endpoint(id = "rootkeys", enableByDefault = true)
+@Endpoint(id = "rootkeys", defaultAccess = Access.UNRESTRICTED)
 class RootKeyEndpoint<T>(private val rootKeys: RootKeys<T>) {
 
     @ReadOperation

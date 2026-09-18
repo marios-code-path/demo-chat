@@ -32,7 +32,7 @@ class RootKeyConsumerHttp<T>(
     val rootKeys: RootKeys<T>
 ) : ApplicationRunner {
 
-    override fun run(args: ApplicationArguments?) {
+    override fun run(args: ApplicationArguments) {
             val exchangeStrategies = ExchangeStrategies.builder()
                 .codecs { configurer ->
                     configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))

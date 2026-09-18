@@ -9,6 +9,7 @@ import com.demo.chat.service.vector.VectorIndexStatus
 import com.demo.chat.service.vector.VectorIndexTriggerResult
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.actuate.endpoint.Access
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint
 import org.springframework.boot.actuate.endpoint.annotation.ReadOperation
 import org.springframework.boot.actuate.endpoint.annotation.WriteOperation
@@ -31,7 +32,7 @@ data class VectorIndexReport<T>(
  *
  * **An operator must set two properties.** The deployments load
  * `management-defaults.yml`, which sets
- * `management.endpoints.enabled-by-default` to false. So `enableByDefault` on
+ * `management.endpoints.enabled-by-default` to false. So `defaultAccess` on
  * the annotation is not enough on its own, and an id that is only exposed still
  * answers 404.
  *
@@ -52,7 +53,7 @@ data class VectorIndexReport<T>(
  * property must be present, which is the same rule as the two split gates.
  */
 @Component
-@Endpoint(id = "vectorindex", enableByDefault = true)
+@Endpoint(id = "vectorindex", defaultAccess = Access.UNRESTRICTED)
 @ConditionalOnProperty(
     name = [
         "app.service.composite",
