@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | The main checkout sits on `master` at `af30dfd2`, which is behind `origin/master`. This register is written from `.worktrees/vector-reindex`, on `chat-oghjsnad-vector-reindex`. |
-| Register state | Updated 2026-09-15, after the embedding provider work. This row merges two readings: PR #86 refreshed it on 2026-09-11, and this branch refreshed it again. |
-| Last merged PR | #86, merge commit `934a3287`. #83 `f9129f28`, #84 `b3d98cb2`, and #85 `6e3c4e36` came before it. #85 and #86 were squash merged. `d8cdd111` on `origin/master` is a register correction that followed. |
-| Merged feature branches | None remain. **The earlier claim that this repository has no auto-delete is wrong as of 2026-09-11.** A merge now removes the remote branch. The seven older refs that this row used to list are gone, and so are `origin/chat-kv-index`, `origin/ci-setup-java-v5`, `origin/docs-agents-import`, and `origin/docs-register-refresh`. Measured on 2026-09-15, `git ls-remote --heads origin` returns `master`, `chat-eroapfub-vector-runtime-flags`, `chat-oghjsnad-vector-reindex`, and two dependabot refs. |
-| Local branches | Seven, beside `master`. Four carry the vector work: `chat-oghjsnad-vector-reindex`, `chat-jhfptxiw-topic-query`, `chat-muuaovqn-vector-replace`, `chat-auglbxrm-null-converter`. Three predate it: `audit-doc`, `register-refresh`, `recovery/vector-reindex-pre-pr83-rebase`. |
-| Worktrees | Three, measured on 2026-09-15. The main checkout on `master`. `.worktrees/vector-reindex` on `chat-oghjsnad-vector-reindex`, which carries every task of the embedding plan. `.worktrees/topic-query` on `chat-muuaovqn-vector-replace`, whose commits the plan branch already holds by fast-forward. |
-| Open PRs | #87 carries this branch, against `master`. Dependabot holds #8 and #11. #10 is superseded by PR #73. |
+| Checkout | `master` at `d4349022`, clean, in sync with `origin`. One checkout, one branch. |
+| Register state | Updated 2026-09-17, after the four Spring Boot 4 prerequisites. |
+| Last merged PR | #97, merge commit `d4349022`. Before it: #96 `f874e7d4`, #95 `e13f87f3`, #94 `2ddd75c5`, #93 `56b82a97`, #92 `fdb30605`. |
+| Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
+| Merged feature branches | None remain, local or remote. A merge removes the remote branch. |
+| Worktrees | The main checkout only. |
+| Open PRs | Dependabot holds #8 and #11. Nothing of ours is in flight. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -1428,3 +1428,145 @@ reactor, then a scoped package.
 - Integration build: 1027 tests, 0 failures, 0 errors, 55 skipped. That run
   builds the test image, which is the image path this change could have broken.
 - Every expose profile and the deploy profile pass a reactor validate.
+
+## The Spring Boot 4 prerequisites (2026-09-17)
+
+`CHAT-pkolwuqm` is a scope issue and it is done. Four of its six children are
+merged, and **every one of them landed on Spring Boot 3.5.16**. That is the
+result the scope work bought.
+
+| PR | Issue | What |
+|----|-------|------|
+| #94 | `CHAT-ndqihvzh` | Reactor 3.8.7 and the JSpecify non-null bounds, 61 source files |
+| #95 | `CHAT-vjsbfecx` | Testcontainers 2 coordinates, 17 declarations in 9 modules |
+| #96 | `CHAT-eaobicll` | `spring-boot-starter-aop` removed, which Boot 4 does not publish |
+| #97 | `CHAT-jpvjwvje` | The gateway artifacts renamed to the webflux form |
+
+### The scope was measured with three probe builds
+
+1. Boot 4.0.8 with the Cloud train 2025.1.3: the reactor could not read 12
+   projects, and every failure named an artifact the new BOMs no longer manage.
+2. The same, coordinates repaired: the build reached the compiler and stopped in
+   `chat-core` with 44 errors in 6 files, all one cause.
+3. Boot 3.5.16 with `reactor-bom` 2025.0.7 alone: **the same 44 errors in the
+   same 6 files.**
+
+Probe 3 is why the work split the way it did. The largest part of the move was
+separable, so it left the critical path.
+
+### Reactor 3.8 is a Kotlin change, not a Reactor upgrade
+
+Reactor 3.8 adopts JSpecify. `Mono` and `Flux` annotate their type parameter as
+non-null, so Kotlin infers the bound `T : Any`. **Reactor requires no Kotlin
+syntax.** Kotlin reads the annotations and applies the stricter bound.
+
+61 source files took a bound and 64 lines added `: Any`. The cascade converged in
+eight compile rounds, because a bound on a base interface reaches every
+implementor.
+
+**The route matters more than the version.** `reactor-bom` 2025.0.7 also carries
+`reactor-netty` 1.3.7, which declares Netty 4.2.17.Final. Boot 3.5.16 manages
+Netty 4.1.135.Final and the Boot management wins, so the BOM route would run
+reactor-netty below the Netty line it requires. The parent names four artifacts
+instead: `reactor-core`, `reactor-test`, `reactor-kotlin-extensions` and
+`reactor-extra`. reactor-netty and Netty do not move.
+
+### Two source changes were not bounds
+
+- `MemoryTopicPubSubService.sendMessage` used `map` with a nullable sink lookup.
+  **`Mono.map` rejects a null from its mapper at runtime**, so a missing sink
+  would have thrown there. The call is `doOnNext` now, and nothing read the emit
+  result.
+- `Mono.toFuture()` completes with null for an empty Mono, so Reactor 3.8 types
+  it nullable. `SerialWriterTests` asserts the signal is present.
+
+### Testcontainers 2 renames every module artifact
+
+`cassandra` becomes `testcontainers-cassandra`. The core artifact keeps its name.
+
+**A clean compile was not evidence.** The first probe compiled with zero errors
+while two generations sat on one test classpath.
+`com.playtika.testcontainers:embedded-cassandra` names the old
+`org.testcontainers:cassandra` coordinate at 1.17.6, which the 2.x BOM does not
+manage. Both jars ship
+`org/testcontainers/containers/CassandraContainer.class`, so the compiler read
+whichever came first. Only `dependency:tree` showed it.
+
+Removing playtika exposed two defects older than that task. `chat-index-cassandra`
+had never declared Testcontainers and took the class transitively, and
+`UserIndexTests` imported the legacy 3.x driver that PR #74 had migrated away
+from.
+
+### The AOP starter was dead weight
+
+`spring-boot-starter-aop` carries `spring-boot-starter`, `spring-aop` and
+`aspectjweaver`. No source in this repository uses AspectJ. `spring-aop` arrives
+through `spring-context` anyway. **Every `@PreAuthorize` sits in `chat-security`,
+which has never held `aspectjweaver`**, so the method security path proves the
+weaver is not needed.
+
+`AopAutoConfiguration$ClassProxyingConfiguration` is annotated
+`@ConditionalOnMissingClass("org.aspectj.weaver.Advice")`, read from the compiled
+class. Boot activates that branch without the weaver and still forces class
+proxying, so the proxy strategy does not change.
+
+### The gateway rename has a migration window
+
+`spring-cloud-gateway-server` publishes 2.2.6.RELEASE through 4.3.5 and stops.
+`spring-cloud-gateway-server-webflux` publishes 4.3.0 through 5.0.3. Both exist
+between 4.3.0 and 4.3.5, and that window is what let the rename land early.
+
+At 4.3.5 the new artifact is a 3456 byte forwarding jar that depends on
+`spring-cloud-gateway-server`. At 5.0.x it becomes the real artifact.
+
+### What stays for the parent bump
+
+`CHAT-tvsgtjtm` carries the parent and two coordinate changes that cannot move
+earlier.
+
+- **The train.** `spring-cloud-commons` 5.0.3 requires `spring-security-crypto`
+  7.0.7, and Boot 3.5.16 manages 6.5.11. `requireUpperBoundDeps` refuses it.
+- **The contract BOM.** Spring Cloud Contract is still inside the 2025.0.3 train
+  at 4.3.4. It leaves the train at 2025.1.x.
+- **Spring AI 2.0**, `CHAT-ygllyglb`. `spring-ai-model` 2.0.1 depends on
+  `spring-messaging` 7.0.9, so it cannot ship separately.
+
+`CHAT-gidbchkx` is closed by measurement rather than by silence. Netty 4.2.2 adds
+the fall-back and 4.2.3 the preferred path. Boot 3.5.16 manages 4.1.135.Final and
+is the last 3.5 release, and Boot 4.0.0 manages 4.2.7.Final. **The
+`sun.misc.Unsafe::allocateMemory` warning still prints today.**
+
+### What is still unmeasured
+
+**Everything past `chat-core`.** All three scope probes stopped there on the
+reactor generics. So no module after it has compiled against Spring Framework 7
+or Spring Security 7. Do not read the absence of a finding as a clean module.
+
+Jackson is the smaller risk than it first appeared. Boot 4.0.8 manages both
+lines, `jackson-bom` 3.1.5 and `jackson-2-bom` 2.21.5, so the 69 files that
+import `com.fasterxml.jackson` may still compile. The risk moves to the
+auto-configuration default, and `DomainWireShapeTests` and `E2eeWireShapeTests`
+are the readers that matter.
+
+## Three build traps, each of which cost a cycle (2026-09-17)
+
+These are tooling traps, not code defects. Each one reports success, or reports a
+failure that names the wrong thing.
+
+1. **`-Dmaven.test.skip=true` also skips test jar creation.** An image rebuild
+   then fails with `Could not find artifact com.demo:chat-core:jar:tests`, and a
+   following `-Pintegration` run passes **against the previous image**. The green
+   test count says nothing about which image it used. Use `-DskipTests`, which
+   compiles the tests and produces the test jars, and **read the exit code of the
+   image build before you report an integration result.**
+2. **Surefire hides the cause of a discovery failure.** It prints `TestEngine
+   with ID 'junit-jupiter' failed to discover tests` and nothing else, in the
+   maven log and in `target/surefire-reports/*.dumpstream`. The real cause, a
+   `NoClassDefFoundError` in this case, sits in
+   `target/surefire-reports/*.dump`. Read that file.
+3. **A local repository is not evidence about a remote one.** An offline build
+   failed to resolve a jar, and the incomplete `~/.m2` directory beside a
+   `.lastUpdated` marker was read as proof that the artifact ships no jar. Maven
+   Central served it. A `.lastUpdated` file records a failed fetch, not an absent
+   artifact. Check the remote repository before you conclude anything about an
+   artifact.
