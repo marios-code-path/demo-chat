@@ -27,10 +27,26 @@ class ContactPointConfiguration(private val props: CassandraProperties) : Abstra
     // cassandra deployment with no keyspace cannot scope a node id claim.
     override fun getKeyspaceName(): String = NodeIdClaimConfiguration.keyspaceOf(props)
 
-    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
-        SessionBuilderConfigurer { sessionBuilder ->
-            sessionBuilder
-                .withAuthCredentials(props.username, props.password)
-                .addContactPoint(InetSocketAddress(props.contactPoints[0], props.port))
+    override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer {
+        // The base class supplies localhost when nothing sets the contact
+        // points, and this keeps that optional behaviour. It is read here
+        // rather than inside the lambda, because super does not resolve there.
+        val contactPoint = props.contactPoints?.firstOrNull() ?: super.getContactPoints()
+
+        // **Credentials are applied only when both are configured.** Spring
+        // Boot 4 types them as nullable, and no deployment yml and no test in
+        // this repository sets either one, measured on 2026-09-18. So the
+        // earlier code passed two nulls to the driver on every launch. An
+        // unset credential means an anonymous connection, which is a normal
+        // cassandra deployment, and it is what the absent property asks for.
+        val username = props.username
+        val password = props.password
+
+        return SessionBuilderConfigurer { sessionBuilder ->
+            if (username != null && password != null) {
+                sessionBuilder.withAuthCredentials(username, password)
+            }
+            sessionBuilder.addContactPoint(InetSocketAddress(contactPoint, props.port))
         }
+    }
 }
