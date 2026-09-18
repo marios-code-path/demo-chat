@@ -24,7 +24,7 @@ import java.util.function.Function
  */
 @Configuration
 @Profile("shell")
-class TopicCommandsRegistrar<T>(private val commands: TopicCommands<T>) {
+class TopicCommandsRegistrar<T : Any>(private val commands: TopicCommands<T>) {
     @Bean
     fun showTopicsCommand(): Command = Command.builder()
         .name("show-topics")
