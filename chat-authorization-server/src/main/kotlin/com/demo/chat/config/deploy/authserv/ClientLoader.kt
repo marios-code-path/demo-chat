@@ -1,7 +1,9 @@
 package com.demo.chat.config.deploy.authserv
 
 import com.demo.chat.auth.client.RegisteredClientFactory
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.autoconfigure.security.oauth2.server.servlet.OAuth2AuthorizationServerProperties
 import org.springframework.context.annotation.*
@@ -14,7 +16,7 @@ import java.io.File
 @Profile("client-init")
 @Configuration
 class ClientInitializer(val repo: RegisteredClientRepository,
-                        val mapper: ObjectMapper) {
+                        @Qualifier(JACKSON_2_OBJECT_MAPPER) val mapper: ObjectMapper) {
 
     @Bean
     fun loadOauth2AuthorizationServerProperties(properties: OAuth2AuthorizationServerProperties): ApplicationRunner =

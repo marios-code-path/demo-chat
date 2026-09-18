@@ -3,6 +3,7 @@ package com.demo.chat.config
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.serializers.MessageSerializerRedis
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Qualifier
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory
 import org.springframework.data.redis.core.ReactiveRedisTemplate
@@ -18,6 +19,7 @@ interface ConfigurationPropertiesRedis {
 }
 
 class RedisTemplateConfiguration(private val connectionFactory: ReactiveRedisConnectionFactory,
+                                 @Qualifier(JACKSON_2_OBJECT_MAPPER)
                                  private val objectMapper: ObjectMapper) {
     fun stringTemplate(): ReactiveStringRedisTemplate = ReactiveStringRedisTemplate(connectionFactory)
 

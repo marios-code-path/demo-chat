@@ -6,7 +6,9 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.actuator.RootKey
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.event.ApplicationStartedEvent
@@ -29,7 +31,7 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
     fun <T> captureRootKeys(
         @Value("\${app.rootkeys.consume.source}") hostURI: String,
         typeUtil: TypeUtil<T>,
-        mapper: ObjectMapper,
+        @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper,
         rootKeys: RootKeys<T>
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->

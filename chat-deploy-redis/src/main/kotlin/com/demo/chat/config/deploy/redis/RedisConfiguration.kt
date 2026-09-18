@@ -2,7 +2,9 @@ package com.demo.chat.config.deploy.redis
 
 import com.demo.chat.config.ConfigurationPropertiesRedis
 import com.demo.chat.config.RedisTemplateConfiguration
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -17,7 +19,7 @@ class RedisConfiguration(private val props: ConfigurationPropertiesRedis) {
     @Bean
     fun redisTemplateConfiguration(
         factory: ReactiveRedisConnectionFactory,
-        mapper: ObjectMapper
+        @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper
     ): RedisTemplateConfiguration =
         RedisTemplateConfiguration(factory, mapper)
 
