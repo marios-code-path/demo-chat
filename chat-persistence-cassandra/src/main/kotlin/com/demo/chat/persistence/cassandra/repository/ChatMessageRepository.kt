@@ -10,7 +10,7 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
 
-interface ChatMessageRepository<T> : ChatMessageRepositoryCustom<T>, ReactiveCassandraRepository<ChatMessageById<T>, T> {
+interface ChatMessageRepository<T : Any> : ChatMessageRepositoryCustom<T>, ReactiveCassandraRepository<ChatMessageById<T>, T> {
     fun findByKeyId(id: T): Mono<ChatMessageById<T>>
     @Suppress("unused")
     fun deleteByKeyId(msgId: T): Mono<Void>

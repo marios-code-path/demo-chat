@@ -9,7 +9,7 @@ import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.UserCredentialSecretsStore
 import reactor.core.publisher.Mono
 
-open class CredentialSecretsStoreCassandra<T>(val keyService: IKeyService<T>,
+open class CredentialSecretsStoreCassandra<T : Any>(val keyService: IKeyService<T>,
                                               private val credRepo: KeyCredentialRepository<T>
 ) : UserCredentialSecretsStore<T> {
         override fun getStoredCredentials(key: Key<T>): Mono<String> = credRepo.findByKeyId(key.id)

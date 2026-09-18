@@ -7,7 +7,7 @@ import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.fasterxml.jackson.databind.ObjectMapper
 
-open class CassandraPersistenceServices<T>(
+open class CassandraPersistenceServices<T : Any>(
     private val keyService: IKeyService<T>,
     private val userRepo: ChatUserRepository<T>,
     private val topicRepo: TopicRepository<T>,

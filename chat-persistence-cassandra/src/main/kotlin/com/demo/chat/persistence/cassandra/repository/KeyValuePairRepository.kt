@@ -5,7 +5,7 @@ import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface KeyValuePairRepository<T> : ReactiveCassandraRepository<CSKeyValuePair<T>, T> {
+interface KeyValuePairRepository<T : Any> : ReactiveCassandraRepository<CSKeyValuePair<T>, T> {
     fun findByKeyId(id: T): Mono<CSKeyValuePair<T>>
     fun deleteByKeyId(id: T): Mono<Void>
     fun findByKeyIdIn(ids: List<T>): Flux<CSKeyValuePair<T>>

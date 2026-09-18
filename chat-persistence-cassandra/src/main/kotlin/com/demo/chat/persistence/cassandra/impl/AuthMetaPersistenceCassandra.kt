@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono
 /*
 TODO: FIX For Single element deletions.
  */
-open class AuthMetaPersistenceCassandra<T>(
+open class AuthMetaPersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
     private val authMetadataRepo: AuthMetadataRepository<T>
 ) : AuthMetaPersistence<T> {

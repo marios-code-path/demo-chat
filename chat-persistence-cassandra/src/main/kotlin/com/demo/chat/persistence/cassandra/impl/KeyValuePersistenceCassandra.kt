@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class KeyValuePersistenceCassandra<T>(
+class KeyValuePersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
     private val repo: KeyValuePairRepository<T>,
     private val mapper: ObjectMapper,
