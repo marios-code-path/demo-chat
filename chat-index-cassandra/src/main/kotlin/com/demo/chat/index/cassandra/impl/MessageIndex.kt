@@ -19,7 +19,7 @@ import java.time.Instant
 import java.util.function.Function
 
 @Suppress("ReactorUnusedPublisher")
-class MessageIndex<T>(
+class MessageIndex<T : Any>(
     private val stringToKey: Function<String, T>,
     private val byUserRepo: ChatMessageByUserRepository<T>,
     private val byTopicRepo: ChatMessageByTopicRepository<T>,

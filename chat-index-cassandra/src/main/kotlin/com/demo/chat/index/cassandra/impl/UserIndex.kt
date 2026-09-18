@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @Suppress("ReactorUnusedPublisher")
-class UserIndex<T>(
+class UserIndex<T : Any>(
     private val userHandleRepo: ChatUserHandleRepository<T>
 ) : UserIndexService<T, Map<String, String>> {
 

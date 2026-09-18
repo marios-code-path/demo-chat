@@ -15,7 +15,7 @@ import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
 class IndexServiceConfiguration {
     @Bean
-    fun <T> indexServiceBeans(
+    fun <T : Any> indexServiceBeans(
         cassandra: ReactiveCassandraTemplate,
         userHandleRepo: ChatUserHandleRepository<T>,
         nameRepo: TopicByNameRepository<T>,

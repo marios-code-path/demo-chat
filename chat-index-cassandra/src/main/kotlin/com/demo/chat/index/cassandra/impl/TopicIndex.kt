@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 // TODO need a more idiomatic way of obtaining ALL
-class TopicIndex<T>(
+class TopicIndex<T : Any>(
         private val nameRepo: TopicByNameRepository<T>
 ) : TopicIndexService<T, Map<String, String>> {
     override fun add(entity: MessageTopic<T>): Mono<Void> = nameRepo.save(

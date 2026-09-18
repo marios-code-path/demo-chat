@@ -13,7 +13,7 @@ import com.demo.chat.service.security.AuthMetaIndex.Companion.TARGET
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-class AuthMetadataIndex<T>(
+class AuthMetadataIndex<T : Any>(
     private val typeUtil: TypeUtil<T>,
     private val targetRepository: AuthMetadataByTargetRepository<T>,
     private val principalRepository: AuthMetadataByPrincipalRepository<T>,
