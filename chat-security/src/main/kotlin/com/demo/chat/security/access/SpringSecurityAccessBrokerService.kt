@@ -60,7 +60,15 @@ class SpringSecurityAccessBrokerService<T>(
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
         .map {
-                it.authentication!!.principal as ChatUserDetails<T>
+            // Spring Security 7 types the authentication as nullable. A null
+            // one fails and names the missing value, rather than throwing a
+            // NullPointerException that names nothing.
+            //
+            // **It must not reach the anonymous fallback below.** That
+            // fallback answers an empty security context, which is a
+            // different state. A context that exists and holds no
+            // authentication is a defect, and it stays an error.
+            checkNotNull(it.authentication) { "the security context holds no authentication" }.principal as ChatUserDetails<T>
         }
         .switchIfEmpty(Mono.just(
             ChatUserDetails(User
