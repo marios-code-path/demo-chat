@@ -25,7 +25,10 @@ class CompositeServiceConfiguration {
         accessBroker = accessBroker,
         principalKeyPublisher = {
             ReactiveSecurityContextHolder.getContext()
-                .map { it.authentication.principal as ChatUserDetails<T> }
+                // Spring Security 7 types the authentication as nullable.
+                // SpringSecurityAccessBrokerService in chat-security asserts it
+                // the same way, and this keeps one pattern rather than two.
+                .map { it.authentication!!.principal as ChatUserDetails<T> }
                 .map { it.user.key }
         },
         rootKeys = rootKeys,
