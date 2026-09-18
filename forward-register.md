@@ -1542,6 +1542,36 @@ is the last 3.5 release, and Boot 4.0.0 manages 4.2.7.Final. **The
 reactor generics. So no module after it has compiled against Spring Framework 7
 or Spring Security 7. Do not read the absence of a finding as a clean module.
 
+### A deeper probe, run on 2026-09-17 after the four prerequisites merged
+
+Measured at master `d4349022`, with Boot 4.0.8, Cloud 2025.1.3, contract 5.0.3,
+Spring AI 2.0.1 and Spring Shell 4.0.3. Throwaway branch, nothing committed.
+
+The reactor **reads completely** now. The first scope probe could not read 12
+projects. This one could not read 1, `reactor-kafka`, which neither new BOM
+manages. One parent entry at 1.3.25 closed it.
+
+Two results follow.
+
+1. **`chat-core` main compiles against Spring Framework 7.** No module had
+   reached that point before. The failures are all in `chat-core` **test**
+   sources, so 32 modules still skip and Spring Security 7 stays unmeasured.
+2. **Boot 4.0.8 manages JUnit Jupiter 6.0.3**, up from 5.12.2, and JUnit 6
+   adopts JSpecify. Five `Mock*Resolver` classes in `chat-core` declare
+   `supportsParameter(param: ParameterContext?, ext: ExtensionContext?)` with
+   nullable platform types, and those no longer override. `resolveParameter`
+   must also return `Any?`. That is 30 of the 32 compile errors.
+   **This is the same shape as the Reactor 3.8 work**: a library adopts JSpecify
+   and Kotlin infers stricter types. The repair is mechanical.
+
+The other two errors sit in `SpringAiApiProbe`, where Spring AI 2.0 expects
+`Map<String, Any>` and the probe passes `Map<String, Any?>`.
+
+One enforcer violation appeared before the compiler: Spring AI 2.0.1 requires
+micrometer 1.17.1 and Boot 4.0.8 manages 1.16.7. A `micrometer-bom` import at
+1.17.1 in the parent closes it, which is the rule this repository already
+follows.
+
 Jackson is the smaller risk than it first appeared. Boot 4.0.8 manages both
 lines, `jackson-bom` 3.1.5 and `jackson-2-bom` 2.21.5, so the 69 files that
 import `com.fasterxml.jackson` may still compile. The risk moves to the
