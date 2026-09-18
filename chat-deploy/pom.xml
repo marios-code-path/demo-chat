@@ -197,6 +197,18 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
+        <!-- The Jackson 3 Kotlin module. Spring Boot 4 decodes a request body
+             with a Jackson 3 codec, and Jackson needs this module to apply a
+             Kotlin default value for an absent property. Without it an absent
+             property reads null, and null cannot enter a primitive. No source
+             names this artifact, because the codec finds it on the classpath.
+             This module owns the WebFlux runtime of every REST deployment.
+             See CHAT-micujksn. -->
+        <dependency>
+            <groupId>tools.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <scope>runtime</scope>
+        </dependency>
         <!-- Test scope only. This module owns the actuator filter chain, and
              chat-webflux owns the application filter chain. A test of their
              ownership needs both on one classpath. No deployment gets
