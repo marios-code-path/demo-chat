@@ -11,10 +11,10 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.given
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import reactor.core.publisher.Sinks
 import reactor.kafka.receiver.ReceiverOffset
 import reactor.kafka.receiver.ReceiverOptions
 import reactor.kafka.receiver.ReceiverRecord
@@ -22,6 +22,7 @@ import reactor.kafka.sender.KafkaSender
 import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The receive contract of [KafkaTopicPubSubService], read without a broker.
@@ -38,6 +39,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 class KafkaReceiverContractTests {
 
     private val topic = "TEST-TOPIC"
+
+    private fun awaitCount(counter: AtomicInteger, expected: Int, reason: String) {
+        val deadline = System.currentTimeMillis() + 5000
+
+        while (counter.get() < expected && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
+        }
+
+        assertThat(counter.get()).`as`(reason).isEqualTo(expected)
+    }
 
     private fun messageOf(body: String): Message<String, String> =
         Message.create(MessageKey.create("MSG-$body", "FROM", topic), body, true)
@@ -90,41 +101,59 @@ class KafkaReceiverContractTests {
     /**
      * 2. Termination after an error.
      *
-     * A failed record stream stops that consumer. The records before the
-     * error still reach the reader, and no record after it does. `open`
-     * already completed, so the error never reaches its caller.
+     * A failed record stream ends the subscription that `open` created. The
+     * source reports that end, so the proof does not depend on a record that
+     * the source could never produce.
+     *
+     * **An earlier version of this test was a tautology.** It built the source
+     * with `Flux.concat`, which stops at the error, so the record after the
+     * error never existed. The test then proved only that an absent record
+     * was not acknowledged. The owner review found it.
+     *
+     * The acknowledgement rules live in the two tests beside this one.
      */
     @Test
-    fun `stops the consumer when the record stream fails`() {
-        val offset = mock<ReceiverOffset>()
-        val afterFailure = mock<ReceiverOffset>()
+    fun `ends the consumer subscription when the record stream fails`() {
         val failure = IllegalStateException("the broker dropped the subscription")
 
-        val records = Flux.concat(
-            Flux.just(recordOf("before", offset)),
-            Flux.error(failure),
-            Flux.just(recordOf("after", afterFailure)),
-        )
+        val source = Sinks.many().multicast()
+            .onBackpressureBuffer<ReceiverRecord<String, Message<String, String>>>()
 
-        val service = serviceReceiving(records)
+        val subscriptions = AtomicInteger()
+        val endings = AtomicInteger()
+
+        val service = serviceReceiving(
+            source.asFlux()
+                .doOnSubscribe { subscriptions.incrementAndGet() }
+                .doFinally { endings.incrementAndGet() }
+        )
 
         val opened = AtomicBoolean(false)
         service.open(topic)
             .doOnSuccess { opened.set(true) }
             .block(Duration.ofSeconds(5))
 
+        awaitCount(subscriptions, 1, "open subscribes to the record stream once")
+
+        assertThat(endings.get())
+            .`as`("the subscription runs before the error")
+            .isZero()
+
+        source.tryEmitError(failure)
+
+        awaitCount(endings, 1, "the error ends the consumer subscription")
+
+        assertThat(subscriptions.get())
+            .`as`("the consumer does not subscribe again after the error")
+            .isOne()
+
         assertThat(opened.get())
             .`as`("a later stream failure never reaches the open caller")
             .isTrue()
 
-        StepVerifier.create(service.listenTo(topic))
-            .expectNextMatches { it.data == "before" }
-            .expectNoEvent(Duration.ofMillis(200))
-            .thenCancel()
-            .verify(Duration.ofSeconds(5))
-
-        verify(offset).acknowledge()
-        verify(afterFailure, never()).acknowledge()
+        assertThat(source.tryEmitNext(recordOf("after", mock())))
+            .`as`("no record can follow the error")
+            .isEqualTo(Sinks.EmitResult.FAIL_TERMINATED)
     }
 
     /**
