@@ -15,8 +15,8 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 
 class MockKeyServiceResolver : ParameterResolver {
-    override fun supportsParameter(param: ParameterContext?, ext: ExtensionContext?): Boolean =
-        with(param?.parameter?.parameterizedType!!) {
+    override fun supportsParameter(param: ParameterContext, ext: ExtensionContext): Boolean =
+        with(param.parameter.parameterizedType) {
             val pt = this as ParameterizedType
 
             when (pt.rawType) {
@@ -25,8 +25,8 @@ class MockKeyServiceResolver : ParameterResolver {
             }
         }
 
-    override fun resolveParameter(param: ParameterContext?, ext: ExtensionContext?): Any =
-        with(param?.parameter?.parameterizedType!!) {
+    override fun resolveParameter(param: ParameterContext, ext: ExtensionContext): Any? =
+        with(param.parameter.parameterizedType) {
             val pt = this as ParameterizedType
             println(pt.actualTypeArguments[0])
             when (pt.actualTypeArguments[0]) {

@@ -8,8 +8,8 @@ import java.lang.reflect.ParameterizedType
 import java.util.*
 
 class MockKeyGeneratorResolver : ParameterResolver, MockKeyGenerator() {
-    override fun supportsParameter(param: ParameterContext?, ext: ExtensionContext?): Boolean =
-        with(param?.parameter?.parameterizedType!!) {
+    override fun supportsParameter(param: ParameterContext, ext: ExtensionContext): Boolean =
+        with(param.parameter.parameterizedType) {
             val pt = this as ParameterizedType
 
             val ret = when (pt.rawType) {
@@ -20,8 +20,8 @@ class MockKeyGeneratorResolver : ParameterResolver, MockKeyGenerator() {
             ret
         }
 
-    override fun resolveParameter(param: ParameterContext?, ext: ExtensionContext?): Any =
-        with(param?.parameter?.parameterizedType!!) {
+    override fun resolveParameter(param: ParameterContext, ext: ExtensionContext): Any? =
+        with(param.parameter.parameterizedType) {
             val pt = this as ParameterizedType
             val ret = when (pt.actualTypeArguments[0]) {
                 UUID::class.java -> testKeyGen<UUID>()

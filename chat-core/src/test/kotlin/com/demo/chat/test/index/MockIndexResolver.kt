@@ -7,8 +7,8 @@ import org.junit.jupiter.api.extension.ParameterResolver
 import java.lang.reflect.ParameterizedType
 
 class MockIndexResolver : ParameterResolver {
-    override fun supportsParameter(param: ParameterContext?, ext: ExtensionContext?): Boolean =
-            with(param?.parameter?.parameterizedType!!) {
+    override fun supportsParameter(param: ParameterContext, ext: ExtensionContext): Boolean =
+            with(param.parameter.parameterizedType) {
                 val pt = this as ParameterizedType
 
                 when (pt.rawType) {
@@ -17,7 +17,7 @@ class MockIndexResolver : ParameterResolver {
                 }
             }
 
-    override fun resolveParameter(param: ParameterContext?, ext: ExtensionContext?): Any = supplier.get<Any, Any, Any>()
+    override fun resolveParameter(param: ParameterContext, ext: ExtensionContext): Any? = supplier.get<Any, Any, Any>()
 
     val supplier = MockIndexSupplier()
 }

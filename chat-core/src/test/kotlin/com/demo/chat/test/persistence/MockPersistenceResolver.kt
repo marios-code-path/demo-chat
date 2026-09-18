@@ -10,8 +10,8 @@ import java.lang.reflect.ParameterizedType
 
 class MockPersistenceResolver : ParameterResolver {
     var isEnriched = false;
-    override fun supportsParameter(param: ParameterContext?, ext: ExtensionContext?): Boolean =
-        with(param?.parameter?.parameterizedType!!) {
+    override fun supportsParameter(param: ParameterContext, ext: ExtensionContext): Boolean =
+        with(param.parameter.parameterizedType) {
             val pt = this as ParameterizedType
 
             when (pt.rawType) {
@@ -25,7 +25,7 @@ class MockPersistenceResolver : ParameterResolver {
         }
 
     // This can be fixed...
-    override fun resolveParameter(param: ParameterContext?, ext: ExtensionContext?): Any =
+    override fun resolveParameter(param: ParameterContext, ext: ExtensionContext): Any? =
         when(isEnriched) {
             true -> MockEnricherPersistenceStoreSupplier().get<Any, Any, Any>()
             else -> MockPersistenceSupplier().get<Any, Any>()
