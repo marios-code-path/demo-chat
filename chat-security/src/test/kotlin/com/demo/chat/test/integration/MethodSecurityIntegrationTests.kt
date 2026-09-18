@@ -36,7 +36,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.security.access.AccessDeniedException
@@ -74,7 +74,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     @Autowired
     private lateinit var keyServiceBeans: KeyServiceBeans<T>
 
-    @MockBean
+    @MockitoBean
     private lateinit var authService: AuthorizationService<T, AuthMetadata<T>>
 
     @Test

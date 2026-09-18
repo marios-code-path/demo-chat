@@ -16,7 +16,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ContextConfiguration
 import reactor.core.publisher.Mono
@@ -37,10 +37,10 @@ import reactor.test.StepVerifier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class MessageRecallControllerTests : RSocketTestBase("user", "password") {
 
-    @MockBean
+    @MockitoBean
     private lateinit var recallService: MessageRecallService<Long>
 
-    @MockBean
+    @MockitoBean
     private lateinit var secretsStore: SecretsStore<Long>
 
     @Test

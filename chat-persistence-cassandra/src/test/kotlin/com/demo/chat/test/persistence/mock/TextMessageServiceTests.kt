@@ -21,7 +21,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mockito
 import org.slf4j.LoggerFactory
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -39,7 +39,7 @@ class TextMessageServiceTests {
 
     lateinit var persistence: MessagePersistenceCassandra<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var msgRepo: ChatMessageRepository<UUID>
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
