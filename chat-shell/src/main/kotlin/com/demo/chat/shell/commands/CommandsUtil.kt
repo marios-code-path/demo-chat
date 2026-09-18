@@ -4,7 +4,7 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
-import org.springframework.shell.Availability
+import org.springframework.shell.core.command.availability.Availability
 
 open class CommandsUtil<T>(
     private val typeUtil: TypeUtil<T>,

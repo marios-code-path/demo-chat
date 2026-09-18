@@ -7,13 +7,11 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
-import org.springframework.shell.standard.ShellComponent
-import org.springframework.shell.standard.ShellMethod
-import org.springframework.shell.standard.ShellOption
+import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
 
 @Profile("shell")
-@ShellComponent
+@Component
 class TopicCommands<T : Any>(
     private val coreServices: CoreServices<T, String, IndexSearchRequest>,
     private val compositeServices: CompositeServiceBeans<T, String>,
@@ -25,18 +23,14 @@ class TopicCommands<T : Any>(
     fun topicToString(topic: MessageTopic<T>): String = "${topic.key.id} | ${topic.data}\n"
 
     private val topicService: ChatTopicService<T, String> = compositeServices.topicService()
-
-    @ShellMethod("show topics")
     fun showTopics(): String? = topicService
         .listRooms()
         .map(::topicToString)
         .reduce { t, u -> t + u }
         .block()
-
-    @ShellMethod("Create a topic")
     fun addTopic(
-        @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption name: String
+        userId: String,
+        name: String
     ) {
         val identity = identity(userId)
 
@@ -56,20 +50,16 @@ class TopicCommands<T : Any>(
             }
             .block()
     }
-
-    @ShellMethod("Topic by Name")
     fun topicByName(
-        @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption name: String
+        userId: String,
+        name: String
     ): String? = topicService
         .getRoomByName(ByStringRequest(name))
         .map(::topicToString)
         .block()
-
-    @ShellMethod("Subscribe to a topic")
     fun join(
-        @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption topicName: String
+        userId: String,
+        topicName: String
     ) = topicService
         .getRoomByName(ByStringRequest(topicName))
         .flatMap { topic ->
@@ -82,11 +72,9 @@ class TopicCommands<T : Any>(
                 )
         }
         .block()
-
-    @ShellMethod("unSubscribe to a topic")
     fun leave(
-        @ShellOption(defaultValue = "_") userId: String,
-        @ShellOption topicName: String
+        userId: String,
+        topicName: String
     ) = topicService
         .getRoomByName(ByStringRequest(topicName))
         .flatMap { topic ->
@@ -94,10 +82,8 @@ class TopicCommands<T : Any>(
                 .leaveRoom(MembershipRequest(identity(userId), topic.key.id))
         }
         .block()
-
-    @ShellMethod("Show what topics user is subscribed to")
     fun memberOf(
-        @ShellOption(defaultValue = "_") userId: String,
+        userId: String,
     ): String? = coreServices
         .pubSubService()
         .getByUser(identity(userId))
@@ -109,10 +95,8 @@ class TopicCommands<T : Any>(
         "${membership.member} | ${membership.memberOf}\n"
 
     fun topicMemberToString(member: TopicMember): String = "${member.uid} | ${member.handle} | ${member.imgUri}\n"
-
-    @ShellMethod("Show Subscribers on a topic")
     fun listMembers(
-        @ShellOption topicName: String
+        topicName: String
     ): String? = topicService
         .getRoomByName(ByStringRequest(topicName))
         .flatMap { topic -> topicService.roomMembers(ByIdRequest(topic.key.id)) }

@@ -8,13 +8,11 @@ import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.context.annotation.Profile
-import org.springframework.shell.standard.ShellComponent
-import org.springframework.shell.standard.ShellMethod
-import org.springframework.shell.standard.ShellOption
+import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 
 @Profile("shell")
-@ShellComponent
+@Component
 class PubSubCommands<T>(
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val typeUtil: TypeUtil<T>,
@@ -24,13 +22,11 @@ class PubSubCommands<T>(
     private val messageService: ChatMessageService<T, String> = compositeServices.messageService()
     private val topicService: ChatTopicService<T, String> = compositeServices.topicService()
     private val userService: ChatUserService<T> = compositeServices.userService()
-
-    @ShellMethod("Send a Message")
     fun send(
-        @ShellOption(defaultValue = "_") topicName: String,
-        @ShellOption(defaultValue = "_") topicId: String,
-        @ShellOption(defaultValue = "_") userName: String,
-        @ShellOption messageText: String
+        topicName: String,
+        topicId: String,
+        userName: String,
+        messageText: String
     ) {
         val identity: T = identity("_")
 
@@ -81,10 +77,8 @@ class PubSubCommands<T>(
             return
         }
     }
-
-    @ShellMethod("Listen to a topic")
     fun listen(
-        @ShellOption topicId: String
+        topicId: String
     ) {
         val d = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
             .doOnNext { message ->
@@ -94,9 +88,7 @@ class PubSubCommands<T>(
 
         ShellStateConfiguration.listeners[topicId] = d
     }
-
-    @ShellMethod("Stop listening to a topic")
-    fun hangup(@ShellOption topicId: String) {
+    fun hangup(topicId: String) {
         ShellStateConfiguration.listeners.remove(topicId)?.dispose()
     }
 }

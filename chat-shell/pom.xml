@@ -46,6 +46,16 @@
             <groupId>org.springframework.shell</groupId>
             <artifactId>spring-shell-starter</artifactId>
         </dependency>
+        <!--
+            JLine is explicit under Spring Shell 4. The 4.0.3 starter brings
+            spring-boot-starter and spring-shell-core-autoconfigure and no
+            jline, read from its published pom on 2026-09-18. The interactive
+            runner needs it. See CHAT-fxrwtvef.
+        -->
+        <dependency>
+            <groupId>org.springframework.shell</groupId>
+            <artifactId>spring-shell-jline</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
