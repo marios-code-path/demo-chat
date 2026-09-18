@@ -1,6 +1,7 @@
 package com.demo.chat.config.deploy.cassandra.dse
 
-import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
+import com.demo.chat.config.persistence.cassandra.NodeIdClaimConfiguration
+import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
@@ -21,7 +22,10 @@ import java.net.InetSocketAddress
 @Profile("cassandra-contact-point", "default")
 class ContactPointConfiguration(private val props: CassandraProperties) : AbstractReactiveCassandraConfiguration() {
 
-    override fun getKeyspaceName(): String = props.keyspaceName
+    // One contract, in one place. CHAT-dwbupbau set it: getKeyspaceName is
+    // abstract in the base class, no library default exists, and a
+    // cassandra deployment with no keyspace cannot scope a node id claim.
+    override fun getKeyspaceName(): String = NodeIdClaimConfiguration.keyspaceOf(props)
 
     override fun getSessionBuilderConfigurer(): SessionBuilderConfigurer =
         SessionBuilderConfigurer { sessionBuilder ->
