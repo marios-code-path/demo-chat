@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono
 //}
 class DefaultingAnonymousPayloadInterceptor<T>(private val rootKeys: RootKeys<T>) : PayloadInterceptor {
 
-    override fun intercept(exchange: PayloadExchange?, chain: PayloadInterceptorChain?): Mono<Void> {
+    override fun intercept(exchange: PayloadExchange, chain: PayloadInterceptorChain): Mono<Void> {
         return ReactiveSecurityContextHolder.getContext()
             .filter { c: SecurityContext -> c.authentication != null }
             .doOnNext { securityContext ->
@@ -38,6 +38,6 @@ class DefaultingAnonymousPayloadInterceptor<T>(private val rootKeys: RootKeys<T>
                     else -> {}
                 }
             }
-            .then(chain!!.next(exchange))
+            .then(chain.next(exchange))
     }
 }
