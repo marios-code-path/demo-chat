@@ -59,6 +59,11 @@ class ServerJsonCodecConfiguration : WebFluxConfigurer {
 
     override fun configureHttpMessageCodecs(configurer: ServerCodecConfigurer) {
         val mapper = JsonMapper.builder()
+            // The default codec calls this, and a stated codec replaces the
+            // default. Without it the Jackson 3 Kotlin module stays unread, a
+            // Kotlin default value never applies, and a request body that
+            // omits such a property answers 400. Measured on 2026-09-18.
+            .findAndAddModules()
             .disable(
                 DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS,
                 DateTimeFeature.WRITE_DURATIONS_AS_TIMESTAMPS,

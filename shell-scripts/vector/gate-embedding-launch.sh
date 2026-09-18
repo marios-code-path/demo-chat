@@ -295,5 +295,27 @@ if len(hits) < 3:
 print('   ok,', len(hits), 'hits and indexComplete true')
 " || { cat "$WORK/recall.json"; echo; tail -40 "$WORK/app.log"; fail "the recall answer is wrong"; }
 
+# The body above omits threshold, which carries a Kotlin default value. This
+# one states every field. Both shapes must decode. Spring Boot 4 decodes with a
+# Jackson 3 codec, and Jackson needs the Jackson 3 Kotlin module to apply a
+# Kotlin default for an absent property. Without that module the first body
+# answers 400 and this one answers 200, so one shape alone proves nothing.
+# See CHAT-micujksn.
+echo "11. Run one recall that states every field."
+curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
+    -H 'Content-Type: application/json' \
+    -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":5,"threshold":0.0}' \
+    > "$WORK/recall-full.json" || fail "the explicit recall did not answer"
+
+"$PYTHON" -c "
+import json, sys
+body = json.load(open('$WORK/recall-full.json'))
+hits = body.get('hits', [])
+if len(hits) < 3:
+    print('hits', len(hits), 'expected at least 3')
+    sys.exit(1)
+print('   ok,', len(hits), 'hits with every field stated')
+" || { cat "$WORK/recall-full.json"; fail "the explicit recall answer is wrong"; }
+
 echo
 echo "PASS. The packaged deployment embedded, rebuilt, and searched."
