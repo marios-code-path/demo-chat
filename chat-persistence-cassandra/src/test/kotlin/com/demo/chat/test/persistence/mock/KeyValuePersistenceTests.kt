@@ -17,7 +17,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
@@ -31,13 +31,13 @@ class KeyValuePersistenceTests {
 
     lateinit var persistence: KeyValueStore<Long, Any>
 
-    @MockBean
+    @MockitoBean
     lateinit var repo: KeyValuePairRepository<Long>
 
-    @MockBean
+    @MockitoBean
     lateinit var template: ReactiveCassandraTemplate
 
-    @MockBean
+    @MockitoBean
     lateinit var mapper: ObjectMapper
 
     private val keyService = TestLongKeyService()

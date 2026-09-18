@@ -15,7 +15,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
@@ -35,10 +35,10 @@ import java.util.UUID
 @Tag("integration")
 class UserIndexTests {
 
-    @MockBean
+    @MockitoBean
     private lateinit var byHandleRepo: ChatUserHandleRepository<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 
     @BeforeEach

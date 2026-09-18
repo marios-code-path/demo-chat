@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Flux
@@ -25,13 +25,13 @@ import java.util.*
     KVIndexTestConfiguration::class
 )
 class KeyValueIndexRequesterTests : RSocketTestBase() {
-//    @MockBean
+//    @MockitoBean
 //    private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 //
 //    private val message =
 //        Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
 
-    @MockBean
+    @MockitoBean
     private lateinit var indexService: KeyValueIndexService<UUID, IndexSearchRequest>
 
     private val kvData =

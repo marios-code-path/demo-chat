@@ -13,7 +13,7 @@ import com.demo.chat.test.rsocket.RSocketTestBase
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.stereotype.Controller
 import org.springframework.test.context.ContextConfiguration
@@ -30,13 +30,13 @@ import reactor.test.StepVerifier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SecretsControllerTests : RSocketTestBase("user", "password") {
 
-    @MockBean
+    @MockitoBean
     private lateinit var secretStore: SecretsStore<Long>
 
-    @MockBean
+    @MockitoBean
     private lateinit var rootKeys: RootKeys<Long>
 
-    @MockBean
+    @MockitoBean
     private lateinit var accessBroker: AccessBroker<Long>
 
 
