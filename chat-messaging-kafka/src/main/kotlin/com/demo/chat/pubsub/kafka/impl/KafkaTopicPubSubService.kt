@@ -4,18 +4,20 @@ import com.demo.chat.domain.Message
 import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.TopicPubSubService
-import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate
 import reactor.core.Disposable
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
 import reactor.core.scheduler.Schedulers
+import org.apache.kafka.clients.producer.ProducerRecord
 import reactor.kafka.receiver.KafkaReceiver
 import reactor.kafka.receiver.ReceiverOptions
+import reactor.kafka.sender.KafkaSender
+import reactor.kafka.sender.SenderRecord
 import java.util.concurrent.ConcurrentHashMap
 
 class KafkaTopicPubSubService<T : Any, V>(
-    private val producer: ReactiveKafkaProducerTemplate<String, Message<T, V>>,
+    private val sender: KafkaSender<String, Message<T, V>>,
     private val admin: KafkaTopicAdmin<T>,
     private val typeUtil: TypeUtil<T>,
     private val receiverOptions: ReceiverOptions<String, Message<T, V>>,
@@ -98,10 +100,28 @@ class KafkaTopicPubSubService<T : Any, V>(
             .subscribeOn(Schedulers.parallel())
             .then()
 
+    /**
+     * Sends one message and completes when the broker acknowledges it.
+     *
+     * `single` is deliberate. `KafkaSender.send` emits one result per record,
+     * so exactly one result is correct here. `next` would accept an empty
+     * send as a success and report completion for a message that never
+     * reached the broker.
+     *
+     * The correlation metadata carries the destination. Nothing reads it,
+     * because `then` discards the result. It avoids a null correlation.
+     *
+     * This is the shape that `ReactiveKafkaProducerTemplate.send` used
+     * before Spring Kafka 4 removed it. See CHAT-hazcatpc.
+     */
     override fun sendMessage(message: Message<T, V>): Mono<Void> =
         topicExistsOrError(message.key.dest)
             .flatMap {
-                producer.send(typeUtil.toString(message.key.dest), message)
+                val destination = typeUtil.toString(message.key.dest)
+                val record: SenderRecord<String, Message<T, V>, T> =
+                    SenderRecord.create(ProducerRecord(destination, message), message.key.dest)
+
+                sender.send(Mono.just(record)).single()
             }.then()
 
     override fun listenTo(topic: T): Flux<out Message<T, V>> =

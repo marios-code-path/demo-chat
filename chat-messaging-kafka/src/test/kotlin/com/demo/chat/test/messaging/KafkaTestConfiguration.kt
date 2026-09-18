@@ -14,10 +14,10 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
-import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate
 import org.springframework.kafka.support.serializer.JsonDeserializer
 import org.springframework.kafka.support.serializer.JsonSerializer
 import reactor.kafka.receiver.ReceiverOptions
+import reactor.kafka.sender.KafkaSender
 import reactor.kafka.sender.SenderOptions
 
 @TestConfiguration
@@ -39,13 +39,13 @@ class KafkaTestConfiguration {
         KafkaTopicAdmin(adminClient, typeUtil)
 
     @Bean
-    fun producerTemplate(): ReactiveKafkaProducerTemplate<String, Message<String, String>> {
+    fun producerTemplate(): KafkaSender<String, Message<String, String>> {
         val props = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
         )
-        return ReactiveKafkaProducerTemplate(SenderOptions.create(props))
+        return KafkaSender.create(SenderOptions.create(props))
     }
 
     @Bean
@@ -61,7 +61,7 @@ class KafkaTestConfiguration {
 
     @Bean
     fun kafkaPubSubService(
-        producerTemplate: ReactiveKafkaProducerTemplate<String, Message<String, String>>,
+        producerTemplate: KafkaSender<String, Message<String, String>>,
         kafkaTopicAdmin: KafkaTopicAdmin<String>,
         typeUtil: TypeUtil<String>,
         receiverOptions: ReceiverOptions<String, Message<String, String>>,
