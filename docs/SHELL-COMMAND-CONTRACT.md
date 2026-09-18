@@ -30,6 +30,17 @@ followed by its lower case form, and every other character passes through. So
 
 **The programmatic form must state each name, because nothing will derive it.**
 
+## An option name is not un-camelified
+
+`StandardMethodTargetRegistrar` in spring-shell-standard 3.4.3 calls
+`unCamelify` exactly once, and it calls it on `Method.getName()`. Read from the
+compiled class on 2026-09-18.
+
+**So a command name is converted and an option name is not.** A parameter named
+`topicName` is the option `--topicName`, with the camel case intact, while the
+method `addTopic` is the command `add-topic`. The table below writes each one
+as it is, and the two rules differ on purpose.
+
 ## The commands
 
 

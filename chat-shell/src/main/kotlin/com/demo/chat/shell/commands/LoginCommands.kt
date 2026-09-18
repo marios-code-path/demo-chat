@@ -10,15 +10,13 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.context.annotation.Profile
+import org.springframework.stereotype.Component
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
-import org.springframework.shell.standard.ShellComponent
-import org.springframework.shell.standard.ShellMethod
-import org.springframework.shell.standard.ShellOption
 import reactor.core.publisher.Mono
 import java.util.*
 import kotlin.system.exitProcess
 
-@ShellComponent
+@Component
 @Profile("shell")
 class LoginCommands<T>(
     private val compositeServices: CompositeServiceBeans<T, String>,
@@ -27,18 +25,12 @@ class LoginCommands<T>(
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     val userService: ChatUserService<T> = compositeServices.userService()
-
-    @ShellMethod("bye")
     fun bye(): Unit {
         exitProcess(0)
     }
-
-    @ShellMethod("rootkeys")
     fun rootKeys(): String {
         return RootKeys.rootKeySummary(rootKeys)
     }
-
-    @ShellMethod("whoami")
     fun whoami(): String? {
 
         return userService
@@ -47,11 +39,9 @@ class LoginCommands<T>(
             .switchIfEmpty(Mono.error(NotFoundException))
             .block()
     }
-
-    @ShellMethod("login")
     fun login(
-        @ShellOption username: String,
-        @ShellOption password: String
+        username: String,
+        password: String
     ) {
         try {
             loginMetadata = Optional.of(UsernamePasswordMetadata(username, password))
