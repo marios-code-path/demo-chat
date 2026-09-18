@@ -1061,6 +1061,11 @@ Create
 
 Use the real signatures from Step 4 of this task.
 
+> **Superseded on 2026-09-18.** Spring AI 2.0 removed `RetryTemplate`,
+> `RetryUtils` and `TransientAiException`. The OpenAI SDK owns the retry now,
+> and `maxRetriesFor` replaces `retryTemplateFor`. The code below records what
+> this plan built on Spring AI 1.0.3. See CHAT-chsvdqbi.
+
 ```kotlin
 package com.demo.chat.config.embedding.openai
 

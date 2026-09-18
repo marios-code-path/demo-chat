@@ -4,10 +4,21 @@ import com.demo.chat.config.embedding.openai.OpenAiEmbeddingConfiguration
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.ai.embedding.EmbeddingModel
-import org.springframework.ai.retry.RetryUtils
+import com.openai.client.OpenAIClientImpl
+import com.openai.core.ClientOptions
+import com.openai.core.RequestOptions
+import com.openai.core.http.Headers
+import com.openai.core.http.HttpClient
+import com.openai.core.http.HttpRequest
+import com.openai.core.http.HttpResponse
+import org.springframework.ai.document.MetadataMode
+import org.springframework.ai.openai.OpenAiEmbeddingModel
+import org.springframework.ai.openai.OpenAiEmbeddingOptions
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
-import org.springframework.retry.support.RetryTemplate
-import org.springframework.web.client.ResourceAccessException
+import java.io.ByteArrayInputStream
+import java.io.InputStream
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The bean builds and it stays behind its selector.
@@ -135,61 +146,84 @@ class OpenAiEmbeddingConfigurationTests {
     }
 
     @Test
-    fun `an unset value gives the library template`() {
-        // The identity check, and not a count. A template that this class
-        // built could make 10 attempts and still differ from the library
-        // template, because the library template also carries a log listener.
-        // No deployment may lose that template.
-        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor(""))
-            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
-        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("   "))
-            .isSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    fun `an unset value keeps ten calls`() {
+        // Spring AI 1.0.3 made ten attempts with no property set. The SDK
+        // default is 2 retries, which is three calls. So an unset property
+        // must still give nine retries, or every deployment that sets nothing
+        // quietly loses seven calls.
+        assertThat(OpenAiEmbeddingConfiguration.maxRetriesFor(""))
+            .isEqualTo(OpenAiEmbeddingConfiguration.DEFAULT_ATTEMPTS - 1)
+        assertThat(OpenAiEmbeddingConfiguration.maxRetriesFor("   "))
+            .isEqualTo(9)
     }
 
     @Test
-    fun `each value makes that many attempts`() {
-        // The value must reach the template. A hardcoded one attempt would
-        // pass every other test in this class, and so would a template that
-        // ignored the value.
+    fun `each value makes that many calls against a dead endpoint`() {
+        // The measurement is the number of calls, not the shape of a policy.
+        // The property counts calls and the SDK counts retries, so a direct
+        // copy of the number would make one call fewer than the operator asked
+        // for. This test fails on that mistake.
         //
-        // The values stop at 2, which costs one wait of 2 seconds. The waits
-        // are 2, 10, 50, and then 180 seconds, so a third value would add 10
-        // seconds to every build. Two values are enough. A template that
-        // ignored the value would report the builder default of 3, and a
-        // hardcoded template would report one number for both values.
-        for (attempts in 1..2) {
-            assertThat(attemptsUnder(OpenAiEmbeddingConfiguration.retryTemplateFor("$attempts")))
+        // The values stop at 3. The SDK waits between retries, so a larger
+        // value adds seconds to every build.
+        for (attempts in 1..3) {
+            val calls = callsUnder(attempts)
+
+            assertThat(calls)
                 .describedAs("max-attempts=%d", attempts)
                 .isEqualTo(attempts)
         }
     }
 
-    @Test
-    fun `a value other than one does not give the library template`() {
-        assertThat(OpenAiEmbeddingConfiguration.retryTemplateFor("2"))
-            .isNotSameAs(RetryUtils.DEFAULT_RETRY_TEMPLATE)
+    /**
+     * Counts the calls that one `max-attempts` value makes.
+     *
+     * The endpoint is dead by construction. The transport answers every call
+     * with 503, which the SDK retries, and it never opens a socket.
+     */
+    private fun callsUnder(attempts: Int): Int {
+        val calls = AtomicInteger()
+
+        val options = ClientOptions.builder()
+            .httpClient(RefusingHttpClient(calls))
+            .baseUrl("http://dead.invalid")
+            .apiKey("test-key")
+            .maxRetries(OpenAiEmbeddingConfiguration.maxRetriesFor("$attempts"))
+            .build()
+
+        val model = OpenAiEmbeddingModel.builder()
+            .openAiClient(OpenAIClientImpl(options))
+            .metadataMode(MetadataMode.EMBED)
+            .options(OpenAiEmbeddingOptions.builder().model("test-model").build())
+            .build()
+
+        runCatching { model.embed("one text") }
+
+        return calls.get()
     }
 
-    /**
-     * Counts the calls that one template makes before it gives up.
-     *
-     * The callback throws ResourceAccessException, which is one of the two
-     * types the library template retries. A refused connection reaches the
-     * caller as that type.
-     */
-    private fun attemptsUnder(template: RetryTemplate): Int {
-        var calls = 0
+    /** Answers 503 and counts. It opens no connection. */
+    private class RefusingHttpClient(private val calls: AtomicInteger) : HttpClient {
 
-        try {
-            template.execute<Unit, ResourceAccessException> {
-                calls++
-                throw ResourceAccessException("the endpoint refused the connection")
-            }
-        } catch (expected: ResourceAccessException) {
-            // Every attempt failed, which is the case under test.
+        override fun execute(request: HttpRequest, requestOptions: RequestOptions): HttpResponse {
+            calls.incrementAndGet()
+            return RefusedResponse()
         }
 
-        return calls
+        override fun executeAsync(
+            request: HttpRequest,
+            requestOptions: RequestOptions,
+        ): CompletableFuture<HttpResponse> =
+            CompletableFuture.completedFuture(execute(request, requestOptions))
+
+        override fun close() = Unit
+    }
+
+    private class RefusedResponse : HttpResponse {
+        override fun statusCode(): Int = 503
+        override fun headers(): Headers = Headers.builder().build()
+        override fun body(): InputStream = ByteArrayInputStream(ByteArray(0))
+        override fun close() = Unit
     }
 
     private fun runner(properties: Map<String, String>): ApplicationContextRunner =
