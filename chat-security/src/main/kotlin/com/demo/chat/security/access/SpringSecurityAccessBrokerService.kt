@@ -59,17 +59,16 @@ class SpringSecurityAccessBrokerService<T>(
     }
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
-        .map {
-            // Spring Security 7 types the authentication as nullable. A null
-            // one fails and names the missing value, rather than throwing a
-            // NullPointerException that names nothing.
-            //
-            // **It must not reach the anonymous fallback below.** That
-            // fallback answers an empty security context, which is a
-            // different state. A context that exists and holds no
-            // authentication is a defect, and it stays an error.
-            checkNotNull(it.authentication) { "the security context holds no authentication" }.principal as ChatUserDetails<T>
-        }
+        // **A null authentication is anonymous, by owner decision of
+        // 2026-09-18.** mapNotNull drops the null, and the switchIfEmpty
+        // below then supplies the Anon root key. So a context with no
+        // authentication and a request with no context reach the same
+        // identity, which is the behaviour this application wants.
+        //
+        // This is a deliberate change from the earlier lines rather than a
+        // restoration. Spring Boot 3.5.16 asserted the value here and threw
+        // on null.
+        .mapNotNull { it.authentication?.principal as ChatUserDetails<T>? }
         .switchIfEmpty(Mono.just(
             ChatUserDetails(User
                 .create(rootKeys.getRootKey("Anon"), "anon", "anon", "http://anon"),
