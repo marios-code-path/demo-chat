@@ -29,7 +29,25 @@ class CoreUserDetailsService<T>(
                     .thenReturn(user)
             }
 
-    override fun updatePassword(userDetails: UserDetails, newPassword: String): Mono<UserDetails> =
+    /**
+     * Replaces the stored credential of one user.
+     *
+     * Spring Security 7 declares the new password as nullable, and Spring
+     * Security 6 left it unannotated. **This method refuses a null.**
+     * `AuthenticationService.setAuthentication` takes a non-null password, and
+     * a credential store that accepted a null would hold a password that no
+     * caller chose.
+     *
+     * The refusal is a decision rather than a repair. See CHAT-wuftjuvt.
+     */
+    override fun updatePassword(userDetails: UserDetails, newPassword: String?): Mono<UserDetails> =
+        Mono.justOrEmpty(newPassword)
+            .switchIfEmpty(Mono.error(IllegalArgumentException(
+                "A null password cannot replace the credential of ${userDetails.username}"
+            )))
+            .flatMap { password -> replaceCredential(userDetails, password) }
+
+    private fun replaceCredential(userDetails: UserDetails, newPassword: String): Mono<UserDetails> =
         userService.findByUsername(ByStringRequest(userDetails.username))
             .switchIfEmpty(Mono.error { UsernameNotFoundException(userDetails.username) })
             .next()
