@@ -25,7 +25,7 @@ import reactor.core.publisher.Mono
  * A repeated add of one value writes the same primary keys. Cassandra
  * overwrites them, so the index holds one row per field per entity.
  */
-class KeyValueIndex<T>(
+class KeyValueIndex<T : Any>(
     private val fields: KeyValueIndexFields,
     private val byFieldRepo: KeyValueIndexRepository<T>,
     private val byIdRepo: KeyValueIndexByIdRepository<T>,

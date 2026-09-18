@@ -5,6 +5,6 @@ import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
 
 
-interface TopicByNameRepository<T> : ReactiveCassandraRepository<ChatTopicName<T>, T> {
+interface TopicByNameRepository<T : Any> : ReactiveCassandraRepository<ChatTopicName<T>, T> {
     fun findByKeyName(name: String): Mono<ChatTopicName<T>>
 }
