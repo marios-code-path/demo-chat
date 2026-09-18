@@ -15,7 +15,7 @@ import org.springframework.ai.vectorstore.redis.RedisVectorStore
 import org.springframework.ai.vectorstore.redis.RedisVectorStore.MetadataField
 import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.core.env.MapPropertySource
-import redis.clients.jedis.JedisPooled
+import redis.clients.jedis.RedisClient
 
 /**
  * Proves the shared runtime vector path: Jedis-backed RedisVectorStore
@@ -37,7 +37,7 @@ class RedisVectorStoreConfigurationTests {
         // fixed index name would leak documents between tests.
         val index = "chat:vector:long:message-${UUID.randomUUID()}"
         return RedisVectorStore.builder(
-            JedisPooled(stack.host, stack.firstMappedPort),
+            RedisClient.create(stack.host, stack.firstMappedPort),
             DummyEmbeddingModel(),
         )
             .indexName(index)
@@ -162,7 +162,7 @@ class RedisVectorStoreConfigurationTests {
             context.getBean(VectorStore::class.java)
                 .add(listOf(messageDoc(1L, 20L, 10L, "apple pie recipe")))
 
-            val jedis = JedisPooled(stack.host, stack.firstMappedPort)
+            val jedis = RedisClient.create(stack.host, stack.firstMappedPort)
             val keys = jedis.keys("chat:vector:long:$identity:message:*")
 
             Assertions.assertThat(keys)
