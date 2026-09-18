@@ -11,10 +11,10 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate
 import org.springframework.kafka.support.serializer.JsonDeserializer
 import org.springframework.kafka.support.serializer.JsonSerializer
 import reactor.kafka.receiver.ReceiverOptions
+import reactor.kafka.sender.KafkaSender
 import reactor.kafka.sender.SenderOptions
 
 /**
@@ -37,13 +37,13 @@ class KafkaDeployConfiguration {
     )
 
     @Bean
-    fun kafkaProducerTemplate(): ReactiveKafkaProducerTemplate<String, Message<Any, Any>> {
+    fun kafkaProducerTemplate(): KafkaSender<String, Message<Any, Any>> {
         val props = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
             ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
         )
-        return ReactiveKafkaProducerTemplate(SenderOptions.create(props))
+        return KafkaSender.create(SenderOptions.create(props))
     }
 
     @Bean
