@@ -60,7 +60,7 @@ class SpringSecurityAccessBrokerService<T>(
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
         .map {
-                it.authentication.principal as ChatUserDetails<T>
+                it.authentication!!.principal as ChatUserDetails<T>
         }
         .switchIfEmpty(Mono.just(
             ChatUserDetails(User
