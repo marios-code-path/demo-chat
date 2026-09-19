@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
 import org.springframework.boot.test.context.SpringBootTest
+import com.demo.chat.config.ChatJackson3Modules
+import org.springframework.http.codec.json.JacksonJsonDecoder
 import org.springframework.messaging.rsocket.RSocketRequester
+import tools.jackson.databind.json.JsonMapper
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import org.springframework.util.MimeTypeUtils
@@ -40,7 +43,19 @@ open class RSocketTestBase(var username: String = "user", var password: String =
         @Autowired builder: RSocketRequester.Builder,
         @Value("\${local.rsocket.server.port}") port: Int,
     ) {
-        requester = builder.tcp("localhost", port)
+        // **The client decodes the response, so it needs the domain codec.**
+        // Spring Boot 4 decodes with Jackson 3, and the chat domain
+        // deserializers are Jackson 2, so a Message answers a type definition
+        // error. The decoder is inserted at position 0 rather than appended,
+        // because the default Jackson 3 decoder matches the type first and an
+        // appended one never runs. See CHAT-qwmjrixq.
+        val mapper = JsonMapper.builder()
+            .addModule(ChatJackson3Modules().chatJackson3Module())
+            .build()
+
+        requester = builder
+            .rsocketStrategies { sb -> sb.decoders { it.add(0, JacksonJsonDecoder(mapper)) } }
+            .tcp("localhost", port)
 
         metadataRequester = MetadataRSocketRequester(requester, requestMetadataProvider(username, password))
     }

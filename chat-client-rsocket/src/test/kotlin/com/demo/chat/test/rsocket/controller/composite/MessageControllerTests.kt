@@ -20,6 +20,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
@@ -39,13 +40,13 @@ import java.util.stream.Stream
         MessageControllerTests.CompositeMessagingTestConfiguration::class)
 class MessageControllerTests : RSocketTestBase() {
 
-    @Autowired
+    @MockitoBean
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
-    @Autowired
+    @MockitoBean
     private lateinit var topicMessaging: TopicPubSubService<UUID, String>
 
-    @Autowired
+    @MockitoBean
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     private var counter = Random().nextInt()

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
@@ -33,22 +34,22 @@ import java.util.function.Function
 open class TopicControllerTests : RSocketTestBase() {
     private val log = LoggerFactory.getLogger(this::class.simpleName)
 
-    @Autowired
+    @MockitoBean
     lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
 
-    @Autowired
+    @MockitoBean
     lateinit var topicPersistence: TopicPersistence<UUID>
 
-    @Autowired
+    @MockitoBean
     lateinit var userPersistence: UserPersistence<UUID>
 
-    @Autowired
+    @MockitoBean
     lateinit var pubsub: TopicPubSubService<UUID, String>
 
-    @Autowired
+    @MockitoBean
     lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
 
-    @Autowired
+    @MockitoBean
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     val randomUserHandle = TestBase.randomAlphaNumeric(4) + "User"
