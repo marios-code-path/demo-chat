@@ -121,7 +121,10 @@ Remove `ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG`. Build the value serialize
 val valueSerializer = JsonSerializer<Message<String, String>>(objectMapper).apply {
     setAddTypeInfo(false)
 }
-return KafkaSender.create(SenderOptions.create(props).withValueSerializer(valueSerializer))
+return KafkaSender.create(
+    SenderOptions.create<String, Message<String, String>>(props)
+        .withValueSerializer(valueSerializer)
+)
 ```
 
 - [ ] **Step 3: Pass the consumer deserializer instance to `ReceiverOptions`.**
@@ -131,7 +134,8 @@ Remove `ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG` and `JsonDeserializer.TR
 ```kotlin
 val valueDeserializer = JsonDeserializer<Message<String, String>>(Message::class.java, objectMapper)
     .apply { ignoreTypeHeaders() }
-return ReceiverOptions.create(props).withValueDeserializer(valueDeserializer)
+return ReceiverOptions.create<String, Message<String, String>>(props)
+    .withValueDeserializer(valueDeserializer)
 ```
 
 - [ ] **Step 4: Run the Kafka delivery tests.**
@@ -161,7 +165,7 @@ Use the injected Jackson 2 mapper. Serialize `Message.create(MessageKey.create(3
 
 - [ ] **Step 3: Test the producer serializer policy.**
 
-Create `JsonSerializer<Message<String, String>>(objectMapper)`. Call `setAddTypeInfo(false)`. Serialize the message and assert that the `__TypeId__` header is absent. Assert that the JSON body keeps the shape from Step 1.
+Create `JsonSerializer<Message<Long, String>>(objectMapper)`. Call `setAddTypeInfo(false)`. Serialize the message and assert that the `__TypeId__` header is absent. Assert that the JSON body keeps the shape from Step 1.
 
 Use the three-argument `serialize(topic, headers, message)` method with `RecordHeaders`. The two-argument overload does not write headers. Check for the type header with `AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME`. Add these imports:
 
@@ -182,7 +186,7 @@ assertThat(headers.lastHeader(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)
 
 - [ ] **Step 4: Test replay with the old anonymous type header.**
 
-Serialize the existing `message` wrapper body from Step 1 with type headers disabled. Use the three-argument `serialize(topic, headers, message)` overload and `RecordHeaders`. Assert that the body contains `message`, `data`, `record`, and the nested key wrapper. Then add an old anonymous type header named by `AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME`, with `message.javaClass.name` encoded as UTF-8. Decode that same body with `JsonDeserializer<Message<String, String>>(Message::class.java, objectMapper)` and call `ignoreTypeHeaders()` inside `apply`. Assert `id=3`, `from=10`, `dest=20`, `data="hello"`, and `record=true`. The three-argument serializer overload is required because the two-argument overload does not write headers.
+Serialize the existing `message` wrapper body from Step 1 with type headers disabled. Use the three-argument `serialize(topic, headers, message)` overload and `RecordHeaders`. Assert that the body contains `message`, `data`, `record`, and the nested key wrapper. Then add an old anonymous type header named by `AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME`, with `message.javaClass.name` encoded as UTF-8. Decode that same body with `JsonDeserializer<Message<Long, String>>(Message::class.java, objectMapper)` and call `ignoreTypeHeaders()` inside `apply`. Assert `id=3`, `from=10`, `dest=20`, `data="hello"`, and `record=true`. The three-argument serializer overload is required because the two-argument overload does not write headers.
 
 Add this import for the UTF-8 header value:
 
@@ -219,7 +223,10 @@ Remove `ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG`. Build `JsonSerializer<Mes
 val valueSerializer = JsonSerializer<Message<Any, Any>>(objectMapper).apply {
     setAddTypeInfo(false)
 }
-return KafkaSender.create(SenderOptions.create(props).withValueSerializer(valueSerializer))
+return KafkaSender.create(
+    SenderOptions.create<String, Message<Any, Any>>(props)
+        .withValueSerializer(valueSerializer)
+)
 ```
 
 - [ ] **Step 3: Configure the production consumer instance.**
@@ -230,7 +237,8 @@ Remove `ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG` and `JsonDeserializer.TR
 val valueDeserializer = JsonDeserializer<Message<Any, Any>>(Message::class.java, objectMapper).apply {
     ignoreTypeHeaders()
 }
-return ReceiverOptions.create(props).withValueDeserializer(valueDeserializer)
+return ReceiverOptions.create<String, Message<Any, Any>>(props)
+    .withValueDeserializer(valueDeserializer)
 ```
 
 - [ ] **Step 4: Run Kafka deployment test compilation.**
