@@ -1,6 +1,7 @@
 package com.demo.chat.test.controller.webflux.config
 
 import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.Jackson2MapperConfiguration
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
@@ -50,7 +51,11 @@ import org.springframework.security.web.server.SecurityWebFilterChain
 // Boot 4 builds Jackson 3 mappers only, and the controllers under test take
 // the Jackson 2 one by qualifier. A slice that imports the modules without
 // the mapper leaves that qualifier unsatisfied. See CHAT-sxydbspq.
-@Import(DefaultChatJacksonModules::class, Jackson2MapperConfiguration::class)
+@Import(
+    DefaultChatJacksonModules::class,
+    Jackson2MapperConfiguration::class,
+    ChatJackson3Modules::class,
+)
 class WebFluxTestConfiguration {
 
     @Bean

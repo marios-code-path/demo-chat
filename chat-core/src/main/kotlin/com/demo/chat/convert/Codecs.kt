@@ -30,32 +30,11 @@ object JsonNodeToAnyConverter : Converter<JsonNode, Any?> {
         return when (record.nodeType) {
             JsonNodeType.MISSING -> throw Exception("Missing field")
             JsonNodeType.NULL -> null
-            JsonNodeType.BINARY -> {
-                val cborFactory = CBORFactory()
-                val mapper = ObjectMapper(cborFactory)
-                val cborData = mapper.writeValueAsBytes(record.binaryValue())
-
-                try {
-                    val data = mapper.readValue(cborData, UUID::class.java)
-                    data
-                } catch (e: Exception) {
-                    cborData.toString()
-                }
-            }
-            JsonNodeType.NUMBER -> {
-                val variable = record.asDouble()
-                if (variable % 1 == 0.0)
-                    record.asLong()
-                else
-                    variable
-            }
-            JsonNodeType.STRING -> {
-                try {
-                    UUID.fromString(record.asText())
-                } catch (e: Exception) {
-                    record.asText()
-                }
-            }
+            // The three scalar rules live in NodeValueRules, because the
+            // Jackson 3 converter must decide the same way. See CHAT-qwmjrixq.
+            JsonNodeType.BINARY -> NodeValueRules.binary(record.binaryValue())
+            JsonNodeType.NUMBER -> NodeValueRules.number(record.asDouble()) { record.asLong() }
+            JsonNodeType.STRING -> NodeValueRules.text(record.asText())
             JsonNodeType.BOOLEAN -> record.asBoolean()
             JsonNodeType.OBJECT -> record.fields().asSequence().associate { it.key to convert(it.value) }
             JsonNodeType.ARRAY -> record.elements().asSequence().map { convert(it) }.toList()
