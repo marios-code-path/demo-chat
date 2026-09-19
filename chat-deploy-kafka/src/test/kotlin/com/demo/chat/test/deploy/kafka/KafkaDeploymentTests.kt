@@ -3,7 +3,10 @@ package com.demo.chat.test.deploy.kafka
 import com.demo.chat.ChatApp
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.pubsub.kafka.KafkaPubSubBeans
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.pubsub.kafka.impl.KafkaTopicPubSubService
+import com.demo.chat.service.core.TopicPubSubService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -13,6 +16,8 @@ import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.stereotype.Controller
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
+import reactor.test.StepVerifier
+import java.time.Duration
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -78,5 +83,36 @@ class KafkaDeploymentTests {
     fun `controllers are registered`() {
         assertThat(context.getBeanNamesForAnnotation(Controller::class.java).size)
             .isGreaterThan(1)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `production Kafka beans deliver a declared Message`() {
+        val pubsub = context.getBean("pubSubService", TopicPubSubService::class.java)
+            as TopicPubSubService<Long, String>
+        val topic = System.nanoTime()
+        val sender = topic + 1
+        val message = Message.create(
+            MessageKey.create(topic + 2, sender, topic),
+            "production-payload",
+            true,
+        )
+
+        try {
+            StepVerifier.create(pubsub.listenTo(topic))
+                .then { pubsub.open(topic).block(Duration.ofSeconds(10)) }
+                .then { pubsub.sendMessage(message).block(Duration.ofSeconds(10)) }
+                .assertNext { actual ->
+                    assertThat(actual.key.id).isEqualTo(topic + 2)
+                    assertThat(actual.key.from).isEqualTo(sender)
+                    assertThat(actual.key.dest).isEqualTo(topic)
+                    assertThat(actual.data).isEqualTo("production-payload")
+                    assertThat(actual.record).isTrue()
+                }
+                .thenCancel()
+                .verify(Duration.ofSeconds(15))
+        } finally {
+            pubsub.close(topic).block(Duration.ofSeconds(10))
+        }
     }
 }
