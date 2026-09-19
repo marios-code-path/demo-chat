@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.test.security
 
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.web.reactive.server.WebTestClient
 
@@ -27,8 +27,26 @@ import org.springframework.test.web.reactive.server.WebTestClient
 )
 class SecurityChainOwnershipTests {
 
-    @Autowired
-    private lateinit var client: WebTestClient
+    /**
+     * The port of the running server.
+     *
+     * **Boot 4 removed the context customizer that supplied a bound
+     * WebTestClient.** Under Boot 3 a RANDOM_PORT test injected a client
+     * already bound to the server. Boot 4 offers only
+     * `@AutoConfigureWebTestClient`, and that auto-configuration builds a
+     * client bound to the application context instead.
+     *
+     * A context bound client would still run the filter chain, so these
+     * tests would pass. They would no longer cross a real socket, and the
+     * claim would quietly get weaker. This test binds to the server, which
+     * is what it measured before. See CHAT-njtoyatt.
+     */
+    @Value("\${local.server.port}")
+    private var port: Int = 0
+
+    private val client: WebTestClient by lazy {
+        WebTestClient.bindToServer().baseUrl("http://localhost:$port").build()
+    }
 
     @Test
     fun `an actuator route refuses a request with no credentials`() {
