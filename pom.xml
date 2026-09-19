@@ -94,7 +94,15 @@
         <module>chat-persistence-cassandra</module>
     	<module>chat-index-cassandra</module>
 
-        <module>chat-index-elastic</module>
+        <!--
+            chat-index-elastic is out of the reactor while the Boot 4 work
+            lands. It does not compile on Boot 4, and CI runs plain maven
+            rather than build-health.sh, so the module would hold both CI
+            jobs red on every push.
+            It has no dependents. The directory and its history stay here,
+            and the repair sits on chat-urhjrwbt-indexelastic.
+            See CHAT-gdtktbfh to bring it back.
+        -->
         <module>chat-persistence-xstream</module>
         <module>chat-persistence-redis</module>
 

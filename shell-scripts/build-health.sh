@@ -26,11 +26,10 @@ DOC="docs/BUILD-HEALTH.md"
 # If this script reports NEW, something regressed - that is the signal, not
 # noise to be silenced by adding the module here.
 #
-# chat-index-elastic is parked by an owner decision, not by neglect. Its main
-# sources do not compile under Boot 4, and the repair lives on the branch
-# chat-urhjrwbt-indexelastic, which stays outside the gate probe on purpose.
-# See CHAT-urhjrwbt and the B11 row in docs/BUILD-HEALTH.md.
-KNOWN_FAILING="chat-index-elastic"
+# Empty again since chat-index-elastic left the reactor. A module that is not
+# built cannot fail, so naming it here would make this script report RESOLVED
+# on every run. See the B11 row in docs/BUILD-HEALTH.md and CHAT-gdtktbfh.
+KNOWN_FAILING=""
 # Additionally expected to fail once the build reaches package/install.
 # Empty since B1: chat-deploy-memory-integration-test no longer builds an image
 # on every install - that moved behind -Ptest-build.

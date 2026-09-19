@@ -4,9 +4,10 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**This branch is not master.** It carries the Spring Boot 4.0.8 migration, and
-it records one known failure that master does not have. See B11. Measured on
-2026-09-19 at `chat-mumfjoau-pubsubdelivery` `99041a1c`.
+**The Spring Boot 4.0.8 line carries one reactor change that master did not
+have.** `chat-index-elastic` is out of the module list. B11 records why, and
+`CHAT-gdtktbfh` brings it back. Measured on 2026-09-19 at
+`chat-gdtktbfh-dropelastic`.
 
 Do not trust this file on its own — run the verifier:
 
@@ -20,15 +21,15 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — **BUILD FAILURE**, and the one failing module is
-expected. The reactor reports 36 SUCCESS, 1 FAILURE and 0 SKIPPED of 37
-modules, with 834 tests, 0 failures, 0 errors and 30 skipped. The single
-failure is `chat-index-elastic`, which B11 records. Every other module that
-compiles also passes its tests.
+`mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
+skipped. The reactor holds 36 modules and reports 834 tests, 0 failures, 0
+errors and 30 skipped.
 
-On master the same command reports **BUILD SUCCESS** with no module failing
-and nothing skipped. The install phase was not measured at this branch head.
-The `test-build` profile controls image builds. Ordinary builds do not need a
+Plain `mvn -B clean test`, which is the command CI runs, also reports
+**BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
+module that the verifier tolerates would still hold CI red.
+
+The install phase was not measured at this branch head. The `test-build` profile controls image builds. Ordinary builds do not need a
 Docker daemon. The integration verifier runs container tests and checks that
 the known-failure list matches the measured reactor.
 
@@ -53,8 +54,8 @@ The earlier `--install` mode reported the same counts as default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
-The reactor holds 37 modules. On master 28 of them run tests. On this branch
-27 do, because `chat-index-elastic` does not compile. See B11. `chat-embedding-openai`
+The reactor holds 36 modules and 27 of them run tests. It held 37 until
+`chat-index-elastic` left the module list. See B11. `chat-embedding-openai`
 and `chat-embedding-local` are the two newest. Each supplies one
 `EmbeddingModel` behind one value of `app.service.core.embedding`. See
 `docs/EMBEDDING-PROVIDERS.md`.
@@ -79,15 +80,23 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
-| B11 | `chat-index-elastic` main sources do not compile under Boot 4 | this module only, and nothing depends on it | Parked by decision |
+| B11 | `chat-index-elastic` does not compile under Boot 4, and is out of the reactor | nothing, the module has no dependents | Excluded, repair on a branch |
 
 ---
 
-### B11 — `chat-index-elastic` is parked, and the gate must say so
+### B11 — `chat-index-elastic` is out of the reactor
 
-**This is a decision, not a defect left lying around.** The owner parked the
-module, and its repair sits on the branch `chat-urhjrwbt-indexelastic`, which
-stays outside the gate probe on purpose. `CHAT-urhjrwbt` carries the reasoning.
+**This is a decision, not a defect left lying around.** The module does not
+compile under Boot 4, and the owner chose to drop it from the module list so
+the Boot 4 work can land with a green CI. `CHAT-gdtktbfh` brings it back, and
+the repair already sits on the branch `chat-urhjrwbt-indexelastic`.
+`CHAT-urhjrwbt` carries the reasoning for treating that repair as exploratory.
+
+**Why the module list and not `KNOWN_FAILING`.** CI runs `mvn -B clean test`
+and `mvn -B clean verify -Ptest-build,integration`. Neither reads
+`KNOWN_FAILING`, which exists only inside `build-health.sh`. So a module the
+verifier tolerates still holds both CI jobs red on every push and every pull
+request. Tolerating it here and failing there is the worst of both.
 
 Measured on 2026-09-19 at `boot4-gate-probe` `9bb74290`, `mvn -o compile` on
 that module reports four causes in three files:
@@ -98,14 +107,14 @@ that module reports four causes in three files:
   Data Elasticsearch declares `ReactiveElasticsearchRepository<T : Any, ID : Any>`,
   and the four repository interfaces pass an unbounded `T`.
 
-**Nothing depends on this module.** No deploy module declares it, so the
-failure takes nothing down with it. It reports FAILURE rather than SKIPPED for
-that reason, and no module reports SKIPPED behind it.
+**Nothing depends on this module.** No pom declares it except the root module
+list, and no source outside it names it. Both facts were checked before the
+removal, so it takes nothing down with it.
 
-`KNOWN_FAILING` in `shell-scripts/build-health.sh` names it, so the verifier
-reports no drift. **Removing the park means removing it from both places.**
-A verifier that reported RESOLVED while the document still listed it would be
-the same inconsistency this file exists to prevent.
+**`KNOWN_FAILING` is empty again, and that is deliberate.** A module that is
+not built cannot fail, so naming it there would make the verifier report
+RESOLVED on every run. Restoring the module means adding it back to the root
+module list, not to that list. The directory and its history stay in place.
 
 ---
 
@@ -175,5 +184,22 @@ Kept so the list can be trusted — an entry disappearing without explanation is
 R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing, and `chat-index-cassandra` from 8 tests with 4 errors to 26 passing.
 
 ## One-time notes
+
+- **The verifier never builds the container image.** `build-health.sh
+  --integration` runs `mvn clean test -fae -Pintegration`, which stops at the
+  `test` phase. The image is built in `package` by
+  `chat-deploy-memory-integration-test` under `-Ptest-build`. So a green
+  verifier says nothing about the image, and only the CI command
+  `mvn -B clean verify -Ptest-build,integration` exercises it. Measured on
+  2026-09-19: that command reports BUILD SUCCESS with 37 modules, 1059 tests,
+  0 failures, 0 errors and 55 skipped. See CHAT-bahmtzut.
+- **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
+  `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
+  holds a `credsStore` together with empty `auths` entries makes the build fail
+  with `'username' must not be null`, and the message names no registry. Boot
+  3.5.x did not read the file this way. This is a property of the developer
+  machine and not of this repository. Measured on 2026-09-19: the same build
+  succeeds with `DOCKER_CONFIG` pointed at a directory holding `{}`.
+  `DOCKER_HOST` has nothing to do with it.
 
 - The first build after R2 needs network access: `org.testcontainers:database-commons:1.21.4` is not in a local repository that predates the bump, so `mvn -o` fails until it is fetched once.
