@@ -4,6 +4,10 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
+**This branch is not master.** It carries the Spring Boot 4.0.8 migration, and
+it records one known failure that master does not have. See B11. Measured on
+2026-09-19 at `boot4-gate-probe` `9bb74290`.
+
 Do not trust this file on its own — run the verifier:
 
 ```bash
@@ -16,7 +20,14 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — **BUILD SUCCESS**. No module fails, nothing is skipped.
+`mvn clean test -fae` — **BUILD FAILURE**, and the one failing module is
+expected. The reactor reports 36 SUCCESS, 1 FAILURE and 0 SKIPPED of 37
+modules, with 829 tests, 0 failures, 0 errors and 30 skipped. The single
+failure is `chat-index-elastic`, which B11 records. Every other module that
+compiles also passes its tests.
+
+On master the same command reports **BUILD SUCCESS** with no module failing
+and nothing skipped.
 `mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
 `mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
 
@@ -32,7 +43,8 @@ as the default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
-The reactor holds 37 modules, and 28 of them run tests. `chat-embedding-openai`
+The reactor holds 37 modules. On master 28 of them run tests. On this branch
+27 do, because `chat-index-elastic` does not compile. See B11. `chat-embedding-openai`
 and `chat-embedding-local` are the two newest. Each supplies one
 `EmbeddingModel` behind one value of `app.service.core.embedding`. See
 `docs/EMBEDDING-PROVIDERS.md`.
@@ -53,6 +65,33 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
+| B11 | `chat-index-elastic` main sources do not compile under Boot 4 | this module only, and nothing depends on it | Parked by decision |
+
+---
+
+### B11 — `chat-index-elastic` is parked, and the gate must say so
+
+**This is a decision, not a defect left lying around.** The owner parked the
+module, and its repair sits on the branch `chat-urhjrwbt-indexelastic`, which
+stays outside the gate probe on purpose. `CHAT-urhjrwbt` carries the reasoning.
+
+Measured on 2026-09-19 at `boot4-gate-probe` `9bb74290`, `mvn -o compile` on
+that module reports four causes in three files:
+
+- `ElasticConfiguration.kt` cannot resolve `HttpHost`, which moved groupId.
+- `User.kt` cannot resolve `PersistenceConstructor`, which moved package.
+- `ReactiveUserIndexRepository.kt` reports four JSpecify bound errors. Spring
+  Data Elasticsearch declares `ReactiveElasticsearchRepository<T : Any, ID : Any>`,
+  and the four repository interfaces pass an unbounded `T`.
+
+**Nothing depends on this module.** No deploy module declares it, so the
+failure takes nothing down with it. It reports FAILURE rather than SKIPPED for
+that reason, and no module reports SKIPPED behind it.
+
+`KNOWN_FAILING` in `shell-scripts/build-health.sh` names it, so the verifier
+reports no drift. **Removing the park means removing it from both places.**
+A verifier that reported RESOLVED while the document still listed it would be
+the same inconsistency this file exists to prevent.
 
 ---
 
