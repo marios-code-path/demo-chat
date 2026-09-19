@@ -10,6 +10,7 @@ import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.config.Jackson2MapperConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -30,7 +31,9 @@ import java.time.Instant
  * bind the value.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(KeyValueJobDecodeRequesterTests.KeyValueStoreTestConfiguration::class)
+@Import(
+    Jackson2MapperConfiguration::class,
+    KeyValueJobDecodeRequesterTests.KeyValueStoreTestConfiguration::class)
 class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
 
     @MockitoBean
