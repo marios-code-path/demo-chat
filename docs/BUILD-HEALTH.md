@@ -6,7 +6,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **This branch is not master.** It carries the Spring Boot 4.0.8 migration, and
 it records one known failure that master does not have. See B11. Measured on
-2026-09-19 at `boot4-gate-probe` `9bb74290`.
+2026-09-19 at `chat-mumfjoau-pubsubdelivery` `99041a1c`.
 
 Do not trust this file on its own — run the verifier:
 
@@ -22,24 +22,34 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 `mvn clean test -fae` — **BUILD FAILURE**, and the one failing module is
 expected. The reactor reports 36 SUCCESS, 1 FAILURE and 0 SKIPPED of 37
-modules, with 829 tests, 0 failures, 0 errors and 30 skipped. The single
+modules, with 834 tests, 0 failures, 0 errors and 30 skipped. The single
 failure is `chat-index-elastic`, which B11 records. Every other module that
 compiles also passes its tests.
 
 On master the same command reports **BUILD SUCCESS** with no module failing
-and nothing skipped.
-`mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
-`mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
+and nothing skipped. The install phase was not measured at this branch head.
+The `test-build` profile controls image builds. Ordinary builds do not need a
+Docker daemon. The integration verifier runs container tests and checks that
+the known-failure list matches the measured reactor.
 
-Measured on 2026-09-17, after the Kafka contract tests. Default mode reports
-818 tests with 30 skipped, so 788 run. Integration mode reports 1037 tests with
-55 skipped, so 982 run.
+Measured on 2026-09-19 at `chat-mumfjoau-pubsubdelivery` `091dbbea`, default
+mode reported 832 tests, 0 failures, 0 errors and 30 skipped. It ran 802 tests.
+Integration mode reported 1056 tests, 0 failures, 0 errors and 55 skipped. It
+ran 1001 tests. Both gate runs reported no failure-list drift.
 
-The default count moved from 808 to 818 on 2026-09-17. `KafkaSenderContractTests`
-adds six tests, and `KafkaReceiverContractTests` adds four. `CHAT-hazcatpc`
-carries the reason. Both
-report zero failures and zero errors, and `--install` reports the same counts
-as the default mode.
+The review follow-up of `CHAT-zspleyvc` adds two default tests and one
+integration test. Both gates ran again on 2026-09-19 at
+`chat-mumfjoau-pubsubdelivery` `e6adfffd`. Default mode reports 834 tests, 0
+failures, 0 errors and 30 skipped, so it runs 804. Integration mode reports
+1059 tests, 0 failures, 0 errors and 55 skipped, so it runs 1004. Both exit 0
+and report no failure-list drift. These are measured counts, not counts
+derived from the earlier run.
+
+The earlier measurement on 2026-09-17 reported 818 tests with 30 skipped in
+default mode and 1037 tests with 55 skipped in integration mode. That default
+count moved from 808 after `KafkaSenderContractTests` added six tests and
+`KafkaReceiverContractTests` added four. `CHAT-hazcatpc` carries the reason.
+The earlier `--install` mode reported the same counts as default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
@@ -55,9 +65,13 @@ and Status. Neither module is a deficiency, and a row would have to leave all
 three columns empty or false. Task 10 of the embedding provider plan asked for
 a row, and this is the deliberate departure from it.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 194 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 200 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
-The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
+The integration gate runs the container tests. It reports only the parked
+`chat-index-elastic` failure and no skipped modules. Its exit status means that
+result matches this file, not that every module passes. `chat-shell` tests run
+and pass. Both extra failure lists, `KNOWN_FAILING_INSTALL` and
+`KNOWN_FAILING_INTEGRATION`, are empty and measured.
 
 Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
 
