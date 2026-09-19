@@ -77,6 +77,20 @@
             <artifactId>spring-restdocs-webtestclient</artifactId>
         </dependency>
         <!--
+            The Jackson 3 Kotlin module, for the test slices.
+            The WebFlux codec is Jackson 3 under Spring Boot 4, and Jackson
+            needs this module to apply a Kotlin default for an absent
+            property. Without it a request body that omits such a property
+            answers 400. CHAT-micujksn added it to chat-deploy at runtime
+            scope for the deployments. **A test slice is its own runtime**,
+            and it does not reach chat-deploy.
+        -->
+        <dependency>
+            <groupId>tools.jackson.module</groupId>
+            <artifactId>jackson-module-kotlin</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
             Spring Boot 4 splits the test slices into their own artifacts.
             WebFluxTest moved to org.springframework.boot.webflux.test.autoconfigure
             and AutoConfigureRestDocs to org.springframework.boot.restdocs.test.autoconfigure.

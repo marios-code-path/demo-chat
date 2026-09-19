@@ -6,6 +6,7 @@ import org.springframework.http.codec.ServerCodecConfigurer
 import org.springframework.http.codec.json.JacksonJsonDecoder
 import org.springframework.http.codec.json.JacksonJsonEncoder
 import org.springframework.web.reactive.config.WebFluxConfigurer
+import tools.jackson.databind.JacksonModule
 import tools.jackson.databind.cfg.DateTimeFeature
 import tools.jackson.databind.json.JsonMapper
 
@@ -55,10 +56,17 @@ import tools.jackson.databind.json.JsonMapper
  */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.REACTIVE)
-class ServerJsonCodecConfiguration : WebFluxConfigurer {
+class ServerJsonCodecConfiguration(
+    // The chat domain deserializers, as Jackson 3 modules. findAndAddModules
+    // reads the module service registry and does not see a Spring bean, so
+    // the domain types need this. Without them an index route answers 500
+    // with a type definition error. See CHAT-qwmjrixq.
+    private val domainModules: List<JacksonModule>,
+) : WebFluxConfigurer {
 
     override fun configureHttpMessageCodecs(configurer: ServerCodecConfigurer) {
         val mapper = JsonMapper.builder()
+            .addModules(domainModules)
             // The default codec calls this, and a stated codec replaces the
             // default. Without it the Jackson 3 Kotlin module stays unread, a
             // Kotlin default value never applies, and a request body that
