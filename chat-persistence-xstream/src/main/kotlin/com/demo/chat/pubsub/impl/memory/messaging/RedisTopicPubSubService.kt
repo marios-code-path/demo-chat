@@ -6,6 +6,7 @@ import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.TopicPubSubService
 import org.slf4j.LoggerFactory
+import reactor.core.Disposable
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
 import reactor.core.publisher.Flux
@@ -39,7 +40,7 @@ class RedisTopicPubSubService<T : Any, E>(
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
     private val sinks: MutableMap<T, Sinks.Many<Message<T, E>>> = ConcurrentHashMap()
-    private val topicXSource: MutableMap<T, Flux<out Message<T, E>>> = ConcurrentHashMap()
+    private val sources: MutableMap<T, Disposable> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
         .filter {
@@ -57,10 +58,7 @@ class RedisTopicPubSubService<T : Any, E>(
         stringTemplate
             .opsForSet()
             .add(topicSetKey, topicId.toString())
-            .thenEmpty {
-                sourceOf(topicId)
-                it.onComplete()
-            }
+            .then(sourceOf(topicId))
 
     override fun subscribe(member: T, topic: T): Mono<Void> = topicExistsOrError(topic)
         .then(
@@ -162,16 +160,43 @@ class RedisTopicPubSubService<T : Any, E>(
             Sinks.many().multicast().onBackpressureBuffer()
         }.asFlux()
 
-    // Connect a Redis pub/sub listener to the Sinks.Many for in-process fan-out
-    private fun sourceOf(topic: T): Flux<out Message<T, E>> =
-        topicXSource.getOrPut(topic) {
-            val listen = getPubSubFluxFor(topic)
-            val sink = sinks.getOrPut(topic) {
-                Sinks.many().multicast().onBackpressureBuffer()
-            }
-            listen.doOnNext { msg -> sink.tryEmitNext(msg) }
-            listen
+    /**
+     * Connects the Redis channel to the sink that `listenTo` answers.
+     *
+     * **This fed nothing until 2026-09-19.** The earlier version called
+     * `listen.doOnNext { ... }` and discarded the result, then stored and
+     * answered the undecorated flux. `doOnNext` answers a new `Flux`, so two
+     * things were wrong together: nothing subscribed, and the stored flux
+     * would not have fed the sink even if something had. A listener waited
+     * on a sink that no publisher ever wrote to. See CHAT-scrrknxb.
+     *
+     * `listenToLater` answers a `Mono` that completes once Redis has the
+     * SUBSCRIBE. `open` waits for it, so a send that follows `open` cannot
+     * race the subscription. The plain `listenTo` would leave that race open.
+     *
+     * The `Disposable` is kept so `close` can end the subscription.
+     */
+    private fun sourceOf(topic: T): Mono<Void> {
+        if (sources.containsKey(topic)) {
+            return Mono.empty()
         }
+
+        val sink = sinks.getOrPut(topic) {
+            Sinks.many().multicast().onBackpressureBuffer()
+        }
+
+        return messageTemplate
+            .listenToLater(ChannelTopic(topic.toString()))
+            .doOnNext { channel ->
+                sources[topic] = channel
+                    .map { received -> received.message }
+                    .subscribe(
+                        { message -> sink.tryEmitNext(message) },
+                        { error -> logger.error("The topic listener of $topic failed", error) },
+                    )
+            }
+            .then()
+    }
 
     override fun getByUser(uid: T): Flux<T> =
         stringTemplate
@@ -205,16 +230,8 @@ class RedisTopicPubSubService<T : Any, E>(
                 .wrap((prefixTopicKey + topicId.toString()).toByteArray(Charset.defaultCharset()))
         )
         .doOnNext {
+            sources.remove(topicId)?.dispose()
             sinks.remove(topicId)?.tryEmitComplete()
         }.then()
 
-    private fun getPubSubFluxFor(topic: T): Flux<out Message<T, E>> =
-        messageTemplate
-            .listenTo(ChannelTopic(topic.toString()))
-            .map {
-                it.message
-            }
-            .doOnComplete {
-                topicXSource.remove(topic)
-            }
 }
