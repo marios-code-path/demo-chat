@@ -6,9 +6,9 @@ import com.demo.chat.domain.knownkey.Anon
 import io.rsocket.metadata.WellKnownMimeType
 import org.junit.jupiter.api.BeforeAll
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.rsocket.server.LocalRSocketServerPort
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
@@ -38,7 +38,7 @@ open class RSocketTestBase(var username: String = "user", var password: String =
     @BeforeAll
     internal fun `before all`(
         @Autowired builder: RSocketRequester.Builder,
-        @LocalRSocketServerPort port: Int,
+        @Value("\${local.rsocket.server.port}") port: Int,
     ) {
         requester = builder.tcp("localhost", port)
 
