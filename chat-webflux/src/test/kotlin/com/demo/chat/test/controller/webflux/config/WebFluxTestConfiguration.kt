@@ -7,8 +7,12 @@ import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.core.ReactiveAdapterRegistry
 import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.web.reactive.result.method.annotation.AuthenticationPrincipalArgumentResolver
 import org.springframework.security.web.server.SecurityWebFilterChain
+import org.springframework.web.reactive.config.WebFluxConfigurer
+import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer
 
 /**
  * The permit-all chain that the controller slice tests run behind.
@@ -56,7 +60,32 @@ import org.springframework.security.web.server.SecurityWebFilterChain
     Jackson2MapperConfiguration::class,
     ChatJackson3Modules::class,
 )
-class WebFluxTestConfiguration {
+class WebFluxTestConfiguration : WebFluxConfigurer {
+
+    /**
+     * The `@AuthenticationPrincipal` resolver, which the slice does not get.
+     *
+     * **Production registers it through `@EnableWebFluxSecurity`** on
+     * `WebFluxSecurity`, and this fixture deliberately does not enable that.
+     * Without the resolver, WebFlux falls back to model attribute binding for
+     * a `ChatUserDetails` parameter, tries to construct one from request
+     * parameters, and a Kotlin non-null constructor then fails. The caller
+     * sees 400 and the message names `ChatUserDetails.<init>`.
+     *
+     * Seven tests failed that way. The controllers declare the parameter
+     * nullable already, so the defect was the missing resolver rather than
+     * the signature.
+     *
+     * `RSocketServerConfiguration` in chat-service-controller adds the RSocket
+     * equivalent the same way, so this follows a pattern the repository
+     * already uses.
+     */
+    override fun configureArgumentResolvers(configurer: ArgumentResolverConfigurer) {
+        configurer.addCustomResolver(
+            AuthenticationPrincipalArgumentResolver(ReactiveAdapterRegistry.getSharedInstance())
+        )
+    }
+
 
     @Bean
     fun filterChain(): SecurityWebFilterChain? = ServerHttpSecurity.http()
