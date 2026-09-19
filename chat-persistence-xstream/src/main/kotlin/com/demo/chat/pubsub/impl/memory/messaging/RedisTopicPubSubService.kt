@@ -6,9 +6,9 @@ import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.TopicPubSubService
 import org.slf4j.LoggerFactory
-import reactor.core.Disposable
 import org.springframework.data.redis.core.ReactiveRedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
+import reactor.core.Disposable
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.publisher.Sinks
@@ -40,7 +40,7 @@ class RedisTopicPubSubService<T : Any, E>(
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
     private val sinks: MutableMap<T, Sinks.Many<Message<T, E>>> = ConcurrentHashMap()
-    private val sources: MutableMap<T, Disposable> = ConcurrentHashMap()
+    private val sources: ConcurrentHashMap<T, Mono<Disposable>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
         .filter {
@@ -177,25 +177,33 @@ class RedisTopicPubSubService<T : Any, E>(
      * The `Disposable` is kept so `close` can end the subscription.
      */
     private fun sourceOf(topic: T): Mono<Void> {
-        if (sources.containsKey(topic)) {
-            return Mono.empty()
-        }
-
-        val sink = sinks.getOrPut(topic) {
-            Sinks.many().multicast().onBackpressureBuffer()
-        }
-
-        return messageTemplate
-            .listenToLater(ChannelTopic(topic.toString()))
-            .doOnNext { channel ->
-                sources[topic] = channel
-                    .map { received -> received.message }
-                    .subscribe(
-                        { message -> sink.tryEmitNext(message) },
-                        { error -> logger.error("The topic listener of $topic failed", error) },
-                    )
+        val startup = sources.computeIfAbsent(topic) {
+            val sink = sinks.getOrPut(topic) {
+                Sinks.many().multicast().onBackpressureBuffer()
             }
+
+            messageTemplate
+                .listenToLater(ChannelTopic(topic.toString()))
+                .map { channel ->
+                    channel
+                        .map { received -> received.message }
+                        .subscribe(
+                            { message -> sink.tryEmitNext(message) },
+                            { error ->
+                                sources.remove(topic)
+                                logger.error("The topic listener of $topic failed", error)
+                            },
+                        )
+                }
+                .cache()
+        }
+
+        return startup
             .then()
+            .onErrorResume { error ->
+                sources.remove(topic, startup)
+                Mono.error(error)
+            }
     }
 
     override fun getByUser(uid: T): Flux<T> =
@@ -221,17 +229,22 @@ class RedisTopicPubSubService<T : Any, E>(
                     }
             )
 
-    override fun close(topicId: T): Mono<Void> = messageTemplate
-        .connectionFactory
-        .reactiveConnection
-        .keyCommands()
-        .del(
-            ByteBuffer
-                .wrap((prefixTopicKey + topicId.toString()).toByteArray(Charset.defaultCharset()))
-        )
-        .doOnNext {
-            sources.remove(topicId)?.dispose()
-            sinks.remove(topicId)?.tryEmitComplete()
-        }.then()
+    override fun close(topicId: T): Mono<Void> {
+        val stopSource = sources.remove(topicId)
+            ?.doOnNext { subscription -> subscription.dispose() }
+            ?.then()
+            ?: Mono.empty()
+
+        return stopSource
+            .then(Mono.fromRunnable { sinks.remove(topicId)?.tryEmitComplete() })
+            .then(
+                messageTemplate.connectionFactory.reactiveConnection.keyCommands().del(
+                    ByteBuffer.wrap(
+                        (prefixTopicKey + topicId.toString()).toByteArray(Charset.defaultCharset())
+                    )
+                )
+            )
+            .then()
+    }
 
 }
