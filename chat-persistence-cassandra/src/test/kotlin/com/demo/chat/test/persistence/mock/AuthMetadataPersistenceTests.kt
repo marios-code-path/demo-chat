@@ -14,7 +14,7 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.mockito.Mockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -26,7 +26,7 @@ import java.util.*
 class AuthMetadataPersistenceTests {
     lateinit var authMetadataPersistence: AuthMetaPersistence<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var repo: AuthMetadataRepository<UUID>
 
     private val keyService = TestUUIDKeyService()

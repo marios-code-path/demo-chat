@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.messaging.rsocket.retrieveFlux
@@ -40,10 +41,10 @@ import java.util.function.Function
     ]
 )
 open class UserControllerTests : RSocketTestBase() {
-    @Autowired
+    @MockitoBean
     lateinit var userIndex: UserIndexService<UUID, Map<String, String>>
 
-    @Autowired
+    @MockitoBean
     lateinit var userPersistence: UserPersistence<UUID>
 
     val defaultImgUri = "http://"

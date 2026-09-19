@@ -11,9 +11,9 @@ import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import org.junit.jupiter.api.Test
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Bean
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -40,7 +40,7 @@ class MessageRecallRestTests {
     @Autowired
     private lateinit var client: WebTestClient
 
-    @MockBean
+    @MockitoBean
     private lateinit var recallService: MessageRecallService<Long>
 
     /**

@@ -1,6 +1,8 @@
 package com.demo.chat.test.messaging
 
 import com.demo.chat.config.RedisTemplateConfiguration
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.UUIDUtil
 import com.demo.chat.pubsub.impl.memory.messaging.KeyConfigurationPubSub
 import com.demo.chat.pubsub.impl.memory.messaging.RedisTopicPubSubService
@@ -8,6 +10,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.test.TestUUIDKeyService
 import com.demo.chat.test.redis.TestContextConfiguration
 import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
@@ -22,6 +25,11 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.Disposable
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
+import reactor.test.StepVerifier
 import java.time.Duration
 import java.util.*
 import java.util.function.Supplier
@@ -34,6 +42,7 @@ import java.util.function.Supplier
 @Tag("integration")
 class RedisPubSubMessagingTests(
     @Autowired pubsub: TopicPubSubService<UUID, String>,
+    @Autowired private val redisTemplates: RedisTemplateConfiguration,
 ) : PubSubTests<UUID, String>(pubsub, TestUUIDKeyService(), Supplier { "Test " })
 {
     companion object {
@@ -63,6 +72,57 @@ class RedisPubSubMessagingTests(
         Assertions
             .assertThat(redisContainer.isRunning)
             .isTrue
+    }
+
+    @Test
+    fun `concurrent open creates one channel reader`() {
+        val topic = UUID.randomUUID()
+        val message = Message.create(
+            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            "concurrent-open-payload",
+            true,
+        )
+
+        StepVerifier.create(messaging.listenTo(topic))
+            .then {
+                Flux.merge(
+                    messaging.open(topic).subscribeOn(Schedulers.parallel()),
+                    messaging.open(topic).subscribeOn(Schedulers.parallel()),
+                )
+                    .then()
+                    .block(Duration.ofSeconds(10))
+                assertThat(
+                    redisTemplates.stringMessageTemplate<UUID>()
+                        .convertAndSend(topic.toString(), message)
+                        .block(Duration.ofSeconds(10))
+                ).isEqualTo(1L)
+            }
+            .assertNext { actual -> assertThat(actual.key.id).isEqualTo(message.key.id) }
+            .expectNoEvent(Duration.ofMillis(500))
+            .thenCancel()
+            .verify(Duration.ofSeconds(5))
+    }
+
+    @Test
+    fun `close disposes the channel reader`() {
+        val topic = UUID.randomUUID()
+        messaging.open(topic).block(Duration.ofSeconds(10))
+
+        val reader = activeDisposable("sources", topic)
+
+        messaging.close(topic).block(Duration.ofSeconds(10))
+
+        assertThat(reader.isDisposed).isTrue()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun activeDisposable(fieldName: String, topic: UUID): Disposable {
+        // Read the private cache to assert disposal of the actual subscription.
+        val field = messaging.javaClass.getDeclaredField(fieldName).apply {
+            isAccessible = true
+        }
+        val readers = field.get(messaging) as Map<UUID, Mono<Disposable>>
+        return requireNotNull(readers[topic]).block(Duration.ofSeconds(10))!!
     }
 }
 

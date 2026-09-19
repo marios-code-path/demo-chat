@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -33,13 +34,13 @@ import java.util.stream.Stream
     ]
 )
 class MessagClientTests : RSocketTestBase() {
-    @Autowired
+    @MockitoBean
     private lateinit var messagePersistence: MessagePersistence<UUID, String>
 
-    @Autowired
+    @MockitoBean
     private lateinit var topicMessaging: TopicPubSubService<UUID, String>
 
-    @Autowired
+    @MockitoBean
     private lateinit var messageIndex: MessageIndexService<UUID, String, Map<String, String>>
 
     private val svcPrefix = ""

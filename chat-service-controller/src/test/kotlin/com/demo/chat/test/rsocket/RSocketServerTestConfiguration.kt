@@ -5,11 +5,11 @@ import com.demo.chat.domain.serializers.JacksonModules
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketMessagingAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketRequesterAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
-import org.springframework.boot.autoconfigure.rsocket.RSocketStrategiesAutoConfiguration
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
+import org.springframework.boot.rsocket.autoconfigure.RSocketMessagingAutoConfiguration
+import org.springframework.boot.rsocket.autoconfigure.RSocketRequesterAutoConfiguration
+import org.springframework.boot.rsocket.autoconfigure.RSocketServerAutoConfiguration
+import org.springframework.boot.rsocket.autoconfigure.RSocketStrategiesAutoConfiguration
 import org.springframework.context.annotation.ComponentScan
 
 class TestModules : JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)

@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs
-import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest
+import org.springframework.boot.restdocs.test.autoconfigure.AutoConfigureRestDocs
+import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest
 import org.springframework.cloud.contract.wiremock.restdocs.SpringCloudContractRestDocs
 import org.springframework.http.MediaType
 import org.springframework.restdocs.RestDocumentationExtension

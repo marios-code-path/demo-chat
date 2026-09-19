@@ -182,7 +182,9 @@ echo "7. Trigger a rebuild, under Basic credentials."
 # The timestamp comes first. The trigger never promises the job key, so the
 # gate correlates by start instant. This needs the gate clock and the
 # application clock to agree, and both run on this host.
-TRIGGER_AT=$("$PYTHON" -c "import time; print(time.time())")
+TRIGGER_AT=$("$PYTHON" -c "
+from datetime import datetime, timezone
+print(datetime.now(timezone.utc).isoformat())")
 curl -sS -u "$ACTUATOR_USER:$ACTUATOR_PASS" \
     -X POST "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/trigger.json" \
     || fail "the trigger did not answer"
@@ -224,15 +226,24 @@ for _ in $(seq 1 "$INNER"); do
         "http://127.0.0.1:$APP_PORT/actuator/vectorindex" > "$WORK/status.json"
     TERMINAL=$("$PYTHON" -c "
 import json
+from datetime import datetime
+
+# The payload carries ISO-8601 UTC. Parse it, because text that ends in Z
+# and text that carries an offset order differently as text. Boot 4 writes
+# the Z form and Python writes the offset form. See CHAT-ngevggjk.
+def at(value):
+    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+
+since = at('$TRIGGER_AT')
 jobs = [j for j in json.load(open('$WORK/status.json'))['jobs']
-        if j['startedAt'] >= $TRIGGER_AT and j['outcome'] != 'RUNNING']
-jobs.sort(key=lambda j: j['startedAt'], reverse=True)
+        if at(j['startedAt']) >= since and j['outcome'] != 'RUNNING']
+jobs.sort(key=lambda j: at(j['startedAt']), reverse=True)
 print(jobs[0]['outcome'] if jobs else 'NONE')
-" 2>/dev/null)
-    [ "$TERMINAL" != "NONE" ] && break
+") || fail "the status reader failed, so the payload shape changed"
+    [ -n "$TERMINAL" ] && [ "$TERMINAL" != "NONE" ] && break
     sleep 1
 done
-[ "$TERMINAL" != "NONE" ] \
+[ -n "$TERMINAL" ] && [ "$TERMINAL" != "NONE" ] \
     || { cat "$WORK/status.json"; fail "the inner bound expired and the run left no durable record"; }
 echo "   ok, the durable record reports $TERMINAL"
 
@@ -247,9 +258,18 @@ echo "9. Assert that the newest job succeeded and carries the identity."
 # SUCCEEDED record of an earlier run would also have satisfied it.
 JOB_IDENTITY=$("$PYTHON" -c "
 import json
+from datetime import datetime
+
+# The payload carries ISO-8601 UTC. Parse it, because text that ends in Z
+# and text that carries an offset order differently as text. Boot 4 writes
+# the Z form and Python writes the offset form. See CHAT-ngevggjk.
+def at(value):
+    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+
+since = at('$TRIGGER_AT')
 jobs = [j for j in json.load(open('$WORK/status.json'))['jobs']
-        if j['startedAt'] >= $TRIGGER_AT and j['outcome'] != 'RUNNING']
-jobs.sort(key=lambda j: j['startedAt'], reverse=True)
+        if at(j['startedAt']) >= since and j['outcome'] != 'RUNNING']
+jobs.sort(key=lambda j: at(j['startedAt']), reverse=True)
 print(jobs[0].get('embeddingIdentity'))
 ")
 [ "$JOB_IDENTITY" = "$IDENTITY" ] \
@@ -274,6 +294,28 @@ if len(hits) < 3:
     sys.exit(1)
 print('   ok,', len(hits), 'hits and indexComplete true')
 " || { cat "$WORK/recall.json"; echo; tail -40 "$WORK/app.log"; fail "the recall answer is wrong"; }
+
+# The body above omits threshold, which carries a Kotlin default value. This
+# one states every field. Both shapes must decode. Spring Boot 4 decodes with a
+# Jackson 3 codec, and Jackson needs the Jackson 3 Kotlin module to apply a
+# Kotlin default for an absent property. Without that module the first body
+# answers 400 and this one answers 200, so one shape alone proves nothing.
+# See CHAT-micujksn.
+echo "11. Run one recall that states every field."
+curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
+    -H 'Content-Type: application/json' \
+    -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":5,"threshold":0.0}' \
+    > "$WORK/recall-full.json" || fail "the explicit recall did not answer"
+
+"$PYTHON" -c "
+import json, sys
+body = json.load(open('$WORK/recall-full.json'))
+hits = body.get('hits', [])
+if len(hits) < 3:
+    print('hits', len(hits), 'expected at least 3')
+    sys.exit(1)
+print('   ok,', len(hits), 'hits with every field stated')
+" || { cat "$WORK/recall-full.json"; fail "the explicit recall answer is wrong"; }
 
 echo
 echo "PASS. The packaged deployment embedded, rebuilt, and searched."

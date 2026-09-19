@@ -4,7 +4,10 @@ import com.demo.chat.client.discovery.ConsulClientDiscovery
 import com.demo.chat.service.client.ClientDiscovery
 import com.demo.chat.service.client.ClientProperties
 import com.demo.chat.service.client.ClientProperty
-import com.ecwid.consul.v1.ConsulClient
+// Spring Cloud Consul 5 ships its own client type in
+// spring-cloud-consul-core. The ecwid client is no longer what
+// ConsulReactiveDiscoveryClient takes. See CHAT-wqhnxahf.
+import org.springframework.cloud.consul.ConsulClient
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.cloud.consul.discovery.ConsulDiscoveryProperties

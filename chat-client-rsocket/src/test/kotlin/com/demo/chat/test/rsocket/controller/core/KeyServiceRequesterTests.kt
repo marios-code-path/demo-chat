@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
@@ -24,7 +24,7 @@ import java.util.*
 )
 class KeyServiceRequesterTests : RSocketTestBase() {
 
-    @MockBean
+    @MockitoBean
     private lateinit var keyService: IKeyService<UUID>
 
     @Test

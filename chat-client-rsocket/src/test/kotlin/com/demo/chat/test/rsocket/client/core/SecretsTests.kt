@@ -12,7 +12,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
@@ -24,7 +24,7 @@ import reactor.test.StepVerifier
     ]
 )
 class SecretsTests : RSocketTestBase() {
-    @MockBean
+    @MockitoBean
     private lateinit var secretStore: SecretsStore<Long>
     private val svcPrefix = ""
 

@@ -1,6 +1,7 @@
 package com.demo.chat.test.config
 
 import com.demo.chat.config.DefaultChatJacksonModules
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.service.composite.VectorRecallBeansConfiguration
 import com.demo.chat.config.service.composite.VectorRecallServiceConfiguration
 import com.demo.chat.domain.EmbeddingIdentity
@@ -53,7 +54,12 @@ class VectorRecallServiceConfigurationTests {
         context.beanFactory.registerSingleton("pubSubBeans", beans.pubSub())
         // A deployment builds this mapper from the Module beans that
         // JacksonModules declares. The registration repeats that result.
-        context.beanFactory.registerSingleton("codecMapper", chatMapper())
+        //
+        // **The bean name is the contract.** VectorRecallServiceConfiguration
+        // takes the mapper by @Qualifier(JACKSON_2_OBJECT_MAPPER), because
+        // Spring Boot 4 builds Jackson 3 mappers beside it. A singleton under
+        // any other name does not satisfy that qualifier. See CHAT-sxydbspq.
+        context.beanFactory.registerSingleton(JACKSON_2_OBJECT_MAPPER, chatMapper())
         // Two configurations. VectorRecallBeansConfiguration supplies
         // CoreRecallBeans, and every controller takes that interface rather
         // than MessageRecallService.

@@ -4,6 +4,11 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
+**The Spring Boot 4.0.8 line carries one reactor change that master did not
+have.** `chat-index-elastic` is out of the module list. B11 records why, and
+`CHAT-gdtktbfh` brings it back. Measured on 2026-09-19 at
+`chat-gdtktbfh-dropelastic`.
+
 Do not trust this file on its own — run the verifier:
 
 ```bash
@@ -16,23 +21,41 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — **BUILD SUCCESS**. No module fails, nothing is skipped.
-`mvn clean install` — **BUILD SUCCESS**. Image building moved behind `-Ptest-build`, so no build needs a Docker daemon.
-`mvn clean test -fae -Pintegration` — **BUILD SUCCESS**, against Docker Engine 29.7.2.
+`mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
+skipped. The reactor holds 36 modules and reports 834 tests, 0 failures, 0
+errors and 30 skipped.
 
-Measured on 2026-09-17, after the Kafka contract tests. Default mode reports
-818 tests with 30 skipped, so 788 run. Integration mode reports 1037 tests with
-55 skipped, so 982 run.
+Plain `mvn -B clean test`, which is the command CI runs, also reports
+**BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
+module that the verifier tolerates would still hold CI red.
 
-The default count moved from 808 to 818 on 2026-09-17. `KafkaSenderContractTests`
-adds six tests, and `KafkaReceiverContractTests` adds four. `CHAT-hazcatpc`
-carries the reason. Both
-report zero failures and zero errors, and `--install` reports the same counts
-as the default mode.
+The install phase was not measured at this branch head. The `test-build` profile controls image builds. Ordinary builds do not need a
+Docker daemon. The integration verifier runs container tests and checks that
+the known-failure list matches the measured reactor.
+
+Measured on 2026-09-19 at `chat-mumfjoau-pubsubdelivery` `091dbbea`, default
+mode reported 832 tests, 0 failures, 0 errors and 30 skipped. It ran 802 tests.
+Integration mode reported 1056 tests, 0 failures, 0 errors and 55 skipped. It
+ran 1001 tests. Both gate runs reported no failure-list drift.
+
+The review follow-up of `CHAT-zspleyvc` adds two default tests and one
+integration test. Both gates ran again on 2026-09-19 at
+`chat-mumfjoau-pubsubdelivery` `e6adfffd`. Default mode reports 834 tests, 0
+failures, 0 errors and 30 skipped, so it runs 804. Integration mode reports
+1059 tests, 0 failures, 0 errors and 55 skipped, so it runs 1004. Both exit 0
+and report no failure-list drift. These are measured counts, not counts
+derived from the earlier run.
+
+The earlier measurement on 2026-09-17 reported 818 tests with 30 skipped in
+default mode and 1037 tests with 55 skipped in integration mode. That default
+count moved from 808 after `KafkaSenderContractTests` added six tests and
+`KafkaReceiverContractTests` added four. `CHAT-hazcatpc` carries the reason.
+The earlier `--install` mode reported the same counts as default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
-The reactor holds 37 modules, and 28 of them run tests. `chat-embedding-openai`
+The reactor holds 36 modules and 27 of them run tests. It held 37 until
+`chat-index-elastic` left the module list. See B11. `chat-embedding-openai`
 and `chat-embedding-local` are the two newest. Each supplies one
 `EmbeddingModel` behind one value of `app.service.core.embedding`. See
 `docs/EMBEDDING-PROVIDERS.md`.
@@ -43,9 +66,13 @@ and Status. Neither module is a deficiency, and a row would have to leave all
 three columns empty or false. Task 10 of the embedding provider plan asked for
 a row, and this is the deliberate departure from it.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed, so 194 tests are not exercised by a plain build. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 200 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
-The `--integration` run is what settles that question, and it now passes with no module failing and none skipped. So `chat-shell` passes on its own merits, not by exclusion, and B2 holds up with containers running. Both remaining lists in the verifier — `KNOWN_FAILING_INSTALL` and `KNOWN_FAILING_INTEGRATION` — are empty and measured, not assumed.
+The integration gate runs the container tests. It reports only the parked
+`chat-index-elastic` failure and no skipped modules. Its exit status means that
+result matches this file, not that every module passes. `chat-shell` tests run
+and pass. Both extra failure lists, `KNOWN_FAILING_INSTALL` and
+`KNOWN_FAILING_INTEGRATION`, are empty and measured.
 
 Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
 
@@ -53,6 +80,41 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
+| B11 | `chat-index-elastic` does not compile under Boot 4, and is out of the reactor | nothing, the module has no dependents | Excluded, repair on a branch |
+
+---
+
+### B11 — `chat-index-elastic` is out of the reactor
+
+**This is a decision, not a defect left lying around.** The module does not
+compile under Boot 4, and the owner chose to drop it from the module list so
+the Boot 4 work can land with a green CI. `CHAT-gdtktbfh` brings it back, and
+the repair already sits on the branch `chat-urhjrwbt-indexelastic`.
+`CHAT-urhjrwbt` carries the reasoning for treating that repair as exploratory.
+
+**Why the module list and not `KNOWN_FAILING`.** CI runs `mvn -B clean test`
+and `mvn -B clean verify -Ptest-build,integration`. Neither reads
+`KNOWN_FAILING`, which exists only inside `build-health.sh`. So a module the
+verifier tolerates still holds both CI jobs red on every push and every pull
+request. Tolerating it here and failing there is the worst of both.
+
+Measured on 2026-09-19 at `boot4-gate-probe` `9bb74290`, `mvn -o compile` on
+that module reports four causes in three files:
+
+- `ElasticConfiguration.kt` cannot resolve `HttpHost`, which moved groupId.
+- `User.kt` cannot resolve `PersistenceConstructor`, which moved package.
+- `ReactiveUserIndexRepository.kt` reports four JSpecify bound errors. Spring
+  Data Elasticsearch declares `ReactiveElasticsearchRepository<T : Any, ID : Any>`,
+  and the four repository interfaces pass an unbounded `T`.
+
+**Nothing depends on this module.** No pom declares it except the root module
+list, and no source outside it names it. Both facts were checked before the
+removal, so it takes nothing down with it.
+
+**`KNOWN_FAILING` is empty again, and that is deliberate.** A module that is
+not built cannot fail, so naming it there would make the verifier report
+RESOLVED on every run. Restoring the module means adding it back to the root
+module list, not to that list. The directory and its history stay in place.
 
 ---
 
@@ -122,5 +184,22 @@ Kept so the list can be trusted — an entry disappearing without explanation is
 R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing, and `chat-index-cassandra` from 8 tests with 4 errors to 26 passing.
 
 ## One-time notes
+
+- **The verifier never builds the container image.** `build-health.sh
+  --integration` runs `mvn clean test -fae -Pintegration`, which stops at the
+  `test` phase. The image is built in `package` by
+  `chat-deploy-memory-integration-test` under `-Ptest-build`. So a green
+  verifier says nothing about the image, and only the CI command
+  `mvn -B clean verify -Ptest-build,integration` exercises it. Measured on
+  2026-09-19: that command reports BUILD SUCCESS with 37 modules, 1059 tests,
+  0 failures, 0 errors and 55 skipped. See CHAT-bahmtzut.
+- **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
+  `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
+  holds a `credsStore` together with empty `auths` entries makes the build fail
+  with `'username' must not be null`, and the message names no registry. Boot
+  3.5.x did not read the file this way. This is a property of the developer
+  machine and not of this repository. Measured on 2026-09-19: the same build
+  succeeds with `DOCKER_CONFIG` pointed at a directory holding `{}`.
+  `DOCKER_HOST` has nothing to do with it.
 
 - The first build after R2 needs network access: `org.testcontainers:database-commons:1.21.4` is not in a local repository that predates the bump, so `mvn -o` fails until it is fetched once.

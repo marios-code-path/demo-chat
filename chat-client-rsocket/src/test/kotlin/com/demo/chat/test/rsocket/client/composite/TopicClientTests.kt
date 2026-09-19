@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
@@ -36,22 +37,22 @@ class TopicClientTests : RSocketTestBase() {
     lateinit var client: TopicClient<UUID, String>
     private val svcPrefix = ""
 
-    @Autowired
+    @MockitoBean
     lateinit var topicIndex: TopicIndexService<UUID, Map<String, String>>
 
-    @Autowired
+    @MockitoBean
     lateinit var topicPersistence: TopicPersistence<UUID>
 
-    @Autowired
+    @MockitoBean
     lateinit var userPersistence: UserPersistence<UUID>
 
-    @Autowired
+    @MockitoBean
     lateinit var pubsub: TopicPubSubService<UUID, String>
 
-    @Autowired
+    @MockitoBean
     lateinit var membershipIndex: MembershipIndexService<UUID, Map<String, String>>
 
-    @Autowired
+    @MockitoBean
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     val randomUserHandle = TestBase.randomAlphaNumeric(4) + "User"

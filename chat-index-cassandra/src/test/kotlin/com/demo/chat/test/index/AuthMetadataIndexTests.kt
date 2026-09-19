@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -28,10 +28,10 @@ import java.util.*
 class AuthMetadataIndexTests {
     private lateinit var index: AuthMetaIndex<UUID, Map<String, String>>
 
-    @MockBean
+    @MockitoBean
     lateinit var byPrincipalRepo: AuthMetadataByPrincipalRepository<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var byTargetRepo: AuthMetadataByTargetRepository<UUID>
 
     private val keyGenerator: () -> UUID = { UUID.randomUUID() }

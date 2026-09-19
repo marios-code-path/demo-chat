@@ -162,45 +162,56 @@ abstract class PubSubTests<T : Any, V>(
     }
 
 
+    /**
+     * One message reaches a listener of the topic.
+     *
+     * **This test proved nothing until 2026-09-19.** The verifier sat inside
+     * `.map { }` applied to the `Mono<Void>` that `sendMessage` answers. A
+     * `Mono<Void>` emits no value, so the mapper never ran, and the outer
+     * verifier saw only completion. A println inside it printed 0 times over
+     * a full run, and a Kafka receiver pointed at a topic name that does not
+     * exist left every test passing.
+     *
+     * The order matters. The listener subscribes first, and the send runs
+     * from `then`, after the subscription exists. `listenTo` answers an
+     * endless Flux, so the verifier cancels rather than waiting for a
+     * completion that never arrives.
+     *
+     * See CHAT-mumfjoau.
+     */
     @Test
     fun `create && join && sendMessage && listen for message`() {
-        val steps = keyFlux()
-            .collectList()
-            .flatMapMany { keys ->
-                val userId = keys[0].id
-                val testRoom = keys[1].id
-                val msgId = keys[2].id
+        val keys = requireNotNull(keyFlux().collectList().block(Duration.ofSeconds(10)))
+        val userId = keys[0].id
+        val testRoom = keys[1].id
+        val msgId = keys[2].id
 
-                val listener = messaging.listenTo(testRoom)
-                messaging
-                    .open(testRoom)
-                    .then(messaging.subscribe(userId, testRoom))
-                    .then(
-                        messaging.sendMessage(
-                            Message.create(
-                                MessageKey.create(msgId, userId, testRoom),
-                                valueSupply.get(),
-                                true
-                            )
-                        )
-                    )
-                    .map {
-                        StepVerifier
-                            .create(listener)
-                            .assertNext { msg ->
-                                Assertions
-                                    .assertThat(msg)
-                                    .isNotNull
-                                    .hasNoNullFieldsOrProperties()
-                            }
-                            .verifyComplete()
-                    }
-            }
+        messaging
+            .open(testRoom)
+            .then(messaging.subscribe(userId, testRoom))
+            .block(Duration.ofSeconds(10))
+
+        val message = Message.create(
+            MessageKey.create(msgId, userId, testRoom),
+            valueSupply.get(),
+            true
+        )
 
         StepVerifier
-            .create(steps)
-            .expectSubscription()
-            .expectComplete()
-            .verify(Duration.ofSeconds(2))
+            .create(messaging.listenTo(testRoom))
+            .then { messaging.sendMessage(message).subscribe() }
+            .assertNext { received ->
+                Assertions
+                    .assertThat(received)
+                    .isNotNull
+                    .hasNoNullFieldsOrProperties()
+
+                Assertions
+                    .assertThat(received.key.dest)
+                    .`as`("the message arrives on the topic it was sent to")
+                    .isEqualTo(testRoom)
+            }
+            .thenCancel()
+            .verify(Duration.ofSeconds(10))
     }
 }

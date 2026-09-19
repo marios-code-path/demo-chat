@@ -12,7 +12,7 @@ import com.demo.chat.test.TestUUIDKeyService
 import org.junit.jupiter.api.*
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -28,7 +28,7 @@ class TopicPersistenceTests {
 
     lateinit var roomSvc: TopicPersistenceCassandra<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var roomRepo: TopicRepository<UUID>
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()

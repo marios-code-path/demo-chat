@@ -18,7 +18,7 @@ import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Mono
 
 
-interface ChatUserHandleRepository<T>
+interface ChatUserHandleRepository<T : Any>
     : ReactiveCassandraRepository<ChatUserHandle<T>, T>,
     ChatUserHandleRepositoryCustom<T> {
     fun findByKeyHandle(handle: String): Mono<ChatUserHandle<T>>

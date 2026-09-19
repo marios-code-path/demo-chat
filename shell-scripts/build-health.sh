@@ -23,9 +23,12 @@ DOC="docs/BUILD-HEALTH.md"
 
 # Modules expected to fail, from docs/BUILD-HEALTH.md. Keep these two in sync:
 # if you change this list, change the document, and vice versa.
-# Empty: a default build has no known failures. If this script reports NEW,
-# something regressed - that is the signal, not noise to be silenced by adding
-# the module here.
+# If this script reports NEW, something regressed - that is the signal, not
+# noise to be silenced by adding the module here.
+#
+# Empty again since chat-index-elastic left the reactor. A module that is not
+# built cannot fail, so naming it here would make this script report RESOLVED
+# on every run. See the B11 row in docs/BUILD-HEALTH.md and CHAT-gdtktbfh.
 KNOWN_FAILING=""
 # Additionally expected to fail once the build reaches package/install.
 # Empty since B1: chat-deploy-memory-integration-test no longer builds an image

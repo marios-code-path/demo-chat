@@ -11,9 +11,9 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
-import org.springframework.boot.autoconfigure.security.rsocket.RSocketSecurityAutoConfiguration
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Import
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
@@ -27,7 +27,7 @@ import reactor.test.StepVerifier
 )
 class SecretsControllerTests : RSocketTestBase() {
 
-    @MockBean
+    @MockitoBean
     private lateinit var secretStore: SecretsStore<Long>
 
     @Test

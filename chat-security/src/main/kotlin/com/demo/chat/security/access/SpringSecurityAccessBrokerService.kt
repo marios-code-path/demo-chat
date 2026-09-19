@@ -59,9 +59,16 @@ class SpringSecurityAccessBrokerService<T>(
     }
 
     private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
-        .map {
-                it.authentication!!.principal as ChatUserDetails<T>
-        }
+        // **A null authentication is anonymous, by owner decision of
+        // 2026-09-18.** mapNotNull drops the null, and the switchIfEmpty
+        // below then supplies the Anon root key. So a context with no
+        // authentication and a request with no context reach the same
+        // identity, which is the behaviour this application wants.
+        //
+        // This is a deliberate change from the earlier lines rather than a
+        // restoration. Spring Boot 3.5.16 asserted the value here and threw
+        // on null.
+        .mapNotNull { it.authentication?.principal as ChatUserDetails<T>? }
         .switchIfEmpty(Mono.just(
             ChatUserDetails(User
                 .create(rootKeys.getRootKey("Anon"), "anon", "anon", "http://anon"),

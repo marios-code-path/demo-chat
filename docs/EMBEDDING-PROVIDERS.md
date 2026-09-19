@@ -79,11 +79,18 @@ app.service.core.embedding.openai.max-attempts=10
 the startup the same way an absent one does. A blank key reaches a remote service as an anonymous call,
 and an operator cannot tell a missing key from an intended one.
 
-`max-attempts` is optional. An unset value gives the Spring AI default policy,
-which makes 10 attempts and waits between them. Ten attempts make nine waits of
-2, 10, 50, and then six of 180 seconds. That is 1142 seconds, which is 19
-minutes before one call gives up on an endpoint that refuses every connection.
-Set a lower number when a caller cannot wait that long.
+`max-attempts` is optional, and it counts calls. An unset value gives 10 calls.
+Set a lower number when a caller cannot wait for ten.
+
+**The OpenAI SDK owns the retry since Spring AI 2.0.** The SDK counts retries
+after the first call, so the module subtracts one before it passes the value.
+An unset property sets 9 retries, which keeps the 10 calls that Spring AI 1.0.3
+made. **The SDK default is 2 retries, and the module never uses it**, because
+three calls would replace ten without any report.
+
+The wait between calls now belongs to the SDK. The earlier figure of 1142
+seconds described the Spring AI 1.0.3 template, and it no longer applies. **No
+measurement of the SDK wait exists yet.** See CHAT-chsvdqbi.
 
 The module depends on `spring-ai-openai` and not on a starter. A starter
 carries auto-configuration, both provider modules sit on one classpath, and two

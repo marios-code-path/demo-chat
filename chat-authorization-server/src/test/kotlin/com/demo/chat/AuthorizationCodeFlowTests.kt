@@ -4,12 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpSession
+import org.springframework.security.core.authority.FactorGrantedAuthority
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames
+import org.springframework.security.oauth2.core.endpoint.PkceParameterNames
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic
@@ -23,6 +26,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.web.util.UriComponentsBuilder
+import java.security.MessageDigest
+import java.util.Base64
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.MOCK,
@@ -59,6 +64,47 @@ class AuthorizationCodeFlowTests {
         private const val PROFILE_SCOPE = "profile"
         private val CONSENT_STATE_PATTERN = Regex("""name="state" value="([^"]+)"""")
 
+        /**
+         * The PKCE pair of this flow.
+         *
+         * **Authorization Server 7 requires PKCE.** `ClientSettings.builder()`
+         * called `requireProofKey(false)` at 1.5.8 and calls
+         * `requireProofKey(true)` at 7.0.7, read from the bytecode of each.
+         * `RegisteredClientFactory` never sets the value, so every registered
+         * client takes the new default.
+         *
+         * Without the challenge the authorize endpoint answers 302 to the
+         * redirect uri with `error=invalid_request` and
+         * `OAuth 2.0 Parameter: code_challenge`.
+         *
+         * The owner kept the new default on 2026-09-19. See CHAT-qvyptrcv.
+         */
+        private const val CODE_VERIFIER = "authorization-code-test-verifier-0123456789-abcdefg"
+
+        /**
+         * The authentication factor of the test principal.
+         *
+         * **Security 7 reads `auth_time` from the authorities.**
+         * `JwtGenerator.getAuthenticationTime` scans them for a
+         * `FactorGrantedAuthority` and takes the latest `issuedAt`. The
+         * id_token generation then asserts the value is present.
+         *
+         * `user(TEST_USER)` never runs the login filter, so its principal
+         * carries no factor and the flow failed with
+         * "authenticationTime cannot be null". This is a fixture gap. The
+         * production chain authenticates through formLogin, and this test
+         * does not measure that path.
+         */
+        private val PASSWORD_FACTOR: FactorGrantedAuthority =
+            FactorGrantedAuthority.fromAuthority(FactorGrantedAuthority.PASSWORD_AUTHORITY)
+
+        private val CODE_CHALLENGE: String = Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(
+                MessageDigest.getInstance("SHA-256")
+                    .digest(CODE_VERIFIER.toByteArray(Charsets.US_ASCII))
+            )
+
         @JvmStatic
         @DynamicPropertySource
         fun testProperties(registry: DynamicPropertyRegistry) {
@@ -92,12 +138,14 @@ class AuthorizationCodeFlowTests {
     fun authorizationCodeFlowIssuesAndDecodesTokens() {
         val authorizationResult = mockMvc.perform(
             get(AUTHORIZATION_ENDPOINT)
-                .with(user(TEST_USER))
+                .with(user(TEST_USER).authorities(PASSWORD_FACTOR, SimpleGrantedAuthority("ROLE_USER")))
                 .queryParam(OAuth2ParameterNames.RESPONSE_TYPE, "code")
                 .queryParam(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
                 .queryParam(OAuth2ParameterNames.REDIRECT_URI, REDIRECT_URI)
                 .queryParam(OAuth2ParameterNames.SCOPE, "$OPENID_SCOPE $PROFILE_SCOPE")
                 .queryParam(OAuth2ParameterNames.STATE, STATE)
+                .queryParam(PkceParameterNames.CODE_CHALLENGE, CODE_CHALLENGE)
+                .queryParam(PkceParameterNames.CODE_CHALLENGE_METHOD, "S256")
         )
             .andExpect(status().isOk)
             .andReturn()
@@ -112,7 +160,7 @@ class AuthorizationCodeFlowTests {
         val consentResult = mockMvc.perform(
             post(AUTHORIZATION_ENDPOINT)
                 .session(session)
-                .with(user(TEST_USER))
+                .with(user(TEST_USER).authorities(PASSWORD_FACTOR, SimpleGrantedAuthority("ROLE_USER")))
                 .param(OAuth2ParameterNames.CLIENT_ID, CLIENT_ID)
                 .param(OAuth2ParameterNames.STATE, consentState)
                 .param(OAuth2ParameterNames.SCOPE, OPENID_SCOPE, PROFILE_SCOPE)
@@ -142,6 +190,7 @@ class AuthorizationCodeFlowTests {
                 )
                 .param(OAuth2ParameterNames.CODE, authorizationCode)
                 .param(OAuth2ParameterNames.REDIRECT_URI, REDIRECT_URI)
+                .param(PkceParameterNames.CODE_VERIFIER, CODE_VERIFIER)
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.token_type").value("Bearer"))

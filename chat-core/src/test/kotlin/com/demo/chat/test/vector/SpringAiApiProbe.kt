@@ -57,7 +57,7 @@ class SpringAiApiProbe {
         return EmbeddingResponse(embeddings)
     }
 
-    fun documentBuilderProbe(id: String, text: String, metadata: Map<String, Any?>, score: Double): Document =
+    fun documentBuilderProbe(id: String, text: String, metadata: Map<String, Any>, score: Double): Document =
         Document.builder()
             .id(id)
             .text(text)

@@ -1,5 +1,6 @@
 package com.demo.chat.test.persistence.cassandra
 
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
 import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
@@ -34,7 +35,10 @@ class CorePersistenceServicesConditionTests {
         @Bean
         fun keyService(): IKeyService<Long> = TestLongKeyService()
 
-        @Bean
+        // CorePersistenceServices takes the Jackson 2 mapper by qualifier, so
+        // the stub carries the contract bean name. A stub is right here,
+        // because the condition is under test and not the wire shape.
+        @Bean(JACKSON_2_OBJECT_MAPPER)
         fun mapper(): ObjectMapper = ObjectMapper()
 
         @Bean

@@ -195,6 +195,28 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-oauth2-authorization-server</artifactId>
         </dependency>
+        <!--
+            Boot 4 moved OAuth2AuthorizationServerProperties out of
+            spring-boot-autoconfigure and into this module. ClientLoader
+            binds those properties. The Boot BOM manages the version.
+            See CHAT-qvyptrcv.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-security-oauth2-authorization-server</artifactId>
+        </dependency>
+        <!--
+            Spring Boot 4 splits the test slices into their own artifacts.
+            AutoConfigureMockMvc moved to
+            org.springframework.boot.webmvc.test.autoconfigure, and
+            spring-boot-starter-test does not carry it. Same family as
+            CHAT-xbfcazwa. See CHAT-qvyptrcv.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

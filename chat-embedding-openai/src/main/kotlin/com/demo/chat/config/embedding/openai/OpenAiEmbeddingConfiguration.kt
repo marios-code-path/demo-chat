@@ -1,19 +1,17 @@
 package com.demo.chat.config.embedding.openai
 
+import com.openai.client.OpenAIClient
+import com.openai.client.OpenAIClientImpl
+import com.openai.core.ClientOptions
 import org.springframework.ai.document.MetadataMode
 import org.springframework.ai.embedding.EmbeddingModel
-import org.springframework.ai.retry.RetryUtils
-import org.springframework.ai.retry.TransientAiException
 import org.springframework.ai.openai.OpenAiEmbeddingModel
 import org.springframework.ai.openai.OpenAiEmbeddingOptions
-import org.springframework.ai.openai.api.OpenAiApi
+import org.springframework.ai.openai.http.okhttp.SpringAiOpenAiHttpClient
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.retry.support.RetryTemplate
-import org.springframework.web.client.ResourceAccessException
-import java.time.Duration
 
 /**
  * An EmbeddingModel that reaches an OpenAI-compatible endpoint.
@@ -49,19 +47,26 @@ class OpenAiEmbeddingConfiguration {
         @Value("\${app.service.core.embedding.openai.model:}") model: String,
         @Value("\${app.service.core.embedding.openai.max-attempts:}") maxAttempts: String,
     ): EmbeddingModel {
-        val api = OpenAiApi.builder()
+        val options = ClientOptions.builder()
+            // Spring AI supplies the transport. The convenience builder of the
+            // SDK lives in another artifact that this classpath does not hold.
+            .httpClient(SpringAiOpenAiHttpClient.builder().build())
             .baseUrl(required("app.service.core.embedding.openai.base-url", baseUrl))
             .apiKey(required("app.service.core.embedding.openai.api-key", apiKey))
+            .maxRetries(maxRetriesFor(maxAttempts))
             .build()
 
-        return OpenAiEmbeddingModel(
-            api,
-            MetadataMode.EMBED,
-            OpenAiEmbeddingOptions.builder()
-                .model(required("app.service.core.embedding.openai.model", model))
-                .build(),
-            retryTemplateFor(maxAttempts),
-        )
+        val client: OpenAIClient = OpenAIClientImpl(options)
+
+        return OpenAiEmbeddingModel.builder()
+            .openAiClient(client)
+            .metadataMode(MetadataMode.EMBED)
+            .options(
+                OpenAiEmbeddingOptions.builder()
+                    .model(required("app.service.core.embedding.openai.model", model))
+                    .build()
+            )
+            .build()
     }
 
     /**
@@ -84,45 +89,41 @@ class OpenAiEmbeddingConfiguration {
 
     companion object {
         /**
-         * The retry policy of one embedding call.
+         * The retry count of one embedding call, in the unit the SDK uses.
          *
-         * An unset property gives RetryUtils.DEFAULT_RETRY_TEMPLATE, which is what
-         * the library uses. That template makes 10 attempts and waits between
-         * them. It needs 19 minutes to give up on an endpoint that refuses every
-         * connection, because ten attempts make nine waits of 2, 10, 50, and then
-         * six of 180 seconds. That is 1142 seconds.
+         * **The property counts calls. The SDK counts retries after the first
+         * call.** So a property value of 1 means one call and no retry, and it
+         * maps to 0. The translation is `attempts - 1`, and it lives here so
+         * that one place holds it.
          *
-         * A set value gives the same policy with that number of attempts. The
-         * value 1 makes one attempt and no retry, which a test needs. A test of a
-         * dead endpoint cannot wait 19 minutes.
+         * An absent property gives 9, which is ten calls. Spring AI 1.0.3 made
+         * ten attempts through `RetryUtils.DEFAULT_RETRY_TEMPLATE`, and this
+         * value keeps that behaviour for every deployment that sets nothing.
          *
-         * The built template matches the library template in every other way. It
-         * retries the same two exception types, and it waits 2 seconds, then 5
-         * times longer each attempt, up to 180 seconds. It carries no log
-         * listener, which is the one difference.
+         * **The SDK default is 2, which is three calls.** Taking it would cut
+         * ten calls to three, and no test would report the change. So this
+         * function always sets a value. See CHAT-chsvdqbi.
+         *
+         * Spring AI 2.0 removed `RetryTemplate`, `RetryUtils` and
+         * `TransientAiException`. The SDK owns the retry now, so a test reads
+         * the number of calls rather than a template.
          */
-        fun retryTemplateFor(maxAttempts: String): RetryTemplate {
-            if (maxAttempts.isBlank()) return RetryUtils.DEFAULT_RETRY_TEMPLATE
+        fun maxRetriesFor(maxAttempts: String): Int {
+            if (maxAttempts.isBlank()) return DEFAULT_ATTEMPTS - 1
 
             val attempts = maxAttempts.trim().toIntOrNull()
             if (attempts == null || attempts < 1) {
                 throw IllegalStateException(
                     "app.service.core.embedding.openai.max-attempts=$maxAttempts is not a " +
                         "whole number of 1 or more. Remove the property to use the default " +
-                        "policy of 10 attempts."
+                        "of $DEFAULT_ATTEMPTS attempts."
                 )
             }
 
-            return RetryTemplate.builder()
-                .maxAttempts(attempts)
-                .retryOn(TransientAiException::class.java)
-                .retryOn(ResourceAccessException::class.java)
-                .exponentialBackoff(
-                    Duration.ofMillis(2000),
-                    5.0,
-                    Duration.ofMillis(180000),
-                )
-                .build()
+            return attempts - 1
         }
+
+        /** Ten calls, which is what Spring AI 1.0.3 did with no property set. */
+        const val DEFAULT_ATTEMPTS = 10
     }
 }

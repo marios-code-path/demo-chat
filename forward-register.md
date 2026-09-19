@@ -1578,6 +1578,67 @@ import `com.fasterxml.jackson` may still compile. The risk moves to the
 auto-configuration default, and `DomainWireShapeTests` and `E2eeWireShapeTests`
 are the readers that matter.
 
+## The Spring Boot 4 stack, state on 2026-09-19
+
+This section describes the stacked Boot 4 branches, not master. The combined
+branch is `boot4-gate-probe`. `boot4-bump` stays paused at `179c2fd8`.
+
+### The gate reading
+
+`build-health.sh` exits 0 and reports that reality matches
+`docs/BUILD-HEALTH.md`. 36 modules succeed, 1 fails and 0 are skipped, of 37.
+27 modules run tests, giving 829 tests with 0 failures, 0 errors and 30
+skipped.
+
+The one failure is `chat-index-elastic`, which B11 records and which the owner
+parked. **An exit code of 0 here does not mean every module builds.** It means
+the failures match the document.
+
+The owner ran the integration profile on 2026-09-19. 26 modules ran 1043 tests
+with zero failures and zero errors. `chat-persistence-redis` passed 57 tests
+against a Redis container, `chat-vector-redis` passed 4 Redis Stack tests, and
+`chat-deploy-redis` passed 6.
+
+### A client contract changed, and it is breaking
+
+**Every OAuth client of `chat-authorization-server` must now implement PKCE.**
+
+`ClientSettings.builder()` calls `requireProofKey(false)` at Authorization
+Server 1.5.8 and `requireProofKey(true)` at 7.0.7, read from the bytecode of
+each. `RegisteredClientFactory` never sets the value, so every registered
+client takes the default.
+
+A client that sends no `code_challenge` gets 302 to its redirect uri with
+`error=invalid_request` and `OAuth 2.0 Parameter: code_challenge`.
+
+**The owner kept the new default on 2026-09-19.** This is the OAuth 2.1
+direction and the stronger posture. It is recorded here because no code change
+marks it, and a reader of `RegisteredClientFactory` sees no mention of PKCE.
+`CHAT-qvyptrcv` holds the decision.
+
+### Three claims that have no direct evidence
+
+Each is open on purpose. Do not quote any of them as verified.
+
+1. **reactor-kafka against kafka-clients 4.1.2.** `CHAT-ajehabnw` repaired a
+   Kafka failure, and that repair was `AdminClient` alone. It measured nothing
+   about reactor-kafka. Neither enforcer rule fires on the pair, because one
+   version resolves and no path asks for more. `CHAT-hazcatpc` still owns this.
+2. **Deployment injection of the Jackson 3 domain module.**
+   `RSocketServerStrategiesTests` drives the production customizer and passes
+   the module list by hand. No test shows that a deployment supplies it. The
+   component scan reaches `ChatJackson3Modules`, and that is read from source
+   and never run. `CHAT-rmfuqcwi`.
+3. **The RSocket CBOR path.** It has no test and it has not been read. The
+   Jackson 3 repair reached the JSON path only. `CHAT-bgsqwjph`.
+
+### One production behaviour that stays unmeasured
+
+`AuthorizationCodeFlowTests` gives its principal a `FactorGrantedAuthority`,
+because `user(TEST_USER)` never runs the login filter and Security 7 reads
+`auth_time` from the authorities. That repair proves the fixture path. **The
+production `formLogin` path is not measured by it.**
+
 ## Three build traps, each of which cost a cycle (2026-09-17)
 
 These are tooling traps, not code defects. Each one reports success, or reports a

@@ -4,7 +4,7 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
-import org.springframework.shell.Availability
+import org.springframework.shell.core.command.availability.Availability
 
 open class CommandsUtil<T>(
     private val typeUtil: TypeUtil<T>,
@@ -22,6 +22,17 @@ open class CommandsUtil<T>(
             else -> typeUtil.fromString(uId)
         }
     }
+
+    /**
+     * The key conversion that a typed option needs.
+     *
+     * **Spring Shell 4 hands every option to the command as text.** The
+     * declarative model converted a `T` parameter through a registered
+     * converter, and the programmatic model does not. So a command that takes
+     * a key converts it here, through the same TypeUtil that `identity` uses
+     * for a value that is not the `_` placeholder.
+     */
+    open fun keyOf(value: String): T = typeUtil.fromString(value)
 
     open fun isAuthenticated(): Availability {
         return when (

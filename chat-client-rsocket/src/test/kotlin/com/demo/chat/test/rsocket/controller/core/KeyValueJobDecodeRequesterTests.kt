@@ -10,6 +10,7 @@ import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
+import com.demo.chat.config.Jackson2MapperConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -17,7 +18,7 @@ import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Import
 import org.springframework.stereotype.Controller
 import reactor.core.publisher.Mono
@@ -30,10 +31,12 @@ import java.time.Instant
  * bind the value.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-@Import(KeyValueJobDecodeRequesterTests.KeyValueStoreTestConfiguration::class)
+@Import(
+    Jackson2MapperConfiguration::class,
+    KeyValueJobDecodeRequesterTests.KeyValueStoreTestConfiguration::class)
 class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
 
-    @MockBean
+    @MockitoBean
     private lateinit var keyValueStore: KeyValueStore<Long, Any>
 
     private val svcPrefix = ""

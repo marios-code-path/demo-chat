@@ -1,6 +1,8 @@
 package com.demo.chat.config.deploy.kafka
 
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.domain.Message
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.AdminClientConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -8,6 +10,7 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -26,7 +29,10 @@ import reactor.kafka.sender.SenderOptions
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.core", name = ["pubsub"], havingValue = "kafka")
-class KafkaDeployConfiguration {
+class KafkaDeployConfiguration(
+    @Qualifier(JACKSON_2_OBJECT_MAPPER)
+    private val objectMapper: ObjectMapper,
+) {
 
     @Value("\${spring.kafka.bootstrap-servers:localhost:9092}")
     private lateinit var bootstrapServers: String
@@ -41,19 +47,26 @@ class KafkaDeployConfiguration {
         val props = mapOf(
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to JsonSerializer::class.java,
         )
-        return KafkaSender.create(SenderOptions.create(props))
+        val valueSerializer = JsonSerializer<Message<Any, Any>>(objectMapper).apply {
+            setAddTypeInfo(false)
+        }
+        return KafkaSender.create(
+            SenderOptions.create<String, Message<Any, Any>>(props)
+                .withValueSerializer(valueSerializer)
+        )
     }
 
     @Bean
     fun kafkaReceiverOptions(): ReceiverOptions<String, Message<Any, Any>> =
-        ReceiverOptions.create(mapOf(
+        ReceiverOptions.create<String, Message<Any, Any>>(mapOf(
             ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
             ConsumerConfig.GROUP_ID_CONFIG to "chat-kafka",
             ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to "earliest",
             ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to JsonDeserializer::class.java,
-            JsonDeserializer.TRUSTED_PACKAGES to "com.demo.chat.domain",
         ))
+            .withValueDeserializer(
+                JsonDeserializer<Message<Any, Any>>(Message::class.java, objectMapper)
+                    .apply { ignoreTypeHeaders() }
+            )
 }

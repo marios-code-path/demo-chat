@@ -13,7 +13,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
 
-class MembershipIndex<T>(
+class MembershipIndex<T : Any>(
     private val stringToKey: Function<String, T>,
     private val byMemberRepo: TopicMembershipByMemberRepository<T>,
     private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,

@@ -2,8 +2,8 @@ package com.demo.chat.config.deploy.cassandra
 
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.RequestToQueryConverters
-import org.springframework.boot.autoconfigure.cassandra.CassandraProperties
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration
+import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan

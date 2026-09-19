@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.BDDMockito
-import org.springframework.boot.test.mock.mockito.MockBean
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -32,10 +32,10 @@ data class IndexedClient(val clientId: String, val size: Int)
 @ExtendWith(SpringExtension::class)
 class KeyValueIndexTests {
 
-    @MockBean
+    @MockitoBean
     lateinit var byFieldRepo: KeyValueIndexRepository<UUID>
 
-    @MockBean
+    @MockitoBean
     lateinit var byIdRepo: KeyValueIndexByIdRepository<UUID>
 
     private val entityId: UUID = UUID.randomUUID()

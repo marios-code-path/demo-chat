@@ -2,7 +2,7 @@ package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
@@ -44,8 +44,24 @@ import org.springframework.test.web.reactive.server.WebTestClient
 )
 class MemoryVectorIndexActuatorTests {
 
-    @Autowired
-    private lateinit var client: WebTestClient
+    /**
+     * The port of the running server.
+     *
+     * **Boot 4 removed the context customizer that supplied a bound
+     * WebTestClient.** Under Boot 3 a RANDOM_PORT test injected a client
+     * already bound to the server.
+     *
+     * `@AutoConfigureWebTestClient` is the Boot 4 offer, and it builds a
+     * client bound to the application context. That would defeat this test.
+     * The class comment above states why: only a real request proves that
+     * WebFlux unwraps the Mono. See CHAT-njtoyatt.
+     */
+    @Value("\${local.server.port}")
+    private var port: Int = 0
+
+    private val client: WebTestClient by lazy {
+        WebTestClient.bindToServer().baseUrl("http://localhost:$port").build()
+    }
 
     @Test
     fun `the read route answers with the status and the jobs`() {
