@@ -229,6 +229,19 @@
                 <artifactId>spring-data-redis</artifactId>
                 <version>4.1.1</version>
             </dependency>
+            <!--
+                spring-data-redis 4.1.1 declares lettuce 7.5.2.RELEASE, and
+                Boot 4.0.8 manages 6.8.2.RELEASE. Boot management wins, and
+                6.8.2 holds no io.lettuce.core.DriverInfo, so every Redis
+                template bean fails with NoClassDefFoundError.
+                Neither enforcer rule fires, because one version resolves and
+                no path asks for more. See CHAT-pcgtifgx.
+            -->
+            <dependency>
+                <groupId>io.lettuce</groupId>
+                <artifactId>lettuce-core</artifactId>
+                <version>7.5.2.RELEASE</version>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.data</groupId>
                 <artifactId>spring-data-keyvalue</artifactId>
