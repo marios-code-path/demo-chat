@@ -23,7 +23,9 @@ import reactor.test.StepVerifier
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.Disposable
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.*
 import java.util.function.Supplier
@@ -110,7 +112,9 @@ class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
         StepVerifier.create(messaging.listenTo(topic))
             .then {
                 messaging.open(topic).block(Duration.ofSeconds(10))
+                val reader = activeDisposable("topicReaders", topic)
                 messaging.close(topic).block(Duration.ofSeconds(10))
+                assertThat(reader.isDisposed).isTrue()
             }
             .verifyComplete()
 
@@ -128,6 +132,16 @@ class XStreamPubSubTests(@Autowired pubsub: TopicPubSubService<UUID, String>) :
             .assertNext { actual -> assertThat(actual.key.id).isEqualTo(message.key.id) }
             .thenCancel()
             .verify(Duration.ofSeconds(5))
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun activeDisposable(fieldName: String, topic: UUID): Disposable {
+        // Read the private cache to assert disposal of the actual reader.
+        val field = messaging.javaClass.getDeclaredField(fieldName).apply {
+            isAccessible = true
+        }
+        val readers = field.get(messaging) as Map<UUID, Mono<Disposable>>
+        return requireNotNull(readers[topic]).block(Duration.ofSeconds(10))!!
     }
 
     companion object {

@@ -22,7 +22,7 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 `mvn clean test -fae` — **BUILD FAILURE**, and the one failing module is
 expected. The reactor reports 36 SUCCESS, 1 FAILURE and 0 SKIPPED of 37
-modules, with 832 tests, 0 failures, 0 errors and 30 skipped. The single
+modules, with 834 tests, 0 failures, 0 errors and 30 skipped. The single
 failure is `chat-index-elastic`, which B11 records. Every other module that
 compiles also passes its tests.
 
@@ -32,10 +32,14 @@ The `test-build` profile controls image builds. Ordinary builds do not need a
 Docker daemon. The integration verifier runs container tests and checks that
 the known-failure list matches the measured reactor.
 
-Measured on 2026-09-19 at `chat-mumfjoau-pubsubdelivery` `99041a1c`, default
-mode reports 832 tests, 0 failures, 0 errors and 30 skipped. It runs 802 tests.
-Integration mode reports 1056 tests, 0 failures, 0 errors and 55 skipped. It
-runs 1001 tests. Both gate runs reported no failure-list drift.
+Measured on 2026-09-19 at `chat-mumfjoau-pubsubdelivery` `091dbbea`, default
+mode reported 832 tests, 0 failures, 0 errors and 30 skipped. It ran 802 tests.
+Integration mode reported 1056 tests, 0 failures, 0 errors and 55 skipped. It
+ran 1001 tests. Both gate runs reported no failure-list drift.
+
+The review follow-up adds two default tests and one integration test. Focused
+Maven runs passed those tests. The current totals are 834 default tests and
+1059 integration tests. The full gates were not rerun after these additions.
 
 The earlier measurement on 2026-09-17 reported 818 tests with 30 skipped in
 default mode and 1037 tests with 55 skipped in integration mode. That default
@@ -57,7 +61,7 @@ and Status. Neither module is a deficiency, and a row would have to leave all
 three columns empty or false. Task 10 of the embedding provider plan asked for
 a row, and this is the deliberate departure from it.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The current counts show 199 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline showed 199 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The integration gate runs the container tests. It reports only the parked
 `chat-index-elastic` failure and no skipped modules. Its exit status means that

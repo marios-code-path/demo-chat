@@ -25,7 +25,9 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import reactor.core.Disposable
 import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
 import reactor.test.StepVerifier
 import java.time.Duration
@@ -99,6 +101,28 @@ class RedisPubSubMessagingTests(
             .expectNoEvent(Duration.ofMillis(500))
             .thenCancel()
             .verify(Duration.ofSeconds(5))
+    }
+
+    @Test
+    fun `close disposes the channel reader`() {
+        val topic = UUID.randomUUID()
+        messaging.open(topic).block(Duration.ofSeconds(10))
+
+        val reader = activeDisposable("sources", topic)
+
+        messaging.close(topic).block(Duration.ofSeconds(10))
+
+        assertThat(reader.isDisposed).isTrue()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun activeDisposable(fieldName: String, topic: UUID): Disposable {
+        // Read the private cache to assert disposal of the actual subscription.
+        val field = messaging.javaClass.getDeclaredField(fieldName).apply {
+            isAccessible = true
+        }
+        val readers = field.get(messaging) as Map<UUID, Mono<Disposable>>
+        return requireNotNull(readers[topic]).block(Duration.ofSeconds(10))!!
     }
 }
 

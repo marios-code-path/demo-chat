@@ -157,6 +157,7 @@ Call `open(topic)` concurrently twice before the send. Collect listener events f
 - [ ] **Step 3: Add close coverage.**
 
 Subscribe to the listener, open the topic, then close it. Assert that the reader stops and the listener completes. Reopen the topic and prove that a new reader can deliver a new message.
+Capture the active reader `Disposable` before close. Assert `isDisposed` after close.
 
 - [ ] **Step 4: Run the focused XStream integration suite.**
 
@@ -178,6 +179,7 @@ Expected: all XStream tests pass. The reader count stays one per topic.
 - [ ] **Step 1: Add a concurrent-open delivery test.**
 
 Start two `open(topic)` calls concurrently. Send one message after both complete. Assert that the listener receives exactly one copy during a one-second collection window.
+Also close one opened topic. Capture its reader `Disposable` and assert `isDisposed` after close.
 
 - [ ] **Step 2: Replace the check-then-start sequence with shared startup.**
 
@@ -219,5 +221,6 @@ Use one commit for XStream and one commit for Redis Pub/Sub. Name `CHAT-flhybnhm
 - XStream uses the same key and hash serializers as the writer.
 - XStream close disposes the reader and completes its sink.
 - Redis Pub/Sub concurrent opens create one channel subscription.
+- Redis Pub/Sub close disposes its channel subscription.
 - Redis and XStream integration suites pass.
 - The full gate reports the parked Elasticsearch state accurately.

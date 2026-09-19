@@ -272,6 +272,14 @@ run_maven -pl chat-deploy-kafka -am \
 
 Expected: the test receives the message through the production `KafkaDeployConfiguration` beans and Embedded Kafka.
 
+- [ ] **Step 3: Assert the production producer's wire headers.**
+
+Consume the production test message with a raw Kafka consumer and `ByteArrayDeserializer`. Assert that its `__TypeId__` header is absent.
+
+- [ ] **Step 4: Replay an old type header through the production consumer.**
+
+Send the existing `message` wrapper body with the old anonymous type header. Assert that the production consumer decodes it to the declared `Message` fields.
+
 ### Task 6: Check Both Kafka Configuration Sites and Commit
 
 **Files:**
@@ -295,5 +303,6 @@ Use one commit for serializer code, codec tests, and production-path tests. Name
 - Kafka writes no anonymous implementation type header.
 - Kafka ignores the old type header and decodes the existing `message` wrapper body to `Message`.
 - `KafkaDeploymentTests` proves message delivery through production beans.
+- `KafkaDeploymentTests` proves the production producer omits `__TypeId__` and the production consumer ignores the old header.
 - The shared delivery test passes for Kafka, memory, Redis Pub/Sub, and XStream.
 - The full gate records the parked Elasticsearch failure and measured test counts.
