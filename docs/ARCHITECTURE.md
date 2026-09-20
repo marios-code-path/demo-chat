@@ -17,7 +17,7 @@ Every module falls into exactly one of six roles. Once you know the role, you kn
 | **Security** | `chat-security`, `chat-authorization-server` | Authentication, access brokering, `@PreAuthorize` contracts, OAuth2 AS |
 | **Transport (server)** | `chat-service-controller`, `chat-webflux`, `chat-web`, `chat-gateway` | RSocket `@MessageMapping` controllers, REST, Thymeleaf UI, edge routing |
 | **Transport (client)** | `chat-client-rsocket`, `chat-client-consul`, `chat-shell` | Typed RSocket client proxies, service discovery, interactive CLI |
-| **Backend adapters** | `chat-persistence-*`, `chat-index-*`, `chat-messaging-*` | Cassandra / Redis-Streams / memory / Lucene / Elastic / Kafka / Pulsar |
+| **Backend adapters** | `chat-persistence-*`, `chat-index-*`, `chat-messaging-*` | Cassandra / Redis-Streams / memory / Lucene / Kafka / Pulsar |
 | **Deployment** | `chat-deploy*`, `shared-*`, `devops/`, `shell-scripts/` | Runnable apps, profile wiring, Docker, K8s, Consul |
 
 ```mermaid
@@ -49,7 +49,7 @@ flowchart TB
 
     subgraph backends["Pluggable Backends"]
         P["persistence-{memory,cassandra,xstream}"]
-        I["index-{lucene,cassandra,elastic}"]
+        I["index-{lucene,cassandra}"]
         M["messaging-{memory,kafka,pulsar}"]
     end
 
