@@ -200,7 +200,10 @@ class RedisTopicPubSubService<T : Any, E>(
         return startup
             .then()
             .onErrorResume { error ->
-                sources.remove(topic, startup)
+                // A startup failure never reaches the reader handler, so it
+                // terminates the topic here. Without this a listener waits
+                // on a sink that no reader will ever feed. See CHAT-czmjffen.
+                failReader(topic, startup, error)
                 Mono.error(error)
             }
     }
@@ -215,7 +218,7 @@ class RedisTopicPubSubService<T : Any, E>(
         return messages.map { channel ->
             channel.subscribe(
                 { message -> sink.tryEmitNext(message) },
-                { error -> failReader(topic, holder, error) },
+                { error -> failReader(topic, holder.get(), error) },
             )
         }
     }
@@ -236,8 +239,8 @@ class RedisTopicPubSubService<T : Any, E>(
      * The sink is only touched when this reader still owned the entry. A
      * newer reader owns the sink otherwise. See CHAT-czmjffen.
      */
-    private fun failReader(topic: T, holder: AtomicReference<Mono<Disposable>>, error: Throwable) {
-        val owned = sources.remove(topic, holder.get())
+    private fun failReader(topic: T, entry: Mono<Disposable>?, error: Throwable) {
+        val owned = entry != null && sources.remove(topic, entry)
         if (owned) {
             sinks.remove(topic)?.tryEmitError(error)
         }

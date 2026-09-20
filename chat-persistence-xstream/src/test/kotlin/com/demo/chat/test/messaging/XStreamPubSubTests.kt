@@ -203,6 +203,31 @@ class XStreamPubSubTests(
             .verify(Duration.ofSeconds(10))
     }
 
+    /**
+     * A startup failure must reach the listeners too.
+     *
+     * The cursor read can fail before the stream is subscribed. That error
+     * never reaches the reader handler, so it used to remove the entry and
+     * leave the sink open, and a listener waited forever. The seam throws
+     * here, which fails the startup Mono on the same path a failed
+     * `reverseRange` would. See CHAT-czmjffen.
+     */
+    @Test
+    fun `a startup failure ends the listener with an error`() {
+        val topic = UUID.randomUUID()
+        val service = serviceReading { throw IllegalStateException("the cursor read failed") }
+
+        StepVerifier.create(service.listenTo(topic))
+            .then {
+                val failure = runCatching { service.open(topic).block(Duration.ofSeconds(10)) }
+                assertThat(failure.exceptionOrNull())
+                    .describedAs("open still reports the failure to its caller")
+                    .hasMessageContaining("the cursor read failed")
+            }
+            .expectErrorMessage("the cursor read failed")
+            .verify(Duration.ofSeconds(10))
+    }
+
     private fun serviceReading(
         records: (String) -> Flux<Message<UUID, String>>,
     ): XStreamTopicPubSubService<UUID, String> = XStreamTopicPubSubService(

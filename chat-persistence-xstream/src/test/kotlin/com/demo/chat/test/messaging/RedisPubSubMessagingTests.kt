@@ -181,6 +181,39 @@ class RedisPubSubMessagingTests(
             .verify(Duration.ofSeconds(10))
     }
 
+    /**
+     * A startup failure must reach the listeners too.
+     *
+     * `listenToLater` can fail before any reader exists. That error never
+     * reaches the reader handler, so it used to remove the entry and leave
+     * the sink open, and a listener waited forever. See CHAT-czmjffen.
+     */
+    @Test
+    fun `a startup failure ends the listener with an error`() {
+        val topic = UUID.randomUUID()
+        val service = RedisTopicPubSubService(
+            KeyConfigurationPubSub(
+                "t_all_topics",
+                "t_st_topic_",
+                "t_l_user_topics_",
+                "t_l_topic_users_"
+            ),
+            redisTemplates.stringTemplate(),
+            redisTemplates.stringMessageTemplate(),
+            UUIDUtil(),
+        ) { Mono.error(IllegalStateException("the channel never opened")) }
+
+        StepVerifier.create(service.listenTo(topic))
+            .then {
+                val failure = runCatching { service.open(topic).block(Duration.ofSeconds(10)) }
+                assertThat(failure.exceptionOrNull())
+                    .describedAs("open still reports the failure to its caller")
+                    .hasMessageContaining("the channel never opened")
+            }
+            .expectErrorMessage("the channel never opened")
+            .verify(Duration.ofSeconds(10))
+    }
+
     private fun serviceReading(
         channel: (UUID) -> Flux<Message<UUID, String>>,
     ): RedisTopicPubSubService<UUID, String> = RedisTopicPubSubService(
