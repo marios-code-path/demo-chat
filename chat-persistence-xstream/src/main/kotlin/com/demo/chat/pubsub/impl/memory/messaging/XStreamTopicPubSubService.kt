@@ -22,6 +22,7 @@ import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 data class KeyConfiguration(
         val topicSetKey: String,
@@ -36,7 +37,16 @@ class XStreamTopicPubSubService<T : Any, E>(
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
     private val stringKeyConverter: Converter<String, out T>,
-    private val keyStringConverter: Converter<T, String>
+    private val keyStringConverter: Converter<T, String>,
+    /**
+     * Opens the record stream of one topic.
+     *
+     * Null takes the real `StreamReceiver`. A test supplies its own flux
+     * here, so the reader failure rule can be read without breaking a
+     * container. `KafkaTopicPubSubService` carries the same seam for the
+     * same reason. See CHAT-czmjffen.
+     */
+    private val streamRecords: ((String, RecordId) -> Flux<Message<T, E>>)? = null,
 ) : TopicPubSubService<T, E> {
 
     private val replayDepth = 50
@@ -179,7 +189,16 @@ class XStreamTopicPubSubService<T : Any, E>(
             }.asFlux()
 
     private fun sourceOf(topic: T): Mono<Void> {
-        val startup = topicReaders.computeIfAbsent(topic) { startReader(topic).cache() }
+        // The reader error handler must remove its own entry and no other.
+        // It cannot name the entry while computeIfAbsent builds it, so the
+        // holder carries the reference forward. A candidate that loses the
+        // race is never inserted and never subscribed, so its handler never
+        // runs. See CHAT-czmjffen.
+        val holder = AtomicReference<Mono<Disposable>>()
+        val candidate = startReader(topic, holder).cache()
+        holder.set(candidate)
+
+        val startup = topicReaders.computeIfAbsent(topic) { candidate }
         return startup
             .then()
             .onErrorResume { error ->
@@ -188,7 +207,7 @@ class XStreamTopicPubSubService<T : Any, E>(
             }
     }
 
-    private fun startReader(topic: T): Mono<Disposable> {
+    private fun startReader(topic: T, holder: AtomicReference<Mono<Disposable>>): Mono<Disposable> {
         val streamKey = prefixTopicStream + topic.toString()
         val context = messageTemplate.serializationContext
         val options: StreamReceiver.StreamReceiverOptions<String, MapRecord<String, String, Message<T, E>>> =
@@ -207,20 +226,47 @@ class XStreamTopicPubSubService<T : Any, E>(
             .map { record -> record.id }
             .defaultIfEmpty(RecordId.of("0-0"))
             .map { cursor ->
-                StreamReceiver.create<String, MapRecord<String, String, Message<T, E>>>(
-                    messageTemplate.connectionFactory,
-                    options,
-                )
-                    .receive(StreamOffset.create(streamKey, ReadOffset.from(cursor)))
-                    .map { record -> record.value["data"]!! }
-                    .subscribe(
-                        { message -> sink.tryEmitNext(message) },
-                        { error ->
-                            topicReaders.remove(topic)
-                            logger.error("The XStream reader for $topic failed", error)
-                        },
-                    )
+                streamRecords?.invoke(streamKey, cursor)
+                    ?: receiveFrom(streamKey, cursor, options)
             }
+            .map { messages ->
+                messages.subscribe(
+                    { message -> sink.tryEmitNext(message) },
+                    { error -> failReader(topic, holder, error) },
+                )
+            }
+    }
+
+    private fun receiveFrom(
+        streamKey: String,
+        cursor: RecordId,
+        options: StreamReceiver.StreamReceiverOptions<String, MapRecord<String, String, Message<T, E>>>,
+    ): Flux<Message<T, E>> =
+        StreamReceiver.create<String, MapRecord<String, String, Message<T, E>>>(
+            messageTemplate.connectionFactory,
+            options,
+        )
+            .receive(StreamOffset.create(streamKey, ReadOffset.from(cursor)))
+            .map { record -> record.value["data"]!! }
+
+    /**
+     * Ends one topic after its reader failed.
+     *
+     * **Two rules meet here, and both were gaps.** The removal names the
+     * entry this reader owns, so a reader that failed after a newer one
+     * started cannot evict the newer entry. The sink then receives an
+     * error, because a listener that simply stops receiving cannot tell a
+     * dead reader apart from a quiet topic.
+     *
+     * The sink is only touched when this reader still owned the entry. A
+     * newer reader owns the sink otherwise. See CHAT-czmjffen.
+     */
+    private fun failReader(topic: T, holder: AtomicReference<Mono<Disposable>>, error: Throwable) {
+        val owned = topicReaders.remove(topic, holder.get())
+        if (owned) {
+            sinks.remove(topic)?.tryEmitError(error)
+        }
+        logger.error("The XStream reader for $topic failed, ownedEntry=$owned", error)
     }
 
     override fun getByUser(uid: T): Flux<T> =

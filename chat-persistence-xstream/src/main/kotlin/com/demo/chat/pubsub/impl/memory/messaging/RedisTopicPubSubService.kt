@@ -16,6 +16,7 @@ import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 data class KeyConfigurationPubSub(
     val topicSetKey: String,
@@ -30,6 +31,15 @@ class RedisTopicPubSubService<T : Any, E>(
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
     private val typeUtil: TypeUtil<T>,
+    /**
+     * Opens the channel stream of one topic.
+     *
+     * Null takes the real `listenToLater`. A test supplies its own flux
+     * here, so the reader failure rule can be read without breaking a
+     * container. `KafkaTopicPubSubService` carries the same seam for the
+     * same reason. See CHAT-czmjffen.
+     */
+    private val channelMessages: ((T) -> Mono<Flux<Message<T, E>>>)? = null,
 ) : TopicPubSubService<T, E> {
 
     private val replayDepth = 50
@@ -177,33 +187,61 @@ class RedisTopicPubSubService<T : Any, E>(
      * The `Disposable` is kept so `close` can end the subscription.
      */
     private fun sourceOf(topic: T): Mono<Void> {
-        val startup = sources.computeIfAbsent(topic) {
-            val sink = sinks.getOrPut(topic) {
-                Sinks.many().multicast().onBackpressureBuffer()
-            }
+        // The reader error handler must remove its own entry and no other.
+        // It cannot name the entry while computeIfAbsent builds it, so the
+        // holder carries the reference forward. A candidate that loses the
+        // race is never inserted and never subscribed, so its handler never
+        // runs. See CHAT-czmjffen.
+        val holder = AtomicReference<Mono<Disposable>>()
+        val candidate = startReader(topic, holder).cache()
+        holder.set(candidate)
 
-            messageTemplate
-                .listenToLater(ChannelTopic(topic.toString()))
-                .map { channel ->
-                    channel
-                        .map { received -> received.message }
-                        .subscribe(
-                            { message -> sink.tryEmitNext(message) },
-                            { error ->
-                                sources.remove(topic)
-                                logger.error("The topic listener of $topic failed", error)
-                            },
-                        )
-                }
-                .cache()
-        }
-
+        val startup = sources.computeIfAbsent(topic) { candidate }
         return startup
             .then()
             .onErrorResume { error ->
                 sources.remove(topic, startup)
                 Mono.error(error)
             }
+    }
+
+    private fun startReader(topic: T, holder: AtomicReference<Mono<Disposable>>): Mono<Disposable> {
+        val sink = sinks.getOrPut(topic) {
+            Sinks.many().multicast().onBackpressureBuffer()
+        }
+
+        val messages = channelMessages?.invoke(topic) ?: listenToChannel(topic)
+
+        return messages.map { channel ->
+            channel.subscribe(
+                { message -> sink.tryEmitNext(message) },
+                { error -> failReader(topic, holder, error) },
+            )
+        }
+    }
+
+    private fun listenToChannel(topic: T): Mono<Flux<Message<T, E>>> = messageTemplate
+        .listenToLater(ChannelTopic(topic.toString()))
+        .map { channel -> channel.map { received -> received.message } }
+
+    /**
+     * Ends one topic after its reader failed.
+     *
+     * **Two rules meet here, and both were gaps.** The removal names the
+     * entry this reader owns, so a reader that failed after a newer one
+     * started cannot evict the newer entry. The sink then receives an
+     * error, because a listener that simply stops receiving cannot tell a
+     * dead reader apart from a quiet topic.
+     *
+     * The sink is only touched when this reader still owned the entry. A
+     * newer reader owns the sink otherwise. See CHAT-czmjffen.
+     */
+    private fun failReader(topic: T, holder: AtomicReference<Mono<Disposable>>, error: Throwable) {
+        val owned = sources.remove(topic, holder.get())
+        if (owned) {
+            sinks.remove(topic)?.tryEmitError(error)
+        }
+        logger.error("The topic listener of $topic failed, ownedEntry=$owned", error)
     }
 
     override fun getByUser(uid: T): Flux<T> =
