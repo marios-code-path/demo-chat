@@ -20,7 +20,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
-        <kotlin.version>2.4.10</kotlin.version>
+        <kotlin.version>2.4.20</kotlin.version>
         <!-- Boot 4.0.8 manages tomcat 11.0.24, and the daily audit reports
              four findings against it at 9.1 and 9.8. Tomcat reaches this
              reactor through chat-authorization-server alone, which uses
