@@ -56,8 +56,26 @@ class XStreamTopicPubSubService<T : Any, E>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicStream = keyConfig.prefixTopicStream
 
-    private val sinks: MutableMap<T, Sinks.Many<Message<T, E>>> = ConcurrentHashMap()
-    private val topicReaders: ConcurrentHashMap<T, Mono<Disposable>> = ConcurrentHashMap()
+    /**
+     * The sink and the reader of one topic, held together.
+     *
+     * **They are one entry because they share one lifetime.** An earlier
+     * version kept two maps and removed from them in turn. Between the two
+     * removals a concurrent `open` could take the old sink and install a
+     * new reader, and the failing handler then errored the sink that the
+     * new reader had just adopted. The new reader wrote into an errored
+     * sink while later listeners received a sink that no reader fed.
+     *
+     * One map removes one entry in one step, and the handler errors the
+     * sink it already holds rather than looking one up again. The
+     * interleaving has nowhere to happen. See CHAT-czmjffen.
+     */
+    private data class TopicSource<T : Any, E>(
+        val sink: Sinks.Many<Message<T, E>>,
+        val reader: Mono<Disposable>?,
+    )
+
+    private val topics: ConcurrentHashMap<T, TopicSource<T, E>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
             .filter {
@@ -101,7 +119,7 @@ class XStreamTopicPubSubService<T : Any, E>(
                                     }
                     )
                     .thenEmpty {
-                        sinks.getOrPut(topic) { Sinks.many().multicast().onBackpressureBuffer() }
+                        sinkOf(topic)
                         it.onComplete()
                     }
 
@@ -130,7 +148,7 @@ class XStreamTopicPubSubService<T : Any, E>(
                                     }
                     )
                     .thenEmpty {
-                        sinks[topic]?.let { }
+                        topics[topic]?.let { }
                         it.onComplete()
                     }
 
@@ -184,9 +202,7 @@ class XStreamTopicPubSubService<T : Any, E>(
     }
 
     override fun listenTo(topic: T): Flux<out Message<T, E>> =
-            sinks.getOrPut(topic) {
-                Sinks.many().multicast().onBackpressureBuffer()
-            }.asFlux()
+            sinkOf(topic).asFlux()
 
     private fun sourceOf(topic: T): Mono<Void> {
         // The reader error handler must remove its own entry and no other.
@@ -194,23 +210,33 @@ class XStreamTopicPubSubService<T : Any, E>(
         // holder carries the reference forward. A candidate that loses the
         // race is never inserted and never subscribed, so its handler never
         // runs. See CHAT-czmjffen.
-        val holder = AtomicReference<Mono<Disposable>>()
-        val candidate = startReader(topic, holder).cache()
-        holder.set(candidate)
+        val holder = AtomicReference<TopicSource<T, E>>()
+        val entry = topics.compute(topic) { _, current ->
+            if (current?.reader != null) {
+                current
+            } else {
+                val sink = current?.sink ?: Sinks.many().multicast().onBackpressureBuffer()
+                TopicSource(sink, startReader(topic, sink, holder).cache())
+                    .also { created -> holder.set(created) }
+            }
+        }!!
 
-        val startup = topicReaders.computeIfAbsent(topic) { candidate }
-        return startup
+        return requireNotNull(entry.reader)
             .then()
             .onErrorResume { error ->
                 // A startup failure never reaches the reader handler, so it
                 // terminates the topic here. Without this a listener waits
                 // on a sink that no reader will ever feed. See CHAT-czmjffen.
-                failReader(topic, startup, error)
+                failReader(topic, entry, error)
                 Mono.error(error)
             }
     }
 
-    private fun startReader(topic: T, holder: AtomicReference<Mono<Disposable>>): Mono<Disposable> {
+    private fun startReader(
+        topic: T,
+        sink: Sinks.Many<Message<T, E>>,
+        holder: AtomicReference<TopicSource<T, E>>,
+    ): Mono<Disposable> {
         val streamKey = prefixTopicStream + topic.toString()
         val context = messageTemplate.serializationContext
         val options: StreamReceiver.StreamReceiverOptions<String, MapRecord<String, String, Message<T, E>>> =
@@ -219,10 +245,6 @@ class XStreamTopicPubSubService<T : Any, E>(
             .hashKeySerializer<String, Message<T, E>>(context.getHashKeySerializationPair<String>())
             .hashValueSerializer<String, Message<T, E>>(context.getHashValueSerializationPair<Message<T, E>>())
             .build()
-        val sink = sinks.getOrPut(topic) {
-            Sinks.many().multicast().onBackpressureBuffer()
-        }
-
         return messageTemplate.opsForStream<String, Message<T, E>>()
             .reverseRange(streamKey, Range.unbounded<String>(), Limit.limit().count(1))
             .next()
@@ -255,22 +277,28 @@ class XStreamTopicPubSubService<T : Any, E>(
     /**
      * Ends one topic after its reader failed.
      *
-     * **Two rules meet here, and both were gaps.** The removal names the
-     * entry this reader owns, so a reader that failed after a newer one
-     * started cannot evict the newer entry. The sink then receives an
-     * error, because a listener that simply stops receiving cannot tell a
-     * dead reader apart from a quiet topic.
+     * **One removal decides everything.** The entry carries the sink, so a
+     * successful `remove` both retires the reader and hands this method the
+     * sink to terminate. A reader that failed after a newer entry replaced
+     * it removes nothing and touches nothing.
      *
-     * The sink is only touched when this reader still owned the entry. A
-     * newer reader owns the sink otherwise. See CHAT-czmjffen.
+     * The signal is an error rather than a completion. A completion would
+     * look like a clean `close`, and a reader failure is not one. A listener
+     * that simply stopped receiving could not tell a dead reader apart from
+     * a quiet topic. See CHAT-czmjffen.
      */
-    private fun failReader(topic: T, entry: Mono<Disposable>?, error: Throwable) {
-        val owned = entry != null && topicReaders.remove(topic, entry)
+    private fun failReader(topic: T, entry: TopicSource<T, E>?, error: Throwable) {
+        val owned = entry != null && topics.remove(topic, entry)
         if (owned) {
-            sinks.remove(topic)?.tryEmitError(error)
+            requireNotNull(entry).sink.tryEmitError(error)
         }
         logger.error("The XStream reader for $topic failed, ownedEntry=$owned", error)
     }
+
+    /** The sink of one topic, created with no reader when none exists yet. */
+    private fun sinkOf(topic: T): Sinks.Many<Message<T, E>> = topics.computeIfAbsent(topic) {
+        TopicSource(Sinks.many().multicast().onBackpressureBuffer(), null)
+    }.sink
 
     override fun getByUser(uid: T): Flux<T> =
             stringTemplate
@@ -296,13 +324,16 @@ class XStreamTopicPubSubService<T : Any, E>(
                     )
 
     override fun close(topicId: T): Mono<Void> {
-        val stopReader = topicReaders.remove(topicId)
+        // One removal retires the reader and the sink together, for the
+        // same reason failReader does. See CHAT-czmjffen.
+        val retired = topics.remove(topicId)
+        val stopReader = retired?.reader
             ?.doOnNext { reader -> reader.dispose() }
             ?.then()
             ?: Mono.empty()
 
         return stopReader
-            .then(Mono.fromRunnable { sinks.remove(topicId)?.tryEmitComplete() })
+            .then(Mono.fromRunnable { retired?.sink?.tryEmitComplete() })
             .then(
                 messageTemplate.connectionFactory.reactiveConnection.keyCommands()
                     .del(ByteBuffer.wrap(

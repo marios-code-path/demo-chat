@@ -156,15 +156,15 @@ class RedisPubSubMessagingTests(
         }
 
         service.open(topic).block(Duration.ofSeconds(10))
-        sourcesOf(service).remove(topic)
+        entriesOf(service).remove(topic)
         service.open(topic).block(Duration.ofSeconds(10))
 
-        val newerEntry = requireNotNull(sourcesOf(service)[topic])
+        val newerEntry = requireNotNull(entriesOf(service)[topic])
         assertThat(handed.get()).describedAs("two readers started").isEqualTo(2)
 
         older.tryEmitError(IllegalStateException("the older reader lost its channel"))
 
-        assertThat(sourcesOf(service)[topic])
+        assertThat(entriesOf(service)[topic])
             .describedAs("the newer entry survives the older failure")
             .isSameAs(newerEntry)
 
@@ -214,6 +214,53 @@ class RedisPubSubMessagingTests(
             .verify(Duration.ofSeconds(10))
     }
 
+    /**
+     * A failed reader must not terminate the sink a newer reader adopted.
+     *
+     * The entry used to hold only the reader, and the sink lived in a second
+     * map. A handler removed the entry, and a concurrent `open` could take
+     * the old sink and install a new reader before the handler reached the
+     * second removal. The handler then errored a sink the new reader was
+     * already writing to, and later listeners received a sink with no reader.
+     *
+     * The entry carries the sink now, so the two retire together and a newer
+     * reader always brings its own sink. See CHAT-czmjffen.
+     */
+    @Test
+    fun `a failed reader does not terminate the sink of a newer reader`() {
+        val topic = UUID.randomUUID()
+        val older = Sinks.many().multicast().onBackpressureBuffer<Message<UUID, String>>()
+        val newer = Sinks.many().multicast().onBackpressureBuffer<Message<UUID, String>>()
+        val handed = AtomicInteger()
+        val service = serviceReading {
+            if (handed.getAndIncrement() == 0) older.asFlux() else newer.asFlux()
+        }
+
+        service.open(topic).block(Duration.ofSeconds(10))
+        val olderSink = sinkIn(requireNotNull(entriesOf(service)[topic]))
+
+        entriesOf(service).remove(topic)
+        service.open(topic).block(Duration.ofSeconds(10))
+        val newerSink = sinkIn(requireNotNull(entriesOf(service)[topic]))
+
+        assertThat(newerSink)
+            .describedAs("a newer reader brings its own sink")
+            .isNotSameAs(olderSink)
+
+        val message = Message.create(
+            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            "newer-sink-survives",
+            true,
+        )
+
+        StepVerifier.create(service.listenTo(topic))
+            .then { older.tryEmitError(IllegalStateException("the older reader failed")) }
+            .then { newer.tryEmitNext(message) }
+            .assertNext { actual -> assertThat(actual.data).isEqualTo("newer-sink-survives") }
+            .thenCancel()
+            .verify(Duration.ofSeconds(10))
+    }
+
     private fun serviceReading(
         channel: (UUID) -> Flux<Message<UUID, String>>,
     ): RedisTopicPubSubService<UUID, String> = RedisTopicPubSubService(
@@ -228,22 +275,25 @@ class RedisPubSubMessagingTests(
         UUIDUtil(),
     ) { topic -> Mono.just(channel(topic)) }
 
+    /** The private topic map, which now holds the sink and the reader together. */
     @Suppress("UNCHECKED_CAST")
-    private fun sourcesOf(
-        service: RedisTopicPubSubService<UUID, String>,
-    ): MutableMap<UUID, Mono<Disposable>> {
-        val field = service.javaClass.getDeclaredField("sources").apply { isAccessible = true }
-        return field.get(service) as MutableMap<UUID, Mono<Disposable>>
+    private fun entriesOf(service: Any): MutableMap<UUID, Any> {
+        val field = service.javaClass.getDeclaredField("topics").apply { isAccessible = true }
+        return field.get(service) as MutableMap<UUID, Any>
+    }
+
+    private fun sinkIn(entry: Any): Any {
+        val field = entry.javaClass.getDeclaredField("sink").apply { isAccessible = true }
+        return field.get(entry)
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun activeDisposable(fieldName: String, topic: UUID): Disposable {
-        // Read the private cache to assert disposal of the actual subscription.
-        val field = messaging.javaClass.getDeclaredField(fieldName).apply {
-            isAccessible = true
-        }
-        val readers = field.get(messaging) as Map<UUID, Mono<Disposable>>
-        return requireNotNull(readers[topic]).block(Duration.ofSeconds(10))!!
+    private fun activeDisposable(@Suppress("UNUSED_PARAMETER") fieldName: String, topic: UUID): Disposable {
+        // Read the private entry to assert disposal of the actual subscription.
+        val entry = requireNotNull(entriesOf(messaging as Any)[topic])
+        val readerField = entry.javaClass.getDeclaredField("reader").apply { isAccessible = true }
+        val reader = readerField.get(entry) as Mono<Disposable>
+        return reader.block(Duration.ofSeconds(10))!!
     }
 }
 
