@@ -37,9 +37,9 @@ import java.nio.charset.StandardCharsets
  * auto-configures one: removal of the position 0 insert gives 16 failures
  * in 9 classes there.
  *
- * **The CBOR path stays out.** `TargetIdentifierInterceptor` resolves its
- * decoder for `MediaType.APPLICATION_CBOR`, and that path gets its own test
- * and its own reading. See CHAT-qwmjrixq.
+ * **There is no CBOR path to cover.** Its one reader was a spike that
+ * derived a target from the payload, and it is removed. Authorization goes
+ * through `SpringSecurityAccessBrokerService`. See CHAT-bgsqwjph.
  */
 class RSocketServerStrategiesTests {
 

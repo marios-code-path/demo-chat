@@ -22,7 +22,7 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 834 tests, 0 failures, 0
+skipped. The reactor holds 36 modules and reports 836 tests, 0 failures, 0
 errors and 30 skipped.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
@@ -38,15 +38,17 @@ mode reported 832 tests, 0 failures, 0 errors and 30 skipped. It ran 802 tests.
 Integration mode reported 1056 tests, 0 failures, 0 errors and 55 skipped. It
 ran 1001 tests. Both gate runs reported no failure-list drift.
 
-`CHAT-czmjffen` adds eight integration tests, four per Redis backend. Both gates
-ran on 2026-09-19 at `chat-czmjffen-readererror`. Default mode reports 834
-tests, 0 failures, 0 errors and 30 skipped, so it runs 804. Integration mode
-reports 1067 tests, 0 failures, 0 errors and 55 skipped, so it runs 1012. Both
+`CHAT-rmfuqcwi` adds two default tests that boot an rsocket composition root.
+`CHAT-czmjffen` added eight integration tests before them, four per Redis
+backend. Both gates ran on 2026-09-20 at
+`chat-rmfuqcwi-rsocketmodule`. Default mode reports 836
+tests, 0 failures, 0 errors and 30 skipped, so it runs 806. Integration mode
+reports 1069 tests, 0 failures, 0 errors and 55 skipped, so it runs 1014. Both
 exit 0 and report no failure-list drift. These are measured counts, not counts
 derived from an earlier run.
 
-The default count does not move, because the eight new tests sit in classes
-tagged `integration`.
+The eight Redis tests did not move the default count, because they sit in
+classes tagged `integration`. The two rsocket tests do move it.
 
 The earlier measurement on 2026-09-17 reported 818 tests with 30 skipped in
 default mode and 1037 tests with 55 skipped in integration mode. That default

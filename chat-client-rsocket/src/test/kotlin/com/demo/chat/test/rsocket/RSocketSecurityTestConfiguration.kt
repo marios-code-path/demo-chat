@@ -59,10 +59,9 @@ class RSocketSecurityTestConfiguration {
      * The decoder is added **before** the default one. Spring picks the first
      * decoder that matches the type, so an appended decoder never runs.
      *
-     * **The CBOR path is not wired here.** TargetIdentifierInterceptor
-     * resolves its decoder for MediaType.APPLICATION_CBOR, no test reaches
-     * that path, and it gets its own reading before it gets a change.
-     * See CHAT-qwmjrixq.
+     * **There is no CBOR path to cover.** Its one reader was a spike that
+     * derived a target from the payload, and it is removed. Authorization
+     * goes through SpringSecurityAccessBrokerService. See CHAT-bgsqwjph.
      */
     @Bean
     fun rSocketStrategiesCustomizer(): RSocketStrategiesCustomizer {
