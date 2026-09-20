@@ -4,10 +4,10 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The Spring Boot 4.0.8 line carries one reactor change that master did not
-have.** `chat-index-elastic` is gone. B11 records why, and `CHAT-zdqubyue`
-removed it. Measured on 2026-09-19 at
-`chat-gdtktbfh-dropelastic`.
+**`chat-index-elastic` is gone.** It left the module list under
+`CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
+`CHAT-zdqubyue` then removed it. The B11 row in Resolved carries the reason.
+Measured on 2026-09-20 at `chat-zdqubyue-dropelastic`.
 
 Do not trust this file on its own — run the verifier:
 
@@ -72,10 +72,11 @@ a row, and this is the deliberate departure from it.
 
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 208 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
-The integration gate runs the container tests. It reports only the parked
-`chat-index-elastic` failure and no skipped modules. Its exit status means that
-result matches this file, not that every module passes. `chat-shell` tests run
-and pass. Both extra failure lists, `KNOWN_FAILING_INSTALL` and
+The integration gate runs the container tests. It reports no failing module
+and no skipped module. Its exit status still means that the result matches
+this file, rather than that every module passes, and that distinction stays
+worth keeping even while every list is empty. `chat-shell` tests run and
+pass. All three failure lists, `KNOWN_FAILING`, `KNOWN_FAILING_INSTALL` and
 `KNOWN_FAILING_INTEGRATION`, are empty and measured.
 
 Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
