@@ -16,6 +16,7 @@ import reactor.core.scheduler.Schedulers
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 
 data class KeyConfigurationPubSub(
     val topicSetKey: String,
@@ -30,6 +31,15 @@ class RedisTopicPubSubService<T : Any, E>(
     private val stringTemplate: ReactiveRedisTemplate<String, String>,
     private val messageTemplate: ReactiveRedisTemplate<String, Message<T, E>>,
     private val typeUtil: TypeUtil<T>,
+    /**
+     * Opens the channel stream of one topic.
+     *
+     * Null takes the real `listenToLater`. A test supplies its own flux
+     * here, so the reader failure rule can be read without breaking a
+     * container. `KafkaTopicPubSubService` carries the same seam for the
+     * same reason. See CHAT-czmjffen.
+     */
+    private val channelMessages: ((T) -> Mono<Flux<Message<T, E>>>)? = null,
 ) : TopicPubSubService<T, E> {
 
     private val replayDepth = 50
@@ -39,8 +49,26 @@ class RedisTopicPubSubService<T : Any, E>(
     private val topicSetKey = keyConfig.topicSetKey
     private val prefixTopicKey = keyConfig.prefixTopicKey
 
-    private val sinks: MutableMap<T, Sinks.Many<Message<T, E>>> = ConcurrentHashMap()
-    private val sources: ConcurrentHashMap<T, Mono<Disposable>> = ConcurrentHashMap()
+    /**
+     * The sink and the reader of one topic, held together.
+     *
+     * **They are one entry because they share one lifetime.** An earlier
+     * version kept two maps and removed from them in turn. Between the two
+     * removals a concurrent `open` could take the old sink and install a
+     * new reader, and the failing handler then errored the sink that the
+     * new reader had just adopted. The new reader wrote into an errored
+     * sink while later listeners received a sink that no reader fed.
+     *
+     * One map removes one entry in one step, and the handler errors the
+     * sink it already holds rather than looking one up again. The
+     * interleaving has nowhere to happen. See CHAT-czmjffen.
+     */
+    private data class TopicSource<T : Any, E>(
+        val sink: Sinks.Many<Message<T, E>>,
+        val reader: Mono<Disposable>?,
+    )
+
+    private val topics: ConcurrentHashMap<T, TopicSource<T, E>> = ConcurrentHashMap()
 
     private fun topicExistsOrError(topic: T): Mono<Void> = exists(topic)
         .filter {
@@ -84,7 +112,7 @@ class RedisTopicPubSubService<T : Any, E>(
                 }
         )
         .thenEmpty {
-            sinks.getOrPut(topic) { Sinks.many().multicast().onBackpressureBuffer() }
+            sinkOf(topic)
             it.onComplete()
         }
 
@@ -113,7 +141,7 @@ class RedisTopicPubSubService<T : Any, E>(
                     }
             )
             .thenEmpty {
-                sinks[topic]?.let { /* sink already exists; subscriber gets messages via Redis pub/sub */ }
+                topics[topic]?.let { /* the reader feeds every subscriber of this topic */ }
                 it.onComplete()
             }
 
@@ -156,9 +184,7 @@ class RedisTopicPubSubService<T : Any, E>(
     }
 
     override fun listenTo(topic: T): Flux<out Message<T, E>> =
-        sinks.getOrPut(topic) {
-            Sinks.many().multicast().onBackpressureBuffer()
-        }.asFlux()
+        sinkOf(topic).asFlux()
 
     /**
      * Connects the Redis channel to the sink that `listenTo` answers.
@@ -177,33 +203,74 @@ class RedisTopicPubSubService<T : Any, E>(
      * The `Disposable` is kept so `close` can end the subscription.
      */
     private fun sourceOf(topic: T): Mono<Void> {
-        val startup = sources.computeIfAbsent(topic) {
-            val sink = sinks.getOrPut(topic) {
-                Sinks.many().multicast().onBackpressureBuffer()
+        // The reader is attached inside compute, so the sink it captures and
+        // the entry it lives in are installed in one step. A concurrent
+        // failure of an older entry cannot slip between them.
+        val holder = AtomicReference<TopicSource<T, E>>()
+        val entry = topics.compute(topic) { _, current ->
+            if (current?.reader != null) {
+                current
+            } else {
+                val sink = current?.sink ?: Sinks.many().multicast().onBackpressureBuffer()
+                TopicSource(sink, startReader(topic, sink, holder).cache())
+                    .also { created -> holder.set(created) }
             }
+        }!!
 
-            messageTemplate
-                .listenToLater(ChannelTopic(topic.toString()))
-                .map { channel ->
-                    channel
-                        .map { received -> received.message }
-                        .subscribe(
-                            { message -> sink.tryEmitNext(message) },
-                            { error ->
-                                sources.remove(topic)
-                                logger.error("The topic listener of $topic failed", error)
-                            },
-                        )
-                }
-                .cache()
-        }
-
-        return startup
+        return requireNotNull(entry.reader)
             .then()
             .onErrorResume { error ->
-                sources.remove(topic, startup)
+                // A startup failure never reaches the reader handler, so it
+                // terminates the topic here. Without this a listener waits
+                // on a sink that no reader will ever feed. See CHAT-czmjffen.
+                failReader(topic, entry, error)
                 Mono.error(error)
             }
+    }
+
+    private fun startReader(
+        topic: T,
+        sink: Sinks.Many<Message<T, E>>,
+        holder: AtomicReference<TopicSource<T, E>>,
+    ): Mono<Disposable> {
+        val messages = channelMessages?.invoke(topic) ?: listenToChannel(topic)
+
+        return messages.map { channel ->
+            channel.subscribe(
+                { message -> sink.tryEmitNext(message) },
+                { error -> failReader(topic, holder.get(), error) },
+            )
+        }
+    }
+
+    /** The sink of one topic, created with no reader when none exists yet. */
+    private fun sinkOf(topic: T): Sinks.Many<Message<T, E>> = topics.computeIfAbsent(topic) {
+        TopicSource(Sinks.many().multicast().onBackpressureBuffer(), null)
+    }.sink
+
+    private fun listenToChannel(topic: T): Mono<Flux<Message<T, E>>> = messageTemplate
+        .listenToLater(ChannelTopic(topic.toString()))
+        .map { channel -> channel.map { received -> received.message } }
+
+    /**
+     * Ends one topic after its reader failed.
+     *
+     * **One removal decides everything.** The entry carries the sink, so a
+     * successful `remove` both retires the reader and hands this method the
+     * sink to terminate. A reader that failed after a newer entry replaced
+     * it removes nothing and touches nothing.
+     *
+     * The signal is an error rather than a completion. A completion would
+     * look like a clean `close`, and a reader failure is not one. A listener
+     * that simply stopped receiving could not tell a dead reader apart from
+     * a quiet topic. See CHAT-czmjffen.
+     */
+    private fun failReader(topic: T, entry: TopicSource<T, E>?, error: Throwable) {
+        val owned = entry != null && topics.remove(topic, entry)
+        if (owned) {
+            requireNotNull(entry).sink.tryEmitError(error)
+        }
+        logger.error("The topic listener of $topic failed, ownedEntry=$owned", error)
     }
 
     override fun getByUser(uid: T): Flux<T> =
@@ -230,13 +297,16 @@ class RedisTopicPubSubService<T : Any, E>(
             )
 
     override fun close(topicId: T): Mono<Void> {
-        val stopSource = sources.remove(topicId)
+        // One removal retires the reader and the sink together, for the
+        // same reason failReader does. See CHAT-czmjffen.
+        val retired = topics.remove(topicId)
+        val stopSource = retired?.reader
             ?.doOnNext { subscription -> subscription.dispose() }
             ?.then()
             ?: Mono.empty()
 
         return stopSource
-            .then(Mono.fromRunnable { sinks.remove(topicId)?.tryEmitComplete() })
+            .then(Mono.fromRunnable { retired?.sink?.tryEmitComplete() })
             .then(
                 messageTemplate.connectionFactory.reactiveConnection.keyCommands().del(
                     ByteBuffer.wrap(
