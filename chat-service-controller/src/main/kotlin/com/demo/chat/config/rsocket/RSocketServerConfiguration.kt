@@ -55,10 +55,10 @@ class RSocketServerConfiguration<T> {
      * detail cost one wasted repair earlier.
      *
      * **No CBOR decoder is registered, and nothing asks for one.**
-     * TargetIdentifierInterceptor is the only reader of
-     * MediaType.APPLICATION_CBOR in this repository, and it is dead code.
-     * Nothing constructs it, and nothing reads the context key it sets. Its
-     * production wiring was removed on 2023-03-08. See CHAT-bgsqwjph.
+     * The one reader of MediaType.APPLICATION_CBOR was a spike that derived
+     * a target from the payload. The owner replaced that idea with
+     * SpringSecurityAccessBrokerService and removed the spike.
+     * See CHAT-bgsqwjph.
      */
     @Bean
     fun rSocketStrategiesCustomizer(domainModules: List<JacksonModule>): RSocketStrategiesCustomizer {
