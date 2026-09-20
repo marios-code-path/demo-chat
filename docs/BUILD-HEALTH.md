@@ -4,10 +4,10 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by all three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The Spring Boot 4.0.8 line carries one reactor change that master did not
-have.** `chat-index-elastic` is out of the module list. B11 records why, and
-`CHAT-gdtktbfh` brings it back. Measured on 2026-09-19 at
-`chat-gdtktbfh-dropelastic`.
+**`chat-index-elastic` is gone.** It left the module list under
+`CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
+`CHAT-zdqubyue` then removed it. The B11 row in Resolved carries the reason.
+Measured on 2026-09-20 at `chat-zdqubyue-dropelastic`.
 
 Do not trust this file on its own — run the verifier:
 
@@ -59,7 +59,7 @@ The earlier `--install` mode reported the same counts as default mode.
 them rather than trusts this paragraph.
 
 The reactor holds 36 modules and 27 of them run tests. It held 37 until
-`chat-index-elastic` left the module list. See B11. `chat-embedding-openai`
+`chat-index-elastic` was removed. See B11. `chat-embedding-openai`
 and `chat-embedding-local` are the two newest. Each supplies one
 `EmbeddingModel` behind one value of `app.service.core.embedding`. See
 `docs/EMBEDDING-PROVIDERS.md`.
@@ -72,10 +72,11 @@ a row, and this is the deliberate departure from it.
 
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 208 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
-The integration gate runs the container tests. It reports only the parked
-`chat-index-elastic` failure and no skipped modules. Its exit status means that
-result matches this file, not that every module passes. `chat-shell` tests run
-and pass. Both extra failure lists, `KNOWN_FAILING_INSTALL` and
+The integration gate runs the container tests. It reports no failing module
+and no skipped module. Its exit status still means that the result matches
+this file, rather than that every module passes, and that distinction stays
+worth keeping even while every list is empty. `chat-shell` tests run and
+pass. All three failure lists, `KNOWN_FAILING`, `KNOWN_FAILING_INSTALL` and
 `KNOWN_FAILING_INTEGRATION`, are empty and measured.
 
 Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
@@ -84,41 +85,6 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
-| B11 | `chat-index-elastic` does not compile under Boot 4, and is out of the reactor | nothing, the module has no dependents | Excluded, repair on a branch |
-
----
-
-### B11 — `chat-index-elastic` is out of the reactor
-
-**This is a decision, not a defect left lying around.** The module does not
-compile under Boot 4, and the owner chose to drop it from the module list so
-the Boot 4 work can land with a green CI. `CHAT-gdtktbfh` brings it back, and
-the repair already sits on the branch `chat-urhjrwbt-indexelastic`.
-`CHAT-urhjrwbt` carries the reasoning for treating that repair as exploratory.
-
-**Why the module list and not `KNOWN_FAILING`.** CI runs `mvn -B clean test`
-and `mvn -B clean verify -Ptest-build,integration`. Neither reads
-`KNOWN_FAILING`, which exists only inside `build-health.sh`. So a module the
-verifier tolerates still holds both CI jobs red on every push and every pull
-request. Tolerating it here and failing there is the worst of both.
-
-Measured on 2026-09-19 at `boot4-gate-probe` `9bb74290`, `mvn -o compile` on
-that module reports four causes in three files:
-
-- `ElasticConfiguration.kt` cannot resolve `HttpHost`, which moved groupId.
-- `User.kt` cannot resolve `PersistenceConstructor`, which moved package.
-- `ReactiveUserIndexRepository.kt` reports four JSpecify bound errors. Spring
-  Data Elasticsearch declares `ReactiveElasticsearchRepository<T : Any, ID : Any>`,
-  and the four repository interfaces pass an unbounded `T`.
-
-**Nothing depends on this module.** No pom declares it except the root module
-list, and no source outside it names it. Both facts were checked before the
-removal, so it takes nothing down with it.
-
-**`KNOWN_FAILING` is empty again, and that is deliberate.** A module that is
-not built cannot fail, so naming it there would make the verifier report
-RESOLVED on every run. Restoring the module means adding it back to the root
-module list, not to that list. The directory and its history stay in place.
 
 ---
 
@@ -182,6 +148,7 @@ Kept so the list can be trusted — an entry disappearing without explanation is
 | B7 | `chat-deploy-memory` declared `chat-service-controller` at `test` scope, since 2023-10-12. `spring-boot:run` uses the runtime classpath, so the controllers and the `chat-security` password encoder config were absent. Direct launch failed on a missing `PasswordEncoder` bean. Tests hid this because surefire uses the test classpath. The image module, cassandra, and kafka all used compile scope; memory was the outlier. | #57 |
 | B8 | `send --topicName` in `PubSubCommands` looked the room up by name, discarded the result, and sent with the `topicId` option — which still held its default `_`. Parsing `_` as a key threw `NumberFormatException` client-side. No test covered `send` at all, so it survived untouched. | #59 |
 | B9 | All four pubsub provider beans (memory, redis-pubsub, redis-xstream, kafka) constructed a **new** `TopicPubSubService` on every `pubSubService()` call. The composite topic service, the composite message service, and the pubsub controller each got a different instance. `MemoryTopicPubSubService` keeps sinks and membership in instance maps, so a room opened in one instance was invisible to a send on another — every send failed server-side with `Object not Found`. The providers are now `@Configuration` with `@Bean` on `pubSubService()`, matching `MemoryPersistenceServices`. Proven by the new `LongPubSubCommandsTests`, 2/2 green. | #59 |
+| B11 | `chat-index-elastic` did not compile under Boot 4. It left the module list first, because CI runs plain maven and never reads `KNOWN_FAILING`, so a module the verifier tolerates still holds both CI jobs red. The module is now removed. It had no dependents, no pom declared it, and no deployment ever selected it. The repair that was never taken sat on `chat-urhjrwbt-indexelastic`. | #103, then CHAT-zdqubyue |
 | R1 | `KotlinModule` named-constructor form is a compile error under the jackson version Spring Boot 3.3.13 manages. `chat-client-rsocket` failing test-compile stopped the reactor and took `chat-deploy-redis`, `chat-shell` and `chat-authorization-server` down as SKIPPED. | #13, #22 |
 | R2 | Modules declared `org.testcontainers:cassandra` at 1.21.4 but Spring Boot's BOM pinned the core `testcontainers` artifact at 1.19.8, whose `docker-java` 3.3.6 cannot negotiate with Docker Engine 29.x — reported as the misleading "Could not find a valid Docker environment". | #23 |
 

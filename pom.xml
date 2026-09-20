@@ -94,15 +94,6 @@
         <module>chat-persistence-cassandra</module>
     	<module>chat-index-cassandra</module>
 
-        <!--
-            chat-index-elastic is out of the reactor while the Boot 4 work
-            lands. It does not compile on Boot 4, and CI runs plain maven
-            rather than build-health.sh, so the module would hold both CI
-            jobs red on every push.
-            It has no dependents. The directory and its history stay here,
-            and the repair sits on chat-urhjrwbt-indexelastic.
-            See CHAT-gdtktbfh to bring it back.
-        -->
         <module>chat-persistence-xstream</module>
         <module>chat-persistence-redis</module>
 
@@ -119,7 +110,6 @@
 
         <!-- chat-memory-test-image -->
         <!-- chat-cassandra-test-image -->
-        <!-- chat-elastic-test-image -->
         <!-- chat-...-test-image -->
         <module>chat-deploy-memory-integration-test</module>
         <module>chat-shell</module>
@@ -215,9 +205,11 @@
 
             <!-- Thirteen entries that Spring Boot 4 needs. CHAT-mndvipyh
                  measured every one against a reactor validate. Nine raise a
-                 version above what the Boot BOM manages, because Spring AI or
-                 the elasticsearch client needs the higher one. Four make one
-                 artifact resolve to one version. Read that issue before you
+                 version above what the Boot BOM manages, because Spring AI
+                 needs the higher one. Four make one artifact resolve to one
+                 version. Three more raised httpclient5 and httpcore5 for the
+                 elasticsearch client, and they went with CHAT-zdqubyue when
+                 that module was removed. Read that issue before you
                  change any of them. A different Boot, Cloud or Spring AI
                  version can change this list. -->
             <dependency>
@@ -264,21 +256,6 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>7.4.1</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>5.6.3</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5</artifactId>
-                <version>5.4.3</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5-h2</artifactId>
-                <version>5.4.3</version>
             </dependency>
             <dependency>
                 <groupId>com.google.errorprone</groupId>
