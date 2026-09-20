@@ -54,10 +54,11 @@ class RSocketServerConfiguration<T> {
      * decoder that matches a type, so an appended decoder never runs. That
      * detail cost one wasted repair earlier.
      *
-     * **The CBOR path is deliberately not wired here.**
-     * TargetIdentifierInterceptor resolves its decoder for
-     * MediaType.APPLICATION_CBOR, no test reaches it, and it gets its own
-     * reading before it gets a change. See CHAT-qwmjrixq.
+     * **No CBOR decoder is registered, and nothing asks for one.**
+     * TargetIdentifierInterceptor is the only reader of
+     * MediaType.APPLICATION_CBOR in this repository, and it is dead code.
+     * Nothing constructs it, and nothing reads the context key it sets. Its
+     * production wiring was removed on 2023-03-08. See CHAT-bgsqwjph.
      */
     @Bean
     fun rSocketStrategiesCustomizer(domainModules: List<JacksonModule>): RSocketStrategiesCustomizer {
