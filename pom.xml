@@ -21,6 +21,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
         <kotlin.version>2.4.10</kotlin.version>
+        <!-- Boot 4.0.8 manages tomcat 11.0.24, and the daily audit reports
+             four findings against it at 9.1 and 9.8. Tomcat reaches this
+             reactor through chat-authorization-server alone, which uses
+             spring-boot-starter-web. Overriding the Boot property is the
+             supported route, and it keeps the version out of every module
+             pom. See CHAT-icgifzbv. -->
+        <tomcat.version>11.0.26</tomcat.version>
         <spring-boot.version>4.0.8</spring-boot.version>
         <spring-cloud-bom.version>2025.1.3</spring-cloud-bom.version>
 
