@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -70,6 +71,28 @@ class KafkaConsumerGroupTests @Autowired constructor(
 
     private val typeUtil: TypeUtil<String> = StringUtil()
 
+    // Every Kafka object this class opens, so that none outlives the test.
+    // An unclosed AdminClient, sender or consumer keeps non-daemon threads
+    // alive, and surefire then reports that it must kill its own fork JVM.
+    // Those threads also keep polling, which adds scheduling noise to the
+    // timing-sensitive tests that share this module.
+    private val admins = CopyOnWriteArrayList<AdminClient>()
+    private val senders = CopyOnWriteArrayList<KafkaSender<String, Message<String, String>>>()
+    private val openedTopics =
+        CopyOnWriteArrayList<Pair<KafkaTopicPubSubService<String, String>, String>>()
+
+
+    fun releaseEveryKafkaResource() {
+        openedTopics.forEach { (service, topic) ->
+            runCatching { service.close(topic).block(Duration.ofSeconds(10)) }
+        }
+        senders.forEach { runCatching { it.close() } }
+        admins.forEach { runCatching { it.close() } }
+        openedTopics.clear()
+        senders.clear()
+        admins.clear()
+    }
+
     private fun sender(): KafkaSender<String, Message<String, String>> =
         KafkaSender.create(
             SenderOptions.create<String, Message<String, String>>(
@@ -100,12 +123,21 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val admin = AdminClient.create(
             mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers)
         )
+        admins.add(admin)
+        val sender = sender()
+        senders.add(sender)
         return KafkaTopicPubSubService(
-            sender(),
+            sender,
             KafkaTopicAdmin(admin, typeUtil),
             typeUtil,
             receiverOptions(groupId),
         )
+    }
+
+    /** Opens [topic] on [service] and records it for cleanup. */
+    private fun openOn(service: KafkaTopicPubSubService<String, String>, topic: String) {
+        service.open(topic).block(Duration.ofSeconds(20))
+        openedTopics.add(service to topic)
     }
 
     /**
@@ -142,8 +174,8 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val first = instance("group-${UUID.randomUUID()}")
         val second = instance("group-${UUID.randomUUID()}")
 
-        first.open(topic).block(Duration.ofSeconds(20))
-        second.open(topic).block(Duration.ofSeconds(20))
+        openOn(first, topic)
+        openOn(second, topic)
 
         val firstReceived = readerOf(first, topic)
         val secondReceived = readerOf(second, topic)
@@ -185,8 +217,8 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val first = instance(sharedGroup)
         val second = instance(sharedGroup)
 
-        first.open(topic).block(Duration.ofSeconds(20))
-        second.open(topic).block(Duration.ofSeconds(20))
+        openOn(first, topic)
+        openOn(second, topic)
 
         val admin = AdminClient.create(
             mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers)
