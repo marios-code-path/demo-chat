@@ -94,12 +94,19 @@ as it is, and the two rules differ on purpose.
 raw count of `@ShellOption` in the same sources, which is the cross check that
 the table is complete.
 
-## Availability is declared and never applied
+## Availability is not used, and the dead check is gone
 
-`CommandsUtil.isAuthenticated()` returns an `Availability`, and **no command
-uses it**. The module holds zero `@ShellMethodAvailability` annotations, and
-the method name does not match the `<command>Availability` convention that
-Spring Shell reads instead. One test calls it directly.
+**No command declares an availability gate**, by owner instruction during the
+Spring Shell 4 migration.
+
+`CommandsUtil.isAuthenticated()` used to return an `Availability` that no
+command used. The module held zero `@ShellMethodAvailability` annotations,
+and the method name did not match the `<command>Availability` convention
+that Spring Shell reads instead, so nothing could have called it. One test
+called it directly, which is the only thing that kept it alive.
+
+Both are removed under `CHAT-fxrwtvef`. Adding a gate means adding it
+deliberately, not reviving this.
 
 **So no command is gated on login today.** The migration must not invent a
 gate. Adding one would change behaviour under the name of a port. If the gate
