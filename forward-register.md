@@ -15,9 +15,9 @@ in this file is authoritative on its own — each row points at the artifact tha
 | Register state | Updated 2026-09-21, after the Spring Boot 4 merge and the seven pull requests that followed it. |
 | Last merged PR | #110, merge commit `7abe0af8`. Before it: #109 `0bdb0c4f`, #108 `d1dda1bc`, #107 `d09a2daf`, #106 `6aae087d`, #105 `8d7d9707`, #104 `ecfea4a1`, #103 `c4b63bfc`. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Four local branches remain, none with a remote. **Three hold no commit that master lacks**: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, and `chat-chsvdqbi-springai` at `aeb579dc`. Their content reached master through #103 and the pull requests after it. The fourth, `chat-urhjrwbt-indexelastic`, holds one commit that master lacks, `d8d797b3`, and that commit repairs `chat-index-elastic`, which #106 removed from the reactor. So it is dead work. |
-| Worktrees | Four: the main checkout, plus `.worktrees/boot4`, `.worktrees/ctl` and `.worktrees/springai`. Each of the three holds a branch that master already contains. |
-| Open PRs | None. The owner dropped Dependabot #8 and #11 on 2026-09-21 as no longer relevant. |
+| Merged feature branches | Four local branches remain, none with a remote, and none with a worktree. **Three hold no commit that master lacks**: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, and `chat-chsvdqbi-springai` at `aeb579dc`. Their content reached master through #103 and the pull requests after it. The fourth, `chat-urhjrwbt-indexelastic`, holds one commit that master lacks, `d8d797b3`, and that commit repairs `chat-index-elastic`, which #106 removed from the reactor. So it is dead work. |
+| Worktrees | The main checkout only. The owner removed `.worktrees/boot4`, `.worktrees/ctl` and `.worktrees/springai` on 2026-09-21, because each held a branch that master already contains. **The branch refs are kept.** |
+| Open PRs | The owner dropped Dependabot #8 and #11 on 2026-09-21 as no longer relevant. Nothing else was open when this refresh was written, and #112 carries the refresh itself. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -1089,12 +1089,13 @@ after the embedding model reports a throughput number.
 
 ### Open issues at high priority
 
-**This list was written on 2026-09-11 and it is stale.** `CHAT-pkolwuqm` Boot 4,
-`CHAT-gidbchkx` Netty and `CHAT-icgifzbv` audit triage are all done.
+**This list was written on 2026-09-11 and it is stale.** Four of its six
+entries are done: `CHAT-pkolwuqm` Boot 4, `CHAT-gidbchkx` Netty,
+`CHAT-icgifzbv` audit triage, and `CHAT-ygllyglb` Spring AI 2.0.
 See the ordered list at the end of this file, written on 2026-09-21.
 
-`CHAT-ygllyglb` Spring AI 2.0, `CHAT-sgyaaivp` Cassandra CI flake and
-`CHAT-cikgeefc` build health are still open.
+`CHAT-sgyaaivp` Cassandra CI flake and `CHAT-cikgeefc` build health are still
+open.
 
 Open and not yet started, from the 2026-09-11 work: `CHAT-aedloxwd` index field
 semantics, `CHAT-edzvpxil` message handling policy mask, `CHAT-tekzakdd` data stream
@@ -1681,10 +1682,12 @@ the profiles and the image path of the workflow integration job. It adds
 against `docs/BUILD-HEALTH.md`. It resolves online, as that job does and as no
 other mode does.
 
-### Three B4 children were already closed by other work
+### Two B4 children were already closed by other work, and one was not
 
-Measured on 2026-09-21 at `7abe0af8`, and worth recording because each looked
-open and was not.
+Measured on 2026-09-21 at `7abe0af8`. The first two looked open but were done.
+`CHAT-cophllrg` remains open.
+
+Closed:
 
 - `CHAT-aazmjsws`, the Kafka topic existence test: `KafkaPubSubTests` runs 9
   tests with 0 failures. Kafka 4 is KRaft only, and
@@ -1693,10 +1696,18 @@ open and was not.
   50 ms.
 - `CHAT-cjqzmiiq`, the Redis pub/sub selector tests:
   `RedisPubSubBeansSelectorTests` runs 4 tests with 0 failures.
-- `CHAT-cophllrg` is **half** closed, and the open half is the half it was
-  written for. `CoreUserDetailsService.updatePassword` refuses a null password
-  and the KDoc records the owner decision, but **no test pins the refusal**.
-  `UserDetailsServiceTests` has no null case.
+
+**Still open, and it stays open:**
+
+- `CHAT-cophllrg` is half done, and the open half is the half it was written
+  for. `CoreUserDetailsService.updatePassword` refuses a null password and the
+  KDoc records the owner decision, but **no test pins the refusal**.
+  `UserDetailsServiceTests` has no null case. The implementation reached
+  master from `boot4-bump`, whose tip commit names this issue.
+
+One more closed on the same day, outside the B4 tree: `CHAT-ygllyglb`, the
+Spring AI 2.0 scope. The parent pom imports `spring-ai-bom` 2.0.1, so the
+upgrade shipped inside #103 and the scope question is moot.
 
 **A closed parent does not close its children.** `CHAT-tvsgtjtm` is done while
 five of its children stayed open, and two of those were already satisfied by
@@ -1791,9 +1802,10 @@ reached stay unmeasured. See `CHAT-ombbesyh`.
 recommendation, not a decision. The owner sets the order.
 
 Three issues closed while this list was written, each because merged work had
-already satisfied it. **Read the tree before you start an issue.** A closed
-parent does not close its children, and two of these three were satisfied by
-code that merged under a different issue.
+already satisfied it: `CHAT-aazmjsws`, `CHAT-cjqzmiiq` and `CHAT-ygllyglb`.
+`CHAT-cophllrg` was read the same way and it stays open, because its test is
+missing. **Read the tree before you start an issue.** A closed parent does not
+close its children.
 
 ### Tier 1: open risk sitting in merged code
 
