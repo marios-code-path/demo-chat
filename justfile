@@ -16,6 +16,10 @@ check-install:
 check-integration:
 	./shell-scripts/build-health.sh --integration
 
+# Check the build-health state with the CI command, which builds the image.
+check-ci:
+	./shell-scripts/build-health.sh --ci
+
 # Check chat-build flag output.
 check-flags:
 	./shell-scripts/test-flags.sh
