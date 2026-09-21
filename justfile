@@ -16,6 +16,10 @@ check-install:
 check-integration:
 	./shell-scripts/build-health.sh --integration
 
+# Build the container image, then check the build-health state. Resolves online.
+check-ci:
+	./shell-scripts/build-health.sh --ci
+
 # Check chat-build flag output.
 check-flags:
 	./shell-scripts/test-flags.sh

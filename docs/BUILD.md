@@ -76,6 +76,14 @@ Use `./shell-scripts/build-health.sh` when you need exact drift output.
 
 Use `./shell-scripts/build-health.sh --integration` before merge-sensitive integration changes.
 
+Use `./shell-scripts/build-health.sh --ci` when a change reaches the wire format or the server image.
+
+`--integration` stops at the test phase, so it does not rebuild the `chat-shell` test image.
+
+`--ci` reaches the package phase, so it builds the image before the container tests.
+
+`--ci` takes the phase and the profiles of the CI integration job, and it resolves artifacts online. It is not the CI command. It adds `-fae`, because the verifier must see the result of every module.
+
 The CI integration job runs on pull requests and `master` pushes.
 
 The integration job is informational until the 10-run baseline is complete.
@@ -136,6 +144,7 @@ Common direct commands:
 ```bash
 ./shell-scripts/build-health.sh
 ./shell-scripts/build-health.sh --integration
+./shell-scripts/build-health.sh --ci
 ./shell-scripts/test-flags.sh
 ./shell-scripts/chat-build core --memory --run --notls --node-id 0 --init users,rootkeys
 ```

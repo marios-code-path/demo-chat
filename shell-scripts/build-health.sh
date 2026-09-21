@@ -10,8 +10,31 @@
 #
 #   ./shell-scripts/build-health.sh              # offline, test phase only
 #   ./shell-scripts/build-health.sh --online     # allow artifact downloads
-#   ./shell-scripts/build-health.sh --install    # include package/install, covers build-image
+#   ./shell-scripts/build-health.sh --install    # include the package and install phases
 #   ./shell-scripts/build-health.sh --integration # also run the container-backed tests
+#   ./shell-scripts/build-health.sh --ci          # build the image, then run every test
+#
+# --integration runs the container-backed tests, but it stops at the test
+# phase. The chat-shell tests reach the server through the
+# chat-deploy-memory-integration-test image, and the package phase builds that
+# image. So --integration reports on whatever image the machine already holds.
+# --ci reaches the package phase, so it builds the image before chat-shell
+# runs, and the chat-shell result belongs to the current source.
+#
+# --ci takes the phase and the profiles of the integration job in
+# .github/workflows/maven.yml, which runs
+# "mvn -B clean verify -Ptest-build,integration". It is not that command.
+# Two differences, both deliberate:
+#
+#   1. --ci adds -fae. This script diffs the failing modules against the
+#      document, so it must see the result of every module. A build that stops
+#      at the first failure reports the rest as skipped.
+#   2. --ci resolves artifacts online, like the workflow. Every other mode
+#      defaults to offline. A cold repository cannot build the image, and the
+#      image build reads the network through docker in any case.
+#
+# So --ci measures the same phase, profiles and image path as CI. It does not
+# reproduce a CI run.
 #
 # Exit status: 0 when reality matches the document, 1 when it does not.
 
@@ -41,30 +64,59 @@ KNOWN_FAILING_INTEGRATION=""
 
 PHASE="test"
 OFFLINE="-o"
-INTEGRATION=""
+PROFILES=""
+CI=""
 for arg in "$@"; do
     case "$arg" in
         --online)  OFFLINE="" ;;
         --install) PHASE="install" ;;
-        --integration) INTEGRATION="-Pintegration" ;;
+        --integration) PROFILES="integration" ;;
+        # Takes the phase and the profiles of the workflow integration job, and
+        # resolves online like it does. The package phase builds the chat-shell
+        # test image, so this is the only mode whose chat-shell result belongs
+        # to the source under test. See the header for the two differences.
+        --ci) CI="yes" ;;
         --help|-h) awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
     esac
 done
+# --ci names one whole command, so it cannot be combined with a flag that sets
+# the phase or the profiles.
+if [ -n "$CI" ]; then
+    if [ "$PHASE" != "test" ] || [ -n "$PROFILES" ]; then
+        echo "--ci already sets the phase and the profiles; remove the other flag" >&2
+        exit 2
+    fi
+    PHASE="verify"
+    PROFILES="test-build,integration"
+    # The workflow resolves online, and a cold repository cannot build the
+    # image. --online stays accepted, and it changes nothing here.
+    OFFLINE=""
+fi
+
+PROFILE_ARG=""
+[ -n "$PROFILES" ] && PROFILE_ARG="-P$PROFILES"
 
 expected="$KNOWN_FAILING"
-[ "$PHASE" = "install" ] && expected="$expected $KNOWN_FAILING_INSTALL"
-[ -n "$INTEGRATION" ] && expected="$expected $KNOWN_FAILING_INTEGRATION"
+[ "$PHASE" != "test" ] && expected="$expected $KNOWN_FAILING_INSTALL"
+case ",$PROFILES," in *,integration,*) expected="$expected $KNOWN_FAILING_INTEGRATION" ;; esac
 
 log="$(mktemp -t build-health)"
 trap 'rm -f "$log"' EXIT
 
-echo "running: mvn $OFFLINE clean $PHASE -fae $INTEGRATION"
+echo "running: mvn $OFFLINE clean $PHASE -fae $PROFILE_ARG"
 echo "(a full run takes several minutes; container-backed modules dominate)"
+if [ "$PROFILES" = "integration" ]; then
+    # The register records a stale image that gave 8 decode errors and looked
+    # like a code regression. This mode cannot tell that apart from a real one.
+    echo "note: this mode does not build the chat-shell test image."
+    echo "      chat-shell reports against the image the machine already holds."
+    echo "      run --ci to build the image first."
+fi
 echo
 
 # shellcheck disable=SC2086
-(cd "$ROOT" && mvn $OFFLINE clean "$PHASE" -fae $INTEGRATION) > "$log" 2>&1
+(cd "$ROOT" && mvn $OFFLINE clean "$PHASE" -fae $PROFILE_ARG) > "$log" 2>&1
 
 # The counts, printed before the drift check. This gate deletes its Maven log
 # on exit, so a caller that needs the numbers had to run its own build. A
