@@ -25,8 +25,9 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 844 tests, 0 failures, 0
-errors and 30 skipped.
+skipped. The reactor holds 36 modules and reports 846 tests, 0 failures, 0
+errors and 30 skipped. The count moves from 844 because `CHAT-hazcatpc` adds
+two consumer group tests to `chat-messaging-kafka`.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
 **BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
