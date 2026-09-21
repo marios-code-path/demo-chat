@@ -1684,8 +1684,8 @@ other mode does.
 
 ### Two B4 children were already closed by other work, and one was not
 
-Measured on 2026-09-21 at `7abe0af8`, and worth recording because each looked
-open.
+Measured on 2026-09-21 at `7abe0af8`. The first two looked open but were done.
+`CHAT-cophllrg` remains open.
 
 Closed:
 
