@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    OWASP dependency-check suppressions.
+
+    A suppression hides a finding, so a wrong one hides a real vulnerability.
+    Every entry here names one package and one CVE, and carries the evidence
+    that made it a false positive. A blanket CVE suppression, or a suppression
+    with no stated evidence, does not belong in this file.
+
+    Each entry answers one question: why is this finding about a product this
+    repository does not use.
+
+    See CHAT-icgifzbv.
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+        chat-persistence-xstream is our own module. It is named for the Redis
+        Streams backend it implements, and it has nothing to do with the
+        XStream XML library.
+
+        Measured on 2026-09-21 at master d09a2daf: the module declares no
+        XStream dependency, and none resolves in its tree.
+
+        dependency-check matched our module artifactId against the XStream
+        product CPE, and read our version 0.0.1 as XStream 0.0.1. Every CVE
+        below is a real XStream defect and none of them reaches this code,
+        because the library is absent.
+
+        These are listed one CVE at a time rather than by CPE. A new XStream
+        CVE will therefore fail the gate again and force a fresh reading.
+        That is deliberate: this match is misidentification, and a standing
+        CPE suppression would hide the day it stops being one.
+    -->
+    <suppress>
+        <notes>Our own module, named for Redis Streams. No XStream library resolves.</notes>
+        <packageUrl regex="true">^pkg:maven/com\.demo/chat-persistence-xstream@.*$</packageUrl>
+        <cve>CVE-2013-7285</cve>
+        <cve>CVE-2020-26217</cve>
+        <cve>CVE-2021-21342</cve>
+        <cve>CVE-2021-21344</cve>
+        <cve>CVE-2021-21345</cve>
+        <cve>CVE-2021-21346</cve>
+        <cve>CVE-2021-21347</cve>
+        <cve>CVE-2021-21350</cve>
+        <cve>CVE-2021-21351</cve>
+    </suppress>
+
+    <!--
+        CVE-2026-47837 is a flaw in the Spring Cloud Config Server /monitor
+        webhook endpoint. That endpoint comes from spring-cloud-config-monitor
+        and Spring Cloud Bus. It is not a flaw in the Consul configuration
+        client.
+
+        dependency-check matched spring-cloud-consul-config to the CPE
+        vmware:spring_cloud_config, which is a different product.
+
+        Measured on 2026-09-21 at master d09a2daf, and checked twice, once
+        plainly and once with the register-consul and discovery-consul
+        profiles active:
+        - No pom declares spring-cloud-config-server, spring-cloud-config-monitor,
+          spring-cloud-bus or spring-cloud-config-client.
+        - None of those four resolves in any runtime tree of any module.
+        - spring-cloud-starter-consul-config pulls only consul, commons,
+          context and loadbalancer artifacts.
+        - No source or yml names ConfigServer, config.monitor or
+          MonitorController.
+
+        So the vulnerable endpoint cannot exist in any deployment this
+        repository builds. Recheck this entry if Config Server, Config Monitor
+        or Bus is ever added.
+
+        TWO ARTIFACTS CARRY THIS MATCH, NOT ONE. The first report named
+        spring-cloud-consul-config. A suppression for that alone left the
+        gate red, because spring-cloud-starter-consul-config matches the same
+        wrong CPE and the gate then named the starter instead. Both are
+        listed below, measured from the run rather than assumed from the
+        first report.
+    -->
+    <suppress>
+        <notes>Config Server /monitor endpoint flaw. This is the Consul config client, and no Config Server, Monitor or Bus resolves.</notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.cloud/spring-cloud-consul-config@.*$</packageUrl>
+        <cve>CVE-2026-47837</cve>
+    </suppress>
+    <suppress>
+        <notes>The starter for the same Consul config client, matching the same wrong CPE.</notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.cloud/spring-cloud-starter-consul-config@.*$</packageUrl>
+        <cve>CVE-2026-47837</cve>
+    </suppress>
+
+</suppressions>
