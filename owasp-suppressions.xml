@@ -69,10 +69,22 @@
         So the vulnerable endpoint cannot exist in any deployment this
         repository builds. Recheck this entry if Config Server, Config Monitor
         or Bus is ever added.
+
+        TWO ARTIFACTS CARRY THIS MATCH, NOT ONE. The first report named
+        spring-cloud-consul-config. A suppression for that alone left the
+        gate red, because spring-cloud-starter-consul-config matches the same
+        wrong CPE and the gate then named the starter instead. Both are
+        listed below, measured from the run rather than assumed from the
+        first report.
     -->
     <suppress>
         <notes>Config Server /monitor endpoint flaw. This is the Consul config client, and no Config Server, Monitor or Bus resolves.</notes>
         <packageUrl regex="true">^pkg:maven/org\.springframework\.cloud/spring-cloud-consul-config@.*$</packageUrl>
+        <cve>CVE-2026-47837</cve>
+    </suppress>
+    <suppress>
+        <notes>The starter for the same Consul config client, matching the same wrong CPE.</notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.cloud/spring-cloud-starter-consul-config@.*$</packageUrl>
         <cve>CVE-2026-47837</cve>
     </suppress>
 
