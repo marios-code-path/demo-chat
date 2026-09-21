@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-20** at `chat-bahmtzut-verifier-image`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1075 tests, with 0 failures, 0 errors and 54 skipped.
+**The `--ci` mode was measured on 2026-09-20** at `chat-bahmtzut-verifier-image`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1075 tests, with 0 failures, 0 errors and 54 skipped. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -17,7 +17,7 @@ Do not trust this file on its own — run the verifier:
 ./shell-scripts/build-health.sh            # test phase, offline
 ./shell-scripts/build-health.sh --install  # includes package/install
 ./shell-scripts/build-health.sh --integration # also runs the container-backed tests
-./shell-scripts/build-health.sh --ci          # the CI command, which builds the image first
+./shell-scripts/build-health.sh --ci          # builds the image first, then runs every test
 ```
 
 It runs the build, diffs the failing modules against the list below, and exits non-zero when the two disagree — reporting anything **NEW** (failing but undocumented), **RESOLVED** (documented but passing), or **SKIPPED** (never built, so unknown). When it complains, update this file; that is the maintenance loop.
@@ -167,13 +167,19 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   The image is built in `package` by `chat-deploy-memory-integration-test`
   under `-Ptest-build`. So `--integration` runs the `chat-shell` tests against
   whatever image the machine already holds, and it prints a note that says so.
-  `--ci` runs `mvn clean verify -fae -Ptest-build,integration`, which is the
-  command in `.github/workflows/maven.yml`. It builds the image in the same
-  reactor before `chat-shell` runs. Measured on 2026-09-20: the image took a new
-  tag at 22:10:45, and the `chat-shell` surefire reports were written at
-  22:10:56. So the image build precedes the container tests inside one reactor,
-  which is the thing no earlier mode could show. `chat-shell` reported 56 tests
-  with 22 skipped, and the four `Long*` classes ran. See CHAT-bahmtzut.
+  `--ci` runs `mvn clean verify -fae -Ptest-build,integration`, so it builds the
+  image in the same reactor before `chat-shell` runs. **It is not the CI
+  command.** It takes the phase and the profiles of the workflow integration
+  job, and it resolves online as that job does, but it adds `-fae`, because
+  this verifier must see the result of every module. A build that stops at the
+  first failure reports the rest as skipped, and the drift diff then reads
+  nothing.
+
+  Measured on 2026-09-20: the image took a new tag at 22:10:45, and the
+  `chat-shell` surefire reports were written at 22:10:56. So the image build
+  precedes the container tests inside one reactor, which is the thing no
+  earlier mode could show. `chat-shell` reported 56 tests with 22 skipped, and
+  the four `Long*` classes ran. See CHAT-bahmtzut.
 - **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
   `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
   holds a `credsStore` together with empty `auths` entries makes the build fail

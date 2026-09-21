@@ -16,7 +16,7 @@ check-install:
 check-integration:
 	./shell-scripts/build-health.sh --integration
 
-# Check the build-health state with the CI command, which builds the image.
+# Build the container image, then check the build-health state. Resolves online.
 check-ci:
 	./shell-scripts/build-health.sh --ci
 

@@ -80,7 +80,9 @@ Use `./shell-scripts/build-health.sh --ci` when a change reaches the wire format
 
 `--integration` stops at the test phase, so it does not rebuild the `chat-shell` test image.
 
-`--ci` runs the CI command, which builds the image before the container tests.
+`--ci` reaches the package phase, so it builds the image before the container tests.
+
+`--ci` takes the phase and the profiles of the CI integration job, and it resolves artifacts online. It is not the CI command. It adds `-fae`, because the verifier must see the result of every module.
 
 The CI integration job runs on pull requests and `master` pushes.
 

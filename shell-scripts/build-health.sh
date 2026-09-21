@@ -12,18 +12,29 @@
 #   ./shell-scripts/build-health.sh --online     # allow artifact downloads
 #   ./shell-scripts/build-health.sh --install    # include the package and install phases
 #   ./shell-scripts/build-health.sh --integration # also run the container-backed tests
-#   ./shell-scripts/build-health.sh --ci          # the CI command, which builds the image
+#   ./shell-scripts/build-health.sh --ci          # build the image, then run every test
 #
 # --integration runs the container-backed tests, but it stops at the test
 # phase. The chat-shell tests reach the server through the
 # chat-deploy-memory-integration-test image, and the package phase builds that
 # image. So --integration reports on whatever image the machine already holds.
-# --ci runs "clean verify -Ptest-build,integration", which is the command in
-# .github/workflows/maven.yml. It builds the image first, so the chat-shell
-# result belongs to the current source.
+# --ci reaches the package phase, so it builds the image before chat-shell
+# runs, and the chat-shell result belongs to the current source.
 #
-# --ci still resolves artifacts offline. Add --online for a cold repository.
-# The image build reads the network through docker whatever this flag says.
+# --ci takes the phase and the profiles of the integration job in
+# .github/workflows/maven.yml, which runs
+# "mvn -B clean verify -Ptest-build,integration". It is not that command.
+# Two differences, both deliberate:
+#
+#   1. --ci adds -fae. This script diffs the failing modules against the
+#      document, so it must see the result of every module. A build that stops
+#      at the first failure reports the rest as skipped.
+#   2. --ci resolves artifacts online, like the workflow. Every other mode
+#      defaults to offline. A cold repository cannot build the image, and the
+#      image build reads the network through docker in any case.
+#
+# So --ci measures the same phase, profiles and image path as CI. It does not
+# reproduce a CI run.
 #
 # Exit status: 0 when reality matches the document, 1 when it does not.
 
@@ -60,9 +71,10 @@ for arg in "$@"; do
         --online)  OFFLINE="" ;;
         --install) PHASE="install" ;;
         --integration) PROFILES="integration" ;;
-        # The command in .github/workflows/maven.yml. The package phase builds
-        # the chat-shell test image, so this is the only mode whose chat-shell
-        # result belongs to the source under test.
+        # Takes the phase and the profiles of the workflow integration job, and
+        # resolves online like it does. The package phase builds the chat-shell
+        # test image, so this is the only mode whose chat-shell result belongs
+        # to the source under test. See the header for the two differences.
         --ci) CI="yes" ;;
         --help|-h) awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
         *) echo "unknown option: $arg" >&2; exit 2 ;;
@@ -77,6 +89,9 @@ if [ -n "$CI" ]; then
     fi
     PHASE="verify"
     PROFILES="test-build,integration"
+    # The workflow resolves online, and a cold repository cannot build the
+    # image. --online stays accepted, and it changes nothing here.
+    OFFLINE=""
 fi
 
 PROFILE_ARG=""
