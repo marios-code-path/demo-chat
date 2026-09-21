@@ -17,6 +17,7 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Qualifier
@@ -42,8 +43,8 @@ import java.util.concurrent.CopyOnWriteArrayList
  * one states what Kafka does. `KafkaTopicPubSubService` keeps one consumer per
  * topic per process and feeds a local multicast sink, so fan-off inside one
  * process never reaches Kafka. Fan-out **between** processes is decided
- * entirely by the consumer group id, and both the deployment and the test
- * configuration set one constant value.
+ * by the consumer group id. This test gives both receivers one generated id.
+ * The deployment uses the fixed id `chat-kafka`.
  *
  * Two services here stand for two application instances. They share one
  * embedded broker, and nothing else.
@@ -69,6 +70,28 @@ class KafkaConsumerGroupTests @Autowired constructor(
     private lateinit var bootstrapServers: String
 
     private val typeUtil: TypeUtil<String> = StringUtil()
+
+    // Every Kafka object this class opens, so that none outlives the test.
+    // An unclosed AdminClient, sender or consumer keeps non-daemon threads
+    // alive, and surefire then reports that it must kill its own fork JVM.
+    // Those threads also keep polling, which adds scheduling noise to the
+    // timing-sensitive tests that share this module.
+    private val admins = CopyOnWriteArrayList<AdminClient>()
+    private val senders = CopyOnWriteArrayList<KafkaSender<String, Message<String, String>>>()
+    private val openedTopics =
+        CopyOnWriteArrayList<Pair<KafkaTopicPubSubService<String, String>, String>>()
+
+
+    fun releaseEveryKafkaResource() {
+        openedTopics.forEach { (service, topic) ->
+            runCatching { service.close(topic).block(Duration.ofSeconds(10)) }
+        }
+        senders.forEach { runCatching { it.close() } }
+        admins.forEach { runCatching { it.close() } }
+        openedTopics.clear()
+        senders.clear()
+        admins.clear()
+    }
 
     private fun sender(): KafkaSender<String, Message<String, String>> =
         KafkaSender.create(
@@ -100,12 +123,21 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val admin = AdminClient.create(
             mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers)
         )
+        admins.add(admin)
+        val sender = sender()
+        senders.add(sender)
         return KafkaTopicPubSubService(
-            sender(),
+            sender,
             KafkaTopicAdmin(admin, typeUtil),
             typeUtil,
             receiverOptions(groupId),
         )
+    }
+
+    /** Opens [topic] on [service] and records it for cleanup. */
+    private fun openOn(service: KafkaTopicPubSubService<String, String>, topic: String) {
+        service.open(topic).block(Duration.ofSeconds(20))
+        openedTopics.add(service to topic)
     }
 
     /**
@@ -142,8 +174,8 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val first = instance("group-${UUID.randomUUID()}")
         val second = instance("group-${UUID.randomUUID()}")
 
-        first.open(topic).block(Duration.ofSeconds(20))
-        second.open(topic).block(Duration.ofSeconds(20))
+        openOn(first, topic)
+        openOn(second, topic)
 
         val firstReceived = readerOf(first, topic)
         val secondReceived = readerOf(second, topic)
@@ -167,17 +199,16 @@ class KafkaConsumerGroupTests @Autowired constructor(
      * The measured case. Two instances in **one** group share the partition,
      * so exactly one of them receives.
      *
-     * `KafkaDeployConfiguration.kafkaReceiverOptions` sets the constant group
-     * id `chat-kafka`, and every topic carries one partition
-     * (`KafkaTopicAdmin.newTopic`). A consumer group gives one partition to
-     * one member. So a second instance of a kafka deployment reads nothing
-     * for that topic, and its local subscribers are never fed.
+     * This test uses a generated group id and proves Kafka's shared-group
+     * behavior. The deployment test pins the production id `chat-kafka`.
+     * This test also checks that `KafkaTopicAdmin.newTopic` creates one
+     * partition. Together, these facts support the fan-out finding.
      *
      * **This test asserts Kafka's rule, so it passes today and it must keep
      * passing.** It is the evidence behind the fan-out finding, and it fails
-     * if someone changes the group id or the partition count without deciding
-     * what fan-out should mean. CHAT-xblitvkl holds that decision. See also
-     * CHAT-hazcatpc.
+     * if someone changes Kafka's shared-group behavior. Separate assertions
+     * pin the production group id and topic partition count. CHAT-xblitvkl
+     * holds the fan-out decision. See also CHAT-hazcatpc.
      */
     @Test
     fun `two instances in one group deliver the message to exactly one of them`() {
@@ -186,8 +217,21 @@ class KafkaConsumerGroupTests @Autowired constructor(
         val first = instance(sharedGroup)
         val second = instance(sharedGroup)
 
-        first.open(topic).block(Duration.ofSeconds(20))
-        second.open(topic).block(Duration.ofSeconds(20))
+        openOn(first, topic)
+        openOn(second, topic)
+
+        val admin = AdminClient.create(
+            mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers)
+        )
+        val partitionCount = try {
+            admin.describeTopics(listOf(topic)).allTopicNames().get()[topic]
+                ?.partitions()?.size
+        } finally {
+            admin.close()
+        }
+        assertThat(partitionCount)
+            .`as`("the Kafka pub/sub topic has one partition")
+            .isEqualTo(1)
 
         val firstReceived = readerOf(first, topic)
         val secondReceived = readerOf(second, topic)
