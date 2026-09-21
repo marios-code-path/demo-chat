@@ -22,6 +22,22 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-openai</artifactId>
+            <!--
+                okio-jvm drags kotlin-stdlib-common 1.9.10 in behind okhttp,
+                and the audit reports a 9.8 finding against that old version.
+                It cannot be aligned by version, because Kotlin stopped
+                publishing a jar for this artifact: 2.0.0 serves one and
+                2.4.10 and 2.4.20 answer 404 for the jar while serving a pom.
+                kotlin-stdlib carries those declarations now, so the
+                exclusion removes a stale duplicate rather than a dependency.
+                See CHAT-icgifzbv.
+            -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jetbrains.kotlin</groupId>
+                    <artifactId>kotlin-stdlib-common</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
