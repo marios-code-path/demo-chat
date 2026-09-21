@@ -31,6 +31,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.stereotype.Controller
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.TestPropertySource
+import reactor.kafka.receiver.ReceiverOptions
 import reactor.test.StepVerifier
 import java.nio.charset.StandardCharsets
 import java.time.Duration
@@ -87,6 +88,17 @@ class KafkaDeploymentTests {
         assertThat(context.containsBean("adminClient")).isTrue()
         assertThat(context.containsBean("kafkaProducerTemplate")).isTrue()
         assertThat(context.containsBean("kafkaReceiverOptions")).isTrue()
+    }
+
+    @Test
+    fun `production Kafka receiver uses the shared chat group`() {
+        val receiverOptions = context.getBean(
+            "kafkaReceiverOptions",
+            ReceiverOptions::class.java,
+        )
+
+        assertThat(receiverOptions.consumerProperties()[ConsumerConfig.GROUP_ID_CONFIG])
+            .isEqualTo("chat-kafka")
     }
 
     @Test

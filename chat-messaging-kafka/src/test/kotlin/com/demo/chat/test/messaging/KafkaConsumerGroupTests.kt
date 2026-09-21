@@ -42,8 +42,8 @@ import java.util.concurrent.CopyOnWriteArrayList
  * one states what Kafka does. `KafkaTopicPubSubService` keeps one consumer per
  * topic per process and feeds a local multicast sink, so fan-off inside one
  * process never reaches Kafka. Fan-out **between** processes is decided
- * entirely by the consumer group id, and both the deployment and the test
- * configuration set one constant value.
+ * by the consumer group id. This test gives both receivers one generated id.
+ * The deployment uses the fixed id `chat-kafka`.
  *
  * Two services here stand for two application instances. They share one
  * embedded broker, and nothing else.
@@ -167,17 +167,16 @@ class KafkaConsumerGroupTests @Autowired constructor(
      * The measured case. Two instances in **one** group share the partition,
      * so exactly one of them receives.
      *
-     * `KafkaDeployConfiguration.kafkaReceiverOptions` sets the constant group
-     * id `chat-kafka`, and every topic carries one partition
-     * (`KafkaTopicAdmin.newTopic`). A consumer group gives one partition to
-     * one member. So a second instance of a kafka deployment reads nothing
-     * for that topic, and its local subscribers are never fed.
+     * This test uses a generated group id and proves Kafka's shared-group
+     * behavior. The deployment test pins the production id `chat-kafka`.
+     * This test also checks that `KafkaTopicAdmin.newTopic` creates one
+     * partition. Together, these facts support the fan-out finding.
      *
      * **This test asserts Kafka's rule, so it passes today and it must keep
      * passing.** It is the evidence behind the fan-out finding, and it fails
-     * if someone changes the group id or the partition count without deciding
-     * what fan-out should mean. CHAT-xblitvkl holds that decision. See also
-     * CHAT-hazcatpc.
+     * if someone changes Kafka's shared-group behavior. Separate assertions
+     * pin the production group id and topic partition count. CHAT-xblitvkl
+     * holds the fan-out decision. See also CHAT-hazcatpc.
      */
     @Test
     fun `two instances in one group deliver the message to exactly one of them`() {
@@ -188,6 +187,19 @@ class KafkaConsumerGroupTests @Autowired constructor(
 
         first.open(topic).block(Duration.ofSeconds(20))
         second.open(topic).block(Duration.ofSeconds(20))
+
+        val admin = AdminClient.create(
+            mapOf(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers)
+        )
+        val partitionCount = try {
+            admin.describeTopics(listOf(topic)).allTopicNames().get()[topic]
+                ?.partitions()?.size
+        } finally {
+            admin.close()
+        }
+        assertThat(partitionCount)
+            .`as`("the Kafka pub/sub topic has one partition")
+            .isEqualTo(1)
 
         val firstReceived = readerOf(first, topic)
         val secondReceived = readerOf(second, topic)
