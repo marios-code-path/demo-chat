@@ -4,6 +4,14 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    # KafkaDeployConfiguration builds its own SenderOptions and ReceiverOptions
+    # and reads only bootstrap-servers from this block. The pub/sub receiver
+    # therefore does NOT take group-id from here. It derives
+    # chat-kafka-<nodeId> from app.nodeid, so that every instance reads every
+    # record. See CHAT-xblitvkl.
+    #
+    # Whether any Spring Kafka auto-configuration bean still reads the consumer
+    # block is not measured, so the block stays.
     consumer:
       group-id: chat-kafka
       auto-offset-reset: earliest

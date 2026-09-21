@@ -4,6 +4,7 @@ import com.demo.chat.ChatApp
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.config.pubsub.kafka.KafkaPubSubBeans
+import com.demo.chat.config.deploy.kafka.KafkaDeployConfiguration
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.pubsub.kafka.impl.KafkaTopicPubSubService
@@ -90,15 +91,24 @@ class KafkaDeploymentTests {
         assertThat(context.containsBean("kafkaReceiverOptions")).isTrue()
     }
 
+    /**
+     * The consumer group names this instance, so every instance reads every
+     * record.
+     *
+     * One shared group would give the single partition of a topic to one
+     * member, and every other instance would read nothing. This context sets
+     * `app.nodeid=1`, so the group is `chat-kafka-1`. See CHAT-xblitvkl.
+     */
     @Test
-    fun `production Kafka receiver uses the shared chat group`() {
+    fun `production Kafka receiver uses a group that names this instance`() {
         val receiverOptions = context.getBean(
             "kafkaReceiverOptions",
             ReceiverOptions::class.java,
         )
 
         assertThat(receiverOptions.consumerProperties()[ConsumerConfig.GROUP_ID_CONFIG])
-            .isEqualTo("chat-kafka")
+            .describedAs("the group carries the node id of this instance")
+            .isEqualTo("${KafkaDeployConfiguration.CONSUMER_GROUP_PREFIX}1")
     }
 
     @Test

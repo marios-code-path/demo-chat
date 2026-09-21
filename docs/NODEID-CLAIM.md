@@ -3,6 +3,17 @@
 `app.nodeid` identifies one host in the Snowflake key generator. Two
 deployments that write to one shared store must not use the same value.
 
+**Since 2026-09-21 a kafka deployment reads `app.nodeid` for a second
+purpose.** `KafkaDeployConfiguration` derives the consumer group
+`chat-kafka-<nodeId>` from it, so that every instance reads every record
+rather than competing for one partition. See CHAT-xblitvkl.
+
+That widens the cost of a duplicate value. **A kafka deployment does not
+always claim.** It claims only under the rule below, so two kafka instances
+on memory stores can both state node id 1 with nothing to stop them. They
+then share one consumer group, and one of them receives no messages. The
+operator assigns distinct values.
+
 A registry check cannot enforce this. One store can be reached by
 deployments that do not share a registry. The claim therefore lives in the
 store.
@@ -127,6 +138,9 @@ failure.
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
+
+`chat-deploy-kafka` claims nothing, and it still reads `app.nodeid` for its
+consumer group. `KafkaDeploymentTests` reads `chat-kafka-1` from that value.
 
 The vector recall tests (`chat-vector-redis`, `chat-deploy-redis`
 `RedisVectorRecallBootTests`) activate no claim store: key and persistence

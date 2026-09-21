@@ -43,8 +43,9 @@ import java.util.concurrent.CopyOnWriteArrayList
  * one states what Kafka does. `KafkaTopicPubSubService` keeps one consumer per
  * topic per process and feeds a local multicast sink, so fan-off inside one
  * process never reaches Kafka. Fan-out **between** processes is decided
- * by the consumer group id. This test gives both receivers one generated id.
- * The deployment uses the fixed id `chat-kafka`.
+ * by the consumer group id. This test gives each receiver a generated id. The
+ * deployment derives one from `app.nodeid`, so no two instances share a group.
+ * See CHAT-xblitvkl.
  *
  * Two services here stand for two application instances. They share one
  * embedded broker, and nothing else.
@@ -162,11 +163,16 @@ class KafkaConsumerGroupTests @Autowired constructor(
     )
 
     /**
-     * The reference case. Two instances in **different** groups both receive.
+     * **This is the production shape since CHAT-xblitvkl.** Two instances in
+     * different groups both receive.
      *
-     * This is what pub/sub fan-out requires, and it is the control for the
-     * test below it. Without this case, a single-receiver result could mean a
-     * broken client rather than a group rule.
+     * `KafkaDeployConfiguration.consumerGroup` derives the group from
+     * `app.nodeid`, so two instances never share one. The deployment test pins
+     * that derivation. This test proves the Kafka behaviour it depends on.
+     *
+     * It is also the control for the test below it. Without this case, a
+     * single-receiver result could mean a broken client rather than a group
+     * rule.
      */
     @Test
     fun `two instances in different groups both receive the message`() {
@@ -196,19 +202,20 @@ class KafkaConsumerGroupTests @Autowired constructor(
     }
 
     /**
-     * The measured case. Two instances in **one** group share the partition,
-     * so exactly one of them receives.
+     * **The shape production no longer uses.** Two instances in one group
+     * share the partition, so exactly one of them receives.
      *
-     * This test uses a generated group id and proves Kafka's shared-group
-     * behavior. The deployment test pins the production id `chat-kafka`.
-     * This test also checks that `KafkaTopicAdmin.newTopic` creates one
-     * partition. Together, these facts support the fan-out finding.
+     * This is the behaviour CHAT-xblitvkl removed. It stays here because it
+     * is the reason the decision exists, and because it states the Kafka rule
+     * the production derivation depends on. A reader who makes the group id
+     * constant again reproduces exactly this.
      *
-     * **This test asserts Kafka's rule, so it passes today and it must keep
-     * passing.** It is the evidence behind the fan-out finding, and it fails
-     * if someone changes Kafka's shared-group behavior. Separate assertions
-     * pin the production group id and topic partition count. CHAT-xblitvkl
-     * holds the fan-out decision. See also CHAT-hazcatpc.
+     * This test uses a generated group id. It checks the partition count as
+     * well, because one partition per topic is the other half of the rule.
+     * Two partitions would let two members of one group each hold one.
+     *
+     * **It asserts Kafka's rule, so it passes today and must keep passing.**
+     * See also CHAT-hazcatpc.
      */
     @Test
     fun `two instances in one group deliver the message to exactly one of them`() {
