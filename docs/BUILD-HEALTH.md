@@ -22,7 +22,7 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 836 tests, 0 failures, 0
+skipped. The reactor holds 36 modules and reports 844 tests, 0 failures, 0
 errors and 30 skipped.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
@@ -47,8 +47,9 @@ reports 1069 tests, 0 failures, 0 errors and 55 skipped, so it runs 1014. Both
 exit 0 and report no failure-list drift. These are measured counts, not counts
 derived from an earlier run.
 
-The eight Redis tests did not move the default count, because they sit in
-classes tagged `integration`. The two rsocket tests do move it.
+A test moves the default count only when its class carries no `integration`
+tag. The eight Redis tests of `CHAT-czmjffen` did not. The rsocket and shell
+tests do.
 
 The earlier measurement on 2026-09-17 reported 818 tests with 30 skipped in
 default mode and 1037 tests with 55 skipped in integration mode. That default
@@ -70,7 +71,7 @@ and Status. Neither module is a deficiency, and a row would have to leave all
 three columns empty or false. Task 10 of the embedding provider plan asked for
 a row, and this is the deliberate departure from it.
 
-Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 208 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
+Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 207 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
 The integration gate runs the container tests. It reports no failing module
 and no skipped module. Its exit status still means that the result matches
@@ -79,7 +80,9 @@ worth keeping even while every list is empty. `chat-shell` tests run and
 pass. All three failure lists, `KNOWN_FAILING`, `KNOWN_FAILING_INSTALL` and
 `KNOWN_FAILING_INTEGRATION`, are empty and measured.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 48 tests with 23 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured again on 2026-09-17 at 48 with 23 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellLoginCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 25 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 56 tests with 22 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-21 at 56 with 22 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 4, `ShellLoginCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 34 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
+
+`ShellContextTests` is the one disabled class that is not a generic base. Enabling it fails on a missing `CompositeServiceBeans` bean, measured on 2026-09-21, which is a gap in that test's own property set rather than anything about the shell commands.
 
 | ID | Deficiency | Blocks | Status |
 |----|-----------|--------|--------|

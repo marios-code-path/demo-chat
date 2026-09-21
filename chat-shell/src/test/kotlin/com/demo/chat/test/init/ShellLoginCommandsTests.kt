@@ -31,13 +31,6 @@ class ShellLoginCommandsTests<T>() : ShellIntegrationTestBase() {
     }
 
     @Test
-    @Order(2)
-    fun `unavailable commands`() {
-        loginCommands.isAuthenticated()
-            .let { Assertions.assertThat(it.isAvailable).isFalse }
-    }
-
-    @Test
     fun `should login succeed`() {
         Assertions.catchThrowable { loginCommands.login("Anon", "_") }
     }

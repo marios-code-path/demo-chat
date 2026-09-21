@@ -4,7 +4,6 @@ import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
-import org.springframework.shell.core.command.availability.Availability
 
 open class CommandsUtil<T>(
     private val typeUtil: TypeUtil<T>,
@@ -33,16 +32,5 @@ open class CommandsUtil<T>(
      * for a value that is not the `_` placeholder.
      */
     open fun keyOf(value: String): T = typeUtil.fromString(value)
-
-    open fun isAuthenticated(): Availability {
-        return when (
-            loggedInUser
-                .map { typeUtil.assignFrom(it) != rootKeys.getRootKey(Anon::class.java.simpleName).id }
-                .orElseGet { false }
-        ) {
-            true -> Availability.available()
-            else -> Availability.unavailable("Not logged in")
-        }
-    }
 
 }
