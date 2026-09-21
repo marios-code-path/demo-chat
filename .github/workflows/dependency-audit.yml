@@ -55,11 +55,17 @@ jobs:
         # An NVD API key raises the download rate limit. Without it the first
         # run is slow but still completes. The key must be a repository secret.
         # A local .envrc does not reach this job.
+        #
+        # owasp-suppressions.xml holds the false positives, one package and
+        # one CVE per entry, each with the evidence that made it one. Read
+        # that file before adding to it: a suppression hides a finding, so a
+        # wrong one hides a real vulnerability.
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: >
           mvn -B org.owasp:dependency-check-maven:13.0.0:aggregate
           -DfailBuildOnCVSS=9
+          -DsuppressionFiles=owasp-suppressions.xml
           -DnvdApiKey="$NVD_API_KEY"
           -DskipTests
 
