@@ -160,9 +160,11 @@ built on top of them inherits the risk.
 - **A wire-format change makes the shell integration image stale.** The
   chat-shell tests run the client against the
   `chat-deploy-long-memory-integration-test` Docker image, not against the
-  reactor. After a serialization change, rebuild the image with
-  `mvn -Ptest-build install`, then run `-Pintegration`. A stale image caused 8
-  decode errors that looked like a code regression.
+  reactor. After a serialization change, run
+  `build-health.sh --ci`, which builds the image and then runs the container
+  tests in one reactor. `--integration` alone does not build the image, and it
+  prints a note that says so. A stale image caused 8 decode errors that looked
+  like a code regression.
 - **A stale compiled test class outlives its source across a branch switch.**
   `DomainWireShapeTests.class` stayed in `chat-core/target/test-classes` after a
   checkout that removed its source. Surefire runs compiled classes, not sources.
