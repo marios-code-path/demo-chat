@@ -11,6 +11,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.given
 import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -37,6 +38,11 @@ import java.util.concurrent.atomic.AtomicInteger
  * it asserts nothing about offsets. See CHAT-hazcatpc.
  */
 class KafkaReceiverContractTests {
+
+    private companion object {
+        /** How long a verification waits for the receiver worker thread. */
+        const val ACK_TIMEOUT_MS = 5_000L
+    }
 
     private val topic = "TEST-TOPIC"
 
@@ -95,7 +101,11 @@ class KafkaReceiverContractTests {
             .thenCancel()
             .verify(Duration.ofSeconds(5))
 
-        verify(offset).acknowledge()
+        // The emit and the acknowledgement run on one boundedElastic worker,
+        // and `tryEmitNext` delivers on that same thread. So StepVerifier can
+        // return on the test thread before the worker reaches the next line.
+        // A bare verify races that worker. See CHAT-hazcatpc.
+        verify(offset, timeout(ACK_TIMEOUT_MS)).acknowledge()
     }
 
     /**
@@ -195,6 +205,11 @@ class KafkaReceiverContractTests {
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofSeconds(5))
+
+        // Wait for the acknowledgement before reading the order, for the same
+        // reason. inOrder reads recorded interactions, so it needs both to
+        // have happened already.
+        verify(offset, timeout(ACK_TIMEOUT_MS)).acknowledge()
 
         inOrder(record, offset) {
             verify(record).value()
