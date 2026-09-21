@@ -1724,6 +1724,13 @@ failure that names the wrong thing.
    test count says nothing about which image it used. Use `-DskipTests`, which
    compiles the tests and produces the test jars, and **read the exit code of the
    image build before you report an integration result.**
+   **Met a second time on 2026-09-21.** `check-production-classpath.sh` installed
+   the reactor with the same flag, so the install could not resolve
+   `chat-persistence-cassandra:jar:tests` for `chat-index-cassandra`. The gate
+   passed for as long as a stale test jar sat in `~/.m2`, and it failed the first
+   time that jar was absent. The script uses `-DskipTests` now. A gate that
+   depends on the local repository holding an artifact its own run does not
+   produce is not a gate.
 2. **Surefire hides the cause of a discovery failure.** It prints `TestEngine
    with ID 'junit-jupiter' failed to discover tests` and nothing else, in the
    maven log and in `target/surefire-reports/*.dumpstream`. The real cause, a
