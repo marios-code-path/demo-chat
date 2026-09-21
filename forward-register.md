@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `d4349022`, clean, in sync with `origin`. One checkout, one branch. |
-| Register state | Updated 2026-09-17, after the four Spring Boot 4 prerequisites. |
-| Last merged PR | #97, merge commit `d4349022`. Before it: #96 `f874e7d4`, #95 `e13f87f3`, #94 `2ddd75c5`, #93 `56b82a97`, #92 `fdb30605`. |
+| Checkout | `master` at `7abe0af8`, clean, in sync with `origin`. |
+| Register state | Updated 2026-09-21, after the Spring Boot 4 merge and the seven pull requests that followed it. |
+| Last merged PR | #110, merge commit `7abe0af8`. Before it: #109 `0bdb0c4f`, #108 `d1dda1bc`, #107 `d09a2daf`, #106 `6aae087d`, #105 `8d7d9707`, #104 `ecfea4a1`, #103 `c4b63bfc`. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | None remain, local or remote. A merge removes the remote branch. |
-| Worktrees | The main checkout only. |
-| Open PRs | Dependabot holds #8 and #11. Nothing of ours is in flight. |
+| Merged feature branches | Four local branches remain, none with a remote. **Three hold no commit that master lacks**: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, and `chat-chsvdqbi-springai` at `aeb579dc`. Their content reached master through #103 and the pull requests after it. The fourth, `chat-urhjrwbt-indexelastic`, holds one commit that master lacks, `d8d797b3`, and that commit repairs `chat-index-elastic`, which #106 removed from the reactor. So it is dead work. |
+| Worktrees | Four: the main checkout, plus `.worktrees/boot4`, `.worktrees/ctl` and `.worktrees/springai`. Each of the three holds a branch that master already contains. |
+| Open PRs | None. The owner dropped Dependabot #8 and #11 on 2026-09-21 as no longer relevant. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
@@ -1089,9 +1089,12 @@ after the embedding model reports a throughput number.
 
 ### Open issues at high priority
 
-`CHAT-pkolwuqm` Boot 4, `CHAT-ygllyglb` Spring AI 2.0, `CHAT-gidbchkx` Netty,
-`CHAT-icgifzbv` audit triage, `CHAT-sgyaaivp` Cassandra CI flake, `CHAT-cikgeefc`
-build health.
+**This list was written on 2026-09-11 and it is stale.** `CHAT-pkolwuqm` Boot 4,
+`CHAT-gidbchkx` Netty and `CHAT-icgifzbv` audit triage are all done.
+See the ordered list at the end of this file, written on 2026-09-21.
+
+`CHAT-ygllyglb` Spring AI 2.0, `CHAT-sgyaaivp` Cassandra CI flake and
+`CHAT-cikgeefc` build health are still open.
 
 Open and not yet started, from the 2026-09-11 work: `CHAT-aedloxwd` index field
 semantics, `CHAT-edzvpxil` message handling policy mask, `CHAT-tekzakdd` data stream
@@ -1641,6 +1644,64 @@ because `user(TEST_USER)` never runs the login filter and Security 7 reads
 `auth_time` from the authorities. That repair proves the fixture path. **The
 production `formLogin` path is not measured by it.**
 
+
+## Spring Boot 4 landed, and the seven pull requests after it (2026-09-19/21)
+
+The stack described in the section above merged. Everything below is on
+`master`.
+
+| PR | Merge | What |
+|----|-------|------|
+| #103 | `c4b63bfc` | Spring Boot 4.0.8, the whole stack |
+| #104 | `ecfea4a1` | Pub/sub reader failure cleanup made race safe and visible |
+| #105 | `8d7d9707` | Jackson 3 module injection proved in the RSocket deployment |
+| #106 | `6aae087d` | `chat-index-elastic` removed |
+| #107 | `d09a2daf` | Tomcat 11.0.26, Kotlin 2.4.20, the stale `kotlin-stdlib-common` dropped |
+| #108 | `d1dda1bc` | The two audit false positives suppressed. First green dependency audit |
+| #109 | `0bdb0c4f` | The Spring Shell 4 command surface verified |
+| #110 | `7abe0af8` | `build-health.sh --ci`, a verifier mode that builds the image |
+
+### The build surface now
+
+- Default: 36 modules, 844 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1075 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-20 against Docker Engine 29.7.2.
+- The reactor holds 36 modules. `chat-index-elastic` left it under #106.
+
+### The verifier reaches the image now
+
+`build-health.sh --ci` runs `mvn clean verify -fae -Ptest-build,integration`.
+The package phase builds the `chat-deploy-memory-integration-test` image, so
+`chat-shell` tests the current source rather than whatever image the machine
+holds.
+
+**It is not the CI command, and the document says so.** It takes the phase,
+the profiles and the image path of the workflow integration job. It adds
+`-fae`, because the verifier must see the result of every module to diff it
+against `docs/BUILD-HEALTH.md`. It resolves online, as that job does and as no
+other mode does.
+
+### Three B4 children were already closed by other work
+
+Measured on 2026-09-21 at `7abe0af8`, and worth recording because each looked
+open and was not.
+
+- `CHAT-aazmjsws`, the Kafka topic existence test: `KafkaPubSubTests` runs 9
+  tests with 0 failures. Kafka 4 is KRaft only, and
+  `createTopics().all().get()` no longer proves broker metadata visibility.
+  `KafkaTopicAdmin.create` ends with `awaitVisible`, which polls 10 seconds at
+  50 ms.
+- `CHAT-cjqzmiiq`, the Redis pub/sub selector tests:
+  `RedisPubSubBeansSelectorTests` runs 4 tests with 0 failures.
+- `CHAT-cophllrg` is **half** closed, and the open half is the half it was
+  written for. `CoreUserDetailsService.updatePassword` refuses a null password
+  and the KDoc records the owner decision, but **no test pins the refusal**.
+  `UserDetailsServiceTests` has no null case.
+
+**A closed parent does not close its children.** `CHAT-tvsgtjtm` is done while
+five of its children stayed open, and two of those were already satisfied by
+code that merged under a different issue.
+
 ## Three build traps, each of which cost a cycle (2026-09-17)
 
 These are tooling traps, not code defects. Each one reports success, or reports a
@@ -1723,3 +1784,62 @@ under it moves.
 It runs the enforcer and compiles nothing. The five module repairs under B4-S1
 to B4-S5 are untouched by this result, and the twelve modules that no probe has
 reached stay unmeasured. See `CHAT-ombbesyh`.
+
+## The work queue, ordered on 2026-09-21
+
+26 issues are `todo` and 2 are `in-progress`. The order below is a
+recommendation, not a decision. The owner sets the order.
+
+Three issues closed while this list was written, each because merged work had
+already satisfied it. **Read the tree before you start an issue.** A closed
+parent does not close its children, and two of these three were satisfied by
+code that merged under a different issue.
+
+### Tier 1: open risk sitting in merged code
+
+| # | Issue | Why it is first |
+|---|-------|-----------------|
+| 1 | `CHAT-hazcatpc` | reactor-kafka 1.3.25 declares kafka-clients 3.9.1 and master runs 4.1.2. reactor-kafka is discontinued at its 1.3 line. Neither enforcer rule fires on the pair. Only the narrow protocol path is measured, and that measurement is deliberately scoped. This is unmeasured risk in shipped code. |
+| 2 | `CHAT-ombbesyh` | The Boot 4 evidence boundary. **Most of it is now satisfied**: the `--ci` run compiles the full reactor, builds the image, and passes every container test. What stays open is starting the five composition roots, `just check-production-classpath`, and the packaged launch gate. Cheap now, and it removes the caveat that no deployment claim about Boot 4 is valid. |
+| 3 | `CHAT-cophllrg` | One test. `CoreUserDetailsService.updatePassword` refuses a null password, and nothing pins that refusal. A credential contract with no regression guard. |
+
+**`CHAT-vgujmnol` duplicates `CHAT-ombbesyh`.** Both ask for the composition
+roots to start and the images to rebuild on Boot 4. Merge them or close one.
+
+### Tier 2: trust in the signal
+
+| # | Issue | Why |
+|---|-------|-----|
+| 4 | `CHAT-sgyaaivp` | The Cassandra container flake. While the integration job alternates red on unchanged code, every review has to re-derive whether a failure is real. Do it before any Cassandra work. |
+| 5 | `CHAT-cikgeefc` | The standing build-health tracker. It does not close. A cycle that finds no drift is a clean reading. |
+
+### Tier 3: correctness and design debt with a known defect behind it
+
+| # | Issue | Why |
+|---|-------|-----|
+| 6 | `CHAT-ltvfmcvh` | The anonymous identity is decided in at least three places, and one of them cannot tell an expired token from a caller who never authenticated. Security relevant. |
+| 7 | `CHAT-cvdcfczj` | Define and verify the complete authorization surface. |
+| 8 | `CHAT-avduuqwp` | A stable root identity on keys, replacing string matching between `IKeyService.kind` and `RootKeys`. Large and structural. Read the scope before committing to it. |
+| 9 | `CHAT-ruduojeu` | Backend fanout semantics for messaging. |
+
+### Tier 4: native image
+
+`CHAT-arcqfjuc` blocks a native start and needs an owner decision about moving
+`main` out of the Kotlin companion object. `CHAT-ulrkvfit` adds the missing
+`chat-shell` native profile. Neither blocks anything else.
+
+### Tier 5: deferred on purpose
+
+The capability mechanism `CHAT-zqyrsrrg` and its seven tasks have not moved
+since the design sprint. `CHAT-aedloxwd`, `CHAT-tekzakdd` and `CHAT-edzvpxil`
+are deliberately deferred and each records why. `CHAT-qwjuwcdo`,
+`CHAT-itvhzmvp`, `CHAT-btjtfwwr`, `CHAT-uwsmwcpj` and `CHAT-xojupyhn` are
+housekeeping.
+
+### One caution about this ordering
+
+It ranks by risk to shipped code, then by trust in the signal, then by design
+debt. It does **not** rank by feature value. The owner's direction on
+2026-09-10 was to move on to features after the security pass. That pass is now
+done, so the next feature decision, which is the real embedding model, still
+has no issue and is still the owner's.
