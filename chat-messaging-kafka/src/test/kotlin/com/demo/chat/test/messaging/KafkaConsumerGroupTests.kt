@@ -176,7 +176,8 @@ class KafkaConsumerGroupTests @Autowired constructor(
      * **This test asserts Kafka's rule, so it passes today and it must keep
      * passing.** It is the evidence behind the fan-out finding, and it fails
      * if someone changes the group id or the partition count without deciding
-     * what fan-out should mean. See CHAT-hazcatpc.
+     * what fan-out should mean. CHAT-xblitvkl holds that decision. See also
+     * CHAT-hazcatpc.
      */
     @Test
     fun `two instances in one group deliver the message to exactly one of them`() {
