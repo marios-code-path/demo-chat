@@ -191,9 +191,15 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
 
   So a defect that reaches only the deployment image stays invisible to every
   automated check. **Two did.** The second was a malformed JVM option that
-  killed every deployment container before any application code ran, while the
-  image build reported success. `CHAT-vcmlztpd` records it. Both are worth
-  stating precisely.
+  killed the cassandra deployment container before any application code ran,
+  while the image build reported success. `CHAT-vcmlztpd` records it. Both are
+  worth stating precisely.
+
+  **Read the second one with its limit.** The repair is a delimiter in the
+  parent pom, so the mechanism reaches every deploy module that inherits that
+  configuration. **Only the cassandra image was built and run.** That is a
+  reading of shared configuration, not a measurement of four other images. A
+  start on one backend is not evidence that another backend starts.
 
   **A deploy module does not ship a main class. It inherits one.**
   `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
