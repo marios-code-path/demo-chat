@@ -34,6 +34,8 @@
 -Dspring-boot.run.arguments=
 -Dspring-boot.run.jvmArguments=
 -Dspring.application.name=core-service-rsocket
+-Dspring.cassandra.contact-points=127.0.0.1
+-Dspring.cassandra.port=9042
 -Dspring.cloud.consul.config.enabled=false
 -Dspring.cloud.consul.config.watch.enabled=false
 -Dspring.cloud.consul.discovery.enabled=false
@@ -41,7 +43,7 @@
 -Dspring.cloud.service-registry.auto-registration.enabled=false
 -Dspring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml
 -Dspring.main.web-application-type=reactive
--Dspring.profiles.active=cassandra-contact-point
+-Dspring.profiles.active=cassandra,cassandra-contact-point
 -Dspring.rsocket.server.port=6790
 -Dspring.rsocket.server.ssl.enabled=false
 -Dspring.security.user.name=actuator

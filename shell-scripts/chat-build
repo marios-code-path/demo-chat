@@ -125,13 +125,32 @@ FEATURES: dict[str, Feature] = {
         name="cassandra",
         description="Cassandra persistence + index",
         module="chat-deploy-cassandra",
-        spring_profiles=["cassandra-contact-point"],
+        # Two profiles, and both are needed.
+        #
+        # cassandra-contact-point selects ContactPointConfiguration, which is
+        # @Profile("cassandra-contact-point", "default").
+        #
+        # cassandra loads application-cassandra.yml, which carries
+        # keyspace-name, base-packages and local-datacenter. Without it the
+        # launch failed with "spring.cassandra.keyspace-name is not set",
+        # measured on 2026-09-21. See CHAT-twgsmbii.
+        spring_profiles=["cassandra", "cassandra-contact-point"],
         spring_properties={
             "app.service.core.key": "cassandra",
             "app.service.core.index": "cassandra",
             "app.service.core.persistence": "cassandra",
             "app.service.core.secrets": "cassandra",
         },
+        # application-cassandra.yml states that the launch sets these two.
+        # Until 2026-09-22 it set neither, so that comment described behaviour
+        # that did not exist. This follows the kafka feature, which reads an
+        # environment variable with a local default. See CHAT-hydxveux.
+        opt_flags=[
+            "-Dspring.cassandra.contact-points="
+            + os.environ.get("CASSANDRA_CONTACT_POINTS", "127.0.0.1"),
+            "-Dspring.cassandra.port="
+            + os.environ.get("CASSANDRA_PORT", "9042"),
+        ],
         group="backend",
     ),
     "client": Feature(

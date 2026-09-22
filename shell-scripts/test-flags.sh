@@ -30,6 +30,8 @@ CHAT_BUILD="$DIR/chat-build"
 export CONSUL_HOST=10.0.0.5
 export KEYSTORE_PASS="golden-test-pass"
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+export CASSANDRA_CONTACT_POINTS=127.0.0.1
+export CASSANDRA_PORT=9042
 export DEBUG_PORT=5005
 
 # Provenance matters. The four cases marked [parity] were asserted against
