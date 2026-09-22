@@ -150,10 +150,19 @@ Then launch:
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk
 ```
 
-`shell-scripts/gen-dckeys.sh` does **not** make this file. That script writes
-TLS material as PEM, and a JWK is a different artifact. The tests do not use
-this file either. `AuthorizationServerTestSigningKey` generates one per run
-into a temporary file.
+`shell-scripts/gen-dckeys.sh` writes a file that looks like the one you need
+and **cannot sign**. It produces `encrypt-keys/server_keycert.jwk` from the
+server **public** key, so that JWK carries `x`, `y` and an `x5c` chain, and no
+`d` member. Measured on 2026-09-22.
+
+`AuthorizationServerConfig` hands the parsed JWK to `ImmutableJWKSet` as the
+signing source, and the token customizer asks for ES256. A signing key needs
+the private `d`. So use a key you generated with the command above, not
+`server_keycert.jwk`.
+
+The tests take the same route. `AuthorizationServerTestSigningKey` generates
+an EC P-256 key per run into a temporary file. See the B4 row in
+`docs/BUILD-HEALTH.md` for why the committed fixture went away.
 
 **Do not commit a key.** A committed signing key would make every deployment
 share one identity, which is the failure that `app.nodeid` already records.
