@@ -1665,8 +1665,8 @@ The stack described in the section above merged. Everything below is on
 ### The build surface now
 
 - Default: 36 modules, 844 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1075 tests, 0 failures, 0 errors, 54 skipped.
-  Measured on 2026-09-20 against Docker Engine 29.7.2.
+- `--ci`: 27 modules run tests, 1078 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-22 at master `80434823`, against Docker Engine 29.7.2.
 - The reactor holds 36 modules. `chat-index-elastic` left it under #106.
 
 ### The verifier reaches the image now
