@@ -32,6 +32,13 @@ export KEYSTORE_PASS="golden-test-pass"
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 export CASSANDRA_CONTACT_POINTS=127.0.0.1
 export CASSANDRA_PORT=9042
+
+# chat-build requires --jwk to name an existing absolute path when it runs the
+# authorization server. This test composes command lines and launches nothing,
+# so a placeholder file is enough. A real ES256 key is not needed to build a
+# flag list, and committing one would be wrong. See CHAT-cadftbow.
+export GOLDEN_JWK=/tmp/chat-build-golden.jwk
+: > "$GOLDEN_JWK"
 export DEBUG_PORT=5005
 
 # Provenance matters. The four cases marked [parity] were asserted against
@@ -62,7 +69,7 @@ CASES=(
   # other services
   "rest-client|rest --run --notls --long --node-id 0"
   "gateway-client|gateway --run --notls --long --node-id 0"
-  "authserv-client|authserv --run --notls --long --node-id 0"
+  "authserv-client|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
   "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
 )
 

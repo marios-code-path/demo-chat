@@ -121,6 +121,67 @@ See `docs/NODEID-CLAIM.md` for the node-id lease rules.
 
 See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 
+### The authorization server needs a signing key
+
+`app.oauth2.jwk.path` has no default, and this repository commits no key.
+
+`chat-build authserv --run` requires `--jwk PATH`.
+
+`AuthorizationServerConfig` reads an ES256 key in JWK form from that path. The
+context does not start without it.
+
+Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
+the working directory, so a relative path would resolve against that rather
+than against you.
+
+### Make the key with gen-dckeys.sh
+
+```bash
+./shell-scripts/gen-dckeys.sh <cert-password>
+./shell-scripts/chat-build authserv --run --notls --node-id 8 \
+  --jwk "$PWD/encrypt-keys/server_keycert.jwk"
+```
+
+That script writes `encrypt-keys/server_keycert.jwk` with the private `d` and
+an `x5c` chain. It is the same file that
+`devops/k8s/volumes/make-cert-secrets.sh` puts in a Kubernetes secret, and
+that `docker_volume_gen` copies to `/etc/keys`, so a local run and a deployed
+one use one artifact.
+
+`encrypt-keys` is in `.gitignore`. **Keep the key there.** A key under a
+tracked directory is one `git add` away from a commit.
+
+Measured on 2026-09-22: the authorization server started with that file and
+minted a token whose header reads `{"alg":"ES256"}`. The `/oauth2/jwks`
+endpoint answered with the `x5c` chain and **no `d`**, because Spring's
+`NimbusJwkSetEndpointFilter` publishes `JWKSet.toString()`, which is
+`toJSONObject(publicKeysOnly=true)`.
+
+### Or make only a key, with no TLS material
+
+Use this when you want a signing key without an authority and two identities.
+
+```bash
+NIMBUS=$(find ~/.m2/repository/com/nimbusds/nimbus-jose-jwt -name '*.jar' \
+  | grep -v sources | sort | tail -1)
+printf 'var jwk = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256).keyID(java.util.UUID.randomUUID().toString()).generate();\njava.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/authserv.jwk"), jwk.toJSONString());\n/exit\n' > /tmp/genjwk.jsh
+jshell --class-path "$NIMBUS" /tmp/genjwk.jsh
+```
+
+This key carries no `x5c` chain, and the authorization server does not need
+one.
+
+The tests generate their own. `AuthorizationServerTestSigningKey` makes an EC
+P-256 key per run into a temporary file, so no test reads the file above. See
+the B4 row in `docs/BUILD-HEALTH.md` for why the committed fixture went away.
+
+**Do not commit a key.** A committed signing key would make every deployment
+share one identity, which is the failure that `app.nodeid` already records.
+
+`chat-build authserv --build` refuses `--jwk`. An image bakes the launch
+options, and a path on your machine does not exist inside a container. Supply
+`app.oauth2.jwk.path` when you run the image.
+
 ## Installed Artifacts
 
 `chat-build` resolves library modules from the local Maven repository. The launch also uses the installed `chat-deploy` jar.
