@@ -500,6 +500,7 @@ class BuildContext:
         self.discovery = "consul" if "consul" in self.selected else "local"
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
         self.tls_dir: str | None = args.tls
+        self.jwk_path: str | None = getattr(args, "jwk", None)
         self.image_name = service.image_name_for(self.backend)
 
     # -- resolution ------------------------------------------------------
@@ -624,6 +625,16 @@ class BuildContext:
             f"-Dspring.application.name={self.service.deployment_name}",
             "-Djava.security.egd=file:/dev/./urandom",
         ]
+        if self.jwk_path:
+            # Emitted as given, after ~ expansion, and never resolved.
+            # resolve() rewrites /tmp to /private/tmp on macOS and leaves it
+            # alone on Linux, which would make the golden flags differ by
+            # operating system. The argument check requires an absolute path,
+            # so nothing here needs to make one.
+            flags.append(
+                "-Dapp.oauth2.jwk.path=file:"
+                + str(Path(self.jwk_path).expanduser())
+            )
         for feat in self._features():
             for key, value in feat.spring_properties.items():
                 if key.startswith("app.service.core."):
@@ -935,6 +946,17 @@ def build_parser() -> argparse.ArgumentParser:
     for service in SERVICES.values():
         sub = subparsers.add_parser(service.name, help=service.description)
         add_common_args(sub)
+        if service.name == "authserv":
+            # The signing key of the authorization server. There is no default
+            # and the repository commits no key, for the same reason that
+            # --node-id has no default: a committed value would make every
+            # deployment identical in silence. AuthorizationServerConfig reads
+            # it from app.oauth2.jwk.path, and the context does not refresh
+            # without it. See CHAT-cadftbow and docs/BUILD.md.
+            sub.add_argument("--jwk", metavar="PATH",
+                             help="path to the ES256 signing key in JWK form. "
+                                  "Required to run the authorization server. "
+                                  "See docs/BUILD.md for how to make one.")
         group = sub.add_argument_group("features")
         for name in service.available_features:
             feat = FEATURES[name]
@@ -962,6 +984,37 @@ def main() -> int:
         print("chat-build: KEYSTORE_PASS must be set when using --tls",
               file=sys.stderr)
         return 1
+
+    if args.service == "authserv":
+        # --build bakes the launch options into the image, and a host path
+        # would not exist inside a container. So the key is required to run
+        # and refused for an image. An operator supplies it at docker run.
+        if args.build and args.jwk:
+            print("chat-build: --jwk cannot be baked into an image. "
+                  "A host path does not exist inside the container. "
+                  "Supply app.oauth2.jwk.path when you run the image.",
+                  file=sys.stderr)
+            return 1
+        if not args.build and not args.jwk:
+            print("chat-build: --jwk PATH is required to run the "
+                  "authorization server. It reads an ES256 signing key from "
+                  "app.oauth2.jwk.path, and there is no default. "
+                  "See docs/BUILD.md for how to make one.",
+                  file=sys.stderr)
+            return 1
+        if args.jwk:
+            jwk = Path(args.jwk).expanduser()
+            # Absolute, because spring-boot:run sets the module directory as
+            # the working directory. A relative path would resolve against
+            # that rather than against the caller.
+            if not jwk.is_absolute():
+                print(f"chat-build: --jwk must be an absolute path: {args.jwk}",
+                      file=sys.stderr)
+                return 1
+            if not jwk.is_file():
+                print(f"chat-build: --jwk names no file: {args.jwk}",
+                      file=sys.stderr)
+                return 1
 
     ctx = BuildContext(SERVICES[args.service], args)
 

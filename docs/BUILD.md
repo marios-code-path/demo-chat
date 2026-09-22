@@ -121,6 +121,47 @@ See `docs/NODEID-CLAIM.md` for the node-id lease rules.
 
 See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 
+### The authorization server needs a signing key
+
+`app.oauth2.jwk.path` has no default, and this repository commits no key.
+
+`chat-build authserv --run` requires `--jwk PATH`.
+
+`AuthorizationServerConfig` reads an ES256 key in JWK form from that path. The
+context does not start without it.
+
+Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
+the working directory, so a relative path would resolve against that rather
+than against you.
+
+Make a key with the `nimbus-jose-jwt` jar that this repository already
+resolves:
+
+```bash
+NIMBUS=$(find ~/.m2/repository/com/nimbusds/nimbus-jose-jwt -name '*.jar' \
+  | grep -v sources | sort | tail -1)
+printf 'var jwk = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256).keyID(java.util.UUID.randomUUID().toString()).generate();\njava.nio.file.Files.writeString(java.nio.file.Path.of("/tmp/authserv.jwk"), jwk.toJSONString());\n/exit\n' > /tmp/genjwk.jsh
+jshell --class-path "$NIMBUS" /tmp/genjwk.jsh
+```
+
+Then launch:
+
+```bash
+./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk
+```
+
+`shell-scripts/gen-dckeys.sh` does **not** make this file. That script writes
+TLS material as PEM, and a JWK is a different artifact. The tests do not use
+this file either. `AuthorizationServerTestSigningKey` generates one per run
+into a temporary file.
+
+**Do not commit a key.** A committed signing key would make every deployment
+share one identity, which is the failure that `app.nodeid` already records.
+
+`chat-build authserv --build` refuses `--jwk`. An image bakes the launch
+options, and a path on your machine does not exist inside a container. Supply
+`app.oauth2.jwk.path` when you run the image.
+
 ## Installed Artifacts
 
 `chat-build` resolves library modules from the local Maven repository. The launch also uses the installed `chat-deploy` jar.
