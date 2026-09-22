@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-20** at `chat-bahmtzut-verifier-image`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1075 tests, with 0 failures, 0 errors and 54 skipped. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `80434823`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1078 tests, with 0 failures, 0 errors and 54 skipped. The count moves from the 1075 measured on 2026-09-20 because `CHAT-hazcatpc` added three tests, which the default count already records. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
