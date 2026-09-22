@@ -511,6 +511,20 @@
                                     <BPE_APPEND_JAVA_TOOL_OPTIONS>${env.JAVA_TOOL_OPTIONS}
                                         ${vector.api.module.flag}
                                     </BPE_APPEND_JAVA_TOOL_OPTIONS>
+                                    <!-- BPE_APPEND_ joins with no separator unless
+                                         BPE_DELIM_ states one. Without this line
+                                         the last token of the buildpack value and
+                                         the first token of ours fuse into one
+                                         word. The JVM then reports an unrecognized
+                                         option and the container dies before any
+                                         application code runs. The image build
+                                         still reports success, and no gate builds
+                                         a deployment image, so nothing saw it.
+                                         chat-deploy-memory-integration-test
+                                         already carried this line for the test
+                                         image. Measured on 2026-09-22, fp issue
+                                         CHAT-vcmlztpd. -->
+                                    <BPE_DELIM_JAVA_TOOL_OPTIONS xml:space="preserve"> </BPE_DELIM_JAVA_TOOL_OPTIONS>
                                     <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                                 </env>
                             </image>

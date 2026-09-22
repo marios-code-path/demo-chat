@@ -190,7 +190,10 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   no verifier mode builds a deployment image.**
 
   So a defect that reaches only the deployment image stays invisible to every
-  automated check. One did, and it is worth stating precisely.
+  automated check. **Two did.** The second was a malformed JVM option that
+  killed every deployment container before any application code ran, while the
+  image build reported success. `CHAT-vcmlztpd` records it. Both are worth
+  stating precisely.
 
   **A deploy module does not ship a main class. It inherits one.**
   `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
