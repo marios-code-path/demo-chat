@@ -12,6 +12,10 @@ Use `shell-scripts/` for implementation scripts and advanced launch details.
 
 Do not start in `shell-scripts/` unless you need a script detail.
 
+This file is the command reference. `docs/DEPLOYMENT-WORKFLOW.md` is the order
+those commands go in, from a fresh machine to a running deployment, and it
+names every input that has no default.
+
 ## First Commands
 
 Show the command menu:
