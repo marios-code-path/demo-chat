@@ -89,8 +89,10 @@ there makes two instances share one group and one of them reads nothing. See
 with it. The repository commits no key. `docs/BUILD.md` carries the command
 that makes one.
 
-**`shell-scripts/gen-dckeys.sh` does not make this key**, although it writes a
-file that looks like it. See step 3 TLS below.
+**`shell-scripts/gen-dckeys.sh` makes this key**, as
+`encrypt-keys/server_keycert.jwk`, alongside the TLS material. See step 3 TLS
+below. Use the command in `docs/BUILD.md` instead when you want a key and no
+TLS material.
 
 ### TLS material, only when you use `--tls`
 
@@ -103,11 +105,18 @@ export KEYSTORE_PASS=<password>
 That script builds one authority, a server identity and a client identity, and
 writes them to `encrypt-keys/`. Its own header lists every file.
 
-**It also writes `server_keycert.jwk`, and that file cannot sign a token.** It
-comes from the server *public* key, so it has no `d` member. Do not point
-`app.oauth2.jwk.path` at it. *Measured.*
+**It also writes `server_keycert.jwk`, which is the signing key step 3 asks
+for.** So one run of this script covers both the TLS material and the
+authorization server key, and the same file reaches a Kubernetes secret and a
+docker volume. *Measured: the server started with it and minted a token whose
+header reads `{"alg":"ES256"}`.*
 
-Use `--notls` when you are not testing the TLS path.
+Keep the output in `encrypt-keys/`, which is in `.gitignore`. A private key
+under a tracked directory is one `git add` away from a commit.
+
+Use `--notls` when you are not testing the TLS path. You still need a signing
+key for the authorization server, and `docs/BUILD.md` carries a command that
+makes one without any TLS material.
 
 ### An image repository prefix, only for `--build`
 

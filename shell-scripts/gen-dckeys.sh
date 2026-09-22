@@ -19,19 +19,22 @@
 #   client_key.pem client_pub.pem         the client identity
 #   client.cer client.csr client_ca.pem
 #   client_keystore.p12 client_truststore.p12
-#   server.jwk server_keycert.jwk         see the warning below
+#   server.jwk server_keycert.jwk         the authorization server signing key
 #
-# **server_keycert.jwk cannot sign a token.** It is built from the server
-# public key, so it carries x, y and an x5c chain and no d member. The
-# authorization server hands the parsed JWK to ImmutableJWKSet as its signing
-# source and asks for ES256, which needs the private d. Do not point
-# app.oauth2.jwk.path at this file. docs/BUILD.md carries the command that
-# makes a signing key, and docs/DEPLOYMENT-WORKFLOW.md places this script in
-# the wider order of work.
+# **server_keycert.jwk is the authorization server signing key.** It holds the
+# private d and an x5c chain. Point app.oauth2.jwk.path at it, or pass it as
+# chat-build authserv --jwk. The same file goes to a Kubernetes secret through
+# devops/k8s/volumes/make-cert-secrets.sh, and to /etc/keys through
+# docker_volume_gen, so one artifact serves a local run and a deployed one.
 #
-# The copy into chat-authorization-server test resources at the end is
-# legacy. No test reads it now. AuthorizationServerTestSigningKey generates a
-# key per run instead, which is the B4 row of docs/BUILD-HEALTH.md.
+# It carried the server public key until 2026-09-22 and could not sign. See
+# CHAT-cadftbow.
+#
+# **Keep the output in encrypt-keys.** That directory is in .gitignore. A
+# private key under a tracked directory is one git add away from a commit.
+#
+# docs/BUILD.md carries the launch commands, and
+# docs/DEPLOYMENT-WORKFLOW.md places this script in the wider order of work.
 #
 # It needs openssl, keytool, jq and eckles on the PATH. eckles converts a PEM
 # public key to JWK, and it is an npm package rather than a system tool.
