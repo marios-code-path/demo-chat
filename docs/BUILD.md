@@ -134,8 +134,32 @@ Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather
 than against you.
 
-Make a key with the `nimbus-jose-jwt` jar that this repository already
-resolves:
+### Make the key with gen-dckeys.sh
+
+```bash
+./shell-scripts/gen-dckeys.sh <cert-password>
+./shell-scripts/chat-build authserv --run --notls --node-id 8 \
+  --jwk "$PWD/encrypt-keys/server_keycert.jwk"
+```
+
+That script writes `encrypt-keys/server_keycert.jwk` with the private `d` and
+an `x5c` chain. It is the same file that
+`devops/k8s/volumes/make-cert-secrets.sh` puts in a Kubernetes secret, and
+that `docker_volume_gen` copies to `/etc/keys`, so a local run and a deployed
+one use one artifact.
+
+`encrypt-keys` is in `.gitignore`. **Keep the key there.** A key under a
+tracked directory is one `git add` away from a commit.
+
+Measured on 2026-09-22: the authorization server started with that file and
+minted a token whose header reads `{"alg":"ES256"}`. The `/oauth2/jwks`
+endpoint answered with the `x5c` chain and **no `d`**, because Spring's
+`NimbusJwkSetEndpointFilter` publishes `JWKSet.toString()`, which is
+`toJSONObject(publicKeysOnly=true)`.
+
+### Or make only a key, with no TLS material
+
+Use this when you want a signing key without an authority and two identities.
 
 ```bash
 NIMBUS=$(find ~/.m2/repository/com/nimbusds/nimbus-jose-jwt -name '*.jar' \
@@ -144,25 +168,12 @@ printf 'var jwk = new com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose
 jshell --class-path "$NIMBUS" /tmp/genjwk.jsh
 ```
 
-Then launch:
+This key carries no `x5c` chain, and the authorization server does not need
+one.
 
-```bash
-./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk
-```
-
-`shell-scripts/gen-dckeys.sh` writes a file that looks like the one you need
-and **cannot sign**. It produces `encrypt-keys/server_keycert.jwk` from the
-server **public** key, so that JWK carries `x`, `y` and an `x5c` chain, and no
-`d` member. Measured on 2026-09-22.
-
-`AuthorizationServerConfig` hands the parsed JWK to `ImmutableJWKSet` as the
-signing source, and the token customizer asks for ES256. A signing key needs
-the private `d`. So use a key you generated with the command above, not
-`server_keycert.jwk`.
-
-The tests take the same route. `AuthorizationServerTestSigningKey` generates
-an EC P-256 key per run into a temporary file. See the B4 row in
-`docs/BUILD-HEALTH.md` for why the committed fixture went away.
+The tests generate their own. `AuthorizationServerTestSigningKey` makes an EC
+P-256 key per run into a temporary file, so no test reads the file above. See
+the B4 row in `docs/BUILD-HEALTH.md` for why the committed fixture went away.
 
 **Do not commit a key.** A committed signing key would make every deployment
 share one identity, which is the failure that `app.nodeid` already records.
