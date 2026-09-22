@@ -190,10 +190,27 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   no verifier mode builds a deployment image.**
 
   So a defect that reaches only the deployment image stays invisible to every
-  automated check. One did. `chat-deploy-cassandra` named a main class with no
-  main method until 2026-09-21, and the image it produced could not start.
-  `CHAT-ombbesyh` found it by launching the root, and `CHAT-byinjjah` holds the
-  check that would catch the next one.
+  automated check. One did, and it is worth stating precisely.
+
+  **A deploy module does not ship a main class. It inherits one.**
+  `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
+  depends on that artifact. `chat-deploy-memory` and `chat-deploy-kafka`
+  declare no `mainClass` at all, and both launch. So the defect in
+  `chat-deploy-cassandra` was **an override that named the wrong class**, not
+  a missing main. Its pom pointed at `CassandraAppConfiguration`, which is a
+  `@Configuration` class with one `@Bean`, until 2026-09-21.
+
+  Measured on 2026-09-22, with the pre-repair value restored: the image builds
+  and its jar manifest reads
+  `Start-Class: com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration`.
+  **The build reports success and bakes an entry point that has no main
+  method.** `spring-boot:run` reported `Main method not found in class` for
+  that same value, so the class is wrong in both paths.
+
+  A container run of that image is **not** the evidence here. It failed before
+  the entry point, on a malformed JVM option, which is a separate matter under
+  `CHAT-vcmlztpd`. `CHAT-ombbesyh` found the defect by launching the root, and
+  `CHAT-byinjjah` holds the check that would catch the next one.
 
   Measured on 2026-09-22 at master `80434823`: CI run `35679897748` built
   `chat-deploy-long-memory-integration-test:0.0.1` and no other image. A local
