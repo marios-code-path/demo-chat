@@ -182,6 +182,43 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   precedes the container tests inside one reactor, which is the thing no
   earlier mode could show. `chat-shell` reported 56 tests with 22 skipped, and
   the four `Long*` classes ran. See CHAT-bahmtzut.
+- **This repository has two image paths, and CI builds one of them.** The
+  first is the `chat-deploy-memory-integration-test` image, which the
+  `chat-shell` container tests run against. CI builds it, and so does `--ci`.
+  The second is a deployment image, which `spring-boot:build-image` writes for
+  a deploy module through `chat-build core <backend> --build`. **No CI job and
+  no verifier mode builds a deployment image.**
+
+  So a defect that reaches only the deployment image stays invisible to every
+  automated check. One did, and it is worth stating precisely.
+
+  **A deploy module does not ship a main class. It inherits one.**
+  `com.demo.chat.ChatApp` lives in `chat-deploy`, and each backend module
+  depends on that artifact. `chat-deploy-memory` and `chat-deploy-kafka`
+  declare no `mainClass` at all, and both launch. So the defect in
+  `chat-deploy-cassandra` was **an override that named the wrong class**, not
+  a missing main. Its pom pointed at `CassandraAppConfiguration`, which is a
+  `@Configuration` class with one `@Bean`, until 2026-09-21.
+
+  Measured on 2026-09-22, with the pre-repair value restored: the image builds
+  and its jar manifest reads
+  `Start-Class: com.demo.chat.config.deploy.cassandra.CassandraAppConfiguration`.
+  **The build reports success and bakes an entry point that has no main
+  method.** `spring-boot:run` reported `Main method not found in class` for
+  that same value, so the class is wrong in both paths.
+
+  A container run of that image is **not** the evidence here. It failed before
+  the entry point, on a malformed JVM option, which is a separate matter under
+  `CHAT-vcmlztpd`. `CHAT-ombbesyh` found the defect by launching the root, and
+  `CHAT-byinjjah` holds the check that would catch the next one.
+
+  Measured on 2026-09-22 at master `80434823`: CI run `35679897748` built
+  `chat-deploy-long-memory-integration-test:0.0.1` and no other image. A local
+  `chat-build core --cassandra --build` then produced
+  `docker.io/library/cassandra-core-service-rsocket:0.0.1`, whose jar manifest
+  reads `Start-Class: com.demo.chat.ChatApp`. That build needs
+  `IMAGE_REPO_PREFIX` in the environment, which only `shell-scripts/build.sh`
+  defaults. See `CHAT-gkwqnnxn`.
 - **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
   `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
   holds a `credsStore` together with empty `auths` entries makes the build fail
