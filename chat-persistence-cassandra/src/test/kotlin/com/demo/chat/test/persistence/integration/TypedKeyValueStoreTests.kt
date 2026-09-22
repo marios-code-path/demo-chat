@@ -9,13 +9,16 @@ import com.demo.chat.test.TestLongKeyService
 import com.demo.chat.test.persistence.KeyValueStoreTestBase
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ConfigurableApplicationContext
 import org.springframework.core.io.Resource
@@ -59,6 +62,9 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
     lateinit var template: ReactiveCassandraTemplate
 
     @Autowired
+    lateinit var cassandraProperties: CassandraProperties
+
+    @Autowired
     private lateinit var context: ConfigurableApplicationContext
 
     @Autowired
@@ -69,6 +75,12 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
     open lateinit var cqlFile: Resource
 
     val log = LoggerFactory.getLogger("TEST")
+
+    @Test
+    fun `cassandra request timeout allows container startup and schema setup`() {
+        Assertions.assertThat(cassandraProperties.request.timeout)
+            .isEqualTo(Duration.ofSeconds(10))
+    }
 
     private val atom = AtomicLong(abs(Random.nextLong()))
 
