@@ -182,6 +182,26 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   precedes the container tests inside one reactor, which is the thing no
   earlier mode could show. `chat-shell` reported 56 tests with 22 skipped, and
   the four `Long*` classes ran. See CHAT-bahmtzut.
+- **This repository has two image paths, and CI builds one of them.** The
+  first is the `chat-deploy-memory-integration-test` image, which the
+  `chat-shell` container tests run against. CI builds it, and so does `--ci`.
+  The second is a deployment image, which `spring-boot:build-image` writes for
+  a deploy module through `chat-build core <backend> --build`. **No CI job and
+  no verifier mode builds a deployment image.**
+
+  So a defect that reaches only the deployment image stays invisible to every
+  automated check. One did. `chat-deploy-cassandra` named a main class with no
+  main method until 2026-09-21, and the image it produced could not start.
+  `CHAT-ombbesyh` found it by launching the root, and `CHAT-byinjjah` holds the
+  check that would catch the next one.
+
+  Measured on 2026-09-22 at master `80434823`: CI run `35679897748` built
+  `chat-deploy-long-memory-integration-test:0.0.1` and no other image. A local
+  `chat-build core --cassandra --build` then produced
+  `docker.io/library/cassandra-core-service-rsocket:0.0.1`, whose jar manifest
+  reads `Start-Class: com.demo.chat.ChatApp`. That build needs
+  `IMAGE_REPO_PREFIX` in the environment, which only `shell-scripts/build.sh`
+  defaults. See `CHAT-gkwqnnxn`.
 - **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
   `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
   holds a `credsStore` together with empty `auths` entries makes the build fail
