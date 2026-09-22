@@ -111,8 +111,14 @@ trap 'rm -rf "$CPDIR"' EXIT
 # A -pl run resolves every com.demo dependency from ~/.m2. So the reactor must
 # be installed before this rule reads a single module. An uninstalled or stale
 # local repository makes this rule read the wrong classpath, or none at all.
+#
+# Use -DskipTests, never -Dmaven.test.skip=true. The second one also skips
+# test jar creation, and several modules depend on a test jar of another
+# module. chat-index-cassandra needs chat-persistence-cassandra:jar:tests, so
+# the install then fails to resolve an artifact its own reactor should have
+# produced. That failure hid for as long as a stale test jar sat in ~/.m2.
 echo "  installing the reactor, so each standalone resolution is correct"
-if ! mvn -o -B -Dmaven.test.skip=true install > "$CPDIR/install.log" 2>&1; then
+if ! mvn -o -B -DskipTests install > "$CPDIR/install.log" 2>&1; then
     tail -40 "$CPDIR/install.log"
     echo
     echo "The install did not finish. Rule two cannot resolve a classpath."
