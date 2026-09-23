@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `80434823`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1078 tests, with 0 failures, 0 errors and 54 skipped. The count moves from the 1075 measured on 2026-09-20 because `CHAT-hazcatpc` added three tests, which the default count already records. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `c6c21f12`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1080 tests, with 0 failures, 0 errors and 54 skipped. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -146,12 +146,12 @@ stale build output outside it.
 `CHAT-sgyaaivp` recorded intermittent `CassandraDriverTimeoutException` failures
 after the container accepted connections. The driver request timeout was unset,
 so its two-second default could expire during schema setup and the first queries
-on a slower CI runner. The integration test configuration now sets
-Both Cassandra test configurations now set `spring.cassandra.request.timeout=10s`.
-`TypedKeyValueStoreTests` and `UserIndexRepositoryTests` check the bound value.
-The full Cassandra modules passed locally after this change. A full integration
-verifier run on this branch reported 1080 tests, 0 failures, 0 errors and 54
-skipped, with no failure-list drift.
+on a slower CI runner. Both Cassandra test configurations now set
+`spring.cassandra.request.timeout=10s`. `TypedKeyValueStoreTests` and
+`UserIndexRepositoryTests` check the bound value. The Cassandra modules passed
+locally after this change. A `--ci` verifier run at master `c6c21f12` reported
+1080 tests, 0 failures, 0 errors and 54 skipped, with no failure-list drift.
+The ten-run CI record that `CHAT-sgyaaivp` asks for is not complete.
 
 ## Resolved
 
