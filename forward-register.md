@@ -1664,11 +1664,11 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 881 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1114 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 885 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1118 tests, 0 failures, 0 errors, 54 skipped.
 - Both measured on 2026-09-23 at master `42cd6a69` with the grant order
   clock. **PR #134 is open and adds three more tests.** A merge of both
-  gives 884 and 1117.
+  gives 888 and 1121.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2136,9 +2136,24 @@ identity is needed. `NodeClock` never reads a wall clock.
 **A vector clock answers causality, and not order.** Two grants written at
 once on two nodes are concurrent, and the clock reports that rather than
 choosing. The subtractive rule needs the word "before" defined for every
-pair, so `ClockStamp.ORDER` adds one rule: causality first, then the node
-that wrote it. **That rule is a choice, not a law**, and it lives in one
-place.
+pair, so `ClockStamp.ORDER` makes the order total.
+
+**The first rule was wrong, and the reviewer found it.** Comparing causality
+pairwise and then breaking a tie by the origin **is not transitive**. With
+`a={1:1}` from node 2, `b={2:1}` from node 1 and `c={1:2}` from node 0, the
+rule gives `b < a`, `a < c` and `c < b`, a cycle. TimSort refuses such a
+comparator with `Comparison method violates its general contract!`.
+
+**The rule that holds reads the sum of the counts first.** That sum rises
+with causality, because a clock that comes before another has every count
+lower or equal and one count lower. So a cause always sorts before its
+effect, and the comparison is transitive because it compares numbers. A tie
+reads the origin, then the counts themselves.
+
+**One test passed against the rule it was written to catch.** It called the
+cycle check with one order of the three stamps, and the premise of that check
+was false for that order. It reads all six orders now. A random triple test
+and a 500 stamp sort caught the defect where the named test did not.
 
 **Nothing stores a stamp.** `AuthMetadata` is unchanged, `AuthSummarizer`
 still sorts by `key.id`, and nothing subtracts. `CHAT-ojbgbznh` carries the

@@ -50,12 +50,68 @@ rather than choosing between them. That is correct, and it is not enough for
 the subtractive rule, which needs the word "before" to be defined for every
 pair.
 
-So `ClockStamp.ORDER` adds one rule. Causality decides first. **Two concurrent
-stamps are ordered by the node that wrote them.** A node id is unique, so the
-answer is the same for every reader.
+So `ClockStamp.ORDER` adds a rule that makes the order total.
 
-**The origin rule is a choice, not a law.** It lives in one place so that a
-different choice is one edit.
+### The first rule was wrong
+
+**Do not compare causality pairwise and then break a tie by the origin.** That
+rule is not transitive, so it is not an order at all.
+
+Measured on 2026-09-23, from the reviewer:
+
+| Stamp | Clock | Origin |
+|---|---|---|
+| a | `{1:1}` | 2 |
+| b | `{2:1}` | 1 |
+| c | `{1:2}` | 0 |
+
+`b` and `a` are concurrent, so the origin puts `b` first. `a` comes before `c`
+by causality. `c` and `b` are concurrent, so the origin puts `c` first. That
+gives `b < a < c < b`, a cycle.
+
+A sort can then answer differently for one input, and TimSort refuses the
+comparator with `Comparison method violates its general contract!`. The suite
+reproduces all three failures against that rule.
+
+### The rule that holds
+
+**`ClockStamp.ORDER` reads `VectorClock.total` first**, which is the sum of
+every count.
+
+That sum rises with causality. If one clock comes before another, then every
+count is lower or equal and one count is lower, so the sum is lower. **A cause
+therefore always sorts before its effect.** The sum is a linear extension of
+the partial order, and it is transitive because it compares numbers.
+
+Two stamps of one sum are ordered by the node that wrote them, and then by the
+counts themselves. The last step keeps the order strict, so two stamps compare
+equal only when they are equal.
+
+**Reading the sum is a choice, not a law.** It orders two concurrent stamps by
+how much each node had seen. One place decides it.
+
+### What the order does not do
+
+It does not group a causal chain together. A linear extension may place an
+unrelated stamp between two stamps of one chain. **Nothing in the subtractive
+rule needs that grouping**, because that rule asks only whether one grant comes
+before another.
+
+A deterministic topological sort over the whole grant set would keep chains
+together. It is not a comparator, it reads every row at once, and it needs its
+own tie rule for the concurrent frontier.
+
+## The tests that hold this
+
+Fifteen. Four of them exist because of the defect above.
+
+- The three stamps of the counterexample, over **every one of the six
+  orders**. The first version of that test read one order, and a cycle hides
+  from one order, so it passed against the rule it was written to catch.
+- Transitivity over 60 random stamps, every triple.
+- A cause never sorts after its effect, over 200 random pairs.
+- A sort of 500 random stamps answers one order and does not refuse the
+  comparator.
 
 ## What a reader must do
 

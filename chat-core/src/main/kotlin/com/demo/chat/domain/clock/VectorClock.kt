@@ -21,6 +21,15 @@ data class VectorClock(val counters: Map<Int, Long> = emptyMap()) {
     /** The count this clock holds for one node, or zero. */
     fun countOf(node: NodeId): Long = counters[node.value] ?: 0L
 
+    /**
+     * The sum of every count.
+     *
+     * **This value rises with causality.** If this clock comes before
+     * another, then every count is lower or equal and one count is lower, so
+     * the sum is lower. [ClockStamp.ORDER] reads it for that reason.
+     */
+    fun total(): Long = counters.values.sum()
+
     /** A new clock with the count of one node raised by one. */
     fun tick(node: NodeId): VectorClock =
         VectorClock(counters + (node.value to countOf(node) + 1L))

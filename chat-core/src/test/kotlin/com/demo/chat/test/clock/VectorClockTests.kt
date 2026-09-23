@@ -112,8 +112,112 @@ class VectorClockTests {
         val b = ClockStamp(a.clock.tick(NODE_1), NODE_1)
         val c = ClockStamp(VectorClock().tick(NODE_2), NODE_2)
 
-        assertThat(listOf(c, b, a).sortedWith(ClockStamp.ORDER)).containsExactly(a, b, c)
-        assertThat(listOf(b, a, c).sortedWith(ClockStamp.ORDER)).containsExactly(a, b, c)
+        // a and c each hold one tick, so the sum ties and the node decides.
+        // b holds two ticks, so it follows both.
+        assertThat(listOf(c, b, a).sortedWith(ClockStamp.ORDER)).containsExactly(a, c, b)
+        assertThat(listOf(b, a, c).sortedWith(ClockStamp.ORDER)).containsExactly(a, c, b)
+    }
+
+    /**
+     * **The defect this rule replaced.** Measured on 2026-09-23.
+     *
+     * The first rule compared causality pairwise and broke a tie by the
+     * origin. These three stamps then gave `b < a`, `a < c` and `c < b`,
+     * which is a cycle. A sort can answer differently for one input, and
+     * TimSort can refuse a comparator that does this.
+     */
+    @Test
+    fun `three stamps that formed a cycle no longer form one`() {
+        val a = ClockStamp(VectorClock(mapOf(1 to 1L)), NodeId(2))
+        val b = ClockStamp(VectorClock(mapOf(2 to 1L)), NodeId(1))
+        val c = ClockStamp(VectorClock(mapOf(1 to 2L)), NodeId(0))
+
+        assertThat(a.clock.relate(b.clock)).isEqualTo(Relation.CONCURRENT)
+        assertThat(a.clock.relate(c.clock)).isEqualTo(Relation.BEFORE)
+        assertThat(c.clock.relate(b.clock)).isEqualTo(Relation.CONCURRENT)
+
+        // **Every order of the three, because a cycle hides from one order.**
+        // The first version of this test called assertNoCycle(a, b, c) alone.
+        // That pair answers a before b as false, so the check never ran and
+        // the test passed against the rule it was written to catch.
+        permutationsOf(a, b, c).forEach { (first, second, third) ->
+            assertNoCycle(first, second, third)
+        }
+    }
+
+    private fun permutationsOf(
+        a: ClockStamp, b: ClockStamp, c: ClockStamp
+    ): List<Triple<ClockStamp, ClockStamp, ClockStamp>> = listOf(
+        Triple(a, b, c), Triple(a, c, b), Triple(b, a, c),
+        Triple(b, c, a), Triple(c, a, b), Triple(c, b, a)
+    )
+
+    /**
+     * **The property the first rule broke.** This test fails against a
+     * comparator that breaks a causal tie by the origin.
+     */
+    @Test
+    fun `the order is transitive over many random triples`() {
+        val random = java.util.Random(20260923L)
+        val stamps = (1..60).map { randomStamp(random) }
+
+        stamps.forEach { first ->
+            stamps.forEach { second ->
+                stamps.forEach { third -> assertNoCycle(first, second, third) }
+            }
+        }
+    }
+
+    /** A cause must never sort after its effect. */
+    @Test
+    fun `the order never contradicts causality`() {
+        val random = java.util.Random(20260924L)
+
+        (1..200).forEach { _ ->
+            val before = randomStamp(random)
+            val after = ClockStamp(before.clock.tick(NodeId(random.nextInt(4))), before.origin)
+
+            assertThat(before.clock.relate(after.clock)).isEqualTo(Relation.BEFORE)
+            assertThat(ClockStamp.ORDER.compare(before, after))
+                .withFailMessage("a cause sorted after its effect")
+                .isNegative()
+        }
+    }
+
+    /** A sort of many stamps must not refuse the comparator. */
+    @Test
+    fun `a sort of many stamps answers one order`() {
+        val random = java.util.Random(20260925L)
+        val stamps = (1..500).map { randomStamp(random) }
+
+        val once = stamps.sortedWith(ClockStamp.ORDER)
+        val twice = stamps.shuffled(java.util.Random(7L)).sortedWith(ClockStamp.ORDER)
+
+        assertThat(once).isEqualTo(twice)
+    }
+
+    /** Fails when the three stamps order in a cycle. */
+    private fun assertNoCycle(first: ClockStamp, second: ClockStamp, third: ClockStamp) {
+        val firstToSecond = ClockStamp.ORDER.compare(first, second)
+        val secondToThird = ClockStamp.ORDER.compare(second, third)
+        val firstToThird = ClockStamp.ORDER.compare(first, third)
+
+        if (firstToSecond < 0 && secondToThird < 0) {
+            assertThat(firstToThird)
+                .withFailMessage(
+                    "%s before %s and %s before %s, so the first must come before the third",
+                    first, second, second, third
+                )
+                .isNegative()
+        }
+    }
+
+    private fun randomStamp(random: java.util.Random): ClockStamp {
+        val counters = (0..3)
+            .filter { random.nextBoolean() }
+            .associateWith { (random.nextInt(3) + 1).toLong() }
+
+        return ClockStamp(VectorClock(counters), NodeId(random.nextInt(4)))
     }
 
     /**
