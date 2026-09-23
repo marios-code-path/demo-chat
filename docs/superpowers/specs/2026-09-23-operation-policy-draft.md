@@ -53,8 +53,60 @@ So `user: dest{ROLE=*}` reads as
     findAccessFor(dest, where role = '*').principal
 
 For `ID`, the value matches one of `ACTIVE`, `ROOT`, `ANON` or `ADMIN`.
-`ROOT`, `ANON` and `ADMIN` name the root keys of the User, the anonymous user
-and the admin user. `ACTIVE` names the caller that is logged in.
+`ROOT` names the root key of the **User domain**. `ANON` and `ADMIN` name the
+root keys of the anonymous user and the admin user. `ACTIVE` names the caller
+that is logged in.
+
+## What a root key is
+
+**A root key is evidence of a domain, and it acts as the tangible root
+representation of that domain.** The owner stated this on 2026-09-23.
+
+So `RootKeys` holds one key per domain, and that key stands for the domain
+itself rather than for any one object inside it. `User`, `Message`,
+`MessageTopic`, `TopicMembership` and `AuthMetadata` each have one.
+
+`Anon` and `Admin` are different. Each names one user, and
+`InitialUsersService` merges the created user key over the generated one. So
+`Anon` and `Admin` are objects of the User domain, not domains.
+
+## How a root key grant works
+
+**A grant on a domain root covers every object of that domain.** The owner
+decided this on 2026-09-23. It is a required change, because the code does
+not do it today.
+
+A permission is `{ principal: T, target: T, role: String }`. When either side
+names a domain root, that side expands to every object of the domain.
+
+The shipped row
+
+    { user: User, target: Message, role: SEND }
+
+therefore reads: **given any Message object as the target, any User object as
+the principal holds `SEND`.**
+
+Two things invalidate an expanded grant:
+
+1. Role expiry.
+2. A subtractive un-grant, written as `role: '-'`.
+
+### What this changes
+
+`docs/ANONYMOUS-AUTHORIZATION.md` measured the current behaviour. Under this
+rule the measured matrix moves, because the four `user: User` rows reach
+every user rather than nobody.
+
+### What it needs first
+
+**A `Key<T>` carries no domain today.** The interface in
+`chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt` declares
+`id` and `empty` and nothing else. `CSKey` in the cassandra module carries a
+`kind`, and that is a persistence type, while `AuthMetadata.principal` and
+`AuthMetadata.target` hold the domain `Key<T>`.
+
+So the expansion cannot ask which domain a key belongs to. `CHAT-avduuqwp`
+holds a stable root identity on keys, and this rule depends on it.
 
 ## The proposed entries
 
@@ -122,7 +174,9 @@ must close before any of this reaches configuration.**
    a list contains a string. Nothing subtracts.
 6. **A grant on a domain root does not cover the objects of that domain**, and
    **a principal alias does not exist.** `docs/ANONYMOUS-AUTHORIZATION.md`
-   measures both.
+   measures both. The owner decided on 2026-09-23 that the expansion must
+   happen. See `How a root key grant works` above. **A key carries no domain,
+   so this one cannot close alone.**
 
 ## What a typed schema must define
 
@@ -134,3 +188,20 @@ must close before any of this reaches configuration.**
 - Principal aliases, meaning `ACTIVE`, `ROOT`, `ANON` and `ADMIN`.
 - Object grant expansion, meaning whether a domain root reaches its objects.
 - Binding tests, then authorization tests, before the policy is enabled.
+
+## Three questions the root key rule leaves open
+
+Each one changes who may act. None is decided.
+
+1. **Does the User domain include the anonymous user?** `Anon` is an object of
+   the User domain, so `{ user: User, target: Message, role: SEND }` would
+   grant `SEND` to an anonymous caller. That reading makes the separate `Anon`
+   rows redundant, and it grants writing to a caller that presented no
+   credential.
+2. **How does a subtractive un-grant compose with an expanded grant?** The
+   candidates are that the most specific row wins, or that any `-` vetoes
+   whatever else matches. A domain root grant is the least specific row that
+   can exist.
+3. **Does `CHAT-avduuqwp` come first?** The expansion needs to read the domain
+   of a key, and no key carries one. That issue is described as large and
+   structural.
