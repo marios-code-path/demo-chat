@@ -8,7 +8,7 @@ import com.demo.chat.domain.NodeId
  * A grant carries a stamp so that a reader can order grants. The clock
  * answers causality. **The origin answers the case the clock cannot.**
  *
- * See `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`.
+ * See `docs/superpowers/specs/2026-09-23-grant-order-clock-design.md`.
  */
 data class ClockStamp(val clock: VectorClock, val origin: NodeId) {
 
@@ -41,7 +41,7 @@ data class ClockStamp(val clock: VectorClock, val origin: NodeId) {
          * it.
          */
         val ORDER: Comparator<ClockStamp> = Comparator { left, right ->
-            val bySum = left.clock.total().compareTo(right.clock.total())
+            val bySum = left.clock.total.compareTo(right.clock.total)
             if (bySum != 0) return@Comparator bySum
 
             val byOrigin = left.origin.value.compareTo(right.origin.value)

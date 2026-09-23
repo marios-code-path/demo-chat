@@ -6,6 +6,7 @@ import com.demo.chat.domain.clock.NodeClock
 import com.demo.chat.domain.clock.VectorClock
 import com.demo.chat.domain.clock.VectorClock.Relation
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -210,6 +211,63 @@ class VectorClockTests {
                 )
                 .isNegative()
         }
+    }
+
+    // ---- boundaries ----
+
+    /**
+     * **A tick must never wrap.** A count that wrapped would read as lower
+     * than the count before it, and a cause would then sort after its effect.
+     */
+    @Test
+    fun `a tick at the highest count is refused`() {
+        val full = VectorClock(mapOf(NODE_1.value to Long.MAX_VALUE))
+
+        assertThatThrownBy { full.tick(NODE_1) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("would pass")
+    }
+
+    /** A stored clock reaches this constructor, so the sum is checked here. */
+    @Test
+    fun `counts that would pass the highest sum are refused`() {
+        assertThatThrownBy {
+            VectorClock(mapOf(NODE_1.value to Long.MAX_VALUE, NODE_2.value to 1L))
+        }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("would pass")
+    }
+
+    @Test
+    fun `a negative count is refused`() {
+        assertThatThrownBy { VectorClock(mapOf(NODE_1.value to -1L)) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("never negative")
+    }
+
+    /** The index of a clock is `app.nodeid`, which is an integer in 0..1023. */
+    @Test
+    fun `an index outside the node id range is refused`() {
+        assertThatThrownBy { VectorClock(mapOf(NodeId.MAX + 1 to 1L)) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("app.nodeid")
+    }
+
+    /** The guarantee must still hold one tick below the boundary. */
+    @Test
+    fun `a cause sorts before its effect at the highest counts`() {
+        val cause = VectorClock(mapOf(NODE_1.value to Long.MAX_VALUE - 1L))
+        val effect = cause.tick(NODE_1)
+
+        assertThat(cause.relate(effect)).isEqualTo(Relation.BEFORE)
+        assertThat(
+            ClockStamp.ORDER.compare(ClockStamp(cause, NODE_1), ClockStamp(effect, NODE_1))
+        ).isNegative()
+    }
+
+    @Test
+    fun `an empty clock totals zero`() {
+        assertThat(VectorClock().total).isEqualTo(0L)
     }
 
     private fun randomStamp(random: java.util.Random): ClockStamp {

@@ -1664,11 +1664,11 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 885 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1118 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 891 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1124 tests, 0 failures, 0 errors, 54 skipped.
 - Both measured on 2026-09-23 at master `42cd6a69` with the grant order
   clock. **PR #134 is open and adds three more tests.** A merge of both
-  gives 888 and 1121.
+  gives 894 and 1127.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2149,6 +2149,15 @@ with causality, because a clock that comes before another has every count
 lower or equal and one count lower. So a cause always sorts before its
 effect, and the comparison is transitive because it compares numbers. A tie
 reads the origin, then the counts themselves.
+
+
+**The clock refuses a value it cannot order.** A stamp reaches this code from
+a store, so the constructor is a boundary. `VectorClock` refuses a count that
+would carry the sum past `Long.MAX_VALUE`, a negative count, and an index
+outside 0..1023. `tick` refuses to wrap. A wrapped sum reads as lower, so a
+cause would sort after its effect, quietly, inside a sort. `total` is computed
+once at construction, so the check runs at the boundary and a sort does not
+add the counts again for every comparison.
 
 **One test passed against the rule it was written to catch.** It called the
 cycle check with one order of the three stamps, and the premise of that check

@@ -18,21 +18,43 @@ import com.demo.chat.domain.NodeId
  */
 data class VectorClock(val counters: Map<Int, Long> = emptyMap()) {
 
-    /** The count this clock holds for one node, or zero. */
-    fun countOf(node: NodeId): Long = counters[node.value] ?: 0L
-
     /**
      * The sum of every count.
      *
      * **This value rises with causality.** If this clock comes before
      * another, then every count is lower or equal and one count is lower, so
      * the sum is lower. [ClockStamp.ORDER] reads it for that reason.
+     *
+     * It is computed once, here, so that a sort reads it without adding the
+     * counts again for every comparison.
      */
-    fun total(): Long = counters.values.sum()
+    val total: Long
 
-    /** A new clock with the count of one node raised by one. */
-    fun tick(node: NodeId): VectorClock =
-        VectorClock(counters + (node.value to countOf(node) + 1L))
+    init {
+        counters.forEach { (node, count) ->
+            require(node in NodeId.MIN..NodeId.MAX) { indexMessage(node) }
+            require(count >= 0L) { countMessage(node, count) }
+        }
+
+        total = counters.entries.fold(0L) { carried, entry ->
+            add(carried, entry.value) { overflowMessage("The counts of this clock") }
+        }
+    }
+
+    /** The count this clock holds for one node, or zero. */
+    fun countOf(node: NodeId): Long = counters[node.value] ?: 0L
+
+    /**
+     * A new clock with the count of one node raised by one.
+     *
+     * **It refuses to wrap.** A count that wrapped would read as lower than
+     * the count before it, and a cause would then sort after its effect.
+     */
+    fun tick(node: NodeId): VectorClock {
+        val raised = add(countOf(node), 1L) { overflowMessage("The count of node ${node.value}") }
+
+        return VectorClock(counters + (node.value to raised))
+    }
 
     /** A new clock that holds the higher count of each node. */
     fun merge(other: VectorClock): VectorClock {
@@ -72,4 +94,27 @@ data class VectorClock(val counters: Map<Int, Long> = emptyMap()) {
     }
 
     enum class Relation { BEFORE, AFTER, EQUAL, CONCURRENT }
+
+    private companion object {
+
+        /** Adds, and refuses to wrap. */
+        inline fun add(left: Long, right: Long, message: () -> String): Long =
+            try {
+                Math.addExact(left, right)
+            } catch (overflow: ArithmeticException) {
+                throw IllegalArgumentException(message(), overflow)
+            }
+
+        fun overflowMessage(subject: String): String =
+            "$subject would pass ${Long.MAX_VALUE}. A count that wrapped would " +
+                "read as lower than the count before it, and a cause would sort " +
+                "after its effect."
+
+        fun indexMessage(node: Int): String =
+            "A clock is indexed by app.nodeid, which is an integer in " +
+                "${NodeId.MIN}..${NodeId.MAX}. Got: $node"
+
+        fun countMessage(node: Int, count: Long): String =
+            "A count never falls, so it is never negative. Node $node holds $count"
+    }
 }

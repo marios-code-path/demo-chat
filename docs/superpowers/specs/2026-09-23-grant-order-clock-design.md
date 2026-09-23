@@ -103,7 +103,7 @@ own tie rule for the concurrent frontier.
 
 ## The tests that hold this
 
-Fifteen. Four of them exist because of the defect above.
+Twenty one. Four exist because of the ordering defect, and six guard the boundary.
 
 - The three stamps of the counterexample, over **every one of the six
   orders**. The first version of that test read one order, and a cycle hides
@@ -112,6 +112,31 @@ Fifteen. Four of them exist because of the defect above.
 - A cause never sorts after its effect, over 200 random pairs.
 - A sort of 500 random stamps answers one order and does not refuse the
   comparator.
+
+## The boundary, and why it is checked
+
+**A stamp reaches this code from a store.** `CHAT-ojbgbznh` will read one
+back, so the constructor is a boundary and not only a convenience.
+
+`VectorClock` refuses three inputs.
+
+| Input | Why |
+|---|---|
+| A count that would carry the sum past `Long.MAX_VALUE` | A sum that wrapped reads as lower, and a cause would sort after its effect |
+| A negative count | A count never falls |
+| An index outside 0..1023 | The index is `app.nodeid`, which is validated to that range |
+
+`tick` refuses to wrap for the same reason. Both use `Math.addExact` and
+answer `IllegalArgumentException` with a message that states the cause.
+
+`total` is computed once in the constructor. So the check runs at the
+boundary, and a sort reads the value without adding the counts again for
+every comparison.
+
+**The failure is loud and early.** A wrapped clock would not throw. It would
+answer a wrong order, quietly, inside a sort.
+
+Six tests hold this. Against unchecked arithmetic, two of them fail.
 
 ## What a reader must do
 
