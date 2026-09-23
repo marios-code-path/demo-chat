@@ -16,7 +16,17 @@
     <name>Demo Chat Parent</name>
 
     <properties>
-        <image.repo>${env.IMAGE_REPO_PREFIX}</image.repo>
+        <!-- The registry prefix of every deployment image. It had no
+             default and read the environment directly, so a build-image run
+             with IMAGE_REPO_PREFIX unset failed with an unresolved property
+             inside the image name. shell-scripts/build.sh defaulted the value
+             and chat-build did not, so one launch path worked and the other
+             did not. The default lives here now, which covers every entry
+             point. The image-repo-from-env profile below takes the
+             environment value when the operator sets one. Four modules
+             already name docker.io/library directly, so this default agrees
+             with them. CHAT-gkwqnnxn. -->
+        <image.repo>docker.io/library</image.repo>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
@@ -474,6 +484,26 @@
              passes skip=false. Other profiles do not change packaging. The old
              `noartifact` profile broke that rule. Maven deactivated it when
              any profile in this POM was active. It is removed. CHAT-kaaupcvu. -->
+        <!-- The operator overrides the image registry prefix through the
+             environment, which is how shell-scripts/build.sh has always
+             passed it. Activation reads the variable, so no launch path has
+             to name this profile.
+
+             This profile is not activeByDefault, so it does not meet the
+             rule recorded above. It sets one property and changes no
+             packaging. CHAT-gkwqnnxn. -->
+        <profile>
+            <id>image-repo-from-env</id>
+            <activation>
+                <property>
+                    <name>env.IMAGE_REPO_PREFIX</name>
+                </property>
+            </activation>
+            <properties>
+                <image.repo>${env.IMAGE_REPO_PREFIX}</image.repo>
+            </properties>
+        </profile>
+
         <profile>
             <id>deploy</id>
             <build>

@@ -121,11 +121,16 @@ makes one without any TLS material.
 ### An image repository prefix, only for `--build`
 
 ```bash
-export IMAGE_REPO_PREFIX=docker.io/library
+export IMAGE_REPO_PREFIX=harbor.lan/chat
 ```
 
-`shell-scripts/build.sh` defaults this. `chat-build` does not, so
-`chat-build ... --build` fails without it. `CHAT-gkwqnnxn` holds that gap.
+**This variable is optional.** The parent pom defaults `image.repo` to
+`docker.io/library`, and the `image-repo-from-env` profile takes this value
+when you set one. Set it only to name a different registry.
+
+`CHAT-gkwqnnxn` added the default. Before 2026-09-22 only
+`shell-scripts/build.sh` defaulted it, and `chat-build ... --build` failed
+without it.
 
 ## Step 4 — start the backend the composition names
 
@@ -180,9 +185,12 @@ stores claims nothing.
 ### Build an image instead
 
 ```bash
-export IMAGE_REPO_PREFIX=docker.io/library
 ./shell-scripts/chat-build core --cassandra --build --notls --node-id 7
 ```
+
+That command needs no environment variable. It builds
+`docker.io/library/cassandra-core-service-rsocket:0.0.1`. Measured on
+2026-09-22.
 
 The image bakes the launch options, so a value that names a path or a host on
 your machine is wrong inside a container. `chat-build` refuses `--jwk` with

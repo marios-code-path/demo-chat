@@ -1849,6 +1849,52 @@ the same fixture record a write, and that test is what failed.
 - Both report no drift. Mutation proof: removing the refusal fails the null
   test, and restoring `map` fails the control test.
 
+## The image repository prefix (2026-09-22)
+
+`CHAT-gkwqnnxn`. The last open child of `CHAT-efzzemjx`.
+
+`chat-build core --cassandra --build` could not build an image. The parent pom
+read `${env.IMAGE_REPO_PREFIX}` with no default, so the image name held an
+unresolved property and the goal refused it.
+
+**One launch path defaulted the value and the other did not.**
+`shell-scripts/build.sh` exports `docker.io/library`. `chat-build` exports
+nothing, and `chat-build` is the documented launch path.
+
+### The repair sits in the pom, not in the launch script
+
+The parent defaults `image.repo` to `docker.io/library`. The
+`image-repo-from-env` profile activates on the environment variable and takes
+that value instead.
+
+A second export in `chat-build` would have repaired one path. The pom default
+repairs every entry point, including a bare maven command. Four modules
+already name `docker.io/library` directly, so the default agrees with them.
+
+The profile is not `activeByDefault`, so it does not meet the rule that
+removed `noartifact`. It sets one property and changes no packaging.
+`chat-gateway` carries an `activeByDefault` profile in its own pom, and a
+parent profile does not reach it, because that rule is per pom.
+
+### Measured on 2026-09-22
+
+- With the variable unset: `docker.io/library/cassandra-core-service-rsocket:0.0.1`.
+- With `IMAGE_REPO_PREFIX=harbor.lan/chat`: `harbor.lan/chat/cassandra-core-service-rsocket:0.0.1`.
+- `chat-build core --cassandra --build --node-id 1 --notls` exits 0 with the
+  variable unset, and the image manifest reads
+  `Start-Class: com.demo.chat.ChatApp`.
+- `shell-scripts/test-flags.sh` matches all 15 golden cases. The emitted maven
+  command did not change, because the repair is in the pom.
+
+### One trap found while reproducing it
+
+**`mvn spring-boot:build-image` reports BUILD SUCCESS and builds nothing.**
+The parent sets `<skip>true</skip>` in the plugin level configuration, which
+reaches every goal of that plugin rather than repackage alone. A run on
+`chat-deploy-redis` finished in 3.6 seconds and produced no image, with no
+skip message. Every documented launch path passes `-Pdeploy`, which sets
+`skip=false`. `CHAT-xtnrgvpi` holds it.
+
 ## The work queue, ordered on 2026-09-21
 
 26 issues are `todo` and 2 are `in-progress`. The order below is a

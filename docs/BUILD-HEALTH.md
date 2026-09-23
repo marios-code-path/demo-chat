@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `c6c21f12`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1082 tests, with 0 failures, 0 errors and 54 skipped. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests, which both modes run. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1082 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests, which both modes run. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -154,23 +154,6 @@ locally after this change. A `--ci` verifier run at master `c6c21f12` reported
 1080 tests, 0 failures, 0 errors and 54 skipped, with no failure-list drift.
 The ten-run CI record that `CHAT-sgyaaivp` asks for is not complete.
 
-### A docker credential entry blocks `--ci` on a developer machine
-
-`--ci` builds the `chat-deploy-memory-integration-test` image. The Spring Boot
-build-image goal reads `~/.docker/config.json`. An `auths` entry that holds an
-empty object makes the goal fail with `'username' must not be null`, and the
-module then fails while every test passes.
-
-Measured on 2026-09-22. Point `DOCKER_CONFIG` at a directory that holds a copy
-of `~/.docker/contexts` and a `config.json` with no `auths` key.
-
-**Do not set `DOCKER_HOST` to repair it.** This machine relies on that variable
-staying unset. A run that set it failed five modules rather than one.
-
-CI is not affected. A runner holds no such credential entry.
-
----
-
 ## Resolved
 
 Kept so the list can be trusted — an entry disappearing without explanation is indistinguishable from an entry being forgotten.
@@ -255,9 +238,10 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   `chat-deploy-long-memory-integration-test:0.0.1` and no other image. A local
   `chat-build core --cassandra --build` then produced
   `docker.io/library/cassandra-core-service-rsocket:0.0.1`, whose jar manifest
-  reads `Start-Class: com.demo.chat.ChatApp`. That build needs
-  `IMAGE_REPO_PREFIX` in the environment, which only `shell-scripts/build.sh`
-  defaults. See `CHAT-gkwqnnxn`.
+  reads `Start-Class: com.demo.chat.ChatApp`. That build needed
+  `IMAGE_REPO_PREFIX` in the environment until 2026-09-22, and only
+  `shell-scripts/build.sh` defaulted it. `CHAT-gkwqnnxn` moved the default into
+  the parent pom, so every entry point carries it now.
 - **Boot 4 reads `~/.docker/config.json` before it pulls the builder image.**
   `DockerRegistryConfigAuthentication` is new in the Boot 4 line. A config that
   holds a `credsStore` together with empty `auths` entries makes the build fail
@@ -266,5 +250,14 @@ R2 moved `chat-persistence-cassandra` from 41 tests with 15 errors to 71 passing
   machine and not of this repository. Measured on 2026-09-19: the same build
   succeeds with `DOCKER_CONFIG` pointed at a directory holding `{}`.
   `DOCKER_HOST` has nothing to do with it.
+
+  **A directory holding `{}` alone is not enough when the config names a
+  context.** Measured on 2026-09-22: a `config.json` that names
+  `desktop-linux` fails with `Docker context 'desktop-linux' does not exist`,
+  because the isolated directory holds no `contexts` tree. Copy
+  `~/.docker/contexts` into the directory beside a `config.json` that holds no
+  `auths` key. **Do not set `DOCKER_HOST` instead.** A run that set it failed
+  five modules rather than one, because this machine relies on that variable
+  staying unset.
 
 - The first build after R2 needs network access: `org.testcontainers:database-commons:1.21.4` is not in a local repository that predates the bump, so `mvn -o` fails until it is fetched once.
