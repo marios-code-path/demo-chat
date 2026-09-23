@@ -2,11 +2,8 @@ package com.demo.chat.security.access
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.service.security.AccessBroker
-import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 
@@ -58,21 +55,19 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
     }
 
-    private fun getSecurityContextPrincipal() = ReactiveSecurityContextHolder.getContext()
-        // **A null authentication is anonymous, by owner decision of
-        // 2026-09-18.** mapNotNull drops the null, and the switchIfEmpty
-        // below then supplies the Anon root key. So a context with no
-        // authentication and a request with no context reach the same
-        // identity, which is the behaviour this application wants.
-        //
-        // This is a deliberate change from the earlier lines rather than a
-        // restoration. Spring Boot 3.5.16 asserted the value here and threw
-        // on null.
-        .mapNotNull { it.authentication?.principal as ChatUserDetails<T>? }
-        .switchIfEmpty(Mono.just(
-            ChatUserDetails(User
-                .create(rootKeys.getRootKey("Anon"), "anon", "anon", "http://anon"),
-                listOf())
-        ))
-        .map { it.user.key }
+    /**
+     * The principal of the current security context.
+     *
+     * **`ContextIdentity` holds the rule.** This method used to carry its own
+     * copy, and it supplied the `Anon` root key for a context with no
+     * authentication. That made an unauthenticated caller and an anonymous
+     * caller the same identity. See `docs/IDENTITY-POLICY.md`.
+     *
+     * An empty answer means denied. Every caller above ends with
+     * `switchIfEmpty(Mono.just(false))`, so an empty principal refuses the
+     * access rather than granting it.
+     */
+    private fun getSecurityContextPrincipal(): Mono<Key<T>> = contextIdentity.identity()
+
+    private val contextIdentity = ContextIdentity(rootKeys)
 }

@@ -47,6 +47,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import org.springframework.security.test.context.support.WithAnonymousUser
 
 
 @SpringBootTest(
@@ -77,8 +78,18 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     @MockitoBean
     private lateinit var authService: AuthorizationService<T, AuthMetadata<T>>
 
+    /**
+     * **`@WithAnonymousUser` is what makes this call anonymous.**
+     *
+     * This test ran with no security context until 2026-09-23, and the read
+     * answered the `Anon` root key for an absent context. So the test passed
+     * while stating nothing about an anonymous caller.
+     *
+     * Absence denies now, and anonymous is a decision. See
+     * `docs/IDENTITY-POLICY.md`.
+     */
     @Test
-    //@WithLongCustomChatUser(userId = 1L, roles = [])
+    @WithAnonymousUser
     fun `anonymous call find user allowed`(
         @Autowired composites: CompositeServiceBeans<T, String>,
         @Autowired users: ChatUserService<T>,

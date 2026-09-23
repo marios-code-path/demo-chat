@@ -2,15 +2,17 @@
 
 `CHAT-ltvfmcvh`. Measured on 2026-09-23 at master `fe9e8581`.
 
-**This document changes no behaviour.** It states what the code does today.
-The owner asked for the distinction to be measured before anything moves.
+**This document is the measurement, not the policy.** It states what the code
+did before 2026-09-23. The owner asked for the distinction to be measured
+before anything moved.
 
-Two test classes hold the measurements:
+**The policy that followed it is `docs/IDENTITY-POLICY.md`.** Every table in
+this document describes the old behaviour. Read the policy for the rule that
+applies now.
 
-- `chat-security/src/test/kotlin/com/demo/chat/test/AnonymousIdentityDiagnosisTests.kt`
-  reads the resolver alone.
-- `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocketseam/AnonymousRSocketSeamDiagnosisTests.kt`
-  reads the RSocket interceptor and the resolver as one pair.
+The measurements ran in two test classes. Both are replaced by
+`chat-security/src/test/kotlin/com/demo/chat/test/ContextIdentityTests.kt`,
+which holds the policy instead.
 
 ## What the resolver answers
 
@@ -151,4 +153,20 @@ that does not wait on a decision about authentication. Option 1 follows it
 naturally, because a stated contract has one home. Options 2 and 3 wait for
 authentication to exist.
 
-**Read finding 4 before touching the interceptor.**
+## What the owner chose, on 2026-09-23
+
+Option 4 and option 1 together. `ContextIdentity` states the contract and
+holds the only copy of it. The owner added four requirements beyond the
+options above:
+
+1. No context and no authentication both deny.
+2. An `AnonymousAuthenticationToken` answers the `Anon` root key.
+3. A `User` principal answers its own key.
+4. `isAuthenticated=false` denies, because it means the caller is not
+   authenticated.
+
+Finding 4 said the interceptor never reached the read. So the interceptor and
+its token are removed, and `RSocketSecurity.anonymous` establishes the
+anonymous identity instead.
+
+`docs/IDENTITY-POLICY.md` carries the result.

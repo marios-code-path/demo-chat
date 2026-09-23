@@ -1664,12 +1664,12 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 857 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1090 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 856 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1089 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
-  `CHAT-ltvfmcvh` added eight.
+  `CHAT-ltvfmcvh` added seven policy tests in place of eight diagnosis tests.
 - The reactor holds 36 modules. `chat-index-elastic` left it under #106.
 
 ### The verifier reaches the image now
@@ -1935,9 +1935,53 @@ Four findings.
 The access path is not dormant. `chat-build` passes
 `-Dapp.service.composite.auth` on every core launch.
 
-**The decision belongs to the owner.** The measurement adds a fourth option
-that the issue does not name: make the read state its own contract, because
-the cast is the one defect that findings 1 and 2 share.
+### The policy the owner chose on the same day
+
+**`ContextIdentity` in `chat-security` holds the whole rule now.**
+`docs/IDENTITY-POLICY.md` states it. The read is a total function, and no
+identity is never an error.
+
+| State | Identity |
+|---|---|
+| No context | none, so denied |
+| No authentication | none, so denied |
+| `isAuthenticated=false` | none, so denied |
+| `AnonymousAuthenticationToken` | the `Anon` root key |
+| A `ChatUserDetails` principal | the key of its user |
+| A `User` principal | its own key |
+| Any other principal | none, so denied |
+
+**The list is closed.** An unknown principal denies, and a fallback would
+reopen it.
+
+Four changes carry the policy.
+
+1. `SpringSecurityAccessBrokerService` and the cassandra composite seam read
+   through `ContextIdentity`. Neither holds a copy of the rule.
+2. `DefaultingAnonymousPayloadInterceptor` and
+   `ChatAnonymousAuthenticationToken` are removed. Finding 4 measured that the
+   token never reached the read.
+3. `RSocketSecurity.anonymous` establishes the anonymous identity at the
+   RSocket seam. Spring Security supplies that seam, so the application no
+   longer states it.
+4. `ContextIdentityTests` holds one test per state, and it replaces both
+   diagnosis classes.
+
+**Absence denies, and anonymous is a decision.** That is the difference the
+issue asked for. A caller that reaches a service with nothing is refused. A
+caller that a seam authenticated as anonymous receives the `Anon` root key.
+
+**The shell did not break.** `--ci` rebuilds the image and runs the chat-shell
+container tests over the anonymous RSocket path. It reports 1089 tests with
+zero failures. `RSocketSecurity.anonymous` establishes the identity that the
+absent context used to supply.
+
+**One test encoded the old policy.**
+`MethodSecurityIntegrationTests.anonymous call find user allowed` ran with no
+security context and with its identity annotation commented out. It passed
+because an absent context answered the `Anon` root key, so it stated nothing
+about an anonymous caller. It carries `@WithAnonymousUser` now.
+
 
 ## The work queue, ordered on 2026-09-21
 
