@@ -1664,13 +1664,12 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 849 tests, 0 failures, 0 errors, 30 skipped.
-  The count moved from 844 when `CHAT-hazcatpc` added three tests, and to 849
-  when `CHAT-cophllrg` added two.
-- `--ci`: 27 modules run tests, 1082 tests, 0 failures, 0 errors, 54 skipped.
-  Measured on 2026-09-22 against Docker Engine 29.7.2. The count moved from
-  1078 when PR #126 added two Cassandra tests, and to 1082 when
-  `CHAT-cophllrg` added two.
+- Default: 36 modules, 857 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1090 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-23 against Docker Engine 29.7.2.
+- The counts moved as tests landed. `CHAT-hazcatpc` added three,
+  PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
+  `CHAT-ltvfmcvh` added eight.
 - The reactor holds 36 modules. `chat-index-elastic` left it under #106.
 
 ### The verifier reaches the image now
@@ -1894,6 +1893,51 @@ reaches every goal of that plugin rather than repackage alone. A run on
 `chat-deploy-redis` finished in 3.6 seconds and produced no image, with no
 skip message. Every documented launch path passes `-Pdeploy`, which sets
 `skip=false`. `CHAT-xtnrgvpi` holds it.
+
+## The anonymous identity, measured (2026-09-23)
+
+`CHAT-ltvfmcvh`. Diagnosis only. **No behaviour changed.** The owner asked for
+the distinction to be measured first. Full document:
+`docs/superpowers/specs/2026-09-23-anonymous-identity-diagnosis.md`.
+
+The resolver reads `it.authentication?.principal as ChatUserDetails<T>?`. So
+the answer depends on the runtime class of the principal, and not on whether
+the caller authenticated.
+
+| Security context | Identity at the access broker |
+|---|---|
+| No context | `Anon` root key |
+| Null authentication | `Anon` root key |
+| `AnonymousAuthenticationToken` | None. The cast fails and the call is denied |
+| A `User` principal | None. The cast fails and the call is denied |
+| A `ChatUserDetails` principal | That user key |
+| The same, `isAuthenticated=false` | **That same user key** |
+
+Four findings.
+
+1. **The two anonymous paths disagree.**
+   `DefaultingAnonymousPayloadInterceptor` installs a `User` principal, and
+   the resolver cannot read one. A caller who sends no credential is granted
+   the anonymous identity. A caller the interceptor prepared is refused.
+2. **The read never consults `isAuthenticated`.** A rejected credential
+   reaches the user identity, not the anonymous one. This is wider than the
+   risk the issue names.
+3. **No deployed seam validates a token.** `WebFluxSecurity` permits every
+   exchange and states that it adds no authentication.
+   `RSocketServerConfiguration` permits everything and carries
+   `TODO: lock down!`. So an expired token cannot reach these sites today.
+   The confusion becomes live on the day authentication is added.
+4. **The interceptor token does not reach the resolver.**
+   `ShellPubSubCommandsTests` never logs in, `send` and `addRoom` both carry
+   `@PreAuthorize`, and those tests pass. So the live path answers with the
+   `Anon` root key. Finding 1 is a real disagreement and not a live outage.
+
+The access path is not dormant. `chat-build` passes
+`-Dapp.service.composite.auth` on every core launch.
+
+**The decision belongs to the owner.** The measurement adds a fourth option
+that the issue does not name: make the read state its own contract, because
+the cast is the one defect that findings 1 and 2 share.
 
 ## The work queue, ordered on 2026-09-21
 
