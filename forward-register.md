@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 863 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1096 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 870 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1103 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2051,6 +2051,61 @@ looks like on these signatures, because an empty Mono reads as success to
 every caller above.
 
 
+
+
+## The anonymous authorization matrix (2026-09-23)
+
+`CHAT-vehpbvzn`. Document: `docs/ANONYMOUS-AUTHORIZATION.md`. The test wires
+the production `CoreAuthorizationService`, `AuthSummarizer`,
+`AuthMetadataAccessBroker` and `SpringSecurityAccessBrokerService`, and
+replaces only the store and the index.
+
+**Identity and authorization are separate questions.** A green identity test
+proves nothing here.
+
+| Operation | anonymous | authenticated | denied identity |
+|---|---|---|---|
+| `addRoom`, MessageTopic NEW | deny | deny | deny |
+| `send`, room SEND | deny | deny | deny |
+| `whoami`, User FIND | **allow** | **allow** | deny |
+| `messageById`, GET | deny | deny | deny |
+| `listRooms`, MessageTopic ALL | deny | deny | deny |
+| `addUser`, User NEW | deny | deny | deny |
+
+Three results that are easy to miss.
+
+1. **An anonymous grant is a floor for every caller.**
+   `CoreAuthorizationService` puts the `Anon` key in the actor set of every
+   query, so an authenticated caller reaches the same answers.
+2. **The four `user: User` rows of `userinit.yml` reach nobody.** They name
+   the `User` root key as principal, and a caller holds its own key.
+3. **A grant on a domain root does not cover one object.** `Anon` holds
+   `Message:GET`, and `messageById` checks one message key.
+
+So the shipped configuration allows `User:FIND` and `User:PUT` to every
+caller that reaches an identity. **Every write operation denies.**
+
+Expiry is on the grant, not on a credential. `AuthSummarizer` keeps a row when
+`expires` is `0L` or in the future.
+
+### And nothing enforces it
+
+**No production type implements the annotated interfaces.**
+`TopicServiceAccess`, `UserServiceAccess` and `MessageServiceAccess` in
+`com.demo.chat.security.access.composite` carry every `@PreAuthorize` in this
+repository. `CompositeControllersConfiguration` imports all three and
+implements none. The controllers delegate to the plain services.
+
+`app.service.composite.auth` supplies the `chatAccess` bean and enables method
+security. **It does not put the annotations on any bean.**
+
+That is why `chat-shell` creates a room and sends a message with no
+credential. The matrix denies both.
+
+`CHAT-znprrzhn` holds the wiring gap. `CHAT-ruapxetl` holds the second defect
+in the programmatic wrappers. **Read the matrix before turning the checks on.**
+Enabling them against the shipped grants would deny `addRoom`, `send` and
+`listRooms` to every caller. The grants need a decision before the wiring does.
 
 ## The work queue, ordered on 2026-09-21
 
