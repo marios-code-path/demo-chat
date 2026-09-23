@@ -41,10 +41,20 @@ no rule names answers no identity.
 
 A seam must establish the identity. The read never invents one.
 
-| Seam | What establishes the identity |
+| Transport | What establishes the identity |
 |---|---|
 | RSocket | `RSocketSecurity.simpleAuthentication` for a credential, and `RSocketSecurity.anonymous` for a caller without one |
-| WebFlux | `ServerHttpSecurity` adds anonymous authentication by default |
+| WebFlux | `ServerHttpSecurity.anonymous`, called by `WebFluxSecurity.filterChain` |
+
+**Reactive Spring Security does not enable anonymous authentication by
+default.** `ServerHttpSecurity.build` reads `if (this.anonymous != null)`, and
+that field stays null until `anonymous` is called. The servlet side defaults it
+on. This side does not.
+
+An earlier version of this document said the opposite, and
+`WebFluxSecurity.filterChain` did not call `anonymous`. Every HTTP request
+without a credential was denied for that period.
+`WebFluxAnonymousIdentityTests` pins the repair.
 
 **`app.service.composite.auth` turns the access checks on.** `chat-build`
 passes it on every core launch.
@@ -61,6 +71,8 @@ Before this date the rule lived in four places and two of them disagreed.
 - **`isAuthenticated=false` answered the key of the user.** It denies now.
 - **A `User` principal raised `ClassCastException`.** It answers its own key
   now.
+- **`WebFluxSecurity.filterChain` calls `anonymous`.** It did not on
+  2026-09-23, and an HTTP request with no credential reached no identity.
 - **`DefaultingAnonymousPayloadInterceptor` is removed**, with
   `ChatAnonymousAuthenticationToken`. The interceptor installed a token that
   the read could not use, and a measurement on 2026-09-23 showed the token

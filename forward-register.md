@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 856 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1089 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 857 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1090 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -1981,6 +1981,31 @@ absent context used to supply.
 security context and with its identity annotation commented out. It passed
 because an absent context answered the `Anon` root key, so it stated nothing
 about an anonymous caller. It carries `@WithAnonymousUser` now.
+
+### The webflux regression that followed, repaired the same day
+
+**Reactive Spring Security does not enable anonymous authentication by
+default.** `ServerHttpSecurity.build` reads `if (this.anonymous != null)`, and
+that field stays null until `anonymous` is called. The servlet side defaults it
+on. This side does not.
+
+`docs/IDENTITY-POLICY.md` claimed the opposite, and
+`WebFluxSecurity.filterChain` never called `anonymous`. So the identity policy
+denied every HTTP request that carried no credential, where the absent context
+used to answer the `Anon` root key. RSocket was never affected, because that
+configuration does call `anonymous`.
+
+**No test saw it.** `PubSubRestTestBase`, `TopicRestTestBase` and
+`MessageRestTestBase` all install a security context, so none of them sends an
+unauthenticated request. This is the same shape as the shell test that never
+logs in, and as the chat-core test jar that no test could detect.
+
+`WebFluxAnonymousIdentityTests` builds the production bean, sends one request
+with no credential, and reads the identity with `ContextIdentity`. Removing
+`anonymous` makes it report `expected: 1 but was: null`.
+
+This closes the webflux half of `CHAT-gtebuipo`. The cassandra half stays open.
+
 
 
 ## The work queue, ordered on 2026-09-21
