@@ -46,10 +46,18 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 2. **The four `user: User` rows reach nobody.** They name the `User` root key
    as the principal. A caller holds its own key, never that one. So
    `MessageTopic ALL`, `GET`, `JOIN` and `MEMBERS` are granted to no one.
-3. **A grant on a domain root does not cover one object.** `Anon` holds
-   `Message:GET`, and `messageById` checks `hasAccessTo(<one message key>,
-   'GET')`. The grant names the Message root key, so it never applies. `send`
-   is the same shape against a room key.
+3. **A grant on a domain root does not cover one object.** This applies to
+   the nine checks that name an object key. `Anon` holds `Message:GET`, and
+   `messageById` checks `hasAccessTo(<one message key>, 'GET')`. The grant
+   names the Message root key, so it never applies. `send` is the same shape
+   against a room key.
+
+   **Five checks already name a root as the target.** `hasAccessToDomain`
+   passes `rootKeys.getRootKey(domain)`, so `addRoom`, `listRooms`, `addUser`,
+   `findByUsername` and `findByUserId` compare against the domain root
+   directly. At those five the target side already matches a `target:
+   <Domain>` row, and only the principal side fails. That is why
+   `Anon:User:FIND` allows `whoami`: both sides match.
 
 So the shipped configuration allows exactly two permissions, `User:FIND` and
 `User:PUT`, to every caller that reaches an identity. **Every write operation

@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1103 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12` and 1082 at master `67762d51`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests. `CHAT-ltvfmcvh` replaced its eight diagnosis tests with seven policy tests, `CHAT-gtebuipo` added one, `CHAT-qucgqaye` added six, and `CHAT-vehpbvzn` added seven. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1106 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12` and 1082 at master `67762d51`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests. `CHAT-ltvfmcvh` replaced its eight diagnosis tests with seven policy tests, `CHAT-gtebuipo` added one, `CHAT-qucgqaye` added six, `CHAT-vehpbvzn` added seven, and `CHAT-zhjltbky` added three. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -25,7 +25,7 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 870 tests, 0 failures, 0
+skipped. The reactor holds 36 modules and reports 873 tests, 0 failures, 0
 errors and 30 skipped. The count moved from 844 when `CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
 `chat-deploy-kafka`. It moved to 849 when `CHAT-cophllrg` added two password
@@ -33,7 +33,8 @@ tests to `chat-authorization-server`, and to 856 when `CHAT-ltvfmcvh`
 replaced its diagnosis tests with the identity policy tests. It moved to
 857 when `CHAT-gtebuipo` added the webflux anonymous test, and to 863
 when `CHAT-qucgqaye` added the cassandra composite identity tests, and to
-870 when `CHAT-vehpbvzn` added the anonymous authorization matrix.
+870 when `CHAT-vehpbvzn` added the anonymous authorization matrix, and to
+873 when `CHAT-zhjltbky` added the configuration binding guard.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
 **BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
