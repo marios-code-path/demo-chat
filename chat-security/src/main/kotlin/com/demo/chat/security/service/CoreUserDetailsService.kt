@@ -47,12 +47,20 @@ class CoreUserDetailsService<T>(
             )))
             .flatMap { password -> replaceCredential(userDetails, password) }
 
+    /**
+     * `AuthenticationService.setAuthentication` answers `Mono<Void>`, which
+     * completes empty. **So `map` here emitted nothing**, and the whole
+     * success path answered an empty signal. The blocking adapter in
+     * `chat-authorization-server` reports `IllegalStateException` for an
+     * empty signal, so every accepted password upgrade failed there.
+     * `thenReturn` answers the details after the write completes.
+     */
     private fun replaceCredential(userDetails: UserDetails, newPassword: String): Mono<UserDetails> =
         userService.findByUsername(ByStringRequest(userDetails.username))
             .switchIfEmpty(Mono.error { UsernameNotFoundException(userDetails.username) })
             .next()
             .flatMap { user ->
                 auth.setAuthentication(user.key, newPassword)
-                    .map { userDetails }
+                    .thenReturn(userDetails)
             }
 }

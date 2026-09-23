@@ -1664,12 +1664,13 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 847 tests, 0 failures, 0 errors, 30 skipped.
-  Measured on 2026-09-22 at master `c6c21f12`. The count moved from 844 when
-  `CHAT-hazcatpc` added three tests.
-- `--ci`: 27 modules run tests, 1080 tests, 0 failures, 0 errors, 54 skipped.
-  Measured on 2026-09-22 at master `c6c21f12`, against Docker Engine 29.7.2.
-  The count moved from 1078 when PR #126 added two Cassandra tests.
+- Default: 36 modules, 849 tests, 0 failures, 0 errors, 30 skipped.
+  The count moved from 844 when `CHAT-hazcatpc` added three tests, and to 849
+  when `CHAT-cophllrg` added two.
+- `--ci`: 27 modules run tests, 1082 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-22 against Docker Engine 29.7.2. The count moved from
+  1078 when PR #126 added two Cassandra tests, and to 1082 when
+  `CHAT-cophllrg` added two.
 - The reactor holds 36 modules. `chat-index-elastic` left it under #106.
 
 ### The verifier reaches the image now
@@ -1805,6 +1806,48 @@ under it moves.
 It runs the enforcer and compiles nothing. The five module repairs under B4-S1
 to B4-S5 are untouched by this result, and the twelve modules that no probe has
 reached stay unmeasured. See `CHAT-ombbesyh`.
+
+## The null password refusal, and the defect beside it (2026-09-22)
+
+`CHAT-cophllrg`. The test is
+`chat-authorization-server/src/test/kotlin/com/demo/chat/BlockingUserDetailsPasswordServiceTests.kt`.
+It reads the contract through the blocking adapter, which is where a
+deployment reads it.
+
+### The success path was broken in shipped code
+
+`AuthenticationService.setAuthentication` answers `Mono<Void>`, which completes
+empty. `CoreUserDetailsService.replaceCredential` used `map` on that signal, so
+**the whole success path answered an empty Mono**. The blocking adapter reports
+`IllegalStateException` for an empty signal, so every accepted password upgrade
+failed there. `replaceCredential` uses `thenReturn` now.
+
+The reactive path degraded more quietly. Spring reads an empty answer as no
+upgrade, so a password upgrade was dropped with no error.
+
+### The control test found it, and the control is the point
+
+An assertion that no credential was written proves nothing on its own. A
+fixture that can never record a write would satisfy it. The second test makes
+the same fixture record a write, and that test is what failed.
+
+### Two readings that were wrong
+
+1. **`UserDetailsServiceTests` has never run.** It carries `@Disabled` and no
+   class extends it. Item 3 of `CHAT-cophllrg` says the existing chat-security
+   tests cover the non-null path. They cover nothing. The file is still in the
+   tree, and it still reads as coverage. The owner decides whether it stays.
+2. **A refusal can degrade into a different refusal.** Removing the
+   `switchIfEmpty` branch still fails the null case, because the adapter
+   reports `IllegalStateException` for an empty signal. The message then names
+   no cause. The test asserts the exception type for that reason.
+
+### Measured
+
+- Default: 27 modules ran tests, 849 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules ran tests, 1082 tests, 0 failures, 0 errors, 54 skipped.
+- Both report no drift. Mutation proof: removing the refusal fails the null
+  test, and restoring `map` fails the control test.
 
 ## The work queue, ordered on 2026-09-21
 
