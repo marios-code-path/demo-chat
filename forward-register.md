@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 857 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1090 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 863 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1096 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2005,6 +2005,50 @@ with no credential, and reads the identity with `ContextIdentity`. Removing
 `anonymous` makes it report `expected: 1 but was: null`.
 
 This closes the webflux half of `CHAT-gtebuipo`. The cassandra half stays open.
+
+### The cassandra composite, and one audit (2026-09-23)
+
+`CHAT-qucgqaye`. The resolver replacement landed in PR #130. This adds the
+evidence.
+
+`CassandraCompositeIdentityTests` builds
+`CompositeServiceConfiguration.serviceAccessCompositeServiceAccessBeans`,
+drives `topicService().addRoom`, and reads the identity the wrapper hands to
+the access broker. **No test built that bean before.** It answers the `Anon`
+root key, the user key, and no identity, exactly as the policy states. One
+test compares all five contexts against `ContextIdentity` in a single
+assertion, so a copied rule cannot pass.
+
+**The audit is clean.** `ContextIdentity.kt:44` is the only live read of
+`ReactiveSecurityContextHolder` in main source. The two other mentions are
+commented out. One production resolver owns the policy.
+
+### One finding, and it is latent
+
+**The programmatic access wrappers compute a permission and discard it.**
+Every method of `TopicServiceAccess`, `UserServiceAccess` and
+`MessagingServiceAccess` in `chat-service-composite` reads
+
+    .hasAccessByPrincipal(...)
+    .then(that.addRoom(req))
+
+`Mono.then` discards the element and proceeds on completion. A false answer
+proceeds. An empty answer proceeds, and `hasAccessByPrincipal` is
+`principal.flatMap { ... }`, so no identity gives an empty answer.
+
+Measured with a probe: an unauthenticated token reached no identity, and
+Mockito reported that the underlying `addRoom` still ran.
+
+**It is latent and not live.** The only bean that supplies
+`principalKeyPublisher` carries
+`@ConditionalOnProperty("app.service.composite.security")`, and **no launch
+script, no yml and no test sets that property**. The live authorization path
+is the `@PreAuthorize` wrappers in `chat-security`, where Spring method
+security reads the boolean and denies correctly.
+
+`CHAT-ruapxetl` holds it. The repair needs a decision about what a refusal
+looks like on these signatures, because an empty Mono reads as success to
+every caller above.
 
 
 

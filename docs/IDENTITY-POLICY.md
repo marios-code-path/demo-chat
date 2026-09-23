@@ -80,6 +80,25 @@ Before this date the rule lived in four places and two of them disagreed.
 - **`SpringSecurityAccessBrokerService` and the cassandra composite seam** both
   read through `ContextIdentity` now. Neither carries a copy of the rule.
 
+## Every read, audited on 2026-09-23
+
+`ContextIdentity.kt:44` holds the only live read of
+`ReactiveSecurityContextHolder` in main source. Two other lines name it and
+both are commented out, in `CompositeAccessBeansConfiguration.kt:14` and
+`CompositeServiceBeansConfiguration.kt:71`.
+
+**One production resolver owns the policy.** Three callers read through it:
+
+| Caller | Module |
+|---|---|
+| `SpringSecurityAccessBrokerService.getSecurityContextPrincipal` | chat-security |
+| `CompositeServiceConfiguration.serviceAccessCompositeServiceAccessBeans` | chat-deploy-cassandra |
+| `WebFluxAnonymousIdentityTests`, through the production filter chain | chat-webflux |
+
+`CassandraCompositeIdentityTests` builds the cassandra beans and compares
+their answer with `ContextIdentity` for every state in the table above. A
+copied rule would drift, and that comparison is what catches it.
+
 ## How to add a principal type
 
 1. Add a rule to `ContextIdentity.identityOf`.
@@ -99,3 +118,9 @@ unknown principal would gain access in silence.
   apart, and no seam can today.
 - **It does not state what the `Anon` root key may reach.** The access broker
   answers that, and `CHAT-cvdcfczj` owns the full surface.
+- **It does not make a refusal stop an operation.** The programmatic access
+  wrappers in `chat-service-composite` call the broker and discard the answer,
+  so no identity and a false answer both proceed. That path is latent, because
+  no launch sets `app.service.composite.security`. `CHAT-ruapxetl` holds it.
+  The live path is the `@PreAuthorize` wrappers, and Spring method security
+  reads their boolean.
