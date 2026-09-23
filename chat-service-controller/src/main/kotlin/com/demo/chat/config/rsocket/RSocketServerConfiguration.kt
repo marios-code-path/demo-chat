@@ -1,6 +1,5 @@
 package com.demo.chat.config.rsocket
 
-import com.demo.chat.domain.knownkey.RootKeys
 //import com.demo.chat.secure.service.CoreReactiveAuthenticationManager
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.rsocket.autoconfigure.RSocketMessageHandlerCustomizer
@@ -23,14 +22,30 @@ import tools.jackson.databind.json.JsonMapper
 @ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
 class RSocketServerConfiguration<T> {
 
+    /**
+     * The RSocket security chain.
+     *
+     * **`anonymous` is what gives an unauthenticated caller an identity.**
+     * Without it a payload that carries no credential reaches the service
+     * layer with no security context, and `ContextIdentity` answers no
+     * identity, which means denied.
+     *
+     * This replaced `DefaultingAnonymousPayloadInterceptor`, which installed
+     * a token of its own. That token was measured on 2026-09-23 and it never
+     * reached the reader, because the interceptor ran before any context
+     * existed. Spring Security supplies this seam, so the application no
+     * longer states it. See `docs/IDENTITY-POLICY.md`.
+     *
+     * `rootKeys` is no longer a parameter. `ContextIdentity` maps the
+     * anonymous token to the `Anon` root key at the read.
+     */
     // TODO: lock down!
     @Bean
     fun rsocketSecurityAuthentication(
-        security: RSocketSecurity,
-        rootKeys: RootKeys<T>
+        security: RSocketSecurity
     ): PayloadSocketAcceptorInterceptor = security
         .simpleAuthentication(Customizer.withDefaults())
-        .addPayloadInterceptor(DefaultingAnonymousPayloadInterceptor(rootKeys))
+        .anonymous(Customizer.withDefaults())
         .authorizePayload { authorize ->
             authorize
                 .setup()

@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1082 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests, which both modes run. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1089 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12` and 1082 at master `67762d51`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests. `CHAT-ltvfmcvh` replaced its eight diagnosis tests with seven policy tests. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -25,11 +25,12 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 849 tests, 0 failures, 0
+skipped. The reactor holds 36 modules and reports 856 tests, 0 failures, 0
 errors and 30 skipped. The count moved from 844 when `CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
 `chat-deploy-kafka`. It moved to 849 when `CHAT-cophllrg` added two password
-tests to `chat-authorization-server`.
+tests to `chat-authorization-server`, and to 856 when `CHAT-ltvfmcvh`
+replaced its diagnosis tests with the identity policy tests.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
 **BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
