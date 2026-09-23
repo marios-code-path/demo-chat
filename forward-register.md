@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 870 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1103 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 873 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1106 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2106,6 +2106,46 @@ credential. The matrix denies both.
 in the programmatic wrappers. **Read the matrix before turning the checks on.**
 Enabling them against the shipped grants would deny `addRoom`, `send` and
 `listRooms` to every caller. The grants need a decision before the wiring does.
+
+
+### The operation policy draft, and a configuration guard (2026-09-23)
+
+`CHAT-zhjltbky`. The owner wrote a proposed operation policy into
+`shared-deploy-configuration/src/main/config/userinit.yml`. That file is
+configuration that every deployment loads.
+
+**The draft could not ship, for six measured reasons.** Each was checked at
+master `42cd6a69`.
+
+1. The file did not parse. `//` is not a YAML comment, and one line nested a
+   question under a list item.
+2. `operationPolicy` binds to nothing. `UserInitializationProperties` names
+   `passwordEncoder`, `initialRoles` and `initialUsers`. **Spring ignores an
+   unknown key**, so the expressions would have had no effect and no error.
+3. `RoleDefinition` binds `user`, `target` and `role`. The draft used
+   `expire` and `expires`, and neither exists.
+4. `rolesAllowed` and `wildcard` bind and are never read.
+   `InitialUsersService` reads `initialRoles.roles` alone.
+5. `*` is not a wildcard. `AuthMetadataAccessBroker` reads
+   `permissions.contains(perm)`.
+6. `role: '-'` has no denial meaning. Nothing subtracts a permission.
+
+The draft moved to
+`docs/superpowers/specs/2026-09-23-operation-policy-draft.md`, which no code
+loads. `CHAT-zcxgrtqc` holds the typed schema it needs.
+
+**`UserInitConfigBindingTests` is the guard.** It reads the shipped file from
+disk, because `shared-deploy-configuration` reaches `chat-deploy` only under
+`expose-webflux`. Three rules: the file parses and binds, `app.init` declares
+no key that nothing binds, and every role names only the three fields that
+`RoleDefinition` binds.
+
+Both failure modes are proven. The original draft makes all three tests error
+on the parser. A valid `operationPolicy` block fails the second test with a
+message naming the key.
+
+**No module read that file at test time before this.** That is why an invalid
+configuration could sit in a working tree and no build reported it.
 
 ## The work queue, ordered on 2026-09-21
 
