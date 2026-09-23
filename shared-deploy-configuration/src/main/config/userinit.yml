@@ -1,4 +1,14 @@
 # Don't forget, the roles must specify a valid or wildcard role mapped to the wildcard user (anonymous)
+#
+# Every key here must bind to UserInitializationProperties in chat-deploy.
+# That type names passwordEncoder, initialRoles and initialUsers, and a
+# RoleDefinition names user, target and role. Spring ignores any other key,
+# so an unbound section has no effect and reports no error.
+# UserInitConfigBindingTests holds that rule.
+#
+# The proposed operation policy lives in
+# docs/superpowers/specs/2026-09-23-operation-policy-draft.md. It is a design
+# input and no code loads it. See CHAT-zhjltbky and CHAT-zcxgrtqc.
 app:
   init:
     passwordEncoder: bcrypt
