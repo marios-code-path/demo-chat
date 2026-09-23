@@ -4,7 +4,7 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `c6c21f12`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1080 tests, with 0 failures, 0 errors and 54 skipped. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-22** at master `c6c21f12`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1082 tests, with 0 failures, 0 errors and 54 skipped. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests, which both modes run. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -25,10 +25,11 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 847 tests, 0 failures, 0
-errors and 30 skipped. The count moves from 844 because `CHAT-hazcatpc` adds
+skipped. The reactor holds 36 modules and reports 849 tests, 0 failures, 0
+errors and 30 skipped. The count moved from 844 when `CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
-`chat-deploy-kafka`.
+`chat-deploy-kafka`. It moved to 849 when `CHAT-cophllrg` added two password
+tests to `chat-authorization-server`.
 
 Plain `mvn -B clean test`, which is the command CI runs, also reports
 **BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
@@ -152,6 +153,23 @@ on a slower CI runner. Both Cassandra test configurations now set
 locally after this change. A `--ci` verifier run at master `c6c21f12` reported
 1080 tests, 0 failures, 0 errors and 54 skipped, with no failure-list drift.
 The ten-run CI record that `CHAT-sgyaaivp` asks for is not complete.
+
+### A docker credential entry blocks `--ci` on a developer machine
+
+`--ci` builds the `chat-deploy-memory-integration-test` image. The Spring Boot
+build-image goal reads `~/.docker/config.json`. An `auths` entry that holds an
+empty object makes the goal fail with `'username' must not be null`, and the
+module then fails while every test passes.
+
+Measured on 2026-09-22. Point `DOCKER_CONFIG` at a directory that holds a copy
+of `~/.docker/contexts` and a `config.json` with no `auths` key.
+
+**Do not set `DOCKER_HOST` to repair it.** This machine relies on that variable
+staying unset. A run that set it failed five modules rather than one.
+
+CI is not affected. A runner holds no such credential entry.
+
+---
 
 ## Resolved
 
