@@ -1664,11 +1664,12 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 844 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: master reports 1078 tests, 0 failures, 0 errors and 54 skipped.
-  Measured on 2026-09-22 at master `80434823`, against Docker Engine 29.7.2.
-  This branch adds two Cassandra integration tests and reports 1080 tests with
-  0 failures, 0 errors and 54 skipped on the same verifier.
+- Default: 36 modules, 847 tests, 0 failures, 0 errors, 30 skipped.
+  Measured on 2026-09-22 at master `c6c21f12`. The count moved from 844 when
+  `CHAT-hazcatpc` added three tests.
+- `--ci`: 27 modules run tests, 1080 tests, 0 failures, 0 errors, 54 skipped.
+  Measured on 2026-09-22 at master `c6c21f12`, against Docker Engine 29.7.2.
+  The count moved from 1078 when PR #126 added two Cassandra tests.
 - The reactor holds 36 modules. `chat-index-elastic` left it under #106.
 
 ### The verifier reaches the image now
