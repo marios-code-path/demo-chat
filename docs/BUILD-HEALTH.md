@@ -141,6 +141,18 @@ stale build output outside it.
 
 ---
 
+### Cassandra integration timeout
+
+`CHAT-sgyaaivp` recorded intermittent `CassandraDriverTimeoutException` failures
+after the container accepted connections. The driver request timeout was unset,
+so its two-second default could expire during schema setup and the first queries
+on a slower CI runner. The integration test configuration now sets
+Both Cassandra test configurations now set `spring.cassandra.request.timeout=10s`.
+`TypedKeyValueStoreTests` and `UserIndexRepositoryTests` check the bound value.
+The full Cassandra modules passed locally after this change. A full integration
+verifier run on this branch reported 1080 tests, 0 failures, 0 errors and 54
+skipped, with no failure-list drift.
+
 ## Resolved
 
 Kept so the list can be trusted — an entry disappearing without explanation is indistinguishable from an entry being forgotten.

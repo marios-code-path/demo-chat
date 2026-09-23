@@ -15,12 +15,14 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertAll
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 import java.time.Instant
+import java.time.Duration
 import java.util.*
 
 @ExtendWith(SpringExtension::class)
@@ -35,6 +37,14 @@ class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
 
     @Autowired
     lateinit var handleRepo: ChatUserHandleRepository<UUID>
+
+    @Autowired
+    lateinit var cassandraProperties: CassandraProperties
+
+    @Test
+    fun `cassandra request timeout allows index schema setup`() {
+        Assertions.assertEquals(Duration.ofSeconds(10), cassandraProperties.request.timeout)
+    }
 
     @Test
     fun shouldContextLoad() {
