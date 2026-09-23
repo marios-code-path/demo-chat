@@ -189,19 +189,72 @@ must close before any of this reaches configuration.**
 - Object grant expansion, meaning whether a domain root reaches its objects.
 - Binding tests, then authorization tests, before the policy is enabled.
 
-## Three questions the root key rule leaves open
+## Every user is covered, including Anon and Admin
 
-Each one changes who may act. None is decided.
+The owner decided this on 2026-09-23. A domain root grant reaches **every**
+object of the domain. `Anon` and `Admin` are objects of the User domain, so
+both are covered.
 
-1. **Does the User domain include the anonymous user?** `Anon` is an object of
-   the User domain, so `{ user: User, target: Message, role: SEND }` would
-   grant `SEND` to an anonymous caller. That reading makes the separate `Anon`
-   rows redundant, and it grants writing to a caller that presented no
-   credential.
-2. **How does a subtractive un-grant compose with an expanded grant?** The
-   candidates are that the most specific row wins, or that any `-` vetoes
-   whatever else matches. A domain root grant is the least specific row that
-   can exist.
-3. **Does `CHAT-avduuqwp` come first?** The expansion needs to read the domain
-   of a key, and no key carries one. That issue is described as large and
-   structural.
+**That is why the explicit `Anon` rows exist.** They are how an anonymous
+caller receives something of its own, and a subtractive row is how an
+anonymous caller is held back.
+
+## Order decides the outcome
+
+A subtractive un-grant is written `role: '-'`. Its effect depends on its
+place in the order and on its expiry.
+
+| Sequence | Outcome |
+|---|---|
+| A standing `*`, then a `-` that has expired | `*` stands |
+| A standing `*`, then a `-` that has not expired | The `-` clobbers `*` |
+
+**A live `-` clobbers every permission before it**, for that principal,
+whether the principal is a root or an object. The effect is to remove all
+permission granted up to that point.
+
+So expiry is read per row first. An expired row takes no part. The surviving
+rows are then read in order, and a `-` resets what came before it.
+
+**This is not what the code does.** `AuthSummarizer` groups by permission,
+sorts inside each group, keeps the last of each group, and only then drops
+expired rows. There is no order across permissions, and nothing subtracts.
+
+## The scan must read two targets
+
+A permission scan must query **the given target and the domain of that
+target**. `CoreAuthorizationService` performs one lookup today, at lines 50,
+62, 75 and 81, each `findBy(queryForTarget.apply(...))`. Each needs the
+domain lookup beside it.
+
+## The proposal: a root id on the key
+
+The owner proposed extending `Key<T>` with `root_id: T`. A key would then
+carry the root of its own domain, **and `kind: String` could go away**.
+
+That is the mechanism `CHAT-avduuqwp` asks for, and it is what makes the two
+target scan possible, because a scan can read the domain from the key it
+already holds.
+
+**The blast radius is real.** Recorded so nobody meets it by surprise.
+
+- `Key<T>` declares `id` and `empty` today. Every implementation gains a
+  field, including `Key.funKey`, `MessageKey`, and the cassandra `CSKey` that
+  carries `kind` now.
+- The wire shape changes. `Key<T>` keeps its own `@JsonTypeInfo` wrapper
+  inside the seven E2EE types, and the serializer tests pin the current
+  shape.
+- Stored data predates the field. Every persisted key and every stored
+  `AuthMetadata` carries no `root_id`.
+
+## Two questions that stay open
+
+1. **What defines the order of grants?** The rule above depends on a total
+   order over the rows of one principal. `AuthSummarizer` sorts by a
+   comparator that reads `key.id`, and it sorts only inside one permission
+   group. `AuthMetadata` carries no sequence and no timestamp. Key id order,
+   configuration order and a new sequence field are all candidates, and they
+   differ once a grant is written at run time.
+2. **How does stored data reach the new key shape?** A key written before
+   `root_id` exists carries none. The candidates are a migration, a default
+   read at load, or a rebuild.
