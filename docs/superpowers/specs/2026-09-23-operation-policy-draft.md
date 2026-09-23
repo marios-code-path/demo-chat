@@ -91,6 +91,38 @@ Two things invalidate an expanded grant:
 1. Role expiry.
 2. A subtractive un-grant, written as `role: '-'`.
 
+### Roots already appear at the check sites
+
+The owner noted this on 2026-09-23, naming `TopicServiceAccess` line 11.
+`hasAccessToDomain` passes `rootKeys.getRootKey(domain)` as the target, so a
+root key is already one side of five checks.
+
+**Five checks name a root as the target.**
+
+| Site | Check |
+|---|---|
+| `TopicServiceAccess:11` | `hasAccessToDomain('MessageTopic', 'NEW')` |
+| `TopicServiceAccess:17` | `hasAccessToDomain('MessageTopic', 'ALL')` |
+| `UserServiceAccess:11` | `hasAccessToDomain('User', 'NEW')` |
+| `UserServiceAccess:14` | `hasAccessToDomain('User', 'FIND')` |
+| `UserServiceAccess:17` | `hasAccessToDomain('User', 'FIND')` |
+
+**Nine checks name an object key**, through `hasAccessTo`. They are
+`MessageServiceAccess` lines 14, 17 and 20, and `TopicServiceAccess` lines 14,
+20, 23, 26, 29 and 32.
+
+So the expansion is needed on a different side at each group.
+
+- At the five root target checks, the target already equals the root that a
+  `target: <Domain>` row names. **Only the principal side fails**, because a
+  caller holds its own key and the row names the `User` root.
+- At the nine object target checks, **the target side fails**, because a
+  `target: <Domain>` row names the root and the check names one object.
+
+`Anon:User:FIND` allows `whoami` today for this reason. Both sides match
+already, because `Anon` is always in the actor set and the check names the
+User root.
+
 ### What this changes
 
 `docs/ANONYMOUS-AUTHORIZATION.md` measured the current behaviour. Under this
