@@ -1664,8 +1664,11 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 870 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1103 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 881 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1114 tests, 0 failures, 0 errors, 54 skipped.
+- Both measured on 2026-09-23 at master `42cd6a69` with the grant order
+  clock. **PR #134 is open and adds three more tests.** A merge of both
+  gives 884 and 1117.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2106,6 +2109,48 @@ credential. The matrix denies both.
 in the programmatic wrappers. **Read the matrix before turning the checks on.**
 Enabling them against the shipped grants would deny `addRoom`, `send` and
 `listRooms` to every caller. The grants need a decision before the wiring does.
+
+
+## The clock that orders grants (2026-09-23)
+
+The owner asked for a stable clock with an atomic `tick`, and then for a
+vector clock. Design:
+`docs/superpowers/specs/2026-09-23-grant-order-clock-design.md`.
+
+**Why `key.id` is the wrong order.** `AuthSummarizer` sorts by a comparator
+that reads `key.id`. `SnowflakeGenerator` builds a Long id from a wall clock,
+so that order moves when a host clock moves. **A uuid key carries no order at
+all**, and this repository runs both key types. Identity also stops meaning
+identity alone.
+
+**What exists.** Three types in `chat-core`, under
+`com.demo.chat.domain.clock`. `VectorClock` counts per node id.
+`ClockStamp` is one reading with the node that took it. `NodeClock` is the
+clock of one process, and its `tick` is atomic. Eleven tests, two of which
+drive 200 ticks over 16 threads.
+
+The index is `app.nodeid`. It is validated in 0..1023 and the store side lease
+keeps it unique, **so the index of the clock is already unique** and no new
+identity is needed. `NodeClock` never reads a wall clock.
+
+**A vector clock answers causality, and not order.** Two grants written at
+once on two nodes are concurrent, and the clock reports that rather than
+choosing. The subtractive rule needs the word "before" defined for every
+pair, so `ClockStamp.ORDER` adds one rule: causality first, then the node
+that wrote it. **That rule is a choice, not a law**, and it lives in one
+place.
+
+**Nothing stores a stamp.** `AuthMetadata` is unchanged, `AuthSummarizer`
+still sorts by `key.id`, and nothing subtracts. `CHAT-ojbgbznh` carries the
+integration, and it waits for the grant policy decision in `CHAT-zhjltbky`.
+
+Two costs are recorded. A stamp is a map, so its size grows with the number
+of nodes that ever wrote, and every row carries one. A stamp must serialize,
+on the wire that `DomainWireShapeTests` pins for the other domain types.
+
+One alternative is recorded and not chosen. A hybrid logical clock answers a
+total order from one value and is cheaper to store. It cannot report that two
+writes were concurrent, because it orders them.
 
 ## The work queue, ordered on 2026-09-21
 
