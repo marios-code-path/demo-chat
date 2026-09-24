@@ -400,29 +400,64 @@ So the close row must beat every earlier row on that room, whatever principal
 that row names. Specificity cannot state this, because the row it must beat
 and the row it must lose to both name an object principal.
 
-**The rows need one more dimension, and it must be explicit.** This draft
-recommends a precedence value on the row.
+**The rows need one more dimension, and it must be explicit.** A precedence
+value on the row is one candidate.
 
-- A close writes at the highest precedence. Every earlier row sits below it,
-  so the close removes the access of every caller in one write.
+- A close writes at the highest precedence, so every earlier row sits below
+  it.
 - Inside one precedence, the rule above still holds. Specificity decides
   first, and time breaks a tie.
 - A close writes two rows at that precedence: `{User{ID=ROOT}, key.id, '*',
   now}` and `{dest{ROLE=*}, key.id, '*', none}`. The second names an object
   principal, so specificity places it last and the owner keeps the room.
 
-**Fold the field into the clock stamp change.** `CHAT-ojbgbznh` already adds a
-field to `AuthMetadata`, and that is a wire change that reaches every backend
-and `DomainWireShapeTests`. Two wire changes cost more than one.
+### Precedence is a candidate, and it is not chosen
 
-The alternative was a sweep. A close would read the current holders and write
-one expired row for each. It needs no new field. It is rejected for two
-measured reasons. The write grows with the number of holders. The write is not
-atomic, so a grant written during the sweep survives the close, and that is a
-hole in the operation the sweep exists to perform.
+**A review on 2026-09-24 corrected an earlier version of this section.** That
+version said a close removes the access of every caller "in one write", and it
+named the mechanism race free. Both statements were wrong, and the first one
+contradicted the two row form written beside it.
 
-`CHAT-lbhmzccn` cannot land before the precedence field exists, because the
-comparator cannot read a value that no row carries.
+**A constant write count is not atomicity.** Two rows are two writes. A
+precedence field does not join them.
+
+Four contracts must exist before this mechanism is reviewable. None exists.
+
+1. **Atomic visibility.** A reader must never see the broad denial without the
+   owner row. The store offers no conditional or grouped write today.
+2. **Crash recovery.** A process that stops between the two writes leaves the
+   room denied to the owner as well. The recovery path has no design.
+3. **Precedence authority.** "The highest precedence" is not a rule. A fixed
+   reserved level needs a rule about who may write at that level. A computed
+   maximum needs coordination between two writers that compute it at once.
+4. **Owner selection.** `dest{ROLE=*}` answers a set. It names one owner only
+   while the policy guarantees that one caller holds `*` on a target. The
+   draft records that question above, under `The owner question, recorded and
+   not decided`, and it is still open.
+
+One variant is recorded and not chosen. The `add` command could write the
+owner row at the high precedence, so the close writes one row rather than two.
+That moves the second write to room creation, where a partial write leaves no
+usable room. It does not remove any of the four contracts, and it raises a new
+question about how ownership later transfers.
+
+### The sweep, and a fair comparison
+
+The alternative is a sweep. A close reads the current holders and writes one
+expired row for each. It needs no new field.
+
+**The earlier rejection of the sweep was not fair.** It named non atomicity,
+and the precedence mechanism is not atomic either.
+
+What separates them is the size and the shape of the window, and not its
+presence. The sweep writes one row per holder, so the window grows with the
+room. A grant written inside that window survives the close. The precedence
+mechanism writes two rows whatever the room holds.
+
+**Neither is chosen.** Define the four contracts first.
+
+`CHAT-lbhmzccn` cannot land before this is settled, because the comparator
+cannot state either answer on its own.
 
 ### What the code must gain
 
