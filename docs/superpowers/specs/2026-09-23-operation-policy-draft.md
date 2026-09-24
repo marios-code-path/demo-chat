@@ -435,11 +435,29 @@ Four contracts must exist before this mechanism is reviewable. None exists.
    draft records that question above, under `The owner question, recorded and
    not decided`, and it is still open.
 
-**Contract 4 is the next decision, and it comes before the others.** It asks
-the cardinality of ownership. One owner per room makes `dest{ROLE=*}` a
-function, and a close then has one row to preserve. Several owners make it a
-set, and a close must preserve every member of that set. The answer also
-decides whether `*` can identify an owner at all.
+**Contract 4 is closed. The owner decided on 2026-09-24: one owner per
+target.**
+
+- `dest{ROLE=*}` is a function. A close has one row to preserve.
+- **A second `*` grant on a target is refused at the source.** `*` is written
+  at creation and by system definition, which is the owner view recorded above
+  under `The owner question, recorded and not decided`. That question is now
+  answered, and the answer is no.
+- A transfer replaces the holder. It must not open a window with no owner or
+  with two owners.
+- A moderator takes narrow grants. A moderator never takes `*`.
+- The shipped row `{user: Admin, target: Admin, role: '*'}` meets the rule. It
+  names one holder on that target.
+
+**The refusal is check then act, and it is not atomic.** `addRoom` already
+carries the same shape for a topic name, and the register records that two
+concurrent adds can both pass it. The stores offer no conditional write on the
+authorization index, so this rule inherits that limit. Record it. Do not read
+the rule as a guarantee against a concurrent second `*`.
+
+Three contracts stay open: atomic visibility, crash recovery, and precedence
+authority. With one owner and a creation time owner row, the first two move
+from the close to creation and to transfer.
 
 One variant is recorded and not chosen. The `add` command could write the
 owner row at the high precedence, so the close writes one row rather than two.
