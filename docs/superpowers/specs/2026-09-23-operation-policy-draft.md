@@ -543,6 +543,40 @@ between two writes.
    permission. The rank needs that bit. Either keep the origin on the expanded
    row, or rank before the rewrite.
 
+#### The administrator invariant
+
+**The owner confirmed consequence 1 on 2026-09-24, and named the row that
+makes it safe.** A closed resource stays administrable through one invariant
+row:
+
+    { ADMIN, ENTITY_ROOT, '*', never }
+
+**The rank places it correctly.** `ADMIN` is an object of the `User` domain,
+so it is an `ENTITY` principal. A close row names a `DOMAIN_ROOT` principal.
+Both rows are wildcards, so level 2 decides, and `ENTITY` wins. `ADMIN`
+therefore keeps every permission on a closed target, exactly as the owner
+does.
+
+A resource is temporary for an ordinary caller. It is never beyond
+administration.
+
+**The invariant does not reach a closed room today.**
+`CoreAuthorizationService` scans one target. Line 75 reads
+`authIndex.findBy(queryForTarget.apply(uidB))`, so a check on room `R`
+collects only the rows whose target is `R`. The invariant row names the domain
+root as its target, so it is never collected, and the rank never sees it.
+
+**So the target side of root expansion is now load bearing.** This draft
+already records it above, under `The scan must read two targets`. It was
+written there as the reason the four `user: User` rows of `userinit.yml` reach
+nobody. It is now also the reason an administrator cannot recover a closed
+resource. `CHAT-rfzsnbco` holds it, and it waits on `CHAT-avduuqwp`.
+
+**One rule follows, and it protects single ownership.** Owner selection must
+read the **exact** target and never the domain root. Without that rule,
+`dest{ROLE=*}` on room `R` would answer both the owner of `R` and `ADMIN`, and
+the single owner decision of 2026-09-24 would no longer hold.
+
 #### What still stands between this rule and a working close
 
 **The close row names `User{ID=ROOT}` as its principal, and the actor filter
@@ -552,9 +586,13 @@ from the anonymous key, the caller and the target. So the close row never
 reaches a third caller. `CHAT-mahevldm` holds this, and it waits on
 `CHAT-avduuqwp`.
 
-So the order of work is the rank rule in `CHAT-lbhmzccn`, then the actor set
-in `CHAT-mahevldm`. The two cassandra defects in `CHAT-rmxxtwtu` stand between
-either of them and a measurement against that backend.
+So the order of work is the rank rule in `CHAT-lbhmzccn`, then the two sides of
+root expansion. `CHAT-mahevldm` carries the principal side, and
+`CHAT-rfzsnbco` carries the target side. Both wait on `CHAT-avduuqwp`, which
+puts a domain on a key.
+
+The two cassandra defects in `CHAT-rmxxtwtu` stand between any of them and a
+measurement against that backend.
 
 ### Room-level LWT proposal, recorded on 2026-09-24
 
