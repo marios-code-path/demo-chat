@@ -339,6 +339,46 @@ class VectorClockTests {
         assertThat(ClockStamp.ORDER.compare(early, later)).isNegative()
     }
 
+    /**
+     * **The check must read what the clock keeps.**
+     *
+     * A map that another thread changes can answer differently to two reads.
+     * A check that read the source and a copy that read it again could
+     * disagree, and the kept value would be the one that no check had seen.
+     *
+     * This map answers a legal count once and an illegal one after that. A
+     * constructor that copies first either refuses it or keeps the legal
+     * value. **It never keeps the illegal one.**
+     */
+    @Test
+    fun `a count that changes between two reads never reaches the clock`() {
+        repeat(200) {
+            val shifting = ShiftingMap(NODE_1.value, legal = 1L, illegal = -5L)
+
+            val kept = runCatching { VectorClock(shifting).countOf(NODE_1) }
+
+            kept.onSuccess { count ->
+                assertThat(count)
+                    .withFailMessage("the clock kept a count that no check read")
+                    .isEqualTo(1L)
+            }
+        }
+    }
+
+    /** Answers the legal count on the first read, and the illegal one after. */
+    private class ShiftingMap(
+        private val node: Int, private val legal: Long, private val illegal: Long
+    ) : AbstractMap<Int, Long>() {
+        private var reads = 0
+
+        override val entries: Set<Map.Entry<Int, Long>>
+            get() {
+                reads += 1
+                val value = if (reads == 1) legal else illegal
+                return setOf(java.util.Map.entry(node, value))
+            }
+    }
+
     /** A cast to a mutable map must not reach the counts either. */
     @Test
     fun `the counts refuse a write`() {

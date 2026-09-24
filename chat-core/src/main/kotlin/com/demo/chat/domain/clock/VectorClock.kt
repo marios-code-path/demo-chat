@@ -26,9 +26,15 @@ class VectorClock(source: Map<Int, Long> = emptyMap()) {
      * map it passed cannot reach this value, and a caller that casts this
      * value to a mutable map receives an error.
      *
+     * **A shared map changes a stamp that was already given out.** The
+     * clock that a caller holds, and the order it takes part in, both move
+     * under it. That was true before [total] was computed once, and the
+     * computed sum then added a second disagreement, because the sum stayed
+     * as it was while the counts moved.
+     *
      * Measured on 2026-09-23, before the copy existed: a caller changed the
-     * map it had passed, [total] stayed as it was, and [ClockStamp.ORDER]
-     * then answered that a clock came before its own cause.
+     * map it had passed, and [ClockStamp.ORDER] then answered that a clock
+     * came before its own cause.
      *
      * **A count of zero is not stored.** It reads the same as an absent
      * count, and two values that compare equal must be equal.
@@ -49,12 +55,20 @@ class VectorClock(source: Map<Int, Long> = emptyMap()) {
     val total: Long
 
     init {
-        source.forEach { (node, count) ->
+        // **Copy first, then read only the copy.** A caller can pass a map
+        // that another thread is changing. A check that read the source and a
+        // copy that read it again could disagree, and the value that this
+        // clock kept would be the one that no check had seen.
+        val copied = LinkedHashMap(source)
+
+        copied.forEach { (node, count) ->
             require(node in NodeId.MIN..NodeId.MAX) { indexMessage(node) }
             require(count >= 0L) { countMessage(node, count) }
         }
 
-        counters = Collections.unmodifiableMap(LinkedHashMap(source.filterValues { it != 0L }))
+        copied.values.removeIf { it == 0L }
+
+        counters = Collections.unmodifiableMap(copied)
 
         total = counters.entries.fold(0L) { carried, entry ->
             add(carried, entry.value) { overflowMessage("The counts of this clock") }

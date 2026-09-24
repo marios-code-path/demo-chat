@@ -103,8 +103,8 @@ own tie rule for the concurrent frontier.
 
 ## The tests that hold this
 
-Twenty seven. Four exist because of the ordering defect, six guard the
-boundary, five hold immutability and normalization, and two state the restart
+Thirty. Four exist because of the ordering defect, six guard the boundary,
+six hold immutability and normalization, and two state the restart
 requirement.
 
 - The three stamps of the counterexample, over **every one of the six
@@ -121,11 +121,23 @@ requirement.
 It is not a data class, so there is no `copy` that could carry an unchecked
 map past the constructor.
 
-This matters because `total` is computed once. Measured on 2026-09-23, before
-the copy existed: a caller kept the map it had passed and raised a count.
-`total` stayed as it was, `relate` read the new count, and the order then
-answered that a clock came before its own cause. **The cached sum turned a
-mutable input into a wrong order.**
+**A shared map changes a stamp that was already given out.** The clock a
+caller holds, and the order it takes part in, both move under it. That harm
+did not wait for `total` to be computed once.
+
+The computed sum added a second disagreement on top, because the sum stayed as
+it was while the counts moved. Measured on 2026-09-23, before the copy
+existed: `relate` answered `AFTER` and the order answered `-1`, so the order
+said a clock came before its own cause.
+
+**An earlier version of this document blamed the cached sum alone. That was
+wrong**, and the reviewer corrected it.
+
+**The constructor copies before it checks.** A caller can pass a map that
+another thread is changing. A check that read the source and a copy that read
+it again could disagree, and the kept value would be the one no check had
+seen. One test drives a map that answers a legal count once and an illegal
+count after that, and the clock either refuses it or keeps the legal value.
 
 **A count of zero is not stored.** It reads the same as an absent count, so
 `{}` and `{1:0}` compared equal through the order and were unequal objects.
@@ -180,12 +192,20 @@ at one time, and it keeps no counter.
 1. **Recover the counter from the store.** Read the highest count for this
    node before the first write, and `observe` it. One test shows that this
    works, and the cost is a read of the stored stamps at startup.
+   **Recover the whole clock, not the count of this node alone.** A process
+   that recovered its own count would lose what it had seen of every other
+   node, and a new stamp would then read as concurrent with a grant it
+   follows.
 2. **Give each process lifetime its own identity.** An epoch beside the node
    id. That enlarges the identity space and it meets the claim lease, which
    holds one id per key type per store.
 
 Two tests state the position. One shows that two fresh clocks repeat a stamp.
 One shows that a clock which observes the stored counter does not.
+
+**The tests of the integration must reach further.** They must cover a crash,
+which leaves no orderly shutdown to write a final value, and they must show
+that the whole causal history survives, not the count of one node.
 
 ## What this does not do
 

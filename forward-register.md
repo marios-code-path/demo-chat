@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 902 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1135 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 903 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1136 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2190,10 +2190,15 @@ reads the origin, then the counts themselves.
 
 **The value cannot change after it is built.** `VectorClock` copies the map it
 is given and the copy refuses a write, and it is not a data class, so no
-`copy` carries an unchecked map past the constructor. **A cached sum over a
-mutable input gave a wrong order.** Measured on 2026-09-23: a caller kept the
-map it had passed and raised a count, `total` stayed as it was, `relate` read
-the new count, and the order then said a clock came before its own cause.
+`copy` carries an unchecked map past the constructor. **The constructor copies
+before it checks**, because a check that read the source and a copy that read
+it again could disagree.
+
+**A shared map changes a stamp that was already given out**, so the harm did
+not wait for the sum to be cached. The cached sum added a second
+disagreement, because it stayed as it was while the counts moved. Measured on
+2026-09-23: `relate` answered `AFTER` and the order answered `-1`. An earlier
+note here blamed the cached sum alone, and the reviewer corrected it.
 
 **A count of zero is not stored.** It reads the same as an absent count, so
 `{}` and `{1:0}` compared equal through the order and were unequal objects. A
