@@ -8,8 +8,12 @@ import com.demo.chat.domain.knownkey.RootKeys
 /**
  * Level 2 of the rank rule. `ENTITY` beats `DOMAIN_ROOT`.
  *
+ * `AuthSummarizer.WILDCARD` states what `*` means. Read it first. `*` is
+ * ownership, it is singular per target, and it is a sentinel. This class
+ * answers level 2, which decides only between two rows that tie at level 1.
+ *
  * See `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`, under
- * `The rank rule, decided by the owner on 2026-09-24`.
+ * `What \* means` and `The rank rule, decided by the owner on 2026-09-24`.
  */
 enum class PrincipalSpecificity { DOMAIN_ROOT, ENTITY }
 

@@ -13,6 +13,12 @@ principal, so it cannot hold the four `User` root rows that `userinit.yml`
 writes. **Do not read this matrix as the answer for a cassandra deployment.**
 `CHAT-rmxxtwtu` holds that defect.
 
+**`*` means ownership, and not "all permissions".** It is singular per target,
+and it is a sentinel, so a `*` row stops the read and its expiry decides.
+`docs/superpowers/specs/2026-09-23-operation-policy-draft.md` states the three
+properties under `What \* means`. This matrix was measured before that rank
+existed, so read the two together.
+
 `AnonymousAuthorizationMatrixTests` holds the measurement. It wires the
 production `CoreAuthorizationService`, `AuthSummarizer`,
 `AuthMetadataAccessBroker` and `SpringSecurityAccessBrokerService`, and

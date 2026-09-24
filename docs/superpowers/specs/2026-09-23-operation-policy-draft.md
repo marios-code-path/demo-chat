@@ -494,12 +494,42 @@ cannot state either answer on its own.
 
 ### The rank rule, decided by the owner on 2026-09-24
 
+#### What `*` means
+
+**`*` is not shorthand for a permission set.** The owner stated this on
+2026-09-24, after a reader took it that way. It carries three properties, and
+every rule below follows from them.
+
+1. **Ownership.** A `*` row on a target names the owner of that target. It is
+   not a grant of many permissions that happens to cover all of them. So there
+   is no way to give `*` without giving ownership.
+2. **Singular.** One `*` per target. A second `*` on one target is refused at
+   the source. This is the single owner decision of 2026-09-24.
+3. **Sentinel.** Once a `*` row wins its group, nothing below it is read. The
+   rank stops there, and the expiry of that row decides the answer.
+
+Three results follow, and none of them is a special case.
+
+- **An expired `*` denies every permission.** Property 3 stops the read at the
+  `*` row, and that row expired. This is what makes a close one row.
+- **A named grant written after a close has no effect.** Property 3 again. The
+  `*` row still wins its group, whatever the order.
+- **Owner selection must read the exact target.** Property 2 holds per target.
+  A scan that also read the domain root would answer two holders of `*` for one
+  room, and ownership would stop being singular.
+
+**Say `*` means ownership, and not "all permissions".** A reader that takes the
+second meaning expects a named grant to sit beside it and to be read beside it.
+Neither happens.
+
+#### The three levels
+
 **A `*` row outranks every row that names one permission.** The owner stated
 this rule, and it removes the need for a new field and for a new store
 protocol.
 
 The rank has three levels. The highest ranked row decides, and the expiry of
-that row is read after it wins.
+that row is read after it wins. Level 1 is property 3 above.
 
 1. **A wildcard row beats a row that names one permission.**
 2. **`ENTITY` beats `DOMAIN_ROOT`.** This is the specificity order, and the

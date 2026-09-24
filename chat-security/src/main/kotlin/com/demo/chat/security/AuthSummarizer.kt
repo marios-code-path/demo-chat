@@ -58,7 +58,26 @@ class AuthSummarizer<T>(
 ) : Summarizer<AuthMetadata<T>, Key<T>> {
 
     companion object {
-        /** The permission value that names every permission. */
+        /**
+         * The ownership marker.
+         *
+         * **This is not shorthand for a permission set.** It carries three
+         * properties, and the rank below follows from them.
+         *
+         * 1. **Ownership.** A `*` row on a target names the owner of that
+         *    target. There is no way to give `*` without giving ownership.
+         * 2. **Singular.** One `*` per target. A second is refused at the
+         *    source.
+         * 3. **Sentinel.** Once a `*` row wins its group, nothing below it is
+         *    read, and the expiry of that row decides the answer.
+         *
+         * So an expired `*` denies every permission, and a named grant written
+         * after a close has no effect. Neither is a special case. Both follow
+         * from property 3.
+         *
+         * See `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`,
+         * under `What \* means`.
+         */
         const val WILDCARD = "*"
     }
 
