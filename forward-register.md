@@ -2079,11 +2079,17 @@ Three results that are easy to miss.
    query, so an authenticated caller reaches the same answers.
 2. **The four `user: User` rows of `userinit.yml` reach nobody.** They name
    the `User` root key as principal, and a caller holds its own key.
+   **This no longer holds. `CHAT-mahevldm` closed it on 2026-09-24.** The
+   actor set carries the `User` root, so those rows reach every caller.
 3. **A grant on a domain root does not cover one object.** `Anon` holds
-   `Message:GET`, and `messageById` checks one message key.
+   `Message:GET`, and `messageById` checks one message key. This still holds.
+   `CHAT-rfzsnbco` carries the target side.
 
 So the shipped configuration allows `User:FIND` and `User:PUT` to every
 caller that reaches an identity. **Every write operation denies.**
+**Read that sentence as of 2026-09-23.** Since `CHAT-mahevldm` the
+configuration also allows `MessageTopic:ALL`, so `listRooms` allows. Every
+write operation still denies. See the close policy section below.
 
 Expiry is on the grant, not on a credential. `AuthSummarizer` keeps a row when
 `expires` is `0L` or in the future.
@@ -2311,6 +2317,14 @@ is needed to name it.
 **`CHAT-rfzsnbco` (two-target scan) does still need `CHAT-avduuqwp`**, because
 a target can belong to any domain. That dependency supersedes the older queue's
 tier-3 placement of `CHAT-avduuqwp`.
+
+**One row of the shipped matrix moved, and it is the first authorization
+behaviour this work changed.** `listRooms` went from deny to allow, for an
+anonymous caller and for an authenticated one, because
+`{user: User, target: MessageTopic, role: ALL}` now reaches a caller. Nothing
+enforces the checks in a deployment, which `CHAT-znprrzhn` holds, so no
+running composition behaves differently today.
+`docs/ANONYMOUS-AUTHORIZATION.md` carries the new matrix.
 
 Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
 `CHAT-rmxxtwtu` holds Cassandra authorization index retention and deletion defects.

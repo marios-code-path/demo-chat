@@ -79,12 +79,16 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
    passes `rootKeys.getRootKey(domain)`, so `addRoom`, `listRooms`, `addUser`,
    `findByUsername` and `findByUserId` compare against the domain root
    directly. At those five the target side already matches a `target:
-   <Domain>` row, and only the principal side fails. That is why
-   `Anon:User:FIND` allows `whoami`: both sides match.
+   <Domain>` row. **The principal side matched too, since `CHAT-mahevldm`.**
+   That is why `Anon:User:FIND` allows `whoami`, and why
+   `User:MessageTopic:ALL` now allows `listRooms`.
 
-So the shipped configuration allows exactly two permissions, `User:FIND` and
-`User:PUT`, to every caller that reaches an identity. **Every write operation
-denies for every caller.**
+So the shipped configuration allows three permissions to every caller that
+reaches an identity: `User:FIND`, `User:PUT` and `MessageTopic:ALL`. **Every
+write operation denies for every caller.**
+
+`addRoom` and `addUser` deny although both sides now match, because no shipped
+row grants `NEW` on either domain.
 
 ## Expiry
 
@@ -112,10 +116,14 @@ enforces. `CHAT-znprrzhn` holds the wiring gap. `CHAT-ruapxetl` holds a second
 defect in the programmatic wrappers.
 
 This also explains why `chat-shell` can create a room and send a message with
-no credential. The matrix would deny both.
+no credential. The matrix denies both.
 
 ## Before turning the checks on
 
 Read this table first. **Enabling the checks against the shipped grants would
-deny `addRoom`, `send` and `listRooms` to every caller**, including an
-authenticated one. The grants need a decision before the wiring does.
+deny `addRoom` and `send` to every caller**, including an authenticated one.
+The grants need a decision before the wiring does.
+
+`listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. An earlier
+version of this line named it beside `addRoom` and `send`, and that was true
+while the four `user: User` rows reached nobody.
