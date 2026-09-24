@@ -1,6 +1,10 @@
 # The anonymous authorization matrix
 
-What the `Anon` root key may do. Measured on 2026-09-23 at master `4fcae69c`.
+What a caller may do, and what the `Anon` root key may do.
+
+**Measured on 2026-09-24 at `58163b7c`.** The first measurement was taken on
+2026-09-23 at master `4fcae69c`, and one row has moved since. `listRooms` went
+from deny to allow under `CHAT-mahevldm`.
 
 `docs/IDENTITY-POLICY.md` states which identity a caller reaches. **This
 document states what that identity may then do.** They are separate questions,
@@ -16,8 +20,10 @@ writes. **Do not read this matrix as the answer for a cassandra deployment.**
 **`*` means ownership, and not "all permissions".** It is singular per target,
 and it is a sentinel, so a `*` row stops the read and its expiry decides.
 `docs/superpowers/specs/2026-09-23-operation-policy-draft.md` states the three
-properties under `What \* means`. This matrix was measured before that rank
-existed, so read the two together.
+properties under `What \* means`. **No shipped row names `*` on a target that
+an operation below checks**, so the rank does not move this matrix. The one
+shipped `*` row names the `Admin` key as its target, and no operation here
+names that target.
 
 `AnonymousAuthorizationMatrixTests` holds the measurement. It wires the
 production `CoreAuthorizationService`, `AuthSummarizer`,
@@ -28,13 +34,25 @@ replaces only the store and the index.
 
 Every deployment loads
 `shared-deploy-configuration/src/main/config/userinit.yml`. It holds nine
-roles. Three name the `Anon` key.
+roles. **All nine are listed here, because since `CHAT-mahevldm` the four that
+name `User` reach a caller.** An earlier version of this section listed the
+three `Anon` rows alone.
 
-| Principal | Target | Permission |
-|---|---|---|
-| `Anon` | `User` | FIND |
-| `Anon` | `User` | PUT |
-| `Anon` | `Message` | GET |
+| Principal | Target | Permission | Reaches a caller |
+|---|---|---|---|
+| `Admin` | `Admin` | `*` | only a caller holding the `Admin` key |
+| `Anon` | `User` | FIND | yes |
+| `Anon` | `User` | PUT | yes |
+| `Anon` | `Message` | GET | yes, and no operation matches its target |
+| `User` | `Message` | SEND | yes, and no operation matches its target |
+| `User` | `MessageTopic` | ALL | yes |
+| `User` | `MessageTopic` | GET | yes, and no operation matches its target |
+| `User` | `MessageTopic` | JOIN | yes, and no operation matches its target |
+| `User` | `MessageTopic` | MEMBERS | yes, and no operation matches its target |
+
+"Reaches a caller" is the principal side. "No operation matches its target"
+means the row names a domain root while every operation that asks for that
+permission names one object. Result 3 below carries that.
 
 ## The matrix
 
@@ -52,10 +70,13 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 
 ## Three results that are easy to miss
 
-1. **An anonymous grant is a floor for every caller.**
-   `CoreAuthorizationService` puts the `Anon` key in the actor set of every
-   query. So an authenticated caller reaches the same answers as an anonymous
-   one, plus whatever names its own key.
+1. **An anonymous grant is a floor for every caller, and so is a `User` root
+   grant.** `CoreAuthorizationService` puts the `Anon` key **and the `User`
+   root** in the actor set of every query. So an authenticated caller reaches
+   the same answers as an anonymous one, plus whatever names its own key.
+
+   The `User` root half arrived with `CHAT-mahevldm` on 2026-09-24. Before it
+   the `Anon` key was the only floor.
 2. ~~**The four `user: User` rows reach nobody.**~~ **They reach every caller
    since `CHAT-mahevldm`, measured on 2026-09-24.** The actor set carries the
    `User` root beside the anonymous key, because every caller is a user.

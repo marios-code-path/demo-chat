@@ -2112,6 +2112,9 @@ credential. The matrix denies both.
 in the programmatic wrappers. **Read the matrix before turning the checks on.**
 Enabling them against the shipped grants would deny `addRoom`, `send` and
 `listRooms` to every caller. The grants need a decision before the wiring does.
+**`listRooms` left that list on 2026-09-24.** `CHAT-mahevldm` made the
+`user: User` rows reach a caller, so `listRooms` allows. `addRoom` and `send`
+still deny.
 
 
 ### The operation policy draft, and a configuration guard (2026-09-23)
