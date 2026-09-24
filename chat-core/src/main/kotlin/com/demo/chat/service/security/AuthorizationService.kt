@@ -17,6 +17,13 @@ interface AuthorizationService<T, out M : Any> {
     fun authorize(authorization: AuthMetadata<T>, exist: Boolean): Mono<Void>
     fun getAuthorizationsForTarget(uid: Key<T>): Flux<out M>
     fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<out M>
-    fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<out M>
-    fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>): Flux<out M>
+    /**
+     * Summarize the rows that decide one access question.
+     *
+     * Pass [permission] when the caller asks one permission. A row that holds
+     * the wildcard then answers that permission. Leave it null to list the rows
+     * as they are stored.
+     */
+    fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>, permission: String? = null): Flux<out M>
+    fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String? = null): Flux<out M>
 }

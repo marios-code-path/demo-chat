@@ -10,6 +10,7 @@ import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -108,6 +109,30 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(allowedWith(listOf(expired), anonymousContext())).isFalse()
     }
 
+    /**
+     * A wildcard row names every permission. The check asks one permission, so
+     * the row must answer that permission. See the close decision in
+     * `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`.
+     */
+    @Test
+    fun `a live wildcard grant allows a permission that no row names`() {
+        val wildcard = grant(ANON_KEY, USER_ROOT, "*")
+
+        assertThat(allowedWith(listOf(wildcard), anonymousContext())).isTrue()
+    }
+
+    /**
+     * This is the close case. A close writes one expired wildcard row, and that
+     * row must remove the permissions that came before it.
+     */
+    @Test
+    fun `an expired wildcard grant removes a permission that an earlier row granted`() {
+        val granted = grant(ANON_KEY, USER_ROOT, "FIND")
+        val closed = grant(ANON_KEY, USER_ROOT, "*", System.currentTimeMillis() - 60_000L)
+
+        assertThat(allowedWith(listOf(granted, closed), anonymousContext())).isFalse()
+    }
+
     @Test
     fun `a grant that has not expired allows`() {
         val live = grant(ANON_KEY, USER_ROOT, "FIND", System.currentTimeMillis() + 600_000L)
@@ -179,7 +204,7 @@ class AnonymousAuthorizationMatrixTests {
         return AuthMetadataAccessBroker(
             CoreAuthorizationService(
                 store, index, { it }, { it }, { ANON_KEY },
-                AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }
+                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
             )
         )
     }

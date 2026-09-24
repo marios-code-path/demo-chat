@@ -4,6 +4,8 @@ import com.demo.chat.domain.*
 import com.demo.chat.security.AuthMetadataPrincipleKeySearch
 import com.demo.chat.security.AuthMetadataTargetKeySearch
 import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthorizationService
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
@@ -26,7 +28,7 @@ open class CoreAuthorizationServiceTests(
         AuthMetadataPrincipleKeySearch(TypeUtil.LongUtil),
         AuthMetadataTargetKeySearch(TypeUtil.LongUtil),
         { Key.funKey(ANON_ID) },
-        AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }
+        AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(RootKeys()))
     ),
     Supplier {
         StringRoleAuthorizationMetadata(

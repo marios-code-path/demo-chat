@@ -31,7 +31,7 @@ open class AccessBrokerTests<T>(
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         BDDMockito
-            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject()))
+            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(Flux.empty())
 
         val access = AuthMetadataAccessBroker(authSvc)
@@ -66,7 +66,7 @@ open class AccessBrokerTests<T>(
         )
 
         BDDMockito
-            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject()))
+            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(authMetadataAgainstData)
 
         val access = AuthMetadataAccessBroker(authSvc)
@@ -101,7 +101,7 @@ open class AccessBrokerTests<T>(
         )
 
         BDDMockito
-            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject()))
+            .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(authMetadataAgainstData)
 
         val access = AuthMetadataAccessBroker(authSvc)
