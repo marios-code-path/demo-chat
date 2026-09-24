@@ -2,6 +2,7 @@ package com.demo.chat.security.access.core
 
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.PersistenceStore
+import org.springframework.security.access.prepost.PostFilter
 import org.springframework.security.access.prepost.PreAuthorize
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -13,7 +14,17 @@ interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
     override fun rem(key: Key<T>): Mono<Void>
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'GET')")
     override fun get(key: Key<T>): Mono<out E>
-    @PreAuthorize("@chatAccess.hasAccessToMany(#keys, 'GET')")
+    /**
+     * **A many target read answers the permitted entities alone.** Each entity
+     * is evaluated on its own. A denied entity is left out, and the request does
+     * not fail. See `CHAT-wkwiipgy`.
+     *
+     * `@PostFilter` runs inside the method security proxy, so a denied entity
+     * never reaches the caller. It does reach the proxy, because the store reads
+     * every key first. The reactive `@PreFilter` cannot filter [keys], because it
+     * filters a `Publisher` parameter alone.
+     */
+    @PostFilter("@chatAccess.hasAccessTo(filterObject.key, 'GET')")
     override fun byIds(keys: List<Key<T>>): Flux<out E>
 }
 

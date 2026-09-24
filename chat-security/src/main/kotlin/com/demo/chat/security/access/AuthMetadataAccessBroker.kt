@@ -43,19 +43,4 @@ class AuthMetadataAccessBroker<T>(
 
     override fun hasAccessByPrincipal(principal: Mono<Key<T>>, target: Key<T>, perm: String): Mono<Boolean> =
         principal.flatMap { pKey -> hasAccessByKey(pKey, target, perm) }
-
-    /**
-     * Self authority covers the principal alone in the list. The grants of every
-     * other target are read as before, so adding the principal to a list never
-     * widens the answer for the rest.
-     */
-    override fun hasAccessByManyKeys(principal: Key<T>, keys: List<Key<T>>, perm: String): Mono<Boolean> {
-        val others = keys.filterNot { isSelf(principal, it) }
-
-        return if (keys.isNotEmpty() && others.isEmpty()) Mono.just(true)
-        else collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(principal, others, perm), perm)
-    }
-
-    override fun hasAccessManyByPrincipal(principal: Mono<Key<T>>, targets: List<Key<T>>, perm: String): Mono<Boolean> =
-        principal.flatMap { pKey -> hasAccessByManyKeys(pKey, targets, perm) }
 }

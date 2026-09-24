@@ -134,7 +134,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             target = objectForAccess, perm = "GET", muted = false, exp = Long.MAX_VALUE
         )
 
-        BDDMockito.given(authService.getAuthorizationsAgainstMany(anyObject(), anyObject(), anyObject()))
+        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(Flux.just(data))
 
         BDDMockito

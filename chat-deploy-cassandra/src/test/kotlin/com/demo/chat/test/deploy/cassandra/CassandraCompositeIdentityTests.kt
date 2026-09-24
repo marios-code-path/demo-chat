@@ -162,17 +162,9 @@ class CassandraCompositeIdentityTests {
             principal: Mono<Key<Long>>, key: Key<Long>, action: String
         ): Mono<Boolean> = principal.map { reached = it; true }
 
-        override fun hasAccessManyByPrincipal(
-            principal: Mono<Key<Long>>, targets: List<Key<Long>>, perm: String
-        ): Mono<Boolean> = principal.map { reached = it; true }
-
         override fun hasAccessByKey(
             principal: Key<Long>, key: Key<Long>, action: String
         ): Mono<Boolean> = error("These tests never call hasAccessByKey")
-
-        override fun hasAccessByManyKeys(
-            principal: Key<Long>, keys: List<Key<Long>>, perm: String
-        ): Mono<Boolean> = error("These tests never call hasAccessByManyKeys")
     }
 
     private companion object {
