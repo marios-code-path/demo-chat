@@ -290,3 +290,95 @@ already holds.
 2. **How does stored data reach the new key shape?** A key written before
    `root_id` exists carries none. The candidates are a migration, a default
    read at load, or a rebuild.
+
+## The close decision
+
+**The owner decided on 2026-09-23. A close keeps the access of the owner.**
+
+The order of the rows and the specificity of the principal give that result.
+The policy needs no ownership exception.
+
+### The evaluation model is replacement
+
+An earlier note in this draft said that an expired row takes no part in
+evaluation. **That reading is wrong.** It made `expire: now` look like a row
+that does nothing.
+
+Read `AuthSummarizer.computeAggregates`, measured at master `579a23ba`.
+
+| Line | What it does |
+|---|---|
+| 54 | Keeps a row only if its principal is in the actor set |
+| 61 | Groups the rows by the permission string |
+| 62 | Sorts each group and keeps the last row |
+| 63 | Drops that row if it expired |
+
+So the last row of a group decides the permission. **An expired last row
+removes the permission.** Line 63 carries the owner comment that states the
+intent: "removing 0L allows us to overlay negative permission".
+
+A row is not an addition. **A row replaces the answer for the principals that
+it names.**
+
+This also corrects the section `Order decides the outcome` above. That
+section says that nothing subtracts. An expired last row subtracts today.
+
+### Write the broad rows first
+
+The narrow rows come last. The last row that matches a caller decides.
+
+The `messageTopic` `add` entry takes this order.
+
+| command | user | target | role | expire | Why |
+|---|---|---|---|---|---|
+| `add` | `User{ID=ROOT}` | `key.id` | `JOIN` | now | Nobody can join a new room |
+| `add` | `User{ID=ROOT}` | `key.id` | `MEMBERS` | now | Nobody can list the members |
+| `add` | `User{ID=ACTIVE}` | `key.id` | `*` | none | The caller that created the room owns it |
+
+The `close` entry keeps one row, as the owner drafted it.
+
+| command | user | target | role | expire | Why |
+|---|---|---|---|---|---|
+| `close` | `User{ID=ROOT}` | `key.id` | `*` | now | Remove every permission, except from the holder of `*` |
+
+### How the owner survives the close
+
+Both rows name the same target. Both rows name `*`, so both reach every
+permission group of the caller that created the room.
+
+The comparator decides which row is last.
+
+- **For the creator**, the actor filter keeps both rows. The comparator places
+  the root principal before the object principal. The creator row is last, it
+  holds `*`, and it does not expire. The creator keeps every permission.
+- **For any other caller**, the actor filter removes the creator row, because
+  that principal is not in the actor set. The close row is last, it expired,
+  and line 63 drops it. That caller holds nothing.
+
+**The comparator carries the whole decision.** It is the one place that keeps
+ownership through a close.
+
+### What the code must gain
+
+Three changes. Each one is measured at master `579a23ba`.
+
+1. **`*` must expand to the permission set during evaluation.**
+   `AuthSummarizer` groups by the permission string, so a `*` row lands in a
+   group named `*`. It cannot replace a `JOIN` row. **This is the one reason
+   the close row does nothing today.**
+2. **The comparator must sort by principal specificity first, and then by
+   time.** `AuthSummarizer` takes the comparator from its caller, and the
+   shipped comparator reads `key.id`. `CHAT-ojbgbznh` carries the clock for
+   the time part.
+3. **The actor set must hold the domain root.** `CoreAuthorizationService`
+   builds that set from the anonymous key, the caller and the target, at lines
+   63, 70, 76 and 82. A `User{ID=ROOT}` principal never passes the filter at
+   line 54. `CHAT-avduuqwp` carries the root on the key.
+
+### `-` and `expire: now` answer the same
+
+Under replacement, a live `-` row and an expired row both leave the empty set.
+So this draft holds two spellings of one outcome. They differ in what they
+record, and not in what they answer.
+
+`CHAT-zcxgrtqc` must keep one spelling, or state the difference.
