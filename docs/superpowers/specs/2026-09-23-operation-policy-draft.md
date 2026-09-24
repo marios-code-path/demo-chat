@@ -435,11 +435,24 @@ Four contracts must exist before this mechanism is reviewable. None exists.
    draft records that question above, under `The owner question, recorded and
    not decided`, and it is still open.
 
+**Contract 4 is the next decision, and it comes before the others.** It asks
+the cardinality of ownership. One owner per room makes `dest{ROLE=*}` a
+function, and a close then has one row to preserve. Several owners make it a
+set, and a close must preserve every member of that set. The answer also
+decides whether `*` can identify an owner at all.
+
 One variant is recorded and not chosen. The `add` command could write the
 owner row at the high precedence, so the close writes one row rather than two.
-That moves the second write to room creation, where a partial write leaves no
-usable room. It does not remove any of the four contracts, and it raises a new
-question about how ownership later transfers.
+
+**This variant changes the atomicity requirement rather than avoiding it.** A
+review on 2026-09-24 made that precise. A close needs one write only while
+ownership already exists in the store. So the requirement moves to creation,
+and creation then needs a rule that stops any use of the room before the
+ownership row commits. A transfer of ownership needs its own rule, because it
+writes a new owner and it must not open a window with no owner or two owners.
+
+It removes contract 1 and contract 2 from the close. It does not remove them
+from the system. It removes neither contract 3 nor contract 4.
 
 ### The sweep, and a fair comparison
 
