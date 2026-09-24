@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 873 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1106 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 903 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1136 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2146,6 +2146,94 @@ message naming the key.
 
 **No module read that file at test time before this.** That is why an invalid
 configuration could sit in a working tree and no build reported it.
+
+## The clock that orders grants (2026-09-23)
+
+The owner asked for a stable clock with an atomic `tick`, and then for a
+vector clock. Design:
+`docs/superpowers/specs/2026-09-23-grant-order-clock-design.md`.
+
+**Why `key.id` is the wrong order.** `AuthSummarizer` sorts by a comparator
+that reads `key.id`. `SnowflakeGenerator` builds a Long id from a wall clock,
+so that order moves when a host clock moves. **A uuid key carries no order at
+all**, and this repository runs both key types. Identity also stops meaning
+identity alone.
+
+**What exists.** Three types in `chat-core`, under
+`com.demo.chat.domain.clock`. `VectorClock` counts per node id.
+`ClockStamp` is one reading with the node that took it. `NodeClock` is the
+clock of one process, and its `tick` is atomic. Eleven tests, two of which
+drive 200 ticks over 16 threads.
+
+The index is `app.nodeid`. It is validated in 0..1023 and the store side lease
+keeps it unique, **so the index of the clock is already unique** and no new
+identity is needed. `NodeClock` never reads a wall clock.
+
+**A vector clock answers causality, and not order.** Two grants written at
+once on two nodes are concurrent, and the clock reports that rather than
+choosing. The subtractive rule needs the word "before" defined for every
+pair, so `ClockStamp.ORDER` makes the order total.
+
+**The first rule was wrong, and the reviewer found it.** Comparing causality
+pairwise and then breaking a tie by the origin **is not transitive**. With
+`a={1:1}` from node 2, `b={2:1}` from node 1 and `c={1:2}` from node 0, the
+rule gives `b < a`, `a < c` and `c < b`, a cycle. TimSort refuses such a
+comparator with `Comparison method violates its general contract!`.
+
+**The rule that holds reads the sum of the counts first.** That sum rises
+with causality, because a clock that comes before another has every count
+lower or equal and one count lower. So a cause always sorts before its
+effect, and the comparison is transitive because it compares numbers. A tie
+reads the origin, then the counts themselves.
+
+
+
+**The value cannot change after it is built.** `VectorClock` copies the map it
+is given and the copy refuses a write, and it is not a data class, so no
+`copy` carries an unchecked map past the constructor. **The constructor copies
+before it checks**, because a check that read the source and a copy that read
+it again could disagree.
+
+**A shared map changes a stamp that was already given out**, so the harm did
+not wait for the sum to be cached. The cached sum added a second
+disagreement, because it stayed as it was while the counts moved. Measured on
+2026-09-23: `relate` answered `AFTER` and the order answered `-1`. An earlier
+note here blamed the cached sum alone, and the reviewer corrected it.
+
+**A count of zero is not stored.** It reads the same as an absent count, so
+`{}` and `{1:0}` compared equal through the order and were unequal objects. A
+sorted set would have held one and a hash set two.
+
+**A restart repeats stamps, and that is a requirement on the integration.** A
+fresh `NodeClock` starts at zero, so the first stamp after a restart equals
+the first before it. The node id lease does not close this, because it keeps
+no counter. `CHAT-ojbgbznh` must recover the counter from the store before the
+first write, or give each process lifetime its own identity.
+
+**The clock refuses a value it cannot order.** A stamp reaches this code from
+a store, so the constructor is a boundary. `VectorClock` refuses a count that
+would carry the sum past `Long.MAX_VALUE`, a negative count, and an index
+outside 0..1023. `tick` refuses to wrap. A wrapped sum reads as lower, so a
+cause would sort after its effect, quietly, inside a sort. `total` is computed
+once at construction, so the check runs at the boundary and a sort does not
+add the counts again for every comparison.
+
+**One test passed against the rule it was written to catch.** It called the
+cycle check with one order of the three stamps, and the premise of that check
+was false for that order. It reads all six orders now. A random triple test
+and a 500 stamp sort caught the defect where the named test did not.
+
+**Nothing stores a stamp.** `AuthMetadata` is unchanged, `AuthSummarizer`
+still sorts by `key.id`, and nothing subtracts. `CHAT-ojbgbznh` carries the
+integration, and it waits for the grant policy decision in `CHAT-zhjltbky`.
+
+Two costs are recorded. A stamp is a map, so its size grows with the number
+of nodes that ever wrote, and every row carries one. A stamp must serialize,
+on the wire that `DomainWireShapeTests` pins for the other domain types.
+
+One alternative is recorded and not chosen. A hybrid logical clock answers a
+total order from one value and is cheaper to store. It cannot report that two
+writes were concurrent, because it orders them.
 
 ## The work queue, ordered on 2026-09-21
 
