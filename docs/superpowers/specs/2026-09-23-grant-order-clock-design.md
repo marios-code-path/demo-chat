@@ -103,7 +103,9 @@ own tie rule for the concurrent frontier.
 
 ## The tests that hold this
 
-Twenty one. Four exist because of the ordering defect, and six guard the boundary.
+Twenty seven. Four exist because of the ordering defect, six guard the
+boundary, five hold immutability and normalization, and two state the restart
+requirement.
 
 - The three stamps of the counterexample, over **every one of the six
   orders**. The first version of that test read one order, and a cycle hides
@@ -112,6 +114,23 @@ Twenty one. Four exist because of the ordering defect, and six guard the boundar
 - A cause never sorts after its effect, over 200 random pairs.
 - A sort of 500 random stamps answers one order and does not refuse the
   comparator.
+
+## The value cannot change after it is built
+
+**`VectorClock` copies the map it is given, and the copy refuses a write.**
+It is not a data class, so there is no `copy` that could carry an unchecked
+map past the constructor.
+
+This matters because `total` is computed once. Measured on 2026-09-23, before
+the copy existed: a caller kept the map it had passed and raised a count.
+`total` stayed as it was, `relate` read the new count, and the order then
+answered that a clock came before its own cause. **The cached sum turned a
+mutable input into a wrong order.**
+
+**A count of zero is not stored.** It reads the same as an absent count, so
+`{}` and `{1:0}` compared equal through the order and were unequal objects.
+A reader that puts stamps in a sorted set would have seen one and a reader
+that puts them in a hash set would have seen two.
 
 ## The boundary, and why it is checked
 
@@ -146,6 +165,27 @@ Six tests hold this. Against unchecked arithmetic, two of them fail.
 
 Without step 2 a later write does not follow what this process has read, and
 two rows that should be ordered report as concurrent.
+
+## A restart repeats stamps, and that is an integration requirement
+
+**A fresh `NodeClock` starts at zero.** So the first stamp after a restart
+equals the first stamp before it, and two different grants can carry one
+stamp. A new grant can then sort before an older one.
+
+The node id lease does not close this. It stops two processes owning one id
+at one time, and it keeps no counter.
+
+**`CHAT-ojbgbznh` must close it before a stamp is stored.** Two candidates.
+
+1. **Recover the counter from the store.** Read the highest count for this
+   node before the first write, and `observe` it. One test shows that this
+   works, and the cost is a read of the stored stamps at startup.
+2. **Give each process lifetime its own identity.** An epoch beside the node
+   id. That enlarges the identity space and it meets the claim lease, which
+   holds one id per key type per store.
+
+Two tests state the position. One shows that two fresh clocks repeat a stamp.
+One shows that a clock which observes the stored counter does not.
 
 ## What this does not do
 

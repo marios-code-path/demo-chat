@@ -1,6 +1,7 @@
 package com.demo.chat.domain.clock
 
 import com.demo.chat.domain.NodeId
+import java.util.Collections
 
 /**
  * A vector clock over node ids.
@@ -16,7 +17,23 @@ import com.demo.chat.domain.NodeId
  *
  * A value is immutable. Every operation answers a new value.
  */
-data class VectorClock(val counters: Map<Int, Long> = emptyMap()) {
+class VectorClock(source: Map<Int, Long> = emptyMap()) {
+
+    /**
+     * The counts, one per node that has ticked.
+     *
+     * **This map is a copy and it refuses a write.** A caller that kept the
+     * map it passed cannot reach this value, and a caller that casts this
+     * value to a mutable map receives an error.
+     *
+     * Measured on 2026-09-23, before the copy existed: a caller changed the
+     * map it had passed, [total] stayed as it was, and [ClockStamp.ORDER]
+     * then answered that a clock came before its own cause.
+     *
+     * **A count of zero is not stored.** It reads the same as an absent
+     * count, and two values that compare equal must be equal.
+     */
+    val counters: Map<Int, Long>
 
     /**
      * The sum of every count.
@@ -26,20 +43,29 @@ data class VectorClock(val counters: Map<Int, Long> = emptyMap()) {
      * the sum is lower. [ClockStamp.ORDER] reads it for that reason.
      *
      * It is computed once, here, so that a sort reads it without adding the
-     * counts again for every comparison.
+     * counts again for every comparison. That is safe because the map cannot
+     * change.
      */
     val total: Long
 
     init {
-        counters.forEach { (node, count) ->
+        source.forEach { (node, count) ->
             require(node in NodeId.MIN..NodeId.MAX) { indexMessage(node) }
             require(count >= 0L) { countMessage(node, count) }
         }
+
+        counters = Collections.unmodifiableMap(LinkedHashMap(source.filterValues { it != 0L }))
 
         total = counters.entries.fold(0L) { carried, entry ->
             add(carried, entry.value) { overflowMessage("The counts of this clock") }
         }
     }
+
+    override fun equals(other: Any?): Boolean = other is VectorClock && other.counters == counters
+
+    override fun hashCode(): Int = counters.hashCode()
+
+    override fun toString(): String = "VectorClock(counters=$counters)"
 
     /** The count this clock holds for one node, or zero. */
     fun countOf(node: NodeId): Long = counters[node.value] ?: 0L

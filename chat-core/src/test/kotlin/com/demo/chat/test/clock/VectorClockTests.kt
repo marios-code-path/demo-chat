@@ -270,6 +270,117 @@ class VectorClockTests {
         assertThat(VectorClock().total).isEqualTo(0L)
     }
 
+    // ---- restart ----
+
+    /**
+     * **A fresh clock repeats the stamps of the clock before it.**
+     *
+     * This is not a defect of the clock. It is a requirement on whatever
+     * stores a stamp. A node id lease stops two processes owning one id at
+     * one time, and it keeps no counter, so a restart starts at one again.
+     *
+     * So two different grants can carry one stamp, and a new grant can sort
+     * before an older one. `CHAT-ojbgbznh` records that the integration must
+     * recover the counter from the store, or give each process lifetime its
+     * own identity.
+     */
+    @Test
+    fun `a fresh clock repeats the first stamp of one node`() {
+        val first = NodeClock(NODE_1).tick()
+        val second = NodeClock(NODE_1).tick()
+
+        assertThat(second.clock).isEqualTo(first.clock)
+        assertThat(ClockStamp.ORDER.compare(first, second)).isZero()
+    }
+
+    /** Reading the store before the first write is what closes the gap. */
+    @Test
+    fun `a clock that observes the stored counter does not repeat`() {
+        val stored = NodeClock(NODE_1).tick().clock
+        val restarted = NodeClock(NODE_1)
+
+        restarted.observe(stored)
+        val next = restarted.tick()
+
+        assertThat(stored.relate(next.clock)).isEqualTo(Relation.BEFORE)
+        assertThat(ClockStamp.ORDER.compare(ClockStamp(stored, NODE_1), next)).isNegative()
+    }
+
+    // ---- immutability and normalization ----
+
+    /**
+     * **A caller that keeps the map it passed must not reach the clock.**
+     *
+     * Measured on 2026-09-23, before the copy existed: the caller raised its
+     * own map, `total` stayed as it was, and the order then answered that a
+     * clock came before its own cause.
+     */
+    @Test
+    fun `a change to the map that was passed does not reach the clock`() {
+        val passed = mutableMapOf(NODE_1.value to 1L)
+        val clock = VectorClock(passed)
+
+        passed[NODE_1.value] = 3L
+
+        assertThat(clock.countOf(NODE_1)).isEqualTo(1L)
+        assertThat(clock.total).isEqualTo(1L)
+        assertThat(clock.relate(VectorClock(mapOf(NODE_1.value to 2L)))).isEqualTo(Relation.BEFORE)
+    }
+
+    /** The order must agree with causality after a caller keeps its map. */
+    @Test
+    fun `the order holds after a change to the map that was passed`() {
+        val passed = mutableMapOf(NODE_1.value to 1L)
+        val early = ClockStamp(VectorClock(passed), NODE_1)
+        val later = ClockStamp(VectorClock(mapOf(NODE_1.value to 2L)), NODE_1)
+
+        passed[NODE_1.value] = 3L
+
+        assertThat(ClockStamp.ORDER.compare(early, later)).isNegative()
+    }
+
+    /** A cast to a mutable map must not reach the counts either. */
+    @Test
+    fun `the counts refuse a write`() {
+        val clock = VectorClock(mapOf(NODE_1.value to 1L))
+
+        @Suppress("UNCHECKED_CAST")
+        val asMutable = clock.counters as MutableMap<Int, Long>
+
+        assertThatThrownBy { asMutable[NODE_1.value] = 9L }
+            .isInstanceOf(UnsupportedOperationException::class.java)
+    }
+
+    /**
+     * **Two values that compare equal must be equal.** A count of zero reads
+     * the same as an absent count, so it is not stored.
+     */
+    @Test
+    fun `a zero count is not stored`() {
+        val zero = VectorClock(mapOf(NODE_1.value to 0L))
+
+        assertThat(zero.counters).isEmpty()
+        assertThat(zero).isEqualTo(VectorClock())
+        assertThat(zero.total).isEqualTo(0L)
+    }
+
+    @Test
+    fun `a clock with a zero count orders and compares as the empty clock`() {
+        val empty = ClockStamp(VectorClock(), NODE_1)
+        val zero = ClockStamp(VectorClock(mapOf(NODE_1.value to 0L)), NODE_1)
+
+        assertThat(ClockStamp.ORDER.compare(empty, zero)).isZero()
+        assertThat(empty).isEqualTo(zero)
+    }
+
+    @Test
+    fun `a zero count beside a real count is dropped`() {
+        val clock = VectorClock(mapOf(NODE_1.value to 2L, NODE_2.value to 0L))
+
+        assertThat(clock.counters).containsExactly(java.util.Map.entry(NODE_1.value, 2L))
+        assertThat(clock).isEqualTo(VectorClock(mapOf(NODE_1.value to 2L)))
+    }
+
     private fun randomStamp(random: java.util.Random): ClockStamp {
         val counters = (0..3)
             .filter { random.nextBoolean() }

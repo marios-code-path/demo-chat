@@ -1664,8 +1664,8 @@ The stack described in the section above merged. Everything below is on
 
 ### The build surface now
 
-- Default: 36 modules, 894 tests, 0 failures, 0 errors, 30 skipped.
-- `--ci`: 27 modules run tests, 1127 tests, 0 failures, 0 errors, 54 skipped.
+- Default: 36 modules, 902 tests, 0 failures, 0 errors, 30 skipped.
+- `--ci`: 27 modules run tests, 1135 tests, 0 failures, 0 errors, 54 skipped.
   Measured on 2026-09-23 against Docker Engine 29.7.2.
 - The counts moved as tests landed. `CHAT-hazcatpc` added three,
   PR #126 added two that only `--ci` runs, `CHAT-cophllrg` added two, and
@@ -2186,6 +2186,24 @@ lower or equal and one count lower. So a cause always sorts before its
 effect, and the comparison is transitive because it compares numbers. A tie
 reads the origin, then the counts themselves.
 
+
+
+**The value cannot change after it is built.** `VectorClock` copies the map it
+is given and the copy refuses a write, and it is not a data class, so no
+`copy` carries an unchecked map past the constructor. **A cached sum over a
+mutable input gave a wrong order.** Measured on 2026-09-23: a caller kept the
+map it had passed and raised a count, `total` stayed as it was, `relate` read
+the new count, and the order then said a clock came before its own cause.
+
+**A count of zero is not stored.** It reads the same as an absent count, so
+`{}` and `{1:0}` compared equal through the order and were unequal objects. A
+sorted set would have held one and a hash set two.
+
+**A restart repeats stamps, and that is a requirement on the integration.** A
+fresh `NodeClock` starts at zero, so the first stamp after a restart equals
+the first before it. The node id lease does not close this, because it keeps
+no counter. `CHAT-ojbgbznh` must recover the counter from the store before the
+first write, or give each process lifetime its own identity.
 
 **The clock refuses a value it cannot order.** A stamp reaches this code from
 a store, so the constructor is a boundary. `VectorClock` refuses a count that
