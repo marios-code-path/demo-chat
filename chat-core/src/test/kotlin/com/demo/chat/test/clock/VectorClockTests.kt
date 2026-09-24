@@ -355,13 +355,22 @@ class VectorClockTests {
         repeat(200) {
             val shifting = ShiftingMap(NODE_1.value, legal = 1L, illegal = -5L)
 
-            val kept = runCatching { VectorClock(shifting).countOf(NODE_1) }
-
-            kept.onSuccess { count ->
-                assertThat(count)
-                    .withFailMessage("the clock kept a count that no check read")
-                    .isEqualTo(1L)
-            }
+            // **Two outcomes are permitted and no others.** The clock keeps
+            // the legal count, or it refuses the illegal one by name. A bare
+            // runCatching would let an unrelated failure satisfy this test.
+            runCatching { VectorClock(shifting).countOf(NODE_1) }.fold(
+                onSuccess = { count ->
+                    assertThat(count)
+                        .withFailMessage("the clock kept a count that no check read")
+                        .isEqualTo(1L)
+                },
+                onFailure = { thrown ->
+                    assertThat(thrown)
+                        .withFailMessage("the clock failed for a reason it does not state")
+                        .isInstanceOf(IllegalArgumentException::class.java)
+                        .hasMessageContaining("never negative")
+                }
+            )
         }
     }
 
