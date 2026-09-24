@@ -174,6 +174,68 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(answer).isTrue()
     }
 
+    /**
+     * **A self grant reaches its owner and nobody else.** `userinit.yml` grants
+     * `Admin` the wildcard on `Admin`. The actor set held the target key until
+     * `CHAT-ixzpkqxg`, so that row passed the actor filter for every caller that
+     * asked about `Admin`.
+     */
+    @Test
+    fun `a self grant does not reach a third caller`() {
+        val broker = broker(shippedGrants())
+
+        assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY, "GET").block()).isFalse()
+        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(ADMIN_KEY), "GET").block()).isFalse()
+    }
+
+    /**
+     * **A key holds every right over itself, and no row is needed.** The rule is
+     * in the broker, so the administrator reaches `Admin` with no grant at all.
+     */
+    @Test
+    fun `the administrator holds every right over itself with no row`() {
+        val broker = broker(listOf())
+
+        assertThat(broker.hasAccessByKey(ADMIN_KEY, ADMIN_KEY, "GET").block()).isTrue()
+    }
+
+    /** The same rule reaches the caller of the security context. */
+    @Test
+    fun `an authenticated caller holds every right over itself`() {
+        val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys())
+
+        val answer = service.hasAccessTo(CALLER_KEY, "DEL")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block() ?: false
+
+        assertThat(answer).isTrue()
+    }
+
+    /**
+     * **Self authority is absolute.** A close is an expired wildcard on a domain
+     * root principal, and it removes every named grant. It does not remove the
+     * authority of a key over itself.
+     */
+    @Test
+    fun `a close does not remove self authority`() {
+        val close = grant(USER_ROOT, CALLER_KEY, "*", expires = 1L)
+
+        assertThat(broker(listOf(close)).hasAccessByKey(CALLER_KEY, CALLER_KEY, "GET").block()).isTrue()
+    }
+
+    /**
+     * **Self authority covers the caller alone in a list.** The many target
+     * check still reads the grants of every other target. A list that holds
+     * only the caller allows. A list that adds a target with no grant denies.
+     */
+    @Test
+    fun `self authority does not widen a many target check`() {
+        val broker = broker(listOf())
+
+        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(CALLER_KEY), "GET").block()).isTrue()
+        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(CALLER_KEY, ROOM_KEY), "GET").block()).isFalse()
+    }
+
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
         operations().associate { (operation, call) -> operation to allowed(call, context) }
 
