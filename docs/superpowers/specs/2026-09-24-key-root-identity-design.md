@@ -1,13 +1,39 @@
 # Root identity on keys: design for review
 
-Issue `CHAT-avduuqwp`. Status: **draft for owner review. No code changed.**
+Issue `CHAT-avduuqwp`. Status: **revised after the first owner review on
+2026-09-24. No code changed.**
 
 This issue blocks `CHAT-rfzsnbco`, the two-target scan. That scan blocks the
 closure work in `CHAT-ylfxsthp`.
 
-The owner proposed `Key<T>` with `root_id: T` in the PR #134 review. This
-document treats that as a proposal. It measures the current state first, then
-compares three options.
+The owner proposed `Key<T>` with `root_id: T` in the PR #134 review. The first
+version of this document measured the current state and compared three
+options. The owner chose option C as the first stage and recorded four
+decisions. This revision records them, corrects two claims, and states the
+stage 1 contract.
+
+## Owner decisions, 2026-09-24
+
+1. **Option C is the first stage.** It does not complete the original scope.
+   Routing by root identity and a domain on the key stay open.
+2. **Durable authorization needs stable roots.** `CHAT-bafkgkko` tracks that
+   work. Nothing here claims correctness across a restart until it is done.
+3. **The server does not trust a domain that a caller asserts.**
+4. **One typed domain registry.** `MessageKey` maps to `Message`.
+   `TopicMembershipByKey` maps to `TopicMembership`. `KeyCredential` and the
+   generic `Key` stay unresolved until each has an ownership contract.
+
+## Two corrections to the first version
+
+**1. The registry is not a trusted origin.** The first version said that option
+C trusts no caller input, because the registry is the record of the server.
+That was wrong. The registry records the class that the mint call named, and
+a client can name that class. See finding 10. A registry entry alone does not
+prove that an entity belongs to that domain.
+
+**2. A cache is not safe by assertion.** The first version said a cache is safe
+because a key never changes domain. That ignores `IKeyService.rem`. A removed
+key must not keep resolving. The stage 1 contract below states the rules.
 
 ## The question the target scan asks
 
@@ -16,8 +42,19 @@ root of that target. So the check must answer one question:
 
 **Which domain root covers this target key?**
 
-The answer must be available at check time. It must not come from caller input
-that the server has not verified.
+The answer must be available at check time. It must come from a record that
+the server validated, not from caller input.
+
+## Two separate problems
+
+**Domain resolution** answers which domain a key belongs to. Option C gives
+this answer after a restart, because the registry holds a name and a name does
+not change.
+
+**Grant continuity** keeps a grant that names a root key valid after a
+restart. Option C does not give this. A grant stores the root key id, and the
+next start holds a different root key id. See finding 6. `CHAT-bafkgkko`
+owns this problem.
 
 ## Measured state
 
@@ -88,7 +125,7 @@ Two consequences. Neither was observed with a restart.
   start does not hold.
 - `InitialUsersService` writes the shipped grants again on each start, against
   the new roots. The rows from the earlier start stay in the store and reach
-  nothing.
+  nothing. A grant written at run time on a domain root does not survive.
 
 ### 7. The wire shape accepts an added field
 
@@ -115,6 +152,22 @@ change to the key on the wire changes both.
 counts are `chat-service-composite` 17, `chat-webflux` 9 and
 `chat-index-cassandra` 9.
 
+### 10. Two inbound routes let a client name the domain at mint
+
+Found in the first owner review, and confirmed from source.
+
+- **HTTP.** `IKeyRestMapping.restKey` reads `req.kind` from the request body
+  and calls `key(Class.forName(req.kind))`. So the client names the class that
+  the registry records. `Class.forName` also loads any class on the classpath
+  that the client names, and that runs its static initializer.
+  `IKeyController` implements this route.
+- **RSocket.** `IKeyServiceMapping.key` takes a `Class<S>` from the payload.
+  `KeyServiceController` implements this route.
+- `IKeyServiceAccess.key` carries
+  `@PreAuthorize("@chatAccess.hasAccessToDomainByKind(#kind, 'NEW')")`. **No
+  production class implements `IKeyServiceAccess`.** So nothing checks either
+  route today.
+
 ## Three options
 
 ### A. `root_id: T` on `Key` (the owner proposal)
@@ -122,96 +175,141 @@ counts are `chat-service-composite` 17, `chat-webflux` 9 and
 The key carries the id of its domain root. A check reads it with no store
 read.
 
-- **Needs stable root keys first.** Finding 6 means a stored `root_id` goes
-  stale at the next start of the creating node. Root keys must be written once
-  and read back after that.
-- **Every construction site must carry it.** That is 63 `funKey` sites, every
+- Needs stable root keys first. See finding 6 and `CHAT-bafkgkko`.
+- Every construction site must carry it. That is 63 `funKey` sites, every
   `MessageKey.create`, and every deserializer.
-- **Every store must carry it, or derive it.** Old Redis JSON and old Cassandra
+- Every store must carry it, or derive it. Old Redis JSON and old Cassandra
   rows do not hold it.
-- **A key from a client carries a root that the server cannot trust.** A caller
-  can label a message key as a topic key. So the server must check the value
-  against its own record. The record exists already, as finding 2 shows.
+- A key from a client carries a root that the server cannot trust. The server
+  must check the value against a record that it validated.
 
 ### B. A fixed domain name on `Key`
 
-The key carries a domain name from one registry, not a root key id. For
-example a string or an enum.
+The key carries a domain name from one registry, not a root key id.
 
 - Removes the stability problem, because a name is a constant.
-- Keeps every other cost of option A: 63 sites, the wire change, the stores,
-  and the trust problem.
+- Keeps every other cost of option A.
 
 ### C. Resolve the domain on the server, with no change to `Key`
 
-At check time the server reads the domain from its own key registry:
-`IKeyService.kind(key)`, then `RootKeys` by that name.
+At check time the server reads the domain from its own key registry, then the
+root key from `RootKeys`.
 
-- **No wire change and no storage schema change.**
-- **No caller input is trusted.** The registry is the record of the server.
-- **One registry read per checked target.** A key never changes domain, so a
-  cache is safe.
-- **The names must agree first.** One registry of domain names must serve both
-  the mint sites and `RootKeys`. Finding 5 lists the drift that must be
-  repaired. The rows already written with a drifted name need a mapping or a
-  rewrite.
-- **It does not need stable root keys.** The registry answers a name, and
-  `RootKeys` answers the root key of the current start.
+- No wire change and no storage schema change.
+- One registry read per checked target.
+- **It is trustworthy only when mint and persistence are validated.** The
+  stage 1 contract states both.
+- It gives domain resolution after a restart. It does not give grant
+  continuity.
 
-## Recommendation
+## Stage 1 contract: option C
 
-**Option C first.** It answers the question of the target scan. It needs no
-stable roots, no wire change and no trust in caller input.
+### The typed domain registry
 
-**Option C does not follow the issue text exactly.** The issue says to replace
-the kind relationship and to add no backwards compatibility for it. Option C
-formalizes that relationship as the resolver, and it repairs the names. That
-choice is the owner's.
+One registry names every domain. It replaces `KnownRootKeys` as the list of
+domains, and it holds the aliases.
 
-Option A or B stays available as a later step. The issue also asks to route by
-root identity and to resolve a key to its owning service. A client that routes
-a key without a server round trip needs the domain on the key. The target scan
-does not.
+| Domain | Accepted mint classes |
+|---|---|
+| `User` | `User` |
+| `Message` | `Message`, `MessageKey` |
+| `MessageTopic` | `MessageTopic` |
+| `TopicMembership` | `TopicMembership`, `TopicMembershipByKey` |
+| `AuthMetadata` | `AuthMetadata` |
+| `KeyValuePair` | `KeyValuePair` |
 
-## Decisions for the owner
+`KeyCredential` and the generic `Key` have no domain. A key minted for either
+resolves to no domain. The owner defines their ownership contracts later.
 
-1. **Option A, B or C.**
-2. **Must domain root keys be stable across a restart?** Option A needs it. It
-   also closes the grant leak in finding 6. It can be its own issue.
-3. **Does the server trust a domain carried on an inbound key?** For A and B,
-   this document recommends never. The server checks the value against its
-   registry.
-4. **One registry of domain names.** `KnownRootKeys` is the nearest existing
-   list. Decide the names for `MessageKey`, `TopicMembershipByKey`,
-   `KeyCredential` and `Key`. Each is either mapped to a domain or refused at
-   mint.
+`RootKeys` takes its domain names from this registry. A free text name never
+reaches `RootKeys`.
 
-## Tests the chosen option needs
+### Rule 1: validate at mint
 
-These come from the issue. Each option satisfies them in its own way.
+- `IKeyService.key` accepts a class that the registry lists, and it records
+  the domain, not the class name.
+- Any other class is refused at mint. This covers the two inbound routes in
+  finding 10.
+- `restKey` maps the request name through the registry. It does not call
+  `Class.forName`. An unknown name is refused before any class loads.
+- The RSocket `key` route applies the same registry check.
 
-- A new key resolves to the expected domain root.
-- Memory, Redis and Cassandra store and recover the domain.
-- A wrong domain is refused.
-- The domain resolves to the expected typed service.
+The two unresolved classes, `KeyCredential` and `Key`, have live mint sites in
+`SecretsRestMapping` and `chat-shell`. Stage 1 must decide per site: refuse
+the mint, or record the key with no domain. This document recommends **record
+with no domain**, so the site keeps working and the key always denies at a
+domain check.
+
+### Rule 2: validate at persistence
+
+A registry entry records what the mint call named. It does not prove that an
+entity belongs to that domain. So each typed store checks the key it receives.
+
+- `add(entity)` resolves the key of the entity through the registry.
+- The store refuses the entity when the resolved domain differs from its own
+  domain.
+- The store refuses a key that the registry does not know.
+
+Rule 1 limits which domains exist. Rule 2 binds an entity to one of them.
+Together they make the registry a validated record.
+
+Before stage 1 enforces rule 2, it must measure every `add` path. A path that
+builds a key with `Key.funKey` from caller input, rather than from `key()`,
+would fail rule 2. That list does not exist yet.
+
+### Rule 3: resolve at check time
+
+`resolve(key)` reads the registry, then `RootKeys`. A key with no domain, an
+unknown key and a removed key each resolve to nothing. **Nothing denies.**
+
+### Rule 4: removal and caching
+
+`IKeyService.rem` removes a registry entry. A removed key must resolve to
+nothing on every node.
+
+- **Stage 1 does not cache.** A cache on one node does not see a `rem` on
+  another node.
+- A later cache needs its own design. It must bound how long a removed key can
+  still resolve, and it must show that ids are never reused. Snowflake and
+  UUID ids are not reused by design, and nothing here measured that.
+- The cost of one registry read per checked target is not measured. Measure it
+  before any cache is proposed.
+
+### Rule 5: rows that already exist
+
+Registry rows written before stage 1 hold class names. The aliases map
+`MessageKey` and `TopicMembershipByKey` on read, so no rewrite is needed.
+Rows that hold `KeyCredential`, `Key` or another name resolve to no domain,
+and they deny.
+
+### What stage 1 does not deliver
+
+- Grant continuity across a restart. `CHAT-bafkgkko` owns it.
+- A domain on the key, and routing by root identity. These are options A or B,
+  in a later stage.
+- Ownership contracts for `KeyCredential` and the generic `Key`.
+
+## Tests for stage 1
+
+- Every registry domain has a root in `RootKeys`, and every alias resolves to
+  its domain.
+- A key minted for each listed class resolves to the expected root.
+- A key minted for `KeyCredential` or `Key` resolves to no domain, and a
+  domain check denies it.
+- Mint refuses an unlisted class. `restKey` refuses an unknown name and loads
+  no class.
+- A typed store refuses an entity whose key resolves to another domain, and an
+  entity whose key the registry does not know.
+- A removed key resolves to no domain on memory, Redis and Cassandra.
+- A row written with an old alias name resolves to its domain.
 - No production path compares a domain name as free text.
-
-For option A or B, add:
-
-- The domain survives JSON and RSocket serialization.
-- A payload without the domain is accepted or refused, as decided.
-- The Cassandra integration covers the new column or type.
-
-For option C, add:
-
-- Every mint site stores a name that `RootKeys` holds. One test reads every
-  `key(Class)` call site.
-- A key that the registry does not know denies at the check.
 
 ## Not measured
 
 - A restart of a node with `app.rootkeys.create=true`. Finding 6 is read from
   source.
 - The cost of one registry read per checked target, on any backend.
+- Whether ids are ever reused on any backend.
+- The list of `add` paths that build a key outside `key()`.
 - Whether any client decodes a key with a reader stricter than the two
   deserializers named in finding 7.
