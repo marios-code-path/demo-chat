@@ -40,7 +40,7 @@ three `Anon` rows alone.
 
 | Principal | Target | Permission | Reaches a caller |
 |---|---|---|---|
-| `Admin` | `Admin` | `*` | only a caller holding the `Admin` key |
+| `Admin` | `Admin` | `*` | passes the actor filter when the target is `Admin`, and no operation in this matrix checks that target |
 | `Anon` | `User` | FIND | yes |
 | `Anon` | `User` | PUT | yes |
 | `Anon` | `Message` | GET | yes, and no operation matches its target |
@@ -53,6 +53,10 @@ three `Anon` rows alone.
 "Reaches a caller" is the principal side. "No operation matches its target"
 means the row names a domain root while every operation that asks for that
 permission names one object. Result 3 below carries that.
+
+The actor set holds the target key beside the caller and the two roots. So a
+row whose principal is its own target passes the actor filter for every
+caller. The `Admin` row is that case.
 
 ## The matrix
 
