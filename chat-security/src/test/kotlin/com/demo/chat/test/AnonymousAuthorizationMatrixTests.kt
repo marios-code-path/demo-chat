@@ -64,7 +64,7 @@ class AnonymousAuthorizationMatrixTests {
                 "send room SEND" to false,
                 "whoami User FIND" to true,
                 "messageById GET" to false,
-                "listRooms MessageTopic ALL" to false,
+                "listRooms MessageTopic ALL" to true,
                 "addUser User NEW" to false
             )
         )
@@ -140,6 +140,40 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(allowedWith(listOf(live), anonymousContext())).isTrue()
     }
 
+    /**
+     * **A row that names the `User` root reaches every caller.** Every caller
+     * is a user, so the actor set carries the `User` root beside the anonymous
+     * key. See `CHAT-mahevldm`.
+     *
+     * This is the single target path, which is `getAuthorizationsAgainst`.
+     */
+    @Test
+    fun `a row naming the User root reaches a caller through one target`() {
+        val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
+        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys())
+
+        val answer = service.hasAccessToDomain("MessageTopic", "ALL")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block() ?: false
+
+        assertThat(answer).isTrue()
+    }
+
+    /**
+     * The many target path, which is `getAuthorizationsAgainstMany`. It builds
+     * its own actor set, so it needs its own reading.
+     */
+    @Test
+    fun `a row naming the User root reaches a caller through many targets`() {
+        val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
+
+        val answer = broker(listOf(row))
+            .hasAccessByManyKeys(CALLER_KEY, listOf(TOPIC_ROOT), "ALL")
+            .block() ?: false
+
+        assertThat(answer).isTrue()
+    }
+
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
         operations().associate { (operation, call) -> operation to allowed(call, context) }
 
@@ -203,7 +237,7 @@ class AnonymousAuthorizationMatrixTests {
 
         return AuthMetadataAccessBroker(
             CoreAuthorizationService(
-                store, index, { it }, { it }, { ANON_KEY },
+                store, index, { it }, { it }, { ANON_KEY }, { USER_ROOT },
                 AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
             )
         )

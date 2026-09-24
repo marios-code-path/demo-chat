@@ -2079,11 +2079,17 @@ Three results that are easy to miss.
    query, so an authenticated caller reaches the same answers.
 2. **The four `user: User` rows of `userinit.yml` reach nobody.** They name
    the `User` root key as principal, and a caller holds its own key.
+   **This no longer holds. `CHAT-mahevldm` closed it on 2026-09-24.** The
+   actor set carries the `User` root, so those rows reach every caller.
 3. **A grant on a domain root does not cover one object.** `Anon` holds
-   `Message:GET`, and `messageById` checks one message key.
+   `Message:GET`, and `messageById` checks one message key. This still holds.
+   `CHAT-rfzsnbco` carries the target side.
 
 So the shipped configuration allows `User:FIND` and `User:PUT` to every
 caller that reaches an identity. **Every write operation denies.**
+**Read that sentence as of 2026-09-23.** Since `CHAT-mahevldm` the
+configuration also allows `MessageTopic:ALL`, so `listRooms` allows. Every
+write operation still denies. See the close policy section below.
 
 Expiry is on the grant, not on a credential. `AuthSummarizer` keeps a row when
 `expires` is `0L` or in the future.
@@ -2106,6 +2112,9 @@ credential. The matrix denies both.
 in the programmatic wrappers. **Read the matrix before turning the checks on.**
 Enabling them against the shipped grants would deny `addRoom`, `send` and
 `listRooms` to every caller. The grants need a decision before the wiring does.
+**`listRooms` left that list on 2026-09-24.** `CHAT-mahevldm` made the
+`user: User` rows reach a caller, so `listRooms` allows. `addRoom` and `send`
+still deny.
 
 
 ### The operation policy draft, and a configuration guard (2026-09-23)
@@ -2294,3 +2303,32 @@ debt. It does **not** rank by feature value. The owner's direction on
 2026-09-10 was to move on to features after the security pass. That pass is now
 done, so the next feature decision, which is the real embedding model, still
 has no issue and is still the owner's.
+
+## Close policy update (2026-09-24)
+
+PR #136 merged as `ad768b21`. `CHAT-rgdcyxlv` (wildcard expansion) and
+`CHAT-lbhmzccn` (rank) are done. `*` is the singular ownership sentinel and
+ranks above named grants. `CHAT-ylfxsthp` remains in progress: closure does not work yet.
+
+**`CHAT-mahevldm` did not need `CHAT-avduuqwp`, and it is done.** An earlier
+version of this section said it waited on that issue. Measured on 2026-09-24:
+every caller is a user, because `ContextIdentity` answers the key of a user or
+the `Anon` root key, and `Anon` is an object of the `User` domain. So the
+domain root of a principal is always the `User` root, and no domain on the key
+is needed to name it.
+
+**`CHAT-rfzsnbco` (two-target scan) does still need `CHAT-avduuqwp`**, because
+a target can belong to any domain. That dependency supersedes the older queue's
+tier-3 placement of `CHAT-avduuqwp`.
+
+**One row of the shipped matrix moved, and it is the first authorization
+behaviour this work changed.** `listRooms` went from deny to allow, for an
+anonymous caller and for an authenticated one, because
+`{user: User, target: MessageTopic, role: ALL}` now reaches a caller. Nothing
+enforces the checks in a deployment, which `CHAT-znprrzhn` holds, so no
+running composition behaves differently today.
+`docs/ANONYMOUS-AUTHORIZATION.md` carries the new matrix.
+
+Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
+`CHAT-rmxxtwtu` holds Cassandra authorization index retention and deletion defects.
+This design remains unmeasured against Cassandra.

@@ -28,6 +28,7 @@ open class CoreAuthorizationServiceTests(
         AuthMetadataPrincipleKeySearch(TypeUtil.LongUtil),
         AuthMetadataTargetKeySearch(TypeUtil.LongUtil),
         { Key.funKey(ANON_ID) },
+        { Key.funKey(USER_ROOT_ID) },
         AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(RootKeys()))
     ),
     Supplier {
@@ -43,6 +44,9 @@ open class CoreAuthorizationServiceTests(
     companion object {
         val atomicLong = AtomicLong(Random.nextLong(1024, 2048))
         const val ANON_ID = 0L
+
+        /** The `User` root. Every actor set carries it. See CHAT-mahevldm. */
+        const val USER_ROOT_ID = -1L
         const val TARGET_ID = 2L
         const val PRINCIPAL_ID = 1L
         const val TEST_PERMISSION = "ALL"

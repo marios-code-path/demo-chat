@@ -5,6 +5,7 @@ import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.Summarizer
@@ -33,6 +34,7 @@ open class CoreAuthBeans<T, V, Q>(
             authMetaPrincipalSearch,
             authMetaTargetSearch,
             { rootKeys.getRootKey(Anon::class.java) },
+            { rootKeys.getRootKey(User::class.java) },
             authSummarizer,
         )
 
