@@ -6,6 +6,13 @@ What the `Anon` root key may do. Measured on 2026-09-23 at master `4fcae69c`.
 document states what that identity may then do.** They are separate questions,
 and a green identity test proves nothing here.
 
+**This matrix describes a store that keeps every grant row.** The test
+replaces the store and the index with maps. Measured on 2026-09-24, the
+cassandra authorization index keeps one row per target and one row per
+principal, so it cannot hold the four `User` root rows that `userinit.yml`
+writes. **Do not read this matrix as the answer for a cassandra deployment.**
+`CHAT-rmxxtwtu` holds that defect.
+
 `AnonymousAuthorizationMatrixTests` holds the measurement. It wires the
 production `CoreAuthorizationService`, `AuthSummarizer`,
 `AuthMetadataAccessBroker` and `SpringSecurityAccessBrokerService`, and

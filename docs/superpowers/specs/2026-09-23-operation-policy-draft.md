@@ -400,8 +400,9 @@ So the close row must beat every earlier row on that room, whatever principal
 that row names. Specificity cannot state this, because the row it must beat
 and the row it must lose to both name an object principal.
 
-**The rows need one more dimension, and it must be explicit.** A precedence
-value on the row is one candidate.
+**The evaluator needs explicit state that distinguishes ownership from ordinary grants.**
+A precedence value on the row is one candidate. The room-level state proposal
+below is another candidate.
 
 - A close writes at the highest precedence, so every earlier row sits below
   it.
@@ -438,7 +439,8 @@ Four contracts must exist before this mechanism is reviewable. None exists.
 **Contract 4 is closed. The owner decided on 2026-09-24: one owner per
 target.**
 
-- `dest{ROLE=*}` is a function. A close has one row to preserve.
+- In valid state, `dest{ROLE=*}` identifies one owner. Concurrent enforcement
+  remains open. The evaluator must not select an arbitrary holder from invalid state.
 - **A second `*` grant on a target is refused at the source.** `*` is written
   at creation and by system definition, which is the owner view recorded above
   under `The owner question, recorded and not decided`. That question is now
@@ -490,9 +492,164 @@ mechanism writes two rows whatever the room holds.
 `CHAT-lbhmzccn` cannot land before this is settled, because the comparator
 cannot state either answer on its own.
 
-### What the code must gain
+### Room-level LWT proposal, recorded on 2026-09-24
 
-Three changes. Each one is measured at master `579a23ba`.
+**This is a design proposal, not an implemented storage guarantee.** It
+addresses atomic visibility, crash recovery, and transition authority together.
+It does not authorize a precedence field or a wire change.
+
+#### Coordinate the room
+
+The coordination key is the room identity. It is not the tuple
+`(source, destination, grant)`. Closure affects every principal and permission
+on that room. Independent grant heads cannot enforce unique ownership or
+atomic closure across those grants.
+
+The proposed authoritative record is:
+
+```text
+room_authorization
+room_id | revision | owner_id | lifecycle | operation_id
+```
+
+The physical key must include the deployment partition wherever that partition
+separates otherwise identical room identifiers. This layout is conceptual, not
+a final CQL schema.
+
+Creation conditionally establishes the owner and lifecycle together. Closure
+conditionally changes lifecycle and retains the owner. Transfer conditionally
+replaces the owner against the revision used for its authorization decision.
+
+Cassandra lightweight transactions provide conditional, linearizable updates.
+They supply the proposed serialization point for these transitions.
+See [Cassandra guarantees](https://cassandra.apache.org/doc/stable/cassandra/architecture/guarantees.html).
+
+#### Atomic visibility and evaluation
+
+The evaluator reads owner and lifecycle from one authoritative state. A closed
+room preserves owner access and denies every other caller. Ordinary grants
+cannot override closure.
+
+This proposal replaces the separate closure and owner-preservation rows with
+one lifecycle transition. Precedence becomes an evaluation rule rather than a
+caller-supplied value on each grant.
+
+Creation must prevent room use before authorization state commits. A room
+record in another table does not commit atomically with this record merely
+because both records name the same room. Creation needs a publication protocol
+and recovery for partial publication.
+
+Missing ownership or multiple legacy owners must not cause arbitrary owner
+selection. The response and repair procedure remain design decisions.
+
+#### Crash recovery and retries
+
+A process crash cannot commit half of one LWT state transition. However, a
+timeout or lost response can leave the caller uncertain about its result.
+The writer must reconcile that outcome before retrying.
+
+A single `operation_id` in HEAD is insufficient for durable retry evidence.
+A later transition can replace it before the earlier caller retries. The
+design must define durable operation receipts, retention, and retry behavior.
+
+Complete history also needs durable event capture with the commit. If revision
+18 disappears from HEAD before projection, an asynchronous logger cannot
+reconstruct it from revision 19. The final design must specify how committed
+events survive until projection succeeds.
+
+The append-only history can remain a projection. It cannot establish current
+authorization or guarantee complete audit history without that capture protocol.
+
+#### Transition authority and consistency
+
+LWT checks expected state. It does not determine whether a caller may close a
+room, transfer ownership, or create a grant.
+
+The application must define authorized transitions and validate their callers.
+The conditional write must check the revision used for that validation. All
+relevant writers must follow this protocol, including initialization and repair.
+An unconditional write must not bypass it.
+
+Readers need an explicit consistency contract. An eventual read or stale cache
+can allow access after closure. Cassandra supports serial reads for LWT state.
+An earlier version of this line cited the Go driver. This repository uses the
+Java driver, so that citation is removed rather than replaced. Take the
+consistency level from the Java driver documentation when this is designed.
+
+The design must select consistency levels and their datacenter scope. It must
+also define cache behavior and operations already authorized when closure commits.
+A state CAS alone does not make a later message write atomic with authorization.
+
+#### Current storage boundary, and two live defects
+
+The current Cassandra mappings do not implement this protocol. **They also do
+not hold more than one grant per target.** Measured on 2026-09-24 at
+`f75be89b`.
+
+**Defect one. The cassandra authorization index keeps one row per target and
+one row per principal.**
+
+`keyspace-long.cql` and `keyspace-uuid.cql` declare
+`auth_metadata_target` with `PRIMARY KEY (target)` and
+`auth_metadata_principal` with `PRIMARY KEY (principal)`.
+`AuthMetadataByTarget` and `AuthMetadataByPrincipal` carry one `@PrimaryKey`
+each and no clustering column. So a second grant on one target **overwrites**
+the first.
+
+`CoreAuthorizationService` reads through `authIndex.findBy(queryForTarget)`,
+so on this backend a target answers at most one grant.
+
+Three consequences.
+
+1. **Every mechanism in this draft needs several rows on one target.** Order,
+   replacement, close and precedence all do. None of them can work on this
+   backend until the mapping changes.
+2. **The shipped `userinit.yml` does not survive.** It writes four rows whose
+   target is the `User` root key. One survives.
+3. **`docs/ANONYMOUS-AUTHORIZATION.md` does not describe this backend.** That
+   matrix was measured with a map store, which keeps every row.
+
+**Defect two. `AuthMetadataIndex.rem` removes nothing.** It calls
+`deleteById(key.id)` on both repositories, and `deleteById` uses the primary
+key of the entity, which is the target and the principal. So it deletes the
+row whose target equals a grant key id. This is the same shape as the
+`TopicIndex.rem` trap that the register already records.
+
+`AuthMetadataIndex.add` saves the target and principal entries sequentially.
+The shared persistence API supplies no conditional aggregate transition.
+Adding a revision field alone cannot provide the required guarantees.
+
+**Both defects are in shipped code and neither belongs to this design.**
+`CHAT-rmxxtwtu` holds them. Fix them before measuring any mechanism here
+against Cassandra.
+
+The shared authorization interface must define the transition contract.
+Each supported backend must provide equivalent guarantees or explicitly reject
+the unsupported composition. Cassandra LWT cannot establish guarantees for other backends.
+
+#### Required evidence before implementation is accepted
+
+1. Race two creation attempts for one room. Prove that only one owner commits.
+2. Close a room with a direct non-owner grant. Prove that only the owner retains access.
+3. Race transfer with closure. Prove that readers observe valid owner and lifecycle pairs.
+4. Crash during creation publication. Prove that no usable room lacks committed ownership.
+5. Lose a successful transition response. Prove that retry cannot duplicate the operation.
+6. Commit a later transition before retry. Prove that earlier operation evidence remains available.
+7. Stop history projection between revisions. Prove that every committed event remains recoverable.
+8. Test stale reads, caches, and concurrent grants against the chosen closure boundary.
+9. Reject unauthorized transitions and caller-supplied precedence overrides.
+10. Run the same transition contract tests for every supported backend.
+
+The remaining design decisions are publication, retry receipts, durable event
+capture, read consistency, transition authority, and invalid-state recovery.
+`CHAT-lbhmzccn` remains blocked on the policy mechanism.
+`CHAT-ojbgbznh` must not add precedence merely because this candidate exists.
+Clock stamps alone do not provide aggregate serialization or atomic publication.
+
+### Earlier implementation decomposition
+
+These three items describe the earlier comparator proposal, measured at master
+`579a23ba`. The LWT candidate requires a revised decomposition if selected.
 
 1. ~~**`*` must expand to the permission set during evaluation.**~~ **Done.**
    `AuthSummarizer.expand` rewrites a wildcard row to the permission that the
