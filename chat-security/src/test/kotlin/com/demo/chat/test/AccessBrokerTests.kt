@@ -17,17 +17,23 @@ import reactor.core.publisher.Flux
 import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class, MockKeyGeneratorResolver::class)
-class LongAccessBrokerTests(k: IKeyGenerator<Long>) : AccessBrokerTests<Long>(k)
+class LongAccessBrokerTests(k: IKeyGenerator<Long>, t: IKeyGenerator<Long>) : AccessBrokerTests<Long>(k, t)
 
 @Disabled
 open class AccessBrokerTests<T>(
-    private val keyGenerator: IKeyGenerator<T>
+    private val keyGenerator: IKeyGenerator<T>,
+    /**
+     * A second generator, so a target never equals the principal. The mock
+     * generator answers one key for every call. A key holds every right over
+     * itself since CHAT-ixzpkqxg, so one generator would test the self rule.
+     */
+    private val targetKeyGenerator: IKeyGenerator<T>
 ) {
 
     @Test
     fun `empty authMetadata disallows access`() {
         val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = keyGenerator.nextKey()
+        val objectForAccess = targetKeyGenerator.nextKey()
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         BDDMockito
@@ -49,7 +55,7 @@ open class AccessBrokerTests<T>(
     @Test
     fun `sufficient privileges allows access`() {
         val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = keyGenerator.nextKey()
+        val objectForAccess = targetKeyGenerator.nextKey()
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(
@@ -84,7 +90,7 @@ open class AccessBrokerTests<T>(
     @Test
     fun `insufficient privileges disallows access`() {
         val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = keyGenerator.nextKey()
+        val objectForAccess = targetKeyGenerator.nextKey()
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(

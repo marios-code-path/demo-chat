@@ -45,7 +45,15 @@ class CoreAuthorizationService<T, Q>(
     private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>
 ) : AuthorizationService<T, AuthMetadata<T>> {
 
-    /** Every actor set starts with the anonymous key and the principal domain root. */
+    /**
+     * The principals whose rows reach a caller: the anonymous key, the principal
+     * domain root, and the caller.
+     *
+     * **A target key is never an actor.** It was one until `CHAT-ixzpkqxg`, so a
+     * row whose principal equals its target passed this filter for every caller
+     * that asked about that target. The authority of a key over itself is a rule
+     * in `AuthMetadataAccessBroker`, not a row.
+     */
     private fun actors(vararg keys: Key<T>): Sequence<Key<T>> =
         sequenceOf(anonKey.get(), principalRootKey.get()) + keys.asSequence()
 
@@ -70,7 +78,7 @@ class CoreAuthorizationService<T, Q>(
     private fun getAuthorizationsForMultipleTarget(uids: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             Flux.concat(uids.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
-            actors() + uids
+            actors()
         )
 
     fun getAuthorizationsForMultiplePrincipal(uids: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
@@ -82,7 +90,7 @@ class CoreAuthorizationService<T, Q>(
     override fun getAuthorizationsForTarget(uid: Key<T>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             authIndex.findBy(queryForTarget.apply(uid)).flatMap(authPersist::get),
-            actors(uid)
+            actors()
         )
 
     override fun getAuthorizationsForPrincipal(uid: Key<T>): Flux<AuthMetadata<T>> = summarizer
@@ -95,14 +103,14 @@ class CoreAuthorizationService<T, Q>(
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             authIndex.findBy(queryForTarget.apply(uidB)).flatMap(authPersist::get),
-            actors(uidA, uidB),
+            actors(uidA),
             permission
         )
 
     override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             Flux.concat(uidB.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
-            actors(uidA) + uidB,
+            actors(uidA),
             permission
         )
 }

@@ -2332,3 +2332,31 @@ running composition behaves differently today.
 Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
 `CHAT-rmxxtwtu` holds Cassandra authorization index retention and deletion defects.
 This design remains unmeasured against Cassandra.
+
+## Self authority, and the target key (2026-09-24)
+
+`CHAT-ixzpkqxg`. The owner decided two things on 2026-09-24.
+
+1. **A key holds every right over itself.** `AuthMetadataAccessBroker` allows
+   when the principal equals the target, before it reads a row. No row grants
+   it and no row removes it. A close does not reach it.
+2. **A target key in the actor set was a bug.** `CoreAuthorizationService`
+   added the target keys in four methods. So a row whose principal equals its
+   target reached every caller that asked about that target. The shipped
+   `{Admin, Admin, *}` row gave any caller `*` on `Admin`. The actor set is
+   now the `Anon` key, the `User` root and the caller.
+
+Nothing depended on the target key. `AuthMetadataAccessBroker` is the only
+production caller of `getAuthorizationsAgainst` and
+`getAuthorizationsAgainstMany`. `getAuthorizationsForTarget` has no caller.
+The private `getAuthorizationsForMultipleTarget` has no caller.
+
+**A many target check still allows when any one target has a grant.** The self
+rule does not widen it: the principal is taken out of the list, and the other
+targets are read as before. The any semantics itself is older and is not
+decided here.
+
+**The mock key generator answers one key for every call.** Two
+`AccessBrokerTests` cases took principal and target from one generator, so
+both asked about a key and itself. They pass now through a second generator.
+Any test that draws two keys from one mock generator gets equal keys.

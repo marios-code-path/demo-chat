@@ -40,7 +40,7 @@ three `Anon` rows alone.
 
 | Principal | Target | Permission | Reaches a caller |
 |---|---|---|---|
-| `Admin` | `Admin` | `*` | passes the actor filter when the target is `Admin`, and no operation in this matrix checks that target |
+| `Admin` | `Admin` | `*` | the `Admin` key alone, and the self rule already covers it |
 | `Anon` | `User` | FIND | yes |
 | `Anon` | `User` | PUT | yes |
 | `Anon` | `Message` | GET | yes, and no operation matches its target |
@@ -54,9 +54,23 @@ three `Anon` rows alone.
 means the row names a domain root while every operation that asks for that
 permission names one object. Result 3 below carries that.
 
-The actor set holds the target key beside the caller and the two roots. So a
-row whose principal is its own target passes the actor filter for every
-caller. The `Admin` row is that case.
+## Self authority
+
+**A key holds every right over itself.** The owner decided this on
+2026-09-24, under `CHAT-ixzpkqxg`. `AuthMetadataAccessBroker` answers allow
+when the principal equals the target, before it reads a row. No row grants
+this and no row removes it, so an expired wildcard or a close does not reach
+it. The `Admin` row is redundant for this reason.
+
+In a many target check, the rule covers the principal alone. The grants of
+every other target in the list are read as before.
+
+**A target key is never an actor.** The actor set is the `Anon` key, the
+`User` root and the caller. Until `CHAT-ixzpkqxg` it also held the target key.
+So a row whose principal equals its target passed the actor filter for every
+caller that asked about that target. The `Admin` row was that case, and any
+caller reached `*` on `Admin`. No operation in this matrix checks that target,
+so no row of the matrix moved.
 
 ## The matrix
 

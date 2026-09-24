@@ -150,6 +150,11 @@ new user.
 | command | user | target | role | expire | Why |
 |---|---|---|---|---|---|
 | `add` | `key.id` | `key.id` | `*` | none | A user holds every right over itself |
+
+**The first row is not needed since `CHAT-ixzpkqxg`.** A key holds every right
+over itself as a rule in `AuthMetadataAccessBroker`, not as a row. The row
+written as proposed here would also have reached every caller, because the
+actor set then held the target key.
 | `add` | `User{ID=ANON}` | `key.id` | `-` | none | An anonymous caller cannot see this user |
 
 ### messageTopic
@@ -814,7 +819,7 @@ These three items describe the earlier comparator proposal, measured at master
    level with the clock.
 3. **The actor set must hold the domain root.** `CoreAuthorizationService`
    builds that set from the anonymous key, the caller and the target, at lines
-   63, 70, 76 and 82. A `User{ID=ROOT}` principal never passes the filter at
+   63, 70, 76 and 82. **Since `CHAT-ixzpkqxg` the target is not in that set.** A `User{ID=ROOT}` principal never passes the filter at
    line 54. `CHAT-avduuqwp` carries the root on the key.
 
 ### `-` and `expire: now` do not answer the same
