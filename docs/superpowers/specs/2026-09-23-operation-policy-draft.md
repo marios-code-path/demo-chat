@@ -492,6 +492,70 @@ mechanism writes two rows whatever the room holds.
 `CHAT-lbhmzccn` cannot land before this is settled, because the comparator
 cannot state either answer on its own.
 
+### The rank rule, decided by the owner on 2026-09-24
+
+**A `*` row outranks every row that names one permission.** The owner stated
+this rule, and it removes the need for a new field and for a new store
+protocol.
+
+The rank has three levels. The highest ranked row decides, and the expiry of
+that row is read after it wins.
+
+1. **A wildcard row beats a row that names one permission.**
+2. **`ENTITY` beats `DOMAIN_ROOT`.** This is the specificity order, and the
+   owner stated it as `[ Domain_ROOT, ENTITY ]`.
+3. **Later beats earlier.** This is the time order that `CHAT-ojbgbznh`
+   supplies.
+
+#### The rule answers all four cases
+
+| Case | Rows | Winner | Answer |
+|---|---|---|---|
+| The owner after a close | `{owner, room, '*', never}` and `{ROOT, room, '*', now}` | Both are wildcards, so `ENTITY` wins | The owner keeps the room |
+| A third caller after a close | `{B, room, JOIN, never}` and `{ROOT, room, '*', now}` | The wildcard wins | `B` holds nothing |
+| The owner example | `{USER, TARGET, '*', never}` and `{USER, TARGET, REMOVE, now}` | The wildcard wins | The second row has no effect |
+| Ending a wildcard | A second `{USER, TARGET, '*', now}` | Both are wildcards at one specificity, so time wins | Nothing |
+
+**One close row closes the room.** There is no second row and no window
+between two writes.
+
+#### What this retires
+
+- **The precedence field is not needed.** The rank already carries the
+  dimension that specificity could not.
+- **The room level LWT proposal is not needed for the close.** Its remaining
+  value is elsewhere, in single ownership under concurrency.
+- Contracts 1, 2 and 3 above do not apply to a close any more. A close is one
+  write.
+
+#### Two consequences to read before implementing
+
+1. **An expired wildcard denies every permission.** The rank selects the
+   wildcard row first, and only then reads the expiry. So a wildcard that
+   reaches its own expiry closes the target to every caller, including the
+   owner. The owner named this as one of the two ways to end a wildcard.
+   **The other reading breaks the close**, because a close is an expired
+   wildcard row, and a rule that dropped it before the rank would leave the
+   third caller holding `JOIN`.
+2. **`AuthSummarizer.expand` erases the fact this rule needs.** `CHAT-rgdcyxlv`
+   rewrites the permission of a wildcard row to the asked permission, so the
+   comparator can no longer tell a wildcard row from a row that named that
+   permission. The rank needs that bit. Either keep the origin on the expanded
+   row, or rank before the rewrite.
+
+#### What still stands between this rule and a working close
+
+**The close row names `User{ID=ROOT}` as its principal, and the actor filter
+removes it today.** `AuthSummarizer` line 54 keeps a row only when its
+principal is in the actor set, and `CoreAuthorizationService` builds that set
+from the anonymous key, the caller and the target. So the close row never
+reaches a third caller. `CHAT-mahevldm` holds this, and it waits on
+`CHAT-avduuqwp`.
+
+So the order of work is the rank rule in `CHAT-lbhmzccn`, then the actor set
+in `CHAT-mahevldm`. The two cassandra defects in `CHAT-rmxxtwtu` stand between
+either of them and a measurement against that backend.
+
 ### Room-level LWT proposal, recorded on 2026-09-24
 
 **This is a design proposal, not an implemented storage guarantee.** It
