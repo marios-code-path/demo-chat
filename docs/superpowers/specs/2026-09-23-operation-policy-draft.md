@@ -321,8 +321,11 @@ intent: "removing 0L allows us to overlay negative permission".
 A row is not an addition. **A row replaces the answer for the principals that
 it names.**
 
-This also corrects the section `Order decides the outcome` above. That
-section says that nothing subtracts. An expired last row subtracts today.
+This corrects two sentences of the section `Order decides the outcome` above.
+That section says that expiry is read per row first, and that an expired row
+takes no part. Neither holds. Expiry is read **after** the sort, at line 63,
+and an expired last row subtracts. The same section says that nothing
+subtracts, and that is wrong for the same reason.
 
 ### Write the broad rows first
 
@@ -352,12 +355,45 @@ The comparator decides which row is last.
 - **For the creator**, the actor filter keeps both rows. The comparator places
   the root principal before the object principal. The creator row is last, it
   holds `*`, and it does not expire. The creator keeps every permission.
-- **For any other caller**, the actor filter removes the creator row, because
-  that principal is not in the actor set. The close row is last, it expired,
-  and line 63 drops it. That caller holds nothing.
+- **For a caller that holds no row of its own**, the actor filter removes the
+  creator row, because that principal is not in the actor set. The close row is
+  last, it expired, and line 63 drops it. That caller holds nothing.
 
-**The comparator carries the whole decision.** It is the one place that keeps
-ownership through a close.
+### The specificity rule does not close the room, and this is open
+
+**A direct grant to a third caller survives the close.** Measured on
+2026-09-24 against the production `AuthSummarizer` at `500fa09f`.
+
+A row such as `{principal: B, target: room, role: JOIN}` carries an object
+principal. The close row carries a root principal. Specificity places the
+object principal last, so `B` reads a live `JOIN` row and joins the room after
+the close.
+
+So specificity delivers "every caller loses the room, except a caller that
+holds a narrower row". The owner asked for "every caller loses the room,
+except the owner". **Those are the same sentence only while no third caller
+holds a direct grant.**
+
+Two rules cannot both hold at one specificity order.
+
+1. The creator row must beat the close row, because ownership survives.
+2. The close row must beat every other object row, because a close closes.
+
+Both rows of rule 2 carry an object principal, and rule 1 needs the object
+principal to win. **A time order cannot repair this**, because specificity
+decides before time.
+
+Three candidate mechanisms, none chosen.
+
+| Mechanism | What it costs |
+|---|---|
+| A close resolves the current holders and writes one expired row for each | The write is proportional to the holders, and it is not atomic |
+| A row carries an explicit precedence value, and a close writes the highest | A new field on `AuthMetadata`, and a value that a policy author must choose |
+| A close keeps the owner by an exception in the rule, and beats every other row by time | Ownership stops being "the holder of `*`", so it needs its own field |
+
+**The open question is the owner's: does a direct grant to a third caller
+survive a close?** `CHAT-lbhmzccn` cannot land until that is answered, because
+the comparator alone cannot state either answer.
 
 ### What the code must gain
 
@@ -382,10 +418,23 @@ Three changes. Each one is measured at master `579a23ba`.
    63, 70, 76 and 82. A `User{ID=ROOT}` principal never passes the filter at
    line 54. `CHAT-avduuqwp` carries the root on the key.
 
-### `-` and `expire: now` answer the same
+### `-` and `expire: now` do not answer the same
 
-Under replacement, a live `-` row and an expired row both leave the empty set.
-So this draft holds two spellings of one outcome. They differ in what they
-record, and not in what they answer.
+**An earlier version of this section said that they do. That was wrong.**
+Measured on 2026-09-24 against the production `AuthSummarizer` at `500fa09f`,
+for a `JOIN` row followed by a second row.
 
-`CHAT-zcxgrtqc` must keep one spelling, or state the difference.
+| Second row | The evaluator answers |
+|---|---|
+| A live `-` row | `[JOIN, -]` |
+| An expired `*` row | `[]` |
+
+`-` is an ordinary permission string. Only `*` expands, so a `-` row groups
+under `-` and it never reaches the `JOIN` group. The `JOIN` grant stands, and
+the `-` row stands beside it as a permission that no operation asks for.
+
+So `-` still means nothing, exactly as item 5 of
+`What the current code does not support` records.
+
+`CHAT-zcxgrtqc` must state the rule for `-`, or remove the spelling. A
+normalization that turned `-` into an expired row would have to say so.
