@@ -609,12 +609,24 @@ the single owner decision of 2026-09-24 would no longer hold.
 
 #### What still stands between this rule and a working close
 
-**The close row names `User{ID=ROOT}` as its principal, and the actor filter
-removes it today.** `AuthSummarizer` line 54 keeps a row only when its
-principal is in the actor set, and `CoreAuthorizationService` builds that set
-from the anonymous key, the caller and the target. So the close row never
-reaches a third caller. `CHAT-mahevldm` holds this, and it waits on
-`CHAT-avduuqwp`.
+~~**The close row names `User{ID=ROOT}` as its principal, and the actor filter
+removes it today.**~~ **Done under `CHAT-mahevldm` on 2026-09-24.** The actor
+set carries the `User` root beside the anonymous key, so a close row reaches
+every caller.
+
+**That issue did not need `CHAT-avduuqwp`, and this draft said it did.** Every
+caller is a user, because `ContextIdentity` answers the key of a user or the
+`Anon` root key, and `Anon` is an object of the `User` domain. So the domain
+root of a principal is always the `User` root. No domain on the key is needed
+to name one constant.
+
+**The target side is different and it still waits.** A target belongs to any
+domain, so `CHAT-rfzsnbco` does need `CHAT-avduuqwp`.
+
+**One row of the shipped matrix moved.** `listRooms` went from deny to allow,
+for an anonymous caller and for an authenticated one, because
+`{user: User, target: MessageTopic, role: ALL}` now reaches a caller.
+`docs/ANONYMOUS-AUTHORIZATION.md` records it.
 
 So the order of work is the rank rule in `CHAT-lbhmzccn`, then the two sides of
 root expansion. `CHAT-mahevldm` carries the principal side, and

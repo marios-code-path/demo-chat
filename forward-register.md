@@ -2294,3 +2294,24 @@ debt. It does **not** rank by feature value. The owner's direction on
 2026-09-10 was to move on to features after the security pass. That pass is now
 done, so the next feature decision, which is the real embedding model, still
 has no issue and is still the owner's.
+
+## Close policy update (2026-09-24)
+
+PR #136 merged as `ad768b21`. `CHAT-rgdcyxlv` (wildcard expansion) and
+`CHAT-lbhmzccn` (rank) are done. `*` is the singular ownership sentinel and
+ranks above named grants. `CHAT-ylfxsthp` remains in progress: closure does not work yet.
+
+**`CHAT-mahevldm` did not need `CHAT-avduuqwp`, and it is done.** An earlier
+version of this section said it waited on that issue. Measured on 2026-09-24:
+every caller is a user, because `ContextIdentity` answers the key of a user or
+the `Anon` root key, and `Anon` is an object of the `User` domain. So the
+domain root of a principal is always the `User` root, and no domain on the key
+is needed to name it.
+
+**`CHAT-rfzsnbco` (two-target scan) does still need `CHAT-avduuqwp`**, because
+a target can belong to any domain. That dependency supersedes the older queue's
+tier-3 placement of `CHAT-avduuqwp`.
+
+Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
+`CHAT-rmxxtwtu` holds Cassandra authorization index retention and deletion defects.
+This design remains unmeasured against Cassandra.

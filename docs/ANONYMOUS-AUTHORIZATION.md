@@ -47,7 +47,7 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `send`, room SEND | deny | deny | deny | deny | deny |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
 | `messageById`, GET | deny | deny | deny | deny | deny |
-| `listRooms`, MessageTopic ALL | deny | deny | deny | deny | deny |
+| `listRooms`, MessageTopic ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 
 ## Three results that are easy to miss
@@ -56,10 +56,20 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
    `CoreAuthorizationService` puts the `Anon` key in the actor set of every
    query. So an authenticated caller reaches the same answers as an anonymous
    one, plus whatever names its own key.
-2. **The four `user: User` rows reach nobody.** They name the `User` root key
-   as the principal. A caller holds its own key, never that one. So
-   `MessageTopic ALL`, `GET`, `JOIN` and `MEMBERS` are granted to no one.
-3. **A grant on a domain root does not cover one object.** This applies to
+2. ~~**The four `user: User` rows reach nobody.**~~ **They reach every caller
+   since `CHAT-mahevldm`, measured on 2026-09-24.** The actor set carries the
+   `User` root beside the anonymous key, because every caller is a user.
+
+   **`listRooms` moved from deny to allow** for an anonymous caller and for an
+   authenticated one. That is the only row of this matrix that moved, and the
+   shipped configuration is what says so: `{user: User, target: MessageTopic,
+   role: ALL}`.
+
+   `GET`, `JOIN` and `MEMBERS` still reach no operation, because each names the
+   `MessageTopic` root as its target and every operation that asks for them
+   names one room. Result 3 explains that.
+3. **A grant on a domain root does not cover one object.** This is the target
+   side, and it is still open. `CHAT-rfzsnbco` carries it. It applies to
    the nine checks that name an object key. `Anon` holds `Message:GET`, and
    `messageById` checks `hasAccessTo(<one message key>, 'GET')`. The grant
    names the Message root key, so it never applies. `send` is the same shape
