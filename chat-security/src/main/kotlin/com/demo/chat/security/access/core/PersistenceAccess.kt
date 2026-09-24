@@ -23,8 +23,11 @@ interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
      * never reaches the caller. It does reach the proxy, because the store reads
      * every key first. The reactive `@PreFilter` cannot filter [keys], because it
      * filters a `Publisher` parameter alone.
+     *
+     * `EntityTargets` names the target of each entity. A membership carries a
+     * raw id, so `filterObject.key` alone does not name its target.
      */
-    @PostFilter("@chatAccess.hasAccessTo(filterObject.key, 'GET')")
+    @PostFilter("@chatAccess.hasAccessToEntity(filterObject, 'GET')")
     override fun byIds(keys: List<Key<T>>): Flux<out E>
 }
 

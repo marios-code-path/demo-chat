@@ -3,7 +3,9 @@ package com.demo.chat.test.integration
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
+import com.demo.chat.security.access.core.PersistenceAccess
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.test.TestBase.TestBase.anyObject
@@ -20,6 +22,7 @@ import org.mockito.BDDMockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.stereotype.Service
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
 
@@ -58,6 +61,9 @@ class LongByIdsFilterTests {
     @Autowired
     private lateinit var userPersistence: PersistenceStore<Long, User<Long>>
 
+    @Autowired
+    private lateinit var membershipPersistence: PersistenceStore<Long, TopicMembership<Long>>
+
     @BeforeEach
     fun grantOneTargetAndEchoEveryKey() {
         BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
@@ -74,6 +80,10 @@ class LongByIdsFilterTests {
         BDDMockito.willAnswer { call ->
             Flux.fromIterable(call.getArgument<List<Key<Long>>>(0).map { user(it) })
         }.given(beans.userPersistence()).byIds(anyObject())
+
+        BDDMockito.willAnswer { call ->
+            Flux.fromIterable(call.getArgument<List<Key<Long>>>(0).map { TopicMembership.create(it.id, 5L, 6L) })
+        }.given(beans.membershipPersistence()).byIds(anyObject())
     }
 
     @Test
@@ -101,6 +111,18 @@ class LongByIdsFilterTests {
         assertThat(keysOf(listOf())).isEmpty()
     }
 
+    /**
+     * **A membership carries its key as a raw id**, not as a `Key`. The filter
+     * must still name the right target. `filterObject.key` alone failed here
+     * with `EL1004E` for a `Long` id. See `EntityTargets`.
+     */
+    @Test
+    fun `a mixed membership list answers the permitted membership alone`() {
+        val answer = membershipPersistence.byIds(listOf(PERMITTED, DENIED)).map { it.key }.collectList().block()!!
+
+        assertThat(answer).containsExactly(PERMITTED.id)
+    }
+
     private fun keysOf(keys: List<Key<Long>>): List<Key<Long>> =
         userPersistence.byIds(keys).map { it.key }.collectList().block()!!
 
@@ -111,3 +133,9 @@ private const val CALLER_ID = 1L
 private val CALLER: Key<Long> = Key.funKey(CALLER_ID)
 private val PERMITTED: Key<Long> = Key.funKey(20L)
 private val DENIED: Key<Long> = Key.funKey(30L)
+
+/** A membership store behind the method security proxy. No production class implements this yet. */
+@Service
+class TestMembershipPersistence(that: PersistenceServiceBeans<Long, String>) :
+    PersistenceAccess<Long, TopicMembership<Long>>,
+    PersistenceStore<Long, TopicMembership<Long>> by that.membershipPersistence()

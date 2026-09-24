@@ -253,6 +253,18 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(permitted(broker, listOf(MESSAGE_KEY, ADMIN_KEY), "GET")).isEmpty()
     }
 
+    /** An entity with no target denies, whatever the grants hold. */
+    @Test
+    fun `an entity with no target denies`() {
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+
+        val answer = service.hasAccessToEntity("not an entity", "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block()
+
+        assertThat(answer).isFalse()
+    }
+
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
         broker.permittedTargets(CALLER_KEY, targets, perm).collectList().block()!!
 

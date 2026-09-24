@@ -77,8 +77,12 @@ this filter contract on 2026-09-24, under `CHAT-wkwiipgy`.
 
 `AccessBroker.permittedTargets` answers the subset. `PersistenceAccess.byIds`
 carries `@PostFilter`, which evaluates each returned entity through
-`hasAccessTo`. So a denied entity never reaches the caller. It does reach the
-method security proxy, because the store reads every key first.
+`hasAccessToEntity`. So a denied entity never reaches the caller. It does reach
+the method security proxy, because the store reads every key first.
+
+`EntityTargets` names the target of each entity. A `KeyBearer` names its key.
+A `TopicMembership` names its raw id as a key, because its `key` is not a
+`Key`. Any other entity names no target, and no target denies.
 
 **The contract this replaced allowed a whole list when one target had a
 grant.** The Boolean many target checks read the rows of every target into one

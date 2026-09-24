@@ -26,6 +26,15 @@ class SpringSecurityAccessBrokerService<T>(
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
+    /**
+     * The per element check of a `@PostFilter`. [EntityTargets] names the
+     * target of [entity]. An entity with no target denies.
+     */
+    fun hasAccessToEntity(entity: Any?, perm: String): Mono<Boolean> =
+        EntityTargets.keyOf<T>(entity)
+            ?.let { target -> hasAccessTo(target, perm) }
+            ?: Mono.just(false)
+
     fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
         access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),

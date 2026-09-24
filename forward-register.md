@@ -2376,7 +2376,13 @@ each target through `hasAccessByKey`. `hasAccessByManyKeys`,
 Boolean for a list, and one grant allowed the whole list.
 
 `PersistenceAccess.byIds` carries `@PostFilter` now. It evaluates each returned
-entity with `@chatAccess.hasAccessTo(filterObject.key, 'GET')`.
+entity with `@chatAccess.hasAccessToEntity(filterObject, 'GET')`.
+
+**`TopicMembership.key` is a raw id, not a `Key`.** The first version passed
+`filterObject.key` to `hasAccessTo`, and a membership failed with `EL1004E`
+for a `Long` id. The review found it. `EntityTargets` now names the target of
+each entity, and an entity with no target denies. The `User` tests could not
+see this, because a `User` carries a `Key`.
 
 Two facts that cost a measurement:
 
