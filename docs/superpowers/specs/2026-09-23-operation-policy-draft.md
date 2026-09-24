@@ -196,10 +196,11 @@ must close before any of this reaches configuration.**
    an unknown key, so the expressions would have no effect and no error.
 2. **`RoleDefinition` binds `user`, `target` and `role` only.** It has no
    `expire` and no `expires`. The draft uses both spellings.
-3. **`*` is not a wildcard.** `AuthMetadataAccessBroker` line 19 reads
-   `permissions.contains(perm)`, a literal list check. No main source file
-   expands a wildcard. So the existing `Admin` grant and the `*` that
-   `TopicCommands.addTopic` writes match no operation.
+3. ~~**`*` is not a wildcard.**~~ **Repaired under `CHAT-rgdcyxlv`.** The
+   summarizer expands a wildcard row to the asked permission. The `Admin` grant
+   and the `*` that `TopicCommands.addTopic` writes now match an operation.
+   The shipped matrix did not move, because no operation names the `Admin` key
+   as its target.
 4. **`rolesAllowed` and `wildcard` bind and are never read.**
    `InitialUsersService` reads `initialRoles.roles` alone.
 5. **`role: '-'` has no denial meaning.** The permission check answers whether
@@ -362,10 +363,16 @@ ownership through a close.
 
 Three changes. Each one is measured at master `579a23ba`.
 
-1. **`*` must expand to the permission set during evaluation.**
-   `AuthSummarizer` groups by the permission string, so a `*` row lands in a
-   group named `*`. It cannot replace a `JOIN` row. **This is the one reason
-   the close row does nothing today.**
+1. ~~**`*` must expand to the permission set during evaluation.**~~ **Done.**
+   `AuthSummarizer.expand` rewrites a wildcard row to the permission that the
+   caller asks. The row then joins the group of that permission, so the order
+   and the expiry decide the answer. `AuthMetadataAccessBroker` passes the
+   permission through `AuthorizationService.getAuthorizationsAgainst`, and it
+   still reads `permissions.contains(perm)`. `CHAT-rgdcyxlv`.
+
+   **A wildcard expands to the asked permission, and not to a permission set.**
+   A closed set cannot work here. The creator of a room must hold permissions
+   that no row names, and no code holds a list of every permission.
 2. **The comparator must sort by principal specificity first, and then by
    time.** `AuthSummarizer` takes the comparator from its caller, and the
    shipped comparator reads `key.id`. `CHAT-ojbgbznh` carries the clock for

@@ -27,22 +27,22 @@ class AuthMetadataAccessBroker<T>(
     }
 
     override fun hasAccessByKey(principal: Key<T>, key: Key<T>, perm: String): Mono<Boolean> =
-        collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(principal, key), perm)
+        collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(principal, key, perm), perm)
 
     override fun hasAccessByPrincipal(principal: Mono<Key<T>>, target: Key<T>, perm: String): Mono<Boolean> {
         return principal
             .flatMap { pKey ->
-                collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(pKey, target), perm)
+                collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(pKey, target, perm), perm)
             }
     }
 
     override fun hasAccessByManyKeys(principal: Key<T>, keys: List<Key<T>>, perm: String): Mono<Boolean> =
-        collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(principal, keys), perm)
+        collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(principal, keys, perm), perm)
 
     override fun hasAccessManyByPrincipal(principal: Mono<Key<T>>, targets: List<Key<T>>, perm: String): Mono<Boolean> {
         return principal
             .flatMap { pKey ->
-                collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(pKey, targets), perm)
+                collectPermissionsAndProceed(authMan.getAuthorizationsAgainstMany(pKey, targets, perm), perm)
             }
     }
 }

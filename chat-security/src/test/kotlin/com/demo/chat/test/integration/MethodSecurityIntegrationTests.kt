@@ -105,7 +105,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             target = objectForAccess, perm = "FIND", muted = false, exp = Long.MAX_VALUE
         )
 
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject()))
+        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(Flux.just(data))
 
         BDDMockito
@@ -134,7 +134,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             target = objectForAccess, perm = "GET", muted = false, exp = Long.MAX_VALUE
         )
 
-        BDDMockito.given(authService.getAuthorizationsAgainstMany(anyObject(), anyObject()))
+        BDDMockito.given(authService.getAuthorizationsAgainstMany(anyObject(), anyObject(), anyObject()))
             .willReturn(Flux.just(data))
 
         BDDMockito
@@ -165,7 +165,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             principal = principal,
             target = objectForAccess, perm = "PUT", muted = false, exp = Long.MAX_VALUE
         )
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject()))
+        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(
                 Flux.just(data)
             )
@@ -198,7 +198,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             target = objectForAccess, perm = "NON", muted = false, exp = Long.MAX_VALUE
         )
 
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject()))
+        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(
                 Flux.just(data)
             )

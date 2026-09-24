@@ -163,4 +163,55 @@ class AuthSummarizerTests {
             .expectNextCount(1)
             .verifyComplete()
     }
+
+    @Test
+    fun `a live wildcard row answers a permission that no row names`() {
+
+        val aPrincipal = keyGen.get()
+        val aTarget = keyGen.get()
+        val idSeq = sequenceOf(aPrincipal)
+
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
+            StringRoleAuthorizationMetadata(keyGen.get(), aPrincipal, aTarget, "*", 0L)
+        )
+
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq, "SEND"))
+            .assertNext { meta -> Assertions.assertThat(meta.permission).isEqualTo("SEND") }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `an expired wildcard row removes a permission that an earlier row granted`() {
+
+        val aPrincipal = keyGen.get()
+        val aTarget = keyGen.get()
+        val idSeq = sequenceOf(aPrincipal)
+
+        val grantKey = keyGen.get()
+        val closeKey = keyGen.get()
+
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
+            StringRoleAuthorizationMetadata(grantKey, aPrincipal, aTarget, "JOIN", 0L),
+            StringRoleAuthorizationMetadata(closeKey, aPrincipal, aTarget, "*", 1L)
+        )
+
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq, "JOIN"))
+            .verifyComplete()
+    }
+
+    @Test
+    fun `a wildcard row keeps its permission when no permission is requested`() {
+
+        val aPrincipal = keyGen.get()
+        val aTarget = keyGen.get()
+        val idSeq = sequenceOf(aPrincipal)
+
+        val filterData: Flux<AuthMetadata<Long>> = Flux.just(
+            StringRoleAuthorizationMetadata(keyGen.get(), aPrincipal, aTarget, "*", 0L)
+        )
+
+        StepVerifier.create(filterizer.computeAggregates(filterData, idSeq))
+            .assertNext { meta -> Assertions.assertThat(meta.permission).isEqualTo("*") }
+            .verifyComplete()
+    }
 }

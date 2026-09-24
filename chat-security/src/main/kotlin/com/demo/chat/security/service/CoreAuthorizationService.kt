@@ -70,15 +70,17 @@ class CoreAuthorizationService<T, Q>(
             sequenceOf(anonKey.get(), uid)
         )
 
-    override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>): Flux<AuthMetadata<T>> = summarizer
+    override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             authIndex.findBy(queryForTarget.apply(uidB)).flatMap(authPersist::get),
-            sequenceOf(anonKey.get(), uidA, uidB)
+            sequenceOf(anonKey.get(), uidA, uidB),
+            permission
         )
 
-    override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
+    override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             Flux.concat(uidB.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
-            sequenceOf(anonKey.get(), uidA) + uidB
+            sequenceOf(anonKey.get(), uidA) + uidB,
+            permission
         )
 }
