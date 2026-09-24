@@ -10,6 +10,7 @@ import com.demo.chat.domain.knownkey.Admin
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -203,7 +204,7 @@ class AnonymousAuthorizationMatrixTests {
         return AuthMetadataAccessBroker(
             CoreAuthorizationService(
                 store, index, { it }, { it }, { ANON_KEY },
-                AuthSummarizer { a, b -> (a.key.id - b.key.id).toInt() }
+                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
             )
         )
     }

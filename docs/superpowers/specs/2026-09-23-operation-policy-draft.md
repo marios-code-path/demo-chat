@@ -537,11 +537,11 @@ between two writes.
    **The other reading breaks the close**, because a close is an expired
    wildcard row, and a rule that dropped it before the rank would leave the
    third caller holding `JOIN`.
-2. **`AuthSummarizer.expand` erases the fact this rule needs.** `CHAT-rgdcyxlv`
-   rewrites the permission of a wildcard row to the asked permission, so the
-   comparator can no longer tell a wildcard row from a row that named that
-   permission. The rank needs that bit. Either keep the origin on the expanded
-   row, or rank before the rewrite.
+2. ~~**`AuthSummarizer.expand` erases the fact this rule needs.**~~ **Done
+   under `CHAT-lbhmzccn`.** The rewrite now runs after the rank. A wildcard row
+   competes in the group of the asked permission while it keeps its own value,
+   so level 1 still reads it. `present` gives the winner the asked permission,
+   because the caller reads the permission of the row it receives.
 
 #### The administrator invariant
 
@@ -763,10 +763,13 @@ These three items describe the earlier comparator proposal, measured at master
    **A wildcard expands to the asked permission, and not to a permission set.**
    A closed set cannot work here. The creator of a room must hold permissions
    that no row names, and no code holds a list of every permission.
-2. **The comparator must sort by principal specificity first, and then by
-   time.** `AuthSummarizer` takes the comparator from its caller, and the
-   shipped comparator reads `key.id`. `CHAT-ojbgbznh` carries the clock for
-   the time part.
+2. ~~**The comparator must sort by principal specificity first, and then by
+   time.**~~ **Done under `CHAT-lbhmzccn`**, and the rank rule replaced it.
+   `AuthSummarizer.rank` reads the wildcard first, then the principal
+   specificity, then the injected comparator. `PrincipalRank` answers level 2,
+   and it reads `Anon` and `Admin` as `ENTITY` because each names one user.
+   The injected comparator still reads `key.id`. `CHAT-ojbgbznh` replaces that
+   level with the clock.
 3. **The actor set must hold the domain root.** `CoreAuthorizationService`
    builds that set from the anonymous key, the caller and the target, at lines
    63, 70, 76 and 82. A `User{ID=ROOT}` principal never passes the filter at

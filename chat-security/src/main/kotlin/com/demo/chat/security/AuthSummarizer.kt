@@ -2,6 +2,7 @@ package com.demo.chat.security
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.security.rank.PrincipalRank
 import reactor.core.publisher.Flux
 
 
@@ -51,7 +52,10 @@ interface Summarizer<M : Any, T> {
     fun computeAggregates(elements: Flux<M>, actorIds: Sequence<T>, permission: String? = null): Flux<M>
 }
 
-class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : Summarizer<AuthMetadata<T>, Key<T>> {
+class AuthSummarizer<T>(
+    private val comparator: Comparator<AuthMetadata<T>>,
+    private val principalRank: PrincipalRank<T>
+) : Summarizer<AuthMetadata<T>, Key<T>> {
 
     companion object {
         /** The permission value that names every permission. */
@@ -59,15 +63,50 @@ class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : S
     }
 
     /**
-     * Answer the row that [permission] must read.
+     * The rank rule, decided by the owner on 2026-09-24.
      *
-     * A wildcard row becomes a row for the asked permission. It then joins the
-     * group of that permission, so the order and the expiry decide the answer.
-     * Every other row stays as it is.
+     * The highest ranked row of a group decides, and its expiry is read after
+     * it wins. Three levels, from the strongest.
+     *
+     * 1. A wildcard row beats a row that names one permission.
+     * 2. `ENTITY` beats `DOMAIN_ROOT`.
+     * 3. Later beats earlier. [comparator] supplies this level.
+     *
+     * Level 1 is why a close works. A close is one expired wildcard row on a
+     * domain root principal, and it must remove a named grant whatever the
+     * order of the two rows. Level 2 is why the owner and the administrator
+     * survive that close, because each names an object principal.
+     *
+     * See `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`.
      */
-    private fun expand(meta: AuthMetadata<T>, permission: String?): AuthMetadata<T> = when {
+    private val rank: Comparator<AuthMetadata<T>> =
+        compareBy<AuthMetadata<T>> { meta -> if (meta.permission == WILDCARD) 1 else 0 }
+            .thenBy { meta -> principalRank.of(meta.principal).ordinal }
+            .thenComparing(comparator)
+
+    /**
+     * The group that a row competes in.
+     *
+     * A wildcard row competes in the group of the permission that the caller
+     * asks, so the rank reads it beside the rows that name that permission.
+     * The row keeps its own value here, because level 1 of the rank must still
+     * see that it is a wildcard.
+     */
+    private fun groupKey(meta: AuthMetadata<T>, permission: String?): String = when {
+        permission == null -> meta.permission
+        meta.permission == WILDCARD -> permission
+        else -> meta.permission
+    }
+
+    /**
+     * Answer the winning row as the caller asked for it.
+     *
+     * A wildcard row that won takes the asked permission, because the caller
+     * reads the permission of the row it receives. This runs after the rank,
+     * so it never hides a wildcard from the rank.
+     */
+    private fun present(meta: AuthMetadata<T>, permission: String?): AuthMetadata<T> = when {
         permission == null -> meta
-        permission == WILDCARD -> meta
         meta.permission != WILDCARD -> meta
         else -> AuthMetadata.create(meta.key, meta.principal, meta.target, permission, meta.mute, meta.expires)
     }
@@ -85,8 +124,8 @@ class AuthSummarizer<T>(private val comparator: Comparator<AuthMetadata<T>>) : S
                     .filter { targetId -> (targetId == principalId) }
                     .any()
             }
-            .map { meta -> expand(meta, permission) }
-            .groupBy { g -> g.permission }
-            .flatMap { g -> g.sort(comparator).last() }
+            .groupBy { g -> groupKey(g, permission) }
+            .flatMap { g -> g.sort(rank).last() }
             .filter { meta -> (meta.expires == 0L || meta.expires > System.currentTimeMillis()) } // removing 0L allows us to overlay negative permission (+CREATE == Long.MAX_VALUE,  -CREATE = Long.MIN_VALUE)
+            .map { meta -> present(meta, permission) }
 }

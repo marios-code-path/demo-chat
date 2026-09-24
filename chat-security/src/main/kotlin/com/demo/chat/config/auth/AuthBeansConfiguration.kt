@@ -9,6 +9,7 @@ import com.demo.chat.domain.RequestToQueryConverters
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.AuthSummarizer
+import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthBeans
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Configuration
@@ -29,7 +30,7 @@ class AuthBeansConfiguration<T, V, Q>(
     indexServices,
     persistServices,
     secretsStoreBeans,
-    AuthSummarizer { a, b -> typeUtil.compare(a.key.id, b.key.id) },
+    AuthSummarizer({ a, b -> typeUtil.compare(a.key.id, b.key.id) }, PrincipalRank(rootKeys)),
     //authSummarizer,
     { key -> queryConverters.authPrincipalToQuery(ByIdRequest(key.id)) },
     { key -> queryConverters.authTargetToQuery(ByIdRequest(key.id)) },
