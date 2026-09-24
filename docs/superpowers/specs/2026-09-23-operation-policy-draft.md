@@ -391,9 +391,38 @@ Three candidate mechanisms, none chosen.
 | A row carries an explicit precedence value, and a close writes the highest | A new field on `AuthMetadata`, and a value that a policy author must choose |
 | A close keeps the owner by an exception in the rule, and beats every other row by time | Ownership stops being "the holder of `*`", so it needs its own field |
 
-**The open question is the owner's: does a direct grant to a third caller
-survive a close?** `CHAT-lbhmzccn` cannot land until that is answered, because
-the comparator alone cannot state either answer.
+### The owner decided on 2026-09-24
+
+**A close ends every access to the room, except the access of the owner.** A
+direct grant to a third caller does not survive.
+
+So the close row must beat every earlier row on that room, whatever principal
+that row names. Specificity cannot state this, because the row it must beat
+and the row it must lose to both name an object principal.
+
+**The rows need one more dimension, and it must be explicit.** This draft
+recommends a precedence value on the row.
+
+- A close writes at the highest precedence. Every earlier row sits below it,
+  so the close removes the access of every caller in one write.
+- Inside one precedence, the rule above still holds. Specificity decides
+  first, and time breaks a tie.
+- A close writes two rows at that precedence: `{User{ID=ROOT}, key.id, '*',
+  now}` and `{dest{ROLE=*}, key.id, '*', none}`. The second names an object
+  principal, so specificity places it last and the owner keeps the room.
+
+**Fold the field into the clock stamp change.** `CHAT-ojbgbznh` already adds a
+field to `AuthMetadata`, and that is a wire change that reaches every backend
+and `DomainWireShapeTests`. Two wire changes cost more than one.
+
+The alternative was a sweep. A close would read the current holders and write
+one expired row for each. It needs no new field. It is rejected for two
+measured reasons. The write grows with the number of holders. The write is not
+atomic, so a grant written during the sweep survives the close, and that is a
+hole in the operation the sweep exists to perform.
+
+`CHAT-lbhmzccn` cannot land before the precedence field exists, because the
+comparator cannot read a value that no row carries.
 
 ### What the code must gain
 
