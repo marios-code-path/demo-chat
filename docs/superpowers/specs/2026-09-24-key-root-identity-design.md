@@ -24,6 +24,8 @@ On 2026-09-25, replacing the choice of option C as the first stage:
    `CHAT-bafkgkko` into this issue.
 5. **The root travels on the wire, and the server verifies it.** A client can
    read the root. The server never uses an inbound root without a check.
+6. **`kind` is eliminated.** The class name relationship goes away in code, in
+   schema and in stored data. See part 10.
 
 ## What changed from the first two versions
 
@@ -134,6 +136,21 @@ current shapes.
 
 `CassandraNodeIdClaimStore` uses `IF NOT EXISTS`. `RedisNodeIdClaimStore` uses
 `setIfAbsent`. The root key state can use the same pattern.
+
+### 12. Two more `kind` columns, and both are dead
+
+Measured on 2026-09-25 at master `3527e7cb`, from source.
+
+- `event_key_meta` is a Cassandra user defined type with one field, `kind`. It
+  is declared in `keyspace-long.cql` and `keyspace-uuid.cql`. **No code
+  references it.**
+- `chat_secret.kind` maps to `CredKey.kind`. `CredentialSecretsStoreCassandra`
+  writes the constant `"CRED"`, and `findByKeyId` never reads it. Two
+  repository tests write `"CREDENTIAL"`.
+
+The vector document metadata also has a field named `kind`, with the value
+`"message"`, in `MessageDocumentMapper` and the recall filters. That is a
+different concept, and this issue does not touch it.
 
 ## Design
 
@@ -272,8 +289,41 @@ roots once. Two things follow.
   those roots stop reaching anything. `InitialUsersService` writes the shipped
   grants against the new roots, so the shipped matrix survives. A run time
   grant on an old root is lost. That is already true after every restart today.
-- **Registry rows written before this change hold class names.** Decision 5
-  below asks whether to rewrite them once or to map them on read.
+- **Registry rows written before this change hold class names.** Part 10
+  rewrites them once.
+
+### Part 10: `kind` is eliminated
+
+The owner decided on 2026-09-25 that the class name relationship goes away.
+Nothing maps a class name after the first start.
+
+| Where | Today | After |
+|---|---|---|
+| `IKeyService.kind(key)` | answers the class name, and no production code calls it | removed. `root(key)` replaces it. |
+| `IKeyService.key(kind: Class<S>)` | records `kind.simpleName` | maps the class through the registry and records the root id |
+| Memory registry | `kindMap`, id to class name | id to root id |
+| Redis registry | hash `chat:keys`, id to class name | id to root id |
+| Cassandra `keys.kind` column, `CSKey.kind` | class name | replaced by a `root` column |
+| `KindRequest(kind)` on `restKey` | a class name from the client | a domain name, mapped through the registry |
+| `event_key_meta` type | dead | removed from both keyspace scripts |
+| `chat_secret.kind` column, `CredKey.kind` | the constant `"CRED"`, never read | removed |
+
+**The one-time rewrite.** At the first start after this change, the key
+service reads each registry row once.
+
+1. A row that holds a registry class or alias takes the root id of that
+   domain.
+2. A row that holds `KeyCredential`, `Key` or any other name takes no root.
+3. The aliases exist only inside this rewrite. After it, no code maps a class
+   name.
+
+The rewrite must finish before the node serves a request. It must be safe to
+run on two nodes at once, because each row maps to one value whatever node
+writes it.
+
+**A Cassandra column removal needs a schema step.** The keyspace scripts create
+the schema for a new store. An existing store needs `ALTER TABLE` to add `root`
+and to drop `kind`. The rewrite must run between those two steps.
 
 ## Decisions for the owner
 
@@ -289,11 +339,13 @@ roots once. Two things follow.
    key in `AuthMetadata` and the key-value store, or read the registry when the
    row is read back. This document recommends the column for `AuthMetadata`,
    because the target scan reads those rows on every check.
-5. **Registry rows with class names.** Rewrite them once at the first start, or
-   map them on read through the registry aliases. The issue says to add no
-   backwards compatibility for the kind string relationship. This document
-   recommends a one-time rewrite, which reads the aliases once and then drops
-   them.
+5. ~~**Registry rows with class names.**~~ **Closed on 2026-09-25.** The owner
+   eliminated `kind`, so a map on read is not allowed. Part 10 rewrites the rows
+   once.
+6. **How an existing Cassandra store gets the schema change.** No migration
+   tool exists in this repository. The keyspace scripts create a store, and
+   they do not alter one. Decide between an `ALTER TABLE` step run by the key
+   service at start, and an operator script.
 
 ## Tests
 
@@ -313,6 +365,11 @@ roots once. Two things follow.
 - A key with `root = null` gets no domain root grant.
 - A removed key fails verification on memory, Redis and Cassandra.
 - The Cassandra integration covers the root key table and any new column.
+- The one-time rewrite maps each alias to its domain root, maps an unknown name
+  to no root, and gives the same result when two nodes run it at once.
+- No production source names `kind` for a key after this change. One test reads
+  the source tree and fails on `IKeyService.kind`, `CSKey.kind`, `CredKey.kind`
+  or `KindRequest.kind`.
 
 ## Not measured
 
