@@ -19,8 +19,9 @@ owns stable root keys per domain and key type.
 **Architecture:** A closed `ChatDomain` type replaces class names. A root key
 store per backend creates one root per domain with a conditional write. `Key`
 gains `root`, and three canonical classes carry one equality rule. Mint takes a
-`ChatDomain`. A `VerifiedKey` that only `KeyVerifier` can build carries every
-inbound key to the broker and to persistence.
+`ChatDomain`. `KeyVerifier` checks every inbound key against the registry, and
+answers a `VerifiedKey` that the broker and the stores require. One documented
+conversion, `trustTypedStore`, trusts a typed store instead. See T3a.
 
 **Tech Stack:** Kotlin 2.4, Spring Boot 4.0.8, Reactor 3.8, Jackson 2 and 3,
 Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
@@ -28,9 +29,10 @@ Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
 **Spec:** `docs/superpowers/specs/2026-09-24-key-root-identity-design.md`,
 approved on 2026-09-25. Issue `CHAT-avduuqwp`, child `CHAT-bafkgkko`.
 
-**Revision:** fourth. The second revision fixes the five problems of the
+**Revision:** fifth. The second revision fixes the five problems of the
 review of `c2ffe934`. The third records D1 and D2. The fourth records D3 and
-three corrections from the review of `345ff40b`. See the revision record at the
+three corrections from the review of `345ff40b`. The fifth corrects three items
+and one wording from the review of `1c88ecd4`. See the revision record at the
 end.
 
 ## Global Constraints
@@ -144,8 +146,23 @@ and add `readJobByTopic(topicKey)`.
 
 **The lookup contract.**
 
-1. `start` writes the job and indexes its topic reference in the same step. The
-   index field is `topicId`. A `KeyValueIndexFieldsEntry` bean registers
+1. **`start` writes in a fixed order, and the writes are not atomic.** No store
+   here offers a transaction across the topic, the key-value store and the
+   index.
+
+   | Order | Write |
+   |---|---|
+   | 1 | `topicPersistence.add(topic)` |
+   | 2 | `topicIndex.add(topic)` |
+   | 3 | `pubsub.open(topicKey.id)` |
+   | 4 | `keyValueStore.add(job)` under the job key |
+   | 5 | `keyValueIndex.add(job)`, which writes the `topicId` field |
+
+   **A failure at any step fails `start` with that error.** Nothing is rolled
+   back. The job is stored before its index entry, so a partial write never
+   leaves an index entry that names an absent job. The partial outcome is a
+   stored job with no index entry. `readJobByTopic` reports it as **missing**.
+   The index field is `topicId`. A `KeyValueIndexFieldsEntry` bean registers
    `IndexJob` with that field.
 2. `readJobByTopic(topicKey)` queries the index by `topicId`. **Exactly one
    match is required.**
@@ -173,8 +190,22 @@ and add `readJobByTopic(topicKey)`.
   It logs the lookup error for that topic and continues with the next one, as
   `releaseOne` does today.
 
-**Required tests,** in T3d: each of the five cases through each reader. The
-coverage policy answers the error. The startup sweep logs it, and still
+**The startup boundary.** `VectorIndexStartupAction.run()` runs
+`releaseStaleJobs()`, then `adoptCoverage()`, then `startRebuildIfAsked()`. A
+coverage error would stop the requested rebuild. So `adoptCoverage()` handles a
+`JobLookupException` as **no coverage**:
+
+- It logs the error with the fault kind.
+- It adopts no job. The in-process state keeps no covering job, so the index
+  reports incomplete.
+- `run()` continues, and starts the requested rebuild.
+
+Any other error from the policy keeps the behavior it has today. The policy
+still raises the lookup error, so a caller outside startup still sees it.
+
+**Required tests,** in T3d: each of the five cases through each reader, and
+through `run()`. The coverage policy answers the error. `run()` adopts no job and
+starts the rebuild. The startup sweep logs it, and still
 releases every other stale job.
 
 ### Decided by the plan, from the owner's rules
@@ -316,7 +347,7 @@ Mint calls with a class today:
 | D2 | REST `@PathVariable` ids in `chat-webflux` | a `@Resolved(domain)` parameter of type `VerifiedKey<T>`, built by a web argument resolver | T4 |
 | D3 | `IKeyRestMapping.restKey`, `IKeyServiceMapping.key` | take a `ChatDomain` | T3d |
 | D4 | `SpringSecurityAccessBrokerService.hasAccessTo(target)` | verifies to `VerifiedKey` before the broker | T4 |
-| D5 | `AuthMetadataAccessBroker` | takes `target: VerifiedKey<T>`, so an unverified key cannot reach `isSelf` | T4 |
+| D5 | `AuthMetadataAccessBroker` | takes `target: VerifiedKey<T>`. A key reaches `isSelf` only through `KeyVerifier.verify`, `KeyVerifier.resolve`, or the one trusted conversion `trustTypedStore` | T4 |
 | D6 | `PersistenceStoreMapping.add(ent)`, RSocket | **new.** Verifies the entity key in the store domain before the store | T4 |
 | D7 | Request ids in `ByIdRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest` | resolved in the composite service, sites C39 to C60 | T3d, T4 |
 
@@ -862,14 +893,42 @@ fun `a payload without root fails to decode`() {
 ```kotlin
 class KeyVerifierConstructionTests {
 
+    /** A constructor call, with or without type arguments, or a constructor reference. */
+    private val constructorCall = Regex("""(\bVerifiedKey\s*(<[^<>()]*>)?\s*\()|(::\s*VerifiedKey\b)""")
+
+    /** A call or a callable reference. */
+    private val trustCall = Regex("""(\btrustTypedStore\s*\()|(::\s*trustTypedStore\b)""")
+
     @Test
-    fun `only KeyVerifier constructs a VerifiedKey, and only one caller trusts a typed store`() {
-        val constructors = mainSources().filter { it.name != "KeyVerifier.kt" && it.readText().contains("VerifiedKey(") }
-        val trusters = mainSources().filter {
-            it.name !in setOf("KeyVerifier.kt", "SpringSecurityAccessBrokerService.kt") && it.readText().contains("trustTypedStore(")
+    fun `only KeyVerifier constructs a VerifiedKey`() {
+        val offenders = mainSources()
+            .filter { it.name != "KeyVerifier.kt" }
+            .flatMap { f -> constructorCall.findAll(f.readText()).map { "${f.name}: ${it.value}" }.toList() }
+        assertThat(offenders).isEmpty()
+    }
+
+    @Test
+    fun `only hasAccessToEntity calls trustTypedStore`() {
+        val offenders = mainSources()
+            .filter { it.name != "KeyVerifier.kt" }
+            .flatMap { f ->
+                val text = f.readText()
+                trustCall.findAll(text)
+                    .filterNot { f.name == "SpringSecurityAccessBrokerService.kt" && enclosingFunction(text, it.range.first) == "hasAccessToEntity" }
+                    .map { "${f.name}:${enclosingFunction(text, it.range.first)}" }
+                    .toList()
+            }
+        assertThat(offenders).isEmpty()
+    }
+
+    @Test
+    fun `the guards match every form they must catch`() {
+        listOf("VerifiedKey(k)", "VerifiedKey<T>(k)", "VerifiedKey<Long> (k)", "::VerifiedKey").forEach {
+            assertThat(constructorCall.containsMatchIn(it)).describedAs(it).isTrue()
         }
-        assertThat(constructors).isEmpty()
-        assertThat(trusters).isEmpty()
+        listOf("class VerifiedKey<T> internal constructor(val key: Key<T>)", "fun f(k: VerifiedKey<T>)", "Mono<VerifiedKey<T>>")
+            .forEach { assertThat(constructorCall.containsMatchIn(it)).describedAs(it).isFalse() }
+        assertThat(trustCall.containsMatchIn("verifier::trustTypedStore")).isTrue()
     }
 
     @Test
@@ -877,12 +936,28 @@ class KeyVerifierConstructionTests {
         val unknown = Key.of(424242L, rootKeys.of(ChatDomain.USER).id)
         assertThat(verifier.trustTypedStore(unknown, ChatDomain.USER).key).isEqualTo(unknown)
     }
+
+    @Test
+    fun `trustTypedStore refuses a key with another domain root`() {
+        val wrong = Key.of(424242L, rootKeys.of(ChatDomain.MESSAGE).id)
+        assertThatThrownBy { verifier.trustTypedStore(wrong, ChatDomain.USER) }
+            .isInstanceOf(KeyVerificationException::class.java)
+    }
 }
 ```
 
-   The second test is not a defect report. It pins the documented trust, so a
-   later change that adds a registry read, or removes the root check, is seen.
+   `enclosingFunction(text, offset)` answers the name of the nearest
+   `fun <name>` that starts before `offset` at a lower or equal indentation.
    `mainSources()` walks every `chat-*/src/main` tree from the repository root.
+
+   **The limits of these guards.** They read source text, because a test cannot
+   call the semantic tools. A call through reflection escapes them. The
+   `the guards match every form they must catch` test pins what the patterns
+   match, so a change to a pattern is seen.
+
+   The unknown id test pins the documented trust: a later registry read in
+   `trustTypedStore` fails it. **The wrong root test is the one that fails when
+   the root check is removed.** The unknown id test alone does not.
 
 4. **Change the interface, and write the three classes.**
 
@@ -1247,6 +1322,26 @@ fun `the startup sweep logs a lookup fault and releases every other stale job`(f
 }
 ```
 
+```kotlin
+@ParameterizedTest
+@EnumSource(LookupFault::class)
+fun `startup treats a lookup fault as no coverage, and starts the requested rebuild`(fault: LookupFault) {
+    succeededJob(at = t0)
+    val newer = succeededJob(at = t1)
+    inject(fault, newer)
+    val reindex = RecordingReindex()
+
+    startup(startRebuild = true, reindex = reindex).run().block()
+
+    assertThat(state.status().coveringJob).isNull()
+    assertThat(reindex.starts).isEqualTo(1)
+    assertThat(logs.errors()).anyMatch { it.contains(fault.name.lowercase().replace('_', ' ')) }
+}
+```
+
+   The older job succeeded and is intact. The test proves that `run()` adopts no
+   job at all rather than the older one, and still starts the rebuild.
+
    `inject` builds each fault: MISSING removes the index entry, DUPLICATE adds a
    second entry for the topic, DANGLING removes the job from the store,
    STORED_KEY_MISMATCH stores a job whose `key` differs from its storage key,
@@ -1322,10 +1417,20 @@ FP: `CHAT-kliyrune`.
 - Test: `chat-service-controller/src/test/.../VerifiedKeyArgumentResolverTests.kt`
 - Test: `chat-service-controller/src/test/.../RouteSignatureGuardTests.kt`
 
-**Why a type.** A route guard alone proves that a route is registered. It does
-not prove that verification runs. `VerifiedKey` has an `internal` constructor in
-`chat-core`, so the only way to hold one is through `KeyVerifier`. A route or a
-broker that takes `VerifiedKey` cannot run without a verification before it.
+**What the type gives, and what it does not.** The guarantee is the one T3a
+states.
+
+- `KeyVerifier` is the only main source that constructs a `VerifiedKey`. The
+  T3a guard test enforces that. `internal` alone does not.
+- A `VerifiedKey` from `verify` or `resolve` proves a registry read. A
+  `VerifiedKey` from `trustTypedStore` proves only that the root matches the
+  store domain. That conversion trusts its caller, and its one permitted
+  caller is `hasAccessToEntity`.
+- So a route or a broker that takes `VerifiedKey` cannot run on a raw caller
+  key. It can run on a trusted store key. **The type does not prove, by itself,
+  that a registry read ran.**
+- The boundary tests below prove each defense on its own, with recording
+  brokers and stores. The type does not replace them.
 
 1. **Write the boundary tests.** Each uses a recording broker or a recording
    store, and asserts zero calls for an invalid key.
@@ -1439,8 +1544,10 @@ fun `no route takes an unverified key or a raw path id`() {
 ```
 
    **The test KDoc states the limit.** The guard proves that each route declares
-   the verified type. The type proves that verification ran, because only
-   `KeyVerifier` builds it. Step 5 proves the resolvers themselves.
+   the verified type. It does not prove that a registry read ran. A route
+   parameter gets its `VerifiedKey` from a resolver, and step 5 proves that each
+   resolver calls `verify` or `resolve`. No route calls `trustTypedStore`. The
+   T3a guard enforces that.
 
 8. **Checkpoint.** `shell-scripts/build-health.sh`. Expected: exit 0.
 
@@ -1692,3 +1799,22 @@ client id. `PersistenceStoreMapping.add` accepts a client entity (D6).
 - D1 covers the send path. `InMemoryEncryptedMessageService` takes the
   franking bean, `generateTagSync` is removed, and a test proves that `send()`
   answers a tag registered under `FRANKING_TAG`.
+
+**Fifth revision, 2026-09-25, after the owner review of `1c88ecd4`.**
+
+1. **Startup recovery.** `adoptCoverage()` handles a `JobLookupException` as no
+   coverage: it logs, adopts no job, and `run()` starts the requested rebuild.
+   A test through `run()` proves that no older job is adopted and that the
+   rebuild starts.
+2. **The T4 claims.** The opening of T4, the route guard KDoc, the D5 row and
+   the plan header now state the T3a guarantee: a `VerifiedKey` proves a
+   registry read only when `verify` or `resolve` built it.
+3. **The trust guards.** The constructor guard matches calls with type
+   arguments and constructor references. The trust guard permits
+   `trustTypedStore` only inside `hasAccessToEntity`, not anywhere in its file.
+   A pattern test pins what each guard matches. A wrong root test fails when the
+   root check is removed.
+
+Wording: `start` writes in a fixed order, and the writes are not atomic. A
+failure at any step fails `start`, nothing is rolled back, and the partial
+outcome is reported as a missing index entry.
