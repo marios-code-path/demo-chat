@@ -1,16 +1,16 @@
 # Root Identity on Keys Implementation Plan
 
-> **Execution:** inline, with superpowers:executing-plans. **Do not use
-> subagent-driven development.** `AGENTS.md` forbids it.
+> **Execution:** execute this plan inline, with superpowers:executing-plans.
+> **Do not use subagent-driven development.** `AGENTS.md` forbids it.
 >
-> **Tracking:** each task is an FP issue under `CHAT-avduuqwp`. Claim it with
-> `fp issue update --status in-progress <id>`, log each step with `fp comment`,
-> and close it with `--status done`. This plan uses numbered steps, not
-> checkboxes.
+> **Tracking:** each task is an FP issue under `CHAT-avduuqwp`. Claim the task
+> with `fp issue update --status in-progress <id>`. Record each step with
+> `fp comment`. Close the task with `--status done`. This plan uses numbered
+> steps, not checkboxes.
 >
-> **Navigation:** find a definition, a caller or a usage with the semantic
-> tools: `mcp__idea__analyze_calls`, `mcp__idea__search_symbol`,
-> `mcp__treesitter-mcp__find_usages`, `mcp__treesitter-mcp__affected_by_diff`.
+> **Navigation:** use the semantic tools to find a definition, a caller or a
+> usage. The tools are `mcp__idea__analyze_calls`, `mcp__idea__search_symbol`,
+> `mcp__treesitter-mcp__find_usages` and `mcp__treesitter-mcp__affected_by_diff`.
 > Use `grep` only for raw text, such as a CQL table name or a log line.
 
 **Goal:** Every `Key<T>` carries a required, verified root, and the key service
@@ -18,22 +18,27 @@ owns stable root keys per domain and key type.
 
 **Architecture:** A closed `ChatDomain` type replaces class names. A root key
 store per backend creates one root per domain with a conditional write. `Key`
-gains `root`, and three canonical classes carry one equality rule. Mint takes a
-`ChatDomain`. `KeyVerifier` checks every inbound key against the registry, and
-answers a `VerifiedKey` that the broker and the stores require. One documented
-conversion, `trustTypedStore`, trusts a typed store instead. See T3a.
+gains `root`. Three canonical classes carry one equality rule. Mint takes a
+`ChatDomain`.
 
-**Tech Stack:** Kotlin 2.4, Spring Boot 4.0.8, Reactor 3.8, Jackson 2 and 3,
-Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
+`KeyVerifier` checks every inbound key against the registry. It returns a
+`VerifiedKey`, which the broker and the stores require. One documented
+conversion, `trustTypedStore`, trusts a typed store instead of the registry.
+T3a states the guarantee.
+
+**Tech Stack:**
+
+- Kotlin 2.4, Spring Boot 4.0.8, Reactor 3.8.
+- Jackson 2 and Jackson 3.
+- Spring Data Cassandra, and Spring Data Redis with Lettuce.
+- JUnit 6 and Testcontainers 2.
 
 **Spec:** `docs/superpowers/specs/2026-09-24-key-root-identity-design.md`,
 approved on 2026-09-25. Issue `CHAT-avduuqwp`, child `CHAT-bafkgkko`.
 
-**Revision:** fifth. The second revision fixes the five problems of the
-review of `c2ffe934`. The third records D1 and D2. The fourth records D3 and
-three corrections from the review of `345ff40b`. The fifth corrects three items
-and one wording from the review of `1c88ecd4`. See the revision record at the
-end.
+**Revision:** sixth. The revision record at the end lists each revision and
+the review that caused it. The sixth revision corrects the language that the
+audit of `5c9e3cef` found, and two content errors that the audit exposed.
 
 ## Global Constraints
 
@@ -61,20 +66,23 @@ end.
 
 Tasks T3a to T3e change the `Key` contract across the reactor. **They are one
 coordinated change with explicit compile checkpoints.** A checkpoint names the
-modules that compile at that point. The reactor is not green between T3a and
-T3e. Each sub-task commits when its checkpoint passes. Push the branch, but
-never merge it before T8.
+modules that compile at that point. It also names the tests that must pass.
 
-This replaces the transitional `root = id` factory of the first revision. That
-factory kept every commit green, but it fabricated roots, so no authorization
-result between two tasks meant anything.
+Between T3a and T3e, the modules after the checkpoint do not compile. Each
+sub-task commits when its checkpoint passes. Push the branch. Do not merge it
+before T8.
+
+This change replaces the transitional `root = id` factory of the first
+revision. With that factory, every commit compiled and passed its tests. But
+the factory fabricated roots, so no authorization result between two tasks had
+a meaning.
 
 ---
 
 ## Pre-execution decisions
 
 **D1, D2 and D3 are closed. The owner decided all three on 2026-09-25.**
-Execution waits for the owner review of the fourth revision.
+Execution waits for the owner review of the current revision.
 
 ### D1. The end-to-end encryption keys: **closed, two new domains**
 
@@ -99,7 +107,8 @@ Required tests, in T3a and T3d:
 
 - An epoch key resolves in `CONVERSATION_EPOCH`, and a franking key resolves in
   `FRANKING_TAG`.
-- `send()` answers a tag whose key the registry holds under `FRANKING_TAG`.
+- `send()` returns a tag. The registry holds the key of that tag under
+  `FRANKING_TAG`.
 - Verification refuses an epoch id that carries the `FRANKING_TAG` root, and a
   franking id that carries the `CONVERSATION_EPOCH` root.
 
@@ -141,14 +150,13 @@ Two readers list the job topics by name, then call `readJob(topic.key)`. After
 D2 the topic key does not find the job, because the job is stored under its own
 key.
 
-**The owner decided on 2026-09-25:** register `IndexJob` in the key-value index,
-and add `readJobByTopic(topicKey)`.
+**The owner decided on 2026-09-25:** the plan registers `IndexJob` in the
+key-value index. It also adds `readJobByTopic(topicKey)`.
 
 **The lookup contract.**
 
-1. **`start` writes in a fixed order, and the writes are not atomic.** No store
-   here offers a transaction across the topic, the key-value store and the
-   index.
+1. **`start` writes in a fixed order.** The writes are not atomic. No store
+   here has a transaction across the topic, the key-value store and the index.
 
    | Order | Write |
    |---|---|
@@ -158,20 +166,30 @@ and add `readJobByTopic(topicKey)`.
    | 4 | `keyValueStore.add(job)` under the job key |
    | 5 | `keyValueIndex.add(job)`, which writes the `topicId` field |
 
-   **A failure at any step fails `start` with that error.** Nothing is rolled
-   back. The job is stored before its index entry, so a partial write never
-   leaves an index entry that names an absent job. The partial outcome is a
-   stored job with no index entry. `readJobByTopic` reports it as **missing**.
-   The index field is `topicId`. A `KeyValueIndexFieldsEntry` bean registers
-   `IndexJob` with that field.
-2. `readJobByTopic(topicKey)` queries the index by `topicId`. **Exactly one
+   **A failure at any step makes `start` emit that error.** The procedure does
+   not undo completed writes. `start` emits the error after the failed step,
+   and it starts no later step.
+
+   **The order makes one guarantee.** The procedure starts the index write only
+   after the job write reports success. It makes no guarantee about the state
+   after a failed write. A write that reports failure can still take effect.
+
+   | Failed step | State that can remain | `readJobByTopic` for that topic |
+   |---|---|---|
+   | 1, 2 or 3 | the topic, its index entry or its open channel, with no job | missing |
+   | 4 | the earlier resources, and the job only if the failed write took effect | missing |
+   | 5 | the job, and the index entry only if the failed write took effect | missing, or the job when the entry exists |
+
+2. **The index field is `topicId`.** A `KeyValueIndexFieldsEntry` bean
+   registers `IndexJob` with that field.
+3. `readJobByTopic(topicKey)` queries the index by `topicId`. **Exactly one
    match is required.**
-3. It reads the job under the matched key. The existing check stays: the stored
-   `job.key` equals the key it is stored under.
-4. It also requires `job.topicKey == topicKey`. Key equality compares the root,
-   so a topic reference with another root does not match.
-5. **Each failure is an error, never an empty answer.** `JobLookupException`
-   names the kind:
+4. `readJobByTopic` reads the job under the matched key. The existing check
+   stays: the stored `job.key` must equal the key it is stored under.
+5. `readJobByTopic` also requires `job.topicKey == topicKey`. Key equality
+   compares the root. So a topic reference with another root does not match.
+6. **Each failure emits an error. No failure returns an empty result.**
+   `JobLookupException` names the kind of failure:
 
 | Case | Meaning |
 |---|---|
@@ -187,26 +205,34 @@ and add `readJobByTopic(topicKey)`.
   must not skip the failing topic and select an older job. The error reaches the
   caller of the policy.
 - **`VectorIndexStartupAction.releaseStaleJobs` keeps its best-effort behavior.**
-  It logs the lookup error for that topic and continues with the next one, as
-  `releaseOne` does today.
+  It logs the lookup error for that topic. Then it continues with the next
+  topic. `releaseOne` does the same today.
 
-**The startup boundary.** `VectorIndexStartupAction.run()` runs
-`releaseStaleJobs()`, then `adoptCoverage()`, then `startRebuildIfAsked()`. A
-coverage error would stop the requested rebuild. So `adoptCoverage()` handles a
-`JobLookupException` as **no coverage**:
+**The startup boundary.** `VectorIndexStartupAction.run()` runs three steps in
+this order:
+
+1. `releaseStaleJobs()`
+2. `adoptCoverage()`
+3. `startRebuildIfAsked()`
+
+A coverage error would stop the requested rebuild. So `adoptCoverage()`
+handles a `JobLookupException` as **no coverage**:
 
 - It logs the error with the fault kind.
-- It adopts no job. The in-process state keeps no covering job, so the index
-  reports incomplete.
-- `run()` continues, and starts the requested rebuild.
+- It adopts no job. The in-process state keeps no covering job. So the index
+  reports that it is incomplete.
+- `run()` continues. It starts the requested rebuild.
 
-Any other error from the policy keeps the behavior it has today. The policy
-still raises the lookup error, so a caller outside startup still sees it.
+Any other error from the policy keeps the behavior that it has today. The
+policy still emits the lookup error. So a caller outside startup still sees
+it.
 
 **Required tests,** in T3d: each of the five cases through each reader, and
-through `run()`. The coverage policy answers the error. `run()` adopts no job and
-starts the rebuild. The startup sweep logs it, and still
-releases every other stale job.
+through `run()`.
+
+- The coverage policy emits the error.
+- `run()` adopts no job. It starts the rebuild.
+- The startup sweep logs the error. It still releases every other stale job.
 
 ### Decided by the plan, from the owner's rules
 
@@ -285,7 +311,7 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C13 | `InMemoryCryptoServices.kt:192` franking tag key | M | **D1.** Minted in `FRANKING_TAG` | T3d |
 | C14 | `HttpRootKeyConsumeOnStart.kt:64` | B | reads the snapshot | T2 |
 | C15 | `RootKeyConsumerHttp.kt:62` | D | a commented out duplicate | T2 |
-| C16 | `InitialUsersService.kt:24` `emptyKey` | P | **fixed.** Today one placeholder serves two roles: the grant key before `authorize` mints one (line 68), and the fallback when user creation answers empty (line 46). **The roles split.** The grant placeholder is `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)`, used only at line 68. User creation that answers empty fails the initialization with a message that names the user. No fallback key exists | T3d |
+| C16 | `InitialUsersService.kt:24` `emptyKey` | P | **fixed.** Today one placeholder serves two roles. It supplies the grant key before `authorize` mints a key, at line 68. It also supplies a fallback when user creation returns empty, at line 46. **The roles split.** The grant placeholder is `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)`. Only line 68 uses it. When user creation returns empty, the initialization fails. The failure message names the user. No fallback key exists | T3d |
 | C17 to C19 | `RootKeyService.kt:25`, `:38`, `:47` | B | **fixed.** A string name in the snapshot store, not a `KEY_VALUE_PAIR` key | T2 |
 | C20 | `KeyValueIndex.kt:84` | S | root of `KEY_VALUE_PAIR` | T3c |
 | C21 | `MembershipIndex.kt:59` | D | commented out | T3c |
@@ -383,17 +409,22 @@ FP: `CHAT-ufqdvmkp`.
 
 **Files:** this plan.
 
-1. **Confirm the owner review of the fourth revision.** D1, D2 and D3 are
-   closed. Record the review result in a comment on `CHAT-avduuqwp`. Stop until
-   it arrives.
+1. **Get the owner review of the current revision.** D1, D2 and D3 are closed.
+   Record the review result in a comment on `CHAT-avduuqwp`. Stop until the
+   review arrives.
 
-2. **Measure again at the branch head.** For each symbol, run
-   `mcp__treesitter-mcp__find_usages` over each `chat-*/src/main` tree:
-   `funKey`, `emptyKey`, `create` in `Message.kt`, and `add` in each module of
-   section E. Expected: the 77 factory calls of section C and the 15 add paths
-   of section E. For E8, read each `PersistenceControllers` add and confirm its
-   key comes from `key()`. A difference means the tree moved. Update the
-   inventory before any other task.
+2. **Measure again at the branch head.**
+   1. Run `mcp__treesitter-mcp__find_usages` for `funKey` in every
+      `chat-*/src/main` tree.
+   2. Run the same search for `emptyKey`.
+   3. Run the same search for `create` in `Message.kt`.
+   4. Search for `add` in each module of section E.
+   5. For E8, read each `add` call in `PersistenceControllers`.
+   6. Confirm that each E8 key comes from `key()`.
+
+   Expected: the 77 factory calls of section C, and the 15 add paths of section
+   E. A different count means that the tree changed. Update the inventory
+   before you start any other task.
 
 3. **Commit.**
 
@@ -447,9 +478,8 @@ class ChatDomainTests {
 
    `ChatDomain` holds eight entries, including the two E2EE domains of D1.
 
-2. **Run it and see it fail.**
-   `mvn -o -q -B -pl chat-core test -Dtest=ChatDomainTests`. Expected: compile
-   failure on `ChatDomain`.
+2. **Run the test.** `mvn -o -q -B -pl chat-core test -Dtest=ChatDomainTests`.
+   Confirm that compilation fails on `ChatDomain`.
 
 3. **Write `ChatDomain`.**
 
@@ -563,7 +593,10 @@ FP: `CHAT-ijojbtpr`. Implements `CHAT-bafkgkko`.
 ```kotlin
 interface RootKeyStore<T> {
     fun read(): Mono<Map<ChatDomain, T>>
-    /** Writes [id] only when [domain] has no root. Answers the stored root: [id] or the winner. */
+    /**
+     * This method stores [id] only when [domain] has no root. It returns [id],
+     * or the root that a competing writer stored first.
+     */
     fun createIfAbsent(domain: ChatDomain, id: T): Mono<T>
 }
 
@@ -615,7 +648,8 @@ private fun counter(start: Long = 0): IKeyGenerator<Long> =
     AtomicLong(start).let { n -> object : IKeyGenerator<Long> { override fun nextId() = n.incrementAndGet() } }
 ```
 
-2. **Run them and see them fail.**
+2. **Run the tests.** Confirm that compilation fails, because
+   `RootKeyLoader` does not exist.
 
 3. **Write the loader.**
 
@@ -667,27 +701,32 @@ fun `two key types on one redis keep separate roots`() {
 }
 ```
 
-   Cassandra adds: after `truncate-long.cql` runs, `read()` still answers every
-   root.
+   The Cassandra test adds one case. After `truncate-long.cql` runs, `read()`
+   still returns every root.
 
-6. **Write the snapshot contract.** `RootKeySnapshot.of(rootKeys, keyType,
-   typeUtil)` builds it. `RootKeySnapshot.load(into, expectedKeyType,
-   typeUtil)` refuses a snapshot whose `keyType` differs, or that misses a
-   domain, and the start fails. Test both refusals.
+6. **Write the snapshot contract.**
+   - `RootKeySnapshot.of(rootKeys, keyType, typeUtil)` builds a snapshot.
+   - `RootKeySnapshot.load(into, expectedKeyType, typeUtil)` refuses a snapshot
+     whose `keyType` differs. It also refuses a snapshot that does not name
+     every domain. Each refusal fails the start.
+   - Write one test for each refusal.
 
-   `InitializingKVStore` changes to string names, so `ConsulKVStore` no longer
+   `InitializingKVStore` changes to string names. So `ConsulKVStore` no longer
    builds a `Key`. `RootKeyService` writes and reads one snapshot under
-   `app.kv.rootkeys`. The `rootkeys` actuator endpoint answers the snapshot.
-   `HttpRootKeyConsumeOnStart` reads it.
+   `app.kv.rootkeys`. The `rootkeys` actuator endpoint returns the snapshot.
+   `HttpRootKeyConsumeOnStart` reads that snapshot.
 
-7. **Replace the startup wiring.** In `RootKeyInitializationListeners`, remove
-   both `app.rootkeys.create` beans. A node with a store runs
-   `RootKeyLoader.load()` and `rootKeys.loadDomains(…)` on
-   `ApplicationStartedEvent`, before `RootKeyInitializationReadyEvent`. It
-   blocks, and a failure stops the start. The kv publish bean publishes the
-   snapshot. A node with no store keeps the HTTP and kv consume beans. In
-   `chat-build`, remove `-Dapp.rootkeys.create=true`, and update the golden
-   cases in `test-flags.sh`.
+7. **Replace the startup wiring.**
+   1. In `RootKeyInitializationListeners`, remove both `app.rootkeys.create`
+      beans.
+   2. Add one bean for a node with a store. On `ApplicationStartedEvent`, it
+      runs `RootKeyLoader.load()`, then `rootKeys.loadDomains(…)`. It runs
+      before `RootKeyInitializationReadyEvent`.
+   3. Make that bean block. A failure stops the start.
+   4. Make the kv publish bean publish the snapshot.
+   5. Keep the HTTP and kv consume beans for a node with no store.
+   6. In `chat-build`, remove `-Dapp.rootkeys.create=true`.
+   7. Update the golden cases in `test-flags.sh`.
 
 8. **Add `RootKeysFixture`.** It replaces `GenerateRootKeyInitializer` in every
    test. Find those tests with `mcp__treesitter-mcp__find_usages` for
@@ -748,7 +787,8 @@ interface IKeyService<T> {
     fun key(domain: ChatDomain): Mono<out Key<T>>
     fun rem(key: Key<T>): Mono<Void>       // RootKeyDeletionException for a root
     fun exists(key: Key<T>): Mono<Boolean>
-    fun rootOf(id: T): Mono<T>             // empty when unknown. A root answers itself
+    /** Returns an empty Mono for an unknown id. Returns the id itself for a root key. */
+    fun rootOf(id: T): Mono<T>
 }
 
 class VerifiedKey<T> internal constructor(val key: Key<T>)
@@ -756,25 +796,27 @@ class VerifiedKey<T> internal constructor(val key: Key<T>)
 class KeyVerifier<T>(keys: IKeyService<T>, rootKeys: RootKeys<T>) {
     fun verify(key: Key<T>, expected: ChatDomain?): Mono<VerifiedKey<T>>
     fun resolve(id: T, expected: ChatDomain?): Mono<VerifiedKey<T>>
-    /** Trusts its caller. No registry read. See the guarantee below. */
+    /** This method trusts its caller. It does not read the registry. The guarantee below states the limits. */
     fun trustTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T>
 }
 ```
 
 **What `VerifiedKey` guarantees, stated exactly.**
 
-- The constructor is `internal`, so only code in `chat-core` can call it. That
-  is a module boundary, not a proof. Any `chat-core` code could build one.
-  **`KeyVerifierConstructionTests` enforces that `KeyVerifier.kt` is the only
-  main source file that calls the constructor.** The test scans source text,
-  because a test cannot call the semantic tools.
-- `verify` and `resolve` read the registry. A `VerifiedKey` from either proves
-  that the registry holds the id with that root.
-- **`trustTypedStore` does not read the registry, and trusts its caller.** It
-  checks only that the key root equals the root of `domain`. It accepts an
-  unknown id with the right root. Its name says so. Its KDoc says so. It exists
-  because `@PostFilter` evaluates entities that a typed store already returned,
-  and a registry read per entity would double the read cost of `byIds`.
+- The constructor is `internal`. So only code in `chat-core` can call it. That
+  is a module boundary, not a proof. Any `chat-core` code could build a
+  `VerifiedKey`.
+- **`KeyVerifierConstructionTests` limits the constructor calls to
+  `KeyVerifier.kt`** in main source. The test scans source text, because a test
+  cannot call the semantic tools.
+- `verify` and `resolve` read the registry. A `VerifiedKey` from either method
+  proves that the registry holds the id with that root.
+- **`trustTypedStore` does not read the registry. It trusts its caller.** It
+  checks only that the key root equals the root of `domain`. So it accepts an
+  unknown id that has the right root. Its name and its KDoc state this trust.
+- `trustTypedStore` exists for one reason. `@PostFilter` evaluates entities
+  that a typed store already returned. A registry read for each entity would
+  double the read cost of `byIds`.
 - **`trustTypedStore` has one permitted call site:**
   `SpringSecurityAccessBrokerService.hasAccessToEntity`. The same guard test
   fails on any other caller.
@@ -824,11 +866,15 @@ class KeyEqualityTests {
 }
 ```
 
-2. **Write the verifier tests** against `FakeKeyService`, a test class in
-   `chat-core` test source. It holds an `id -> root` map, mints with
-   `Key.of(next, rootKeys.of(domain).id)`, and answers `rootOf`. `chat-core`
-   cannot depend on a persistence module, so the tests do not use
-   `KeyServiceInMemory`.
+2. **Write the verifier tests** against `FakeKeyService`, in `chat-core` test
+   source. `chat-core` cannot depend on a persistence module. So the tests do
+   not use `KeyServiceInMemory`.
+
+   `FakeKeyService` does three things:
+
+   - It holds an `id -> root` map.
+   - It mints with `Key.of(next, rootKeys.of(domain).id)`.
+   - It returns the stored root from `rootOf`.
 
 ```kotlin
 @Test
@@ -946,20 +992,21 @@ class KeyVerifierConstructionTests {
 }
 ```
 
-   `enclosingFunction(text, offset)` answers the name of the nearest
-   `fun <name>` that starts before `offset` at a lower or equal indentation.
-   `mainSources()` walks every `chat-*/src/main` tree from the repository root.
+   `enclosingFunction(text, offset)` returns the name of the nearest
+   `fun <name>` before `offset`. That declaration has a lower or equal
+   indentation. `mainSources()` walks every `chat-*/src/main` tree from the
+   repository root.
 
    **The limits of these guards.** They read source text, because a test cannot
-   call the semantic tools. A call through reflection escapes them. The
-   `the guards match every form they must catch` test pins what the patterns
-   match, so a change to a pattern is seen.
+   call the semantic tools. A call through reflection escapes them. The test
+   `the guards match every form they must catch` pins what the patterns match.
+   So a change to a pattern is seen.
 
-   The unknown id test pins the documented trust: a later registry read in
-   `trustTypedStore` fails it. **The wrong root test is the one that fails when
-   the root check is removed.** The unknown id test alone does not.
+   The unknown id test pins the documented trust. A later registry read in
+   `trustTypedStore` makes it fail. **The wrong root test fails when the root
+   check is removed.** The unknown id test alone does not fail then.
 
-4. **Change the interface, and write the three classes.**
+4. **Change the interface.** Then write the three classes.
 
 ```kotlin
 object KeyEquality {
@@ -1016,11 +1063,11 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
         }
 
     /**
-     * **Trusts its caller.** It does not read the registry, so it accepts an
-     * unknown id that carries the root of [domain]. Call it only for a key that
-     * a typed store of [domain] returned. The one permitted caller is
-     * `SpringSecurityAccessBrokerService.hasAccessToEntity`, and
-     * `KeyVerifierConstructionTests` enforces that.
+     * **This method trusts its caller.** It does not read the registry. So it
+     * accepts an unknown id that carries the root of [domain]. Call it only for
+     * a key that a typed store of [domain] returned. The one permitted caller
+     * is `SpringSecurityAccessBrokerService.hasAccessToEntity`.
+     * `KeyVerifierConstructionTests` enforces that limit.
      */
     fun trustTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T> =
         if (key.root == rootKeys.of(domain).id) VerifiedKey(key)
@@ -1049,7 +1096,7 @@ val rootNode = node.get("root") ?: throw JsonMappingException.from(jp, "A key ne
    `KeyVerifierTests` and `KeyWireTests`. The modules after chat-core do not
    compile yet.
 
-10. **Commit.** `git commit -am "Key contract in chat-core; coordinated change, compiles through chat-core (CHAT-avduuqwp)"`
+10. **Commit.** `git commit -am "Key contract in chat-core. Coordinated change, compiles through chat-core (CHAT-avduuqwp)"`
 
 ---
 
@@ -1093,7 +1140,7 @@ fun `a removed key has no root`() {
 }
 
 @Test
-fun `a root key answers itself`() {
+fun `a root key returns itself as its root`() {
     val root = rootKeys.of(ChatDomain.MESSAGE)
     assertThat(keyService.rootOf(root.id).block()).isEqualTo(root.id)
 }
@@ -1142,7 +1189,7 @@ override fun get(key: Key<T>): Mono<out User<T>> =
 5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra test -Pintegration`.
    Expected: PASS.
 
-6. **Commit.** `git commit -am "Key contract in the backends and their schema; compiles through the backends (CHAT-avduuqwp)"`
+6. **Commit.** `git commit -am "Key contract in the backends and their schema. Compiles through the backends (CHAT-avduuqwp)"`
 
 ---
 
@@ -1171,7 +1218,7 @@ fun `a found key carries the root of the index domain`() {
 
 3. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`. Expected: PASS.
 
-4. **Commit.** `git commit -am "Key contract in the indexes; compiles through the indexes (CHAT-avduuqwp)"`
+4. **Commit.** `git commit -am "Key contract in the indexes. Compiles through the indexes (CHAT-avduuqwp)"`
 
 ---
 
@@ -1244,7 +1291,7 @@ fun `a franking key resolves in FRANKING_TAG`() {
 
 ```kotlin
 @Test
-fun `send answers a tag registered under FRANKING_TAG`() {
+fun `send returns a tag registered under FRANKING_TAG`() {
     val tag = messages.send(envelope).block()!!
     assertThat(keys.rootOf(tag.key.id).block()).isEqualTo(rootKeys.of(ChatDomain.FRANKING_TAG).id)
 }
@@ -1340,22 +1387,25 @@ fun `startup treats a lookup fault as no coverage, and starts the requested rebu
 ```
 
    The older job succeeded and is intact. The test proves that `run()` adopts no
-   job at all rather than the older one, and still starts the rebuild.
+   job. It does not adopt the older job. It still starts the rebuild.
 
-   `inject` builds each fault: MISSING removes the index entry, DUPLICATE adds a
-   second entry for the topic, DANGLING removes the job from the store,
-   STORED_KEY_MISMATCH stores a job whose `key` differs from its storage key,
-   and TOPIC_MISMATCH stores a job whose `topicKey` has the right id and another
-   root.
+   `inject` builds each fault:
+
+   - MISSING removes the index entry.
+   - DUPLICATE adds a second index entry for the topic.
+   - DANGLING removes the job from the store.
+   - STORED_KEY_MISMATCH stores a job whose `key` differs from its storage key.
+   - TOPIC_MISMATCH stores a job whose `topicKey` has the right id and another
+     root.
 
 4c. **Split the initialization placeholder.** `InitialUsersService` keeps
    `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)` for grants only.
-   User creation that answers empty fails.
+   When user creation returns empty, the initialization fails.
 
 ```kotlin
 @Test
 fun `initialization fails when a user cannot be created or found`() {
-    givenUserServiceAnswersEmpty()
+    givenUserServiceReturnsEmpty()
     assertThatThrownBy { initialUsers.initializeUsers() }.hasMessageContaining("Cannot initialize user")
 }
 ```
@@ -1370,16 +1420,19 @@ fun `initialization fails when a user cannot be created or found`() {
    it with `{"domain":"java.lang.Runtime"}`. `IKeyServiceMapping.key` takes a
    `ChatDomain`.
 
-7. **Refuse the two unsupported mints.** `restAddCredential` answers
-   `Mono.error(UnsupportedDomainException("KeyCredential"))`, which the webflux
-   exception handler maps to 501. The shell `key()` command prints the
-   exception message and returns. Nothing else in `SecretsRestMapping` is
-   refused.
+7. **Refuse the two unsupported mints.**
+   - `restAddCredential` returns
+     `Mono.error(UnsupportedDomainException("KeyCredential"))`.
+   - The webflux exception handler maps that exception to HTTP 501.
+   - The shell `key()` command prints the exception message. Then the command
+     returns.
+
+   Nothing else in `SecretsRestMapping` is refused.
 
 8. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
    Expected: compiles.
 
-9. **Commit.** `git commit -am "Key contract in services and entry points; the reactor compiles (CHAT-avduuqwp)"`
+9. **Commit.** `git commit -am "Key contract in services and entry points. The reactor compiles (CHAT-avduuqwp)"`
 
 ---
 
@@ -1387,8 +1440,10 @@ fun `initialization fails when a user cannot be created or found`() {
 
 FP: `CHAT-dbvcsnww`.
 
-1. **Prove B7.** For each pub/sub provider, publish a message and read it back
-   through the provider codec. Assert that the root survives.
+1. **Prove B7.** Do these steps for each pub/sub provider:
+   1. Publish a message.
+   2. Read the message through the codec of that provider.
+   3. Assert that the root survives.
 
 2. **Run the default gate.** `shell-scripts/build-health.sh`. Expected: exit 0.
    Update `docs/BUILD-HEALTH.md` when the counts move.
@@ -1398,7 +1453,8 @@ FP: `CHAT-dbvcsnww`.
 
 4. **Commit.** `git commit -am "The coordinated key change passes the default and --ci gates (CHAT-avduuqwp)"`
 
-**The coordinated change ends here.** The reactor is green from this commit on.
+**The coordinated change ends here.** From this commit on, every module
+compiles. The default gate and the `--ci` gate pass.
 
 ---
 
@@ -1465,13 +1521,18 @@ fun `a forged entity key never reaches the store`() {
 }
 ```
 
-   Write one such test for each surface: the access service, each composite R
-   site in C39 to C60, the web resolver, the messaging resolver, and D6.
+   Write one such test for each surface:
+
+   - the access service
+   - each composite R site in C39 to C60
+   - the web resolver
+   - the messaging resolver
+   - D6
 
 2. **Mutation proof, one defense at a time.** For each surface, remove its one
    `verify` or `resolve` call. Run its test. **Expected: the test fails,
    because the recording broker or store receives a call.** Restore the call by
-   absolute path, and prove the restore with `git status`. Record each mutation
+   absolute path. Confirm the restoration with `git status`. Record each mutation
    and its failing test in a comment on `CHAT-kliyrune`.
 
    Equality stays unmutated during these runs. The unknown key test does not
@@ -1513,13 +1574,15 @@ fun hasAccessToEntity(entity: Any?, perm: String, domain: ChatDomain): Mono<Bool
    of `trustTypedStore`, and its KDoc repeats that the conversion trusts the
    store.
 
-5. **Write the two argument resolvers.** The web resolver reads
-   `@Resolved(domain = …)` and a path segment, and answers
-   `verifier.resolve(typeUtil.fromString(segment), domain)`. The messaging
-   resolver decodes a `Key` payload and answers `verifier.verify(key, domain)`.
-   Register the messaging resolver through the `argumentResolverConfigurer` of
-   `RSocketMessageHandler`. Test each resolver with a valid key, an unknown key,
-   a forged root and a wrong domain.
+5. **Write the two argument resolvers.**
+   - The web resolver reads `@Resolved(domain = …)` and a path segment. It
+     returns `verifier.resolve(typeUtil.fromString(segment), domain)`.
+   - The messaging resolver decodes a `Key` payload. It returns
+     `verifier.verify(key, domain)`.
+   - Register the messaging resolver through the `argumentResolverConfigurer`
+     of `RSocketMessageHandler`.
+   - Test each resolver with four inputs: a valid key, an unknown key, a forged
+     root, and a wrong domain.
 
 6. **Move every D1, D2 and D6 route** to `VerifiedKey`. D6 verifies the entity
    key in the store domain before it calls the store.
@@ -1579,7 +1642,8 @@ fun `a read key carries the root of the store domain`() {
 }
 ```
 
-2. **Run them and see the first one fail.**
+2. **Run the tests.** Confirm that `add refuses a key of another domain`
+   fails. The other test passes, because T3b stamps the root on read.
 
 3. **Add the check to each typed store `add`.**
 
@@ -1634,10 +1698,12 @@ fun `a stored grant reads back both roots`() {
 }
 ```
 
-2. **Run them and see the first one fail.**
+2. **Run the tests.** Confirm that
+   `authorize refuses a grant with a forged target root` fails. The other test
+   passes, because the root columns exist since T3b.
 
-3. **Verify in `authorize`.** `CoreAuthorizationService` takes a `KeyVerifier`,
-   and verifies the principal and the target before it writes.
+3. **Verify in `authorize`.** Give `CoreAuthorizationService` a `KeyVerifier`.
+   Verify the principal and the target before the write.
 
 4. **Mutation proof.** Remove the target verification alone. Expected: the
    forged root test fails. Restore by absolute path.
@@ -1725,8 +1791,8 @@ FP: `CHAT-gwdifqbk`.
 grep -rn -e "rootkeys.create" -e "funKey" -e "KnownRootKeys" -e "GenerateRootKeyInitializer" -e "chat:keys" docs forward-register.md
 ```
 
-   Correct each hit that describes current behavior. Keep dated history, and
-   add a correction line where the register does that.
+   Correct each hit that describes current behavior. Keep dated history. Where
+   the register adds correction lines, add a correction line.
 
 2. **Drift.** `drift check`. Update prose before any `drift link`.
 
@@ -1734,12 +1800,17 @@ grep -rn -e "rootkeys.create" -e "funKey" -e "KnownRootKeys" -e "GenerateRootKey
    `just check-production-classpath`, and
    `shell-scripts/vector/gate-embedding-launch.sh`. Expected: each exits 0.
 
-4. **Commit, push, and open the pull request.** Close each FP task with its
-   evidence.
+4. **Publish the work.**
+   1. Commit the changes.
+   2. Push the branch.
+   3. Open the pull request.
+   4. Close each FP task. Record its evidence in the closing comment.
 
 ---
 
 ## Revision record
+
+Each entry names the review that caused the revision.
 
 **Second revision, 2026-09-25, after the owner review of `c2ffe934`.**
 
@@ -1747,74 +1818,99 @@ grep -rn -e "rootkeys.create" -e "funKey" -e "KnownRootKeys" -e "GenerateRootKey
    They now mint a `MESSAGE` key. C53 checked `messageById` in
    `MESSAGE_TOPIC`. It now resolves in `MESSAGE`.
 2. **Bootstrap dependency.** C17 to C19 needed a `KEY_VALUE_PAIR` root to read
-   the roots, and `RootKeyService` stores strings while roots are typed. T2 now
-   separates store backed initialization from snapshot consumption, and the
+   the roots. Also, `RootKeyService` stores strings, but roots are typed. T2 now
+   separates store backed initialization from snapshot consumption. The
    snapshot is a string keyed record.
 3. **Credential refusal.** Only `restAddCredential` mints a credential key. The
    read, write by id and compare routes now resolve their owner in `USER`.
-4. **Verification tests.** The first revision accepted a passing test after the
-   `verify` call was removed. T4 now uses recording brokers and stores, one
-   mutation per defense, and a `VerifiedKey` type that only `KeyVerifier`
-   builds. The route guard reads signatures by reflection, and its KDoc states
-   what it proves.
-5. **Task order.** Each schema change now lands with its first consumer:
-   `root_keys` in T2, and the `keys`, authorization root and `chat_secret`
-   changes in T3b. The add path inventory is section E, measured before T5. The
-   crypto domains are decision D1, before T3d.
+4. **Verification tests.** The first revision accepted a passing test after
+   the `verify` call was removed. T4 now uses recording brokers and stores, and
+   one mutation per defense. It also adds the `VerifiedKey` type. The route
+   guard reads signatures by reflection. Its KDoc states what it proves.
+5. **Task order.** Each schema change now lands with its first consumer.
+   `root_keys` lands in T2. The `keys`, authorization root and `chat_secret`
+   changes land in T3b. Section E holds the add path inventory, measured before
+   T5. Decision D1, before T3d, holds the crypto domains.
 
-Also: the transitional `root = id` factory is removed. T3a to T3e are one
-coordinated change with compile checkpoints. Tracking uses FP tasks, and
-navigation uses the semantic tools.
+Other changes in the second revision:
 
-Found while revising: `VectorIndexJobStoreImpl` uses one key in two domains
-(D2). `KeyValueStoreRegisteredClientRepository` stores under a configured
-client id. `PersistenceStoreMapping.add` accepts a client entity (D6).
+- The transitional `root = id` factory is removed.
+- T3a to T3e are one coordinated change with compile checkpoints.
+- Tracking uses FP tasks. Navigation uses the semantic tools.
+
+Found while revising:
+
+- `VectorIndexJobStoreImpl` uses one key in two domains. See D2.
+- `KeyValueStoreRegisteredClientRepository` stores under a configured client
+  id.
+- `PersistenceStoreMapping.add` accepts a client entity. See D6.
 
 **Third revision, 2026-09-25, after the owner decided D1 and D2.**
 
-- D1 is closed. `CONVERSATION_EPOCH` and `FRANKING_TAG` join `ChatDomain`, each
-  with its own root. Both crypto services mint through the key service. C12 and
-  C13 move from "per D1" to M.
-- D2 is closed. The job key is minted in `KEY_VALUE_PAIR`, the topic key in
-  `MESSAGE_TOPIC`, and `IndexJob` holds `topicKey`. The D2 table lists the four
-  sites that read the job key as a topic id.
+- D1 is closed. `CONVERSATION_EPOCH` and `FRANKING_TAG` join `ChatDomain`.
+  Each has its own root. Both crypto services mint through the key service. C12
+  and C13 change from "per D1" to M.
+- D2 is closed. The job key is minted in `KEY_VALUE_PAIR`. The topic key is
+  minted in `MESSAGE_TOPIC`. `IndexJob` holds `topicKey`. The D2 table lists
+  the four sites that read the job key as a topic id.
 - D3 is new. Two readers find a job through its topic, and D2 breaks that path.
   The owner confirms the lookup before execution.
-- The owner's required tests are in T3a step 2, T3d steps 3 and 4, and T5
+- The required tests of the owner are in T3a step 2, T3d steps 3 and 4, and T5
   step 4.
 
 **Fourth revision, 2026-09-25, after the owner review of `345ff40b`.**
 
-- D3 is closed with a lookup contract: index the topic reference at creation,
-  exactly one match, the stored key check, a topic check that includes the
-  root, and five failure kinds that are errors. Coverage fails on each.
-  The startup sweep logs each and continues. Tests cover every kind through
-  both readers.
+- D3 is closed with a lookup contract. The contract has five parts:
+  - `start` indexes the topic reference.
+  - Exactly one match is required.
+  - The stored key check stays.
+  - The topic check includes the root.
+  - Five failure kinds emit errors.
+- Coverage fails on each failure kind. The startup sweep logs each kind and
+  continues. Tests cover every kind through both readers.
 - `VerifiedKey` no longer overstates its guarantee. `internal` is a module
-  boundary, and a guard test limits the constructor to `KeyVerifier.kt`.
-  `fromTypedStore` is renamed `trustTypedStore`, states that it trusts its
-  caller, and has one permitted call site, which the same guard enforces.
+  boundary. A guard test limits the constructor to `KeyVerifier.kt`.
+- `fromTypedStore` is renamed `trustTypedStore`. It states that it trusts its
+  caller. It has one permitted call site, and the same guard enforces that.
 - C16 splits the placeholder. The grant placeholder takes the `AUTH_METADATA`
-  root. A user creation that answers empty fails the initialization.
+  root. When user creation returns empty, the initialization fails.
 - D1 covers the send path. `InMemoryEncryptedMessageService` takes the
-  franking bean, `generateTagSync` is removed, and a test proves that `send()`
-  answers a tag registered under `FRANKING_TAG`.
+  franking bean, and `generateTagSync` is removed. A test proves that `send()`
+  returns a tag registered under `FRANKING_TAG`.
 
 **Fifth revision, 2026-09-25, after the owner review of `1c88ecd4`.**
 
 1. **Startup recovery.** `adoptCoverage()` handles a `JobLookupException` as no
-   coverage: it logs, adopts no job, and `run()` starts the requested rebuild.
-   A test through `run()` proves that no older job is adopted and that the
-   rebuild starts.
-2. **The T4 claims.** The opening of T4, the route guard KDoc, the D5 row and
-   the plan header now state the T3a guarantee: a `VerifiedKey` proves a
-   registry read only when `verify` or `resolve` built it.
+   coverage. It logs the error and adopts no job. Then `run()` starts the
+   requested rebuild. A test through `run()` proves both results.
+2. **The T4 claims.** Four places now state the T3a guarantee: the opening of
+   T4, the route guard KDoc, the D5 row and the plan header. A `VerifiedKey`
+   proves a registry read only when `verify` or `resolve` built it.
 3. **The trust guards.** The constructor guard matches calls with type
    arguments and constructor references. The trust guard permits
-   `trustTypedStore` only inside `hasAccessToEntity`, not anywhere in its file.
-   A pattern test pins what each guard matches. A wrong root test fails when the
-   root check is removed.
+   `trustTypedStore` only inside `hasAccessToEntity`. A pattern test pins what
+   each guard matches. A wrong root test fails when the root check is removed.
 
-Wording: `start` writes in a fixed order, and the writes are not atomic. A
-failure at any step fails `start`, nothing is rolled back, and the partial
-outcome is reported as a missing index entry.
+The fifth revision also stated the write order of `start`. **Its partial write
+text was not correct.** It said that every partial outcome is a stored job with
+no index entry. The sixth revision corrects that statement.
+
+**Sixth revision, 2026-09-25, after the language audit of `5c9e3cef`.**
+
+1. **Language.** The revision applies the strict rules of the `asd-ste100`
+   skill to the whole plan. The changes are:
+   - One instruction per sentence.
+   - Word limits for sentences.
+   - Six sentences or fewer per paragraph.
+   - No semicolons in prose or in proposed commit messages.
+   - Complete sentences.
+   - "Returns" for a returned value, and "emits" for a reactive error.
+2. **Partial writes.** D3 now separates the write order from the state after a
+   failed write. A failure before the job write leaves only earlier resources.
+   A write that reports failure can still take effect. The D3 table lists the
+   state that each failed step can leave.
+3. **Revision references.** T0 and the decision section now ask for the review
+   of the current revision. They do not name a revision number.
+
+The audit tool cannot certify ASD-STE100 compliance. The installed skill does
+not include the official dictionary.
