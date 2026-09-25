@@ -62,8 +62,34 @@ when the principal equals the target, before it reads a row. No row grants
 this and no row removes it, so an expired wildcard or a close does not reach
 it. The `Admin` row is redundant for this reason.
 
-In a many target check, the rule covers the principal alone. The grants of
-every other target in the list are read as before.
+In a many target read, the rule permits the caller's own target and no
+other. See the next section.
+
+## Many target reads
+
+**A many target read answers the permitted targets alone.** The owner chose
+this filter contract on 2026-09-24, under `CHAT-wkwiipgy`.
+
+- Each target is evaluated on its own, through the single target check.
+- A denied target is left out, and the request does not fail.
+- An empty list, or a list with no permitted target, answers nothing.
+- Self authority permits the caller's own target and no other.
+
+`AccessBroker.permittedTargets` answers the subset. `PersistenceAccess.byIds`
+carries `@PostFilter`, which evaluates each returned entity through
+`hasAccessToEntity`. So a denied entity never reaches the caller. It does reach
+the method security proxy, because the store reads every key first.
+
+`EntityTargets` names the target of each entity. A `KeyBearer` names its key.
+A `TopicMembership` names its raw id as a key, because its `key` is not a
+`Key`. Any other entity names no target, and no target denies.
+
+**The contract this replaced allowed a whole list when one target had a
+grant.** The Boolean many target checks read the rows of every target into one
+set and asked whether it held the permission. One Boolean cannot carry a
+subset, so those checks are removed. No production class implements
+`PersistenceAccess`, so nothing ran the old contract in a deployment.
+`CHAT-znprrzhn` holds that wiring.
 
 **A target key is never an actor.** The actor set is the `Anon` key, the
 `User` root and the caller. Until `CHAT-ixzpkqxg` it also held the target key.

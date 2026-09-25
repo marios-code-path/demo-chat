@@ -2360,3 +2360,41 @@ decided here.
 `AccessBrokerTests` cases took principal and target from one generator, so
 both asked about a key and itself. They pass now through a second generator.
 Any test that draws two keys from one mock generator gets equal keys.
+
+## Many target reads filter (2026-09-24)
+
+`CHAT-wkwiipgy`. The owner chose the filter contract for a many target read.
+
+- Each target is evaluated on its own. A denied target is left out, and the
+  request does not fail.
+- An empty list, or a list with no permitted target, answers nothing.
+- Self authority permits the caller's own target and no other.
+
+`AccessBroker.permittedTargets` answers the permitted subset. It evaluates
+each target through `hasAccessByKey`. `hasAccessByManyKeys`,
+`hasAccessManyByPrincipal` and `hasAccessToMany` are removed. Each answered one
+Boolean for a list, and one grant allowed the whole list.
+
+`PersistenceAccess.byIds` carries `@PostFilter` now. It evaluates each returned
+entity with `@chatAccess.hasAccessToEntity(filterObject, 'GET')`.
+
+**`TopicMembership.key` is a raw id, not a `Key`.** The first version passed
+`filterObject.key` to `hasAccessTo`, and a membership failed with `EL1004E`
+for a `Long` id. The review found it. `EntityTargets` now names the target of
+each entity, and an entity with no target denies. The `User` tests could not
+see this, because a `User` carries a `Key`.
+
+Two facts that cost a measurement:
+
+1. **The reactive `@PreFilter` filters a `Publisher` parameter alone.**
+   `byIds` takes a `List`, so it cannot filter the keys. `@PostFilter` filters
+   the returned `Flux` per element, and it accepts a `Mono<Boolean>`
+   expression. So a denied entity is read from the store, and the proxy removes
+   it before the caller receives it.
+2. **A mock that is a context bean keeps its answer between tests.**
+   `given(mock.byIds(...))` calls the method while it stubs, so the answer of
+   the earlier test runs with a null argument. `willAnswer(...).given(mock)`
+   does not call it.
+
+`AuthorizationService.getAuthorizationsAgainstMany` stays. No production code
+calls it now.

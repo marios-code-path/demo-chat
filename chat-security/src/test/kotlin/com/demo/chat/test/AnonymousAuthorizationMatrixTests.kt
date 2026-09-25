@@ -160,18 +160,14 @@ class AnonymousAuthorizationMatrixTests {
     }
 
     /**
-     * The many target path, which is `getAuthorizationsAgainstMany`. It builds
-     * its own actor set, so it needs its own reading.
+     * The many target path, which is `permittedTargets`. It evaluates each
+     * target through the single target path since `CHAT-wkwiipgy`.
      */
     @Test
     fun `a row naming the User root reaches a caller through many targets`() {
         val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
 
-        val answer = broker(listOf(row))
-            .hasAccessByManyKeys(CALLER_KEY, listOf(TOPIC_ROOT), "ALL")
-            .block() ?: false
-
-        assertThat(answer).isTrue()
+        assertThat(permitted(broker(listOf(row)), listOf(TOPIC_ROOT), "ALL")).containsExactly(TOPIC_ROOT)
     }
 
     /**
@@ -185,7 +181,7 @@ class AnonymousAuthorizationMatrixTests {
         val broker = broker(shippedGrants())
 
         assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY, "GET").block()).isFalse()
-        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(ADMIN_KEY), "GET").block()).isFalse()
+        assertThat(permitted(broker, listOf(ADMIN_KEY), "GET")).isEmpty()
     }
 
     /**
@@ -224,17 +220,53 @@ class AnonymousAuthorizationMatrixTests {
     }
 
     /**
-     * **Self authority covers the caller alone in a list.** The many target
-     * check still reads the grants of every other target. A list that holds
-     * only the caller allows. A list that adds a target with no grant denies.
+     * **Self authority permits the caller's own target and no other.** The room
+     * has no grant, so the answer holds the caller alone. See `CHAT-wkwiipgy`.
      */
     @Test
-    fun `self authority does not widen a many target check`() {
+    fun `self authority permits only the caller's own target`() {
         val broker = broker(listOf())
 
-        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(CALLER_KEY), "GET").block()).isTrue()
-        assertThat(broker.hasAccessByManyKeys(CALLER_KEY, listOf(CALLER_KEY, ROOM_KEY), "GET").block()).isFalse()
+        assertThat(permitted(broker, listOf(CALLER_KEY), "GET")).containsExactly(CALLER_KEY)
+        assertThat(permitted(broker, listOf(CALLER_KEY, ROOM_KEY), "GET")).containsExactly(CALLER_KEY)
     }
+
+    /**
+     * **Each target is evaluated on its own.** One permitted target does not
+     * permit the list. Until `CHAT-wkwiipgy` the many target check read every
+     * row of every target into one set, so one grant allowed the whole list.
+     */
+    @Test
+    fun `a mixed list answers the permitted targets alone`() {
+        val broker = broker(listOf(grant(CALLER_KEY, ROOM_KEY, "GET")))
+
+        assertThat(permitted(broker, listOf(ROOM_KEY, MESSAGE_KEY), "GET")).containsExactly(ROOM_KEY)
+        assertThat(permitted(broker, listOf(MESSAGE_KEY, ROOM_KEY), "GET")).containsExactly(ROOM_KEY)
+    }
+
+    /** An empty list, and a list with no permitted target, both answer nothing. */
+    @Test
+    fun `an empty list and a fully denied list answer nothing`() {
+        val broker = broker(listOf(grant(CALLER_KEY, ROOM_KEY, "GET")))
+
+        assertThat(permitted(broker, listOf(), "GET")).isEmpty()
+        assertThat(permitted(broker, listOf(MESSAGE_KEY, ADMIN_KEY), "GET")).isEmpty()
+    }
+
+    /** An entity with no target denies, whatever the grants hold. */
+    @Test
+    fun `an entity with no target denies`() {
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+
+        val answer = service.hasAccessToEntity("not an entity", "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block()
+
+        assertThat(answer).isFalse()
+    }
+
+    private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
+        broker.permittedTargets(CALLER_KEY, targets, perm).collectList().block()!!
 
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
         operations().associate { (operation, call) -> operation to allowed(call, context) }

@@ -12,15 +12,6 @@ class SpringSecurityAccessBrokerService<T>(
     val rootKeys: RootKeys<T>
 ) {
 
-    fun hasAccessToMany(targets: List<Key<T>>, perm: String): Mono<Boolean> =
-        access.hasAccessManyByPrincipal(
-            getSecurityContextPrincipal(),
-            targets,
-            perm
-        )
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
-
     fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
         access.hasAccessByPrincipal(
             getSecurityContextPrincipal(),
@@ -34,6 +25,15 @@ class SpringSecurityAccessBrokerService<T>(
         access.hasAccessByKeyId(who, target, perm)
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
+
+    /**
+     * The per element check of a `@PostFilter`. [EntityTargets] names the
+     * target of [entity]. An entity with no target denies.
+     */
+    fun hasAccessToEntity(entity: Any?, perm: String): Mono<Boolean> =
+        EntityTargets.keyOf<T>(entity)
+            ?.let { target -> hasAccessTo(target, perm) }
+            ?: Mono.just(false)
 
     fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
         access.hasAccessByPrincipal(
