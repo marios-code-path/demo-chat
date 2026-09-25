@@ -44,8 +44,11 @@ audit of `5c9e3cef` found, and two content errors that the audit exposed.
 
 - `Key<T>` is `{ id: T, root: T }`. **No factory fabricates a root**, at any
   point of execution. There is no transitional `root = id` factory.
-- No migration, no backfill, no reader for a payload without `root`, no class
-  name fallback. Old development stores are recreated.
+- Do not add a migration.
+- Do not add a backfill.
+- Do not add a reader for a payload without `root`.
+- Do not add a class name fallback.
+- Recreate each old development store.
 - `app.rootkeys.create` is removed.
 - Equality compares `id`, `root` and `empty`, in every `Key` implementation.
   `hashCode` matches. **Equality does not verify a root.**
@@ -53,13 +56,15 @@ audit of `5c9e3cef` found, and two content errors that the audit exposed.
   the self authority rule, or persistence.
 - Only a **mint** of a type with no domain contract is refused, with
   `UnsupportedDomainException`. An operation on an existing key is not refused.
-  No compile failure and no accidental exception.
+  The refusal of an unsupported mint must not cause a compile failure or an
+  accidental exception. This rule does not apply to the planned compile
+  failures inside the coordinated change.
 - **Each schema change lands in the task that first consumes it.**
 - Redis names carry the key type: `chat:keys:<keyType>`,
   `chat:rootkeys:<keyType>`.
 - `root_keys` is absent from `truncate-long.cql` and `truncate-uuid.cql`.
 - Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone.
-- One maven build at a time per worktree.
+- Run only one Maven build at a time in each worktree.
 - Prose follows `AGENTS.md` controlled English.
 
 ## The coordinated change
@@ -141,7 +146,7 @@ Required tests, in T3d and T5:
 
 - The job key and the topic key have distinct ids. The job key root is the
   `KEY_VALUE_PAIR` root, and the topic key root is the `MESSAGE_TOPIC` root.
-- A stored job read back holds its topic reference.
+- A job retrieved from storage retains its topic reference.
 - The key-value store refuses a topic key.
 
 ### D3. How a reader finds a job from its topic: **closed, the key-value index**
@@ -289,9 +294,9 @@ serves all of them.
 | B2 | `MessageKeyDeserializer`, Jackson 2 | reads `root` | T3a |
 | B3 | `KeyAssembly.key`, Jackson 3 | takes `root` | T3a |
 | B4 | `ChatJackson3Deserializers.kt:78` | reads `root` | T3a |
-| B5 | Spring Data Cassandra builds A8 to A20 | not a `Key`. The store maps rows | T3b, T3c |
-| B6 | Redis JSON in each Redis store | goes through B1 and B2 | T3b |
-| B7 | Kafka and Redis pub/sub payloads | through B1 to B4. **Unmeasured.** T3e proves it per provider | T3e |
+| B5 | Spring Data Cassandra builds A8 to A20 | Each class is not a `Key`. The store maps rows | T3b, T3c |
+| B6 | Redis JSON in each Redis store | uses B1 and B2 | T3b |
+| B7 | Kafka and Redis pub/sub payloads | These payloads use B1 to B4. **This is not measured.** T3e proves it for each provider | T3e |
 
 A decoded key is a claim. It becomes a `VerifiedKey` only through T4.
 
@@ -311,7 +316,7 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C13 | `InMemoryCryptoServices.kt:192` franking tag key | M | **D1.** Minted in `FRANKING_TAG` | T3d |
 | C14 | `HttpRootKeyConsumeOnStart.kt:64` | B | reads the snapshot | T2 |
 | C15 | `RootKeyConsumerHttp.kt:62` | D | a commented out duplicate | T2 |
-| C16 | `InitialUsersService.kt:24` `emptyKey` | P | **fixed.** Today one placeholder serves two roles. It supplies the grant key before `authorize` mints a key, at line 68. It also supplies a fallback when user creation returns empty, at line 46. **The roles split.** The grant placeholder is `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)`. Only line 68 uses it. When user creation returns empty, the initialization fails. The failure message names the user. No fallback key exists | T3d |
+| C16 | `InitialUsersService.kt:24` `emptyKey` | P | **fixed.** The grant placeholder uses `AUTH_METADATA`. Empty user creation fails. The C16 contract below the table specifies both roles | T3d |
 | C17 to C19 | `RootKeyService.kt:25`, `:38`, `:47` | B | **fixed.** A string name in the snapshot store, not a `KEY_VALUE_PAIR` key | T2 |
 | C20 | `KeyValueIndex.kt:84` | S | root of `KEY_VALUE_PAIR` | T3c |
 | C21 | `MembershipIndex.kt:59` | D | commented out | T3c |
@@ -328,7 +333,7 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C41 | `UserServiceImpl.kt:33` | P | use the minted key. Do not rebuild it | T3d |
 | C42 | `UserServiceImpl.kt:54` | R | `resolve(req.id, USER)` | T3d |
 | C43 | `UserServiceImpl.kt:60` | S | ids from the user index. Root of `USER` | T3d |
-| C44 | `ComposedJobRecordWriter.kt:35` | P | `record.key` is minted from the message store in `MessageReindexServiceImpl.emit`. Carry its root | T3d |
+| C44 | `ComposedJobRecordWriter.kt:35` | P | `record.key` is minted from the message store in `MessageReindexServiceImpl.emit`. Keep its root | T3d |
 | C45 | `MessageRecallServiceImpl.kt:97` | S | ids from vector metadata that this server wrote. Root of `MESSAGE` | T3d |
 | C46 to C48 | `TopicServiceImpl.kt:64`, `:84`, `:102` | R | `resolve(…, MESSAGE_TOPIC)` | T3d |
 | C49 | `TopicServiceImpl.kt:113` join alert | M | **fixed.** Mint a new `MESSAGE` key for the alert from `messagePersistence.key()`. The membership id stays the membership key | T3d |
@@ -350,6 +355,18 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C74 | `SecretsRestMapping.kt:38` `compare/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
 | C75 | `PubSubRestMapping.kt:53` | P | the minted message key | T3d |
 | C76, C77 | `IKeyRestMapping.kt:27`, `:31` | R | `@Resolved` with no expected domain | T3d, T4 |
+
+**The C16 contract.**
+
+Today one placeholder serves two roles. It supplies the grant key before
+`authorize` mints a key, at line 68. It also supplies a fallback when user
+creation returns empty, at line 46.
+
+The roles split. The grant placeholder is
+`Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)`. Only line 68 uses it.
+
+When user creation returns empty, the initialization fails. The failure
+message names the user. No fallback key exists.
 
 Mint calls with a class today:
 
@@ -430,7 +447,7 @@ FP: `CHAT-ufqdvmkp`.
 
 ```bash
 git add docs/superpowers/plans/2026-09-25-key-root-identity.md
-git commit -m "Plan: record the pre-execution decisions (CHAT-avduuqwp)"
+git commit -m "Record the pre-execution decisions in the plan. (CHAT-avduuqwp)"
 ```
 
 ---
@@ -485,7 +502,7 @@ class ChatDomainTests {
 
 ```kotlin
 /**
- * Every domain that owns a root key. See `CHAT-avduuqwp`.
+ * This enum lists every domain that owns a root key. See `CHAT-avduuqwp`.
  *
  * **The list is closed.** A type with no entry has no root, and a mint for it
  * is refused. [parse] is the only way text becomes a domain.
@@ -515,8 +532,8 @@ class RootKeys<T> {
     @Volatile private var anon: Key<T>? = null
 
     fun of(domain: ChatDomain): Key<T> = domains[domain] ?: throw ChatException(
-        if (domains.isEmpty()) "No root key '${domain.wireName}': the root keys are not loaded."
-        else "No root key '${domain.wireName}'. Loaded: ${domains.keys.sorted().joinToString { it.wireName }}"
+        if (domains.isEmpty()) "The root key '${domain.wireName}' is missing. The root keys are not loaded."
+        else "The root key '${domain.wireName}' is missing. Loaded: ${domains.keys.sorted().joinToString { it.wireName }}"
     )
 
     fun admin(): Key<T> = admin ?: throw ChatException("The Admin identity is not loaded.")
@@ -604,7 +621,10 @@ class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKey
     fun load(): Mono<Map<ChatDomain, T>>
 }
 
-/** What a process with no store access reads. Ids are strings, parsed with the TypeUtil of the reader. */
+/**
+ * A process without store access reads this snapshot. The ids are strings. The
+ * reader uses its TypeUtil to parse them.
+ */
 data class RootKeySnapshot(val keyType: String, val domains: Map<String, String>, val admin: String, val anon: String)
 
 interface InitializingKVStore {
@@ -666,7 +686,7 @@ class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKey
     }.flatMap { roots ->
         val missing = ChatDomain.entries - roots.keys
         if (missing.isEmpty()) Mono.just(roots)
-        else Mono.error(ChatException("Root keys incomplete. Missing: $missing"))
+        else Mono.error(ChatException("The root key set is incomplete. Missing: $missing"))
     }
 }
 ```
@@ -747,7 +767,7 @@ object RootKeysFixture {
 9. **Checkpoint.** `shell-scripts/build-health.sh --integration`, then
    `shell-scripts/test-flags.sh`. Expected: both exit 0.
 
-10. **Commit.** `git commit -am "Load stable roots, and a root snapshot contract (CHAT-avduuqwp, CHAT-bafkgkko)"`
+10. **Commit.** `git commit -am "Load stable roots. Add a root snapshot contract. (CHAT-avduuqwp, CHAT-bafkgkko)"`
 
 ---
 
@@ -785,9 +805,10 @@ interface Key<T> {
 
 interface IKeyService<T> {
     fun key(domain: ChatDomain): Mono<out Key<T>>
-    fun rem(key: Key<T>): Mono<Void>       // RootKeyDeletionException for a root
+    /** This method rejects a root key with RootKeyDeletionException. */
+    fun rem(key: Key<T>): Mono<Void>
     fun exists(key: Key<T>): Mono<Boolean>
-    /** Returns an empty Mono for an unknown id. Returns the id itself for a root key. */
+    /** This method returns an empty Mono for an unknown id. It returns the id itself for a root key. */
     fun rootOf(id: T): Mono<T>
 }
 
@@ -934,15 +955,15 @@ fun `a payload without root fails to decode`() {
 }
 ```
 
-3b. **Write the construction guard, and pin the trust.**
+3b. **Write the construction guard. Add tests for the documented trust limits.**
 
 ```kotlin
 class KeyVerifierConstructionTests {
 
-    /** A constructor call, with or without type arguments, or a constructor reference. */
+    /** This pattern matches a constructor call with or without type arguments. It also matches a constructor reference. */
     private val constructorCall = Regex("""(\bVerifiedKey\s*(<[^<>()]*>)?\s*\()|(::\s*VerifiedKey\b)""")
 
-    /** A call or a callable reference. */
+    /** This pattern matches a call or a callable reference. */
     private val trustCall = Regex("""(\btrustTypedStore\s*\()|(::\s*trustTypedStore\b)""")
 
     @Test
@@ -1096,7 +1117,7 @@ val rootNode = node.get("root") ?: throw JsonMappingException.from(jp, "A key ne
    `KeyVerifierTests` and `KeyWireTests`. The modules after chat-core do not
    compile yet.
 
-10. **Commit.** `git commit -am "Key contract in chat-core. Coordinated change, compiles through chat-core (CHAT-avduuqwp)"`
+10. **Commit.** `git commit -am "Change the key contract in chat-core. This coordinated change compiles through chat-core. (CHAT-avduuqwp)"`
 
 ---
 
@@ -1189,7 +1210,7 @@ override fun get(key: Key<T>): Mono<out User<T>> =
 5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra test -Pintegration`.
    Expected: PASS.
 
-6. **Commit.** `git commit -am "Key contract in the backends and their schema. Compiles through the backends (CHAT-avduuqwp)"`
+6. **Commit.** `git commit -am "Change the key contract in the backends and their schema. The reactor compiles through the backends. (CHAT-avduuqwp)"`
 
 ---
 
@@ -1218,7 +1239,7 @@ fun `a found key carries the root of the index domain`() {
 
 3. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`. Expected: PASS.
 
-4. **Commit.** `git commit -am "Key contract in the indexes. Compiles through the indexes (CHAT-avduuqwp)"`
+4. **Commit.** `git commit -am "Change the key contract in the indexes. The reactor compiles through the indexes. (CHAT-avduuqwp)"`
 
 ---
 
@@ -1410,8 +1431,8 @@ fun `initialization fails when a user cannot be created or found`() {
 }
 ```
 
-5. **Move every R site in C39 to C77** to `verifier.resolve(id, <domain>)`, and
-   pass `.key` to the service. The alert sites C49 and C50 mint through
+5. **Move every R site in C39 to C77** to `verifier.resolve(id, <domain>)`.
+   Pass `.key` to the service. The alert sites C49 and C50 mint through
    `messagePersistence.key()`. The credential routes resolve in `USER`. The
    registered client repository mints on the first save.
 
@@ -1432,7 +1453,7 @@ fun `initialization fails when a user cannot be created or found`() {
 8. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
    Expected: compiles.
 
-9. **Commit.** `git commit -am "Key contract in services and entry points. The reactor compiles (CHAT-avduuqwp)"`
+9. **Commit.** `git commit -am "Change the key contract in services and entry points. The reactor compiles. (CHAT-avduuqwp)"`
 
 ---
 
@@ -1482,9 +1503,9 @@ states.
   `VerifiedKey` from `trustTypedStore` proves only that the root matches the
   store domain. That conversion trusts its caller, and its one permitted
   caller is `hasAccessToEntity`.
-- So a route or a broker that takes `VerifiedKey` cannot run on a raw caller
-  key. It can run on a trusted store key. **The type does not prove, by itself,
-  that a registry read ran.**
+- So a route or a broker that takes `VerifiedKey` cannot receive a raw caller
+  key. It can receive a trusted store key. **The type does not prove, by
+  itself, that a registry read ran.**
 - The boundary tests below prove each defense on its own, with recording
   brokers and stores. The type does not replace them.
 
@@ -1570,9 +1591,9 @@ fun hasAccessToEntity(entity: Any?, perm: String, domain: ChatDomain): Mono<Bool
 ```
 
    `hasAccessToEntity` takes the domain of the store, because `@PostFilter`
-   runs on entities that a typed store returned. It is the one permitted caller
-   of `trustTypedStore`, and its KDoc repeats that the conversion trusts the
-   store.
+   evaluates entities that a typed store returned. `hasAccessToEntity` is the
+   one permitted caller of `trustTypedStore`. Its KDoc repeats that the
+   conversion trusts the store.
 
 5. **Write the two argument resolvers.**
    - The web resolver reads `@Resolved(domain = …)` and a path segment. It
@@ -1690,7 +1711,7 @@ fun `authorize refuses a grant with a forged target root`() {
 }
 
 @Test
-fun `a stored grant reads back both roots`() {
+fun `reading a stored grant returns both roots`() {
     service.authorize(grant, true).block()
     val read = service.getAuthorizationsAgainst(principal, target, "GET").blockFirst()!!
     assertThat(read.principal.root).isEqualTo(principal.root)
@@ -1777,7 +1798,7 @@ class CassandraStoreShapeCheck(private val session: CqlSession, private val keys
 4. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
    exit 0.
 
-5. **Commit.** `git commit -am "A start check for the complete store shape (CHAT-avduuqwp)"`
+5. **Commit.** `git commit -am "Check the complete store shape at start. (CHAT-avduuqwp)"`
 
 ---
 
@@ -1914,3 +1935,19 @@ no index entry. The sixth revision corrects that statement.
 
 The audit tool cannot certify ASD-STE100 compliance. The installed skill does
 not include the official dictionary.
+
+**Seventh revision, 2026-09-25, after the language audit of `e3249ec7`.**
+
+1. Two combined instructions are split: the construction guard step, and the
+   R site step of T3d.
+2. The C16 cell holds a short summary. The C16 contract below section C holds
+   the detail in three paragraphs.
+3. Comments and error messages are complete sentences. The fix covers the
+   listed lines and two more error messages in `RootKeys.of`.
+4. The global constraints use explicit prohibitions. The mint refusal rule
+   states its scope. It does not apply to the planned compile failures of the
+   coordinated change.
+5. Each proposed commit message is a complete sentence. The fix covers the
+   listed messages and four more.
+6. Phrasal wording is replaced: "goes through", "read back", "reads back",
+   "run on" and "carry".
