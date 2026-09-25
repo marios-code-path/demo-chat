@@ -28,8 +28,9 @@ Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
 **Spec:** `docs/superpowers/specs/2026-09-24-key-root-identity-design.md`,
 approved on 2026-09-25. Issue `CHAT-avduuqwp`, child `CHAT-bafkgkko`.
 
-**Revision:** second. The owner review of `c2ffe934` found five problems. See
-the revision record at the end.
+**Revision:** third. The owner review of `c2ffe934` found five problems, and
+the second revision fixes them. The third revision records D1 and D2, and adds
+D3. See the revision record at the end.
 
 ## Global Constraints
 
@@ -69,41 +70,77 @@ result between two tasks meant anything.
 
 ## Pre-execution decisions
 
-**Execution does not start until the owner answers D1 and D2.**
+**D1 and D2 are closed. The owner decided both on 2026-09-25.** D3 follows from
+D2 and needs owner confirmation. Execution waits for the owner review of the
+second revision and for D3.
 
-### D1. The end-to-end encryption keys
+### D1. The end-to-end encryption keys: **closed, two new domains**
 
 `CryptoServiceBeans` wires `InMemoryConversationEpochService` and
 `InMemoryFrankingService` as beans, and `chat-deploy-e2ee` loads them. Each
 builds a key from a random UUID string cast to `T`. That cast is unsound when
-`T` is `Long`. No `ChatDomain` covers an epoch or a franking tag.
+`T` is `Long`.
 
-- **Option A:** add `CONVERSATION_EPOCH` and `FRANKING_TAG` to `ChatDomain`, and
-  mint both keys through the key service.
-- **Option B:** refuse both mints with `UnsupportedDomainException` until the
-  E2EE types have a domain contract. `chat-deploy-e2ee` then cannot start an
-  epoch or franking a message.
+**The owner decided on 2026-09-25:** add `CONVERSATION_EPOCH` and `FRANKING_TAG`
+to `ChatDomain`. Each has its own domain root. Both services mint through the
+key service. **Neither uses `KEY_VALUE_PAIR`**, because a map in the storage is
+not a domain contract.
 
-The plan recommends option A. Each E2EE type has one owning service, so the
-domain contract is clear.
+Required tests, in T3a and T3d:
 
-### D2. The vector index job key
+- An epoch key resolves in `CONVERSATION_EPOCH`, and a franking key resolves in
+  `FRANKING_TAG`.
+- Verification refuses an epoch id that carries the `FRANKING_TAG` root, and a
+  franking id that carries the `CONVERSATION_EPOCH` root.
 
-`VectorIndexJobStoreImpl.start` mints one key from `topicPersistence`, so in
-`MESSAGE_TOPIC`. It writes the job topic under that key. Then `write(job)`
-stores the job in the key-value store under **the same key**. The register
-records this as a design choice: "the topic key is the job root key".
+### D2. The vector index job key: **closed, two keys**
 
-The store domain check refuses the key-value write, because the key is not in
-`KEY_VALUE_PAIR`.
+`VectorIndexJobStoreImpl.start` minted one key from `topicPersistence`, in
+`MESSAGE_TOPIC`, and stored the job in the key-value store under the same key.
 
-- **Option A:** mint two keys. The job key is in `KEY_VALUE_PAIR`. The topic key
-  is in `MESSAGE_TOPIC`. `IndexJob` gains `topicKey`. `VectorCoveragePolicy`
-  and the job topic reads follow `topicKey`.
-- **Option B:** let the key-value store accept a key of any domain.
+**The owner decided on 2026-09-25:**
 
-The plan recommends option A. Option B weakens the store check for every
-key-value write.
+- The job key is minted in `KEY_VALUE_PAIR`. The key-value store stays
+  restricted to `KEY_VALUE_PAIR`.
+- The job topic key is minted separately, in `MESSAGE_TOPIC`.
+- `IndexJob` stores the topic reference explicitly, in a new field
+  `topicKey: Key<T>`.
+
+Measured consequences, each assigned to T3d. Found on 2026-09-25 with
+`mcp__treesitter-mcp__find_usages`:
+
+| Site | Today | After |
+|---|---|---|
+| `VectorIndexJobStoreImpl.start` | one key for topic and job | mints both. `pubsub.open(topicKey.id)` |
+| `MessageReindexServiceImpl.emit` | `JobRecord(jobKey = job.key)` | adds `topicKey = job.topicKey` to `JobRecord` |
+| `ComposedJobRecordWriter.write` | message `dest` is `record.jobKey.id` | `dest` is `record.topicKey.id` |
+| `MessageReindexServiceImpl` line 153 | adds `job.key.id` to the excluded topic ids | adds `job.topicKey.id` |
+| `VectorCoveragePolicyImpl.selectCoveringJob` | `readJob(topic.key)` | see D3 |
+| `VectorIndexStartupAction.releaseStaleJobs` | `readJob(topic.key)` | see D3 |
+
+Required tests, in T3d and T5:
+
+- The job key and the topic key have distinct ids. The job key root is the
+  `KEY_VALUE_PAIR` root, and the topic key root is the `MESSAGE_TOPIC` root.
+- A stored job read back holds its topic reference.
+- The key-value store refuses a topic key.
+
+### D3. How a reader finds a job from its topic: **open, needs owner confirmation**
+
+Two readers list the job topics by name, then call `readJob(topic.key)`. After
+D2 the topic key does not find the job, because the job is stored under its own
+key. No `KeyValueIndexFieldsEntry` registers `IndexJob` today.
+
+- **Option A (recommended):** register `IndexJob` in the key-value index with a
+  `topicId` field. Add `readJobByTopic(topicKey)`. It queries the index by
+  `topicId`, reads the job, and refuses a job whose `topicKey` differs from the
+  asked key. That is the same guard `readJob` has today for the stored key. The
+  two readers keep their topic listing and move to `readJobByTopic`.
+- **Option B:** the two readers list jobs from the key-value store instead of
+  topics, and read the topic through `job.topicKey`. This reads every
+  key-value entry.
+- **Option C:** encode the job id in the topic name. A name then carries a
+  reference that no store checks.
 
 ### Decided by the plan, from the owner's rules
 
@@ -178,7 +215,8 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C4 | `AccessBroker.kt:13` `hasAccessByKeyId(T, T)` | R | resolves both ids to `VerifiedKey` | T4 |
 | C5 to C10 | deserializers and `KeyAssembly` | R | B1 to B4 | T3a |
 | C11 | `GenerateRootKeyInitializer.kt:15` | D | removed. Tests use `RootKeysFixture` | T2 |
-| C12, C13 | `InMemoryCryptoServices.kt:149`, `:192` | M or X | **per D1** | T3d |
+| C12 | `InMemoryCryptoServices.kt:149` epoch key | M | **D1.** Minted in `CONVERSATION_EPOCH` | T3d |
+| C13 | `InMemoryCryptoServices.kt:192` franking tag key | M | **D1.** Minted in `FRANKING_TAG` | T3d |
 | C14 | `HttpRootKeyConsumeOnStart.kt:64` | B | reads the snapshot | T2 |
 | C15 | `RootKeyConsumerHttp.kt:62` | D | a commented out duplicate | T2 |
 | C16 | `InitialUsersService.kt:24` `emptyKey` | P | `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)` | T3d |
@@ -259,8 +297,8 @@ and are not listed. T0 step 2 measures again.
 | E2 | `UserServiceImpl.addUser`, `userPersistence.add` | M, `userPersistence.key()`. C41 stops rebuilding it | T5 |
 | E3 | `TopicServiceImpl.addRoom`, `topicPersistence.add` | M | T5 |
 | E4 | `TopicServiceImpl.joinRoom`, `membershipPersistence.add` | M | T5 |
-| E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC` | T5 |
-| E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | **per D2** | T5 |
+| E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC`. **D2.** A separate key from the job key | T5 |
+| E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | M. **D2.** The job key is minted in `KEY_VALUE_PAIR` | T5 |
 | E7 | `ComposedJobRecordWriter.write`, `messagePersistence.add` | M, minted from the message store in `MessageReindexServiceImpl.emit` | T5 |
 | E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. T0 step 2 confirms each key comes from `key()` | T5 |
 | E9 | `KeyValueStoreRestMapping` add | R, `KEY_VALUE_PAIR` | T4, T5 |
@@ -279,9 +317,8 @@ FP: `CHAT-ufqdvmkp`.
 
 **Files:** this plan.
 
-1. **Confirm D1 and D2 with the owner.** Record each answer in this plan under
-   its decision, and in a comment on `CHAT-avduuqwp`. Stop until both are
-   answered.
+1. **Confirm D3 with the owner.** D1 and D2 are closed. Record the D3 answer in
+   this plan and in a comment on `CHAT-avduuqwp`. Stop until it is answered.
 
 2. **Measure again at the branch head.** For each symbol, run
    `mcp__treesitter-mcp__find_usages` over each `chat-*/src/main` tree:
@@ -341,7 +378,7 @@ class ChatDomainTests {
 }
 ```
 
-   If D1 chooses option A, `ChatDomain` holds the two E2EE entries too.
+   `ChatDomain` holds eight entries, including the two E2EE domains of D1.
 
 2. **Run it and see it fail.**
    `mvn -o -q -B -pl chat-core test -Dtest=ChatDomainTests`. Expected: compile
@@ -362,7 +399,9 @@ enum class ChatDomain(val wireName: String) {
     MESSAGE_TOPIC("MessageTopic"),
     TOPIC_MEMBERSHIP("TopicMembership"),
     AUTH_METADATA("AuthMetadata"),
-    KEY_VALUE_PAIR("KeyValuePair");
+    KEY_VALUE_PAIR("KeyValuePair"),
+    CONVERSATION_EPOCH("ConversationEpoch"),
+    FRANKING_TAG("FrankingTag");
 
     companion object {
         fun parse(name: String): ChatDomain? = entries.firstOrNull { it.wireName == name }
@@ -729,6 +768,17 @@ fun `an unknown id is refused`() {
 }
 
 @Test
+fun `an epoch key with the franking root is refused, and the reverse`() {
+    val epoch = keys.key(ChatDomain.CONVERSATION_EPOCH).block()!!
+    val tag = keys.key(ChatDomain.FRANKING_TAG).block()!!
+
+    StepVerifier.create(verifier.verify(Key.of(epoch.id, rootKeys.of(ChatDomain.FRANKING_TAG).id), null))
+        .verifyError(KeyVerificationException::class.java)
+    StepVerifier.create(verifier.verify(Key.of(tag.id, rootKeys.of(ChatDomain.CONVERSATION_EPOCH).id), null))
+        .verifyError(KeyVerificationException::class.java)
+}
+
+@Test
 fun `resolve reads the stored root`() {
     val minted = keys.key(ChatDomain.USER).block()!!
     assertThat(verifier.resolve(minted.id, ChatDomain.USER).block()!!.key).isEqualTo(minted)
@@ -1013,27 +1063,78 @@ fun `a credential mint is refused with 501`() {
 }
 ```
 
-3. **Move every R site in C39 to C77** to `verifier.resolve(id, <domain>)`, and
+3. **Write the D1 tests** in `chat-crypto`. `InMemoryConversationEpochService`
+   and `InMemoryFrankingService` take an `IKeyService<T>`. `CryptoServiceBeans`
+   passes it. The UUID cast is removed.
+
+```kotlin
+@Test
+fun `an epoch key resolves in CONVERSATION_EPOCH`() {
+    val epoch = epochs.startEpoch(conversation).block()!!
+    assertThat(verifier.resolve(epoch.key.id, ChatDomain.CONVERSATION_EPOCH).block()!!.key).isEqualTo(epoch.key)
+}
+
+@Test
+fun `a franking key resolves in FRANKING_TAG`() {
+    val tag = franking.tag(conversation, 1L, device, payload, secret).block()!!
+    assertThat(verifier.resolve(tag.key.id, ChatDomain.FRANKING_TAG).block()!!.key).isEqualTo(tag.key)
+}
+```
+
+   The test uses the real method names of `FrankingService` and
+   `ConversationEpochService`. Read them with `mcp__treesitter-mcp__view_code`
+   before you write the test.
+
+4. **Write the D2 tests** in `chat-service-composite`.
+
+```kotlin
+@Test
+fun `the job key and the topic key are distinct, with their own roots`() {
+    val job = jobStore.start(nodeId, keyType, startedAt, incarnationId, worker).block()!!
+
+    assertThat(job.key.id).isNotEqualTo(job.topicKey.id)
+    assertThat(job.key.root).isEqualTo(rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id)
+    assertThat(job.topicKey.root).isEqualTo(rootKeys.of(ChatDomain.MESSAGE_TOPIC).id)
+}
+
+@Test
+fun `a stored job keeps its topic reference`() {
+    val job = jobStore.start(nodeId, keyType, startedAt, incarnationId, worker).block()!!
+    assertThat(jobStore.readJob(job.key).block()!!.topicKey).isEqualTo(job.topicKey)
+}
+
+@Test
+fun `a job record is published to the job topic`() {
+    val job = jobStore.start(nodeId, keyType, startedAt, incarnationId, worker).block()!!
+    writer.write(record(job)).block()
+    assertThat(pubsub.sent.single().key.dest).isEqualTo(job.topicKey.id)
+}
+```
+
+   Read the real `start` signature before you write these tests. Apply the D2
+   table: `IndexJob.topicKey`, `JobRecord.topicKey`, the record `dest`, the
+   excluded topic ids, and the D3 answer for the two readers.
+
+5. **Move every R site in C39 to C77** to `verifier.resolve(id, <domain>)`, and
    pass `.key` to the service. The alert sites C49 and C50 mint through
    `messagePersistence.key()`. The credential routes resolve in `USER`. The
-   registered client repository mints on the first save. Apply D1 to C12 and
-   C13. Apply D2 to `VectorIndexJobStoreImpl`.
+   registered client repository mints on the first save.
 
-4. **Move D3.** `restKey` takes `DomainRequest(val domain: ChatDomain)`. An
+6. **Move the key mint routes.** `restKey` takes `DomainRequest(val domain: ChatDomain)`. An
    unknown value fails Jackson enum binding with 400, and no class loads. Test
    it with `{"domain":"java.lang.Runtime"}`. `IKeyServiceMapping.key` takes a
    `ChatDomain`.
 
-5. **Refuse the two unsupported mints.** `restAddCredential` answers
+7. **Refuse the two unsupported mints.** `restAddCredential` answers
    `Mono.error(UnsupportedDomainException("KeyCredential"))`, which the webflux
    exception handler maps to 501. The shell `key()` command prints the
    exception message and returns. Nothing else in `SecretsRestMapping` is
    refused.
 
-6. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
+8. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
    Expected: compiles.
 
-7. **Commit.** `git commit -am "Key contract in services and entry points; the reactor compiles (CHAT-avduuqwp)"`
+9. **Commit.** `git commit -am "Key contract in services and entry points; the reactor compiles (CHAT-avduuqwp)"`
 
 ---
 
@@ -1229,13 +1330,24 @@ override fun add(ent: User<T>): Mono<Void> =
     else userRepo.add(ent)
 ```
 
-4. **Test each path E1 to E15** through its caller. Each test asserts that the
-   write succeeds with its listed key source. E6 follows D2.
+4. **Write the D2 store test.** The key-value store refuses a topic key.
 
-5. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
+```kotlin
+@Test
+fun `the key-value store refuses a topic key`() {
+    val topicKey = keyService.key(ChatDomain.MESSAGE_TOPIC).block()!!
+    StepVerifier.create(keyValueStore.add(KeyValuePair.create(topicKey, "job" as Any)))
+        .verifyError(KeyVerificationException::class.java)
+}
+```
+
+5. **Test each path E1 to E15** through its caller. Each test asserts that the
+   write succeeds with its listed key source.
+
+6. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
    exit 0.
 
-6. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
+7. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
 
 ---
 
@@ -1398,3 +1510,16 @@ navigation uses the semantic tools.
 Found while revising: `VectorIndexJobStoreImpl` uses one key in two domains
 (D2). `KeyValueStoreRegisteredClientRepository` stores under a configured
 client id. `PersistenceStoreMapping.add` accepts a client entity (D6).
+
+**Third revision, 2026-09-25, after the owner decided D1 and D2.**
+
+- D1 is closed. `CONVERSATION_EPOCH` and `FRANKING_TAG` join `ChatDomain`, each
+  with its own root. Both crypto services mint through the key service. C12 and
+  C13 move from "per D1" to M.
+- D2 is closed. The job key is minted in `KEY_VALUE_PAIR`, the topic key in
+  `MESSAGE_TOPIC`, and `IndexJob` holds `topicKey`. The D2 table lists the four
+  sites that read the job key as a topic id.
+- D3 is new. Two readers find a job through its topic, and D2 breaks that path.
+  The owner confirms the lookup before execution.
+- The owner's required tests are in T3a step 2, T3d steps 3 and 4, and T5
+  step 4.
