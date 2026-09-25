@@ -1,7 +1,7 @@
 # Root identity on keys: design for review
 
-Issue `CHAT-avduuqwp`, with its child `CHAT-bafkgkko`. Status: **third
-revision, 2026-09-25. No code changed.**
+Issue `CHAT-avduuqwp`, with its child `CHAT-bafkgkko`. Status: **approved
+on 2026-09-25. No code changed.**
 
 This issue blocks `CHAT-rfzsnbco`, the two-target scan. That scan blocks the
 closure work in `CHAT-ylfxsthp`.
@@ -163,9 +163,9 @@ deployment on one Redis each have their own roots and their own registry.
 any other bean asks for `RootKeys`. A node that cannot read or create the roots
 fails at start. It never serves with a partial set.
 
-**`app.rootkeys.create`.** Decision 2 below asks whether it stays as a guard.
-The kv and HTTP publish paths stay for a process that does not reach the store,
-such as the shell.
+**`app.rootkeys.create` is removed.** A node that reaches the store loads or
+creates the roots. The kv and HTTP publish paths stay for a process that does
+not reach the store, such as the shell.
 
 ### Part 4: mint
 
@@ -248,16 +248,42 @@ and this issue does not touch it.
 
 ## Decisions for the owner
 
-1. **Approve this revision**, or name the part to change.
-2. **`app.rootkeys.create`.** Keep it as a guard, so only a named node may
-   create a missing root? Or remove it, because creation is conditional and
-   safe on any node? This document recommends removing it. The conditional
-   write already makes concurrent creation safe, and a guard adds a start
-   order between nodes.
-3. **Equality on `id` and `root`**, part 2 rule 2. Confirm it.
+**All closed on 2026-09-25.** The owner approved the design direction at
+`054db2d0`.
 
-Closed: rootless mints are refused. `AuthMetadata` stores both roots. No
-migration and no compatibility.
+1. **Approved.**
+2. **`app.rootkeys.create` is removed.** Conditional creation makes the guard
+   unnecessary for a node that reaches the authoritative store. Such a node
+   loads the complete root set before it serves a request.
+3. **Equality compares `id` and `root`.** Confirmed.
+
+Closed earlier: rootless mints are refused. `AuthMetadata` stores both roots.
+No migration and no compatibility.
+
+## Requirements for the implementation plan
+
+The owner added these on 2026-09-25.
+
+1. **Equality is consistent across every key implementation.** That includes
+   `ChatMessageKey`, the Cassandra key classes, and every other `Key`
+   implementation. `hashCode` matches `equals` in each. Empty key equality is
+   defined explicitly.
+2. **Equality does not verify a root.** Inbound keys are verified before
+   authorization, and that includes the self authority shortcut in
+   `AuthMetadataAccessBroker`. An unverified key must never reach
+   `principal == target`.
+3. **The inventory covers implementations, not only factory calls.** The 77
+   sites leave out generated constructors, deserializers, and every class that
+   implements `Key`. The plan lists all of them.
+4. **An unsupported operation fails deliberately.** The credential and generic
+   mint callers are replaced with an explicit refusal. The change leaves no
+   compile failure and no accidental exception.
+5. **The Cassandra start check reads the complete required schema.** That
+   includes the authorization root columns in `auth_metadata` and in both of
+   its index tables.
+
+**Every construction path and every inbound path gets its root source before
+any factory changes.**
 
 ## Tests
 
