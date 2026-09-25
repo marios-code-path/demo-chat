@@ -36,9 +36,8 @@ T3a states the guarantee.
 **Spec:** `docs/superpowers/specs/2026-09-24-key-root-identity-design.md`,
 approved on 2026-09-25. Issue `CHAT-avduuqwp`, child `CHAT-bafkgkko`.
 
-**Revision:** sixth. The revision record at the end lists each revision and
-the review that caused it. The sixth revision corrects the language that the
-audit of `5c9e3cef` found, and two content errors that the audit exposed.
+**Revision:** the revision record at the end lists each revision and the review
+that caused it. The last entry in the record describes the current revision.
 
 ## Global Constraints
 
@@ -439,8 +438,8 @@ FP: `CHAT-ufqdvmkp`.
    5. For E8, read each `add` call in `PersistenceControllers`.
    6. Confirm that each E8 key comes from `key()`.
 
-   Expected: the 77 factory calls of section C, and the 15 add paths of section
-   E. A different count means that the tree changed. Update the inventory
+   Confirm that the search finds the 77 factory calls of section C and the 15
+   add paths of section E. A different count means that the tree changed. Update the inventory
    before you start any other task.
 
 3. **Commit.**
@@ -574,7 +573,8 @@ fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
 
    Remove `hasAccessToDomainByKind`.
 
-7. **Checkpoint.** `shell-scripts/build-health.sh`. Expected: exit 0.
+7. **Checkpoint.** Run `shell-scripts/build-health.sh`. Confirm that it exits
+   with 0.
 
 8. **Commit.** `git commit -am "Type the domains and the identities (CHAT-avduuqwp)"`
 
@@ -764,8 +764,8 @@ object RootKeysFixture {
    T3a moves the domains to `Key.root(id)`, and gives the two identities the
    `USER` root.
 
-9. **Checkpoint.** `shell-scripts/build-health.sh --integration`, then
-   `shell-scripts/test-flags.sh`. Expected: both exit 0.
+9. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Then run
+   `shell-scripts/test-flags.sh`. Confirm that both exit with 0.
 
 10. **Commit.** `git commit -am "Load stable roots. Add a root snapshot contract. (CHAT-avduuqwp, CHAT-bafkgkko)"`
 
@@ -1112,10 +1112,10 @@ val rootNode = node.get("root") ?: throw JsonMappingException.from(jp, "A key ne
 8. **Move the T2 lines to `Key.root(id)`.** `RootKeysFixture` gives the domains
    `Key.root(id)`, and the identities `Key.of(id, of(USER).id)`.
 
-9. **Checkpoint.** `mvn -o -q -B -pl chat-core test`. Expected: chat-core
-   compiles and every chat-core test passes, including `KeyEqualityTests`,
-   `KeyVerifierTests` and `KeyWireTests`. The modules after chat-core do not
-   compile yet.
+9. **Checkpoint.** Run `mvn -o -q -B -pl chat-core test`. Confirm that
+   chat-core compiles. Confirm that every chat-core test passes, including
+   `KeyEqualityTests`, `KeyVerifierTests` and `KeyWireTests`. The modules after
+   chat-core do not compile yet.
 
 10. **Commit.** `git commit -am "Change the key contract in chat-core. This coordinated change compiles through chat-core. (CHAT-avduuqwp)"`
 
@@ -1167,7 +1167,7 @@ fun `a root key returns itself as its root`() {
 }
 ```
 
-2. **Write the three key services.** Memory, in full:
+2. **Write the three key services.** The memory key service follows in full.
 
 ```kotlin
 class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val rootKeys: RootKeys<T>) : IKeyService<T> {
@@ -1207,8 +1207,9 @@ override fun get(key: Key<T>): Mono<out User<T>> =
 
 4. **Move each mint call** per the mint table in section C.
 
-5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra test -Pintegration`.
-   Expected: PASS.
+5. **Checkpoint.** Run
+   `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra test -Pintegration`.
+   Confirm that every test passes.
 
 6. **Commit.** `git commit -am "Change the key contract in the backends and their schema. The reactor compiles through the backends. (CHAT-avduuqwp)"`
 
@@ -1237,7 +1238,9 @@ fun `a found key carries the root of the index domain`() {
    The Cassandra authorization index reads `principal_root` and `target_root`
    from its rows.
 
-3. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`. Expected: PASS.
+3. **Checkpoint.** Run
+   `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`.
+   Confirm that every test passes.
 
 4. **Commit.** `git commit -am "Change the key contract in the indexes. The reactor compiles through the indexes. (CHAT-avduuqwp)"`
 
@@ -1354,9 +1357,9 @@ fun `a job record is published to the job topic`() {
    table: `IndexJob.topicKey`, `JobRecord.topicKey`, the record `dest`, and the
    excluded topic ids.
 
-4b. **Write the D3 lookup tests.** One parameterized test per reader, over the
-   five failure cases. Each case builds its fault directly in the store or the
-   index.
+4b. **Write the D3 lookup tests.** Write one parameterized test per reader for
+   all five failure cases. Each case builds its fault directly in the store or
+   the index.
 
 ```kotlin
 enum class LookupFault { MISSING, DUPLICATE, DANGLING, STORED_KEY_MISMATCH, TOPIC_MISMATCH }
@@ -1450,8 +1453,8 @@ fun `initialization fails when a user cannot be created or found`() {
 
    Nothing else in `SecretsRestMapping` is refused.
 
-8. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
-   Expected: compiles.
+8. **Checkpoint.** Run `mvn -o -q -B compile test-compile` over the whole
+   reactor. Confirm that every module compiles.
 
 9. **Commit.** `git commit -am "Change the key contract in services and entry points. The reactor compiles. (CHAT-avduuqwp)"`
 
@@ -1466,11 +1469,13 @@ FP: `CHAT-dbvcsnww`.
    2. Read the message through the codec of that provider.
    3. Assert that the root survives.
 
-2. **Run the default gate.** `shell-scripts/build-health.sh`. Expected: exit 0.
+2. **Run the default gate.** Run `shell-scripts/build-health.sh`. Confirm
+   that it exits with 0.
    Update `docs/BUILD-HEALTH.md` when the counts move.
 
-3. **Run the image gate.** `shell-scripts/build-health.sh --ci`. The wire shape
-   changed, so the shell image must be rebuilt. Expected: exit 0.
+3. **Run the image gate.** Run `shell-scripts/build-health.sh --ci`. The wire
+   shape changed, so the gate must rebuild the shell image. Confirm that the
+   gate exits with 0.
 
 4. **Commit.** `git commit -am "The coordinated key change passes the default and --ci gates (CHAT-avduuqwp)"`
 
@@ -1633,7 +1638,8 @@ fun `no route takes an unverified key or a raw path id`() {
    resolver calls `verify` or `resolve`. No route calls `trustTypedStore`. The
    T3a guard enforces that.
 
-8. **Checkpoint.** `shell-scripts/build-health.sh`. Expected: exit 0.
+8. **Checkpoint.** Run `shell-scripts/build-health.sh`. Confirm that it exits
+   with 0.
 
 9. **Commit.** `git commit -am "Verify inbound keys before the broker and the stores (CHAT-avduuqwp)"`
 
@@ -1688,8 +1694,8 @@ fun `the key-value store refuses a topic key`() {
 5. **Test each path E1 to E15** through its caller. Each test asserts that the
    write succeeds with its listed key source.
 
-6. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
-   exit 0.
+6. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
+   that it exits with 0.
 
 7. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
 
@@ -1726,11 +1732,12 @@ fun `reading a stored grant returns both roots`() {
 3. **Verify in `authorize`.** Give `CoreAuthorizationService` a `KeyVerifier`.
    Verify the principal and the target before the write.
 
-4. **Mutation proof.** Remove the target verification alone. Expected: the
-   forged root test fails. Restore by absolute path.
+4. **Mutation proof.** Remove the target verification alone. Run the tests.
+   Confirm that the forged root test fails. Restore the verification by
+   absolute path.
 
-5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-security,chat-deploy test`.
-   Expected: PASS.
+5. **Checkpoint.** Run `mvn -o -q -B -pl chat-core,chat-security,chat-deploy test`.
+   Confirm that every test passes.
 
 6. **Commit.** `git commit -am "Grants verify both roots before a write (CHAT-avduuqwp)"`
 
@@ -1742,7 +1749,7 @@ FP: `CHAT-owyyuvpg`.
 
 Every required schema element exists since T2 and T3b. T7 adds the start check.
 
-1. **Write the Cassandra shape test.** One case per required element.
+1. **Write the Cassandra shape test.** Add one case for each required element.
 
 ```kotlin
 @ParameterizedTest
@@ -1795,8 +1802,8 @@ class CassandraStoreShapeCheck(private val session: CqlSession, private val keys
 3. **Write the Redis check and its test.** It fails when the hash `chat:keys`
    exists without a key type segment, and names the recreation.
 
-4. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
-   exit 0.
+4. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
+   that it exits with 0.
 
 5. **Commit.** `git commit -am "Check the complete store shape at start. (CHAT-avduuqwp)"`
 
@@ -1817,9 +1824,12 @@ grep -rn -e "rootkeys.create" -e "funKey" -e "KnownRootKeys" -e "GenerateRootKey
 
 2. **Drift.** `drift check`. Update prose before any `drift link`.
 
-3. **Final gates.** `shell-scripts/build-health.sh --ci`,
-   `just check-production-classpath`, and
-   `shell-scripts/vector/gate-embedding-launch.sh`. Expected: each exits 0.
+3. **Final gates.** Run these three commands:
+   1. `shell-scripts/build-health.sh --ci`
+   2. `just check-production-classpath`
+   3. `shell-scripts/vector/gate-embedding-launch.sh`
+
+   Confirm that each command exits with 0.
 
 4. **Publish the work.**
    1. Commit the changes.
@@ -1951,3 +1961,14 @@ not include the official dictionary.
    listed messages and four more.
 6. Phrasal wording is replaced: "goes through", "read back", "reads back",
    "run on" and "carry".
+
+**Eighth revision, 2026-09-25, after the language audit of `c57c0347`.**
+
+1. Two sentence fragments are complete sentences: the D3 lookup test step, and
+   the Cassandra shape test step.
+2. The header no longer names a revision number. It points to the last entry
+   of this record.
+3. Each checkpoint and gate step names its command with "Run". A "Confirm
+   that" sentence replaces each result fragment such as "Expected: exit 0."
+   The audit did not list these steps. They had the same fragment pattern.
+4. "Memory, in full:" is a complete sentence.
