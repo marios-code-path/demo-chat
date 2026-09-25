@@ -1,8 +1,17 @@
 # Root Identity on Keys Implementation Plan
 
-> **For agentic workers:** Execute this plan inline with
-> superpowers:executing-plans. **Do not use subagent-driven development.**
-> `AGENTS.md` forbids it. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution:** inline, with superpowers:executing-plans. **Do not use
+> subagent-driven development.** `AGENTS.md` forbids it.
+>
+> **Tracking:** each task is an FP issue under `CHAT-avduuqwp`. Claim it with
+> `fp issue update --status in-progress <id>`, log each step with `fp comment`,
+> and close it with `--status done`. This plan uses numbered steps, not
+> checkboxes.
+>
+> **Navigation:** find a definition, a caller or a usage with the semantic
+> tools: `mcp__idea__analyze_calls`, `mcp__idea__search_symbol`,
+> `mcp__treesitter-mcp__find_usages`, `mcp__treesitter-mcp__affected_by_diff`.
+> Use `grep` only for raw text, such as a CQL table name or a log line.
 
 **Goal:** Every `Key<T>` carries a required, verified root, and the key service
 owns stable root keys per domain and key type.
@@ -10,8 +19,8 @@ owns stable root keys per domain and key type.
 **Architecture:** A closed `ChatDomain` type replaces class names. A root key
 store per backend creates one root per domain with a conditional write. `Key`
 gains `root`, and three canonical classes carry one equality rule. Mint takes a
-`ChatDomain`. Every inbound key or id is verified or resolved through the key
-registry before authorization or persistence.
+`ChatDomain`. A `VerifiedKey` that only `KeyVerifier` can build carries every
+inbound key to the broker and to persistence.
 
 **Tech Stack:** Kotlin 2.4, Spring Boot 4.0.8, Reactor 3.8, Jackson 2 and 3,
 Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
@@ -19,179 +28,200 @@ Spring Data Cassandra, Spring Data Redis (Lettuce), JUnit 6, Testcontainers 2.
 **Spec:** `docs/superpowers/specs/2026-09-24-key-root-identity-design.md`,
 approved on 2026-09-25. Issue `CHAT-avduuqwp`, child `CHAT-bafkgkko`.
 
+**Revision:** second. The owner review of `c2ffe934` found five problems. See
+the revision record at the end.
+
 ## Global Constraints
 
-- `Key<T>` is `{ id: T, root: T }`. No key exists without a root at the end of
-  the plan.
+- `Key<T>` is `{ id: T, root: T }`. **No factory fabricates a root**, at any
+  point of execution. There is no transitional `root = id` factory.
 - No migration, no backfill, no reader for a payload without `root`, no class
   name fallback. Old development stores are recreated.
 - `app.rootkeys.create` is removed.
 - Equality compares `id`, `root` and `empty`, in every `Key` implementation.
-  `hashCode` matches.
-- An inbound key is verified, and an inbound id is resolved, before it reaches
-  authorization, the self authority rule, or persistence.
-- A mint for `KeyCredential` or the generic `Key` fails with
-  `UnsupportedDomainException`. No compile failure and no accidental exception.
+  `hashCode` matches. **Equality does not verify a root.**
+- An inbound key or id becomes a `VerifiedKey` before it reaches the broker,
+  the self authority rule, or persistence.
+- Only a **mint** of a type with no domain contract is refused, with
+  `UnsupportedDomainException`. An operation on an existing key is not refused.
+  No compile failure and no accidental exception.
+- **Each schema change lands in the task that first consumes it.**
 - Redis names carry the key type: `chat:keys:<keyType>`,
   `chat:rootkeys:<keyType>`.
 - `root_keys` is absent from `truncate-long.cql` and `truncate-uuid.cql`.
-- Prose follows `AGENTS.md` controlled English.
 - Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone.
 - One maven build at a time per worktree.
-- The final gate is `shell-scripts/build-health.sh --ci`, because the wire
-  shape changes.
+- Prose follows `AGENTS.md` controlled English.
 
-## Branch rule
+## The coordinated change
 
-**The branch merges only after Task 12.** Tasks 2 to 10 keep a transitional
-`Key.funKey(id)` that sets `root = id`, marked `@Deprecated`. Each task keeps
-the reactor compiling and green. Task 10 deletes `funKey` and adds a guard test
-that fails if it returns. Never merge a commit between Task 2 and Task 10.
+Tasks T3a to T3e change the `Key` contract across the reactor. **They are one
+coordinated change with explicit compile checkpoints.** A checkpoint names the
+modules that compile at that point. The reactor is not green between T3a and
+T3e. Each sub-task commits when its checkpoint passes. Push the branch, but
+never merge it before T8.
+
+This replaces the transitional `root = id` factory of the first revision. That
+factory kept every commit green, but it fabricated roots, so no authorization
+result between two tasks meant anything.
+
+---
+
+## Pre-execution decisions
+
+**Execution does not start until the owner answers D1 and D2.**
+
+### D1. The end-to-end encryption keys
+
+`CryptoServiceBeans` wires `InMemoryConversationEpochService` and
+`InMemoryFrankingService` as beans, and `chat-deploy-e2ee` loads them. Each
+builds a key from a random UUID string cast to `T`. That cast is unsound when
+`T` is `Long`. No `ChatDomain` covers an epoch or a franking tag.
+
+- **Option A:** add `CONVERSATION_EPOCH` and `FRANKING_TAG` to `ChatDomain`, and
+  mint both keys through the key service.
+- **Option B:** refuse both mints with `UnsupportedDomainException` until the
+  E2EE types have a domain contract. `chat-deploy-e2ee` then cannot start an
+  epoch or franking a message.
+
+The plan recommends option A. Each E2EE type has one owning service, so the
+domain contract is clear.
+
+### D2. The vector index job key
+
+`VectorIndexJobStoreImpl.start` mints one key from `topicPersistence`, so in
+`MESSAGE_TOPIC`. It writes the job topic under that key. Then `write(job)`
+stores the job in the key-value store under **the same key**. The register
+records this as a design choice: "the topic key is the job root key".
+
+The store domain check refuses the key-value write, because the key is not in
+`KEY_VALUE_PAIR`.
+
+- **Option A:** mint two keys. The job key is in `KEY_VALUE_PAIR`. The topic key
+  is in `MESSAGE_TOPIC`. `IndexJob` gains `topicKey`. `VectorCoveragePolicy`
+  and the job topic reads follow `topicKey`.
+- **Option B:** let the key-value store accept a key of any domain.
+
+The plan recommends option A. Option B weakens the store check for every
+key-value write.
+
+### Decided by the plan, from the owner's rules
+
+| Item | Decision | Rule |
+|---|---|---|
+| Join and leave alerts | Mint a separate `MESSAGE` key for each alert. Do not reuse the membership id. | an id has one registry root |
+| Credentials | A credential belongs to a `USER` key. `get`, `add/{id}` and `compare` resolve the id in `USER`. Only `restAddCredential`, which mints a credential key, is refused. | refuse unsupported mints only |
+| Shell `key()` command | Refused with `UnsupportedDomainException`. It mints a generic `Key`. | refuse unsupported mints |
+| OAuth registered clients | The first `save` mints a `KEY_VALUE_PAIR` key. The configured client id stays an indexed field, and `findById` already reads it. A later `save` finds the stored key through the index. | an id is minted, not configured |
+| Root snapshot in Consul and HTTP | A string keyed snapshot, not a domain key. See T2. | a bootstrap store is not a domain store |
 
 ---
 
 ## Inventory
 
 Measured on 2026-09-25 at master `3527e7cb`. **Every entry has a root source
-before any factory changes.** The sources:
+before any factory changes.**
 
 | Code | Source | Trusted |
 |---|---|---|
 | **M** | mint, from the key service for a `ChatDomain` | yes |
 | **S** | a typed store or index read, from the domain of that store | yes |
-| **P** | a raw id whose domain its position fixes, when the id came from a trusted source | yes |
-| **R** | a raw id or a key from a caller, resolved or verified through the registry with an expected domain | after the lookup |
-| **X** | no domain contract: the call is replaced by an explicit refusal | refused |
-| **D** | deleted by this plan | none |
+| **P** | a minted key carried forward, for example a `MessageKey` built from a minted message id | yes |
+| **R** | a raw id or a key from a caller, resolved or verified to a `VerifiedKey` with an expected domain | after the lookup |
+| **B** | the root snapshot contract of T2, which is not a domain key | see T2 |
+| **X** | a mint with no domain contract, refused | refused |
+| **D** | deleted | none |
 
 ### A. `Key` implementations
 
-| # | Class | Module | Today | After | Task |
-|---|---|---|---|---|---|
-| A1 | `Key.funKey` anonymous object | chat-core | `id` equality | replaced by `SimpleKey` | 2, 10 |
-| A2 | `Key.emptyKey` anonymous object | chat-core | class and `id` equality | replaced by `EmptyKey` | 2 |
-| A3 | `MessageKey.create(id, from, dest)` anonymous | chat-core | `id` equality | replaced by `SimpleMessageKey` | 2 |
-| A4 | `MessageKey.create(id, dest)` anonymous | chat-core | `id` equality | replaced by `SimpleMessageKey` | 2 |
-| A5 | `ChatMessageKey` data class | chat-core `RequestResponse.kt` | data equality with `timestamp` | stops implementing `MessageKey`. Converts through `toKey(root)` | 2 |
-| A6 | `Admin` data class | chat-core `knownkey` | implements `Key` | stops implementing `Key`. A typed identity accessor replaces it | 1 |
-| A7 | `Anon` data class | chat-core `knownkey` | implements `Key` | same as A6 | 1 |
-| A8 | `ChatUserKey` | chat-persistence-cassandra | data equality | stops implementing `Key`. The store maps it | 8 |
-| A9 | `ChatTopicKey` | chat-persistence-cassandra | data equality | same | 8 |
-| A10 | `ChatMessageByIdKey` | chat-persistence-cassandra | data equality | same | 8 |
-| A11 | `AuthMetadataIdKey` | chat-persistence-cassandra | data equality | same | 8, 9 |
-| A12 | `KVKey` | chat-persistence-cassandra | data equality | same | 8 |
-| A13 | `CSKey` | chat-persistence-cassandra | `id`, `kind` | replaced by a `keys (id, root)` row class that does not implement `Key` | 4 |
-| A14 | `CredKey` | chat-persistence-cassandra | `id`, `kind` | `kind` removed. Stops implementing `Key` | 8, 11 |
-| A15 | `ChatUserHandleKey` | chat-index-cassandra | data equality | stops implementing `Key`. The index maps it | 8 |
-| A16 | `ChatTopicNameKey` | chat-index-cassandra | data equality | same | 8 |
-| A17 | `ChatMessageByUserKey` | chat-index-cassandra | data equality | same | 8 |
-| A18 | `ChatMessageByTopicKey` | chat-index-cassandra | data equality | same | 8 |
-| A19 | `ChatKeyValueIndexKey` | chat-index-cassandra | data equality | same | 8 |
-| A20 | `ChatKeyValueIndexByIdKey` | chat-index-cassandra | data equality | same | 8 |
-| A21 | Four test implementations | test source | various | each moves to `Key.of` or `SimpleKey` | 10 |
+| # | Class | Module | After | Task |
+|---|---|---|---|---|
+| A1 | `Key.funKey` anonymous object | chat-core | deleted. `SimpleKey` replaces it | T3a |
+| A2 | `Key.emptyKey` anonymous object | chat-core | deleted. `EmptyKey` replaces it | T3a |
+| A3 | `MessageKey.create(id, from, dest)` anonymous | chat-core | deleted. `SimpleMessageKey` | T3a |
+| A4 | `MessageKey.create(id, dest)` anonymous | chat-core | deleted. `SimpleMessageKey` | T3a |
+| A5 | `ChatMessageKey` data class | chat-core | stops implementing `MessageKey`. `toKey(root)` converts it | T3a |
+| A6 | `Admin` data class | chat-core | stops implementing `Key`. `RootKeys.admin()` | T1 |
+| A7 | `Anon` data class | chat-core | stops implementing `Key`. `RootKeys.anon()` | T1 |
+| A8 to A14 | `ChatUserKey`, `ChatTopicKey`, `ChatMessageByIdKey`, `AuthMetadataIdKey`, `KVKey`, `CSKey`, `CredKey` | chat-persistence-cassandra | stop implementing `Key`. The store maps rows | T3b |
+| A15 to A20 | `ChatUserHandleKey`, `ChatTopicNameKey`, `ChatMessageByUserKey`, `ChatMessageByTopicKey`, `ChatKeyValueIndexKey`, `ChatKeyValueIndexByIdKey` | chat-index-cassandra | stop implementing `Key`. The index maps rows | T3c |
+| A21 | four test implementations | test source | move to `Key.of` | the sub-task of their module |
 
 **Today equality is asymmetric.** `funKey(7) == ChatUserKey(7)` is true, and
-`ChatUserKey(7) == funKey(7)` is false, because the data class requires its
-own class. Task 2 closes this for the core classes. Task 8 closes it for
-Cassandra, because those classes stop implementing `Key`.
+`ChatUserKey(7) == funKey(7)` is false, because a data class requires its own
+class. After T3c only the three canonical classes implement `Key`, and one rule
+serves all of them.
 
 ### B. Deserializers and generated constructors
 
 | # | Path | After | Task |
 |---|---|---|---|
-| B1 | `KeyDeserializer`, Jackson 2, `ChatDeserializers.kt:31` | reads `id` and `root`. Fails without `root` | 6 |
-| B2 | `MessageKeyDeserializer`, Jackson 2, `ChatDeserializers.kt:24` | reads `root` too | 6 |
-| B3 | `KeyAssembly.key`, Jackson 3, `NodeValueRules.kt:70` | takes `root` | 6 |
-| B4 | `ChatJackson3Deserializers.kt:78` | reads `root` | 6 |
-| B5 | Spring Data Cassandra constructs A8 to A20 | no longer a `Key`. The store maps rows | 8 |
-| B6 | Redis JSON `readValue(json, User::class.java)` in each Redis store | goes through B1 and B2, so `root` is required in stored JSON | 6, 8 |
-| B7 | Kafka and Redis pub/sub message payloads | decoded through B1 to B4. **Unmeasured:** Task 6 step 1 proves it with a test per provider | 6 |
+| B1 | `KeyDeserializer`, Jackson 2 | reads `id` and `root`, fails without `root` | T3a |
+| B2 | `MessageKeyDeserializer`, Jackson 2 | reads `root` | T3a |
+| B3 | `KeyAssembly.key`, Jackson 3 | takes `root` | T3a |
+| B4 | `ChatJackson3Deserializers.kt:78` | reads `root` | T3a |
+| B5 | Spring Data Cassandra builds A8 to A20 | not a `Key`. The store maps rows | T3b, T3c |
+| B6 | Redis JSON in each Redis store | goes through B1 and B2 | T3b |
+| B7 | Kafka and Redis pub/sub payloads | through B1 to B4. **Unmeasured.** T3e proves it per provider | T3e |
 
-### C. Factory call sites in main source
+A decoded key is a claim. It becomes a `VerifiedKey` only through T4.
 
-Seventy-seven calls. The "Src" column is the root source.
+### C. Factory calls in main source
+
+Seventy-seven calls. Corrections from the review are marked **fixed**.
 
 | # | Site | Src | After | Task |
 |---|---|---|---|---|
-| C1 | `authorization-server` `KeyValueStoreRegisteredClientRepository.kt:26` | P | `Key.of(id, roots.of(KEY_VALUE_PAIR))`. The id comes from a registered client that this server stored | 10 |
-| C2 | `client-consul` `ConsulKVStore.kt:22` | P | `Key.of(key, roots.of(KEY_VALUE_PAIR))`. Consul kv keys are key-value entries | 10 |
-| C3 | `core` `KeyService.kt:15` `IKeyGenerator.nextKey()` | D | removed. A generator makes ids, and mint makes keys | 4 |
-| C4 | `core` `AccessBroker.kt:13` `hasAccessByKeyId(T, T)` | R | resolves both ids through the registry with no expected domain. An unknown id denies | 7 |
-| C5 | `core` `ChatJackson3Deserializers.kt:78` | R | B4. The decoded key is a claim until verified | 6 |
-| C6 | `core` `ChatDeserializers.kt:24` | R | B2 | 6 |
-| C7 | `core` `ChatDeserializers.kt:43` | R | B1 | 6 |
-| C8 | `core` `ChatDeserializers.kt:49` | R | B1 | 6 |
-| C9 | `core` `NodeValueRules.kt:72` | R | B3 | 6 |
-| C10 | `core` `NodeValueRules.kt:74` | R | B3 | 6 |
-| C11 | `core` `GenerateRootKeyInitializer.kt:15` | D | removed with the class. Tests use `RootKeysFixture` | 3 |
-| C12 | `crypto` `InMemoryCryptoServices.kt:149` epoch key | P | `Key.of(uuid, roots.of(KEY_VALUE_PAIR))`. Decision point: see Task 10 step 2 | 10 |
-| C13 | `crypto` `InMemoryCryptoServices.kt:192` tag key | P | same as C12 | 10 |
-| C14 | `deploy` `HttpRootKeyConsumeOnStart.kt:64` | R | the consumer reads `{domain: {id}}` and builds `Key.root(id)`. It verifies nothing, because a process with no store trusts its configured source. Recorded as a trust boundary | 3 |
-| C15 | `deploy` `RootKeyConsumerHttp.kt:62` | D | a commented out duplicate of C14. Removed | 3 |
-| C16 | `deploy` `InitialUsersService.kt:24` `emptyKey` | P | `Key.empty(placeholder, roots.of(AUTH_METADATA))`. It stands for a grant key before `authorize` mints one | 9 |
-| C17 | `deploy` `RootKeyService.kt:25` | P | `Key.of(dataKey, roots.of(KEY_VALUE_PAIR))` | 3 |
-| C18 | `deploy` `RootKeyService.kt:38` | R | same as C14 | 3 |
-| C19 | `deploy` `RootKeyService.kt:47` | P | same as C17 | 3 |
-| C20 | `index-cassandra` `KeyValueIndex.kt:84` | S | `Key.of(row.key.id, roots.of(KEY_VALUE_PAIR))` | 8 |
-| C21 | `index-cassandra` `MembershipIndex.kt:59` | D | commented out. Removed | 8 |
-| C22 | `index-cassandra` `MembershipIndex.kt:71` | S | `Key.of(it.key, roots.of(TOPIC_MEMBERSHIP))` | 8 |
-| C23 | `index-cassandra` `AuthMetadata.kt:25` principal | S | `Key.of(principalId, principalRoot)` from the row | 9 |
-| C24 | `index-cassandra` `AuthMetadata.kt:27` target | S | `Key.of(targetId, targetRoot)` from the row | 9 |
-| C25 | `index-cassandra` `AuthMetadata.kt:29` key | S | `Key.of(keyId, roots.of(AUTH_METADATA))` | 9 |
-| C26 | `index-cassandra` `AuthMetadata.kt:48` | S | same as C23 | 9 |
-| C27 | `index-cassandra` `AuthMetadata.kt:50` | S | same as C24 | 9 |
-| C28 | `index-cassandra` `AuthMetadata.kt:52` | S | same as C25 | 9 |
-| C29 | `index-lucene` `LuceneIndexBeans.kt:27` `stringToKey` | S | one decoder per index, with the domain root of that index | 8 |
-| C30 | `index-lucene` `LuceneIndexBeans.kt:43` membership | S | `Key.of(t.key, roots.of(TOPIC_MEMBERSHIP))` | 8 |
-| C31 | `index-lucene` `KeyValueLuceneIndex.kt:25` | S | root of `KEY_VALUE_PAIR` | 8 |
-| C32 | `index-lucene` `AuthMetaIndexLucene.kt:17` | S | root of `AUTH_METADATA` | 8 |
-| C33 | `index-lucene` `IndexEntryEncoder.kt:63` | D | builds a key only to call `toString`. Uses the raw id | 8 |
-| C34 | `persistence-cassandra` `AuthMetadata.kt:25` principal | S | from `principal_root` | 9 |
-| C35 | `persistence-cassandra` `AuthMetadata.kt:28` target | S | from `target_root` | 9 |
-| C36 | `persistence-memory` `MemoryPersistenceServices.kt:36` | S | root of `TOPIC_MEMBERSHIP` | 8 |
-| C37 | `persistence-memory` `KeyServiceInMemory.kt:21` | M | mint | 4 |
-| C38 | `persistence-redis` `KeyServiceRedis.kt:28` | M | mint | 4 |
-| C39 | `service-composite` `MessagingServiceImpl.kt:38` `req.id` | R | `keyService.resolve(req.id, MESSAGE)` | 7 |
-| C40 | `service-composite` `MessagingServiceImpl.kt:42` `MessageKey.create(it, …)` | M | `it` is a minted message key. Its root carries over | 10 |
-| C41 | `service-composite` `UserServiceImpl.kt:33` | M | `key` is minted. Use it directly | 10 |
-| C42 | `service-composite` `UserServiceImpl.kt:54` `req.id` | R | `resolve(req.id, USER)` | 7 |
-| C43 | `service-composite` `UserServiceImpl.kt:60` | S | the ids come from the user index. Root of `USER` | 10 |
-| C44 | `service-composite` `ComposedJobRecordWriter.kt:35` | P | `record.key` is a minted message key. Root of `MESSAGE` | 10 |
-| C45 | `service-composite` `MessageRecallServiceImpl.kt:97` | S | ids come from vector metadata this server wrote. Root of `MESSAGE` | 10 |
-| C46 | `service-composite` `TopicServiceImpl.kt:64` `req.id` | R | `resolve(req.id, MESSAGE_TOPIC)` | 7 |
-| C47 | `service-composite` `TopicServiceImpl.kt:84` `req.id` | R | same | 7 |
-| C48 | `service-composite` `TopicServiceImpl.kt:102` `req.roomId` | R | same | 7 |
-| C49 | `service-composite` `TopicServiceImpl.kt:113` | M | `membership.key` comes from a mint. Root of `MESSAGE` for the alert key | 10 |
-| C50 | `service-composite` `TopicServiceImpl.kt:132` | M | same | 10 |
-| C51 | `service-composite` `TopicServiceImpl.kt:148` `membership.member` | S | the id comes from a stored membership. Root of `USER` | 10 |
-| C52 | `service-composite` `MessagingServiceAccess.kt:20` | R | `resolve(req.id, MESSAGE_TOPIC)` before the check | 7 |
-| C53 | `service-composite` `MessagingServiceAccess.kt:24` | R | same | 7 |
-| C54 | `service-composite` `MessagingServiceAccess.kt:28` `req.dest` | R | same | 7 |
-| C55 | `service-composite` `TopicServiceAccess.kt:30` | R | `resolve(…, MESSAGE_TOPIC)` | 7 |
-| C56 | `service-composite` `TopicServiceAccess.kt:34` | R | same | 7 |
-| C57 | `service-composite` `TopicServiceAccess.kt:38` | R | same | 7 |
-| C58 | `service-composite` `TopicServiceAccess.kt:42` | R | same | 7 |
-| C59 | `service-composite` `TopicServiceAccess.kt:46` | R | same | 7 |
-| C60 | `service-composite` `UserServiceAccess.kt:26` | R | `resolve(req.id, USER)` | 7 |
-| C61 | `shell` `TopicCommands.kt:43` `emptyKey` | P | `Key.empty(placeholder, root of MESSAGE)`. The client reads the root from its consumed root keys | 10 |
-| C62 | `shell` `TopicCommands.kt:44` identity | P | the identity key the shell holds from login, with its root | 10 |
-| C63 | `shell` `UserCommands.kt:46` | R | the shell sends an id. The server resolves it | 10 |
-| C64 | `shell` `UserCommands.kt:110` | R | same | 10 |
-| C65 | `shell` `UserCommands.kt:140` | R | same | 10 |
-| C66 | `shell` `UserCommands.kt:141` | R | same | 10 |
-| C67 | `webflux` `PersistenceControllers.kt:50` | M | `key` is minted | 10 |
-| C68 | `webflux` `KeyValueStoreRestMapping.kt:31` `req.key` | R | `resolve(req.key, KEY_VALUE_PAIR)` | 7 |
-| C69 | `webflux` `IndexRestMapping.kt:20` path id | R | `resolve(id, domainOf(index))` | 7 |
-| C70 | `webflux` `PersistenceRestMapping.kt:24` path id | R | `resolve(id, domainOf(store))` | 7 |
-| C71 | `webflux` `PersistenceRestMapping.kt:27` path id | R | same | 7 |
-| C72 | `webflux` `SecretsRestMapping.kt:17` | X | credentials have no domain contract. `UnsupportedDomainException` | 4 |
-| C73 | `webflux` `SecretsRestMapping.kt:22` | X | same | 4 |
-| C74 | `webflux` `SecretsRestMapping.kt:38` | X | same | 4 |
-| C75 | `webflux` `PubSubRestMapping.kt:53` | M | minted with `MESSAGE` | 4 |
-| C76 | `webflux` `IKeyRestMapping.kt:27` path id | R | `resolve(id, null)`. `rem` then refuses a root | 7 |
-| C77 | `webflux` `IKeyRestMapping.kt:31` path id | R | same | 7 |
+| C1 | `KeyValueStoreRegisteredClientRepository.kt:26` | M | first `save` mints `KEY_VALUE_PAIR`. Later saves read the stored key through the index | T3d |
+| C2 | `ConsulKVStore.kt:22` | B | the Consul store takes a string name. It holds no domain key | T2 |
+| C3 | `KeyService.kt:15` `IKeyGenerator.nextKey()` | D | a generator makes ids, and mint makes keys | T3a |
+| C4 | `AccessBroker.kt:13` `hasAccessByKeyId(T, T)` | R | resolves both ids to `VerifiedKey` | T4 |
+| C5 to C10 | deserializers and `KeyAssembly` | R | B1 to B4 | T3a |
+| C11 | `GenerateRootKeyInitializer.kt:15` | D | removed. Tests use `RootKeysFixture` | T2 |
+| C12, C13 | `InMemoryCryptoServices.kt:149`, `:192` | M or X | **per D1** | T3d |
+| C14 | `HttpRootKeyConsumeOnStart.kt:64` | B | reads the snapshot | T2 |
+| C15 | `RootKeyConsumerHttp.kt:62` | D | a commented out duplicate | T2 |
+| C16 | `InitialUsersService.kt:24` `emptyKey` | P | `Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)` | T3d |
+| C17 to C19 | `RootKeyService.kt:25`, `:38`, `:47` | B | **fixed.** A string name in the snapshot store, not a `KEY_VALUE_PAIR` key | T2 |
+| C20 | `KeyValueIndex.kt:84` | S | root of `KEY_VALUE_PAIR` | T3c |
+| C21 | `MembershipIndex.kt:59` | D | commented out | T3c |
+| C22 | `MembershipIndex.kt:71` | S | root of `TOPIC_MEMBERSHIP` | T3c |
+| C23 to C28 | `index-cassandra` `AuthMetadata.kt` | S | principal and target from `principal_root` and `target_root`. The grant key from the root of `AUTH_METADATA` | T3c |
+| C29 to C32 | Lucene key decoders | S | one decoder per index, with its domain root | T3c |
+| C33 | `IndexEntryEncoder.kt:63` | D | uses the raw id | T3c |
+| C34, C35 | `persistence-cassandra` `AuthMetadata.kt` | S | from the root columns | T3b |
+| C36 | `MemoryPersistenceServices.kt:36` | S | root of `TOPIC_MEMBERSHIP` | T3b |
+| C37 | `KeyServiceInMemory.kt:21` | M | mint | T3b |
+| C38 | `KeyServiceRedis.kt:28` | M | mint | T3b |
+| C39 | `MessagingServiceImpl.kt:38` `messageById` | R | `resolve(req.id, MESSAGE)` | T3d |
+| C40 | `MessagingServiceImpl.kt:42` | P | the minted message key | T3d |
+| C41 | `UserServiceImpl.kt:33` | P | use the minted key. Do not rebuild it | T3d |
+| C42 | `UserServiceImpl.kt:54` | R | `resolve(req.id, USER)` | T3d |
+| C43 | `UserServiceImpl.kt:60` | S | ids from the user index. Root of `USER` | T3d |
+| C44 | `ComposedJobRecordWriter.kt:35` | P | `record.key` is minted from the message store in `MessageReindexServiceImpl.emit`. Carry its root | T3d |
+| C45 | `MessageRecallServiceImpl.kt:97` | S | ids from vector metadata that this server wrote. Root of `MESSAGE` | T3d |
+| C46 to C48 | `TopicServiceImpl.kt:64`, `:84`, `:102` | R | `resolve(…, MESSAGE_TOPIC)` | T3d |
+| C49 | `TopicServiceImpl.kt:113` join alert | M | **fixed.** Mint a new `MESSAGE` key for the alert from `messagePersistence.key()`. The membership id stays the membership key | T3d |
+| C50 | `TopicServiceImpl.kt:132` leave alert | M | **fixed.** Same as C49 | T3d |
+| C51 | `TopicServiceImpl.kt:148` | S | the id comes from a stored membership. Root of `USER` | T3d |
+| C52 | `MessagingServiceAccess.kt:20` `listenTopic` | R | `resolve(req.id, MESSAGE_TOPIC)` | T3d |
+| C53 | `MessagingServiceAccess.kt:24` `messageById` | R | **fixed.** `resolve(req.id, MESSAGE)`. The id is a message id | T3d |
+| C54 | `MessagingServiceAccess.kt:28` `send` | R | `resolve(req.dest, MESSAGE_TOPIC)` | T3d |
+| C55 to C59 | `TopicServiceAccess.kt:30` to `:46` | R | `resolve(…, MESSAGE_TOPIC)` | T3d |
+| C60 | `UserServiceAccess.kt:26` | R | `resolve(req.id, USER)` | T3d |
+| C61 | `TopicCommands.kt:43` `emptyKey` | P | `Key.empty(placeholder, rootKeys.of(MESSAGE).id)` from the consumed snapshot | T3d |
+| C62 | `TopicCommands.kt:44` | P | the identity key the shell holds from login | T3d |
+| C63 to C66 | `UserCommands.kt:46`, `:110`, `:140`, `:141` | R | the shell sends an id. The server resolves it | T3d |
+| C67 | `PersistenceControllers.kt:50` | P | the minted message key | T3d |
+| C68 | `KeyValueStoreRestMapping.kt:31` | R | `resolve(req.key, KEY_VALUE_PAIR)`. An unknown id is refused. A client mints first | T3d |
+| C69 to C71 | `IndexRestMapping.kt:20`, `PersistenceRestMapping.kt:24`, `:27` | R | a `@Resolved` path parameter with the domain of the mapping | T3d, T4 |
+| C72 | `SecretsRestMapping.kt:17` `get/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
+| C73 | `SecretsRestMapping.kt:22` `add/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
+| C74 | `SecretsRestMapping.kt:38` `compare/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
+| C75 | `PubSubRestMapping.kt:53` | P | the minted message key | T3d |
+| C76, C77 | `IKeyRestMapping.kt:27`, `:31` | R | `@Resolved` with no expected domain | T3d, T4 |
 
-Mint calls with a class today, and their `ChatDomain`:
+Mint calls with a class today:
 
 | Site | Class today | After |
 |---|---|---|
@@ -201,77 +231,97 @@ Mint calls with a class today, and their `ChatDomain`:
 | `InMemoryPersistence.kt:20` | `entityClass` | a `ChatDomain` constructor argument |
 | `PubSubRestMapping.kt:49` | `MessageKey` | `MESSAGE` |
 | `UserCommands.kt:35`, `:136` | `KeyValuePair`, `AuthMetadata` | `KEY_VALUE_PAIR`, `AUTH_METADATA` |
-| `UserCommands.kt:57` | `Key` | **X**, refused |
-| `SecretsRestMapping.kt:28` | `KeyCredential` | **X**, refused |
-| `RootKeysSupplier.kt:15` | each `KnownRootKeys` class | **D**, replaced by Task 3 |
+| `UserCommands.kt:57` `key()` | `Key` | **X**. The command prints the refusal |
+| `SecretsRestMapping.kt:28` `restAddCredential` | `KeyCredential` | **X**. HTTP 501 |
+| `RootKeysSupplier.kt:15` | each `KnownRootKeys` class | **D**. T2 replaces it |
 
 ### D. Inbound routes
 
-| # | Surface | Count | After | Task |
-|---|---|---|---|---|
-| D1 | RSocket `@MessageMapping` methods in `chat-service-controller` that take a `Key` or a request with ids | 31 | a verifying decoder for `Key`. A resolver for request ids | 7 |
-| D2 | REST `@PathVariable` ids in `chat-webflux` | 21 | resolved per C68 to C77 | 7 |
-| D3 | `IKeyRestMapping.restKey` and `IKeyServiceMapping.key` | 2 | take a `ChatDomain` | 4 |
-| D4 | `SpringSecurityAccessBrokerService.hasAccessTo(target)` and `hasAccessToEntity` | 2 | `hasAccessTo` verifies the target before the broker. An entity comes from a store and needs no read | 7 |
-| D5 | `AuthMetadataAccessBroker.isSelf` | 1 | runs only on keys that the caller of the broker verified. The broker documents the precondition. Task 7 adds a test that a forged root never reaches it | 7 |
+| # | Surface | After | Task |
+|---|---|---|---|
+| D1 | RSocket `@MessageMapping` parameters of type `Key<T>` in `chat-service-controller` | the parameter type becomes `VerifiedKey<T>`, built by a messaging argument resolver | T4 |
+| D2 | REST `@PathVariable` ids in `chat-webflux` | a `@Resolved(domain)` parameter of type `VerifiedKey<T>`, built by a web argument resolver | T4 |
+| D3 | `IKeyRestMapping.restKey`, `IKeyServiceMapping.key` | take a `ChatDomain` | T3d |
+| D4 | `SpringSecurityAccessBrokerService.hasAccessTo(target)` | verifies to `VerifiedKey` before the broker | T4 |
+| D5 | `AuthMetadataAccessBroker` | takes `target: VerifiedKey<T>`, so an unverified key cannot reach `isSelf` | T4 |
+| D6 | `PersistenceStoreMapping.add(ent)`, RSocket | **new.** Verifies the entity key in the store domain before the store | T4 |
+| D7 | Request ids in `ByIdRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest` | resolved in the composite service, sites C39 to C60 | T3d, T4 |
 
-Task 7 step 1 writes a guard test that lists every `@MessageMapping` and
-`@PathVariable` in main source and fails on one that has no entry in the
-verification registry. So D1 and D2 are enforced by count, not by memory.
+### E. Every `add` path, and its key source
+
+**Measured on 2026-09-25 with `mcp__treesitter-mcp__find_usages` for `add`**
+in each main source tree. Index writes that follow a store write share its key
+and are not listed. T0 step 2 measures again.
+
+| # | Path | Key source | Task |
+|---|---|---|---|
+| E1 | `MessagingServiceImpl.send`, `messagePersistence.add` | M, `messagePersistence.key()` | T5 |
+| E2 | `UserServiceImpl.addUser`, `userPersistence.add` | M, `userPersistence.key()`. C41 stops rebuilding it | T5 |
+| E3 | `TopicServiceImpl.addRoom`, `topicPersistence.add` | M | T5 |
+| E4 | `TopicServiceImpl.joinRoom`, `membershipPersistence.add` | M | T5 |
+| E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC` | T5 |
+| E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | **per D2** | T5 |
+| E7 | `ComposedJobRecordWriter.write`, `messagePersistence.add` | M, minted from the message store in `MessageReindexServiceImpl.emit` | T5 |
+| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. T0 step 2 confirms each key comes from `key()` | T5 |
+| E9 | `KeyValueStoreRestMapping` add | R, `KEY_VALUE_PAIR` | T4, T5 |
+| E10 | `PersistenceStoreMapping.add(ent)`, RSocket | R, the store domain | T4, T5 |
+| E11 | `KeyValueStoreRegisteredClientRepository.save` | M on first save, S after | T5 |
+| E12 | `InitialUsersService`, `secretsStore.addCredential` | S or M: the user key from `addUser`, or from `findByUsername` | T5 |
+| E13 | `RootKeyService.publishRootKeys`, `kvStore.add` | B | T2 |
+| E14 | `CoreAuthorizationService.authorize`, `authPersist.add` | M for the grant key. Principal and target verified in T6 | T5, T6 |
+| E15 | `UserCommands.kv`, `keyValuePersistence.add` | M | T5 |
 
 ---
 
-## Task 0: Commit the inventory
+## T0: Record the inventory and the pre-execution decisions
 
-**Files:**
-- Modify: `docs/superpowers/plans/2026-09-25-key-root-identity.md`
+FP: `CHAT-ufqdvmkp`.
 
-- [ ] **Step 1: Re-measure the counts at the branch head.**
+**Files:** this plan.
 
-Run:
+1. **Confirm D1 and D2 with the owner.** Record each answer in this plan under
+   its decision, and in a comment on `CHAT-avduuqwp`. Stop until both are
+   answered.
 
-```bash
-grep -rn --include='*.kt' -E "Key\.funKey\(|MessageKey\.create\(|Key\.emptyKey\(" chat-*/src/main | grep -v /target/ | grep -vc "fun <T>"
-```
+2. **Measure again at the branch head.** For each symbol, run
+   `mcp__treesitter-mcp__find_usages` over each `chat-*/src/main` tree:
+   `funKey`, `emptyKey`, `create` in `Message.kt`, and `add` in each module of
+   section E. Expected: the 77 factory calls of section C and the 15 add paths
+   of section E. For E8, read each `PersistenceControllers` add and confirm its
+   key comes from `key()`. A difference means the tree moved. Update the
+   inventory before any other task.
 
-Expected: `77`. A different count means the tree moved. Update section C
-before any other task.
-
-- [ ] **Step 2: Commit.**
+3. **Commit.**
 
 ```bash
 git add docs/superpowers/plans/2026-09-25-key-root-identity.md
-git commit -m "Plan: root identity on keys (CHAT-avduuqwp)"
+git commit -m "Plan: record the pre-execution decisions (CHAT-avduuqwp)"
 ```
 
 ---
 
-## Task 1: Typed domains and typed identities
+## T1: Type the domains and the identities
+
+FP: `CHAT-lhizttet`.
 
 **Files:**
 - Create: `chat-core/src/main/kotlin/com/demo/chat/domain/knownkey/ChatDomain.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/knownkey/RootKeys.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/knownkey/Admin.kt`, `Anon.kt`
-- Modify: `chat-security/src/main/kotlin/com/demo/chat/security/access/SpringSecurityAccessBrokerService.kt`
-- Modify: the 9 `Admin::class` and `Anon::class` call sites in main source
+- Modify: `RootKeys.kt`, `Admin.kt`, `Anon.kt` in `chat-core/.../domain/knownkey`
+- Modify: `chat-security/.../access/SpringSecurityAccessBrokerService.kt`, `ContextIdentity.kt`
+- Modify: every caller of `RootKeys.getRootKey`, `addRootKey` and `hasKey`. Find them with `mcp__idea__analyze_calls` on each method.
 - Test: `chat-core/src/test/kotlin/com/demo/chat/test/domain/ChatDomainTests.kt`
 
-**Interfaces:**
-- Produces: `enum class ChatDomain(val wireName: String)`,
-  `ChatDomain.parse(name: String): ChatDomain?`,
-  `RootKeys<T>.of(domain: ChatDomain): Key<T>`,
-  `RootKeys<T>.admin(): Key<T>`, `RootKeys<T>.anon(): Key<T>`,
-  `RootKeys<T>.domainOfRoot(id: T): ChatDomain?`.
+**Interfaces produced:** `enum class ChatDomain(val wireName: String)`,
+`ChatDomain.parse(name): ChatDomain?`, `RootKeys.of(domain): Key<T>`,
+`RootKeys.admin()`, `RootKeys.anon()`, `RootKeys.domainOfRoot(id: T): ChatDomain?`,
+`RootKeys.loadDomains(Map<ChatDomain, Key<T>>)`,
+`RootKeys.loadIdentities(admin, anon)`.
 
-- [ ] **Step 1: Write the failing test.**
+**`Key` does not change in T1.** `RootKeys` stores the keys that exist today.
+
+1. **Write the test.**
 
 ```kotlin
-package com.demo.chat.test.domain
-
-import com.demo.chat.domain.knownkey.ChatDomain
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-
 class ChatDomainTests {
 
     @Test
@@ -283,33 +333,28 @@ class ChatDomainTests {
     }
 
     @Test
-    fun `the wire names are the names the access expressions use`() {
-        assertThat(ChatDomain.entries.map { it.wireName }).containsExactly(
-            "User", "Message", "MessageTopic", "TopicMembership", "AuthMetadata", "KeyValuePair"
-        )
+    fun `a partial root set is refused`() {
+        val keys = RootKeys<Long>()
+        assertThatThrownBy { keys.loadDomains(mapOf(ChatDomain.USER to Key.funKey(1L))) }
+            .hasMessageContaining("MESSAGE")
     }
 }
 ```
 
-- [ ] **Step 2: Run it and see it fail.**
+   If D1 chooses option A, `ChatDomain` holds the two E2EE entries too.
 
-Run: `mvn -o -q -B -pl chat-core test -Dtest=ChatDomainTests`
-Expected: compile failure, `Unresolved reference 'ChatDomain'`.
+2. **Run it and see it fail.**
+   `mvn -o -q -B -pl chat-core test -Dtest=ChatDomainTests`. Expected: compile
+   failure on `ChatDomain`.
 
-- [ ] **Step 3: Write `ChatDomain`.**
+3. **Write `ChatDomain`.**
 
 ```kotlin
-package com.demo.chat.domain.knownkey
-
 /**
  * Every domain that owns a root key. See `CHAT-avduuqwp`.
  *
  * **The list is closed.** A type with no entry has no root, and a mint for it
- * is refused. `KeyCredential` and the generic `Key` have no entry.
- *
- * [wireName] is the name that access expressions such as
- * `hasAccessToDomain('User', …)` carry. [parse] is the only way text becomes
- * a domain.
+ * is refused. [parse] is the only way text becomes a domain.
  */
 enum class ChatDomain(val wireName: String) {
     USER("User"),
@@ -325,14 +370,13 @@ enum class ChatDomain(val wireName: String) {
 }
 ```
 
-- [ ] **Step 4: Rekey `RootKeys` by `ChatDomain`.** Replace the `String` map
-with two typed maps. Remove every `Class` and `String` overload.
+4. **Rekey `RootKeys`.**
 
 ```kotlin
 class RootKeys<T> {
     private val domains: MutableMap<ChatDomain, Key<T>> = ConcurrentHashMap()
-    private var admin: Key<T>? = null
-    private var anon: Key<T>? = null
+    @Volatile private var admin: Key<T>? = null
+    @Volatile private var anon: Key<T>? = null
 
     fun of(domain: ChatDomain): Key<T> = domains[domain] ?: throw ChatException(
         if (domains.isEmpty()) "No root key '${domain.wireName}': the root keys are not loaded."
@@ -345,9 +389,8 @@ class RootKeys<T> {
     fun domainOfRoot(id: T): ChatDomain? = domains.entries.firstOrNull { it.value.id == id }?.key
 
     fun loadDomains(roots: Map<ChatDomain, Key<T>>) {
-        require(roots.keys == ChatDomain.entries.toSet()) {
-            "A root key set must name every domain. Missing: ${ChatDomain.entries - roots.keys}"
-        }
+        val missing = ChatDomain.entries - roots.keys
+        require(missing.isEmpty()) { "A root key set must name every domain. Missing: $missing" }
         domains.putAll(roots)
     }
 
@@ -360,14 +403,12 @@ class RootKeys<T> {
 }
 ```
 
-`loadDomains` refuses a partial set. That is the rule that a node never serves
-with a partial set.
+5. **`Admin` and `Anon` stop implementing `Key`.** Each becomes an empty marker
+   class. Move each caller to `rootKeys.admin()` or `rootKeys.anon()`.
+   `InitialUsersService` calls `loadIdentities` after it finds or adds the two
+   users.
 
-- [ ] **Step 5: Stop `Admin` and `Anon` implementing `Key`.** Each becomes a
-marker class with no fields. Move the 9 call sites to `rootKeys.admin()` and
-`rootKeys.anon()`. `ContextIdentity` reads `rootKeys.anon()`.
-
-- [ ] **Step 6: Parse domain names in the access service.**
+6. **Parse domain names in the access service.**
 
 ```kotlin
 fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
@@ -378,37 +419,247 @@ fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
         ?: Mono.just(false)
 ```
 
-`hasAccessToDomainByKind(kind: Class<S>, …)` is removed. `IKeyServiceAccess`
-moves to `hasAccessToDomain(#domain.wireName, 'NEW')` in Task 4.
+   Remove `hasAccessToDomainByKind`.
 
-- [ ] **Step 7: Run the module tests.**
+7. **Checkpoint.** `shell-scripts/build-health.sh`. Expected: exit 0.
 
-Run: `mvn -o -q -B -pl chat-core,chat-security test`
-Expected: PASS. Fix every compile error by moving the caller to the typed API.
-
-- [ ] **Step 8: Commit.**
-
-```bash
-git commit -am "Type the domains and the identities (CHAT-avduuqwp)"
-```
+8. **Commit.** `git commit -am "Type the domains and the identities (CHAT-avduuqwp)"`
 
 ---
 
-## Task 2: The non-null key contract
+## T2: Load stable roots, and define the root snapshot contract
+
+FP: `CHAT-ijojbtpr`. Implements `CHAT-bafkgkko`.
+
+**Two contracts, kept apart.**
+
+- **Store backed initialization.** A process that reaches the authoritative
+  store loads or creates the roots through `RootKeyStore`. The ids are typed
+  as `T`. This is the only place a root is created.
+- **Snapshot consumption.** A process that does not reach the store, such as
+  the shell, reads a `RootKeySnapshot` from HTTP or from Consul. It never
+  creates a root. The snapshot is a string keyed record, not a domain key.
 
 **Files:**
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt` (the `Key` interface)
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/Message.kt` (`MessageKey`)
-- Create: `chat-core/src/main/kotlin/com/demo/chat/domain/Keys.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/RequestResponse.kt` (`ChatMessageKey`)
-- Test: `chat-core/src/test/kotlin/com/demo/chat/test/domain/KeyEqualityTests.kt`
+- Create: `chat-core/.../service/core/RootKeyStore.kt`, `RootKeyLoader.kt`
+- Create: `chat-core/.../domain/knownkey/RootKeySnapshot.kt`
+- Create: `RootKeyStoreInMemory.kt`, `RootKeyStoreRedis.kt`, `RootKeyStoreCassandra.kt` in their backend modules
+- Modify: `keyspace-long.cql`, `keyspace-uuid.cql`: add `root_keys`. **This is its first consumer.**
+- Modify: `chat-core/.../service/core/PersistenceStore.kt`: `InitializingKVStore` takes string names
+- Modify: `ConsulKVStore.kt`, `RootKeyService.kt`, `HttpRootKeyConsumeOnStart.kt`, `RootKeyInitializationListeners.kt`, the `rootkeys` actuator endpoint
+- Delete: `RootKeysSupplier.kt`, `GenerateRootKeyInitializer.kt`, `RootKeyConsumerHttp.kt`, `RootKeyInitRunner.kt`, `KnownRootKeys.kt`
+- Modify: `shell-scripts/chat-build` lines 681 to 697, and the golden cases of `shell-scripts/test-flags.sh`
+- Create: `chat-core/src/test/.../key/RootKeysFixture.kt`
+- Test: `RootKeyLoaderTests`, `RootKeyStoreRedisTests`, `RootKeyStoreCassandraTests`, `RootKeySnapshotTests`
 
-**Interfaces:**
-- Produces: `Key.of(id, root)`, `Key.root(id)`, `Key.empty(placeholder, root)`,
-  `MessageKey.of(id, root, from, dest)`, `SimpleKey`, `SimpleMessageKey`,
-  `EmptyKey`, `KeyEquality.equals(a, b)`, `KeyEquality.hash(k)`.
+**Interfaces produced:**
 
-- [ ] **Step 1: Write the equality test.**
+```kotlin
+interface RootKeyStore<T> {
+    fun read(): Mono<Map<ChatDomain, T>>
+    /** Writes [id] only when [domain] has no root. Answers the stored root: [id] or the winner. */
+    fun createIfAbsent(domain: ChatDomain, id: T): Mono<T>
+}
+
+class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKeyGenerator<T>) {
+    fun load(): Mono<Map<ChatDomain, T>>
+}
+
+/** What a process with no store access reads. Ids are strings, parsed with the TypeUtil of the reader. */
+data class RootKeySnapshot(val keyType: String, val domains: Map<String, String>, val admin: String, val anon: String)
+
+interface InitializingKVStore {
+    fun read(name: String): Mono<String>
+    fun write(name: String, value: String): Mono<Void>
+}
+```
+
+**A root key is its own root.** In T2, `Key` has no `root` yet.
+`RootKeys.loadDomains` still receives `Key.funKey(id)`. That is correct for a
+root key and for nothing else. T3a moves these lines to `Key.root(id)`.
+
+1. **Write the loader tests** against `RootKeyStoreInMemory`.
+
+```kotlin
+@Test
+fun `an empty store gets one root per domain`() {
+    val roots = RootKeyLoader(RootKeyStoreInMemory<Long>(), counter()).load().block()!!
+    assertThat(roots.keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
+}
+
+@Test
+fun `a restart reads the stored roots and creates none`() {
+    val store = RootKeyStoreInMemory<Long>()
+    val first = RootKeyLoader(store, counter()).load().block()!!
+    val second = RootKeyLoader(store, counter(start = 1000)).load().block()!!
+    assertThat(second).isEqualTo(first)
+}
+
+@Test
+fun `two loaders at once agree on one root per domain`() {
+    val store = RootKeyStoreInMemory<Long>()
+    val both = Mono.zip(
+        RootKeyLoader(store, counter(0)).load().subscribeOn(Schedulers.parallel()),
+        RootKeyLoader(store, counter(5000)).load().subscribeOn(Schedulers.parallel())
+    ).block()!!
+    assertThat(both.t1).isEqualTo(both.t2)
+}
+
+private fun counter(start: Long = 0): IKeyGenerator<Long> =
+    AtomicLong(start).let { n -> object : IKeyGenerator<Long> { override fun nextId() = n.incrementAndGet() } }
+```
+
+2. **Run them and see them fail.**
+
+3. **Write the loader.**
+
+```kotlin
+class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKeyGenerator<T>) {
+
+    fun load(): Mono<Map<ChatDomain, T>> = store.read().flatMap { stored ->
+        Flux.fromIterable(ChatDomain.entries)
+            .concatMap { domain ->
+                stored[domain]?.let { Mono.just(domain to it) }
+                    ?: store.createIfAbsent(domain, ids.nextId()).map { domain to it }
+            }
+            .collectMap({ it.first }, { it.second })
+    }.flatMap { roots ->
+        val missing = ChatDomain.entries - roots.keys
+        if (missing.isEmpty()) Mono.just(roots)
+        else Mono.error(ChatException("Root keys incomplete. Missing: $missing"))
+    }
+}
+```
+
+4. **Write the three stores.** Memory uses `ConcurrentHashMap.putIfAbsent`.
+   Redis uses the hash `chat:rootkeys:<keyType>` with `putIfAbsent`, then reads
+   the field. Cassandra uses:
+
+```sql
+CREATE TABLE chat_long.root_keys (
+    domain varchar,
+    id BIGINT,
+    PRIMARY KEY (domain)
+);
+```
+
+   `chat_uuid.root_keys` uses `id uuid`. The write is
+   `INSERT INTO root_keys (domain, id) VALUES (?, ?) IF NOT EXISTS`, then a read
+   of the row. Neither truncate script names `root_keys`.
+
+5. **Write the backend tests.** Redis and Cassandra each run the three loader
+   cases against a container. Redis adds:
+
+```kotlin
+@Test
+fun `two key types on one redis keep separate roots`() {
+    RootKeyLoader(RootKeyStoreRedis(template, TypeUtil.LongUtil, "long"), longIds()).load().block()
+    RootKeyLoader(RootKeyStoreRedis(template, TypeUtil.UUIDUtil, "uuid"), uuidIds()).load().block()
+
+    assertThat(template.hasKey("chat:rootkeys:long").block()).isTrue()
+    assertThat(template.hasKey("chat:rootkeys:uuid").block()).isTrue()
+}
+```
+
+   Cassandra adds: after `truncate-long.cql` runs, `read()` still answers every
+   root.
+
+6. **Write the snapshot contract.** `RootKeySnapshot.of(rootKeys, keyType,
+   typeUtil)` builds it. `RootKeySnapshot.load(into, expectedKeyType,
+   typeUtil)` refuses a snapshot whose `keyType` differs, or that misses a
+   domain, and the start fails. Test both refusals.
+
+   `InitializingKVStore` changes to string names, so `ConsulKVStore` no longer
+   builds a `Key`. `RootKeyService` writes and reads one snapshot under
+   `app.kv.rootkeys`. The `rootkeys` actuator endpoint answers the snapshot.
+   `HttpRootKeyConsumeOnStart` reads it.
+
+7. **Replace the startup wiring.** In `RootKeyInitializationListeners`, remove
+   both `app.rootkeys.create` beans. A node with a store runs
+   `RootKeyLoader.load()` and `rootKeys.loadDomains(…)` on
+   `ApplicationStartedEvent`, before `RootKeyInitializationReadyEvent`. It
+   blocks, and a failure stops the start. The kv publish bean publishes the
+   snapshot. A node with no store keeps the HTTP and kv consume beans. In
+   `chat-build`, remove `-Dapp.rootkeys.create=true`, and update the golden
+   cases in `test-flags.sh`.
+
+8. **Add `RootKeysFixture`.** It replaces `GenerateRootKeyInitializer` in every
+   test. Find those tests with `mcp__treesitter-mcp__find_usages` for
+   `GenerateRootKeyInitializer`.
+
+```kotlin
+object RootKeysFixture {
+    fun <T> of(ids: IKeyGenerator<T>): RootKeys<T> = RootKeys<T>().apply {
+        loadDomains(ChatDomain.entries.associateWith { Key.funKey(ids.nextId()) })
+        loadIdentities(Key.funKey(ids.nextId()), Key.funKey(ids.nextId()))
+    }
+}
+```
+
+   T3a moves the domains to `Key.root(id)`, and gives the two identities the
+   `USER` root.
+
+9. **Checkpoint.** `shell-scripts/build-health.sh --integration`, then
+   `shell-scripts/test-flags.sh`. Expected: both exit 0.
+
+10. **Commit.** `git commit -am "Load stable roots, and a root snapshot contract (CHAT-avduuqwp, CHAT-bafkgkko)"`
+
+---
+
+## T3a: Key contract in chat-core
+
+FP: `CHAT-mnkpyjyw`. **Starts the coordinated change.**
+
+**Files:**
+- Modify: `chat-core/.../domain/KeyValuePair.kt` (the `Key` interface)
+- Modify: `chat-core/.../domain/Message.kt` (`MessageKey`)
+- Create: `chat-core/.../domain/Keys.kt`
+- Modify: `chat-core/.../domain/RequestResponse.kt` (`ChatMessageKey`)
+- Modify: `chat-core/.../service/core/KeyService.kt`
+- Create: `chat-core/.../service/core/KeyVerifier.kt`, `VerifiedKey.kt`
+- Create: `chat-core/.../domain/UnsupportedDomainException.kt`, `KeyVerificationException.kt`, `RootKeyDeletionException.kt`
+- Modify: B1 to B4, `DomainWireShapeTests`, `E2eeWireShapeTests`
+- Modify: every chat-core main and test site, found with `mcp__treesitter-mcp__find_usages` for `funKey`, `emptyKey`, and `create` on `MessageKey`
+- Test: `KeyEqualityTests`, `KeyVerifierTests`, `KeyWireTests`
+
+**Interfaces produced:**
+
+```kotlin
+interface Key<T> {
+    val id: T
+    val root: T
+    val empty: Boolean
+    companion object Factory {
+        fun <T> of(id: T, root: T): Key<T>
+        fun <T> root(id: T): Key<T>
+        fun <T> empty(placeholder: T, root: T): Key<T>
+    }
+}
+
+// MessageKey.of(id, root, from, dest): MessageKey<T>
+
+interface IKeyService<T> {
+    fun key(domain: ChatDomain): Mono<out Key<T>>
+    fun rem(key: Key<T>): Mono<Void>       // RootKeyDeletionException for a root
+    fun exists(key: Key<T>): Mono<Boolean>
+    fun rootOf(id: T): Mono<T>             // empty when unknown. A root answers itself
+}
+
+class VerifiedKey<T> internal constructor(val key: Key<T>)
+
+class KeyVerifier<T>(keys: IKeyService<T>, rootKeys: RootKeys<T>) {
+    fun verify(key: Key<T>, expected: ChatDomain?): Mono<VerifiedKey<T>>
+    fun resolve(id: T, expected: ChatDomain?): Mono<VerifiedKey<T>>
+    fun fromTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T>
+}
+```
+
+`VerifiedKey` has an `internal` constructor, so only code in `chat-core`, which
+means `KeyVerifier`, builds one. `fromTypedStore` checks that the key root
+equals the root of `domain`, and does no registry read. Use it only for a key
+that a typed store returned.
+
+1. **Write the equality tests.**
 
 ```kotlin
 class KeyEqualityTests {
@@ -424,7 +675,6 @@ class KeyEqualityTests {
     fun `equality is symmetric across every implementation`() {
         val plain: Key<Long> = Key.of(1L, 9L)
         val message: Key<Long> = MessageKey.of(1L, 9L, 2L, 3L)
-
         assertThat(plain == message).isEqualTo(message == plain)
         assertThat(plain).isEqualTo(message)
         assertThat(plain.hashCode()).isEqualTo(message.hashCode())
@@ -445,41 +695,71 @@ class KeyEqualityTests {
 
     @Test
     fun `a chat message key is not a key`() {
-        assertThat(ChatMessageKey(1L, 2L, 3L, Instant.EPOCH) as Any).isNotInstanceOf(Key::class.java)
-        assertThat(ChatMessageKey(1L, 2L, 3L, Instant.EPOCH).toKey(9L)).isEqualTo(MessageKey.of(1L, 9L, 2L, 3L))
+        val request = ChatMessageKey(1L, 2L, 3L, Instant.EPOCH)
+        assertThat(request as Any).isNotInstanceOf(Key::class.java)
+        assertThat(request.toKey(9L)).isEqualTo(MessageKey.of(1L, 9L, 2L, 3L))
     }
 }
 ```
 
-- [ ] **Step 2: Run it and see it fail.**
-
-- [ ] **Step 3: Change the interface.**
+2. **Write the verifier tests** against `FakeKeyService`, a test class in
+   `chat-core` test source. It holds an `id -> root` map, mints with
+   `Key.of(next, rootKeys.of(domain).id)`, and answers `rootOf`. `chat-core`
+   cannot depend on a persistence module, so the tests do not use
+   `KeyServiceInMemory`.
 
 ```kotlin
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-@JsonTypeName("key")
-@JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
-interface Key<T> {
-    val id: T
-    val root: T
-    val empty: Boolean
+@Test
+fun `a forged root is refused`() {
+    val minted = keys.key(ChatDomain.USER).block()!!
+    StepVerifier.create(verifier.verify(Key.of(minted.id, rootKeys.of(ChatDomain.MESSAGE).id), null))
+        .verifyError(KeyVerificationException::class.java)
+}
 
-    companion object Factory {
-        @JvmStatic fun <T> of(id: T, root: T): Key<T> = SimpleKey(id, root)
-        @JvmStatic fun <T> root(id: T): Key<T> = SimpleKey(id, id)
-        @JvmStatic fun <T> empty(placeholder: T, root: T): Key<T> = EmptyKey(placeholder, root)
+@Test
+fun `a key of another domain is refused`() {
+    val minted = keys.key(ChatDomain.USER).block()!!
+    StepVerifier.create(verifier.verify(minted, ChatDomain.MESSAGE_TOPIC))
+        .verifyError(KeyVerificationException::class.java)
+}
 
-        @Deprecated("Transitional. Task 10 removes it. It sets root = id, which is wrong for every non-root key.")
-        @JvmStatic fun <T> funKey(id: T): Key<T> = SimpleKey(id, id)
-    }
+@Test
+fun `an unknown id is refused`() {
+    StepVerifier.create(verifier.resolve(424242L, null)).verifyError(KeyVerificationException::class.java)
+}
+
+@Test
+fun `resolve reads the stored root`() {
+    val minted = keys.key(ChatDomain.USER).block()!!
+    assertThat(verifier.resolve(minted.id, ChatDomain.USER).block()!!.key).isEqualTo(minted)
+}
+
+@Test
+fun `a root key resolves to itself`() {
+    val root = rootKeys.of(ChatDomain.USER)
+    assertThat(verifier.resolve(root.id, null).block()!!.key).isEqualTo(root)
 }
 ```
 
-- [ ] **Step 4: Write the three classes and the one rule.**
+3. **Write the wire tests,** for Jackson 2 and Jackson 3.
 
 ```kotlin
-/** One equality rule for every `Key`. See `CHAT-avduuqwp`. Equality does not verify a root. */
+@Test
+fun `a key writes id and root`() {
+    assertThat(mapper.writeValueAsString(Key.of(1L, 9L))).isEqualTo("""{"key":{"id":1,"root":9}}""")
+}
+
+@Test
+fun `a payload without root fails to decode`() {
+    assertThatThrownBy { mapper.readValue("""{"key":{"id":1}}""", Key::class.java) }.hasMessageContaining("root")
+}
+```
+
+4. **Change the interface, and write the three classes.**
+
+```kotlin
 object KeyEquality {
+    /** Equality does not verify a root. See `KeyVerifier`. */
     fun equals(a: Key<*>, other: Any?): Boolean =
         other is Key<*> && other.empty == a.empty && other.id == a.id && other.root == a.root
 
@@ -513,279 +793,71 @@ class SimpleMessageKey<T>(
 }
 ```
 
-`MessageKey.create(…)` keeps both overloads for Task 10 and marks them
-`@Deprecated`. They build `SimpleMessageKey` with `root = id`. Add
-`MessageKey.of(id, root, from, dest)`.
+   Delete `funKey`, `emptyKey`, both `MessageKey.create` overloads, and
+   `IKeyGenerator.nextKey()`. `from` and `dest` stay out of equality.
 
-**`from` and `dest` stay out of equality.** A message id names one message. A
-`MessageKey` and a `Key` with the same id and root are the same key.
-
-- [ ] **Step 5: `ChatMessageKey` stops implementing `MessageKey`.** It keeps its
-fields and its data equality, because it is a request value, not a key. Add:
+5. **Write the verifier.**
 
 ```kotlin
-fun toKey(root: T): MessageKey<T> = MessageKey.of(id, root, from, dest)
-```
+class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: RootKeys<T>) {
 
-Move each caller that used it as a `Key` to `toKey(roots.of(MESSAGE).id)`.
+    fun resolve(id: T, expected: ChatDomain?): Mono<VerifiedKey<T>> = keys.rootOf(id)
+        .switchIfEmpty(Mono.error(KeyVerificationException("Key $id is not in the registry.")))
+        .flatMap { root -> check(Key.of(id, root), expected) }
 
-- [ ] **Step 6: Run the module tests.**
-
-Run: `mvn -o -q -B -pl chat-core test`
-Expected: PASS. Then run the full default reactor, because `Key` gained a
-member: `shell-scripts/build-health.sh`. Expected: exit 0. Every Cassandra key
-class must add `override val root: T get() = id` until Task 8 removes the
-interface from it. Mark each one with a comment that names Task 8.
-
-- [ ] **Step 7: Commit.**
-
-```bash
-git commit -am "Give every key a root, and one equality rule (CHAT-avduuqwp)"
-```
-
----
-
-## Task 3: The key service owns the root keys
-
-**Files:**
-- Create: `chat-core/src/main/kotlin/com/demo/chat/service/core/RootKeyStore.kt`
-- Create: `chat-core/src/main/kotlin/com/demo/chat/service/core/RootKeyLoader.kt`
-- Create: `chat-persistence-memory/src/main/kotlin/com/demo/chat/persistence/memory/impl/RootKeyStoreInMemory.kt`
-- Create: `chat-persistence-redis/src/main/kotlin/com/demo/chat/persistence/redis/impl/RootKeyStoreRedis.kt`
-- Create: `chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/RootKeyStoreCassandra.kt`
-- Modify: `shared-resources-cassandra/src/main/resources/keyspace-long.cql`, `keyspace-uuid.cql`
-- Delete: `RootKeysSupplier.kt`, `GenerateRootKeyInitializer.kt`, `RootKeyConsumerHttp.kt`, `RootKeyInitRunner.kt`, `KnownRootKeys.kt`
-- Modify: `chat-deploy/src/main/kotlin/com/demo/chat/config/deploy/init/RootKeyInitializationListeners.kt`
-- Modify: `shell-scripts/chat-build` lines 681 to 697
-- Test: `chat-core/src/test/kotlin/com/demo/chat/test/key/RootKeyLoaderTests.kt`
-- Test: `chat-persistence-redis/src/test/kotlin/com/demo/chat/test/persistence/redis/RootKeyStoreRedisTests.kt`
-- Test: `chat-persistence-cassandra/src/test/kotlin/com/demo/chat/test/persistence/RootKeyStoreCassandraTests.kt`
-- Create: `chat-core/src/test/kotlin/com/demo/chat/test/key/RootKeysFixture.kt`
-
-**Interfaces:**
-- Consumes: `ChatDomain`, `RootKeys.loadDomains`.
-- Produces:
-
-```kotlin
-interface RootKeyStore<T> {
-    /** Every stored root, by domain. */
-    fun read(): Mono<Map<ChatDomain, T>>
-
-    /** Writes [id] as the root of [domain] only when none exists. Answers the stored root, which is [id] or the winner. */
-    fun createIfAbsent(domain: ChatDomain, id: T): Mono<T>
-}
-
-class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKeyGenerator<T>) {
-    /** Loads every root, and creates each missing one. Fails when any domain has no root after that. */
-    fun load(): Mono<Map<ChatDomain, Key<T>>>
-}
-```
-
-- [ ] **Step 1: Write the loader test against an in-memory store.**
-
-```kotlin
-class RootKeyLoaderTests {
-
-    @Test
-    fun `an empty store gets one root per domain`() {
-        val roots = RootKeyLoader(RootKeyStoreInMemory<Long>(), counter()).load().block()!!
-
-        assertThat(roots.keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
-        roots.values.forEach { assertThat(it.root).isEqualTo(it.id) }
-    }
-
-    @Test
-    fun `a second load reads the stored roots and creates none`() {
-        val store = RootKeyStoreInMemory<Long>()
-        val first = RootKeyLoader(store, counter()).load().block()!!
-        val second = RootKeyLoader(store, counter(start = 1000)).load().block()!!
-
-        assertThat(second).isEqualTo(first)
-    }
-
-    @Test
-    fun `two loaders at once agree on one root per domain`() {
-        val store = RootKeyStoreInMemory<Long>()
-        val a = RootKeyLoader(store, counter(start = 0))
-        val b = RootKeyLoader(store, counter(start = 5000))
-
-        val both = Mono.zip(a.load().subscribeOn(Schedulers.parallel()), b.load().subscribeOn(Schedulers.parallel())).block()!!
-
-        assertThat(both.t1).isEqualTo(both.t2)
-    }
-
-    private fun counter(start: Long = 0): IKeyGenerator<Long> =
-        AtomicLong(start).let { n -> object : IKeyGenerator<Long> { override fun nextId() = n.incrementAndGet() } }
-}
-```
-
-- [ ] **Step 2: Run it and see it fail.** `RootKeyLoader` does not exist.
-
-- [ ] **Step 3: Write the loader.**
-
-```kotlin
-class RootKeyLoader<T>(private val store: RootKeyStore<T>, private val ids: IKeyGenerator<T>) {
-
-    fun load(): Mono<Map<ChatDomain, Key<T>>> = store.read().flatMap { stored ->
-        Flux.fromIterable(ChatDomain.entries)
-            .concatMap { domain ->
-                stored[domain]?.let { Mono.just(domain to it) }
-                    ?: store.createIfAbsent(domain, ids.nextId()).map { domain to it }
-            }
-            .collectMap({ it.first }, { Key.root(it.second) })
-    }.flatMap { roots ->
-        if (roots.keys == ChatDomain.entries.toSet()) Mono.just(roots)
-        else Mono.error(ChatException("Root keys incomplete: ${ChatDomain.entries - roots.keys}"))
-    }
-}
-```
-
-- [ ] **Step 4: Write the three stores.**
-
-Memory:
-
-```kotlin
-class RootKeyStoreInMemory<T> : RootKeyStore<T> {
-    private val roots = ConcurrentHashMap<ChatDomain, T>()
-    override fun read(): Mono<Map<ChatDomain, T>> = Mono.fromCallable { roots.toMap() }
-    override fun createIfAbsent(domain: ChatDomain, id: T): Mono<T> =
-        Mono.fromCallable { roots.putIfAbsent(domain, id) ?: id }
-}
-```
-
-Redis, one hash per key type:
-
-```kotlin
-class RootKeyStoreRedis<T : Any>(
-    private val template: ReactiveStringRedisTemplate,
-    private val typeUtil: TypeUtil<T>,
-    keyType: String
-) : RootKeyStore<T> {
-    private val hash = "chat:rootkeys:$keyType"
-
-    override fun read(): Mono<Map<ChatDomain, T>> = template.opsForHash<String, String>()
-        .entries(hash)
-        .collectMap({ ChatDomain.parse(it.key) ?: throw ChatException("Unknown domain in $hash: ${it.key}") },
-                    { typeUtil.fromString(it.value) })
-
-    override fun createIfAbsent(domain: ChatDomain, id: T): Mono<T> = template.opsForHash<String, String>()
-        .putIfAbsent(hash, domain.wireName, typeUtil.toString(id))
-        .then(template.opsForHash<String, String>().get(hash, domain.wireName))
-        .map { typeUtil.fromString(it) }
-}
-```
-
-Cassandra, one table per keyspace:
-
-```sql
-CREATE TABLE chat_long.root_keys (
-    domain varchar,
-    id BIGINT,
-    PRIMARY KEY (domain)
-);
-```
-
-`chat_uuid.root_keys` uses `id uuid`. Neither truncate script names the table.
-
-```kotlin
-class RootKeyStoreCassandra<T : Any>(private val template: ReactiveCassandraTemplate, private val idClass: Class<T>) : RootKeyStore<T> {
-
-    override fun read(): Mono<Map<ChatDomain, T>> = template.reactiveCqlOperations
-        .query("SELECT domain, id FROM root_keys") { row, _ ->
-            (ChatDomain.parse(row.getString("domain")!!) ?: throw ChatException("Unknown domain in root_keys")) to row.get("id", idClass)!!
+    fun verify(key: Key<T>, expected: ChatDomain?): Mono<VerifiedKey<T>> = resolve(key.id, expected)
+        .flatMap { stored ->
+            if (stored.key.root == key.root) Mono.just(VerifiedKey(key))
+            else Mono.error(KeyVerificationException("Key ${key.id} carries root ${key.root}. The stored root is ${stored.key.root}."))
         }
-        .collectMap({ it.first }, { it.second })
 
-    override fun createIfAbsent(domain: ChatDomain, id: T): Mono<T> = template.reactiveCqlOperations
-        .execute("INSERT INTO root_keys (domain, id) VALUES (?, ?) IF NOT EXISTS", domain.wireName, id)
-        .then(template.reactiveCqlOperations.queryForObject("SELECT id FROM root_keys WHERE domain = ?", idClass, domain.wireName))
+    fun fromTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T> =
+        if (key.root == rootKeys.of(domain).id) VerifiedKey(key)
+        else throw KeyVerificationException("Key ${key.id} is not in ${domain.wireName}.")
+
+    private fun check(key: Key<T>, expected: ChatDomain?): Mono<VerifiedKey<T>> =
+        if (expected == null || rootKeys.of(expected).id == key.root) Mono.just(VerifiedKey(key))
+        else Mono.error(KeyVerificationException("Key ${key.id} is not in ${expected.wireName}."))
 }
 ```
 
-- [ ] **Step 5: Write the Redis and Cassandra store tests.** Each runs the
-three loader cases above against its container, plus one more: a `long` and a
-`uuid` store on one Redis read separate roots.
+6. **Require `root` in B1 to B4.**
 
 ```kotlin
-@Test
-fun `two key types on one redis keep separate roots`() {
-    val longRoots = RootKeyLoader(RootKeyStoreRedis(template, TypeUtil.LongUtil, "long"), longIds()).load().block()!!
-    val uuidRoots = RootKeyLoader(RootKeyStoreRedis(template, TypeUtil.UUIDUtil, "uuid"), uuidIds()).load().block()!!
-
-    assertThat(template.hasKey("chat:rootkeys:long").block()).isTrue()
-    assertThat(template.hasKey("chat:rootkeys:uuid").block()).isTrue()
-    assertThat(longRoots.keys).isEqualTo(uuidRoots.keys)
-}
+val rootNode = node.get("root") ?: throw JsonMappingException.from(jp, "A key needs a root. The payload holds none.")
 ```
 
-- [ ] **Step 6: Replace the startup wiring.** In
-`RootKeyInitializationListeners`, remove both `app.rootkeys.create` beans. Add
-one bean that runs `RootKeyLoader.load()` and then `rootKeys.loadDomains(…)`,
-on `ApplicationStartedEvent`, before `RootKeyInitializationReadyEvent`. It
-blocks, and a failure stops the start. The kv publish bean and the HTTP and kv
-consume beans stay. In `shell-scripts/chat-build`, remove the
-`-Dapp.rootkeys.create=true` flag. Run `shell-scripts/test-flags.sh` and
-update the golden cases that named it.
+7. **`ChatMessageKey` stops implementing `MessageKey`,** and gains
+   `fun toKey(root: T): MessageKey<T> = MessageKey.of(id, root, from, dest)`.
 
-- [ ] **Step 7: Add `RootKeysFixture` for tests.** It replaces
-`GenerateRootKeyInitializer` in every test that used it.
+8. **Move the T2 lines to `Key.root(id)`.** `RootKeysFixture` gives the domains
+   `Key.root(id)`, and the identities `Key.of(id, of(USER).id)`.
 
-```kotlin
-object RootKeysFixture {
-    fun <T> of(ids: IKeyGenerator<T>): RootKeys<T> = RootKeys<T>().apply {
-        loadDomains(ChatDomain.entries.associateWith { Key.root(ids.nextId()) })
-        loadIdentities(Key.of(ids.nextId(), of(ChatDomain.USER).id), Key.of(ids.nextId(), of(ChatDomain.USER).id))
-    }
-}
-```
+9. **Checkpoint.** `mvn -o -q -B -pl chat-core test`. Expected: chat-core
+   compiles and every chat-core test passes, including `KeyEqualityTests`,
+   `KeyVerifierTests` and `KeyWireTests`. The modules after chat-core do not
+   compile yet.
 
-- [ ] **Step 8: Run the gates.**
-
-Run: `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra,chat-deploy test`
-Then: `shell-scripts/test-flags.sh`
-Expected: PASS for both.
-
-- [ ] **Step 9: Commit.**
-
-```bash
-git commit -am "The key service owns stable root keys (CHAT-avduuqwp, CHAT-bafkgkko)"
-```
+10. **Commit.** `git commit -am "Key contract in chat-core; coordinated change, compiles through chat-core (CHAT-avduuqwp)"`
 
 ---
 
-## Task 4: Mint takes a domain, and records the root
+## T3b: Key contract in the persistence backends and their schema
+
+FP: `CHAT-yfxyjnmp`.
 
 **Files:**
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/service/core/KeyService.kt`
-- Create: `chat-core/src/main/kotlin/com/demo/chat/domain/UnsupportedDomainException.kt`
-- Modify: `KeyServiceInMemory.kt`, `KeyServiceRedis.kt`, `KeyServiceCassandra.kt`, `persistence/cassandra/domain/Key.kt`
-- Modify: every `key(Class)` caller in the mint table of section C
-- Modify: `IKeyRestMapping.kt`, `IKeyServiceMapping.kt`, `KeyClient.kt`, `IKeyServiceAccess.kt`, `DummyKeyService.kt`
-- Modify: `SecretsRestMapping.kt`, `chat-shell` `UserCommands.kt`
-- Test: `chat-core/src/test/kotlin/com/demo/chat/test/key/TestKeyServiceBase.kt`
+- Modify: `KeyServiceInMemory.kt`, `KeyServiceRedis.kt`, `KeyServiceCassandra.kt`
+- Modify: every store in `chat-persistence-memory`, `chat-persistence-redis`, `chat-persistence-cassandra`
+- Modify: A8 to A14, and their repositories
+- Modify: `keyspace-long.cql`, `keyspace-uuid.cql`. **Each change has its first consumer in this task:**
+  - `keys (id, root)` replaces `keys (id, kind)`. The key services consume it.
+  - `auth_metadata`, `auth_metadata_principal` and `auth_metadata_target` gain `principal_root` and `target_root`. `AuthMetadataById` and the index rows consume them.
+  - `chat_secret.kind` is removed, with `CredKey.kind`.
+  - `event_key_meta` is removed. No code consumes it.
+- Test: `TestKeyServiceBase` in `chat-core` test source, and each backend subclass
 
-**Interfaces:**
-- Consumes: `ChatDomain`, `RootKeys.of`, `Key.of`.
-- Produces:
-
-```kotlin
-interface IKeyService<T> {
-    /** Mints a key in [domain]. Its root is the root of [domain]. */
-    fun key(domain: ChatDomain): Mono<out Key<T>>
-
-    /** Removes a key. Refuses a root key with [RootKeyDeletionException]. */
-    fun rem(key: Key<T>): Mono<Void>
-
-    fun exists(key: Key<T>): Mono<Boolean>
-
-    /** The stored root of [id], or empty when the registry does not hold it. A root key answers itself. */
-    fun rootOf(id: T): Mono<T>
-}
-```
-
-`kind(key)` and `key(kind: Class<S>)` are removed.
-
-- [ ] **Step 1: Rewrite the shared key service test base.**
+1. **Rewrite the key service test base.**
 
 ```kotlin
 @Test
@@ -799,8 +871,7 @@ fun `mint sets the root of the domain`() {
 
 @Test
 fun `rem refuses a root key`() {
-    StepVerifier.create(keyService.rem(rootKeys.of(ChatDomain.USER)))
-        .verifyError(RootKeyDeletionException::class.java)
+    StepVerifier.create(keyService.rem(rootKeys.of(ChatDomain.USER))).verifyError(RootKeyDeletionException::class.java)
 }
 
 @Test
@@ -817,23 +888,7 @@ fun `a root key answers itself`() {
 }
 ```
 
-- [ ] **Step 2: Run it against memory, and see it fail.**
-
-- [ ] **Step 3: Write the exceptions.**
-
-```kotlin
-class UnsupportedDomainException(type: String) :
-    ChatException("$type has no domain contract, so no key is minted for it. See CHAT-avduuqwp.")
-
-class RootKeyDeletionException(id: Any?) :
-    ChatException("Key $id is a root key. A root key is never removed.")
-```
-
-- [ ] **Step 4: Rewrite the three key services.** Each takes `RootKeys<T>`.
-Registry values are root ids. Redis uses `chat:keys:<keyType>`. Cassandra
-uses a `keys (id, root)` row class `CSKeyRow` that does not implement `Key`.
-
-Memory, in full:
+2. **Write the three key services.** Memory, in full:
 
 ```kotlin
 class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val rootKeys: RootKeys<T>) : IKeyService<T> {
@@ -855,238 +910,232 @@ class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val rootKey
 }
 ```
 
-Redis and Cassandra follow the same four methods. `rootOf` reads the hash
-field or the `keys` row.
+   Redis stores `id -> root` in `chat:keys:<keyType>`. Cassandra writes a
+   `keys (id, root)` row through a `CSKeyRow` class that does not implement
+   `Key`.
 
-- [ ] **Step 5: Move every mint caller.** Use the mint table in section C.
-`InMemoryPersistence` takes a `ChatDomain` constructor argument in place of
-`entityClass`.
-
-- [ ] **Step 6: Refuse the two unsupported mints explicitly.**
-
-`SecretsRestMapping.kt:28` and `:17`, `:22`, `:38` answer
-`Mono.error(UnsupportedDomainException("KeyCredential"))`. Map that exception
-to HTTP 501 in the webflux exception handler. `UserCommands.kt:57` prints the
-exception message and returns. Add one test for each that asserts the
-exception type and the 501 status.
-
-- [ ] **Step 7: Move the two inbound mint routes.**
+3. **Each store maps rows.** A8 to A14 stop implementing `Key` and the domain
+   interfaces. Each read builds the domain object with `Key.of(row.id, root())`,
+   where `root()` is `rootKeys.of(<domain>).id`. Example:
 
 ```kotlin
-data class DomainRequest(val domain: ChatDomain)
-
-fun restKey(@RequestBody req: DomainRequest): Mono<out Key<T>> = key(req.domain)
+override fun get(key: Key<T>): Mono<out User<T>> =
+    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri) }
 ```
 
-An unknown value fails Jackson enum binding with 400, and no class loads.
-`IKeyServiceMapping.key(domain: ChatDomain)` takes the enum.
-`IKeyServiceAccess.key` reads `@chatAccess.hasAccessToDomain(#domain.wireName, 'NEW')`.
+   `AuthMetadataById` maps `principal_root` and `target_root`. `CredKey` loses
+   `kind`, and `CredentialSecretsStoreCassandra` stops writing `"CRED"`.
 
-Add a test that posts `{"domain":"java.lang.Runtime"}` and asserts 400 and
-that `Runtime` was not initialized by the call.
+4. **Move each mint call** per the mint table in section C.
 
-- [ ] **Step 8: Run the key service tests on all three backends.**
+5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra test -Pintegration`.
+   Expected: PASS.
 
-Run: `mvn -o -q -B -pl chat-core,chat-persistence-memory,chat-persistence-redis,chat-persistence-cassandra,chat-webflux,chat-shell test -Pintegration`
-Expected: PASS.
-
-- [ ] **Step 9: Commit.**
-
-```bash
-git commit -am "Mint by domain, record roots, and refuse unsupported mints (CHAT-avduuqwp)"
-```
+6. **Commit.** `git commit -am "Key contract in the backends and their schema; compiles through the backends (CHAT-avduuqwp)"`
 
 ---
 
-## Task 5: Verify and resolve
+## T3c: Key contract in the indexes
 
-**Files:**
-- Create: `chat-core/src/main/kotlin/com/demo/chat/service/core/KeyVerifier.kt`
-- Test: `chat-core/src/test/kotlin/com/demo/chat/test/key/KeyVerifierTests.kt`
+FP: `CHAT-ndkhtucf`.
 
-**Interfaces:**
-- Consumes: `IKeyService.rootOf`, `RootKeys.domainOfRoot`.
-- Produces:
+**Files:** every index in `chat-index-lucene` and `chat-index-cassandra`, and
+A15 to A20.
 
-```kotlin
-class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: RootKeys<T>) {
-    /** The key, when its root is its stored root and, if [expected] is set, the root of [expected]. Otherwise [KeyVerificationException]. */
-    fun verify(key: Key<T>, expected: ChatDomain?): Mono<Key<T>>
-
-    /** A key for an inbound [id], with its stored root. [KeyVerificationException] when the id is unknown or not in [expected]. */
-    fun resolve(id: T, expected: ChatDomain?): Mono<Key<T>>
-}
-```
-
-- [ ] **Step 1: Write the tests.**
-
-```kotlin
-@Test fun `a minted key verifies`() { … verify(minted, USER) emits minted }
-@Test fun `a forged root is refused`() { … verify(Key.of(minted.id, rootKeys.of(MESSAGE).id), null) errors }
-@Test fun `a key of another domain is refused`() { … verify(userKey, MESSAGE_TOPIC) errors }
-@Test fun `an unknown id is refused`() { … resolve(424242L, null) errors }
-@Test fun `resolve reads the stored root`() { … resolve(minted.id, USER) emits Key.of(minted.id, userRoot) }
-@Test fun `a root key resolves to itself`() { … resolve(userRoot.id, null) emits Key.root(userRoot.id) }
-```
-
-Write each body in full with `StepVerifier`. Example:
+1. **Add one case to the shared index test base.** A key found by the index
+   carries the root of the index domain.
 
 ```kotlin
 @Test
-fun `a forged root is refused`() {
-    val minted = keys.key(ChatDomain.USER).block()!!
-    StepVerifier.create(verifier.verify(Key.of(minted.id, rootKeys.of(ChatDomain.MESSAGE).id), null))
-        .verifyError(KeyVerificationException::class.java)
+fun `a found key carries the root of the index domain`() {
+    index.add(entity).block()
+    assertThat(index.findBy(queryFor(entity)).blockFirst()!!.root).isEqualTo(rootKeys.of(domain).id)
 }
 ```
 
-- [ ] **Step 2: Run and see them fail.**
+2. **Each index takes its `ChatDomain`,** and builds
+   `Key.of(id, rootKeys.of(domain).id)` for every key it returns. C20 to C33.
+   The Cassandra authorization index reads `principal_root` and `target_root`
+   from its rows.
 
-- [ ] **Step 3: Write the verifier.**
+3. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`. Expected: PASS.
 
-```kotlin
-class KeyVerificationException(message: String) : ChatException(message)
-
-class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: RootKeys<T>) {
-
-    fun resolve(id: T, expected: ChatDomain?): Mono<Key<T>> = keys.rootOf(id)
-        .switchIfEmpty(Mono.error(KeyVerificationException("Key $id is not in the registry.")))
-        .flatMap { root -> check(Key.of(id, root), expected) }
-
-    fun verify(key: Key<T>, expected: ChatDomain?): Mono<Key<T>> = resolve(key.id, expected)
-        .flatMap { stored ->
-            if (stored.root == key.root) Mono.just(key)
-            else Mono.error(KeyVerificationException("Key ${key.id} carries root ${key.root}. The stored root is ${stored.root}."))
-        }
-
-    private fun check(key: Key<T>, expected: ChatDomain?): Mono<Key<T>> =
-        if (expected == null || rootKeys.of(expected).id == key.root) Mono.just(key)
-        else Mono.error(KeyVerificationException("Key ${key.id} is not in ${expected.wireName}."))
-}
-```
-
-- [ ] **Step 4: Run and pass.** `mvn -o -q -B -pl chat-core test -Dtest=KeyVerifierTests`
-
-- [ ] **Step 5: Commit.**
-
-```bash
-git commit -am "Verify inbound keys and resolve inbound ids (CHAT-avduuqwp)"
-```
+4. **Commit.** `git commit -am "Key contract in the indexes; compiles through the indexes (CHAT-avduuqwp)"`
 
 ---
 
-## Task 6: The wire requires a root
+## T3d: Key contract in services, controllers, deploy, shell, crypto and the authorization server
 
-**Files:**
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatDeserializers.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/serializers/ChatJackson3Deserializers.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/convert/NodeValueRules.kt`
-- Modify: `DomainWireShapeTests`, `E2eeWireShapeTests`
-- Test: `chat-core/src/test/kotlin/com/demo/chat/test/domain/KeyWireTests.kt`
-- Test: one payload test per pub/sub provider, for B7
+FP: `CHAT-iatwqlml`.
 
-- [ ] **Step 1: Write the wire test, for both Jackson generations.**
+**Files:** every remaining site in section C, D3 and D7.
+
+1. **Write the alert tests.** A join alert carries a new message key, not the
+   membership id.
 
 ```kotlin
 @Test
-fun `a key writes id and root`() {
-    assertThat(mapper.writeValueAsString(Key.of(1L, 9L))).isEqualTo("""{"key":{"id":1,"root":9}}""")
-}
+fun `a join alert has its own message key`() {
+    val alerts = RecordingPubSub<Long, String>()
+    service(alerts).joinRoom(MembershipRequest(user.id, room.id)).block()
 
-@Test
-fun `a payload without root fails to decode`() {
-    assertThatThrownBy { mapper.readValue("""{"key":{"id":1}}""", Key::class.java) }
-        .hasMessageContaining("root")
-}
-
-@Test
-fun `a message key round trips with its root`() {
-    val key = MessageKey.of(1L, 9L, 2L, 3L)
-    assertThat(mapper.readValue(mapper.writeValueAsString(key), Key::class.java)).isEqualTo(key)
+    val alert = alerts.sent.single()
+    assertThat(alert.key.root).isEqualTo(rootKeys.of(ChatDomain.MESSAGE).id)
+    assertThat(membershipKeys()).doesNotContain(alert.key.id)
 }
 ```
 
-- [ ] **Step 2: Run and see them fail.**
+   Write the same test for a leave alert.
 
-- [ ] **Step 3: Read `root` in every deserializer.** In each of B1 to B4:
+2. **Write the credential tests,** with `WebTestClient` and a recording secrets
+   store.
 
 ```kotlin
-val rootNode = node.get("root") ?: throw JsonMappingException.from(jp, "A key needs a root. The payload holds none.")
+@Test
+fun `a credential read resolves its owner in USER`() {
+    val user = keys.key(ChatDomain.USER).block()!!
+    secrets.stored[user] = "hash"
+    client.get().uri("/secrets/{id}", user.id).exchange().expectStatus().isOk
+}
+
+@Test
+fun `a credential read with a message id is refused, and the store is not called`() {
+    val message = keys.key(ChatDomain.MESSAGE).block()!!
+    client.get().uri("/secrets/{id}", message.id).exchange().expectStatus().isNotFound
+    assertThat(secrets.calls).isEmpty()
+}
+
+@Test
+fun `a credential mint is refused with 501`() {
+    client.put().uri("/secrets/add").bodyValue("secret").exchange()
+        .expectStatus().isEqualTo(501)
+        .expectBody(String::class.java).value { assertThat(it).contains("KeyCredential") }
+}
 ```
 
-`KeyAssembly.key(id, root, from, dest)` takes the root. The serializer writes
-`root` because `SimpleKey` exposes it.
+3. **Move every R site in C39 to C77** to `verifier.resolve(id, <domain>)`, and
+   pass `.key` to the service. The alert sites C49 and C50 mint through
+   `messagePersistence.key()`. The credential routes resolve in `USER`. The
+   registered client repository mints on the first save. Apply D1 to C12 and
+   C13. Apply D2 to `VectorIndexJobStoreImpl`.
 
-- [ ] **Step 4: Update the two wire shape tests.** Every expected key gains
-`"root"`.
+4. **Move D3.** `restKey` takes `DomainRequest(val domain: ChatDomain)`. An
+   unknown value fails Jackson enum binding with 400, and no class loads. Test
+   it with `{"domain":"java.lang.Runtime"}`. `IKeyServiceMapping.key` takes a
+   `ChatDomain`.
 
-- [ ] **Step 5: Prove B7.** For each pub/sub provider, publish a message and
-read it back through the provider codec. Assert the root survives.
+5. **Refuse the two unsupported mints.** `restAddCredential` answers
+   `Mono.error(UnsupportedDomainException("KeyCredential"))`, which the webflux
+   exception handler maps to 501. The shell `key()` command prints the
+   exception message and returns. Nothing else in `SecretsRestMapping` is
+   refused.
 
-- [ ] **Step 6: Run.** `mvn -o -q -B -pl chat-core test`, then the full
-default gate. Expected: PASS.
+6. **Checkpoint.** `mvn -o -q -B compile test-compile` over the whole reactor.
+   Expected: compiles.
 
-- [ ] **Step 7: Commit.**
-
-```bash
-git commit -am "Require the root on the wire (CHAT-avduuqwp)"
-```
+7. **Commit.** `git commit -am "Key contract in services and entry points; the reactor compiles (CHAT-avduuqwp)"`
 
 ---
 
-## Task 7: Verify every inbound path, before authorization
+## T3e: Require the root on the wire, and pass the coordinated gate
+
+FP: `CHAT-dbvcsnww`.
+
+1. **Prove B7.** For each pub/sub provider, publish a message and read it back
+   through the provider codec. Assert that the root survives.
+
+2. **Run the default gate.** `shell-scripts/build-health.sh`. Expected: exit 0.
+   Update `docs/BUILD-HEALTH.md` when the counts move.
+
+3. **Run the image gate.** `shell-scripts/build-health.sh --ci`. The wire shape
+   changed, so the shell image must be rebuilt. Expected: exit 0.
+
+4. **Commit.** `git commit -am "The coordinated key change passes the default and --ci gates (CHAT-avduuqwp)"`
+
+**The coordinated change ends here.** The reactor is green from this commit on.
+
+---
+
+## T4: Verify inbound keys before authorization and persistence
+
+FP: `CHAT-kliyrune`.
 
 **Files:**
-- Modify: every site marked **R** in section C, and D1 to D5
-- Modify: `chat-security/src/main/kotlin/com/demo/chat/security/access/SpringSecurityAccessBrokerService.kt`
-- Modify: `chat-security/src/main/kotlin/com/demo/chat/security/access/AuthMetadataAccessBroker.kt`
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/service/security/AccessBroker.kt`
-- Create: `chat-security/src/test/kotlin/com/demo/chat/test/InboundVerificationGuardTests.kt`
-- Test: `chat-security/src/test/kotlin/com/demo/chat/test/AnonymousAuthorizationMatrixTests.kt`
+- Modify: `chat-core/.../service/security/AccessBroker.kt`: `target: VerifiedKey<T>`
+- Modify: `chat-security/.../access/AuthMetadataAccessBroker.kt`, `SpringSecurityAccessBrokerService.kt`
+- Create: `chat-webflux/.../config/ResolvedKeyArgumentResolver.kt`, and the `@Resolved` annotation
+- Create: `chat-service-controller/.../config/rsocket/VerifiedKeyArgumentResolver.kt`
+- Modify: every D1, D2 and D6 route
+- Test: `chat-security/src/test/.../VerificationBoundaryTests.kt`
+- Test: `chat-webflux/src/test/.../ResolvedKeyArgumentResolverTests.kt`
+- Test: `chat-service-controller/src/test/.../VerifiedKeyArgumentResolverTests.kt`
+- Test: `chat-service-controller/src/test/.../RouteSignatureGuardTests.kt`
 
-- [ ] **Step 1: Write the guard test.** It reads main source and fails on a
-`@MessageMapping` method or a `@PathVariable` parameter that has no entry in
-`INBOUND_ROUTES`, a list in the test itself. Each entry names the route and its
-verification: `verify(Key)` or `resolve(id, domain)`.
+**Why a type.** A route guard alone proves that a route is registered. It does
+not prove that verification runs. `VerifiedKey` has an `internal` constructor in
+`chat-core`, so the only way to hold one is through `KeyVerifier`. A route or a
+broker that takes `VerifiedKey` cannot run without a verification before it.
 
-```kotlin
-@Test
-fun `every inbound route is listed with its verification`() {
-    val routes = sourceFiles("chat-service-controller", "chat-webflux")
-        .flatMap { routesIn(it) }
-        .toSet()
-
-    assertThat(routes - INBOUND_ROUTES.keys).isEmpty()
-    assertThat(INBOUND_ROUTES.keys - routes).isEmpty()
-}
-```
-
-`routesIn` reads each file with a regex for `@MessageMapping("…")` and
-`@PathVariable`. The list holds 31 plus 21 entries at the start.
-
-- [ ] **Step 2: Write the forged root test for self authority.**
+1. **Write the boundary tests.** Each uses a recording broker or a recording
+   store, and asserts zero calls for an invalid key.
 
 ```kotlin
 @Test
-fun `a forged root never reaches the self rule`() {
-    val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys(), verifier())
-    val forged = Key.of(CALLER_KEY.id, TOPIC_ROOT.id)
-
-    val answer = service.hasAccessTo(forged, "DEL")
-        .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
-        .block()
+fun `an unknown key never reaches the broker`() {
+    val broker = RecordingBroker<Long>()
+    val answer = service(broker).hasAccessTo(Key.of(424242L, userRoot.id), "GET")
+        .contextWrite(authenticated()).block()
 
     assertThat(answer).isFalse()
+    assertThat(broker.calls).isEmpty()
+}
+
+@Test
+fun `a forged root never reaches the broker`() {
+    val broker = RecordingBroker<Long>()
+    val minted = keys.key(ChatDomain.USER).block()!!
+    service(broker).hasAccessTo(Key.of(minted.id, topicRoot.id), "GET").contextWrite(authenticated()).block()
+
+    assertThat(broker.calls).isEmpty()
+}
+
+@Test
+fun `a forged entity key never reaches the store`() {
+    val store = RecordingStore<User<Long>>()
+    val forged = User.create(Key.of(424242L, userRoot.id), "n", "h", "http://u")
+
+    StepVerifier.create(controller(store).add(forged)).verifyError(KeyVerificationException::class.java)
+    assertThat(store.calls).isEmpty()
 }
 ```
 
-`CALLER_KEY` has root `USER_ROOT`. The forged key has the same id with another
-root. Without verification the broker sees `principal.id == target.id` and the
-old self rule would allow. With `KeyEquality`, `principal != forged` already,
-**but that is equality, not verification.** The test must also fail when
-`KeyEquality` compares `id` alone. Step 5 proves that by mutation.
+   Write one such test for each surface: the access service, each composite R
+   site in C39 to C60, the web resolver, the messaging resolver, and D6.
 
-- [ ] **Step 3: Verify in `SpringSecurityAccessBrokerService`.**
+2. **Mutation proof, one defense at a time.** For each surface, remove its one
+   `verify` or `resolve` call. Run its test. **Expected: the test fails,
+   because the recording broker or store receives a call.** Restore the call by
+   absolute path, and prove the restore with `git status`. Record each mutation
+   and its failing test in a comment on `CHAT-kliyrune`.
+
+   Equality stays unmutated during these runs. The unknown key test does not
+   depend on equality, because the id has no registry row.
+
+3. **Change the broker signature.**
+
+```kotlin
+interface AccessBroker<T> {
+    fun hasAccessByPrincipal(principal: Mono<Key<T>>, target: VerifiedKey<T>, action: String): Mono<Boolean>
+    fun hasAccessByKey(principal: Key<T>, target: VerifiedKey<T>, action: String): Mono<Boolean>
+    fun permittedTargets(principal: Key<T>, targets: List<VerifiedKey<T>>, perm: String): Flux<Key<T>>
+}
+```
+
+   `hasAccessByKeyId(T, T)` resolves both ids through `KeyVerifier`. The
+   principal comes from `ContextIdentity`, which reads a user that a typed
+   store returned. The broker KDoc names that source.
+
+4. **Verify in the access service.**
 
 ```kotlin
 fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
@@ -1094,92 +1143,85 @@ fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
         .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
         .onErrorReturn(false)
         .switchIfEmpty(Mono.just(false))
+
+fun hasAccessToEntity(entity: Any?, perm: String, domain: ChatDomain): Mono<Boolean> =
+    EntityTargets.keyOf<T>(entity)
+        ?.let { key -> Mono.fromCallable { verifier.fromTypedStore(key, domain) } }
+        ?.flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
+        ?.onErrorReturn(false)
+        ?: Mono.just(false)
 ```
 
-`hasAccessToEntity` does not verify. Its entity came from a typed store, and
-Task 8 makes a store stamp the root. `AccessBroker.hasAccessByKeyId(T, T)`
-resolves both ids through `KeyVerifier.resolve(id, null)`.
+   `hasAccessToEntity` takes the domain of the store, because `@PostFilter`
+   runs on entities that a typed store returned.
 
-- [ ] **Step 4: State the precondition in the broker.**
+5. **Write the two argument resolvers.** The web resolver reads
+   `@Resolved(domain = …)` and a path segment, and answers
+   `verifier.resolve(typeUtil.fromString(segment), domain)`. The messaging
+   resolver decodes a `Key` payload and answers `verifier.verify(key, domain)`.
+   Register the messaging resolver through the `argumentResolverConfigurer` of
+   `RSocketMessageHandler`. Test each resolver with a valid key, an unknown key,
+   a forged root and a wrong domain.
+
+6. **Move every D1, D2 and D6 route** to `VerifiedKey`. D6 verifies the entity
+   key in the store domain before it calls the store.
+
+7. **Write the route signature guard.** It reads the route interfaces through
+   reflection, not through text.
 
 ```kotlin
-/**
- * **Both keys must be verified.** A caller of this broker verifies a key that
- * crossed a trust boundary, with `KeyVerifier`. Equality does not verify a
- * root. See `CHAT-avduuqwp`.
- */
-private fun isSelf(principal: Key<T>, target: Key<T>): Boolean = principal == target
+@Test
+fun `no route takes an unverified key or a raw path id`() {
+    val offenders = routeInterfaces().flatMap { type ->
+        type.methods
+            .filter { it.isAnnotationPresent(MessageMapping::class.java) || it.hasWebMapping() }
+            .flatMap { m ->
+                m.parameters
+                    .filter { p -> p.type == Key::class.java || p.isAnnotationPresent(PathVariable::class.java) }
+                    .map { "${type.simpleName}.${m.name}(${it.name})" }
+            }
+    }
+    assertThat(offenders).isEmpty()
+}
 ```
 
-- [ ] **Step 5: Mutation proof.** Change `KeyEquality.equals` to compare `id`
-alone. Run `AnonymousAuthorizationMatrixTests`. Expected: `a forged root never
-reaches the self rule` still passes, because verification refuses the key.
-Restore it. Remove the `verifier.verify` call instead. Expected: the test still
-passes through equality. **Both defenses are required, so run both mutations
-together.** Expected: the test fails. Restore both, by absolute path, and prove
-the restore with `git status`.
+   **The test KDoc states the limit.** The guard proves that each route declares
+   the verified type. The type proves that verification ran, because only
+   `KeyVerifier` builds it. Step 5 proves the resolvers themselves.
 
-- [ ] **Step 6: Move every **R** site.** Use section C. A composite service
-calls `verifier.resolve(req.id, <domain>)`. A REST mapping calls
-`resolve(id, domainOf(this))`. An RSocket `Key` payload goes through
-`verify(key, <domain>)` in the controller before it reaches the service.
+8. **Checkpoint.** `shell-scripts/build-health.sh`. Expected: exit 0.
 
-- [ ] **Step 7: Run.** `mvn -o -q -B -pl chat-core,chat-security,chat-service-composite,chat-service-controller,chat-webflux test`
-Expected: PASS.
-
-- [ ] **Step 8: Commit.**
-
-```bash
-git commit -am "Verify every inbound key and id before authorization (CHAT-avduuqwp)"
-```
+9. **Commit.** `git commit -am "Verify inbound keys before the broker and the stores (CHAT-avduuqwp)"`
 
 ---
 
-## Task 8: Stores stamp and check roots
+## T5: Enforce the store domain on every add
 
-**Files:**
-- Modify: every Cassandra persistence store and repository in `chat-persistence-cassandra`
-- Modify: every Cassandra index in `chat-index-cassandra`
-- Modify: every Lucene index in `chat-index-lucene`
-- Modify: every Redis store in `chat-persistence-redis`
-- Modify: `chat-persistence-memory` stores
-- Modify: A8 to A20
-- Test: one test per store family in its module
+FP: `CHAT-yygzbzfc`.
 
-- [ ] **Step 1: Write the store test in the shared base.** Each persistence test
-base in `chat-core` test source gains two cases.
+Section E lists every add path and its key source. T5 enforces the check and
+tests each path.
+
+1. **Add two cases to the shared persistence test base.**
 
 ```kotlin
+@Test
+fun `add refuses a key of another domain`() {
+    val foreign = keyService.key(otherDomain(domain)).block()!!
+    StepVerifier.create(store.add(entity(foreign))).verifyError(KeyVerificationException::class.java)
+}
+
 @Test
 fun `a read key carries the root of the store domain`() {
     val ent = entity(keyService.key(domain).block()!!)
     store.add(ent).block()
     assertThat(store.get(ent.key).block()!!.key.root).isEqualTo(rootKeys.of(domain).id)
 }
-
-@Test
-fun `add refuses a key of another domain`() {
-    val foreign = keyService.key(otherDomain(domain)).block()!!
-    StepVerifier.create(store.add(entity(foreign))).verifyError(KeyVerificationException::class.java)
-}
 ```
 
-- [ ] **Step 2: Run on memory and see both fail.**
+2. **Run them and see the first one fail.**
 
-- [ ] **Step 3: Cassandra row classes stop implementing `Key` and domain
-interfaces.** Each store maps a row to a domain object on read. Example for
-users:
-
-```kotlin
-override fun get(key: Key<T>): Mono<out User<T>> =
-    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri) }
-
-private fun root(): T = rootKeys.of(ChatDomain.USER).id
-```
-
-Remove each transitional `override val root: T get() = id` from Task 2.
-
-- [ ] **Step 4: Add the domain check to each `add`.**
+3. **Add the check to each typed store `add`.**
 
 ```kotlin
 override fun add(ent: User<T>): Mono<Void> =
@@ -1187,44 +1229,23 @@ override fun add(ent: User<T>): Mono<Void> =
     else userRepo.add(ent)
 ```
 
-- [ ] **Step 5: Lucene and Cassandra indexes.** Each index takes its domain and
-builds `Key.of(id, rootKeys.of(domain).id)` for every key it returns. C29 to C33
-and C20 to C22.
+4. **Test each path E1 to E15** through its caller. Each test asserts that the
+   write succeeds with its listed key source. E6 follows D2.
 
-- [ ] **Step 6: Redis stores.** Stored JSON carries `root` since Task 6. Add the
-`add` check.
+5. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
+   exit 0.
 
-- [ ] **Step 7: List every `add` path.** Run:
-
-```bash
-grep -rn --include='*.kt' -E "\.add\(" chat-service-composite/src/main chat-webflux/src/main chat-service-controller/src/main chat-deploy/src/main chat-shell/src/main | grep -v /target/
-```
-
-For each line, record in this plan, under this step, where its key comes from:
-mint, store read, or verification. **A line with none of the three is a defect.
-Stop and report it before you continue.**
-
-- [ ] **Step 8: Run.** `shell-scripts/build-health.sh --integration`
-Expected: exit 0.
-
-- [ ] **Step 9: Commit.**
-
-```bash
-git commit -am "Stores stamp and check the root of their domain (CHAT-avduuqwp)"
-```
+6. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
 
 ---
 
-## Task 9: Grants store verified roots
+## T6: Verify grant roots in authorize
 
-**Files:**
-- Modify: `chat-persistence-cassandra/.../domain/AuthMetadata.kt`, `chat-index-cassandra/.../domain/AuthMetadata.kt`
-- Modify: `keyspace-long.cql`, `keyspace-uuid.cql`: `auth_metadata`, `auth_metadata_principal`, `auth_metadata_target`
-- Modify: `chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt`
-- Modify: `chat-deploy/src/main/kotlin/com/demo/chat/service/init/InitialUsersService.kt`
-- Test: `chat-security/src/test/kotlin/com/demo/chat/test/CoreAuthorizationServiceTests.kt`
+FP: `CHAT-ihbesbmn`.
 
-- [ ] **Step 1: Write the tests.**
+The columns exist since T3b. T6 adds verification.
+
+1. **Write the tests.**
 
 ```kotlin
 @Test
@@ -1242,89 +1263,28 @@ fun `a stored grant reads back both roots`() {
 }
 ```
 
-- [ ] **Step 2: Run and see them fail.**
+2. **Run them and see the first one fail.**
 
-- [ ] **Step 3: Add the columns.** Each of the three tables gains
-`principal_root` and `target_root`, of the key type. The row classes map them
-to `Key.of(principalId, principalRoot)` and `Key.of(targetId, targetRoot)`.
+3. **Verify in `authorize`.** `CoreAuthorizationService` takes a `KeyVerifier`,
+   and verifies the principal and the target before it writes.
 
-- [ ] **Step 4: Verify in `authorize`.** `CoreAuthorizationService` takes a
-`KeyVerifier`. `authorize` verifies the principal and the target before it
-writes. `InitialUsersService` builds its placeholder with
-`Key.empty(placeholder, rootKeys.of(AUTH_METADATA).id)`.
+4. **Mutation proof.** Remove the target verification alone. Expected: the
+   forged root test fails. Restore by absolute path.
 
-- [ ] **Step 5: Run.** `mvn -o -q -B -pl chat-core,chat-security,chat-persistence-cassandra,chat-index-cassandra,chat-deploy test -Pintegration`
+5. **Checkpoint.** `mvn -o -q -B -pl chat-core,chat-security,chat-deploy test`.
+   Expected: PASS.
 
-- [ ] **Step 6: Commit.**
-
-```bash
-git commit -am "Grants store and verify both roots (CHAT-avduuqwp)"
-```
+6. **Commit.** `git commit -am "Grants verify both roots before a write (CHAT-avduuqwp)"`
 
 ---
 
-## Task 10: Remove the transitional factories, and `kind`
+## T7: Check the complete store shape at start
 
-**Files:**
-- Modify: every remaining **M**, **S** and **P** site in section C
-- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/KeyValuePair.kt`, `Message.kt`
-- Modify: the four test implementations in A21, and every test that calls `funKey`
-- Create: `chat-core/src/test/kotlin/com/demo/chat/test/domain/KeyContractGuardTests.kt`
+FP: `CHAT-owyyuvpg`.
 
-- [ ] **Step 1: Write the guard test.**
+Every required schema element exists since T2 and T3b. T7 adds the start check.
 
-```kotlin
-@Test
-fun `no source builds a key without a root, and nothing names kind`() {
-    val offenders = sourceFiles().filter { f ->
-        val text = f.readText()
-        listOf("Key.funKey(", "MessageKey.create(", "Key.emptyKey(", "fun kind(", "val kind:", "KindRequest")
-            .any { text.contains(it) }
-    }
-    assertThat(offenders).isEmpty()
-}
-```
-
-`sourceFiles()` walks `chat-*/src/main` and `chat-*/src/test` from the repository
-root, and skips this file. `MessageDocumentMapper` and the recall filters name
-`"kind"` as vector metadata. The test matches the patterns above, which that
-code does not use.
-
-- [ ] **Step 2: Run and see it fail.** It names every file left.
-
-- [ ] **Step 3: Decide C12 and C13.** `InMemoryCryptoServices` builds epoch and
-tag keys with random UUIDs, not through mint. Mint them with `KEY_VALUE_PAIR`
-if they are persisted as key-value entries. Otherwise stop the task and ask the
-owner for a domain contract, and refuse them with `UnsupportedDomainException`
-until then.
-
-- [ ] **Step 4: Move each remaining site per section C.** Delete `funKey`,
-`emptyKey` and both `MessageKey.create` overloads.
-
-- [ ] **Step 5: Run the guard, then the full default gate.**
-
-Run: `mvn -o -q -B -pl chat-core test -Dtest=KeyContractGuardTests`, then
-`shell-scripts/build-health.sh`. Expected: PASS and exit 0.
-
-- [ ] **Step 6: Commit.**
-
-```bash
-git commit -am "Remove every key factory without a root, and kind (CHAT-avduuqwp)"
-```
-
----
-
-## Task 11: Fresh schemas, and the start check
-
-**Files:**
-- Modify: `keyspace-long.cql`, `keyspace-uuid.cql`, `truncate-long.cql`, `truncate-uuid.cql`
-- Create: `chat-persistence-cassandra/src/main/kotlin/com/demo/chat/persistence/cassandra/impl/CassandraStoreShapeCheck.kt`
-- Create: `chat-persistence-redis/src/main/kotlin/com/demo/chat/persistence/redis/impl/RedisStoreShapeCheck.kt`
-- Test: one container test per backend
-
-- [ ] **Step 1: Write the Cassandra shape test.** It creates a keyspace from the
-old script, starts the check, and expects failure. It repeats this once per
-required element, removing only that element from the new script.
+1. **Write the Cassandra shape test.** One case per required element.
 
 ```kotlin
 @ParameterizedTest
@@ -1341,7 +1301,7 @@ fun `a store without a required element fails at start`(element: String) {
 }
 ```
 
-- [ ] **Step 2: Write the check.**
+2. **Write the check.**
 
 ```kotlin
 class CassandraStoreShapeCheck(private val session: CqlSession, private val keyspace: String) {
@@ -1357,7 +1317,8 @@ class CassandraStoreShapeCheck(private val session: CqlSession, private val keys
     fun check() {
         val columns = session.execute(
             "SELECT table_name, column_name FROM system_schema.columns WHERE keyspace_name = ?", keyspace
-        ).map { it.getString("table_name")!! to it.getString("column_name")!! }.groupBy({ it.first }, { it.second })
+        ).map { it.getString("table_name")!! to it.getString("column_name")!! }
+            .groupBy({ it.first }, { it.second })
 
         val missing = required.flatMap { (table, cols) ->
             val have = columns[table]
@@ -1365,72 +1326,75 @@ class CassandraStoreShapeCheck(private val session: CqlSession, private val keys
         }
         if (missing.isNotEmpty()) throw ChatException(
             "Keyspace $keyspace does not match the required schema. Missing: ${missing.joinToString()}. " +
-            "Recreate the store from keyspace-*.cql. This release has no migration."
+                "Recreate the store from keyspace-*.cql. This release has no migration."
         )
     }
 }
 ```
 
-It runs before `RootKeyLoader`.
+   It runs before `RootKeyLoader`.
 
-- [ ] **Step 3: Write the Redis check.** It fails when the hash `chat:keys`
-exists without a key type segment, and names the recreation.
+3. **Write the Redis check and its test.** It fails when the hash `chat:keys`
+   exists without a key type segment, and names the recreation.
 
-- [ ] **Step 4: Edit the CQL.** Apply spec part 8: `keys (id, root)`,
-`root_keys`, the six authorization root columns, and remove `event_key_meta`
-and `chat_secret.kind`. Confirm that neither truncate script names `root_keys`.
+4. **Checkpoint.** `shell-scripts/build-health.sh --integration`. Expected:
+   exit 0.
 
-- [ ] **Step 5: Run.** `shell-scripts/build-health.sh --integration`
-Expected: exit 0.
-
-- [ ] **Step 6: Commit.**
-
-```bash
-git commit -am "Fresh schemas, and a start check for the old shape (CHAT-avduuqwp)"
-```
+5. **Commit.** `git commit -am "A start check for the complete store shape (CHAT-avduuqwp)"`
 
 ---
 
-## Task 12: Documents and the final gate
+## T8: Update documents and run the final gate
 
-**Files:**
-- Modify: `docs/ANONYMOUS-AUTHORIZATION.md`, `docs/IDENTITY-POLICY.md`, `docs/NODEID-CLAIM.md` where it names root keys, `docs/BUILD.md` where it names `app.rootkeys.create`, `forward-register.md`
+FP: `CHAT-gwdifqbk`.
 
-- [ ] **Step 1: Search for stale prose.**
+1. **Find stale prose.** This is a raw text search, so `grep` is correct here.
 
 ```bash
-grep -rn -e "rootkeys.create" -e "funKey" -e "kind" -e "KnownRootKeys" -e "GenerateRootKeyInitializer" docs forward-register.md
+grep -rn -e "rootkeys.create" -e "funKey" -e "KnownRootKeys" -e "GenerateRootKeyInitializer" -e "chat:keys" docs forward-register.md
 ```
 
-Correct each hit that describes current behavior. Keep dated history as it is,
-and add a correction line where the register style does.
+   Correct each hit that describes current behavior. Keep dated history, and
+   add a correction line where the register does that.
 
-- [ ] **Step 2: Run the drift discipline.** `drift check`. Update prose before
-any `drift link`.
+2. **Drift.** `drift check`. Update prose before any `drift link`.
 
-- [ ] **Step 3: Run the final gate.**
+3. **Final gates.** `shell-scripts/build-health.sh --ci`,
+   `just check-production-classpath`, and
+   `shell-scripts/vector/gate-embedding-launch.sh`. Expected: each exits 0.
 
-Run: `shell-scripts/build-health.sh --ci`
-Expected: exit 0, and reality matches `docs/BUILD-HEALTH.md`. Update that
-document when the test counts move.
-
-- [ ] **Step 4: Run `just check-production-classpath` and the launch gate.**
-Both exit 0.
-
-- [ ] **Step 5: Commit, push, open the pull request.**
+4. **Commit, push, and open the pull request.** Close each FP task with its
+   evidence.
 
 ---
 
-## Self-review
+## Revision record
 
-- **Spec coverage.** Part 1: Task 1. Part 2: Task 2, Task 10. Part 3: Task 3,
-  Task 4. Part 4: Task 4. Part 5: Task 6. Part 6: Task 5, Task 7. Part 7:
-  Task 8, Task 9. Part 8: Task 11. Part 9: Task 4, Task 10, Task 11. Owner
-  requirements 1 to 5: Task 2, Task 7, the inventory, Task 4, Task 11.
-- **Known open points, stated in their tasks.** C12 and C13 need a domain
-  decision in Task 10 step 3. The `add` path list is produced in Task 8 step 7.
-  B7 is proved in Task 6 step 5.
-- **Type consistency.** `ChatDomain`, `RootKeys.of`, `Key.of`, `Key.root`,
-  `Key.empty`, `MessageKey.of`, `KeyVerifier.verify` and `resolve`,
-  `IKeyService.rootOf`, `RootKeyStore.createIfAbsent`, and the three exception
-  types keep one name in every task.
+**Second revision, 2026-09-25, after the owner review of `c2ffe934`.**
+
+1. **Wrong domains.** C49 and C50 reused membership ids for alert message keys.
+   They now mint a `MESSAGE` key. C53 checked `messageById` in
+   `MESSAGE_TOPIC`. It now resolves in `MESSAGE`.
+2. **Bootstrap dependency.** C17 to C19 needed a `KEY_VALUE_PAIR` root to read
+   the roots, and `RootKeyService` stores strings while roots are typed. T2 now
+   separates store backed initialization from snapshot consumption, and the
+   snapshot is a string keyed record.
+3. **Credential refusal.** Only `restAddCredential` mints a credential key. The
+   read, write by id and compare routes now resolve their owner in `USER`.
+4. **Verification tests.** The first revision accepted a passing test after the
+   `verify` call was removed. T4 now uses recording brokers and stores, one
+   mutation per defense, and a `VerifiedKey` type that only `KeyVerifier`
+   builds. The route guard reads signatures by reflection, and its KDoc states
+   what it proves.
+5. **Task order.** Each schema change now lands with its first consumer:
+   `root_keys` in T2, and the `keys`, authorization root and `chat_secret`
+   changes in T3b. The add path inventory is section E, measured before T5. The
+   crypto domains are decision D1, before T3d.
+
+Also: the transitional `root = id` factory is removed. T3a to T3e are one
+coordinated change with compile checkpoints. Tracking uses FP tasks, and
+navigation uses the semantic tools.
+
+Found while revising: `VectorIndexJobStoreImpl` uses one key in two domains
+(D2). `KeyValueStoreRegisteredClientRepository` stores under a configured
+client id. `PersistenceStoreMapping.add` accepts a client entity (D6).
