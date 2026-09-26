@@ -301,7 +301,9 @@ A decoded key is a claim. It becomes a `VerifiedKey` only through T4.
 
 ### C. Factory calls in main source
 
-Seventy-seven calls. Corrections from the review are marked **fixed**.
+The plan counted 77 lines at `3527e7cb`. T0 measured 78 calls at `141dee77`.
+See the T0 measurement below this table. Corrections from the review are marked
+**fixed**.
 
 | # | Site | Src | After | Task |
 |---|---|---|---|---|
@@ -354,6 +356,25 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C74 | `SecretsRestMapping.kt:38` `compare/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
 | C75 | `PubSubRestMapping.kt:53` | P | the minted message key | T3d |
 | C76, C77 | `IKeyRestMapping.kt:27`, `:31` | R | `@Resolved` with no expected domain | T3d, T4 |
+| C78 | `EntityTargets.kt:28`, membership target | S | **T0, new.** The entity came from a typed store of `TOPIC_MEMBERSHIP`. Use the root of that domain. PR #139 added this site after the first measurement | T3d |
+
+**The T0 measurement, 2026-09-25, at master `141dee77`.** The semantic tools
+counted calls, not lines.
+
+| Factory | Tool | Calls in main source |
+|---|---|---|
+| `Key.funKey` | `mcp__treesitter-mcp__find_usages` | 64 |
+| `MessageKey.create(T, T, T)` | `mcp__idea__analyze_calls` | 12 |
+| `MessageKey.create(T, T)` | `mcp__idea__analyze_calls` | 0. One test calls it |
+| `Key.emptyKey` | `mcp__treesitter-mcp__find_usages` | 2 |
+| **Total** | | **78** |
+
+Three facts explain 64 `funKey` calls against the 63 lines of the first
+measurement:
+
+- C21 is a commented-out line. The tool does not count it. That removes one.
+- `AccessBroker.kt:12` holds two calls on one line. That adds one.
+- C78 is a new site. That adds one.
 
 **The C16 contract.**
 
@@ -393,6 +414,26 @@ Mint calls with a class today:
 | D6 | `PersistenceStoreMapping.add(ent)`, RSocket | **new.** Verifies the entity key in the store domain before the store | T4 |
 | D7 | Request ids in `ByIdRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest` | resolved in the composite service, sites C39 to C60 | T3d, T4 |
 
+**Routes that T0 found, with no entry before. Each one needs owner review.**
+Each route takes a key or an id from a caller. The T4 route guard does not see
+it, because the guard checks only parameters of type `Key` and parameters with
+`@PathVariable`. The proposal column is a proposal, not a decision.
+
+| # | Route | Caller input | Proposal |
+|---|---|---|---|
+| D8 | RSocket `SecretsStoreMapping.addCredential`, `compareSecret` | a `KeyCredential` with an owner key | Verify the owner key in `USER` before the secrets store |
+| D9 | RSocket `PersistenceStoreMapping.typedByIds` | a `List<Key<T>>` | Verify each key in `KEY_VALUE_PAIR`. The route guard must also refuse a list of keys |
+| D10 | RSocket `TopicPubSubServiceMapping.sendMessage` | a `Message` with a caller key | Verify the message key in `MESSAGE`, and resolve `dest` in `MESSAGE_TOPIC` |
+| D11 | RSocket `TopicPubSubServiceMapping`: `subscribe`, `unsubscribe`, `unSubscribeAll`, `unSubscribeAllIn`, `receiveOn`, `exists`, `add`, `rem`, `getByUser`, `getUsersBy` | raw ids, and `MemberTopicRequest`, sent straight to the pub/sub service | Resolve each topic id in `MESSAGE_TOPIC`, and each member or user id in `USER` |
+| D12 | RSocket `IndexServiceController.add`, both controllers, and REST `IndexRestMapping.add` | an entity with a caller key, written to an index with no store write | Verify the entity key in the index domain before the index |
+
+D6 covers the `KeyValuePair` variant of `PersistenceStoreMapping.add` too.
+
+**The route guard of T4 needs a wider rule.** A parameter whose type holds a
+`Key` inside it passes the current guard. That covers an entity, a
+`KeyCredential`, a `Message`, a list of keys, and a raw id that is not a path
+variable. The owner decides the rule before T4 starts.
+
 ### E. Every `add` path, and its key source
 
 **Measured on 2026-09-25 with `mcp__treesitter-mcp__find_usages` for `add`**
@@ -408,7 +449,7 @@ and are not listed. T0 step 2 measures again.
 | E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC`. **D2.** A separate key from the job key | T5 |
 | E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | M. **D2.** The job key is minted in `KEY_VALUE_PAIR` | T5 |
 | E7 | `ComposedJobRecordWriter.write`, `messagePersistence.add` | M, minted from the message store in `MessageReindexServiceImpl.emit` | T5 |
-| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. T0 step 2 confirms each key comes from `key()` | T5 |
+| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. **T0 confirmed** that each key comes from `key()`. One observation for owner review: `addMessage` stores the caller ids `req.from` and `req.dest`, and `addMembership` stores `req.uid` and `req.roomId`. These are raw ids, not keys, so the key contract does not verify them | T5 |
 | E9 | `KeyValueStoreRestMapping` add | R, `KEY_VALUE_PAIR` | T4, T5 |
 | E10 | `PersistenceStoreMapping.add(ent)`, RSocket | R, the store domain | T4, T5 |
 | E11 | `KeyValueStoreRegisteredClientRepository.save` | M on first save, S after | T5 |
@@ -416,6 +457,20 @@ and are not listed. T0 step 2 measures again.
 | E13 | `RootKeyService.publishRootKeys`, `kvStore.add` | B | T2 |
 | E14 | `CoreAuthorizationService.authorize`, `authPersist.add` | M for the grant key. Principal and target verified in T6 | T5, T6 |
 | E15 | `UserCommands.kv`, `keyValuePersistence.add` | M | T5 |
+
+**Credential writes, found in T0.** Section E listed only one credential
+write, E12. T0 searched `addCredential` with `mcp__treesitter-mcp__find_usages`.
+
+| # | Path | Key source | Task |
+|---|---|---|---|
+| E16 | `CoreAuthenticationService.setAuthentication`, from `CoreUserDetailsService.updatePassword` | S. `mcp__idea__analyze_calls` finds one production caller. It passes a `UserDetails` that a store read built | T5 |
+| E17 | `UserCommands.passwd` in `chat-shell` | The shell reads the user from the server, then sends the credential to the RSocket route of D8. The server verifies it there | T5 |
+| E18 | RSocket `SecretsStoreMapping.addCredential` | R. See D8. **Needs owner review** | T4, T5 |
+| E19 | REST `restAddCredential` | X. The mint is refused. See the mint table | T3d |
+
+**The count of add paths.** T0 measured the store and key-value `add` paths
+again. The count is 15, as before. PR #139 changed no `add` path. The
+credential writes add four entries, E16 to E19.
 
 ---
 
