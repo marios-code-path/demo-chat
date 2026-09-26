@@ -27,12 +27,25 @@ class KeyVerifierConstructionTests {
     /** This pattern matches a call or a callable reference. */
     private val trustCall = Regex("""(\btrustTypedStore\s*\()|(::\s*trustTypedStore\b)""")
 
+    /** The guard excludes `KeyVerifier.kt` alone. Every other file, `VerifiedKey.kt` included, is scanned. */
+    private fun constructorOffenders(files: List<Pair<String, String>>): List<String> =
+        files.filter { (name, _) -> name != "KeyVerifier.kt" }
+            .flatMap { (name, text) -> constructorCall.findAll(text).map { "$name: ${it.value}" }.toList() }
+
     @Test
     fun `only KeyVerifier constructs a VerifiedKey`() {
-        val offenders = mainSources()
-            .filter { it.name != "KeyVerifier.kt" && it.name != "VerifiedKey.kt" }
-            .flatMap { f -> constructorCall.findAll(f.readText()).map { "${f.name}: ${it.value}" }.toList() }
-        assertThat(offenders).isEmpty()
+        assertThat(constructorOffenders(mainSources().map { it.name to it.readText() })).isEmpty()
+    }
+
+    @Test
+    fun `a constructor call inside VerifiedKey kt fails the guard`() {
+        val helper = """
+            class VerifiedKey<T> internal constructor(val key: Key<T>)
+            fun <T> unchecked(k: Key<T>) = VerifiedKey(k)
+        """.trimIndent()
+
+        assertThat(constructorOffenders(listOf("VerifiedKey.kt" to helper))).containsExactly("VerifiedKey.kt: VerifiedKey(")
+        assertThat(constructorOffenders(listOf("KeyVerifier.kt" to helper))).isEmpty()
     }
 
     @Test

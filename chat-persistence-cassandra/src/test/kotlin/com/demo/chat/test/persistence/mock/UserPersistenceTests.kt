@@ -135,4 +135,23 @@ class UserPersistenceTests {
                 .verifyComplete()
     }
 
+
+    @Test
+    fun `get, all and byIds keep the stored timestamp`() {
+        val row = ChatUser(ChatUserKey(uid), "stored-name", "stored-handle", "", Instant.EPOCH)
+        BDDMockito.given(userRepo.findByKeyId(TestBase.anyObject())).willReturn(Mono.just(row))
+        BDDMockito.given(userRepo.findAll()).willReturn(Flux.just(row))
+        BDDMockito.given(userRepo.findByKeyIdIn(TestBase.anyObject())).willReturn(Flux.just(row))
+        val key = Key.of(uid, roots.of(ChatDomain.USER).id)
+
+        listOf(
+            userSvc.get(key).block()!!,
+            userSvc.all().blockFirst()!!,
+            userSvc.byIds(listOf(key)).blockFirst()!!,
+        ).forEach { user ->
+            // Two reads of the property must agree. A getter that reads the clock would not.
+            Assertions.assertThat(user.timestamp).isEqualTo(Instant.EPOCH)
+            Assertions.assertThat(user.timestamp).isEqualTo(Instant.EPOCH)
+        }
+    }
 }

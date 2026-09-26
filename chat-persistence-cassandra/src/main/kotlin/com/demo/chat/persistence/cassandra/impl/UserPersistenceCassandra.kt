@@ -15,7 +15,10 @@ import com.demo.chat.service.core.UserPersistence
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-/** Each read maps a row under the root of the USER domain. See `CHAT-avduuqwp`. */
+/**
+ * Each read maps a row under the root of the USER domain, and it keeps the
+ * stored timestamp. See `CHAT-avduuqwp`.
+ */
 open class UserPersistenceCassandra<T : Any>(
     val keyService: IKeyService<T>,
     private val rootKeys: RootKeys<T>,
@@ -36,5 +39,5 @@ open class UserPersistenceCassandra<T : Any>(
         userRepo.findByKeyIdIn(keys.map { it.id }).map(::user)
 
     private fun user(row: ChatUser<T>): User<T> =
-        User.create(Key.of(row.key.id, rootKeys.of(ChatDomain.USER).id), row.name, row.handle, row.imageUri)
+        User.create(Key.of(row.key.id, rootKeys.of(ChatDomain.USER).id), row.name, row.handle, row.imageUri, row.timestamp)
 }

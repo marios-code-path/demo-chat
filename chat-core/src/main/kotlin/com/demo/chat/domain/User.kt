@@ -10,27 +10,35 @@ interface User<T> : KeyBearer<T> {
     val timestamp: Instant
 
     companion object Factory {
+        /** This method builds a user whose timestamp reads the current time on each read. */
         @JvmStatic
-        fun<T> create(key: Key<T>, name: String, handle: String, imageUri: String): User<T> = object : User<T> {
-            override val key: Key<T>
-                get() = key
-            override val name: String
-                get() = name
-            override val handle: String
-                get() = handle
-            override val imageUri: String
-                get() = imageUri
-            override val timestamp: Instant
-                get() = Instant.now()
+        fun<T> create(key: Key<T>, name: String, handle: String, imageUri: String): User<T> =
+            SimpleUser(key, name, handle, imageUri) { Instant.now() }
 
-            override fun equals(k2: Any?): Boolean =
-                (k2 != null && k2::class == this::class) &&
-                        (k2 is User<*> &&
-                                k2.key == this.key &&
-                                k2.name == this.name &&
-                                k2.handle == this.handle &&
-                                k2.imageUri == this.imageUri)
-
-        }
+        /** This method builds a user with a stored [timestamp]. A store read uses it. See `CHAT-avduuqwp`. */
+        @JvmStatic
+        fun<T> create(key: Key<T>, name: String, handle: String, imageUri: String, timestamp: Instant): User<T> =
+            SimpleUser(key, name, handle, imageUri) { timestamp }
     }
+}
+
+/** Equality reads the key, name, handle and image. It does not read the timestamp. */
+private class SimpleUser<T>(
+    override val key: Key<T>,
+    override val name: String,
+    override val handle: String,
+    override val imageUri: String,
+    private val clock: () -> Instant,
+) : User<T> {
+    override val timestamp: Instant
+        get() = clock()
+
+    override fun equals(other: Any?): Boolean =
+        other is SimpleUser<*> &&
+                other.key == key &&
+                other.name == name &&
+                other.handle == handle &&
+                other.imageUri == imageUri
+
+    override fun hashCode(): Int = Objects.hash(key, name, handle, imageUri)
 }

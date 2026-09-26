@@ -479,6 +479,7 @@ write, E12. T0 searched `addCredential` with `mcp__treesitter-mcp__find_usages`.
 | E17 | `UserCommands.passwd` in `chat-shell` | The shell reads the user from the server, then sends the credential to the RSocket route of D8. The server verifies it there | T5 |
 | E18 | RSocket `SecretsStoreMapping.addCredential` | R. See D8. **The owner decided on 2026-09-25.** Verify the owner key in `USER` before the write | T4, T5 |
 | E19 | REST `restAddCredential` | X. The mint is refused. See the mint table | T3d |
+| E20 | `MessagePersistenceCassandra.add` | **Found in T3b, not measured by T0.** It mints a new message id and stores the caller key id as the sender. So a stored message cannot be read by its own key. **The owner decided on 2026-09-26.** Preserve the supplied id, sender, destination and timestamp. Do not mint inside `add` | T5 |
 
 **The count of add paths.** T0 measured the store and key-value `add` paths
 again. The count is 15, as before. PR #139 changed no `add` path. The
@@ -1101,12 +1102,20 @@ class KeyVerifierConstructionTests {
     /** This pattern matches a call or a callable reference. */
     private val trustCall = Regex("""(\btrustTypedStore\s*\()|(::\s*trustTypedStore\b)""")
 
+    /** The guard excludes `KeyVerifier.kt` alone. Every other file, `VerifiedKey.kt` included, is scanned. */
+    private fun constructorOffenders(files: List<Pair<String, String>>): List<String> =
+        files.filter { (name, _) -> name != "KeyVerifier.kt" }
+            .flatMap { (name, text) -> constructorCall.findAll(text).map { "$name: ${it.value}" }.toList() }
+
     @Test
     fun `only KeyVerifier constructs a VerifiedKey`() {
-        val offenders = mainSources()
-            .filter { it.name != "KeyVerifier.kt" }
-            .flatMap { f -> constructorCall.findAll(f.readText()).map { "${f.name}: ${it.value}" }.toList() }
-        assertThat(offenders).isEmpty()
+        assertThat(constructorOffenders(mainSources().map { it.name to it.readText() })).isEmpty()
+    }
+
+    @Test
+    fun `a constructor call inside VerifiedKey kt fails the guard`() {
+        val helper = "class VerifiedKey<T> internal constructor(val key: Key<T>)\nfun <T> unchecked(k: Key<T>) = VerifiedKey(k)"
+        assertThat(constructorOffenders(listOf("VerifiedKey.kt" to helper))).containsExactly("VerifiedKey.kt: VerifiedKey(")
     }
 
     @Test
@@ -1171,10 +1180,17 @@ object KeyEquality {
         other is Key<*> && other.empty == a.empty && other.id == a.id && other.root == a.root
 
     fun hash(k: Key<*>): Int = Objects.hash(k.id, k.root, k.empty)
+
+    /** The generic type admits a nullable argument, so every canonical class checks at construction. */
+    fun requireMembers(id: Any?, root: Any?) {
+        requireNotNull(id) { "A key needs an id. The id is null." }
+        requireNotNull(root) { "A key needs a root. The root is null." }
+    }
 }
 
 @JsonTypeName("key")
 class SimpleKey<T>(override val id: T, override val root: T) : Key<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = false
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1183,6 +1199,7 @@ class SimpleKey<T>(override val id: T, override val root: T) : Key<T> {
 
 @JsonTypeName("key")
 class EmptyKey<T>(override val id: T, override val root: T) : NoKey<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = true
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1193,6 +1210,7 @@ class EmptyKey<T>(override val id: T, override val root: T) : NoKey<T> {
 class SimpleMessageKey<T>(
     override val id: T, override val root: T, override val from: T, override val dest: T
 ) : MessageKey<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = false
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1334,7 +1352,7 @@ class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val rootKey
 
 ```kotlin
 override fun get(key: Key<T>): Mono<out User<T>> =
-    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri) }
+    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri, row.timestamp) }
 ```
 
    `AuthMetadataById` maps `principal_root` and `target_root`. `CredKey` loses
@@ -1370,8 +1388,10 @@ fun `a found key carries the root of the index domain`() {
 
 2. **Each index takes its `ChatDomain`,** and builds
    `Key.of(id, rootKeys.of(domain).id)` for every key it returns. C20 to C33.
-   The Cassandra authorization index reads `principal_root` and `target_root`
-   from its rows.
+   The Cassandra authorization index stores `principal_root` and
+   `target_root` in its rows. Its `findBy` returns grant keys alone, so it does
+   not consume those columns. The stored roots are consumed where authorization
+   reads the principal and the target, which is the grant store of T3b.
 
 3. **Checkpoint.** Run
    `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`.
@@ -1859,13 +1879,22 @@ fun `the key-value store refuses a topic key`() {
 }
 ```
 
-5. **Test each path E1 to E15** through its caller. Each test asserts that the
+5. **Repair the Cassandra message add, E20.** The owner decided this on
+   2026-09-26. `MessagePersistenceCassandra.add` stores the supplied message
+   id, sender, destination and timestamp. It does not mint another id. The
+   incoming key meets the domain check of step 3.
+
+   Add a regression through the real Cassandra store. Use distinct message,
+   sender and destination ids. Read the stored message by its supplied key.
+   Check every identity field and the registry mapping.
+
+6. **Test each path E1 to E15** through its caller. Each test asserts that the
    write succeeds with its listed key source.
 
-6. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
+7. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
    that it exits with 0.
 
-7. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
+8. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
 
 ---
 
@@ -2159,3 +2188,14 @@ not include the official dictionary.
    refuses a scheme or a required value that is not canonical.
 2. **Launch roles.** The T2 section records the root key role of each
    `chat-build` service, and the Consul decision of the owner.
+
+**Eleventh revision, 2026-09-26, after the owner review of T3a to T3c at `736f92cd`.**
+
+1. **A key refuses a null id or root.** Every canonical class checks at
+   construction, so every factory checks too. The T3a example shows it.
+2. **A Cassandra user read keeps its stored timestamp.** `User.create` gains a
+   timestamp overload. The T3b example uses it.
+3. **The construction guard excludes `KeyVerifier.kt` alone.** A test feeds it a
+   constructor call inside `VerifiedKey.kt`.
+4. **The T3c wording separates stored columns from consumed values.**
+5. **E20 records the Cassandra message add.** T5 step 5 repairs it.

@@ -16,5 +16,5 @@ import com.demo.chat.domain.Key
 class VerifiedKey<T> internal constructor(val key: Key<T>) {
     override fun equals(other: Any?) = other is VerifiedKey<*> && other.key == key
     override fun hashCode() = key.hashCode()
-    override fun toString() = "VerifiedKey($key)"
+    override fun toString() = "verified key $key"
 }
