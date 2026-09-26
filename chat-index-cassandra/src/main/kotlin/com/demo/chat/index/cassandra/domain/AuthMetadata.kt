@@ -1,11 +1,11 @@
 package com.demo.chat.index.cassandra.domain
 
-import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.Key
-import org.springframework.data.annotation.Transient
-import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 
+/**
+ * A row of a Cassandra index. **It is not a domain object and not a `Key`.**
+ * The index maps it under the root of its domain. See `CHAT-avduuqwp`.
+ */
 @Table("auth_metadata_principal")
 data class AuthMetadataByPrincipal<T>(
     @field:Column("id")
@@ -14,20 +14,17 @@ data class AuthMetadataByPrincipal<T>(
     val targetId: T,
     @PrimaryKey("principal")
     val principalId: T,
+    @field:Column("target_root")
+    val targetRoot: T,
+    @field:Column("principal_root")
+    val principalRoot: T,
     @field:Column("permission")
-    override val permission: String,
+    val permission: String,
     @field:Column("mute")
-    override val mute: Boolean,
+    val mute: Boolean,
     @field:Column("expires")
-    override val expires: Long
-) : AuthMetadata<T> {
-    @Transient
-    override val principal: Key<T> = Key.funKey(principalId)
-    @Transient
-    override val target: Key<T> = Key.funKey(targetId)
-    @Transient
-    override val key: Key<T> = Key.funKey(keyId)
-}
+    val expires: Long
+)
 
 @Table("auth_metadata_target")
 data class AuthMetadataByTarget<T>(
@@ -37,17 +34,14 @@ data class AuthMetadataByTarget<T>(
     val targetId: T,
     @field:Column("principal")
     val principalId: T,
+    @field:Column("target_root")
+    val targetRoot: T,
+    @field:Column("principal_root")
+    val principalRoot: T,
     @field:Column("permission")
-    override val permission: String,
+    val permission: String,
     @field:Column("mute")
-    override val mute: Boolean,
+    val mute: Boolean,
     @field:Column("expires")
-    override val expires: Long
-) : AuthMetadata<T> {
-    @Transient
-    override val principal: Key<T> = Key.funKey(principalId)
-    @Transient
-    override val target: Key<T> = Key.funKey(targetId)
-    @Transient
-    override val key: Key<T> = Key.funKey(keyId)
-}
+    val expires: Long
+)

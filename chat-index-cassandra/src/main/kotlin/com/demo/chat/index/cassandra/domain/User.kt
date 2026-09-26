@@ -1,35 +1,30 @@
 package com.demo.chat.index.cassandra.domain
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
-import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 
 
+/**
+ * A row of a Cassandra index. **It is not a domain object and not a `Key`.**
+ * The index maps it under the root of its domain. See `CHAT-avduuqwp`.
+ */
 @Table("chat_user_handle")
 data class ChatUserHandle<T>(
     @PrimaryKey
-    override val key: ChatUserHandleKey<T>,
+    val key: ChatUserHandleKey<T>,
     @field:Column("name")
-    override val name: String,
+    val name: String,
     @field:Column("image_uri")
-    override val imageUri: String,
+    val imageUri: String,
     @field:Column("timestamp")
-    override val timestamp: Instant
-) : User<T> {
-    @Transient
-    override val handle: String = key.handle
-}
+    val timestamp: Instant
+)
 
 @PrimaryKeyClass
 data class ChatUserHandleKey<T>(
     @field:Column("user_id")
-    override val id: T,
+    val id: T,
     @PrimaryKeyColumn(name = "handle", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
     val handle: String
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+)

@@ -1,5 +1,9 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.index.cassandra.impl.UserIndex
@@ -28,8 +32,8 @@ import java.util.UUID
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 //class UserIndexTests : IndexTestBase<UUID, User<UUID>, Map<String, String>>(
-//        Supplier { User.create(Key.funKey(UUID(10, 10)), "test-name", "test-handle", "localhost/test.jpg") },
-//        Supplier { Key.funKey(UUID(10, 10)) },
+//        Supplier { User.create(TestKeys.key(UUID(10, 10)), "test-name", "test-handle", "localhost/test.jpg") },
+//        Supplier { TestKeys.key(UUID(10, 10)) },
 //        Supplier { mapOf(Pair(MembershipIndexService.MEMBEROF, UUID(10, 10).toString())) }
 //)
 @Tag("integration")
@@ -43,7 +47,7 @@ class UserIndexTests {
 
     @BeforeEach
     fun setUp() {
-        userIndex = UserIndex(byHandleRepo)
+        userIndex = UserIndex(byHandleRepo, FakeKeyServices.uuidRoots())
     }
 
     @Test
@@ -53,7 +57,7 @@ class UserIndexTests {
         BDDMockito.given(byHandleRepo.add(anyObject()))
             .willReturn(Mono.empty())
 
-        val user = User.create(Key.funKey(UUID.randomUUID()), "test-name", "test-handle", "localhost/test.jpg")
+        val user = User.create(TestKeys.key(UUID.randomUUID()), "test-name", "test-handle", "localhost/test.jpg")
 
         StepVerifier.create(userIndex.add(user))
                 .expectSubscription()

@@ -1,5 +1,11 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UUIDUtil
@@ -43,6 +49,8 @@ class AuthMetadataIndexTests {
             keyGenerator(),
             keyGenerator(),
             keyGenerator(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -52,6 +60,8 @@ class AuthMetadataIndexTests {
             authMetaPrincipal.keyId,
             authMetaPrincipal.targetId,
             authMetaPrincipal.principalId,
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             authMetaPrincipal.permission,
             false,
             authMetaPrincipal.expires
@@ -78,7 +88,7 @@ class AuthMetadataIndexTests {
         BDDMockito.given(byTargetRepo.findByTargetId(anyObject()))
             .willReturn(Flux.just(authMetaTarget))
 
-        this.index = AuthMetadataIndex(UUIDUtil(), byTargetRepo, byPrincipalRepo)
+        this.index = AuthMetadataIndex(UUIDUtil(), byTargetRepo, byPrincipalRepo, FakeKeyServices.uuidRoots())
 
     }
 
@@ -89,9 +99,9 @@ class AuthMetadataIndexTests {
             .create(
                 index.add(
                     AuthMetadata.create(
-                        Key.funKey(keyGenerator()),
-                        Key.funKey(keyGenerator()),
-                        Key.funKey(keyGenerator()),
+                        TestKeys.key(keyGenerator()),
+                        TestKeys.key(keyGenerator()),
+                        TestKeys.key(keyGenerator()),
                         "TEST",
                         System.currentTimeMillis()
                     )

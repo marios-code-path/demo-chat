@@ -1,5 +1,9 @@
 package com.demo.chat.index.cassandra.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.index.cassandra.domain.ChatTopicName
@@ -12,7 +16,8 @@ import reactor.core.publisher.Mono
 
 // TODO need a more idiomatic way of obtaining ALL
 class TopicIndex<T : Any>(
-        private val nameRepo: TopicByNameRepository<T>
+        private val nameRepo: TopicByNameRepository<T>,
+        private val rootKeys: RootKeys<T>,
 ) : TopicIndexService<T, Map<String, String>> {
     override fun add(entity: MessageTopic<T>): Mono<Void> = nameRepo.save(
             ChatTopicName(
@@ -37,7 +42,7 @@ class TopicIndex<T : Any>(
             NAME -> {
                 nameRepo
                         .findByKeyName(query[NAME] ?: error("Topic Name not found"))
-                        .map { it.key }
+                        .map { Key.of(it.key.id, rootKeys.of(ChatDomain.MESSAGE_TOPIC).id) }
                         .flux()
             }
             else -> {

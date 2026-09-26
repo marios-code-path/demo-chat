@@ -81,7 +81,11 @@ class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
         StepVerifier
             .create(saveAndFind)
             .expectSubscription()
-            .assertNext { TestBase.userAssertions(it, "darkbit", "mario") }
+            .assertNext {
+                // A row of chat_user_handle holds the handle in its key. See CHAT-avduuqwp.
+                org.assertj.core.api.Assertions.assertThat(it.key.handle).isEqualTo("darkbit")
+                org.assertj.core.api.Assertions.assertThat(it.name).isEqualTo("mario")
+            }
             .verifyComplete()
     }
 

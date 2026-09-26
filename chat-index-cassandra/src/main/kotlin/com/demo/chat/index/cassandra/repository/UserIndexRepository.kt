@@ -4,9 +4,7 @@ import com.datastax.oss.driver.api.core.ConsistencyLevel
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.DuplicateException
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
 import com.demo.chat.index.cassandra.domain.ChatUserHandle
-import com.demo.chat.index.cassandra.domain.ChatUserHandleKey
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.data.cassandra.core.InsertOptions
@@ -26,7 +24,7 @@ interface ChatUserHandleRepository<T : Any>
 }
 
 interface ChatUserHandleRepositoryCustom<T> {
-    fun add(u: User<T>): Mono<Void>
+    fun add(u: ChatUserHandle<T>): Mono<Void>
     fun rem(key: Key<T>): Mono<Void>
 }
 
@@ -44,18 +42,10 @@ class ChatUserHandleRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemp
             )
             .then()
 
-    override fun add(u: User<T>): Mono<Void> =
+    override fun add(u: ChatUserHandle<T>): Mono<Void> =
         cassandra
             .insert(
-                ChatUserHandle(
-                    ChatUserHandleKey(
-                        u.key.id,
-                        u.handle
-                    ),
-                    u.name,
-                    u.imageUri,
-                    u.timestamp
-                ),
+                u,
                 InsertOptions.builder().withIfNotExists()
                     .consistencyLevel(ConsistencyLevel.QUORUM)
                     .build()

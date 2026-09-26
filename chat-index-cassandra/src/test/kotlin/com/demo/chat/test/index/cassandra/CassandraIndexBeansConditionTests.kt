@@ -1,5 +1,9 @@
 package com.demo.chat.test.index.cassandra
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.domain.LongUtil
@@ -36,6 +40,9 @@ class CassandraIndexBeansConditionTests {
     class CassandraDependencyStubs {
         @Bean
         fun typeUtil(): TypeUtil<Long> = LongUtil()
+
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
 
         @Bean
         fun cassandraTemplate(): ReactiveCassandraTemplate = mock(ReactiveCassandraTemplate::class.java)

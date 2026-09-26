@@ -1,5 +1,11 @@
 package com.demo.chat.test.memory
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
@@ -15,11 +21,15 @@ import java.util.function.Supplier
 class MessageTopicIndexTests : IndexTests<Long, MessageTopic<Long>, IndexSearchRequest>(
     LuceneIndex<Long, MessageTopic<Long>>(
         IndexEntryEncoder.ofTopic<Long>(),
-        { str -> Key.funKey(LongUtil().fromString(str)) },
+        { str -> Key.of(LongUtil().fromString(str), ROOTS.of(ChatDomain.MESSAGE_TOPIC).id) },
         { t -> t.key }),
-    Supplier { MessageTopic.create(Key.funKey(1234L), "TEST") },
+    Supplier { MessageTopic.create(TestKeys.key(1234L), "TEST") },
     Function<MessageTopic<Long>, Key<Long>> { topic -> topic.key },
-    Supplier { IndexSearchRequest(TopicIndexService.NAME, "TEST", 1000) }
+    Supplier { IndexSearchRequest(TopicIndexService.NAME, "TEST", 1000) },
+    ROOTS,
+    ChatDomain.MESSAGE_TOPIC,
 ) {
     override fun getIndex(): IndexService<Long, MessageTopic<Long>, IndexSearchRequest> = myIndex
 }
+
+private val ROOTS = FakeKeyServices.longRoots()

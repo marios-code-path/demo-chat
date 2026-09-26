@@ -1,5 +1,7 @@
 package com.demo.chat.config.index.cassandra
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.index.cassandra.impl.*
@@ -22,18 +24,19 @@ open class CassandraIndexServices<T : Any>(
     private val kvIndexRepo: KeyValueIndexRepository<T>,
     private val kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
     private val keyValueFields: KeyValueIndexFields,
-    private val typeUtil: TypeUtil<T>
+    private val typeUtil: TypeUtil<T>,
+    private val rootKeys: RootKeys<T>,
 ) : IndexServiceBeans<T, String, Map<String, String>> {
-    override fun userIndex() = UserIndex(userHandleRepo)
+    override fun userIndex() = UserIndex(userHandleRepo, rootKeys)
 
-    override fun topicIndex() = TopicIndex(nameRepo)
+    override fun topicIndex() = TopicIndex(nameRepo, rootKeys)
 
-    override fun membershipIndex() = MembershipIndex(typeUtil::fromString, byMemberRepo, byMemberOfRepo)
+    override fun membershipIndex() = MembershipIndex(typeUtil::fromString, byMemberRepo, byMemberOfRepo, rootKeys)
 
-    override fun messageIndex() = MessageIndex(typeUtil::fromString, byUserRepo, byTopicRepo)
+    override fun messageIndex() = MessageIndex(typeUtil::fromString, byUserRepo, byTopicRepo, rootKeys)
 
-    override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo)
+    override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo, rootKeys)
 
     override fun KVPairIndex(): KeyValueIndexService<T, Map<String, String>> =
-        KeyValueIndex(keyValueFields, kvIndexRepo, kvIndexByIdRepo)
+        KeyValueIndex(keyValueFields, kvIndexRepo, kvIndexByIdRepo, rootKeys)
 }

@@ -1,5 +1,7 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.test.key.FakeKeyServices
+
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.index.cassandra.domain.ChatTopicName
 import com.demo.chat.index.cassandra.domain.ChatTopicNameKey
@@ -39,7 +41,7 @@ class TopicIndexTests {
 
     @BeforeEach
     fun setUp() {
-        topicIndex = TopicIndex(nameRepo)
+        topicIndex = TopicIndex(nameRepo, FakeKeyServices.uuidRoots())
     }
 
 

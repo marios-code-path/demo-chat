@@ -1,5 +1,7 @@
 package com.demo.chat.test.memory
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.IndexSearchRequestConverters
 import com.demo.chat.domain.Key
@@ -22,14 +24,14 @@ class MessageTopicQueryTests {
 
     private val index = LuceneIndex<Long, Message<Long, String>>(
         IndexEntryEncoder.ofMessage(),
-        { str -> Key.funKey(LongUtil().fromString(str)) },
+        { str -> TestKeys.key(LongUtil().fromString(str)) },
         { message -> message.key },
     )
 
     private val converters = IndexSearchRequestConverters()
 
     private fun message(id: Long, topic: Long, text: String) =
-        Message.create(MessageKey.create(id, 10L, topic), text, true)
+        Message.create(TestKeys.message(id, 10L, topic), text, true)
 
     @Test
     fun `a topic query returns only the messages of that topic`() {

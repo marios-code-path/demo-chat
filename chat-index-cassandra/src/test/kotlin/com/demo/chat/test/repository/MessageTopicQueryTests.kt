@@ -1,5 +1,9 @@
 package com.demo.chat.test.repository
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MapRequestConverters
@@ -55,6 +59,7 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         Function<String, UUID> { text -> UUID.fromString(text) },
         byUserRepo,
         byTopicRepo,
+        FakeKeyServices.uuidRoots(),
     )
 
     @Test
@@ -69,9 +74,9 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         val second = Uuids.timeBased()
         val other = Uuids.timeBased()
 
-        index.add(Message.create(MessageKey.create(first, user, topic), "apple", true)).block()
-        index.add(Message.create(MessageKey.create(second, user, topic), "banana", true)).block()
-        index.add(Message.create(MessageKey.create(other, user, otherTopic), "cherry", true)).block()
+        index.add(Message.create(TestKeys.message(first, user, topic), "apple", true)).block()
+        index.add(Message.create(TestKeys.message(second, user, topic), "banana", true)).block()
+        index.add(Message.create(TestKeys.message(other, user, otherTopic), "cherry", true)).block()
 
         val found = index
             .findBy(converters.topicIdToQuery(ByIdRequest(topic)))
@@ -89,7 +94,7 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         val topic = UUID.randomUUID()
         val user = UUID.randomUUID()
 
-        index.add(Message.create(MessageKey.create(Uuids.timeBased(), user, topic), "apple", true)).block()
+        index.add(Message.create(TestKeys.message(Uuids.timeBased(), user, topic), "apple", true)).block()
 
         val found = index
             .findBy(converters.topicIdToQuery(ByIdRequest(UUID.randomUUID())))

@@ -1,5 +1,9 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -54,11 +58,11 @@ class KeyValueIndexTests {
 
     private lateinit var index: KeyValueIndexService<UUID, Map<String, String>>
 
-    private fun pair(value: Any) = KeyValuePair.create(Key.funKey(entityId), value)
+    private fun pair(value: Any) = KeyValuePair.create(TestKeys.key(entityId), value)
 
     @BeforeEach
     fun setUp() {
-        index = KeyValueIndex(fields, byFieldRepo, byIdRepo)
+        index = KeyValueIndex(fields, byFieldRepo, byIdRepo, FakeKeyServices.uuidRoots())
     }
 
     // add replaces the entity, so it reads the removal table before it
@@ -108,7 +112,7 @@ class KeyValueIndexTests {
         BDDMockito.given(byIdRepo.delete(anyObject())).willReturn(Mono.empty())
 
         StepVerifier
-            .create(index.rem(Key.funKey(entityId)))
+            .create(index.rem(TestKeys.key(entityId)))
             .verifyComplete()
 
         BDDMockito.verify(byFieldRepo, BDDMockito.times(2)).delete(anyObject())

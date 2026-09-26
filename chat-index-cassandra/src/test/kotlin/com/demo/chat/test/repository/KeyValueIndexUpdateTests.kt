@@ -1,5 +1,9 @@
 package com.demo.chat.test.repository
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -59,7 +63,7 @@ class KeyValueIndexUpdateTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
     )
 
     private fun index(): KeyValueIndexService<UUID, Map<String, String>> =
-        KeyValueIndex(fields, byFieldRepo, byIdRepo)
+        KeyValueIndex(fields, byFieldRepo, byIdRepo, FakeKeyServices.uuidRoots())
 
     @Test
     fun `a changed value replaces the entry of the earlier value`() {
@@ -70,8 +74,8 @@ class KeyValueIndexUpdateTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
 
         StepVerifier
             .create(
-                index.add(KeyValuePair.create(Key.funKey(id), IndexedJob(running)))
-                    .then(index.add(KeyValuePair.create(Key.funKey(id), IndexedJob(succeeded))))
+                index.add(KeyValuePair.create(TestKeys.key(id), IndexedJob(running)))
+                    .then(index.add(KeyValuePair.create(TestKeys.key(id), IndexedJob(succeeded))))
                     .thenMany(index.findBy(mapOf("status" to running)))
             )
             .verifyComplete()
@@ -91,9 +95,9 @@ class KeyValueIndexUpdateTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
 
         StepVerifier
             .create(
-                index.add(KeyValuePair.create(Key.funKey(first), IndexedJob(shared)))
-                    .then(index.add(KeyValuePair.create(Key.funKey(second), IndexedJob(shared))))
-                    .then(index.add(KeyValuePair.create(Key.funKey(first), IndexedJob("CHANGED-$first"))))
+                index.add(KeyValuePair.create(TestKeys.key(first), IndexedJob(shared)))
+                    .then(index.add(KeyValuePair.create(TestKeys.key(second), IndexedJob(shared))))
+                    .then(index.add(KeyValuePair.create(TestKeys.key(first), IndexedJob("CHANGED-$first"))))
                     .thenMany(index.findBy(mapOf("status" to shared)))
             )
             .assertNext { found -> Assertions.assertThat(found.id).isEqualTo(second) }
@@ -109,8 +113,8 @@ class KeyValueIndexUpdateTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
 
         StepVerifier
             .create(
-                index.add(KeyValuePair.create(Key.funKey(id), IndexedJob("RUNNING-$id")))
-                    .then(index.add(KeyValuePair.create(Key.funKey(id), IndexedJob("SUCCEEDED-$id"))))
+                index.add(KeyValuePair.create(TestKeys.key(id), IndexedJob("RUNNING-$id")))
+                    .then(index.add(KeyValuePair.create(TestKeys.key(id), IndexedJob("SUCCEEDED-$id"))))
                     .thenMany(byIdRepo.findByKeyId(id))
             )
             .expectNextCount(1)

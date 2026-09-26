@@ -1,6 +1,8 @@
 package com.demo.chat.test.index
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IndexService
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -14,9 +16,19 @@ abstract class IndexTests<T, E, Q>(
     val myIndex: IndexService<T, E, Q>,
     val valueSupply: Supplier<E>,
     val keyExtract: Function<E, Key<T>>,
-    val querySupply: Supplier<Q>
+    val querySupply: Supplier<Q>,
+    val rootKeys: RootKeys<T>,
+    val domain: ChatDomain,
 ) {
     abstract fun getIndex(): IndexService<T, E, Q>
+
+    /** A key that the index finds carries the root of the index domain. See `CHAT-avduuqwp`. */
+    @Test
+    fun `a found key carries the root of the index domain`() {
+        getIndex().add(valueSupply.get()).block()
+        Assertions.assertThat(getIndex().findBy(querySupply.get()).blockFirst()!!.root)
+            .isEqualTo(rootKeys.of(domain).id)
+    }
 
     @Test
     fun `should save one`() {

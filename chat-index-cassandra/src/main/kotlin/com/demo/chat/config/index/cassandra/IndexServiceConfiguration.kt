@@ -1,5 +1,7 @@
 package com.demo.chat.config.index.cassandra
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.KeyValueIndexFieldsEntry
@@ -28,7 +30,8 @@ class IndexServiceConfiguration {
         kvIndexRepo: KeyValueIndexRepository<T>,
         kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
         keyValueFieldEntries: ObjectProvider<KeyValueIndexFieldsEntry>,
-        typeUtil: TypeUtil<T>
+        typeUtil: TypeUtil<T>,
+        rootKeys: RootKeys<T>,
     ): IndexServiceBeans<T, String, Map<String, String>> = CassandraIndexServices(
         cassandra,
         userHandleRepo,
@@ -42,6 +45,7 @@ class IndexServiceConfiguration {
         kvIndexRepo,
         kvIndexByIdRepo,
         TypedKeyValueIndexFields(keyValueFieldEntries.orderedStream().toList()),
-        typeUtil
+        typeUtil,
+        rootKeys
     )
 }

@@ -1,5 +1,9 @@
 package com.demo.chat.test.index.lucene
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.LuceneIndexBeans
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
@@ -22,6 +26,9 @@ class LuceneIndexBeansConditionTests {
     class IndexDependencyStubs {
         @Bean
         fun typeUtil(): TypeUtil<Long> = LongUtil()
+
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
 
         @Bean
         fun conversionService(): ConversionService = DefaultConversionService()

@@ -1,5 +1,9 @@
 package com.demo.chat.index.cassandra.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
@@ -17,6 +21,7 @@ class MembershipIndex<T : Any>(
     private val stringToKey: Function<String, T>,
     private val byMemberRepo: TopicMembershipByMemberRepository<T>,
     private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
+    private val rootKeys: RootKeys<T>,
 ) : MembershipIndexService<T, Map<String, String>> {
 
     override fun add(entity: TopicMembership<T>): Mono<Void> {
@@ -68,7 +73,7 @@ class MembershipIndex<T : Any>(
                 else -> Flux.empty()
             }
                     .map {
-                        Key.funKey(it.key)
+                        Key.of(it.key, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id)
                     }
 
     override fun findUnique(query: Map<String, String>): Mono<out Key<T>> {
