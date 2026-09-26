@@ -5,6 +5,16 @@ CREATE TYPE chat_long.event_key_meta(
     kind varchar
 );
 
+-- The root key of each domain. See CHAT-avduuqwp.
+-- The key service writes each row once with IF NOT EXISTS, and reads it back
+-- on every start. This table is absent from truncate-long.cql on purpose. A
+-- root must survive a test cleanup and a restart.
+CREATE TABLE chat_long.root_keys(
+    domain varchar,
+    id BIGINT,
+    PRIMARY KEY (domain)
+);
+
 CREATE TABLE chat_long.keys(
 id BIGINT,
 kind varchar ,

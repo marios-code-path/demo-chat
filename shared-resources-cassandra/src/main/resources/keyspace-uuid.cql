@@ -5,6 +5,16 @@ CREATE TYPE chat_uuid.event_key_meta(
     kind varchar
 );
 
+-- The root key of each domain. See CHAT-avduuqwp.
+-- The key service writes each row once with IF NOT EXISTS, and reads it back
+-- on every start. This table is absent from truncate-uuid.cql on purpose. A
+-- root must survive a test cleanup and a restart.
+CREATE TABLE chat_uuid.root_keys(
+    domain varchar,
+    id uuid,
+    PRIMARY KEY (domain)
+);
+
 CREATE TABLE chat_uuid.keys(
                           id UUID,
                           kind varchar ,

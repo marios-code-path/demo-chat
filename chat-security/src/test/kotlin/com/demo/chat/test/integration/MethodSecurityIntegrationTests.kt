@@ -1,6 +1,7 @@
 package com.demo.chat.test.integration
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -8,7 +9,6 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
-import com.demo.chat.domain.knownkey.GenerateRootKeyInitializer
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -239,9 +239,7 @@ class MethodSecurityIntegrationTestConfiguration {
     fun <T> accessBroker(authSvc: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authSvc)
 
     @Bean
-    fun <T> rootKeys(keyGen: IKeyGenerator<T>): RootKeys<T> = RootKeys<T>().apply {
-        GenerateRootKeyInitializer(keyGen).initRootKeys(this)
-    }
+    fun <T> rootKeys(keyGen: IKeyGenerator<T>): RootKeys<T> = RootKeysFixture.of(keyGen)
 
     @Bean
     fun <T> chatAccess(access: AccessBroker<T>, rootKeys: RootKeys<T>): SpringSecurityAccessBrokerService<T> =

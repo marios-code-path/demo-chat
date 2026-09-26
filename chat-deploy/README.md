@@ -20,7 +20,6 @@ Here are the configurations specific to initialization.
 | Property                    | detail                                  | values               |
 |-----------------------------|-----------------------------------------|----------------------|
 | app.users.create            | Create Initial set of users?            | Bool                 |
-| app.rootkeys.create         | Create Root Keys?                       | Bool                 |
 | app.rootkeys.consume.scheme | Consume for Root Keys method            | http / KV            |
 | app.rootkeys.consume.source | Source URL for consuming RootKeys       | localhost:admin-port |
 | app.rootkeys.publish.scheme | Publish Root Keys delivery method       | KV                   |

@@ -1,6 +1,7 @@
 package com.demo.chat.test.key
 
 import com.demo.chat.domain.Key
+import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 
@@ -20,6 +21,10 @@ object RootKeysFixture {
         loadDomains(ChatDomain.entries.associateWith { named[it] ?: filler(it) })
         loadIdentities(admin, anon)
     }
+
+    /** This function builds a complete set with a fresh key from [ids] for every root and identity. */
+    fun <T> of(ids: IKeyGenerator<T>): RootKeys<T> =
+        of(emptyMap(), admin = ids.nextKey(), anon = ids.nextKey()) { ids.nextKey() }
 
     /** This function fills each unnamed domain of a `Long` set with an id from 9000 up. */
     fun ofLong(named: Map<ChatDomain, Key<Long>>, admin: Key<Long>, anon: Key<Long>): RootKeys<Long> =

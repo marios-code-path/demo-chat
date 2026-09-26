@@ -8,10 +8,7 @@ import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
-import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.init.InitialUsersService
-import com.demo.chat.service.init.RootKeyService
-import com.demo.chat.domain.knownkey.RootKeysSupplier
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.anyBoolean
@@ -48,17 +45,13 @@ open class MockInitializationTests<T>(
     @Mock
     private lateinit var secretsStore: SecretsStore<T>
 
-    @Mock
-    private lateinit var kvStore: KeyValueStore<String, String>
 
     private val mapper = ObjectMapper()
 
     @Test
-    fun `should create rootkeys and summary`() {
-        val rootKeyCreator = RootKeysSupplier(keyService)
+    fun `should load rootkeys and summary`() {
         val rootKeys = RootKeys<T>()
-
-        rootKeys.loadDomains(rootKeyCreator.get())
+        rootKeys.loadDomains(ChatDomain.entries.associateWith { keyGenerator.nextKey() })
         val summary = RootKeys.rootKeySummary(rootKeys)
 
         Assertions
@@ -68,8 +61,8 @@ open class MockInitializationTests<T>(
 
         ChatDomain.entries.forEach {
             Assertions
-                .assertThat(rootKeys.byWireName())
-                .containsKey(it.wireName)
+                .assertThat(summary)
+                .contains(it.wireName)
         }
     }
 
@@ -111,11 +104,7 @@ open class MockInitializationTests<T>(
             )
         )
 
-        val rootKeyService = RootKeyService(kvStore, typeUtil,"rootKeys")
-        val rootKeyCreator = RootKeysSupplier(keyService)
-            .apply {
-                rootKeys.loadDomains(get())
-            }
+        rootKeys.loadDomains(ChatDomain.entries.associateWith { keyGenerator.nextKey() })
 
         InitialUsersService(userService, authorizationService, secretsStore, properties, passwordEncoder, typeUtil)
             .apply {

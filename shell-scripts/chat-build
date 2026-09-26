@@ -678,8 +678,9 @@ class BuildContext:
         flags: list[str] = []
         if "users" in self.init_phases:
             flags.append("-Dapp.users.create=true")
-        if "rootkeys" in self.init_phases:
-            flags.append("-Dapp.rootkeys.create=true")
+        # A node that reaches its store loads or creates the root keys at start.
+        # So no flag creates them. The "rootkeys" phase still decides whether
+        # this node publishes them to Consul or consumes them from a peer.
 
         if self.discovery == "consul" and "rootkeys" in self.init_phases:
             # This node mints the root keys, so publish them to Consul KV.

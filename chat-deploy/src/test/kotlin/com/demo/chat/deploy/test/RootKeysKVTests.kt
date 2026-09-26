@@ -1,108 +1,64 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
-import org.assertj.core.api.Assertions.assertThatThrownBy
-import org.assertj.core.api.Assertions.assertThat
-import com.demo.chat.domain.knownkey.ChatDomain
-import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.service.core.KeyValueStore
+import com.demo.chat.service.core.InitializingKVStore
 import com.demo.chat.service.init.RootKeyService
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.extension.ExtendWith
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Import
-import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
+import java.util.concurrent.ConcurrentHashMap
 
-@ExtendWith(SpringExtension::class)
-@Import(RootKeysKVTestsConfig::class)
+/**
+ * A root key snapshot published to a string keyed store, and read back by a
+ * process without store access. See `CHAT-avduuqwp`.
+ */
 class RootKeysKVTests {
 
     @Test
-    fun `should translate kv to rootkeys`() {
-        Hooks.onOperatorDebug()
+    fun `a published snapshot loads into a second process`() {
+        val store = MapKVStore()
+        RootKeyService(store, TypeUtil.LongUtil, "rootkeys", "long").publishRootKeys(source())
 
-        val svc = RootKeyService(TestKVStore(),TypeUtil.LongUtil, "foo")
-        val rootKeys = RootKeys<Long>()
+        val consumer = RootKeys<Long>()
+        RootKeyService(store, TypeUtil.LongUtil, "rootkeys", "long").consumeRootKeys(consumer)
 
-        svc.consumeRootKeys(rootKeys)
-
-        assertThat(rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id).isEqualTo(1090429277138866181L)
-        assertThat(rootKeys.anon().id).isEqualTo(1090429277138866182L)
+        assertThat(consumer.domains()).isEqualTo(source().domains())
+        assertThat(consumer.anon()).isEqualTo(Key.funKey(901L))
     }
 
-    /**
-     * A stored map that names an unknown domain is refused. Before
-     * `CHAT-avduuqwp` the stale name `KeyDataPair` entered the map silently.
-     */
     @Test
-    fun `an unknown name in the stored map is refused`() {
-        val svc = RootKeyService(TestKVStore(stale = true), TypeUtil.LongUtil, "foo")
+    fun `a consumer of another key type refuses the snapshot`() {
+        val store = MapKVStore()
+        RootKeyService(store, TypeUtil.LongUtil, "rootkeys", "long").publishRootKeys(source())
 
-        assertThatThrownBy { svc.consumeRootKeys(RootKeys<Long>()) }
-            .hasMessageContaining("KeyDataPair")
+        assertThatThrownBy { RootKeyService(store, TypeUtil.LongUtil, "rootkeys", "uuid").consumeRootKeys(RootKeys()) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("uuid")
+    }
+
+    @Test
+    fun `a missing snapshot fails the consumer`() {
+        assertThatThrownBy { RootKeyService(MapKVStore(), TypeUtil.LongUtil, "rootkeys", "long").consumeRootKeys(RootKeys()) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("rootkeys")
+    }
+
+    private fun source(): RootKeys<Long> = RootKeys<Long>().apply {
+        loadDomains(ChatDomain.entries.associateWith { Key.funKey(100L + it.ordinal) })
+        loadIdentities(Key.funKey(900L), Key.funKey(901L))
     }
 }
 
-@TestConfiguration
-class RootKeysKVTestsConfig {
-
-}
-
-class TestKVStore(private val stale: Boolean = false) : KeyValueStore<String, String> {
-    override fun key(): Mono<out Key<String>> = Mono.just(Key.funKey("foo"))
-
-    override fun all(): Flux<out KeyValuePair<String, String>> {
-        TODO("Not yet implemented")
-    }
-
-    override fun get(key: Key<String>): Mono<out KeyValuePair<String, String>> =Mono.just(
-        KeyValuePair.create(
-            key,
-            (if (stale) "KeyDataPair:\n  id: 7\n  empty: false\n" else "") +
-                "User:\n" +
-                    "  id: 1090429277138866176\n" +
-                    "  empty: false\n" +
-                    "Message:\n" +
-                    "  id: 1090429277138866177\n" +
-                    "  empty: false\n" +
-                    "AuthMetadata:\n" +
-                    "  id: 1090429277138866180\n" +
-                    "  empty: false\n" +
-                    "Admin:\n" +
-                    "  id: 1090429277138866183\n" +
-                    "  empty: false\n" +
-                    "MessageTopic:\n" +
-                    "  id: 1090429277138866178\n" +
-                    "  empty: false\n" +
-                    "KeyValuePair:\n" +
-                    "  id: 1090429277138866181\n" +
-                    "  empty: false\n" +
-                    "ConversationEpoch:\n" +
-                    "  id: 1090429277138866184\n" +
-                    "  empty: false\n" +
-                    "FrankingTag:\n" +
-                    "  id: 1090429277138866185\n" +
-                    "  empty: false\n" +
-                    "Anon:\n" +
-                    "  id: 1090429277138866182\n" +
-                    "  empty: false\n" +
-                    "TopicMembership:\n" +
-                    "  id: 1090429277138866179\n" +
-                    "  empty: false"
-        )
-    )
-
-    override fun rem(key: Key<String>): Mono<Void> {
-        TODO("Not yet implemented")
-    }
-
-    override fun add(ent: KeyValuePair<String, String>): Mono<Void> {
-        TODO("Not yet implemented")
-    }
-
+class MapKVStore : InitializingKVStore {
+    private val values = ConcurrentHashMap<String, String>()
+    override fun read(name: String): Mono<String> = Mono.justOrEmpty(values[name])
+    override fun write(name: String, value: String): Mono<Void> = Mono.fromRunnable { values[name] = value }
+    override fun remove(name: String): Mono<Void> = Mono.fromRunnable { values.remove(name) }
+    override fun names(): Flux<String> = Flux.fromIterable(values.keys)
 }

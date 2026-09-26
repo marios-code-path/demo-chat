@@ -58,30 +58,10 @@ class RootKeys<T> {
 
     fun identities(): Map<ChatIdentity, Key<T>> = identities.toMap()
 
-    /**
-     * Every loaded root and identity, keyed by its wire name.
-     *
-     * The actuator endpoint and the kv publish path use this form until T2
-     * replaces it with the root key snapshot.
-     */
-    fun byWireName(): Map<String, Key<T>> =
-        domains.mapKeys { it.key.wireName } + identities.mapKeys { it.key.wireName }
-
-    /**
-     * This method loads a map that [byWireName] wrote. Each name must parse to
-     * a domain or an identity. The domain set must be complete.
-     */
-    fun loadByWireName(named: Map<String, Key<T>>) {
-        val unknown = named.keys.filter { ChatDomain.parse(it) == null && ChatIdentity.parse(it) == null }
-        require(unknown.isEmpty()) { "A root key map names an unknown domain or identity: $unknown" }
-        loadDomains(named.mapNotNull { (k, v) -> ChatDomain.parse(k)?.let { it to v } }.toMap())
-        val admin = named[ChatIdentity.ADMIN.wireName]
-        val anon = named[ChatIdentity.ANON.wireName]
-        if (admin != null && anon != null) loadIdentities(admin, anon)
-    }
-
     companion object {
         fun <T> rootKeySummary(rootKeys: RootKeys<T>): String =
-            "Root Keys: \n" + rootKeys.byWireName().entries.joinToString("") { "${it.key}=${it.value}\n" }
+            "Root Keys: \n" +
+                rootKeys.domains().entries.joinToString("") { "${it.key.wireName}=${it.value}\n" } +
+                rootKeys.identities().entries.joinToString("") { "${it.key.wireName}=${it.value}\n" }
     }
 }

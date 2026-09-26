@@ -1,6 +1,10 @@
 package com.demo.chat.config.persistence.redis
 
 import com.demo.chat.config.KeyServiceBeans
+import org.springframework.beans.factory.annotation.Value
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.persistence.redis.impl.RootKeyStoreRedis
+import com.demo.chat.service.core.RootKeyStore
 import com.demo.chat.persistence.redis.impl.KeyServiceRedis
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
@@ -21,4 +25,8 @@ class RedisKeyServices<T : Any>(
 
     @Bean
     override fun keyService(): IKeyService<T> = KeyServiceRedis(stringTemplate, keyGen)
+
+    @Bean
+    fun rootKeyStore(typeUtil: TypeUtil<T>, @Value("\${app.key.type}") keyType: String): RootKeyStore<T> =
+        RootKeyStoreRedis(stringTemplate, typeUtil, keyType)
 }

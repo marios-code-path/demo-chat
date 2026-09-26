@@ -1,11 +1,11 @@
 package com.demo.chat.config.deploy.init
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
+import com.demo.chat.domain.knownkey.RootKeySnapshot
+import com.demo.chat.domain.ChatException
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.service.actuator.RootKey
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
@@ -15,7 +15,6 @@ import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.web.reactive.function.client.ExchangeFilterFunctions
@@ -31,6 +30,7 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
     fun <T> captureRootKeys(
         @Value("\${app.rootkeys.consume.source}") hostURI: String,
         typeUtil: TypeUtil<T>,
+        @Value("\${app.key.type}") keyType: String,
         @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper,
         rootKeys: RootKeys<T>
     ): ApplicationListener<ApplicationStartedEvent> =
@@ -55,10 +55,10 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
             val result = client.get()
                 .uri("/actuator/rootkeys")
                 .retrieve()
-                .bodyToMono(object : ParameterizedTypeReference<Map<String, RootKey>>() {})
-                .block()!!
-
-            rootKeys.loadByWireName(result.mapValues { (_, root) -> Key.funKey(typeUtil.assignFrom(root.id)) })
+                .bodyToMono(RootKeySnapshot::class.java)
+                .block()
+                ?: throw ChatException("The root key source $hostURI returned no snapshot.")
+            result.load(rootKeys, keyType, typeUtil)
 
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }
