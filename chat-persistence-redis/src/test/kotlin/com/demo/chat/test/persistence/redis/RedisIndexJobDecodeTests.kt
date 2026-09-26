@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -45,13 +47,13 @@ class RedisIndexJobDecodeTests(
 
     @Test
     fun `a stored job reads back through the codec`() {
-        val key = Key.funKey(UUID.randomUUID())
+        val key = TestKeys.key(UUID.randomUUID())
         val job = IndexJob(
             key = key,
             nodeId = 7,
             keyType = "uuid",
             incarnationId = "incarnation-a",
-            startedBy = Key.funKey(UUID.randomUUID()),
+            startedBy = TestKeys.key(UUID.randomUUID()),
             startedAt = Instant.parse("2026-09-12T12:00:00Z"),
             outcome = JobOutcome.SUCCEEDED,
             indexed = 3L,

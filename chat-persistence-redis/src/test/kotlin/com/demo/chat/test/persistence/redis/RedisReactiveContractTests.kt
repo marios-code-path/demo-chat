@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.persistence.redis.impl.KeyServiceRedis
@@ -16,6 +18,9 @@ import org.mockito.kotlin.whenever
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import reactor.test.StepVerifier
 import java.util.UUID
+import com.demo.chat.domain.UUIDUtil
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.test.key.FakeKeyServices
 
 /**
  * Pins the reactive assembly/subscription contract for the Redis stores:
@@ -34,7 +39,7 @@ class RedisReactiveContractTests {
         val mapper = mock<ObjectMapper>()
         whenever(mapper.writeValueAsString(any())).thenThrow(IllegalStateException("cannot serialize"))
         val store = UserPersistenceRedis<UUID>(keyService, stringTemplate, mapper)
-        val ent = User.create(Key.funKey(UUID.randomUUID()), "a", "b", "c")
+        val ent = User.create(TestKeys.key(UUID.randomUUID()), "a", "b", "c")
 
         val mono = store.add(ent) // assembly must not throw
 
@@ -46,9 +51,9 @@ class RedisReactiveContractTests {
     fun `key defers id generation to subscription`() {
         val keyGen = mock<IKeyGenerator<UUID>>()
         whenever(keyGen.nextId()).thenThrow(IllegalStateException("no ids left"))
-        val service = KeyServiceRedis<UUID>(stringTemplate, keyGen)
+        val service = KeyServiceRedis(stringTemplate, keyGen, FakeKeyServices.uuidRoots(), UUIDUtil(), "uuid")
 
-        val mono = service.key(User::class.java) // assembly must not throw
+        val mono = service.key(ChatDomain.USER) // assembly must not throw
 
         verify(keyGen, times(0)).nextId()
         StepVerifier.create(mono).expectError(IllegalStateException::class.java).verify()

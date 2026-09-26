@@ -148,7 +148,7 @@ class UserRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
             .verifyComplete()
     }
 
-    fun userAssertions(user: User<UUID>) {
+    fun userAssertions(user: ChatUser<UUID>) {
         MatcherAssert
             .assertThat(
                 "A User has key and properties", user,

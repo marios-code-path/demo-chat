@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.User
@@ -44,8 +46,8 @@ class RedisKeyValueTypedDomainTests(
 
     @Test
     fun `typedGet converts a domain object stored as data`() {
-        val key = Key.funKey(UUID.randomUUID())
-        val user = User.create(Key.funKey(UUID.randomUUID()), "alice", "alice", "http://img")
+        val key = TestKeys.key(UUID.randomUUID())
+        val user = User.create(TestKeys.key(UUID.randomUUID()), "alice", "alice", "http://img")
         keyValuePersistence.add(KeyValuePair.create(key, user)).block()
 
         val typed = keyValuePersistence.typedGet(key, User::class.java).block()
@@ -56,8 +58,8 @@ class RedisKeyValueTypedDomainTests(
 
     @Test
     fun `typedAll and typedByIds convert domain objects`() {
-        val key = Key.funKey(UUID.randomUUID())
-        val user = User.create(Key.funKey(UUID.randomUUID()), "bob", "bob", "http://img")
+        val key = TestKeys.key(UUID.randomUUID())
+        val user = User.create(TestKeys.key(UUID.randomUUID()), "bob", "bob", "http://img")
         keyValuePersistence.add(KeyValuePair.create(key, user)).block()
 
         val all = keyValuePersistence.typedAll(User::class.java).collectList().block()

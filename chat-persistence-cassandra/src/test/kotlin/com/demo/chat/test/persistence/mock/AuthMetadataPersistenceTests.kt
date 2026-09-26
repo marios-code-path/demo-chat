@@ -1,5 +1,15 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.Key
+
+import com.demo.chat.domain.AuthMetadata
+
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
@@ -31,13 +41,27 @@ class AuthMetadataPersistenceTests {
 
     private val keyService = TestUUIDKeyService()
 
+    private val roots = FakeKeyServices.uuidRoots()
+
     private val testAuthMetadata = AuthMetadataById(
         AuthMetadataIdKey(keyService.nextId()),
         keyService.nextId(),
         keyService.nextId(),
+        roots.of(ChatDomain.USER).id,
+        roots.of(ChatDomain.USER).id,
         "TEST",
         false,
         System.currentTimeMillis()
+    )
+
+    /** The domain grant of [testAuthMetadata]. A store adds a domain object and maps it to a row. */
+    private val testGrant = AuthMetadata.create(
+        Key.of(testAuthMetadata.key.id, roots.of(ChatDomain.AUTH_METADATA).id),
+        Key.of(testAuthMetadata.principalId, testAuthMetadata.principalRoot),
+        Key.of(testAuthMetadata.targetId, testAuthMetadata.targetRoot),
+        testAuthMetadata.permission,
+        testAuthMetadata.mute,
+        testAuthMetadata.expires,
     )
 
     @BeforeEach
@@ -62,7 +86,7 @@ class AuthMetadataPersistenceTests {
             .given(repo.deleteById(Mockito.any(UUID::class.java)))
             .willReturn(Mono.empty())
 
-        authMetadataPersistence = AuthMetaPersistenceCassandra(keyService, repo)
+        authMetadataPersistence = AuthMetaPersistenceCassandra(keyService, roots, repo)
     }
 
     @Test
@@ -83,7 +107,7 @@ class AuthMetadataPersistenceTests {
     @Test
     fun `add the membership, finds all`() {
         val saveNFind = authMetadataPersistence
-            .add(testAuthMetadata)
+            .add(testGrant)
             .thenMany(authMetadataPersistence.all())
 
         StepVerifier

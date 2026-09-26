@@ -1,5 +1,7 @@
 package com.demo.chat.test.repository.uuid
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.persistence.cassandra.domain.ChatTopic
@@ -40,11 +42,11 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Test
     fun `inactive rooms dont appear`() {
         val roomId = keyGenerator.nextId()
-        val room = MessageTopic.create(Key.funKey(roomId), ROOMNAME)
+        val room = ChatTopic(ChatTopicKey(roomId), ROOMNAME, true)
 
         val saveFlux = repo.add(room)
 
-        val deleteMono = repo.rem(Key.funKey(roomId))
+        val deleteMono = repo.rem(TestKeys.key(roomId))
 
         val findActiveRooms =
             repo.findAll()
@@ -94,8 +96,14 @@ class TopicRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
                     .thenMany(repo.findAll())
             )
             .expectSubscription()
-            .assertNext(TestBase::topicAssertions)
-            .assertNext(TestBase::topicAssertions)
+            .assertNext(::rowAssertions)
+            .assertNext(::rowAssertions)
             .verifyComplete()
+    }
+
+    /** A row of `chat_room` holds an id and a name. See `CHAT-avduuqwp`. */
+    private fun rowAssertions(row: ChatTopic<UUID>) {
+        org.assertj.core.api.Assertions.assertThat(row.key.id).isNotNull
+        org.assertj.core.api.Assertions.assertThat(row.data).isNotBlank
     }
 }

@@ -1,8 +1,8 @@
 package com.demo.chat.test.key
 
-import com.demo.chat.domain.Key
 import com.demo.chat.domain.RootKeyDeletionException
 import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyService
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
@@ -11,46 +11,38 @@ import org.junit.jupiter.api.Test
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
-/** The contract of every key service. See `CHAT-avduuqwp`. */
+/**
+ * The contract of every key service. [rootKeys] holds the roots that the key
+ * service mints under. See `CHAT-avduuqwp`.
+ */
 @Disabled
-open class TestKeyServiceBase<T>(private val keyService: IKeyService<T>) {
+open class TestKeyServiceBase<T>(private val keyService: IKeyService<T>, private val rootKeys: RootKeys<T>) {
 
     @Test
-    fun `should mint under the root of the domain, and answer that root`() {
-        StepVerifier
-            .create(
-                keyService
-                    .key(ChatDomain.USER)
-                    .flatMap { key -> keyService.rootOf(key.id).map { key to it } }
-            )
-            .assertNext { (key, root) ->
-                assertThat(root).isEqualTo(key.root)
-                assertThat(key.root).isNotEqualTo(key.id)
-            }
-            .verifyComplete()
+    fun `mint sets the root of the domain`() {
+        ChatDomain.entries.forEach { domain ->
+            val key = keyService.key(domain).block()!!
+            assertThat(key.root).isEqualTo(rootKeys.of(domain).id)
+            assertThat(keyService.rootOf(key.id).block()).isEqualTo(key.root)
+        }
     }
 
     @Test
-    fun `two domains mint under two roots`() {
-        StepVerifier
-            .create(Mono.zip(keyService.key(ChatDomain.USER), keyService.key(ChatDomain.MESSAGE)))
-            .assertNext { assertThat(it.t1.root).isNotEqualTo(it.t2.root) }
-            .verifyComplete()
+    fun `rem refuses a root key`() {
+        StepVerifier.create(keyService.rem(rootKeys.of(ChatDomain.USER))).verifyError(RootKeyDeletionException::class.java)
     }
 
     @Test
-    fun `a root key answers itself, and it cannot be removed`() {
-        StepVerifier
-            .create(
-                keyService.key(ChatDomain.USER)
-                    .flatMap { key -> keyService.rootOf(key.root).map { key.root to it } }
-            )
-            .assertNext { (root, answer) -> assertThat(answer).isEqualTo(root) }
-            .verifyComplete()
+    fun `a removed key has no root`() {
+        val key = keyService.key(ChatDomain.USER).block()!!
+        keyService.rem(key).block()
+        StepVerifier.create(keyService.rootOf(key.id)).verifyComplete()
+    }
 
-        StepVerifier
-            .create(keyService.key(ChatDomain.USER).flatMap { keyService.rem(Key.root(it.root)) })
-            .verifyError(RootKeyDeletionException::class.java)
+    @Test
+    fun `a root key returns itself as its root`() {
+        val root = rootKeys.of(ChatDomain.MESSAGE)
+        assertThat(keyService.rootOf(root.id).block()).isEqualTo(root.id)
     }
 
     @Test

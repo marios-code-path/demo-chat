@@ -1,5 +1,7 @@
 package com.demo.chat.test.repository.long
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.persistence.cassandra.domain.CSKeyValuePair
@@ -51,7 +53,7 @@ class LongKeyValueRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerat
             findAndRegisterModules()
         }!!
 
-        val user = User.create(Key.funKey(1L), "test", "test", "test")
+        val user = User.create(TestKeys.key(1L), "test", "test", "test")
         val userString = mapper.writeValueAsString(user)
 
         val kv = CSKeyValuePair(KVKey(1L), userString)
@@ -83,7 +85,7 @@ class LongKeyValueRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerat
             findAndRegisterModules()
         }!!
 
-        val user = User.create(Key.funKey(1L), "test", "test", "test")
+        val user = User.create(TestKeys.key(1L), "test", "test", "test")
         val userString = mapper.writeValueAsString(user)
 
         val kv = CSKeyValuePair(KVKey(1L), userString)
@@ -116,7 +118,7 @@ class LongKeyValueRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenerat
             findAndRegisterModules()
         }!!
 
-        val user = User.create(Key.funKey(1L), "test", "test", "test")
+        val user = User.create(TestKeys.key(1L), "test", "test", "test")
         val userString = mapper.writeValueAsString(user)
 
         val kv = CSKeyValuePair(KVKey(1L), userString)

@@ -5,15 +5,22 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.test.TestGeneratorKeyService
 import com.demo.chat.test.TestLongKeyGenerator
+import java.util.UUID
 
 /**
- * A `Long` registry over a complete set of roots, for verifier tests. The
- * domain roots take 5000 and up. The identities are users. See `CHAT-avduuqwp`.
+ * Registries over a complete set of roots, for key service tests. The domain
+ * roots take 5000 and up. The identities are users. See `CHAT-avduuqwp`.
  */
 object FakeKeyServices {
     fun longRoots(): RootKeys<Long> = RootKeys<Long>().apply {
         loadDomains(ChatDomain.entries.associateWith { Key.root(5000L + it.ordinal) })
         loadIdentities(Key.of(4998L, 5000L + ChatDomain.USER.ordinal), Key.of(4999L, 5000L + ChatDomain.USER.ordinal))
+    }
+
+    /** The `UUID` equivalent. The domain roots take the low bits 5000 and up. */
+    fun uuidRoots(): RootKeys<UUID> = RootKeys<UUID>().apply {
+        loadDomains(ChatDomain.entries.associateWith { Key.root(UUID(0x7007L, 5000L + it.ordinal)) })
+        loadIdentities(Key.of(UUID(0x7007L, 4998L), of(ChatDomain.USER).id), Key.of(UUID(0x7007L, 4999L), of(ChatDomain.USER).id))
     }
 
     fun long(rootKeys: RootKeys<Long>): TestGeneratorKeyService<Long> =

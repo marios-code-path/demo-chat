@@ -1,5 +1,6 @@
 package com.demo.chat.persistence.redis.impl
 
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.core.IKeyService
@@ -31,7 +32,7 @@ class UserPersistenceRedis<T>(
     private val indexKey: String = "chat:idx:user",
 ) : UserPersistence<T> {
 
-    override fun key(): Mono<out Key<T>> = keyService.key(User::class.java)
+    override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.USER)
 
     override fun add(ent: User<T>): Mono<Void> {
         val redisKey = prefix + ent.key.id.toString()

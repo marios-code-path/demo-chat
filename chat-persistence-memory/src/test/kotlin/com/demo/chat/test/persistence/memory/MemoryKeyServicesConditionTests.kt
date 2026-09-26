@@ -6,6 +6,8 @@ import com.demo.chat.test.TestLongKeyService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.test.key.FakeKeyServices
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
@@ -20,6 +22,9 @@ class MemoryKeyServicesConditionTests {
     class KeyGeneratorStub {
         @Bean
         fun keyGenerator(): IKeyGenerator<Long> = TestLongKeyService()
+
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
     }
 
     /**

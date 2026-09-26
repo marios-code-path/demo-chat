@@ -13,6 +13,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 import java.util.UUID
+import com.demo.chat.domain.UUIDUtil
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.test.key.FakeKeyServices
 
 /**
  * Shared bean configuration for the Redis persistence tests: a UUID-based
@@ -22,9 +25,13 @@ import java.util.UUID
 class RedisPersistenceTestBeans {
 
     @Bean
+    fun rootKeys(): RootKeys<UUID> = FakeKeyServices.uuidRoots()
+
+    @Bean
     fun keyServiceRedis(
         stringTemplate: ReactiveStringRedisTemplate,
-    ): KeyServiceRedis<UUID> = KeyServiceRedis(stringTemplate, UUIDKeyGenerator(0))
+        rootKeys: RootKeys<UUID>,
+    ): KeyServiceRedis<UUID> = KeyServiceRedis(stringTemplate, UUIDKeyGenerator(0), rootKeys, UUIDUtil(), "uuid")
 
     @Bean
     fun userPersistenceRedis(

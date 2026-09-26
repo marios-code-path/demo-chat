@@ -1,10 +1,6 @@
 DROP KEYSPACE IF EXISTS chat_uuid;
 CREATE KEYSPACE IF NOT EXISTS chat_uuid WITH replication={'class' : 'SimpleStrategy', 'replication_factor':'1'};
 
-CREATE TYPE chat_uuid.event_key_meta(
-    kind varchar
-);
-
 -- The root key of each domain. See CHAT-avduuqwp.
 -- The key service writes each row once with IF NOT EXISTS, and reads it back
 -- on every start. This table is absent from truncate-uuid.cql on purpose. A
@@ -15,9 +11,11 @@ CREATE TABLE chat_uuid.root_keys(
     PRIMARY KEY (domain)
 );
 
+-- The key registry. Each minted id records the root of its domain.
+-- See CHAT-avduuqwp.
 CREATE TABLE chat_uuid.keys(
                           id UUID,
-                          kind varchar ,
+                          root UUID,
                           PRIMARY KEY(id) );
 
 -- Holds the app.nodeid lease. One row per claimed node id.
@@ -85,7 +83,6 @@ CREATE TABLE chat_uuid.topic_membership_by_member_of
 CREATE TABLE chat_uuid.chat_secret (
                                        id UUID,
                                        data varchar,
-                                       kind varchar,
                                        PRIMARY KEY (id)
 );
 
@@ -161,6 +158,8 @@ CREATE TABLE chat_uuid.auth_metadata
     id  UUID,
     principal   UUID,
     target      UUID,
+    principal_root UUID,
+    target_root UUID,
     permission  varchar,
     mute        Boolean,
     expires bigint,
@@ -172,6 +171,8 @@ CREATE TABLE chat_uuid.auth_metadata_principal
     id  UUID,
     principal   UUID,
     target      UUID,
+    principal_root UUID,
+    target_root UUID,
     permission  varchar,
     mute        Boolean,
     expires bigint,
@@ -183,6 +184,8 @@ CREATE TABLE chat_uuid.auth_metadata_target
     id  UUID,
     principal   UUID,
     target      UUID,
+    principal_root UUID,
+    target_root UUID,
     permission  varchar,
     mute        Boolean,
     expires bigint,

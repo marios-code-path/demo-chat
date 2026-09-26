@@ -1,6 +1,7 @@
 package com.demo.chat.config.persistence.memory
 
 import com.demo.chat.config.KeyServiceBeans
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.persistence.memory.impl.RootKeyStoreInMemory
 import com.demo.chat.service.core.RootKeyStore
 import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
@@ -18,12 +19,13 @@ import org.springframework.context.annotation.Configuration
     matchIfMissing = true
 )
 class MemoryKeyServices<T : Any>(
-    val keyGenerator: IKeyGenerator<T>
+    val keyGenerator: IKeyGenerator<T>,
+    val rootKeys: RootKeys<T>,
 ) : KeyServiceBeans<T> {
 
     @Bean
     override fun keyService(): IKeyService<T> =
-        KeyServiceInMemory { keyGenerator.nextId() }
+        KeyServiceInMemory({ keyGenerator.nextId() }, rootKeys)
 
     @Bean
     fun rootKeyStore(): RootKeyStore<T> = RootKeyStoreInMemory()

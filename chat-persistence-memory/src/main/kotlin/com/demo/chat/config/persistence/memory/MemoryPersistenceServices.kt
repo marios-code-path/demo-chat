@@ -2,6 +2,8 @@ package com.demo.chat.config.persistence.memory
 
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.persistence.memory.impl.*
 import com.demo.chat.service.core.*
 import com.demo.chat.service.security.AuthMetaPersistence
@@ -16,7 +18,10 @@ import org.springframework.context.annotation.Configuration
     havingValue = "memory",
     matchIfMissing = true
 )
-class MemoryPersistenceServices<T, V>(private val keyService: IKeyService<T>) :
+class MemoryPersistenceServices<T, V>(
+    private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
+) :
     PersistenceServiceBeans<T, V> {
 
     @Bean
@@ -33,7 +38,8 @@ class MemoryPersistenceServices<T, V>(private val keyService: IKeyService<T>) :
 
     @Bean
     override fun membershipPersistence(): MembershipPersistence<T> =
-        MembershipPersistenceInMemory(keyService) { t -> Key.funKey(t.key) }
+        // A membership holds a raw id. The store reads only the id of this key.
+        MembershipPersistenceInMemory(keyService) { t -> Key.of(t.key, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id) }
 
     @Bean
     override fun authMetaPersistence(): AuthMetaPersistence<T> =

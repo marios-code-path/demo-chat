@@ -1,6 +1,7 @@
 package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
@@ -14,7 +15,7 @@ class MembershipPersistenceCassandra<T : Any>(
     private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {
 
-    override fun key(): Mono<out Key<T>> = keyService.key(TopicMembershipByKey::class.java)
+    override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.TOPIC_MEMBERSHIP)
 
     override fun add(ent: TopicMembership<T>): Mono<Void> = membershipRepo
         .save(

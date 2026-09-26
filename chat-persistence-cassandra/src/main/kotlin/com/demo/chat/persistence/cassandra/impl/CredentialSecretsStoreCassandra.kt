@@ -16,7 +16,7 @@ open class CredentialSecretsStoreCassandra<T : Any>(val keyService: IKeyService<
             .map { it.data }
 
     override fun addCredential(kc: KeyCredential<T>): Mono<Void> {
-        return credRepo.save(KeyCredentialById(CredKey(kc.key.id, "CRED"), kc.data))
+        return credRepo.save(KeyCredentialById(CredKey(kc.key.id), kc.data))
             .then()
     }
 }

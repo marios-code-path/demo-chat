@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
@@ -93,14 +95,14 @@ class MembershipPersistenceTests {
     @Test
     fun `deletes a membership`() {
         StepVerifier
-                .create(membershipPersistence.rem(Key.funKey(testChatMembership.key)))
+                .create(membershipPersistence.rem(TestKeys.key(testChatMembership.key)))
                 .verifyComplete()
     }
 
     @Test
     fun `gets a single membership`() {
         StepVerifier
-                .create(membershipPersistence.get(Key.funKey(testChatMembership.key)))
+                .create(membershipPersistence.get(TestKeys.key(testChatMembership.key)))
                 .assertNext {
                     Assertions
                             .assertThat(it)

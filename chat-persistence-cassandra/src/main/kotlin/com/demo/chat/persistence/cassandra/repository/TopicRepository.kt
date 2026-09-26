@@ -1,9 +1,7 @@
 package com.demo.chat.persistence.cassandra.repository
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.MessageTopic
 import com.demo.chat.persistence.cassandra.domain.ChatTopic
-import com.demo.chat.persistence.cassandra.domain.ChatTopicKey
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -18,7 +16,7 @@ interface TopicRepository<T : Any> :
 }
 
 interface TopicRepositoryCustom<T> {
-    fun add(messageTopic: MessageTopic<T>): Mono<Void>
+    fun add(messageTopic: ChatTopic<T>): Mono<Void>
     fun rem(roomKey: Key<T>): Mono<Void>
 }
 
@@ -33,14 +31,7 @@ class TopicRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate) :
                     )
                     .then()
 
-    override fun add(messageTopic: MessageTopic<T>): Mono<Void> = cassandra
-            .insert(
-                ChatTopic(
-                    ChatTopicKey(
-                            messageTopic.key.id
-                    ),
-                    messageTopic.data,
-                    true)
-            )
+    override fun add(messageTopic: ChatTopic<T>): Mono<Void> = cassandra
+            .insert(messageTopic)
             .then()
 }

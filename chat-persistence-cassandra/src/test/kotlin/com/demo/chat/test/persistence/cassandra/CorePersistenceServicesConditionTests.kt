@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.cassandra
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
@@ -32,6 +36,9 @@ class CorePersistenceServicesConditionTests {
     @Suppress("UNCHECKED_CAST")
     @Configuration(proxyBeanMethods = false)
     class CassandraDependencyStubs {
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
         @Bean
         fun keyService(): IKeyService<Long> = TestLongKeyService()
 

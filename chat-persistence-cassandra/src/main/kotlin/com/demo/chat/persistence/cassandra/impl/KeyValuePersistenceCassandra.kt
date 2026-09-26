@@ -1,6 +1,8 @@
 package com.demo.chat.persistence.cassandra.impl
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.persistence.cassandra.domain.CSKeyValuePair
 import com.demo.chat.persistence.cassandra.domain.KVKey
@@ -13,30 +15,31 @@ import reactor.core.publisher.Mono
 
 class KeyValuePersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
     private val repo: KeyValuePairRepository<T>,
     private val mapper: ObjectMapper,
 ) : KeyValueStore<T, Any> {
 
-    override fun key(): Mono<out Key<T>> = keyService.key(KeyValuePair::class.java)
+    override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.KEY_VALUE_PAIR)
 
-    override fun all(): Flux<out KeyValuePair<T, Any>> = repo.findAll()
+    override fun all(): Flux<out KeyValuePair<T, Any>> = repo.findAll().map { kv -> KeyValuePair.create(key(kv), kv.data as Any) }
 
     override fun <E> typedAll(typeArgument: Class<E>): Flux<KeyValuePair<T, E>> = repo.findAll()
         .map { kv ->
             val obj = mapper.readValue(kv.data, typeArgument)
-            KeyValuePair.create(kv.key, obj)
+            KeyValuePair.create(key(kv), obj)
         }
 
     override fun get(key: Key<T>): Mono<out KeyValuePair<T, Any>> = repo.findByKeyId(key.id)
         .map { kv ->
-            KeyValuePair.create(kv.key, kv.data)
+            KeyValuePair.create(key(kv), kv.data)
         }
 
     override fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T, E>> =
         repo.findByKeyId(key.id)
             .map { kv ->
                 val obj = mapper.readValue(kv.data, typeArgument)
-                val newKv = KeyValuePair.create(kv.key, obj)
+                val newKv = KeyValuePair.create(key(kv), obj)
 
                 newKv
             }
@@ -59,6 +62,9 @@ class KeyValuePersistenceCassandra<T : Any>(
         repo.findByKeyIdIn(ids.map { it.id })
             .map { kv ->
                 val obj = mapper.readValue(kv.data, typedArgument)
-                KeyValuePair.create(kv.key, obj)
+                KeyValuePair.create(key(kv), obj)
             }
+
+    /** A row maps under the root of the KEY_VALUE_PAIR domain. See `CHAT-avduuqwp`. */
+    private fun key(row: CSKeyValuePair<T>): Key<T> = Key.of(row.key.id, rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id)
 }

@@ -1,5 +1,11 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
@@ -44,6 +50,8 @@ class TextMessageServiceTests {
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
+    private val roots = FakeKeyServices.uuidRoots()
+
     private val rid: UUID = UUID.randomUUID()
 
     private val uid: UUID = UUID.randomUUID()
@@ -59,7 +67,7 @@ class TextMessageServiceTests {
                 .given(msgRepo.findAll())
                 .willReturn(Flux.just(newMessage))
 
-        persistence = MessagePersistenceCassandra(keyService, msgRepo)
+        persistence = MessagePersistenceCassandra(keyService, roots, msgRepo)
     }
 
     @Test
@@ -85,11 +93,11 @@ class TextMessageServiceTests {
         val roomId = UUID.randomUUID()
         val userId = UUID.randomUUID()
 
-        val messages = keyService.key(Message::class.java)
+        val messages = keyService.key(ChatDomain.MESSAGE)
                 .flatMap {
                     persistence.add(
                             Message.create(
-                                    MessageKey.create(it.id, roomId, userId),
+                                    TestKeys.message(it.id, roomId, userId),
                                     MSGTEXT,
                                     true
                             )

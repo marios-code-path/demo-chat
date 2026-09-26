@@ -1,5 +1,6 @@
 package com.demo.chat.persistence.redis.impl
 
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
@@ -30,7 +31,7 @@ class AuthMetaPersistenceRedis<T>(
     private val indexKey: String = "chat:idx:auth",
 ) : AuthMetaPersistence<T> {
 
-    override fun key(): Mono<out Key<T>> = keyService.key(AuthMetadata::class.java)
+    override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.AUTH_METADATA)
 
     override fun add(ent: AuthMetadata<T>): Mono<Void> {
         val redisKey = prefix + ent.key.id.toString()

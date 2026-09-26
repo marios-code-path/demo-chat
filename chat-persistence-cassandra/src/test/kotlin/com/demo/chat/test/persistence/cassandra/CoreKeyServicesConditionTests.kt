@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.cassandra
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.persistence.cassandra.CoreKeyServices
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.test.TestLongKeyService
@@ -26,6 +30,11 @@ class CoreKeyServicesConditionTests {
     class CassandraDependencyStubs {
         @Bean
         fun keyGenerator(): IKeyGenerator<Long> = TestLongKeyService()
+
+        @Bean
+
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
 
         @Bean
         fun cassandraTemplate(): ReactiveCassandraTemplate = mock(ReactiveCassandraTemplate::class.java)

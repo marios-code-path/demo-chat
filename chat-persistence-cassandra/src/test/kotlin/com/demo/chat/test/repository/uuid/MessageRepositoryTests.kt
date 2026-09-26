@@ -127,7 +127,7 @@ class MessageRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
 
     }
 
-    fun chatMessageAssertion(msg: Message<UUID, String>) = assertAll("message state test",
+    fun chatMessageAssertion(msg: ChatMessageById<UUID>) = assertAll("message state test",
         { assertNotNull(msg) },
         { assertNotNull(msg.key.id) },
         { assertNotNull(msg.key.dest) },

@@ -1,5 +1,19 @@
 package com.demo.chat.test.repository
 
+import org.junit.jupiter.api.BeforeAll
+
+import com.demo.chat.service.core.IKeyGenerator
+
+import com.demo.chat.service.core.RootKeyLoader
+
+import com.demo.chat.service.core.RootKeyStore
+
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.Key
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.config.BaseDomainConfiguration
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.domain.TypeUtil
@@ -41,6 +55,22 @@ class UUIDKeyspaceAppTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     private lateinit var keyService: IKeyService<UUID>
 
     @Autowired
+    private lateinit var rootKeys: RootKeys<UUID>
+
+    @Autowired
+    private lateinit var rootKeyStore: RootKeyStore<UUID>
+
+    @Autowired
+    private lateinit var ids: IKeyGenerator<UUID>
+
+    /** A store node loads its roots at start. This test context has no start listener, so it loads them here. */
+    @BeforeAll
+    fun `load the roots`() {
+        val roots = RootKeyLoader(rootKeyStore, ids).load().block()!!
+        rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })
+    }
+
+    @Autowired
     private lateinit var typeUtil: TypeUtil<UUID>
 
     @Test
@@ -61,7 +91,7 @@ class UUIDKeyspaceAppTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
     @Test
     fun `test key service is long`() {
         StepVerifier
-            .create(keyService.key(String::class.java))
+            .create(keyService.key(ChatDomain.USER))
             .assertNext {
                 Assertions
                     .assertThat(it)

@@ -59,11 +59,12 @@ class TestGeneratorKeyService<T>(
         if (isRoot(key.id!!)) Mono.error(RootKeyDeletionException(key.id))
         else Mono.fromRunnable { registry.remove(key.id!!) }
 
-    override fun exists(key: Key<T>): Mono<Boolean> = Mono.just(registry[key.id!!] == key.root || isRoot(key.id!!))
+    override fun exists(key: Key<T>): Mono<Boolean> = rootOf(key.id).map { it == key.root }.defaultIfEmpty(false)
 
-    override fun rootOf(id: T): Mono<T & Any> = Mono.justOrEmpty(
+    /** The read waits for a subscriber, so a chain that removes first sees the removal. */
+    override fun rootOf(id: T): Mono<T & Any> = Mono.fromCallable {
         if (isRoot(id!!)) id else registry[id]
-    )
+    }
 
     private fun isRoot(id: T & Any): Boolean =
         (rootKeys?.domains()?.values?.any { it.id == id } ?: false) || roots.containsValue(id)

@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.integration
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -48,18 +52,18 @@ class CassandraIndexJobDecodeTests {
 
     private fun codec() = IndexJobCodec<Long>(mapper)
 
-    private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
+    private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), FakeKeyServices.longRoots(), repo, mapper)
 
     @Test
     fun `a stored job reads back through the codec`() {
         val store = store()
-        val key = Key.funKey(ids.incrementAndGet())
+        val key = TestKeys.key(ids.incrementAndGet())
         val job = IndexJob(
             key = key,
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
-            startedBy = Key.funKey(ids.incrementAndGet()),
+            startedBy = TestKeys.key(ids.incrementAndGet()),
             startedAt = Instant.parse("2026-09-12T12:00:00Z"),
             outcome = JobOutcome.FAILED,
             failed = 2L,

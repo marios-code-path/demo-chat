@@ -1,12 +1,12 @@
 package com.demo.chat.test.persistence
 
 import com.demo.chat.persistence.memory.impl.KeyServiceInMemory
+import com.demo.chat.test.key.FakeKeyServices
 import com.demo.chat.test.key.TestKeyServiceBase
-import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+
+private val roots = FakeKeyServices.longRoots()
+private val ids = AtomicLong()
 
 class InMemoryKeyTests
-    : TestKeyServiceBase<Number>(KeyServiceInMemory { Random(1024).nextInt() })
-
-//@ExtendWith(MockKeyServiceResolver::class)
-//class MockKeyTests(keyService : IKeyService<Number>)
-//    : KeyServiceTestBase<Number>(keyService)
+    : TestKeyServiceBase<Long>(KeyServiceInMemory({ ids.incrementAndGet() }, roots), roots)

@@ -1,5 +1,11 @@
 package com.demo.chat.test.persistence.integration
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.persistence.cassandra.impl.KeyServiceCassandra
@@ -51,10 +57,11 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
         mapper: ObjectMapper,
         template: ReactiveCassandraTemplate
     ) : super(
-        Supplier { KeyValuePair.create(Key.funKey(1L), "TEST") },
+        // The store maps a row under the KEY_VALUE_PAIR root, so the test key carries that root.
+        Supplier { KeyValuePair.create(Key.of(1L, ROOTS.of(ChatDomain.KEY_VALUE_PAIR).id), "TEST") },
         Supplier { String::class.java },
         KeyValuePersistenceCassandra(
-            KeyServiceCassandra(template, TestLongKeyService()), repo, mapper
+            KeyServiceCassandra(template, TestLongKeyService(), ROOTS), ROOTS, repo, mapper
         ),
         { k -> k.key })
 
@@ -115,4 +122,8 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
             .filter {
                 it.isNotEmpty()
             }
+
+    companion object {
+        private val ROOTS = FakeKeyServices.longRoots()
+    }
 }

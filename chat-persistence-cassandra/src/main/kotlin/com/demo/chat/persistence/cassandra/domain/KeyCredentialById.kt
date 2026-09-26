@@ -1,25 +1,22 @@
 package com.demo.chat.persistence.cassandra.domain
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyValuePair
-import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 
+/**
+ * A row of the Cassandra backend. **It is not a domain object and not a
+ * `Key`.** The store maps it under the root of its domain. See `CHAT-avduuqwp`.
+ */
 @Table("chat_secret")
 data class KeyCredentialById<T>(
     @PrimaryKey
-    override val key: CredKey<T>,
+    val key: CredKey<T>,
     @field:Column("data")
-    override val data: String
-) : KeyValuePair<T, String>
+    val data: String
+)
 
 @PrimaryKeyClass
 data class CredKey<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val id: T,
-    val kind: String
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val id: T,
+)

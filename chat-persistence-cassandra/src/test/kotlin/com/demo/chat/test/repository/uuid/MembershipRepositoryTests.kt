@@ -1,5 +1,7 @@
 package com.demo.chat.test.repository.uuid
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
@@ -55,7 +57,7 @@ class MembershipRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator
 
     @Test
     fun `should save, find by key id`() {
-        val keyId = Key.funKey(keyGenerator.nextId())
+        val keyId = TestKeys.key(keyGenerator.nextId())
         val membership = TopicMembershipByKey(keyId.id, keyGenerator.nextId(), keyGenerator.nextId())
 
         val membershipSave = repo
@@ -112,7 +114,7 @@ class MembershipRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator
     @Test
     fun `should save many find by Ids`() {
         val keyList = Stream.generate {
-            Key.funKey(keyGenerator.nextId())
+            TestKeys.key(keyGenerator.nextId())
         }.limit(5).collect(Collectors.toList())
 
         val keyIdsList = keyList.stream().map { it.id }.toList()

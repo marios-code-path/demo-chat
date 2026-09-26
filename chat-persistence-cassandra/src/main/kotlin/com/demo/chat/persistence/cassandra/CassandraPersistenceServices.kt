@@ -1,5 +1,6 @@
 package com.demo.chat.persistence.cassandra
 
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.persistence.cassandra.impl.*
 import com.demo.chat.persistence.cassandra.repository.*
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 
 open class CassandraPersistenceServices<T : Any>(
     private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
     private val userRepo: ChatUserRepository<T>,
     private val topicRepo: TopicRepository<T>,
     private val messageRepo: ChatMessageRepository<T>,
@@ -19,20 +21,20 @@ open class CassandraPersistenceServices<T : Any>(
 ) : PersistenceServiceBeans<T, String> {
 
     override fun userPersistence(): UserPersistence<T> =
-        UserPersistenceCassandra(keyService, userRepo)
+        UserPersistenceCassandra(keyService, rootKeys, userRepo)
 
     override fun topicPersistence(): TopicPersistence<T> =
-        TopicPersistenceCassandra(keyService, topicRepo)
+        TopicPersistenceCassandra(keyService, rootKeys, topicRepo)
 
     override fun messagePersistence(): MessagePersistence<T, String> =
-        MessagePersistenceCassandra(keyService, messageRepo)
+        MessagePersistenceCassandra(keyService, rootKeys, messageRepo)
 
     override fun membershipPersistence(): MembershipPersistence<T> =
         MembershipPersistenceCassandra(keyService, membershipRepo)
 
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
-        AuthMetaPersistenceCassandra(keyService, authMetadataRepo)
+        AuthMetaPersistenceCassandra(keyService, rootKeys, authMetadataRepo)
 
     override fun keyValuePersistence(): KeyValueStore<T, Any> =
-        KeyValuePersistenceCassandra(keyService, keyValueRepo, mapper)
+        KeyValuePersistenceCassandra(keyService, rootKeys, keyValueRepo, mapper)
 }

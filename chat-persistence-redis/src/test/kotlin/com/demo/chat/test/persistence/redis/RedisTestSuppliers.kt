@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -17,18 +19,18 @@ import java.util.function.Supplier
  */
 object TestUUIDUserSupplier : Supplier<User<UUID>> {
     override fun get(): User<UUID> =
-        User.create(Key.funKey(UUID.randomUUID()), "TEST", "TEST", "TEST")
+        User.create(TestKeys.key(UUID.randomUUID()), "TEST", "TEST", "TEST")
 }
 
 object TestUUIDMessageTopicSupplier : Supplier<MessageTopic<UUID>> {
     override fun get(): MessageTopic<UUID> =
-        MessageTopic.create(Key.funKey(UUID.randomUUID()), "TEST")
+        MessageTopic.create(TestKeys.key(UUID.randomUUID()), "TEST")
 }
 
 object TestUUIDMessageSupplier : Supplier<Message<UUID, String>> {
     override fun get(): Message<UUID, String> =
         Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()),
             "TEST",
             true,
         )
@@ -42,9 +44,9 @@ object TestUUIDTopicMembershipSupplier : Supplier<TopicMembership<UUID>> {
 object TestUUIDAuthMetaSupplier : Supplier<AuthMetadata<UUID>> {
     override fun get(): AuthMetadata<UUID> =
         AuthMetadata.create(
-            Key.funKey(UUID.randomUUID()),
-            Key.funKey(UUID.randomUUID()),
-            Key.funKey(UUID.randomUUID()),
+            TestKeys.key(UUID.randomUUID()),
+            TestKeys.key(UUID.randomUUID()),
+            TestKeys.key(UUID.randomUUID()),
             "TEST",
             false,
             Long.MAX_VALUE,
@@ -53,5 +55,5 @@ object TestUUIDAuthMetaSupplier : Supplier<AuthMetadata<UUID>> {
 
 object TestUUIDKeyValuePairSupplier : Supplier<KeyValuePair<UUID, Any>> {
     override fun get(): KeyValuePair<UUID, Any> =
-        KeyValuePair.create(Key.funKey(UUID.randomUUID()), "TEST")
+        KeyValuePair.create(TestKeys.key(UUID.randomUUID()), "TEST")
 }

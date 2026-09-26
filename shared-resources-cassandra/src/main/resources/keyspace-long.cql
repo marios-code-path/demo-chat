@@ -1,10 +1,6 @@
 DROP KEYSPACE IF EXISTS chat_long;
 CREATE KEYSPACE IF NOT EXISTS chat_long WITH replication={'class' : 'SimpleStrategy', 'replication_factor':'1'};
 
-CREATE TYPE chat_long.event_key_meta(
-    kind varchar
-);
-
 -- The root key of each domain. See CHAT-avduuqwp.
 -- The key service writes each row once with IF NOT EXISTS, and reads it back
 -- on every start. This table is absent from truncate-long.cql on purpose. A
@@ -15,9 +11,11 @@ CREATE TABLE chat_long.root_keys(
     PRIMARY KEY (domain)
 );
 
+-- The key registry. Each minted id records the root of its domain.
+-- See CHAT-avduuqwp.
 CREATE TABLE chat_long.keys(
 id BIGINT,
-kind varchar ,
+root BIGINT,
 PRIMARY KEY(id) );
 
 -- Holds the app.nodeid lease. One row per claimed node id.
@@ -82,7 +80,6 @@ CREATE TABLE chat_long.topic_membership_by_member_of
 CREATE TABLE chat_long.chat_secret (
     id BIGINT,
     data varchar,
-    kind varchar,
     PRIMARY KEY (id)
 );
 
@@ -157,6 +154,8 @@ CREATE TABLE chat_long.auth_metadata
     id  BIGINT,
     principal   BIGINT,
     target      BIGINT,
+    principal_root BIGINT,
+    target_root BIGINT,
     permission  varchar,
     mute Boolean,
     expires BIGINT,
@@ -168,6 +167,8 @@ CREATE TABLE chat_long.auth_metadata_principal
     id  BIGINT,
     principal   BIGINT,
     target      BIGINT,
+    principal_root BIGINT,
+    target_root BIGINT,
     permission  varchar,
     mute Boolean,
     expires BIGINT,
@@ -179,6 +180,8 @@ CREATE TABLE chat_long.auth_metadata_target
     id  BIGINT,
     principal   BIGINT,
     target      BIGINT,
+    principal_root BIGINT,
+    target_root BIGINT,
     permission  varchar,
     mute Boolean,
     expires BIGINT,

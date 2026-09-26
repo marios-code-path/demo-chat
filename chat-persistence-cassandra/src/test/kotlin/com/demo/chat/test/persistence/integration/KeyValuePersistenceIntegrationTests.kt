@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.integration
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.User
@@ -42,7 +46,9 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @BeforeAll
     fun setUp() {
-        this.persistence = KeyValuePersistenceCassandra(KeyServiceCassandra(template, keyGenerator), repo, mapper)
+        this.persistence = FakeKeyServices.longRoots().let { roots ->
+            KeyValuePersistenceCassandra(KeyServiceCassandra(template, keyGenerator, roots), roots, repo, mapper)
+        }
     }
 
     fun kvAsserts(kv: KeyValuePair<Long, Any>) {
@@ -58,13 +64,13 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @Test
     fun `should byIds`() {
-        val key1 = Key.funKey(1L)
-        val key2 = Key.funKey(2L)
+        val key1 = TestKeys.key(1L)
+        val key2 = TestKeys.key(2L)
         val userObject = User.create(key1, "test", "test", "test")
         val userObject2 = User.create(key2, "test1", "test1", "test1")
 
-        val addOp = persistence.add(KeyValuePair.create(Key.funKey(1L), userObject))
-            .then(persistence.add(KeyValuePair.create(Key.funKey(2L), userObject2)))
+        val addOp = persistence.add(KeyValuePair.create(TestKeys.key(1L), userObject))
+            .then(persistence.add(KeyValuePair.create(TestKeys.key(2L), userObject2)))
 
         StepVerifier
             .create(addOp)
@@ -80,11 +86,11 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @Test
     fun `should store findAll`() {
-        val userObject = User.create(Key.funKey(1L), "test", "test", "test")
-        val userObject2 = User.create(Key.funKey(2L), "test1", "test1", "test1")
+        val userObject = User.create(TestKeys.key(1L), "test", "test", "test")
+        val userObject2 = User.create(TestKeys.key(2L), "test1", "test1", "test1")
 
-        val addOp = persistence.add(KeyValuePair.create(Key.funKey(1L), userObject))
-            .then(persistence.add(KeyValuePair.create(Key.funKey(2L), userObject2)))
+        val addOp = persistence.add(KeyValuePair.create(TestKeys.key(1L), userObject))
+            .then(persistence.add(KeyValuePair.create(TestKeys.key(2L), userObject2)))
 
         StepVerifier
             .create(addOp)
@@ -119,8 +125,8 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
 
     @Test
     fun `should store find`() {
-        val userObject = User.create(Key.funKey(1L), "test", "test", "test")
-        val testKv = KeyValuePair.create(Key.funKey(1L), userObject)
+        val userObject = User.create(TestKeys.key(1L), "test", "test", "test")
+        val testKv = KeyValuePair.create(TestKeys.key(1L), userObject)
 
         val addOp = persistence.add(testKv)
 
@@ -129,7 +135,7 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
             .expectSubscription()
             .verifyComplete()
 
-        val findOp = persistence.typedGet(Key.funKey(1L), User::class.java)
+        val findOp = persistence.typedGet(TestKeys.key(1L), User::class.java)
 
         StepVerifier
             .create(findOp)
@@ -142,7 +148,7 @@ class KeyValuePersistenceIntegrationTests : CassandraSchemaTest<Long>(TestLongKe
             .verifyComplete()
 
 
-        StepVerifier.create(persistence.get(Key.funKey(1L)))
+        StepVerifier.create(persistence.get(TestKeys.key(1L)))
             .assertNext {
                 Assertions
                     .assertThat(it)

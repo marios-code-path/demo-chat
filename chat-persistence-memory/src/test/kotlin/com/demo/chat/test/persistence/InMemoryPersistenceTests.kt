@@ -3,6 +3,7 @@ package com.demo.chat.test.persistence
 import com.demo.chat.domain.*
 import com.demo.chat.persistence.memory.impl.*
 import com.demo.chat.test.*
+import com.demo.chat.test.key.TestKeys
 import org.junit.jupiter.api.TestInstance
 import org.springframework.core.ParameterizedTypeReference
 import java.util.function.Supplier
@@ -18,7 +19,7 @@ class PersistenceTopicTests : KeyAwarePersistenceTestBase<String, MessageTopic<S
     (TestMessageTopicSupplier, TopicPersistenceInMemory(TestStringKeyService()) { t -> t.key }, {t -> t.key })
 
 class PersistenceMembershipTests : KeyAwarePersistenceTestBase<String, TopicMembership<String>>
-    (TestTopicMembershipSupplier, MembershipPersistenceInMemory(TestStringKeyService()) { t -> Key.funKey(t.key) }, {t -> Key.funKey(t.key) })
+    (TestTopicMembershipSupplier, MembershipPersistenceInMemory(TestStringKeyService()) { t -> TestKeys.key(t.key) }, {t -> TestKeys.key(t.key) })
 
 class PersistenceAuthmetadataTests : KeyAwarePersistenceTestBase<String, AuthMetadata<String>>
     (TestAuthMetaSupplier, AuthMetaPersistenceInMemory(TestStringKeyService()) { t -> t.key }, {t -> t.key })
