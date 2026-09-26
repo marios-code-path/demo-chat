@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test
 class RootKeySnapshotTests {
 
     private val source = RootKeys<Long>().apply {
-        loadDomains(ChatDomain.entries.associateWith { Key.funKey(100L + it.ordinal) })
-        loadIdentities(Key.funKey(900L), Key.funKey(901L))
+        loadDomains(ChatDomain.entries.associateWith { Key.root(100L + it.ordinal) })
+        loadIdentities(Key.of(900L, 100L + ChatDomain.USER.ordinal), Key.of(901L, 100L + ChatDomain.USER.ordinal))
     }
 
     @Test

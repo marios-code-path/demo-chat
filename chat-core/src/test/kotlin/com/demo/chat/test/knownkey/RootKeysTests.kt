@@ -26,7 +26,7 @@ class RootKeysTests {
 
     @Test
     fun `a partial domain set is refused, and the refusal names the missing domains`() {
-        assertThatThrownBy { RootKeys<Long>().loadDomains(mapOf(ChatDomain.USER to Key.funKey(1L))) }
+        assertThatThrownBy { RootKeys<Long>().loadDomains(mapOf(ChatDomain.USER to Key.root(1L))) }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("MESSAGE")
             .hasMessageContaining("FRANKING_TAG")
@@ -43,7 +43,7 @@ class RootKeysTests {
     fun `a domain root id answers its domain, and a user identity answers none`() {
         val rootKeys = RootKeys<Long>().apply {
             loadDomains(complete())
-            loadIdentities(Key.funKey(900L), Key.funKey(901L))
+            loadIdentities(admin, anon)
         }
 
         assertThat(rootKeys.domainOfRoot(complete().getValue(ChatDomain.MESSAGE).id)).isEqualTo(ChatDomain.MESSAGE)
@@ -55,13 +55,13 @@ class RootKeysTests {
     fun `the identities are users, not domains`() {
         val rootKeys = RootKeys<Long>().apply {
             loadDomains(complete())
-            loadIdentities(Key.funKey(900L), Key.funKey(901L))
+            loadIdentities(admin, anon)
         }
 
-        assertThat(rootKeys.admin()).isEqualTo(Key.funKey(900L))
-        assertThat(rootKeys.anon()).isEqualTo(Key.funKey(901L))
-        assertThat(rootKeys.identity(ChatIdentity.ANON)).isEqualTo(Key.funKey(901L))
-        assertThat(rootKeys.domains().values).doesNotContain(Key.funKey(900L), Key.funKey(901L))
+        assertThat(rootKeys.admin()).isEqualTo(admin)
+        assertThat(rootKeys.anon()).isEqualTo(anon)
+        assertThat(rootKeys.identity(ChatIdentity.ANON)).isEqualTo(anon)
+        assertThat(rootKeys.domains().values).doesNotContain(admin, anon)
     }
 
     @Test
@@ -75,15 +75,19 @@ class RootKeysTests {
     fun `a configuration name resolves to a domain root or an identity, and nothing else`() {
         val rootKeys = RootKeys<Long>().apply {
             loadDomains(complete())
-            loadIdentities(Key.funKey(900L), Key.funKey(901L))
+            loadIdentities(admin, anon)
         }
 
         assertThat(rootKeys.byName("MessageTopic")).isEqualTo(complete()[ChatDomain.MESSAGE_TOPIC])
-        assertThat(rootKeys.byName("Admin")).isEqualTo(Key.funKey(900L))
+        assertThat(rootKeys.byName("Admin")).isEqualTo(admin)
         assertThat(rootKeys.byName("KeyCredential")).isNull()
         assertThat(rootKeys.byName("user")).isNull()
     }
 
+    /** The identities are users, so they carry the root of the USER domain. */
+    private val admin = Key.of(900L, 100L + ChatDomain.USER.ordinal)
+    private val anon = Key.of(901L, 100L + ChatDomain.USER.ordinal)
+
     private fun complete(): Map<ChatDomain, Key<Long>> =
-        ChatDomain.entries.associateWith { Key.funKey(100L + it.ordinal) }
+        ChatDomain.entries.associateWith { Key.root(100L + it.ordinal) }
 }

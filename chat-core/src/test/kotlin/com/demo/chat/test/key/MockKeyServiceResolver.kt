@@ -1,6 +1,7 @@
 package com.demo.chat.test.key
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
@@ -41,6 +42,10 @@ class MockKeyServiceResolver : ParameterResolver {
 
     inline fun <reified T : Any> mock(): T = Mockito.mock(T::class.java)!!
 
+    /**
+     * A mock key service. It mints under a fixed root for each domain, from
+     * `TestRoots`, and it answers that root from `rootOf`. See `CHAT-avduuqwp`.
+     */
     private inline fun <reified T> testKey(): IKeyService<T> = mock<IKeyService<T>>()
         .apply {
             given(this.exists(anyObject()))
@@ -48,15 +53,20 @@ class MockKeyServiceResolver : ParameterResolver {
             given(this.rem(anyObject()))
                 .willReturn(Mono.empty())
 
-            when (T::class) {
-                UUID::class -> given(this.key<Any>(anyObject()))
-                    .willReturn(Mono.just(Key.funKey(UUID.randomUUID() as T)))
-
-                String::class -> given(this.key<Any>(anyObject()))
-                    .willReturn(Mono.just(Key.funKey(randomAlphaNumeric(48) as T)))
-
-                Number::class, Int::class, Long::class -> given(this.key<Any>(anyObject()))
-                    .willReturn(Mono.just(Key.funKey(counter.incrementAndGet() as T)))
+            val type: Class<*> = when (T::class) {
+                UUID::class -> UUID::class.java
+                String::class -> String::class.java
+                else -> Long::class.java
+            }
+            val next: () -> Any = when (T::class) {
+                UUID::class -> { -> UUID.randomUUID() }
+                String::class -> { -> randomAlphaNumeric(48) }
+                else -> { -> counter.incrementAndGet() }
+            }
+            given(this.key(anyObject())).willAnswer { call ->
+                val domain = call.getArgument<ChatDomain>(0)
+                @Suppress("UNCHECKED_CAST")
+                Mono.just(Key.of(next() as T, TestRoots.of<T>(type, domain)))
             }
         }
 }

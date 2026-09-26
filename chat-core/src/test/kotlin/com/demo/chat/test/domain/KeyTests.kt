@@ -1,5 +1,7 @@
 package com.demo.chat.test.domain
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.test.TestBase
 import org.assertj.core.api.Assertions
@@ -13,8 +15,8 @@ class KeyTests : TestBase() {
 
     @Test
     fun `key equality should be the same`() {
-        val k1 = Key.funKey(1L)
-        val k2 = Key.funKey(1L)
+        val k1 = TestKeys.key(1L)
+        val k2 = TestKeys.key(1L)
 
         Assertions
             .assertThat(k1)
@@ -23,14 +25,14 @@ class KeyTests : TestBase() {
 
     @Test
     fun `key equality should be different`() {
-        val k1 = Key.funKey(1L)
-        val k2 = Key.funKey(1)
+        val k1 = TestKeys.key(1L)
+        val k2 = TestKeys.key(1)
 
         Assertions
             .assertThat(k1)
             .isNotEqualTo(k2)
 
-        val k3 = Key.funKey("1".toLong())
+        val k3 = TestKeys.key("1".toLong())
 
         Assertions
             .assertThat(k1)
@@ -44,33 +46,33 @@ class KeyTests : TestBase() {
     @Test
     fun `equal keys should share a hash code`() {
         Assertions
-            .assertThat(Key.funKey(1L).hashCode())
-            .isEqualTo(Key.funKey(1L).hashCode())
+            .assertThat(TestKeys.key(1L).hashCode())
+            .isEqualTo(TestKeys.key(1L).hashCode())
 
         Assertions
-            .assertThat(Key.emptyKey(1L).hashCode())
-            .isEqualTo(Key.emptyKey(1L).hashCode())
+            .assertThat(TestKeys.empty(1L).hashCode())
+            .isEqualTo(TestKeys.empty(1L).hashCode())
     }
 
     @Test
     fun `a map keyed on a key should find an equal key`() {
-        val map = hashMapOf(Key.funKey(1L) to "found")
+        val map = hashMapOf(TestKeys.key(1L) to "found")
 
         Assertions
-            .assertThat(map[Key.funKey(1L)])
+            .assertThat(map[TestKeys.key(1L)])
             .isEqualTo("found")
 
-        val emptyMap = hashMapOf(Key.emptyKey(1L) to "found")
+        val emptyMap = hashMapOf(TestKeys.empty(1L) to "found")
 
         Assertions
-            .assertThat(emptyMap[Key.emptyKey(1L)])
+            .assertThat(emptyMap[TestKeys.empty(1L)])
             .isEqualTo("found")
     }
 
     @Test
     fun `an empty key should not equal a populated key in either direction`() {
-        val populated = Key.funKey(1L)
-        val empty = Key.emptyKey(1L)
+        val populated = TestKeys.key(1L)
+        val empty = TestKeys.empty(1L)
 
         Assertions
             .assertThat(populated)
@@ -84,7 +86,7 @@ class KeyTests : TestBase() {
     @Test
     fun `should create`() {
         Assertions
-            .assertThat(Key.funKey("TEST"))
+            .assertThat(TestKeys.key("TEST"))
             .isNotNull
             .hasNoNullFieldsOrProperties()
     }
@@ -123,8 +125,8 @@ class KeyTests : TestBase() {
         counter++
 
         return if (counter % 2 == 0)
-            Key.funKey(id)
+            TestKeys.key(id)
         else
-            Key.funKey(counter)
+            TestKeys.key(counter)
     }
 }

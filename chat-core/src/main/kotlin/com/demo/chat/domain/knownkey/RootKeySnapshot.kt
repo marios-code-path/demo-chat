@@ -36,11 +36,14 @@ data class RootKeySnapshot(
         if (missing.isNotEmpty()) throw ChatException("The root key snapshot is incomplete. Missing: $missing")
 
         // Parse every id before the first load, so a bad id publishes nothing.
+        // A domain root is its own root. An identity is a user, so it carries
+        // the root of the USER domain.
         val roots = domains.entries.associate { (name, id) ->
-            ChatDomain.parse(name)!! to Key.funKey(RootIds.parse(typeUtil, id, name))
+            ChatDomain.parse(name)!! to Key.root(RootIds.parse(typeUtil, id, name))
         }
-        val adminKey = Key.funKey(RootIds.parse(typeUtil, admin, ChatIdentity.ADMIN.wireName))
-        val anonKey = Key.funKey(RootIds.parse(typeUtil, anon, ChatIdentity.ANON.wireName))
+        val userRoot = roots.getValue(ChatDomain.USER).id
+        val adminKey = Key.of(RootIds.parse(typeUtil, admin, ChatIdentity.ADMIN.wireName), userRoot)
+        val anonKey = Key.of(RootIds.parse(typeUtil, anon, ChatIdentity.ANON.wireName), userRoot)
         val ids = roots.values.map { it.id } + adminKey.id + anonKey.id
         if (ids.toSet().size != ids.size) throw ChatException("The root key snapshot uses one id for two roots.")
         into.loadDomains(roots)

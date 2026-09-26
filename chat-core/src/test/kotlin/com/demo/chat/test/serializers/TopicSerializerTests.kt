@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
@@ -27,15 +29,15 @@ class TopicSerializerTests : TestBase() {
 
         val topicJsons = Flux.just(
                 MessageTopic.create(
-                        Key.funKey(1L),
+                        TestKeys.key(1L),
                         "MOON"
                 ),
                 MessageTopic.create(
-                        Key.funKey(UUID.randomUUID()),
+                        TestKeys.key(UUID.randomUUID()),
                         "MARS"
                 ),
                 MessageTopic.create(
-                        Key.funKey("2"),
+                        TestKeys.key("2"),
                         "VENUS"
                 )
         )

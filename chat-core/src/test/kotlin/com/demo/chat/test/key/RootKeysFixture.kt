@@ -21,7 +21,7 @@ object RootKeysFixture {
         loadIdentities(admin, anon)
     }
 
-    /** This function fills each unnamed domain of a `Long` set with an id from 9000 up. */
+    /** This function fills each unnamed domain of a `Long` set with a root key from 9000 up. */
     fun ofLong(named: Map<ChatDomain, Key<Long>>, admin: Key<Long>, anon: Key<Long>): RootKeys<Long> =
-        of(named, admin, anon) { Key.funKey(9000L + it.ordinal) }
+        of(named, admin, anon) { Key.root(9000L + it.ordinal) }
 }

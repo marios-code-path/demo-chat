@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
@@ -44,7 +46,7 @@ class Jackson3WireShapeTests {
     fun `a MessageTopic decodes and keeps the nested key wrapper`() {
         // This is the shape that answered 500 on PUT /index/topic/add before
         // the Jackson 3 deserializers existed.
-        val topic = MessageTopic.create(Key.funKey(1001L), "a-topic")
+        val topic = MessageTopic.create(TestKeys.key(1001L), "a-topic")
         val json = round(topic)
 
         // The measured shape, not an assumed one:
@@ -80,7 +82,7 @@ class Jackson3WireShapeTests {
         )
 
         cases.forEach { (id, expected) ->
-            val decoded = mapper.readValue(round(Key.funKey(id)), Key::class.java)
+            val decoded = mapper.readValue(round(TestKeys.key(id)), Key::class.java)
 
             assertThat(decoded.id)
                 .describedAs("the id of a key written from %s", id)
@@ -97,7 +99,7 @@ class Jackson3WireShapeTests {
         // The rule that separates the two lives in KeyAssembly, and both
         // Jackson generations apply it. A key that carries from and dest is a
         // MessageKey, and one that does not is a Key.
-        val json = round(MessageKey.create(7L, 10L, 20L))
+        val json = round(TestKeys.message(7L, 10L, 20L))
 
         val decoded = mapper.readValue(json, Key::class.java)
 
@@ -113,7 +115,7 @@ class Jackson3WireShapeTests {
 
     @Test
     fun `a Message decodes its nested message key and its record flag`() {
-        val message = Message.create(MessageKey.create(3L, 10L, 20L), "hello", true)
+        val message = Message.create(TestKeys.message(3L, 10L, 20L), "hello", true)
         val json = round(message)
 
         // The measured shape:
@@ -136,9 +138,9 @@ class Jackson3WireShapeTests {
     @Test
     fun `an AuthMetadata decodes its keys, its permission and its expiry`() {
         val meta = AuthMetadata.create(
-            Key.funKey(1L),
-            Key.funKey(2L),
-            Key.funKey(3L),
+            TestKeys.key(1L),
+            TestKeys.key(2L),
+            TestKeys.key(3L),
             "WRITE",
             4L,
         )

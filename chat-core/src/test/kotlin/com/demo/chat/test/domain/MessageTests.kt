@@ -1,5 +1,7 @@
 package com.demo.chat.test.domain
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -17,7 +19,7 @@ class MessageTests : TestBase() {
     fun `should create`() {
         Assertions
                 .assertThat(Message
-                        .create(MessageKey.create("Key1", "Key2", "Key3"),
+                        .create(TestKeys.message("Key1", "Key2", "Key3"),
                         "TEST", true))
                 .isNotNull
                 .hasNoNullFieldsOrProperties()
@@ -25,8 +27,8 @@ class MessageTests : TestBase() {
 
     @Test
     fun `message keys with the same id should be equal`() {
-        val k1 = MessageKey.create(1001L, 1002L, 1003L)
-        val k2 = MessageKey.create(1001L, 1002L, 1003L)
+        val k1 = TestKeys.message(1001L, 1002L, 1003L)
+        val k2 = TestKeys.message(1001L, 1002L, 1003L)
 
         Assertions
             .assertThat(k1)
@@ -39,17 +41,17 @@ class MessageTests : TestBase() {
 
     @Test
     fun `a map keyed on a message key should find an equal message key`() {
-        val map = hashMapOf(MessageKey.create(1001L, 1002L, 1003L) to "found")
+        val map = hashMapOf(TestKeys.message(1001L, 1002L, 1003L) to "found")
 
         Assertions
-            .assertThat(map[MessageKey.create(1001L, 1002L, 1003L)])
+            .assertThat(map[TestKeys.message(1001L, 1002L, 1003L)])
             .isEqualTo("found")
     }
 
     @Test
     fun `a message key should equal a populated key with the same id in either direction`() {
-        val messageKey = MessageKey.create(1001L, 1002L, 1003L)
-        val key = Key.funKey(1001L)
+        val messageKey = TestKeys.message(1001L, 1002L, 1003L)
+        val key = TestKeys.key(1001L)
 
         Assertions
             .assertThat(messageKey)
@@ -63,12 +65,12 @@ class MessageTests : TestBase() {
     @Test
     fun `the id alone decides message key equality`() {
         Assertions
-            .assertThat(MessageKey.create(1001L, 1002L, 1003L))
-            .isEqualTo(MessageKey.create(1001L, 2002L, 2003L))
+            .assertThat(TestKeys.message(1001L, 1002L, 1003L))
+            .isEqualTo(TestKeys.message(1001L, 2002L, 2003L))
 
         Assertions
-            .assertThat(MessageKey.create(1001L, 1002L, 1003L))
-            .isNotEqualTo(MessageKey.create(2001L, 1002L, 1003L))
+            .assertThat(TestKeys.message(1001L, 1002L, 1003L))
+            .isNotEqualTo(TestKeys.message(2001L, 1002L, 1003L))
     }
 
     @Test
@@ -109,8 +111,8 @@ class MessageTests : TestBase() {
         counter++
 
         return if (counter % 2 == 0)
-            TestAlert(TestAlertKey(messageId, roomId, roomId), counter)
+            TestAlert(TestKeys.message(messageId, roomId, roomId), counter)
         else
-            TestTextMessage(TestMessageKey(messageId, roomId, userId), "Count: $counter")
+            TestTextMessage(TestKeys.message(messageId, userId, roomId), "Count: $counter")
     }
 }

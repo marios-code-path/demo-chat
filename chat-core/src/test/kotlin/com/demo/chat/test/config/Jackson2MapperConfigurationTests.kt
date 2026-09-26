@@ -1,5 +1,7 @@
 package com.demo.chat.test.config
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.Jackson2MapperConfiguration
@@ -39,7 +41,7 @@ class Jackson2MapperConfigurationTests {
             // A round trip, rather than a hand written document. Key carries
             // its own type wrapper, so a literal here would pin the wrapper
             // shape by accident and fail for the wrong reason.
-            val json = mapper.writeValueAsString(Key.funKey(42L))
+            val json = mapper.writeValueAsString(TestKeys.key(42L))
             val key = mapper.readValue(json, Key::class.java)
 
             assertThat(key.id)

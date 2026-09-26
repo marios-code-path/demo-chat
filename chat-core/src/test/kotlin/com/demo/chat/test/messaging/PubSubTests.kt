@@ -1,5 +1,9 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -18,10 +22,11 @@ abstract class PubSubTests<T : Any, V>(
     val valueSupply: Supplier<V>,
 ) {
 
+    /** The keys of a user, a room and a message, in that order. */
     fun keyFlux() = Flux.merge(
-        keySvc.key(String::class.java),
-        keySvc.key(String::class.java),
-        keySvc.key(String::class.java)
+        keySvc.key(ChatDomain.USER),
+        keySvc.key(ChatDomain.MESSAGE_TOPIC),
+        keySvc.key(ChatDomain.MESSAGE)
     )
 
     @Test
@@ -99,7 +104,7 @@ abstract class PubSubTests<T : Any, V>(
 
                 messaging.sendMessage(
                     Message.create(
-                        MessageKey.create(msgId, userId, testRoom),
+                        TestKeys.message(msgId, userId, testRoom),
                         valueSupply.get(),
                         true
                     )
@@ -125,7 +130,7 @@ abstract class PubSubTests<T : Any, V>(
                         messaging
                             .sendMessage(
                                 Message.create(
-                                    MessageKey.create(msgId, userId, testRoom),
+                                    TestKeys.message(msgId, userId, testRoom),
                                     valueSupply.get(),
                                     true
                                 )
@@ -192,7 +197,7 @@ abstract class PubSubTests<T : Any, V>(
             .block(Duration.ofSeconds(10))
 
         val message = Message.create(
-            MessageKey.create(msgId, userId, testRoom),
+            TestKeys.message(msgId, userId, testRoom),
             valueSupply.get(),
             true
         )

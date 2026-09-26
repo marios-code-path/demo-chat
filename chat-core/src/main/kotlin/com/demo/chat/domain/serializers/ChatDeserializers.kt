@@ -1,11 +1,13 @@
 package com.demo.chat.domain.serializers
 
 import com.demo.chat.convert.Converter
+import com.demo.chat.convert.KeyAssembly
 import com.demo.chat.domain.*
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.ObjectCodec
 import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.JsonNode
 
 /**
@@ -16,15 +18,11 @@ class MessageKeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val idNode = node.get("id")
-
-        val destNode = node.get("dest")
-        val fromNode = node.get("from")
-
-        return MessageKey.create(
-            nodeConverter.convert(idNode)!!,
-            nodeConverter.convert(fromNode)!!,
-            nodeConverter.convert(destNode)!!
+        return MessageKey.of(
+            nodeConverter.convert(node.get("id"))!!,
+            requireRoot(jp, node, nodeConverter),
+            nodeConverter.convert(node.get("from"))!!,
+            nodeConverter.convert(node.get("dest"))!!
         )
     }
 }
@@ -34,20 +32,22 @@ class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : Js
         val oc: ObjectCodec = jp?.codec!!
         val node: JsonNode = oc.readTree(jp)
 
-        val idNode = node.get("id")
+        val id = nodeConverter.convert(node.get("id"))!!
+        val root = requireRoot(jp, node, nodeConverter)
+        val empty = node.get("empty")?.asBoolean() ?: false
+        val from = if (node.has("from")) nodeConverter.convert(node.get("from")) else null
+        val dest = if (node.has("dest")) nodeConverter.convert(node.get("dest")) else null
 
-        return if (node.has("dest") && node.has("from")) {
-            val destNode = node.get("dest")
-            val fromNode = node.get("from")
-
-            MessageKey.create(
-                nodeConverter.convert(idNode)!!,
-                nodeConverter.convert(fromNode)!!,
-                nodeConverter.convert(destNode)!!
-            )
-        } else
-            Key.funKey(nodeConverter.convert(idNode)!!)
+        @Suppress("UNCHECKED_CAST")
+        return KeyAssembly.key(id as Any, root as Any, empty, from, dest) as Key<T>
     }
+}
+
+/** This function reads the required root of a key node. See `KeyAssembly`. */
+private fun <T> requireRoot(jp: JsonParser, node: JsonNode, nodeConverter: Converter<JsonNode, T>): T {
+    val rootNode = node.get("root")
+    if (rootNode == null || rootNode.isNull) throw JsonMappingException.from(jp, KeyAssembly.MISSING_ROOT)
+    return nodeConverter.convert(rootNode)!!
 }
 
 class MessageDeserializer<T, E>(

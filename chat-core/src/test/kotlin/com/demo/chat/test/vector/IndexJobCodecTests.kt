@@ -1,5 +1,7 @@
 package com.demo.chat.test.vector
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
@@ -24,12 +26,12 @@ class IndexJobCodecTests {
     private val codec = IndexJobCodec<Long>(mapper)
 
     private val job = IndexJob(
-        key = Key.funKey(500L),
+        key = TestKeys.key(500L),
         nodeId = 7,
         keyType = "long",
         embeddingIdentity = "acme-e5",
         incarnationId = "incarnation-a",
-        startedBy = Key.funKey(1000L),
+        startedBy = TestKeys.key(1000L),
         startedAt = Instant.parse("2026-09-12T12:00:00Z"),
         outcome = JobOutcome.SUCCEEDED,
         indexed = 3L,

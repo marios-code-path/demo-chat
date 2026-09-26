@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
@@ -27,7 +29,7 @@ class KeyValuePairSerializerTests : TestBase() {
         }
 
         val pairJsons = Flux.just(
-            KeyValuePair.create(Key.funKey(1L), Key.funKey(2L)),
+            KeyValuePair.create(TestKeys.key(1L), TestKeys.key(2L)),
         )
             .map(mapper::writeValueAsString)
             .doOnNext { println(it) }
@@ -57,9 +59,9 @@ class KeyValuePairSerializerTests : TestBase() {
         val msgUUID = UUID.randomUUID()
         val destUUID = UUID.randomUUID()
         val pairJsons = Flux.just(
-            KeyValuePair.create(MessageKey.create(1L, 2L, 3L), "Foo"),
-            KeyValuePair.create(MessageKey.create(10L, 2L, 3L), "Foo"),
-            KeyValuePair.create(MessageKey.create(msgUUID, destUUID, destUUID), 2345)
+            KeyValuePair.create(TestKeys.message(1L, 2L, 3L), "Foo"),
+            KeyValuePair.create(TestKeys.message(10L, 2L, 3L), "Foo"),
+            KeyValuePair.create(TestKeys.message(msgUUID, destUUID, destUUID), 2345)
         )
             .map(mapper::writeValueAsString)
             .map<KeyValuePair<out Any, Any>>(mapper::readValue)

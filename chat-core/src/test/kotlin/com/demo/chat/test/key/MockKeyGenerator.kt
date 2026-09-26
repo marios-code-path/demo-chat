@@ -1,6 +1,5 @@
 package com.demo.chat.test.key
 
-import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.test.randomAlphaNumeric
 import org.mockito.BDDMockito
@@ -20,8 +19,6 @@ open class MockKeyGenerator {
                 val uuidMocked = mock<IKeyGenerator<UUID>>()
                 BDDMockito.given(uuidMocked.nextId())
                     .willReturn(UUID.randomUUID())
-                BDDMockito.given(uuidMocked.nextKey())
-                    .willReturn(Key.funKey(UUID.randomUUID()))
                 uuidMocked
             }
 
@@ -29,8 +26,6 @@ open class MockKeyGenerator {
                 val stringMocked = mock<IKeyGenerator<String>>()
                 BDDMockito.given(stringMocked.nextId())
                     .willReturn(randomAlphaNumeric(8))
-                BDDMockito.given(stringMocked.nextKey())
-                    .willReturn(Key.funKey(randomAlphaNumeric(8)))
                 stringMocked
             }
 
@@ -38,8 +33,6 @@ open class MockKeyGenerator {
                 val longMocked = mock<IKeyGenerator<Long>>()
                 BDDMockito.given(longMocked.nextId())
                     .willReturn(counter.incrementAndGet())
-                BDDMockito.given(longMocked.nextKey())
-                    .willReturn(Key.funKey(counter.incrementAndGet()))
                 longMocked
             }
 

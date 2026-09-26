@@ -1,5 +1,7 @@
 package com.demo.chat.test.domain
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.test.TestBase
@@ -12,12 +14,12 @@ class UserTests : TestBase() {
 
     @Test
     fun `equality`() {
-        val user1 = User.create(Key.funKey("KEY"), "TEST", "TEST", "TEST")
-        val user2 = User.create(Key.funKey("KEY"), "TEST", "TEST", "TEST")
+        val user1 = User.create(TestKeys.key("KEY"), "TEST", "TEST", "TEST")
+        val user2 = User.create(TestKeys.key("KEY"), "TEST", "TEST", "TEST")
 
         Assertions.assertThat(user1).isEqualTo(user2)
 
-        val user3 = User.create(Key.funKey("KEY2"), "TEST", "TEST", "TEST")
+        val user3 = User.create(TestKeys.key("KEY2"), "TEST", "TEST", "TEST")
 
         Assertions.assertThat(user3).isNotEqualTo(user2)
     }
@@ -25,7 +27,7 @@ class UserTests : TestBase() {
     @Test
     fun `should create`() {
         Assertions
-                .assertThat(User.create(Key.funKey("KEY"), "TEST", "TEST", "TEST"))
+                .assertThat(User.create(TestKeys.key("KEY"), "TEST", "TEST", "TEST"))
                 .isNotNull
                 .hasNoNullFieldsOrProperties()
     }
@@ -39,8 +41,8 @@ class UserTests : TestBase() {
                 .create(userFlux)
                 .expectSubscription()
                 .then {
-                    userPub.next(User.create(Key.funKey(3), "Test-User-3", "3", "http://"))
-                    userPub.next(User.create(Key.funKey("FOO"), "Test-User-foo", "Foo", "http://"))
+                    userPub.next(User.create(TestKeys.key(3), "Test-User-3", "3", "http://"))
+                    userPub.next(User.create(TestKeys.key("FOO"), "Test-User-foo", "Foo", "http://"))
                 }
                 .assertNext {
                     Assertions

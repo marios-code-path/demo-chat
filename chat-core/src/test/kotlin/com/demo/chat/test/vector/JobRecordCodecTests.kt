@@ -1,5 +1,7 @@
 package com.demo.chat.test.vector
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.JobRecord
@@ -21,9 +23,9 @@ class JobRecordCodecTests {
     private val codec = JobRecordCodec(mapper)
 
     private val record = JobRecord(
-        key = Key.funKey(7L),
-        jobKey = Key.funKey(500L),
-        workerKey = Key.funKey(1000L),
+        key = TestKeys.key(7L),
+        jobKey = TestKeys.key(500L),
+        workerKey = TestKeys.key(1000L),
         at = Instant.parse("2026-09-12T12:00:00Z"),
         message = "rebuild started",
         indexed = 3L,

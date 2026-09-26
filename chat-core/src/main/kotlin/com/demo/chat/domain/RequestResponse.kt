@@ -26,18 +26,24 @@ data class UserCreateRequest(val name: String, val handle: String, val imgUri: S
 data class MemberTopicRequest<T>(val member: T, val topic: T) : RequestResponse<T>()
 
 data class ChatMessage<T, V>(
-        override val key: ChatMessageKey<T>,
+        override val key: MessageKey<T>,
         override val data: V,
         override val record: Boolean
 ) : Message<T, V>
 
+/**
+ * A request value that names a message. **It is not a `Key`.** It carries no
+ * root, so it cannot name a verified object. [toKey] builds the key once the
+ * caller knows the root. See `CHAT-avduuqwp`.
+ */
 data class ChatMessageKey<T>(
-        override val id: T,
-        override val from: T,
-        override val dest: T,
-        override val timestamp: Instant,
-        override val empty: Boolean = false
-) : MessageKey<T>
+        val id: T,
+        val from: T,
+        val dest: T,
+        val timestamp: Instant,
+) {
+    fun toKey(root: T): MessageKey<T> = MessageKey.of(id, root, from, dest)
+}
 
 @JsonTypeName("TopicRecallRequest")
 data class TopicRecallRequest<T>(

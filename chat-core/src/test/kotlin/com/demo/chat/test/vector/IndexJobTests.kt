@@ -1,5 +1,7 @@
 package com.demo.chat.test.vector
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -13,11 +15,11 @@ class IndexJobTests {
     @Test
     fun `a new job starts with no invalidation`() {
         val job = IndexJob(
-            key = Key.funKey(1L),
+            key = TestKeys.key(1L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "abc",
-            startedBy = Key.funKey(2L),
+            startedBy = TestKeys.key(2L),
             startedAt = start,
         )
 
@@ -31,11 +33,11 @@ class IndexJobTests {
     @Test
     fun `only a succeeded job with no invalidation covers`() {
         val job = IndexJob(
-            key = Key.funKey(1L),
+            key = TestKeys.key(1L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "abc",
-            startedBy = Key.funKey(2L),
+            startedBy = TestKeys.key(2L),
             startedAt = start,
             outcome = JobOutcome.SUCCEEDED,
         )

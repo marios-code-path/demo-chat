@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.JoinAlert
 import com.demo.chat.domain.Message
@@ -31,9 +33,9 @@ class MessageSerializerTests : TestBase() {
         val msgUUID = UUID.randomUUID()
         val destUUID = UUID.randomUUID()
         val messageJsons = Flux.just(
-                JoinAlert(MessageKey.create(1L, 3L), "JOINED"),
-                Message.create(MessageKey.create("a", "b"), "Foo", true),
-                Message.create(MessageKey.create(msgUUID, destUUID), 2345, false)
+                JoinAlert(TestKeys.message(1L, 3L, 3L), "JOINED"),
+                Message.create(TestKeys.message("a", "b", "b"), "Foo", true),
+                Message.create(TestKeys.message(msgUUID, destUUID, destUUID), 2345, false)
         )
                 .map(mapper::writeValueAsString)
                 .map<Message<out Any, Any>>(mapper::readValue)

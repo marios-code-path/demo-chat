@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
@@ -19,7 +21,7 @@ class DomainWireShapeTests : TestBase() {
 
     @Test
     fun `User serialises flat without the user wrapper`() {
-        val node = shapeNode(User.create(Key.funKey(1L), "MOON", "LUNA", "http://"))
+        val node = shapeNode(User.create(TestKeys.key(1L), "MOON", "LUNA", "http://"))
         Assertions.assertFalse(node.has("user"), "User must not carry the user wrapper")
         Assertions.assertEquals("MOON", node.get("name").asText())
         Assertions.assertEquals("LUNA", node.get("handle").asText())
@@ -38,7 +40,7 @@ class DomainWireShapeTests : TestBase() {
 
     @Test
     fun `MessageTopic serialises with the inherited keyValue wrapper`() {
-        val node = shapeNode(MessageTopic.create(Key.funKey(1L), "MOON"))
+        val node = shapeNode(MessageTopic.create(TestKeys.key(1L), "MOON"))
         Assertions.assertTrue(node.has("keyValue"), "MessageTopic inherits the keyValue wrapper")
         Assertions.assertFalse(node.has("topic"), "MessageTopic must not carry the topic wrapper")
         Assertions.assertEquals("MOON", node.get("keyValue").get("data").asText())

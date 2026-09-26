@@ -12,6 +12,7 @@ import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
 import tools.jackson.core.JsonParser
+import tools.jackson.databind.DatabindException
 import tools.jackson.databind.DeserializationContext
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ValueDeserializer
@@ -63,9 +64,18 @@ object Jackson3NodeToAny {
     /** The key that a node holds, by the rule both generations share. */
     fun <T : Any> key(node: JsonNode): Key<T> = KeyAssembly.key(
         value(node.get("id")),
+        root(node),
+        node.get("empty")?.asBoolean() ?: false,
         if (node.has("from")) value<T>(node.get("from")) else null,
         if (node.has("dest")) value<T>(node.get("dest")) else null,
     )
+
+    /** This function reads the required root of a key node. See `KeyAssembly`. */
+    fun <T : Any> root(node: JsonNode): T {
+        val rootNode = node.get("root")
+        if (rootNode == null || rootNode.isNull) throw DatabindException.from(null as JsonParser?, KeyAssembly.MISSING_ROOT)
+        return value(rootNode)
+    }
 
     /** The key inside a wrapper, which is how a nested key is written. */
     fun <T : Any> wrappedKey(node: JsonNode): Key<T> = key(node.get("key").get("key"))
@@ -75,8 +85,9 @@ class Jackson3MessageKeyDeserializer<T : Any> : ValueDeserializer<MessageKey<T>>
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageKey<T> {
         val node: JsonNode = p.readValueAsTree()
 
-        return MessageKey.create(
+        return MessageKey.of(
             Jackson3NodeToAny.value(node.get("id")),
+            Jackson3NodeToAny.root(node),
             Jackson3NodeToAny.value(node.get("from")),
             Jackson3NodeToAny.value(node.get("dest")),
         )
