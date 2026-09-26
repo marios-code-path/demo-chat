@@ -52,11 +52,15 @@ class UserCommands<T : Any>(
             .thenReturn(key)
             .block()
     }
-    fun getKV(key: T): String? =
-        verifier.resolve(key, ChatDomain.KEY_VALUE_PAIR)
-            .flatMap { coreServices.keyValuePersistence().get(it.key) }
+    fun getKV(key: T): String? {
+        // The client lookup blocks, so it runs here on the command thread. The
+        // resolve answer runs the chain on a Netty thread, which refuses a block.
+        val store = coreServices.keyValuePersistence()
+        return verifier.resolve(key, ChatDomain.KEY_VALUE_PAIR)
+            .flatMap { store.get(it.key) }
             .map { kv -> "${kv.key.id} -> ${kv.data}"}
             .block()
+    }
     fun allKV(): MutableList<String>? =
         coreServices
             .keyValuePersistence()

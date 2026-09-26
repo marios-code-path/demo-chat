@@ -40,21 +40,26 @@ class TopicCommands<T : Any>(
     ) {
         val identity = identity(userId)
 
-        topicService
-            .addRoom(ByStringRequest(name))
-            .flatMap { topicKey ->
-                authorizationService
-                    .authorize(
-                        // The grant key is a placeholder under the AUTH_METADATA root. The
-                        // creator resolves in USER through the server registry. C61, C62.
-                        AuthMetadata.create(
-                            Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
-                            verifier.resolve(identity, ChatDomain.USER).block()!!.key,
-                            topicKey,
-                            "*",
-                            Long.MAX_VALUE
-                        ), true
-                    )
+        // The creator resolves in USER through the server registry before the
+        // room exists. An unknown creator creates no room. No call blocks
+        // inside the chain, because a remote answer runs it on a Netty thread.
+        verifier.resolve(identity, ChatDomain.USER)
+            .flatMap { creator ->
+                topicService
+                    .addRoom(ByStringRequest(name))
+                    .flatMap { topicKey ->
+                        authorizationService
+                            .authorize(
+                                // The grant key is a placeholder under the AUTH_METADATA root. C61, C62.
+                                AuthMetadata.create(
+                                    Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
+                                    creator.key,
+                                    topicKey,
+                                    "*",
+                                    Long.MAX_VALUE
+                                ), true
+                            )
+                    }
             }
             .block()
     }
