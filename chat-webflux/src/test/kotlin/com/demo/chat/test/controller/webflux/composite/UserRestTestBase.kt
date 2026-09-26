@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatUserServiceController
 import com.demo.chat.domain.Key
@@ -34,7 +36,7 @@ class LongUserRestTests : UserRestTestBase<Long>(
     { 1001L },
     {
         User.create(
-            Key.funKey(1001L), "TestName", "TestHandle", "http://testUri"
+            TestKeys.key(1001L), "TestName", "TestHandle", "http://testUri"
         )
     }
 )

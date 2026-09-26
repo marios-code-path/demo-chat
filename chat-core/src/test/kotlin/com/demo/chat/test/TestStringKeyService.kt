@@ -48,6 +48,13 @@ class TestGeneratorKeyService<T>(
         rootKeys?.of(domain)?.id?.let { it!! }
             ?: roots.computeIfAbsent(domain) { generator.nextId()!! }
 
+    /** This method records [id] under the root of [domain], as if this registry had minted it. */
+    fun register(id: T & Any, domain: ChatDomain): Key<T> {
+        val root = rootIdOf(domain)
+        registry[id] = root
+        return Key.of<T>(id, root)
+    }
+
     override fun key(domain: ChatDomain): Mono<out Key<T>> = Mono.fromCallable {
         val id = generator.nextId()!!
         val root = rootIdOf(domain)

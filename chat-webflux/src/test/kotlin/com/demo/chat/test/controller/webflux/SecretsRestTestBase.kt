@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.controller.webflux.SecretsRestController
@@ -30,7 +32,7 @@ import reactor.core.publisher.Mono
 
 @ContextConfiguration(classes = [TestLongSecretsStoreBeans::class, TestLongKeyServiceBeans::class,
     LongUserDetailsConfiguration::class, WebFluxTestConfiguration::class, SecretsRestController::class])
-class LongSecretsRestTestBase: SecretsRestTestBase<Long>( { Key.funKey(1L) })
+class LongSecretsRestTestBase: SecretsRestTestBase<Long>( { TestKeys.key(1L) })
 
 @Disabled
 @WebFluxTest
@@ -60,7 +62,7 @@ open class SecretsRestTestBase<T>(
             .willReturn(Mono.empty())
 
         BDDMockito
-            .given(keyService.key<Any>(anyObject()))
+            .given(keyService.key(anyObject()))
             .willReturn(Mono.just(keySupplier()))
 
         client

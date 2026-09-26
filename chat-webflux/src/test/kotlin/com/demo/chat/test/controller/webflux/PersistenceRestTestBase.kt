@@ -1,5 +1,11 @@
 package com.demo.chat.test.controller.webflux
 
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.controller.webflux.config.WebFluxTestDomains
+
+import com.demo.chat.test.TestGeneratorKeyService
+
 import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.PersistenceStore
@@ -38,6 +44,15 @@ open class PersistenceRestTestBase<T, E : Any>(
 
     @Autowired
     private lateinit var client: WebTestClient
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The path id 1001 resolves in the domain of this store, as a minted id does. */
+    @BeforeEach
+    fun `register the path id`() {
+        registry.register(1001L, WebFluxTestDomains.of(entityPath))
+    }
 
     @Test
     fun `should add`() {

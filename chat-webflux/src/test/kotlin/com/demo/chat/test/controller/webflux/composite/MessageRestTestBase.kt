@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatMessageServiceController
 import com.demo.chat.domain.Key
@@ -74,7 +76,7 @@ open class MessageRestTestBase<T>(
             .willReturn(
                 Flux.just(
                     Message.create(
-                        MessageKey.Factory.create(idSupply(), idSupply(), idSupply()),
+                        TestKeys.message(idSupply(), idSupply(), idSupply()),
                         "TEST", true
                     )
                 ).repeat(3)
@@ -117,7 +119,7 @@ open class MessageRestTestBase<T>(
 
         BDDMockito
             .given(service.send(anyObject()))
-            .willReturn(Mono.just(Key.funKey(messageId)))
+            .willReturn(Mono.just(TestKeys.key(messageId)))
 
         client
             .post()
@@ -155,7 +157,7 @@ open class MessageRestTestBase<T>(
             .willReturn(
                 Mono.just(
                     Message.create(
-                        MessageKey.create(idSupply(), idSupply(), idSupply()),
+                        TestKeys.message(idSupply(), idSupply(), idSupply()),
                         "TEST",
                         true
                     )

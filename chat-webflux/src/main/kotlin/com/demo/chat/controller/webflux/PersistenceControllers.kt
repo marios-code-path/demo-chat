@@ -1,5 +1,9 @@
 package com.demo.chat.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.core.mapping.KeyValueStoreRestMapping
 import com.demo.chat.controller.webflux.core.mapping.PersistenceRestMapping
@@ -15,18 +19,22 @@ import reactor.core.publisher.Mono
 
 open class PersistenceRestController<T, E : Any>(
     private val that: PersistenceStore<T, E>,
-    private val typeUtil: TypeUtil<T>
+    private val typeUtil: TypeUtil<T>,
+    private val verifier: KeyVerifier<T>,
+    private val domain: ChatDomain,
 ) : PersistenceRestMapping<T, E>,
     PersistenceStore<T, E> by that {
 
     override fun typeUtil(): TypeUtil<T> = typeUtil
+    override fun verifier(): KeyVerifier<T> = verifier
+    override fun domain(): ChatDomain = domain
 }
 
 @RestController
 @RequestMapping("/persist/user")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
-    PersistenceRestController<T, User<T>>(s.userPersistence(), typeUtil) {
+class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>, verifier: KeyVerifier<T>) :
+    PersistenceRestController<T, User<T>>(s.userPersistence(), typeUtil, verifier, ChatDomain.USER) {
 
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
@@ -40,14 +48,14 @@ class UserPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, type
 @RestController
 @RequestMapping("/persist/message")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
-    PersistenceRestController<T, Message<T, V>>(s.messagePersistence(), typeUtil) {
+class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>, verifier: KeyVerifier<T>) :
+    PersistenceRestController<T, Message<T, V>>(s.messagePersistence(), typeUtil, verifier, ChatDomain.MESSAGE) {
 
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun addMessage(@RequestBody req: MessageSendRequest<T, V>) = key()
         .flatMap { key ->
-            add(Message.create(MessageKey.create(key.id, req.from, req.dest), req.msg, true))
+            add(Message.create(MessageKey.of(key.id, key.root, req.from, req.dest), req.msg, true))
                 .thenReturn(key)
         }
 }
@@ -55,8 +63,8 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, t
 @RestController
 @RequestMapping("/persist/topic")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
-    PersistenceRestController<T, MessageTopic<T>>(s.topicPersistence(), typeUtil) {
+class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>, verifier: KeyVerifier<T>) :
+    PersistenceRestController<T, MessageTopic<T>>(s.topicPersistence(), typeUtil, verifier, ChatDomain.MESSAGE_TOPIC) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun addTopic(@RequestBody req: ByStringRequest) = key()
@@ -69,8 +77,8 @@ class TopicPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typ
 @RestController
 @RequestMapping("/persist/membership")
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
-class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>) :
-    PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence(), typeUtil) {
+class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, typeUtil: TypeUtil<T>, verifier: KeyVerifier<T>) :
+    PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence(), typeUtil, verifier, ChatDomain.TOPIC_MEMBERSHIP) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun addMembership(@RequestBody req: MembershipRequest<T>) = key()

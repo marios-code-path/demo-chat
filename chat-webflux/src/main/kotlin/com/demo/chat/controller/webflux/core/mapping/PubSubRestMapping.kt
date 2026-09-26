@@ -1,5 +1,7 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.security.ChatUserDetails
@@ -46,11 +48,11 @@ interface TopicPubSubRestMapping<T : Any> : TopicPubSubService<T, String> {
         @AuthenticationPrincipal user: ChatUserDetails<T>
     ): Mono<String> =
         keyService()
-            .key(MessageKey::class.java)
+            .key(ChatDomain.MESSAGE)
             .flatMap { key ->
                 sendMessage(
                     Message.create(
-                        MessageKey.create(key.id, user.userId(), topic),
+                        MessageKey.of(key.id, key.root, user.userId(), topic),
                         message,
                         true
                     )

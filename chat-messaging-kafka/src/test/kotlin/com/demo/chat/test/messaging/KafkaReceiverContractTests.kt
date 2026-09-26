@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.StringUtil
@@ -57,7 +59,7 @@ class KafkaReceiverContractTests {
     }
 
     private fun messageOf(body: String): Message<String, String> =
-        Message.create(MessageKey.create("MSG-$body", "FROM", topic), body, true)
+        Message.create(TestKeys.message("MSG-$body", "FROM", topic), body, true)
 
     private fun recordOf(body: String, offset: ReceiverOffset): ReceiverRecord<String, Message<String, String>> {
         val record = mock<ReceiverRecord<String, Message<String, String>>>()

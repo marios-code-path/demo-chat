@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.controller
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.security.access.core.SecretsStoreAccess
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
@@ -54,7 +56,7 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
             requester
                 .route("get")
                 .metadata(UsernamePasswordMetadata("user", "password"), SIMPLE_AUTH)
-                .data(Mono.just(Key.funKey(1L)), Key::class.java)
+                .data(Mono.just(TestKeys.key(1L)), Key::class.java)
 
                 .retrieveMono(String::class.java)
         ).expectError()

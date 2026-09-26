@@ -1,5 +1,13 @@
 package com.demo.chat.test.controller.webflux.config
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.Jackson2MapperConfiguration
@@ -86,6 +94,22 @@ class WebFluxTestConfiguration : WebFluxConfigurer {
         )
     }
 
+
+    /**
+     * The key registry of the slice tests. A test registers each path id under
+     * its domain, so the route resolves it as production does. See
+     * `CHAT-avduuqwp`.
+     */
+    @Bean
+    fun testRootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
+    @Bean
+    fun testKeyRegistry(testRootKeys: RootKeys<Long>): TestGeneratorKeyService<Long> =
+        FakeKeyServices.long(testRootKeys)
+
+    @Bean
+    fun testKeyVerifier(registry: TestGeneratorKeyService<Long>, testRootKeys: RootKeys<Long>): KeyVerifier<Long> =
+        KeyVerifier(registry, testRootKeys)
 
     @Bean
     fun filterChain(): SecurityWebFilterChain? = ServerHttpSecurity.http()

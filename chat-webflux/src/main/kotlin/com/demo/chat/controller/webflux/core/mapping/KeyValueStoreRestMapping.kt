@@ -1,5 +1,8 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MembershipRequest
@@ -26,11 +29,11 @@ interface KeyValueStoreRestMapping<T> :
     // inherited from PersistenceRestMapping, converts it to the store's key type.
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addKv(@RequestBody req: KVRequest) = key()
-        .flatMap { key ->
-            add(KeyValuePair.create(Key.funKey(typeUtil().assignFrom(req.key)), req.data))
-                .thenReturn(key)
-        }
+    fun addKv(@RequestBody req: KVRequest): Mono<Key<T>> =
+        // The caller mints first, so the key must resolve in KEY_VALUE_PAIR.
+        // An unknown id is refused. C68.
+        verifier().resolve(typeUtil().assignFrom(req.key), ChatDomain.KEY_VALUE_PAIR)
+            .flatMap { add(KeyValuePair.create(it.key, req.data)).thenReturn(it.key) }
 }
 
 data class KVRequest(val key: Any, val data: Any)

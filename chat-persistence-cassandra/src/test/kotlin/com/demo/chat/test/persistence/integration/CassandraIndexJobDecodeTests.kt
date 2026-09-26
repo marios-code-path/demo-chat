@@ -60,6 +60,7 @@ class CassandraIndexJobDecodeTests {
         val key = TestKeys.key(ids.incrementAndGet())
         val job = IndexJob(
             key = key,
+            topicKey = TestKeys.key(900900L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",

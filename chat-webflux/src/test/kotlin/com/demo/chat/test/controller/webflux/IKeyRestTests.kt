@@ -1,8 +1,16 @@
 package com.demo.chat.test.controller.webflux
 
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.webflux.IKeyRestController
-import com.demo.chat.controller.webflux.core.mapping.KindRequest
+import com.demo.chat.controller.webflux.core.mapping.DomainRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.TestLongKeyServiceBeans
@@ -37,6 +45,15 @@ class IKeyRestTests {
     private lateinit var client: WebTestClient
 
     @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The path id 1001 is a registered id. */
+    @BeforeEach
+    fun `register the path id`() {
+        registry.register(1001L, ChatDomain.USER)
+    }
+
+    @Autowired
     private lateinit var beans: KeyServiceBeans<Long>
 
     @Test
@@ -44,13 +61,13 @@ class IKeyRestTests {
         val testKeyService = beans.keyService()
 
         BDDMockito
-            .given(testKeyService.key<Any>(anyObject()))
-            .willReturn(Mono.just(Key.funKey(1001L)))
+            .given(testKeyService.key(anyObject()))
+            .willReturn(Mono.just(TestKeys.key(1001L)))
 
         client
             .post()
             .uri("/key/new")
-            .bodyValue(KindRequest("java.lang.String"))
+            .bodyValue(DomainRequest(ChatDomain.USER))
             .exchange()
             .expectStatus().isCreated
             .expectHeader()
@@ -65,6 +82,18 @@ class IKeyRestTests {
                     SpringCloudContractRestDocs.dslContract()
                 )
             )
+    }
+
+    /** A mint names a domain from the closed list. Any other value fails Jackson binding, and no class loads. */
+    @Test
+    fun `a mint with a class name is refused with 400`() {
+        client
+            .post()
+            .uri("/key/new")
+            .contentType(MediaType.APPLICATION_JSON)
+            .bodyValue("""{"domain":"java.lang.Runtime"}""")
+            .exchange()
+            .expectStatus().isBadRequest
     }
 
     @Test

@@ -1,5 +1,7 @@
 package com.demo.chat.test.recall.controller
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.composite.mapping.MessageRecallControllerMapping
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.MessageKey
@@ -51,7 +53,7 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
                 Mono.just(
                     MessageRecallResult(
                         indexComplete = true,
-                        hits = listOf(MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9)),
+                        hits = listOf(MessageRecallHit(TestKeys.message(10L, 20L, 30L), 0.9)),
                     )
                 )
             )
@@ -103,7 +105,7 @@ class MessageRecallControllerTests : RSocketTestBase("user", "password") {
                 Mono.just(
                     MessageRecallResult(
                         indexComplete = true,
-                        hits = listOf(MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.4)),
+                        hits = listOf(MessageRecallHit(TestKeys.message(11L, 20L, 30L), 0.4)),
                     )
                 )
             )

@@ -1,5 +1,9 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.IKeyService
@@ -15,21 +19,30 @@ interface IKeyRestMapping<T> : IKeyService<T> {
     // as the String it is on the wire and typeUtil() converts it to the key type.
     fun typeUtil(): TypeUtil<T>
 
+    fun verifier(): KeyVerifier<T>
+
     @PostMapping("/new",
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun restKey(@RequestBody req: KindRequest): Mono<out Key<T>> = key(Class.forName(req.kind))
+    fun restKey(@RequestBody req: DomainRequest): Mono<out Key<T>> = key(req.domain)
 
     @DeleteMapping("/rem/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun restRem(@PathVariable id: String): Mono<Void> = rem(Key.funKey(typeUtil().fromString(id)))
+    fun restRem(@PathVariable id: String): Mono<Void> =
+        verifier().resolve(typeUtil().fromString(id), null).flatMap { rem(it.key) }
 
     @GetMapping("/exists/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun restExists(@PathVariable id: String): Mono<Boolean> = exists(Key.funKey(typeUtil().fromString(id)))
+    fun restExists(@PathVariable id: String): Mono<Boolean> =
+        verifier().resolve(typeUtil().fromString(id), null).flatMap { exists(it.key) }.onErrorReturn(false)
 
 }
 
-data class KindRequest(val kind: String)
+/**
+ * A mint request names a domain from the closed list. Jackson refuses any
+ * other value with 400, so no class name reaches a class loader. See
+ * `CHAT-avduuqwp`, D3 of section D.
+ */
+data class DomainRequest(val domain: ChatDomain)

@@ -1,5 +1,13 @@
 package com.demo.chat.test.controller.webflux
 
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.KeyValueStoreRestController
 import com.demo.chat.domain.Key
@@ -44,6 +52,15 @@ open class LongTypeUtilConfiguration {
 )
 class KvRequestBindingTests(@Autowired beans: PersistenceServiceBeans<Long, String>) {
 
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The id 1001 is registered in KEY_VALUE_PAIR, as a minted id is. See CHAT-avduuqwp. */
+    @BeforeEach
+    fun `register the id`() {
+        registry.register(1001L, ChatDomain.KEY_VALUE_PAIR)
+    }
+
     private val store = beans.keyValuePersistence()
 
     @Autowired
@@ -60,7 +77,7 @@ class KvRequestBindingTests(@Autowired beans: PersistenceServiceBeans<Long, Stri
             }
 
         BDDMockito.given(store.key())
-            .willReturn(Mono.just(Key.funKey(1001L)))
+            .willReturn(Mono.just(TestKeys.key(1001L)))
 
         client
             .put()

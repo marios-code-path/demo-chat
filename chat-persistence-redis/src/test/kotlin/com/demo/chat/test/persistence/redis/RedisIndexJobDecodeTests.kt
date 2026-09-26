@@ -50,6 +50,7 @@ class RedisIndexJobDecodeTests(
         val key = TestKeys.key(UUID.randomUUID())
         val job = IndexJob(
             key = key,
+            topicKey = TestKeys.key(UUID.randomUUID()),
             nodeId = 7,
             keyType = "uuid",
             incarnationId = "incarnation-a",

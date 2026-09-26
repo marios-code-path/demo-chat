@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatTopicServiceController
 import com.demo.chat.domain.*
@@ -30,8 +32,8 @@ import reactor.core.publisher.Mono
     classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatTopicServiceController::class]
 )
 class LongTopicRestTests : TopicRestTestBase<Long>(
-    { Key.funKey(1001L) },
-    { MessageTopic.create(Key.funKey(1L), "TESTTOPIC") }
+    { TestKeys.key(1001L) },
+    { MessageTopic.create(TestKeys.key(1L), "TESTTOPIC") }
 )
 
 @Disabled

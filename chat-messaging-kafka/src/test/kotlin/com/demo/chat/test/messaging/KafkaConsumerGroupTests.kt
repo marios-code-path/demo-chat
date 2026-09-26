@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.Jackson2MapperConfiguration
@@ -157,7 +159,7 @@ class KafkaConsumerGroupTests @Autowired constructor(
     }
 
     private fun messageOn(topic: String) = Message.create(
-        MessageKey.create(UUID.randomUUID().toString(), "a-user", topic),
+        TestKeys.message(UUID.randomUUID().toString(), "a-user", topic),
         "a-payload",
         true,
     )
