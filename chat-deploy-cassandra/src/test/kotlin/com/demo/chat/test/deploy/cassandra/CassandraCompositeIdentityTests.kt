@@ -1,5 +1,9 @@
 package com.demo.chat.test.deploy.cassandra
 
+import com.demo.chat.test.TestLongKeyService
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.deploy.cassandra.CompositeServiceConfiguration
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -93,7 +97,7 @@ class CassandraCompositeIdentityTests {
     private fun identityAt(context: SecurityContext?): Key<Long>? {
         val broker = RecordingAccessBroker()
         val beans = CompositeServiceConfiguration()
-            .serviceAccessCompositeServiceAccessBeans(broker, rootKeys(), composedBeans())
+            .serviceAccessCompositeServiceAccessBeans(broker, rootKeys(), composedBeans(), TestLongKeyService())
 
         run(beans.topicService().addRoom(ByStringRequest("a-room")).then(), context)
 
@@ -148,7 +152,7 @@ class CassandraCompositeIdentityTests {
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
         mapOf(ChatDomain.MESSAGE_TOPIC to TOPIC_DOMAIN_KEY, ChatDomain.USER to USER_DOMAIN_KEY),
-        admin = Key.funKey(9999L),
+        admin = TestKeys.key(9999L),
         anon = ANON_KEY
     )
 
@@ -163,13 +167,16 @@ class CassandraCompositeIdentityTests {
         override fun hasAccessByKey(
             principal: Key<Long>, key: Key<Long>, action: String
         ): Mono<Boolean> = error("These tests never call hasAccessByKey")
+
+        override fun hasAccessByKeyId(principal: Long, key: Long, action: String): Mono<Boolean> =
+            error("These tests never call hasAccessByKeyId")
     }
 
     private companion object {
-        val ANON_KEY: Key<Long> = Key.funKey(1L)
-        val USER_KEY: Key<Long> = Key.funKey(2L)
-        val ROOM_KEY: Key<Long> = Key.funKey(3L)
-        val TOPIC_DOMAIN_KEY: Key<Long> = Key.funKey(4L)
-        val USER_DOMAIN_KEY: Key<Long> = Key.funKey(5L)
+        val ANON_KEY: Key<Long> = TestKeys.key(1L)
+        val USER_KEY: Key<Long> = TestKeys.key(2L)
+        val ROOM_KEY: Key<Long> = TestKeys.key(3L)
+        val TOPIC_DOMAIN_KEY: Key<Long> = TestKeys.key(4L)
+        val USER_DOMAIN_KEY: Key<Long> = TestKeys.key(5L)
     }
 }

@@ -119,7 +119,11 @@ class VectorIndexJobStoreImpl<T : Any, V, Q>(
                 // Key equality reads the root, so a reference with another root does not match.
                 if (job.topicKey == topicKey) Mono.just(job)
                 else Mono.error(
-                    JobLookupException(JobLookupFault.TOPIC_MISMATCH, "The job '${job.key}' names topic '${job.topicKey}', not '$topicKey'.")
+                    JobLookupException(
+                        JobLookupFault.TOPIC_MISMATCH,
+                        "The job '${job.key}' names topic '${job.topicKey}' with root '${job.topicKey.root}', " +
+                            "not topic '$topicKey' with root '${topicKey.root}'.",
+                    )
                 )
             }
 

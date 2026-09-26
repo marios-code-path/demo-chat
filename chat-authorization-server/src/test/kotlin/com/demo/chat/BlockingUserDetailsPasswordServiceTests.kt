@@ -1,5 +1,6 @@
 package com.demo.chat
 
+
 import com.demo.chat.config.deploy.authserv.BlockingUserDetailsServiceConfiguration
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
@@ -77,7 +78,8 @@ class BlockingUserDetailsPasswordServiceTests {
         const val PASSWORD = "a-supplied-password"
 
         fun user(): User<Long> =
-            User.create(Key.funKey(1L), "TestUser", HANDLE, "http://test")
+            // This module has no test registry. The user key carries a fixed USER root.
+            User.create(Key.of(1L, 9L), "TestUser", HANDLE, "http://test")
     }
 
     /** Records every credential that reaches the store. */

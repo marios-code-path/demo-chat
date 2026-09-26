@@ -7,6 +7,7 @@ import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.service.core.KeyVerifier
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
@@ -22,14 +23,19 @@ interface SecretsRestMapping<T> : SecretsStore<T> {
     /** A credential belongs to a user, so each id resolves in USER. See `CHAT-avduuqwp`, C72 to C74. */
     fun verifier(): KeyVerifier<T>
 
+    // A path variable of the generic type T erases to Object, so Spring binds
+    // the String of the wire. typeUtil() converts it to the key type before
+    // the registry reads it.
+    fun typeUtil(): TypeUtil<T>
+
     @GetMapping("/{id}")
-    fun restGetStoredCredentials(@PathVariable id: T): Mono<String> =
-        verifier().resolve(id, ChatDomain.USER).flatMap { getStoredCredentials(it.key) }
+    fun restGetStoredCredentials(@PathVariable id: String): Mono<String> =
+        verifier().resolve(typeUtil().fromString(id), ChatDomain.USER).flatMap { getStoredCredentials(it.key) }
 
     @PutMapping("/add/{id}")
     @ResponseStatus(HttpStatus.CREATED)
-    fun restAddCredentialWithId(@PathVariable id: T, @RequestBody cred: String): Mono<Void> =
-        verifier().resolve(id, ChatDomain.USER).flatMap { addCredential(KeyCredential(it.key, cred)) }
+    fun restAddCredentialWithId(@PathVariable id: String, @RequestBody cred: String): Mono<Void> =
+        verifier().resolve(typeUtil().fromString(id), ChatDomain.USER).flatMap { addCredential(KeyCredential(it.key, cred)) }
 
     @PutMapping("/add", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
@@ -39,6 +45,6 @@ interface SecretsRestMapping<T> : SecretsStore<T> {
         Mono.error(UnsupportedDomainException("KeyCredential"))
 
     @PostMapping("/compare/{id}")
-    fun restCompareSecret(@PathVariable id: T, @RequestBody cred: String): Mono<Boolean> =
-        verifier().resolve(id, ChatDomain.USER).flatMap { compareSecret(KeyCredential(it.key, cred)) }
+    fun restCompareSecret(@PathVariable id: String, @RequestBody cred: String): Mono<Boolean> =
+        verifier().resolve(typeUtil().fromString(id), ChatDomain.USER).flatMap { compareSecret(KeyCredential(it.key, cred)) }
 }

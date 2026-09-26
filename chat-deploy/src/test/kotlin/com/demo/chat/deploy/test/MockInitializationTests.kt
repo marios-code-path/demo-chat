@@ -24,6 +24,7 @@ import org.mockito.BDDMockito
 import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.springframework.security.crypto.password.PasswordEncoder
+import reactor.core.publisher.Flux
 import reactor.core.publisher.Hooks
 import reactor.core.publisher.Mono
 
@@ -66,6 +67,42 @@ open class MockInitializationTests<T>(
                 .assertThat(summary)
                 .contains(it.wireName)
         }
+    }
+
+    private fun oneUser() = UserInitializationProperties(
+        "noop",
+        InitalRoles(arrayOf("READ"), "*", arrayOf<RoleDefinition>()),
+        mapOf(Pair("Admin", UserDefinition("Admin", "AdminUser", "http://foo.bar.img", "changeme"))),
+    )
+
+    private fun loadedRoots() = RootKeys<T>().apply {
+        loadDomains(ChatDomain.entries.associateWith { TestKeys.key(keyGenerator.nextId()) })
+    }
+
+    // No placeholder key stands in for a user. See CHAT-avduuqwp, C16.
+    @Test
+    fun `initialization fails when a user create answers empty`() {
+        BDDMockito.given(userService.addUser(anyObject())).willReturn(Mono.empty())
+
+        Assertions
+            .assertThatThrownBy {
+                InitialUsersService(userService, authorizationService, secretsStore, oneUser(), passwordEncoder, typeUtil)
+                    .initializeUsers(loadedRoots())
+            }
+            .hasMessageContaining("Cannot initialize user AdminUser")
+    }
+
+    @Test
+    fun `initialization fails when a user cannot be created or found`() {
+        BDDMockito.given(userService.addUser(anyObject())).willReturn(Mono.error(IllegalStateException("exists")))
+        BDDMockito.given(userService.findByUsername(anyObject())).willReturn(Flux.empty())
+
+        Assertions
+            .assertThatThrownBy {
+                InitialUsersService(userService, authorizationService, secretsStore, oneUser(), passwordEncoder, typeUtil)
+                    .initializeUsers(loadedRoots())
+            }
+            .hasMessageContaining("Cannot initialize user AdminUser")
     }
 
     @Test

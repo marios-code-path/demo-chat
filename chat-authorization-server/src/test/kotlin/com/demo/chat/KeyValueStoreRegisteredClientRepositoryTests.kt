@@ -33,10 +33,15 @@ class KeyValueStoreRegisteredClientRepositoryTests {
         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
         .build()
 
-    private class RecordingStore : KeyValueStore<UUID, Any> {
-        val added = mutableListOf<KeyValuePair<UUID, Any>>()
+    private val kvRoot: UUID = UUID.randomUUID()
 
-        override fun key(): Mono<out Key<UUID>> = Mono.empty()
+    /** Mints [minted] keys under [kvRoot]. With `mints = false` it mints nothing. */
+    private inner class RecordingStore(private val mints: Boolean = true) : KeyValueStore<UUID, Any> {
+        val added = mutableListOf<KeyValuePair<UUID, Any>>()
+        val minted = mutableListOf<Key<UUID>>()
+
+        override fun key(): Mono<out Key<UUID>> =
+            if (mints) Mono.fromSupplier { Key.of(UUID.randomUUID(), kvRoot).also { minted.add(it) } } else Mono.empty()
         override fun add(ent: KeyValuePair<UUID, Any>): Mono<Void> =
             Mono.fromRunnable { added.add(ent) }
 
@@ -45,6 +50,7 @@ class KeyValueStoreRegisteredClientRepositoryTests {
         override fun all(): Flux<out KeyValuePair<UUID, Any>> = Flux.empty()
     }
 
+    /** Answers the `id` field from what it indexed, as the production index does. */
     private class RecordingIndex : KeyValueIndexService<UUID, IndexSearchRequest> {
         val added = mutableListOf<KeyValuePair<UUID, Any>>()
 
@@ -52,8 +58,14 @@ class KeyValueStoreRegisteredClientRepositoryTests {
             Mono.fromRunnable { added.add(entity) }
 
         override fun rem(key: Key<UUID>): Mono<Void> = Mono.empty()
-        override fun findBy(query: IndexSearchRequest): Flux<out Key<UUID>> = Flux.empty()
-        override fun findUnique(query: IndexSearchRequest): Mono<out Key<UUID>> = Mono.empty()
+        override fun findBy(query: IndexSearchRequest): Flux<out Key<UUID>> = Flux.defer {
+            Flux.fromIterable(
+                added.filter { query.first == "id" && (it.data as RegisteredClient).id == query.second }
+                    .map { it.key }
+                    .distinct()
+            )
+        }
+        override fun findUnique(query: IndexSearchRequest): Mono<out Key<UUID>> = findBy(query).singleOrEmpty()
     }
 
     @Test
@@ -65,7 +77,43 @@ class KeyValueStoreRegisteredClientRepositoryTests {
 
         Assertions.assertThat(store.added).hasSize(1)
         Assertions.assertThat(index.added).hasSize(1)
-        Assertions.assertThat(store.added.first().key.id).isEqualTo(clientId)
         Assertions.assertThat(index.added.first().data).isEqualTo(client)
+    }
+
+    // A client id is text, not a key. The first save stores the client under a
+    // minted KEY_VALUE_PAIR key. See CHAT-avduuqwp, E11.
+    @Test
+    fun `the first save stores the client under a minted key`() {
+        val store = RecordingStore()
+
+        KeyValueStoreRegisteredClientRepository(RecordingIndex(), store, UUIDUtil()).save(client)
+
+        Assertions.assertThat(store.added.single().key).isEqualTo(store.minted.single())
+        Assertions.assertThat(store.added.single().key.root).isEqualTo(kvRoot)
+        Assertions.assertThat(store.added.single().key.id).isNotEqualTo(clientId)
+    }
+
+    @Test
+    fun `a later save replaces the entry under the key of the first save`() {
+        val store = RecordingStore()
+        val repository = KeyValueStoreRegisteredClientRepository(RecordingIndex(), store, UUIDUtil())
+
+        repository.save(client)
+        repository.save(client)
+
+        Assertions.assertThat(store.minted).hasSize(1)
+        Assertions.assertThat(store.added.map { it.key }).containsOnly(store.minted.single())
+    }
+
+    @Test
+    fun `a store that mints no key fails the save`() {
+        val store = RecordingStore(mints = false)
+
+        Assertions
+            .assertThatThrownBy {
+                KeyValueStoreRegisteredClientRepository(RecordingIndex(), store, UUIDUtil()).save(client)
+            }
+            .hasMessageContaining("minted no key")
+        Assertions.assertThat(store.added).isEmpty()
     }
 }

@@ -1,5 +1,11 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.domain.UnsupportedDomainException
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
@@ -29,10 +35,16 @@ class UserCommands<T : Any>(
 
     private val userService: ChatUserService<T> = compositeServices.userService()
     private val passwdStore: SecretsStore<T> = coreServices.secretsStore()
+
+    /**
+     * An id that a user types resolves through the server registry, so each
+     * call carries a key with its stored root. See `CHAT-avduuqwp`, C63 to C66.
+     */
+    private val verifier = KeyVerifier(coreServices.keyService(), rootKeys)
     fun kv(value: String): Key<T>? {
         val key = coreServices
             .keyService()
-            .key(KeyValuePair::class.java)
+            .key(ChatDomain.KEY_VALUE_PAIR)
             .block()!!
 
         return coreServices.keyValuePersistence()
@@ -41,9 +53,8 @@ class UserCommands<T : Any>(
             .block()
     }
     fun getKV(key: T): String? =
-        coreServices
-            .keyValuePersistence()
-            .get(Key.funKey(key))
+        verifier.resolve(key, ChatDomain.KEY_VALUE_PAIR)
+            .flatMap { coreServices.keyValuePersistence().get(it.key) }
             .map { kv -> "${kv.key.id} -> ${kv.data}"}
             .block()
     fun allKV(): MutableList<String>? =
@@ -53,8 +64,11 @@ class UserCommands<T : Any>(
             .map { kv -> "${kv.key.id} -> ${kv.data}" }
             .collectList()
             .block()
-    fun key(): T? =
-        coreServices.keyService().key(Key::class.java).block()?.id
+    /**
+     * A key with no domain cannot be minted. The command prints the refusal and
+     * returns. See `CHAT-avduuqwp`, the mint table of section C.
+     */
+    fun key(): String? = UnsupportedDomainException("Key").message
 
     fun userToString(user: User<T>): String = "${user.key.id}: ${user.handle}, ${user.name}, ${user.imageUri}\n"
     fun addUser(
@@ -107,7 +121,7 @@ class UserCommands<T : Any>(
         .concat(
             Mono.just(authMetaHeader),
             authorizationService
-                .getAuthorizationsForPrincipal(Key.funKey(identity(userId)))
+                .getAuthorizationsForPrincipal(verifier.resolve(identity(userId), ChatDomain.USER).block()!!.key)
                 .map(::authMetaToString)
         )
         .reduce { t, u -> t + u }
@@ -133,12 +147,15 @@ class UserCommands<T : Any>(
         val e: Long = java.lang.Long.parseLong(expireTime)
         val expiryTime = if (e == 1L) Long.MAX_VALUE else e
         keySvc
-            .key(AuthMetadata::class.java)
-            .map { metadataKey ->
+            .key(ChatDomain.AUTH_METADATA)
+            .zipWith(verifier.resolve(identity(userId), ChatDomain.USER))
+            .zipWith(verifier.resolve(typeUtil.fromString(targetUserId), null))
+            .map { keys ->
+                val metadataKey = keys.t1.t1
                 StringRoleAuthorizationMetadata(
                     metadataKey,
-                    Key.funKey(identity(userId)),
-                    Key.funKey(typeUtil.fromString(targetUserId)),
+                    keys.t1.t2.key,
+                    keys.t2.key,
                     role,
                     expiryTime
                 )

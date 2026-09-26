@@ -4,6 +4,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
+import com.demo.chat.service.vector.JobLookupException
 import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.vector.VectorCoveragePolicy
@@ -90,7 +91,9 @@ class VectorCoveragePolicyImpl<T>(
             )
             .next()
             .filter { job -> job.covers }
-            .onErrorResume { error ->
+            // A lookup fault reaches the caller as an error. Any other read
+            // failure logs and answers no coverage. See CHAT-avduuqwp, D3.
+            .onErrorResume({ error -> error !is JobLookupException }) { error ->
                 logger.error("Vector coverage read failed", error)
                 Mono.empty()
             }

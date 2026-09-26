@@ -1,5 +1,9 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
@@ -17,8 +21,10 @@ class TopicCommands<T : Any>(
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    rootKeys: RootKeys<T>
+    private val rootKeys: RootKeys<T>
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
+
+    private val verifier = KeyVerifier(coreServices.keyService(), rootKeys)
 
     fun topicToString(topic: MessageTopic<T>): String = "${topic.key.id} | ${topic.data}\n"
 
@@ -39,9 +45,11 @@ class TopicCommands<T : Any>(
             .flatMap { topicKey ->
                 authorizationService
                     .authorize(
+                        // The grant key is a placeholder under the AUTH_METADATA root. The
+                        // creator resolves in USER through the server registry. C61, C62.
                         AuthMetadata.create(
-                            Key.emptyKey(typeUtil.empty()),
-                            Key.funKey(identity),
+                            Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
+                            verifier.resolve(identity, ChatDomain.USER).block()!!.key,
                             topicKey,
                             "*",
                             Long.MAX_VALUE

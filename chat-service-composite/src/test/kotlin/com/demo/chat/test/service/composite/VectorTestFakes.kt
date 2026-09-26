@@ -163,7 +163,7 @@ internal class FakeMessagePersistence(
     /** Runs before each add. A test uses it to read state at write time. */
     var onAdd: (() -> Unit)? = null
 
-    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { TestKeys.key(nextId++) }
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.of(nextId++, fakeRoot(ChatDomain.MESSAGE)) }
     override fun add(ent: Message<Long, String>): Mono<Void> =
         Mono.delay(delay).then(
             Mono.defer {

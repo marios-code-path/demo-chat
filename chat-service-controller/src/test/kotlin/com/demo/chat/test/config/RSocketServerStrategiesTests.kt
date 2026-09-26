@@ -87,7 +87,7 @@ class RSocketServerStrategiesTests {
     fun `the production customizer decodes a Key`() {
         // The measured wire shape. Key carries its own @JsonTypeInfo wrapper.
         val decoded = decode(
-            """{"key":{"empty":false,"id":1001}}""",
+            """{"key":{"empty":false,"id":1001,"root":5001}}""",
             ResolvableType.forClass(Key::class.java),
         )
 
@@ -97,6 +97,7 @@ class RSocketServerStrategiesTests {
 
         val key = decoded as Key<*>
         assertThat(key.id).isEqualTo(1001L)
+        assertThat(key.root).isEqualTo(5001L)
         assertThat(key)
             .describedAs("a key with no from and no dest stays a Key")
             .isNotInstanceOf(MessageKey::class.java)
@@ -105,7 +106,7 @@ class RSocketServerStrategiesTests {
     @Test
     fun `the production customizer decodes a MessageKey`() {
         val decoded = decode(
-            """{"key":{"empty":false,"id":7,"from":10,"dest":20}}""",
+            """{"key":{"empty":false,"id":7,"root":5002,"from":10,"dest":20}}""",
             ResolvableType.forClass(Key::class.java),
         )
 

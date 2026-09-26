@@ -1,8 +1,9 @@
 package com.demo.chat.security.service
 
+import com.demo.chat.config.KeyServiceBeans
+
 import com.demo.chat.service.core.KeyVerifier
 
-import com.demo.chat.service.core.IKeyService
 
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -51,6 +52,8 @@ open class CoreAuthBeans<T, V, Q>(
     )
 
     @Bean
-    open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>, keyService: IKeyService<T>) =
-        AuthMetadataAccessBroker(authMan, KeyVerifier(keyService, rootKeys))
+    // A client composition reaches its key service through KeyServiceBeans and
+    // registers no IKeyService bean. Every composition registers KeyServiceBeans.
+    open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>, keyBeans: KeyServiceBeans<T>) =
+        AuthMetadataAccessBroker(authMan, KeyVerifier(keyBeans.keyService(), rootKeys))
 }

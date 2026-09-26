@@ -6,7 +6,6 @@ import com.demo.chat.test.controller.webflux.config.WebFluxTestDomains
 
 import com.demo.chat.test.TestGeneratorKeyService
 
-import com.demo.chat.controller.webflux.core.mapping.KindRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.test.anyObject
@@ -166,7 +165,6 @@ open class PersistenceRestTestBase<T, E : Any>(
         client
             .post()
             .uri("/persist/${entityPath}/key")
-            .bodyValue(KindRequest("java.lang.String"))
             .exchange()
             .expectStatus()
             .isCreated
