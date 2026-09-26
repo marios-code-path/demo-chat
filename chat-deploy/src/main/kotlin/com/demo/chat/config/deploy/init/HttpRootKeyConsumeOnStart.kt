@@ -15,6 +15,7 @@ import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.DependsOn
 import org.springframework.http.codec.json.Jackson2JsonDecoder
 import org.springframework.http.codec.json.Jackson2JsonEncoder
 import org.springframework.web.reactive.function.client.ExchangeFilterFunctions
@@ -26,7 +27,9 @@ import java.net.URI
 @ConditionalOnProperty(name = ["app.rootkeys.consume.scheme"], havingValue = "http")
 class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
 
+    /** `@DependsOn` lets the source check report a missing source before this bean reads it. */
     @Bean
+    @DependsOn("rootKeySource")
     fun <T> captureRootKeys(
         @Value("\${app.rootkeys.consume.source}") hostURI: String,
         typeUtil: TypeUtil<T>,

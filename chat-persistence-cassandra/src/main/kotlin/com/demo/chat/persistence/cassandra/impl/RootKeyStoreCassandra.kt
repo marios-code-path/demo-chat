@@ -21,7 +21,7 @@ class RootKeyStoreCassandra<T : Any>(private val template: ReactiveCassandraTemp
         .query("SELECT domain, id FROM root_keys") { row, _ ->
             val name = row.getString("domain")!!
             (ChatDomain.parse(name) ?: throw ChatException("The table root_keys names an unknown domain: $name")) to
-                (row.getObject("id") as T)
+                (row.getObject("id") as T? ?: throw ChatException("The table root_keys has no id for $name."))
         }
         .collectMap({ it.first }, { it.second })
 
@@ -30,7 +30,9 @@ class RootKeyStoreCassandra<T : Any>(private val template: ReactiveCassandraTemp
         .execute("INSERT INTO root_keys (domain, id) VALUES (?, ?) IF NOT EXISTS", domain.wireName, id)
         .then(
             template.reactiveCqlOperations
-                .query("SELECT id FROM root_keys WHERE domain = ?", { row, _ -> row.getObject("id") as T }, domain.wireName)
+                .query("SELECT id FROM root_keys WHERE domain = ?", { row, _ ->
+                    row.getObject("id") as T? ?: throw ChatException("The table root_keys has no id for ${domain.wireName}.")
+                }, domain.wireName)
                 .next()
         )
 }

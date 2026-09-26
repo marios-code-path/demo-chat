@@ -414,25 +414,37 @@ Mint calls with a class today:
 | D6 | `PersistenceStoreMapping.add(ent)`, RSocket | **new.** Verifies the entity key in the store domain before the store | T4 |
 | D7 | Request ids in `ByIdRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest` | resolved in the composite service, sites C39 to C60 | T3d, T4 |
 
-**Routes that T0 found, with no entry before. Each one needs owner review.**
-Each route takes a key or an id from a caller. The T4 route guard does not see
-it, because the guard checks only parameters of type `Key` and parameters with
-`@PathVariable`. The proposal column is a proposal, not a decision.
+**Routes that T0 found, with no entry before.** The owner decided them on
+2026-09-25. Each belongs to the existing verification work in T4. None is a
+separate feature, and none keeps a legacy path.
 
-| # | Route | Caller input | Proposal |
-|---|---|---|---|
-| D8 | RSocket `SecretsStoreMapping.addCredential`, `compareSecret` | a `KeyCredential` with an owner key | Verify the owner key in `USER` before the secrets store |
-| D9 | RSocket `PersistenceStoreMapping.typedByIds` | a `List<Key<T>>` | Verify each key in `KEY_VALUE_PAIR`. The route guard must also refuse a list of keys |
-| D10 | RSocket `TopicPubSubServiceMapping.sendMessage` | a `Message` with a caller key | Verify the message key in `MESSAGE`, and resolve `dest` in `MESSAGE_TOPIC` |
-| D11 | RSocket `TopicPubSubServiceMapping`: `subscribe`, `unsubscribe`, `unSubscribeAll`, `unSubscribeAllIn`, `receiveOn`, `exists`, `add`, `rem`, `getByUser`, `getUsersBy` | raw ids, and `MemberTopicRequest`, sent straight to the pub/sub service | Resolve each topic id in `MESSAGE_TOPIC`, and each member or user id in `USER` |
-| D12 | RSocket `IndexServiceController.add`, both controllers, and REST `IndexRestMapping.add` | an entity with a caller key, written to an index with no store write | Verify the entity key in the index domain before the index |
+| # | Route | Caller input | Required verification | Task |
+|---|---|---|---|---|
+| D8 | RSocket `SecretsStoreMapping.addCredential`, `compareSecret` | a `KeyCredential` with an owner key | Verify the credential owner key in `USER` before a credential read, write, or comparison | T4 |
+| D9 | RSocket `KeyValueStoreMapping.typedByIds` | a `List<Key<T>>` | Verify every input key in `KEY_VALUE_PAIR` before the bulk store call | T4 |
+| D10 | RSocket `TopicPubSubServiceMapping.sendMessage` | a `Message` with a caller key and caller ids | Verify the message key in `MESSAGE`. Resolve the sender in `USER`. Resolve the destination in `MESSAGE_TOPIC` | T4 |
+| D11 | RSocket `TopicPubSubServiceMapping`: `subscribe`, `unsubscribe`, `unSubscribeAll`, `unSubscribeAllIn`, `receiveOn`, `exists`, `add`, `rem`, `getByUser`, `getUsersBy` | raw ids, and `MemberTopicRequest` | Resolve each user or member id in `USER`. Resolve each topic id in `MESSAGE_TOPIC` | T4 |
+| D12 | RSocket `IndexServiceController.add`, both controllers, and REST `IndexRestMapping.add` | an entity with a caller key | Verify the entity key in the index domain before an external index write | T4 |
+
+**The D9 label in the T0 inventory was wrong.** `typedByIds` belongs to
+`KeyValueStoreMapping`, not to `PersistenceStoreMapping`. Both interfaces sit
+in the file `PersistenceStoreMapping.kt`.
+
+Four rules apply to every row:
+
+1. Invalid identity input fails verification. A bulk request does not filter
+   it out.
+2. Permission filtering stays a separate authorization contract.
+3. An empty input list needs no key lookup. It answers no entities.
+4. Domain verification grants no permission. It does not prove that a sender
+   is the authenticated caller.
 
 D6 covers the `KeyValuePair` variant of `PersistenceStoreMapping.add` too.
 
-**The route guard of T4 needs a wider rule.** A parameter whose type holds a
-`Key` inside it passes the current guard. That covers an entity, a
-`KeyCredential`, a `Message`, a list of keys, and a raw id that is not a path
-variable. The owner decides the rule before T4 starts.
+**The route guard of T4 reads a verification catalog.** The owner decided the
+rule on 2026-09-25. T4 step 7 states it. The earlier guard checked only
+parameters of type `Key` and parameters with `@PathVariable`. It could not see
+an entity, a `KeyCredential`, a `Message`, a list of keys, or a raw id.
 
 ### E. Every `add` path, and its key source
 
@@ -449,7 +461,7 @@ and are not listed. T0 step 2 measures again.
 | E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC`. **D2.** A separate key from the job key | T5 |
 | E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | M. **D2.** The job key is minted in `KEY_VALUE_PAIR` | T5 |
 | E7 | `ComposedJobRecordWriter.write`, `messagePersistence.add` | M, minted from the message store in `MessageReindexServiceImpl.emit` | T5 |
-| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. **T0 confirmed** that each key comes from `key()`. One observation for owner review: `addMessage` stores the caller ids `req.from` and `req.dest`, and `addMembership` stores `req.uid` and `req.roomId`. These are raw ids, not keys, so the key contract does not verify them | T5 |
+| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. **T0 confirmed** that each key comes from `key()`. One observation for owner review: `addMessage` stores the caller ids `req.from` and `req.dest`, and `addMembership` stores `req.uid` and `req.roomId`. These are raw ids, not keys. **The owner decided on 2026-09-25.** Resolve the message sender in `USER` and the destination in `MESSAGE_TOPIC`. Resolve the membership user in `USER` and the room in `MESSAGE_TOPIC` | T4, T5 |
 | E9 | `KeyValueStoreRestMapping` add | R, `KEY_VALUE_PAIR` | T4, T5 |
 | E10 | `PersistenceStoreMapping.add(ent)`, RSocket | R, the store domain | T4, T5 |
 | E11 | `KeyValueStoreRegisteredClientRepository.save` | M on first save, S after | T5 |
@@ -465,7 +477,7 @@ write, E12. T0 searched `addCredential` with `mcp__treesitter-mcp__find_usages`.
 |---|---|---|---|
 | E16 | `CoreAuthenticationService.setAuthentication`, from `CoreUserDetailsService.updatePassword` | S. `mcp__idea__analyze_calls` finds one production caller. It passes a `UserDetails` that a store read built | T5 |
 | E17 | `UserCommands.passwd` in `chat-shell` | The shell reads the user from the server, then sends the credential to the RSocket route of D8. The server verifies it there | T5 |
-| E18 | RSocket `SecretsStoreMapping.addCredential` | R. See D8. **Needs owner review** | T4, T5 |
+| E18 | RSocket `SecretsStoreMapping.addCredential` | R. See D8. **The owner decided on 2026-09-25.** Verify the owner key in `USER` before the write | T4, T5 |
 | E19 | REST `restAddCredential` | X. The mint is refused. See the mint table | T3d |
 
 **The count of add paths.** T0 measured the store and key-value `add` paths
@@ -823,6 +835,45 @@ object RootKeysFixture {
    `shell-scripts/test-flags.sh`. Confirm that both exit with 0.
 
 10. **Commit.** `git commit -am "Load stable roots. Add a root snapshot contract. (CHAT-avduuqwp, CHAT-bafkgkko)"`
+
+
+**Review corrections, 2026-09-25.** The owner review of `8eff96ee` found two
+defects. Both are corrected before T3a starts.
+
+1. **A malformed id became zero.** `TypeUtil.LongUtil.fromString` answers zero
+   for malformed or overflowing text. `RootIds.parse` now reads every root and
+   identity id that arrives as text. It accepts a value only when the value
+   writes back to the same text. It refuses the empty value of the key type.
+   The snapshot and the Redis store use it, on a read and on the read after a
+   conditional write. A snapshot parses every id before it loads one.
+   `RootKeys` refuses two domains that share an id, and Admin and Anon that
+   share an id.
+2. **A process could start with no roots.** `RootKeySource` now reads the
+   source of each process at context refresh:
+
+   | Setting | Source | Requirement |
+   |---|---|---|
+   | `app.rootkeys.consume.scheme` unset | `STORE` | a `RootKeyStore` and an `IKeyGenerator`, or the start fails |
+   | `kv` | `KV` | `app.kv.rootkeys` |
+   | `http` | `HTTP` | `app.rootkeys.consume.source` |
+   | `app.rootkeys.required=false` | `NONE` | no consume scheme |
+
+   Any other scheme fails the refresh with a named error. `NONE` is the one
+   explicit role that holds no roots. The authorization server declares it.
+   Its user lookup and its password upgrade read no root.
+   `AuthorizationCodeFlowTests` asserts that `RootKeys` stays empty while the
+   flow runs.
+
+`RootKeyStartupTests` in `chat-deploy` drives the Spring configuration. It
+covers these cases:
+
+- a missing store
+- an unsupported scheme
+- a store failure
+- incomplete roots
+- a missing generator
+- each consume scheme without its setting
+- the `NONE` role
 
 ---
 
@@ -1548,7 +1599,8 @@ FP: `CHAT-kliyrune`.
 - Modify: `chat-security/.../access/AuthMetadataAccessBroker.kt`, `SpringSecurityAccessBrokerService.kt`
 - Create: `chat-webflux/.../config/ResolvedKeyArgumentResolver.kt`, and the `@Resolved` annotation
 - Create: `chat-service-controller/.../config/rsocket/VerifiedKeyArgumentResolver.kt`
-- Modify: every D1, D2 and D6 route
+- Modify: every D1, D2, D6 and D8 to D12 route, and the E8 controllers
+- Create: `chat-service-controller/src/test/.../RouteVerificationCatalog.kt`
 - Test: `chat-security/src/test/.../VerificationBoundaryTests.kt`
 - Test: `chat-webflux/src/test/.../ResolvedKeyArgumentResolverTests.kt`
 - Test: `chat-service-controller/src/test/.../VerifiedKeyArgumentResolverTests.kt`
@@ -1668,30 +1720,62 @@ fun hasAccessToEntity(entity: Any?, perm: String, domain: ChatDomain): Mono<Bool
 6. **Move every D1, D2 and D6 route** to `VerifiedKey`. D6 verifies the entity
    key in the store domain before it calls the store.
 
-7. **Write the route signature guard.** It reads the route interfaces through
-   reflection, not through text.
+7. **Write the route verification catalog and its guard.** The owner decided
+   this rule on 2026-09-25.
+
+   The catalog is an explicit list in test source. Each entry names one
+   handler, and it records these facts:
+
+   - the key fields and the id fields of the input
+   - the expected domain of each field
+   - the verification path, which is `verify`, `resolve`, or a resolver
+   - the classification `NO_IDENTITY` for a route that takes no key and no id
+
+   The guard discovers every REST and RSocket handler by reflection. It
+   includes inherited handlers and handlers on generic interfaces. It walks each
+   parameter type into nested values and into collections. It reports a key or
+   an id at any depth.
+
+   The guard compares the discovered handlers with the catalog. Each of these
+   conditions fails the guard:
+
+   - a discovered handler with no catalog entry
+   - a catalog entry with no discovered handler
+   - a discovered key or id field that its entry does not name
+   - an entry whose signature no longer matches its handler
+
+   So a new or changed handler fails the guard until the catalog names it.
 
 ```kotlin
 @Test
-fun `no route takes an unverified key or a raw path id`() {
-    val offenders = routeInterfaces().flatMap { type ->
-        type.methods
-            .filter { it.isAnnotationPresent(MessageMapping::class.java) || it.hasWebMapping() }
-            .flatMap { m ->
-                m.parameters
-                    .filter { p -> p.type == Key::class.java || p.isAnnotationPresent(PathVariable::class.java) }
-                    .map { "${type.simpleName}.${m.name}(${it.name})" }
-            }
-    }
-    assertThat(offenders).isEmpty()
+fun `every handler matches its verification catalog entry`() {
+    val discovered = HandlerDiscovery.all(routeInterfaces())
+    val problems = RouteVerificationCatalog.compare(discovered)
+    assertThat(problems).isEmpty()
+}
+
+@Test
+fun `the discovery reaches nested values, collections and inherited handlers`() {
+    val found = HandlerDiscovery.all(listOf(ProbeRoutes::class.java)).single().identityFields()
+    assertThat(found).contains("request.members[].uid", "keys[]", "message.key", "message.record.dest")
 }
 ```
 
-   **The test KDoc states the limit.** The guard proves that each route declares
-   the verified type. It does not prove that a registry read ran. A route
-   parameter gets its `VerifiedKey` from a resolver, and step 5 proves that each
-   resolver calls `verify` or `resolve`. No route calls `trustTypedStore`. The
-   T3a guard enforces that.
+   **Structural coverage does not prove runtime verification.** The catalog
+   proves that each route is named and classified. It does not prove that a
+   registry read ran. So each boundary keeps its runtime tests:
+
+   - An invalid input test uses a recording store, index, or pub/sub service.
+     It asserts zero downstream calls.
+   - A mutation test removes the verification call of one boundary. That test
+     must fail. Step 2 records each mutation.
+
+   D8 to D12 and E8 each get one invalid input test and one mutation. D9 also
+   gets an empty list test. It asserts no key lookup and no entity.
+
+   A route parameter gets its `VerifiedKey` from a resolver, and step 5 proves
+   that each resolver calls `verify` or `resolve`. No route calls
+   `trustTypedStore`. The T3a guard enforces that.
 
 8. **Checkpoint.** Run `shell-scripts/build-health.sh`. Confirm that it exits
    with 0.
@@ -2027,3 +2111,15 @@ not include the official dictionary.
    that" sentence replaces each result fragment such as "Expected: exit 0."
    The audit did not list these steps. They had the same fragment pattern.
 4. "Memory, in full:" is a complete sentence.
+
+**Ninth revision, 2026-09-25, after the owner review of T0 to T2 at `8eff96ee`.**
+
+1. **D8 to D12, E8 and E18 are decided.** Each belongs to T4. The D section
+   states the required verification of each row and four shared rules.
+2. **The D9 label is corrected.** The route is
+   `KeyValueStoreMapping.typedByIds`.
+3. **The route guard reads an explicit verification catalog.** T4 step 7
+   states the catalog, the discovery, and the failure conditions. Runtime
+   boundary tests and mutation tests stay.
+4. **T2 has two corrections.** The T2 section records the strict id parser and
+   the root key source.

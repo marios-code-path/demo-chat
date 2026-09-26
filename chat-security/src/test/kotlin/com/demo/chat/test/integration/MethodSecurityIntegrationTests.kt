@@ -9,6 +9,7 @@ import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -239,7 +240,8 @@ class MethodSecurityIntegrationTestConfiguration {
     fun <T> accessBroker(authSvc: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authSvc)
 
     @Bean
-    fun <T> rootKeys(keyGen: IKeyGenerator<T>): RootKeys<T> = RootKeysFixture.of(keyGen)
+    /** Every concrete test in this context uses Long keys. The roots are distinct fixed ids. */
+    fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(emptyMap(), Key.funKey(8998L), Key.funKey(8999L))
 
     @Bean
     fun <T> chatAccess(access: AccessBroker<T>, rootKeys: RootKeys<T>): SpringSecurityAccessBrokerService<T> =

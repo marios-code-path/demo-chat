@@ -1,3 +1,9 @@
+app:
+  # This role holds no root keys. Its user lookup and password upgrade read no
+  # root. RootKeySource in chat-deploy documents the role. See CHAT-avduuqwp.
+  rootkeys:
+    required: false
+
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/authserver

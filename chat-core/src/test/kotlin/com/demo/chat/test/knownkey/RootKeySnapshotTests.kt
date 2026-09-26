@@ -57,4 +57,51 @@ class RootKeySnapshotTests {
             .isInstanceOf(ChatException::class.java)
             .hasMessageContaining("KeyDataPair")
     }
+
+    @Test
+    fun `a malformed domain id is refused and nothing loads`() {
+        val full = RootKeySnapshot.of(source, "long", TypeUtil.LongUtil)
+        val bad = full.copy(domains = full.domains + (ChatDomain.MESSAGE.wireName to "not-a-number"))
+        val target = RootKeys<Long>()
+
+        assertThatThrownBy { bad.load(target, "long", TypeUtil.LongUtil) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("Message")
+        assertThat(target.domains()).isEmpty()
+        assertThat(target.identities()).isEmpty()
+    }
+
+    @Test
+    fun `a malformed Admin id is refused and nothing loads`() {
+        val bad = RootKeySnapshot.of(source, "long", TypeUtil.LongUtil).copy(admin = "9223372036854775808")
+        val target = RootKeys<Long>()
+
+        assertThatThrownBy { bad.load(target, "long", TypeUtil.LongUtil) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("Admin")
+        assertThat(target.domains()).isEmpty()
+        assertThat(target.identities()).isEmpty()
+    }
+
+    @Test
+    fun `a malformed Anon id is refused and nothing loads`() {
+        val bad = RootKeySnapshot.of(source, "long", TypeUtil.LongUtil).copy(anon = "anon")
+        val target = RootKeys<Long>()
+
+        assertThatThrownBy { bad.load(target, "long", TypeUtil.LongUtil) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("Anon")
+        assertThat(target.domains()).isEmpty()
+        assertThat(target.identities()).isEmpty()
+    }
+
+    @Test
+    fun `a snapshot that uses one id for two roots is refused`() {
+        val full = RootKeySnapshot.of(source, "long", TypeUtil.LongUtil)
+        val shared = full.copy(anon = full.domains.getValue(ChatDomain.USER.wireName))
+
+        assertThatThrownBy { shared.load(RootKeys<Long>(), "long", TypeUtil.LongUtil) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("one id for two roots")
+    }
 }

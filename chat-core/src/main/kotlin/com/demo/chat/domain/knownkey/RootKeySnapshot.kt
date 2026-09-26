@@ -8,8 +8,8 @@ import com.demo.chat.domain.TypeUtil
  * The root keys that a process without store access reads, from HTTP or from
  * Consul. See `CHAT-avduuqwp`.
  *
- * This is a string keyed record, not a domain key. The ids are strings. The
- * reader uses its TypeUtil to parse them. A reader never creates a root.
+ * This is a string keyed record, not a domain key. The ids are strings.
+ * `RootIds` parses them strictly. A reader never creates a root.
  *
  * [domains] maps each domain wire name to a root id. [admin] and [anon] hold
  * the ids of the two identities.
@@ -23,7 +23,8 @@ data class RootKeySnapshot(
     /**
      * This method loads the snapshot into [into]. It refuses a snapshot whose
      * key type differs from [expectedKeyType]. It also refuses a snapshot that
-     * does not name every domain, or that names an unknown domain.
+     * does not name every domain, or that names an unknown domain. It refuses
+     * an id that `RootIds` refuses. It loads nothing until every id parses.
      */
     fun <T> load(into: RootKeys<T>, expectedKeyType: String, typeUtil: TypeUtil<T>) {
         if (keyType != expectedKeyType) throw ChatException(
@@ -34,8 +35,16 @@ data class RootKeySnapshot(
         val missing = ChatDomain.entries.filter { it.wireName !in domains.keys }
         if (missing.isNotEmpty()) throw ChatException("The root key snapshot is incomplete. Missing: $missing")
 
-        into.loadDomains(domains.entries.associate { (name, id) -> ChatDomain.parse(name)!! to Key.funKey(typeUtil.fromString(id)) })
-        into.loadIdentities(Key.funKey(typeUtil.fromString(admin)), Key.funKey(typeUtil.fromString(anon)))
+        // Parse every id before the first load, so a bad id publishes nothing.
+        val roots = domains.entries.associate { (name, id) ->
+            ChatDomain.parse(name)!! to Key.funKey(RootIds.parse(typeUtil, id, name))
+        }
+        val adminKey = Key.funKey(RootIds.parse(typeUtil, admin, ChatIdentity.ADMIN.wireName))
+        val anonKey = Key.funKey(RootIds.parse(typeUtil, anon, ChatIdentity.ANON.wireName))
+        val ids = roots.values.map { it.id } + adminKey.id + anonKey.id
+        if (ids.toSet().size != ids.size) throw ChatException("The root key snapshot uses one id for two roots.")
+        into.loadDomains(roots)
+        into.loadIdentities(adminKey, anonKey)
     }
 
     companion object {

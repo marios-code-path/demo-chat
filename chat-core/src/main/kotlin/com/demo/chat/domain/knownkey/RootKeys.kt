@@ -46,10 +46,13 @@ class RootKeys<T> {
     fun loadDomains(roots: Map<ChatDomain, Key<T>>) {
         val missing = ChatDomain.entries - roots.keys
         require(missing.isEmpty()) { "A root key set must name every domain. Missing: $missing" }
+        val shared = roots.entries.groupBy({ it.value.id }, { it.key }).filterValues { it.size > 1 }
+        require(shared.isEmpty()) { "Two domains must not share a root id. Shared: $shared" }
         domains.putAll(roots)
     }
 
     fun loadIdentities(admin: Key<T>, anon: Key<T>) {
+        require(admin.id != anon.id) { "The Admin and Anon identities must not share an id: ${admin.id}" }
         identities[ChatIdentity.ADMIN] = admin
         identities[ChatIdentity.ANON] = anon
     }

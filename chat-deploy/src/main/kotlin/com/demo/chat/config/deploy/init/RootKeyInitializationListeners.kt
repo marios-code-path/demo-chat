@@ -22,6 +22,8 @@ import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.DependsOn
+import org.springframework.core.env.Environment
 
 /**
  * The start of the root keys. See `CHAT-avduuqwp` and `CHAT-bafkgkko`.
@@ -35,6 +37,8 @@ import org.springframework.context.annotation.Configuration
  *   `RootKeySnapshot` from Consul or from HTTP. It never creates a root.
  *
  * `app.rootkeys.create` is removed. Conditional creation makes it unnecessary.
+ * [RootKeySource] validates the choice, and it names the one role that holds
+ * no root keys.
  */
 @Configuration
 class RootKeyInitializationListeners<T : Any>(
@@ -51,27 +55,37 @@ class RootKeyInitializationListeners<T : Any>(
         }
 
     /**
+     * This bean reads the root key source of this process. An unsupported or
+     * contradictory setting fails the context refresh. See [RootKeySource].
+     */
+    @Bean
+    fun rootKeySource(env: Environment): RootKeySource = RootKeySource.of(env)
+
+    /**
      * This listener loads the roots from the store of this node, before the
      * node serves a request. A failure stops the start.
      *
-     * A process with no root key store, such as the authorization server,
-     * loads nothing. It held no root keys before `CHAT-avduuqwp` either. Any
-     * later read of a root in that process fails with "the root keys are not
-     * loaded". So the absence stays visible at the first use.
+     * A [RootKeySource.STORE] process must hold a `RootKeyStore` and an
+     * `IKeyGenerator`. A [RootKeySource.NONE] process loads nothing, and a
+     * later read of a root in it fails with "the root keys are not loaded".
      */
     @Bean
     @ConditionalOnExpression("'\${app.rootkeys.consume.scheme:}' == ''")
     fun loadRootKeysFromStore(
+        source: RootKeySource,
         rootKeys: RootKeys<T>,
         store: ObjectProvider<RootKeyStore<T>>,
         ids: ObjectProvider<IKeyGenerator<T>>,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
-            val rootKeyStore = store.ifAvailable
-            if (rootKeyStore == null) {
-                logger.info("This process has no root key store and no app.rootkeys.consume.scheme. It loads no root keys.")
+            if (source == RootKeySource.NONE) {
+                logger.info("${RootKeySource.REQUIRED}=false. This process loads no root keys.")
                 return@ApplicationListener
             }
+            val rootKeyStore = store.ifAvailable ?: throw ChatException(
+                "This process needs root keys but has no RootKeyStore. Set ${RootKeySource.SCHEME} to 'kv' or 'http', " +
+                    "or set ${RootKeySource.REQUIRED}=false for a role that reads no root."
+            )
             val generator = ids.ifAvailable ?: throw ChatException(
                 "This node has a root key store but no IKeyGenerator. It cannot create a missing root."
             )
@@ -98,7 +112,9 @@ class RootKeyInitializationListeners<T : Any>(
         @Value("\${app.key.type}") keyType: String,
     ) = RootKeyService(kvStore, typeUtil, name, keyType)
 
+    /** `@DependsOn` lets the source check report a missing setting before this bean reads it. */
     @Bean
+    @DependsOn("rootKeySource")
     @ConditionalOnProperty("app.rootkeys.consume.scheme", havingValue = "kv")
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
