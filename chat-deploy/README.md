@@ -20,11 +20,12 @@ Here are the configurations specific to initialization.
 | Property                    | detail                                  | values               |
 |-----------------------------|-----------------------------------------|----------------------|
 | app.users.create            | Create Initial set of users?            | Bool                 |
-| app.rootkeys.consume.scheme | Consume for Root Keys method            | http / KV            |
+| app.rootkeys.consume.scheme | Consume for Root Keys method. Unset loads from the store | http / kv, exact text |
 | app.rootkeys.consume.source | Source URL for consuming RootKeys       | localhost:admin-port |
 | app.rootkeys.publish.scheme | Publish Root Keys delivery method       | KV                   |
 | app.kv.prefix               | PATH Prefix for KV                      | e.g. /config/app     |
 | app.kv.rootkeys             | name of DataKey to obtain rootkeys data | e.g. 'rootkeys'      |
+| app.rootkeys.required       | false for a role that holds no root keys | true (default) / false |
 
 ## Static Users
 

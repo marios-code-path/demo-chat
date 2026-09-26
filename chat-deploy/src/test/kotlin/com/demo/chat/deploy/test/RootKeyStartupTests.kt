@@ -16,6 +16,7 @@ import org.springframework.boot.SpringApplication
 import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.boot.test.context.assertj.AssertableApplicationContext
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
+import org.springframework.core.env.MapPropertySource
 import reactor.core.publisher.Mono
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
@@ -97,6 +98,28 @@ class RootKeyStartupTests {
     }
 
     @Test
+    fun `a scheme with spaces or another case fails the context`() {
+        listOf(" ", " http ", "http ", " kv", "HTTP", "Kv").forEach { scheme ->
+            base.withRaw("app.rootkeys.consume.scheme" to scheme, "app.kv.rootkeys" to "rootkeys", "app.rootkeys.consume.source" to "http://h:1")
+                .withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
+                .run { ctx ->
+                    assertThat(ctx).`as`("scheme '$scheme'").hasFailed()
+                    assertThat(ctx.startupFailure).rootCause().hasMessageContaining("no spaces")
+                }
+        }
+    }
+
+    @Test
+    fun `a required value that is not canonical fails the context`() {
+        listOf(" false", "False", "no").forEach { value ->
+            base.withRaw("app.rootkeys.required" to value).run { ctx ->
+                assertThat(ctx).`as`("required '$value'").hasFailed()
+                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("app.rootkeys.required")
+            }
+        }
+    }
+
+    @Test
     fun `the kv scheme without a snapshot name fails the context`() {
         base.withPropertyValues("app.rootkeys.consume.scheme=kv").run { ctx ->
             assertThat(ctx).hasFailed()
@@ -131,6 +154,10 @@ class RootKeyStartupTests {
             assertThat(ctx.startupFailure).rootCause().hasMessageContaining("app.rootkeys.required=false")
         }
     }
+
+    /** `withPropertyValues` trims a value. This helper keeps the raw text, spaces included. */
+    private fun ApplicationContextRunner.withRaw(vararg values: Pair<String, String>): ApplicationContextRunner =
+        withInitializer { it.environment.propertySources.addFirst(MapPropertySource("raw", mapOf(*values))) }
 
     private fun start(ctx: AssertableApplicationContext) =
         ctx.publishEvent(ApplicationStartedEvent(SpringApplication(), arrayOf(), ctx.sourceApplicationContext, Duration.ZERO))

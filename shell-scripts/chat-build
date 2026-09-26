@@ -291,6 +291,12 @@ class Service:
     run_arguments: str = ""
     client_proto: str = ""
     available_features: list[str] = field(default_factory=list)
+    # Where this service reads its root keys. See RootKeySource in chat-deploy.
+    #   store   - it reaches its store, and it loads or creates each root.
+    #   consume - it reads the snapshot: HTTP with local discovery, Consul KV
+    #             with consul discovery.
+    #   none    - it holds no root keys. It declares app.rootkeys.required=false.
+    root_keys: str = "consume"
     # Ports are computed late so CORE_PORT overrides still apply.
     port_flags_fn: object = None
 
@@ -345,6 +351,7 @@ SERVICES: dict[str, Service] = {
         image_name="{backend}-core-service-rsocket",
         default_backend="memory",
         default_features=["rsocket", "local", "long"],
+        root_keys="store",
         service_flags=CORE_SERVICE_FLAGS,
         opt_flags=["-Dlogging.level.io.rsocket.FrameLogger=OFF"],
         management_endpoints=["shutdown", "health", "rootkeys"],
@@ -413,6 +420,9 @@ SERVICES: dict[str, Service] = {
         image_name="chat-authserv",
         default_backend="client",
         default_features=["local", "long"],
+        # The authorization server reads no root. Its application.yml declares
+        # the same role, so the launch and the application agree.
+        root_keys="none",
         client_proto="rsocket",
         maven_profiles=["jdbc"],
         client_flags=[
@@ -678,25 +688,42 @@ class BuildContext:
         flags: list[str] = []
         if "users" in self.init_phases:
             flags.append("-Dapp.users.create=true")
-        # A node that reaches its store loads or creates the root keys at start.
-        # So no flag creates them. The "rootkeys" phase still decides whether
-        # this node publishes them to Consul or consumes them from a peer.
-
-        if self.discovery == "consul" and "rootkeys" in self.init_phases:
-            # This node mints the root keys, so publish them to Consul KV.
+        # The root key role of the service decides the flags. RootKeySource in
+        # chat-deploy refuses any other combination at start.
+        role = self.service.root_keys
+        if role == "store":
+            # This node reaches its store. It loads or creates the roots, so no
+            # flag creates them. The "rootkeys" phase publishes them to Consul.
+            if self.discovery == "consul" and "rootkeys" in self.init_phases:
+                flags += [
+                    "-Dapp.kv.store=consul",
+                    "-Dapp.kv.prefix=/chat",
+                    "-Dapp.kv.rootkeys=rootkeys",
+                    "-Dapp.rootkeys.publish.scheme=kv",
+                ]
+        elif role == "consume" and self.discovery == "consul":
+            # This client has no store. It reads the snapshot that a store node
+            # published to Consul KV.
             flags += [
                 "-Dapp.kv.store=consul",
                 "-Dapp.kv.prefix=/chat",
                 "-Dapp.kv.rootkeys=rootkeys",
-                "-Dapp.rootkeys.publish.scheme=kv",
+                "-Dapp.rootkeys.consume.scheme=kv",
             ]
-        elif self.discovery == "local" and "rootkeys" not in self.init_phases:
-            # Joining node: pull the root keys off a peer's actuator endpoint.
+        elif role == "consume":
+            # This client has no store. It reads the snapshot from the actuator
+            # of a store node.
             flags += [
                 "-Dapp.kv.store=none",
                 "-Dapp.rootkeys.consume.scheme=http",
                 f"-Dapp.rootkeys.consume.source={ROOTKEY_SOURCE_URI}",
             ]
+        elif role == "none":
+            flags.append("-Dapp.rootkeys.required=false")
+            if self.discovery == "local":
+                flags.append("-Dapp.kv.store=none")
+        else:
+            raise SystemExit(f"chat-build: unknown root key role '{role}' for {self.service.name}")
         return flags
 
     def discovery_flags(self) -> list[str]:

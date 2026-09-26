@@ -71,6 +71,9 @@ CASES=(
   "gateway-client|gateway --run --notls --long --node-id 0"
   "authserv-client|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
   "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
+  # root key roles under consul discovery. See RootKeySource in chat-deploy.
+  "shell-consul|shell --consul --run --notls --long --node-id 0"
+  "authserv-consul|authserv --consul --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
 )
 
 UPDATE=0

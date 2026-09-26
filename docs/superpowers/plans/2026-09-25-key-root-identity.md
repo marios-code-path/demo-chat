@@ -864,6 +864,34 @@ defects. Both are corrected before T3a starts.
    `AuthorizationCodeFlowTests` asserts that `RootKeys` stays empty while the
    flow runs.
 
+**Second review corrections, 2026-09-26.** The owner review of `de67b9df`
+found two more defects.
+
+3. **A scheme with spaces bypassed the loader.** `RootKeySource` trimmed the
+   scheme, and the listener conditions compared the raw text. So `" "` and
+   `" http "` started with no roots. `RootKeySource` now reads the raw text.
+   It refuses any value that is not canonical, for the scheme and for
+   `app.rootkeys.required`.
+4. **The authorization server launch conflicted with its configuration.**
+   `chat-build` emitted HTTP consumption for every client. Each service now
+   has one root key role:
+
+   | Role | Services | Local discovery | Consul discovery |
+   |---|---|---|---|
+   | `store` | `core` | loads from its store | loads from its store, and the `rootkeys` phase publishes to Consul KV |
+   | `consume` | `rest`, `gateway`, `shell` | the HTTP snapshot | the Consul KV snapshot |
+   | `none` | `authserv` | `app.rootkeys.required=false` | `app.rootkeys.required=false` |
+
+   The owner decided the Consul row on 2026-09-26. A core node without the
+   `rootkeys` phase no longer consumes from a peer. It loads from its own
+   store. Seven core goldens changed for that reason.
+
+`LaunchRootKeySourceTests` in `chat-deploy` reads every golden flag file. It
+runs `RootKeySource` on the flags. For the authorization server, it also loads
+the `application.yml` of that module. `test-flags.sh` proves that `chat-build`
+emits the goldens. So the two checks tie a generated launch to the startup
+rule.
+
 `RootKeyStartupTests` in `chat-deploy` drives the Spring configuration. It
 covers these cases:
 
@@ -874,6 +902,7 @@ covers these cases:
 - a missing generator
 - each consume scheme without its setting
 - the `NONE` role
+- a scheme or a required value that is not canonical text
 
 ---
 
@@ -2123,3 +2152,10 @@ not include the official dictionary.
    boundary tests and mutation tests stay.
 4. **T2 has two corrections.** The T2 section records the strict id parser and
    the root key source.
+
+**Tenth revision, 2026-09-26, after the owner review of `de67b9df`.**
+
+1. **Canonical source text.** The T2 section records that `RootKeySource`
+   refuses a scheme or a required value that is not canonical.
+2. **Launch roles.** The T2 section records the root key role of each
+   `chat-build` service, and the Consul decision of the owner.

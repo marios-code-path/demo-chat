@@ -1,7 +1,7 @@
-# profiles: client-backend,deploy,jdbc
+# profiles: client-backend,deploy,discovery-consul,jdbc,register-consul
 --add-modules=jdk.incubator.vector
 --enable-native-access=ALL-UNNAMED
--Dapp.client.discovery=properties
+-Dapp.client.discovery=consul
 -Dapp.client.protocol=rsocket
 -Dapp.client.rsocket.composite.user
 -Dapp.client.rsocket.core.index
@@ -9,7 +9,6 @@
 -Dapp.client.rsocket.core.persistence
 -Dapp.client.rsocket.core.secrets
 -Dapp.key.type=long
--Dapp.kv.store=none
 -Dapp.nodeid=0
 -Dapp.oauth2.entrypoint-path=localhost:9090
 -Dapp.oauth2.jwk.path=file:/tmp/chat-build-golden.jwk
@@ -28,14 +27,16 @@
 -Dspring-boot.run.jvmArguments=
 -Dspring.application.name=chat-authserv
 -Dspring.autoconfigure.exclude=org.springframework.boot.autoconfigure.rsocket.RSocketServerAutoConfiguration
--Dspring.cloud.consul.config.enabled=false
--Dspring.cloud.consul.config.watch.enabled=false
--Dspring.cloud.consul.discovery.enabled=false
--Dspring.cloud.consul.enabled=false
--Dspring.cloud.service-registry.auto-registration.enabled=false
--Dspring.config.additional-location=classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/client-rsocket-local.yml
+-Dspring.cloud.consul.discovery.enabled=true
+-Dspring.cloud.consul.discovery.health-check-headers[0]=Authorization:
+-Dspring.cloud.consul.discovery.preferIpAddress=true
+-Dspring.cloud.consul.host=10.0.0.5
+-Dspring.cloud.consul.port=8500
+-Dspring.config.additional-location=classpath:/config/server-authserv-consul.yml,classpath:/config/oauth2-client.yml,classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/client-rsocket-consul.yml
 -Dspring.main.web-application-type=servlet
 -Dspring.profiles.active=
 -Dspring.security.user.name=actuator
 -Dspring.security.user.password=actuator
 -Dspring.security.user.roles=ACTUATOR
+Basic
+QXV0aG9yaXphdGlvbjogQmFzaWMg
