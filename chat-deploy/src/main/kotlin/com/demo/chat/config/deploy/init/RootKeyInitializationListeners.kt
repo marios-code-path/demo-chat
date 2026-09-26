@@ -91,7 +91,7 @@ class RootKeyInitializationListeners<T : Any>(
             )
             val roots = RootKeyLoader(rootKeyStore, generator).load().block()
                 ?: throw ChatException("The root key load returned no roots.")
-            rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.funKey(id) })
+            rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Loaded"))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }

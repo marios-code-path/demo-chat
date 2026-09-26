@@ -1,5 +1,13 @@
 package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.composite.mapping.MessageServiceControllerMapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ChatMessage
@@ -57,7 +65,7 @@ class MessageControllerTests : RSocketTestBase() {
         val messageId = UUID.randomUUID()
         counter++
 
-        return Message.create(MessageKey.create(messageId, roomId, userId), "Hello $counter !", true)
+        return Message.create(TestKeys.message(messageId, roomId, userId), "Hello $counter !", true)
     }
 
     @Test
@@ -70,7 +78,7 @@ class MessageControllerTests : RSocketTestBase() {
                 .create(
                         requester
                                 .route("message-by-id")
-                                .data(ByIdRequest(UUID.randomUUID()))
+                                .data(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE).id))
                                 .retrieveMono(ChatMessage::class.java)
                 )
                 .expectSubscription()
@@ -101,7 +109,7 @@ class MessageControllerTests : RSocketTestBase() {
 
         val receiverFlux = requester
                 .route("message-listen-topic")
-                .data(ByIdRequest(UUID.randomUUID()))
+                .data(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE).id))
                 .retrieveFlux<ChatMessage<UUID, String>>()
 
         StepVerifier
@@ -147,7 +155,8 @@ class MessageControllerTests : RSocketTestBase() {
             messageIdx,
             msgPersist,
             messaging,
-            Function { i -> mapOf(Pair(MessageIndexService.TOPIC, i.id.toString())) }
+            Function { i -> mapOf(Pair(MessageIndexService.TOPIC, i.id.toString())) },
+            RSocketTestRegistry.verifier,
         )
 
         @Controller

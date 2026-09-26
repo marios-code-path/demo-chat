@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.core.KeyValueStoreClient
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.IndexJob
@@ -47,14 +49,15 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
     @Autowired
     private lateinit var mapper: ObjectMapper
 
-    private val key = Key.funKey(1000L)
+    private val key = TestKeys.key(1000L)
 
     private val job = IndexJob(
         key = key,
+        topicKey = TestKeys.key(2000L),
         nodeId = 7,
         keyType = "long",
         incarnationId = "incarnation-a",
-        startedBy = Key.funKey(2000L),
+        startedBy = TestKeys.key(2000L),
         startedAt = Instant.parse("2026-09-12T12:00:00Z"),
         outcome = JobOutcome.SUCCEEDED,
     )

@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
@@ -36,7 +38,7 @@ class SecretsControllerTests : RSocketTestBase() {
 
         StepVerifier.create(
             metadataRequester.route("add")
-                .data(Mono.just(KeyCredential(Key.funKey(1L), "PASSWORDISTEST")), KeyCredential::class.java)
+                .data(Mono.just(KeyCredential(TestKeys.key(1L), "PASSWORDISTEST")), KeyCredential::class.java)
                 .retrieveMono(Void::class.java)
         ).verifyComplete()
     }
@@ -46,7 +48,7 @@ class SecretsControllerTests : RSocketTestBase() {
         BDDMockito.given(secretStore.getStoredCredentials(anyObject())).willReturn(Mono.just("PASSWORDISTEST"))
 
         StepVerifier.create(
-            metadataRequester.route("get").data(Mono.just(Key.funKey(1L)), Key::class.java).retrieveMono(String::class.java)
+            metadataRequester.route("get").data(Mono.just(TestKeys.key(1L)), Key::class.java).retrieveMono(String::class.java)
         ).assertNext { credential ->
             Assertions.assertThat(credential).isNotNull.isEqualTo("PASSWORDISTEST")
         }.verifyComplete()

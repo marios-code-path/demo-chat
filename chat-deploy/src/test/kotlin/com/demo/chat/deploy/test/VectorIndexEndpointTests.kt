@@ -1,5 +1,7 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.deploy.actuator.VectorIndexEndpoint
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
@@ -70,10 +72,17 @@ class VectorIndexEndpointTests {
 
         val reads = mutableListOf<Long>()
 
-        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+        override fun readJob(jobKey: Key<Long>): Mono<IndexJob<Long>> =
             Mono.defer {
-                reads.add(topicKey.id)
-                Mono.justOrEmpty(jobs[topicKey.id])
+                reads.add(jobKey.id)
+                Mono.justOrEmpty(jobs[jobKey.id])
+            }
+
+        /** The double finds the job whose topic key matches. The endpoint reads by topic. */
+        override fun readJobByTopic(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+            Mono.defer {
+                val job = jobs.values.firstOrNull { it.topicKey == topicKey }
+                if (job == null) Mono.empty() else readJob(job.key)
             }
 
         override fun listJobTopics(): Flux<out MessageTopic<Long>> {
@@ -86,7 +95,7 @@ class VectorIndexEndpointTests {
                 Flux.fromIterable(
                     jobs.values.map { job ->
                         MessageTopic.create(
-                            job.key,
+                            job.topicKey,
                             names[job.key.id] ?: JobTopicNames.nameFor(
                                 job.nodeId,
                                 job.keyType,
@@ -111,11 +120,12 @@ class VectorIndexEndpointTests {
         nodeId: Int = 7,
         keyType: String = "long",
     ): IndexJob<Long> = IndexJob(
-        key = Key.funKey(id),
+        key = TestKeys.key(id),
+        topicKey = TestKeys.key(id + 1_000_000L),
         nodeId = nodeId,
         keyType = keyType,
         incarnationId = "incarnation-a",
-        startedBy = Key.funKey(1000L),
+        startedBy = TestKeys.key(1000L),
         startedAt = startedAt,
         outcome = JobOutcome.SUCCEEDED,
     )

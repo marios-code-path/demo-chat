@@ -1,11 +1,16 @@
 package com.demo.chat.test.rsocket.client.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.composite.TopicClient
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
-import com.demo.chat.test.TestChatRoomKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import com.demo.chat.test.rsocket.controller.composite.MockCoreServicesConfiguration
@@ -56,18 +61,18 @@ class TopicClientTests : RSocketTestBase() {
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     val randomUserHandle = TestBase.randomAlphaNumeric(4) + "User"
-    val randomUserId: UUID = UUID.fromString("4455814b-9886-499a-8547-55968e3183c6")
+    val randomUserId: UUID = RSocketTestRegistry.register(UUID.fromString("4455814b-9886-499a-8547-55968e3183c6"), ChatDomain.USER).id
 
     val randomRoomName = TestBase.randomAlphaNumeric(6) + "Room"
-    val randomTopicId: UUID = UUID.randomUUID()
+    val randomTopicId: UUID = RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id
 
     val room = TestChatMessageTopic(
-        TestChatRoomKey(randomTopicId, randomRoomName),
+        TestKeys.key(randomTopicId), randomRoomName,
         true
     )
 
     val roomWithMembers = TestChatMessageTopic(
-        TestChatRoomKey(randomTopicId, randomRoomName),
+        TestKeys.key(randomTopicId), randomRoomName,
         true
     )
 
@@ -91,7 +96,7 @@ class TopicClientTests : RSocketTestBase() {
 
         BDDMockito
             .given(topicPersistence.key())
-            .willReturn(Mono.just(Key.funKey(keyId)))
+            .willReturn(Mono.just(TestKeys.key(keyId)))
 
         // addRoom rejects a duplicate name, so it queries the topic index
         // first. An empty result means the name is free.
@@ -151,7 +156,7 @@ class TopicClientTests : RSocketTestBase() {
 
         BDDMockito
             .given(topicPersistence.key())
-            .willReturn(Mono.just(Key.funKey(theRoomId)))
+            .willReturn(Mono.just(TestKeys.key(theRoomId)))
 
         // addRoom rejects a duplicate name, so it queries the topic index
         // first. An empty result means the name is free.
@@ -182,7 +187,7 @@ class TopicClientTests : RSocketTestBase() {
             }
             .verifyComplete()
 
-        val topicRoom = MessageTopic.create(Key.funKey(theRoomId), randomRoomName)
+        val topicRoom = MessageTopic.create(TestKeys.key(theRoomId), randomRoomName)
 
         BDDMockito
             .given(topicIndex.add(anyObject()))
@@ -192,7 +197,7 @@ class TopicClientTests : RSocketTestBase() {
             .willReturn(Mono.just(topicRoom))
         BDDMockito
             .given(membershipPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
         BDDMockito
             .given(membershipPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -217,7 +222,7 @@ class TopicClientTests : RSocketTestBase() {
             .willReturn(Mono.empty())
         BDDMockito
             .given(membershipPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
         BDDMockito
             .given(membershipPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -243,7 +248,7 @@ class TopicClientTests : RSocketTestBase() {
             .willReturn(
                 Mono.just(
                     User.create(
-                        Key.funKey(randomUserId), "NAME", randomUserHandle, "http://imageURI"
+                        TestKeys.key(randomUserId), "NAME", randomUserHandle, "http://imageURI"
                     )
                 )
             )
@@ -262,7 +267,7 @@ class TopicClientTests : RSocketTestBase() {
 
         BDDMockito
             .given(membershipIndex.findBy(anyObject()))
-            .willReturn(Flux.just(Key.funKey(membershipId)))
+            .willReturn(Flux.just(TestKeys.key(membershipId)))
 
         StepVerifier
             .create(client.roomMembers(ByIdRequest(randomTopicId)))

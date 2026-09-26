@@ -1,5 +1,15 @@
 package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.composite.mapping.UserServiceControllerMapping
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
@@ -10,7 +20,6 @@ import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.rsocket.RSocketTestBase
 import org.assertj.core.api.Assertions
@@ -51,7 +60,7 @@ open class UserControllerTests : RSocketTestBase() {
     val randomHandle = TestBase.randomAlphaNumeric(4)
     val randomName = TestBase.randomAlphaNumeric(6)
     val randomUserId = UUID.randomUUID()!!
-    val randomUser = TestChatUser(TestChatUserKey(randomUserId, randomHandle), randomName, defaultImgUri, Instant.now())
+    val randomUser = TestChatUser(RSocketTestRegistry.register(randomUserId, ChatDomain.USER), randomHandle, randomName, defaultImgUri, Instant.now())
 
     @Test
     fun `let no dups pass`() {
@@ -61,7 +70,7 @@ open class UserControllerTests : RSocketTestBase() {
             .willReturn(Mono.just(randomUser))
 
         BDDMockito.given(userPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -70,7 +79,7 @@ open class UserControllerTests : RSocketTestBase() {
             .willReturn(Mono.empty())
 
         BDDMockito.given(userIndex.findBy(TestBase.anyObject()))
-            .willReturn(Flux.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Flux.just(TestKeys.key(UUID.randomUUID())))
 
         StepVerifier
             .create(
@@ -85,7 +94,7 @@ open class UserControllerTests : RSocketTestBase() {
     @Test
     fun `should call user create`() {
         BDDMockito.given(userPersistence.key())
-                .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+                .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(TestBase.anyObject()))
                 .willReturn(Mono.empty())
@@ -130,9 +139,8 @@ open class UserControllerTests : RSocketTestBase() {
                             .assertThat(it)
                             .hasNoNullFieldsOrProperties()
 
-                    Assertions.assertThat(it.key)
-                            .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
+                    Assertions.assertThat(it.key).hasNoNullFieldsOrProperties()
+                    Assertions.assertThat(it.handle).isEqualTo(randomHandle)
                 }
                 .verifyComplete()
     }
@@ -156,8 +164,8 @@ open class UserControllerTests : RSocketTestBase() {
                     Assertions
                             .assertThat(it.key)
                             .hasNoNullFieldsOrProperties()
-                            .hasFieldOrPropertyWithValue("handle", randomHandle)
                             .hasFieldOrPropertyWithValue("id", randomUserId)
+                    Assertions.assertThat(it.handle).isEqualTo(randomHandle)
                 }
                 .verifyComplete()
     }
@@ -171,7 +179,10 @@ open class UserControllerTests : RSocketTestBase() {
             index: UserIndexService<UUID, Map<String, String>>,
         ) = UserServiceImpl<UUID, Map<String, String>>(persistence,
                 index,
-                Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.name)) })
+                Function { i -> mapOf(Pair(UserIndexService.HANDLE, i.name)) },
+                RSocketTestRegistry.verifier,
+                RSocketTestRegistry.roots,
+        )
 
         @Controller
         class TestUserServiceController(b: UserServiceImpl<UUID, Map<String, String>>) :

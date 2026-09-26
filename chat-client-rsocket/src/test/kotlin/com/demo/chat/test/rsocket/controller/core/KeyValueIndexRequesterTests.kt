@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -29,13 +31,13 @@ class KeyValueIndexRequesterTests : RSocketTestBase() {
 //    private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 //
 //    private val message =
-//        Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+//        Message.create(TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
 
     @MockitoBean
     private lateinit var indexService: KeyValueIndexService<UUID, IndexSearchRequest>
 
     private val kvData =
-        KeyValuePair.create(Key.funKey(UUID.randomUUID()), "DATA")
+        KeyValuePair.create(TestKeys.key(UUID.randomUUID()), "DATA")
 
     @Test
     fun `should query for entities`() {

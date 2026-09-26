@@ -38,7 +38,7 @@ class CoreRSocketClients<T : Any, V, Q>(
     private fun secretsRequester() = requesterFactory.getClientForService("secrets")
 
     override fun keyService(): IKeyService<T> =
-        KeyClient("${keyProps.prefix}", keyRequester())
+        KeyClient("${keyProps.prefix}", keyRequester(), typeUtil)
 
     override fun pubSubService(): TopicPubSubService<T, V> =
         PubSubClient("${pubSubProps.prefix}", pubSubRequester(), typeUtil)

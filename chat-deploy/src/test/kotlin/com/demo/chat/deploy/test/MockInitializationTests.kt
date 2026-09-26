@@ -1,5 +1,7 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.deploy.init.*
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -51,7 +53,7 @@ open class MockInitializationTests<T>(
     @Test
     fun `should load rootkeys and summary`() {
         val rootKeys = RootKeys<T>()
-        rootKeys.loadDomains(ChatDomain.entries.associateWith { keyGenerator.nextKey() })
+        rootKeys.loadDomains(ChatDomain.entries.associateWith { TestKeys.key(keyGenerator.nextId()) })
         val summary = RootKeys.rootKeySummary(rootKeys)
 
         Assertions
@@ -75,7 +77,7 @@ open class MockInitializationTests<T>(
         BDDMockito
             .given(userService.addUser(anyObject()))
             .willReturn(Mono.defer {
-                Mono.just(keyGenerator.nextKey())
+                Mono.just(TestKeys.key(keyGenerator.nextId()))
             })
 
         BDDMockito
@@ -104,7 +106,7 @@ open class MockInitializationTests<T>(
             )
         )
 
-        rootKeys.loadDomains(ChatDomain.entries.associateWith { keyGenerator.nextKey() })
+        rootKeys.loadDomains(ChatDomain.entries.associateWith { TestKeys.key(keyGenerator.nextId()) })
 
         InitialUsersService(userService, authorizationService, secretsStore, properties, passwordEncoder, typeUtil)
             .apply {

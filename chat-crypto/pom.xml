@@ -50,6 +50,13 @@
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-core</artifactId>
+            <type>test-jar</type>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

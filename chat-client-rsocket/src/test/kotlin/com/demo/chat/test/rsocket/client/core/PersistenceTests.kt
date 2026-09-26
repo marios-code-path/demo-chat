@@ -1,12 +1,13 @@
 package com.demo.chat.test.rsocket.client.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.core.PersistenceClient
 import com.demo.chat.client.rsocket.clients.core.config.UserPersistenceClient
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import com.demo.chat.test.rsocket.RSocketTestBase
@@ -37,8 +38,8 @@ class PersistenceTests : RSocketTestBase() {
     private val randomHandle = randomAlphaNumeric(4)
     private val randomName = randomAlphaNumeric(6)
     private val randomUserId = UUID.randomUUID()!!
-    private val userKey = TestChatUserKey(randomUserId, randomHandle)
-    private val randomUser = TestChatUser(userKey, randomName, defaultImgUri, Instant.now())
+    private val userKey = TestKeys.key(randomUserId)
+    private val randomUser = TestChatUser(userKey, randomHandle, randomName, defaultImgUri, Instant.now())
 
     private val svcPrefix = ""
 
@@ -98,7 +99,7 @@ class PersistenceTests : RSocketTestBase() {
         val client: PersistenceClient<UUID, User<UUID>> = UserPersistenceClient(svcPrefix, requester)
 
         StepVerifier
-            .create(client.get(Key.funKey(userKey.id)))
+            .create(client.get(TestKeys.key(userKey.id)))
             .assertNext {
                 Assertions
                     .assertThat(it)

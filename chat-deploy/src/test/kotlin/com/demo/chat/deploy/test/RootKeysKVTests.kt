@@ -1,5 +1,7 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TypeUtil
@@ -29,7 +31,7 @@ class RootKeysKVTests {
         RootKeyService(store, TypeUtil.LongUtil, "rootkeys", "long").consumeRootKeys(consumer)
 
         assertThat(consumer.domains()).isEqualTo(source().domains())
-        assertThat(consumer.anon()).isEqualTo(Key.funKey(901L))
+        assertThat(consumer.anon()).isEqualTo(source().anon())
     }
 
     @Test
@@ -50,8 +52,8 @@ class RootKeysKVTests {
     }
 
     private fun source(): RootKeys<Long> = RootKeys<Long>().apply {
-        loadDomains(ChatDomain.entries.associateWith { Key.funKey(100L + it.ordinal) })
-        loadIdentities(Key.funKey(900L), Key.funKey(901L))
+        loadDomains(ChatDomain.entries.associateWith { Key.root(100L + it.ordinal) })
+        loadIdentities(Key.of(900L, 100L + ChatDomain.USER.ordinal), Key.of(901L, 100L + ChatDomain.USER.ordinal))
     }
 }
 

@@ -6,38 +6,21 @@ import com.demo.chat.domain.User
 import java.time.Instant
 import java.util.*
 
+/**
+ * A user of the RSocket tests. The key is a canonical key, because only
+ * SimpleKey, EmptyKey and SimpleMessageKey implement Key. See CHAT-avduuqwp.
+ */
 data class TestChatUser(
-    override val key: TestChatUserKey,
+    override val key: Key<UUID>,
+    override val handle: String,
     override val name: String,
     override val imageUri: String,
     override val timestamp: Instant
-) : User<UUID> {
-    override val handle: String = key.handle
-}
+) : User<UUID>
 
-data class TestChatUserKey(
-    override val id: UUID,
-    val handle: String
-) : Key<UUID> {
-    override val empty: Boolean = false
-}
-
-data class TestUUIDKey(
-    override val id: UUID
-) : Key<UUID> {
-    override val empty: Boolean = false
-}
-
+/** A room of the RSocket tests, with a canonical key. */
 data class TestChatMessageTopic(
-    override val key: TestChatRoomKey,
+    override val key: Key<UUID>,
+    override val data: String,
     val active: Boolean
-) : MessageTopic<UUID> {
-    override val data = key.name
-}
-
-data class TestChatRoomKey(
-    override val id: UUID,
-    val name: String
-) : Key<UUID> {
-    override val empty: Boolean = false
-}
+) : MessageTopic<UUID>

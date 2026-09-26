@@ -1,11 +1,12 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.core.PersistenceServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.test.TestChatUser
-import com.demo.chat.test.TestChatUserKey
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.randomAlphaNumeric
 import com.demo.chat.test.rsocket.*
@@ -36,8 +37,8 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
     private val randomHandle = randomAlphaNumeric(4)
     private val randomName = randomAlphaNumeric(6)
     private val randomUserId = UUID.randomUUID()!!
-    private val userKey = TestChatUserKey(randomUserId, randomHandle)
-    private val randomUser = TestChatUser(userKey, randomName, defaultImgUri, Instant.now())
+    private val userKey = TestKeys.key(randomUserId)
+    private val randomUser = TestChatUser(userKey, randomHandle, randomName, defaultImgUri, Instant.now())
 
     @Test
     fun contextLoads() {
@@ -84,8 +85,8 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
                     .assertThat(it.key)
                     .isNotNull
                     .hasNoNullFieldsOrProperties()
-                    .hasFieldOrPropertyWithValue("handle", randomHandle)
                     .hasFieldOrPropertyWithValue("id", randomUserId)
+                Assertions.assertThat(it.handle).isEqualTo(randomHandle)
             }
             .assertNext {
                 Assertions
@@ -105,7 +106,7 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
             .create(
                 requester
                     .route("get")
-                    .data(Mono.just(Key.funKey(userKey.id)))
+                    .data(Mono.just(TestKeys.key(userKey.id)))
                     .retrieveMono(TestChatUser::class.java)
             )
             .assertNext {
@@ -118,8 +119,8 @@ class UserPersistenceRequesterTests : RSocketTestBase() {
                     .assertThat(it.key)
                     .isNotNull
                     .hasNoNullFieldsOrProperties()
-                    .hasFieldOrPropertyWithValue("handle", randomHandle)
                     .hasFieldOrPropertyWithValue("id", randomUserId)
+                Assertions.assertThat(it.handle).isEqualTo(randomHandle)
             }
             .verifyComplete()
     }

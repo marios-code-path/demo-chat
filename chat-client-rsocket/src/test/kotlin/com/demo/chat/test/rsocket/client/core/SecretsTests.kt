@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.client.core
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.core.SecretStoreClient
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.KeyCredential
@@ -37,7 +39,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.addCredential(KeyCredential(Key.funKey(1L), "ABCDEFG")))
+            .create(client.addCredential(KeyCredential(TestKeys.key(1L), "ABCDEFG")))
             .verifyComplete()
     }
 
@@ -50,7 +52,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.getStoredCredentials(Key.funKey(1L)))
+            .create(client.getStoredCredentials(TestKeys.key(1L)))
             .assertNext { cred ->
                 Assertions
                     .assertThat(cred)
@@ -69,7 +71,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.compareSecret(KeyCredential(Key.funKey(1L), "ABCDEFG")))
+            .create(client.compareSecret(KeyCredential(TestKeys.key(1L), "ABCDEFG")))
             .assertNext { cred ->
                 Assertions
                     .assertThat(cred)

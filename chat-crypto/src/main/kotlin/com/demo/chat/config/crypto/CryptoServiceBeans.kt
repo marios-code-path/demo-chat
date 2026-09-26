@@ -1,5 +1,7 @@
 package com.demo.chat.config.crypto
 
+import com.demo.chat.service.core.IKeyService
+
 import com.demo.chat.crypto.memory.*
 import com.demo.chat.service.core.*
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -13,7 +15,7 @@ import org.springframework.context.annotation.Configuration
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.crypto", name = ["backend"], havingValue = "memory", matchIfMissing = false)
-class CryptoServiceBeans<T> {
+class CryptoServiceBeans<T>(private val keys: IKeyService<T>) {
 
     @Bean
     fun deviceService(): DeviceService<T> =
@@ -24,8 +26,8 @@ class CryptoServiceBeans<T> {
         InMemoryPreKeyService()
 
     @Bean
-    fun encryptedMessageService(): EncryptedMessageService<T> =
-        InMemoryEncryptedMessageService()
+    fun encryptedMessageService(franking: FrankingService<T>): EncryptedMessageService<T> =
+        InMemoryEncryptedMessageService(franking)
 
     @Bean
     fun conversationSeqService(): ConversationSeqService<T> =
@@ -33,9 +35,9 @@ class CryptoServiceBeans<T> {
 
     @Bean
     fun conversationEpochService(): ConversationEpochService<T> =
-        InMemoryConversationEpochService()
+        InMemoryConversationEpochService(keys)
 
     @Bean
     fun frankingService(): FrankingService<T> =
-        InMemoryFrankingService()
+        InMemoryFrankingService(keys)
 }

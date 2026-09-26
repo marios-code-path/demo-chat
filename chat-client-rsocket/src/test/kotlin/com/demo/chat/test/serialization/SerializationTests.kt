@@ -1,9 +1,12 @@
 package com.demo.chat.test.serialization
 
+import com.demo.chat.config.DefaultChatJacksonModules
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.serializers.JacksonModules
-import com.demo.chat.test.TestUUIDKey
 import com.fasterxml.jackson.annotation.*
 import com.fasterxml.jackson.core.Version
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
@@ -25,33 +28,13 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.text.SimpleDateFormat
 import java.util.*
 
-@JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
-interface TestKey : Key<UUID> {
-    override val id: UUID
-
-    companion object Factory {
-        @JvmStatic
-        fun create(eid: UUID): Key<UUID> = object : Key<UUID> {
-            override val id: UUID
-                @JsonProperty("eid") get() = eid
-            override val empty: Boolean = false
-        }
-    }
-}
-
-data class ETestKey(@JsonProperty("eid") override val id: UUID) : TestKey {
-    override val empty: Boolean = false
-}
-
-// If you dont register module explicitly, then use this way:
-// after putting @JsonDeserialize(`as` = ETestKey::class) on the
-// interface class
-//data class ETestKey @JsonCreator constructor
-//(@JsonProperty("eid") override val id: UUID) : TestKey
+// The custom key types that stood here are removed. Only SimpleKey, EmptyKey
+// and SimpleMessageKey implement Key. See CHAT-avduuqwp, A21.
 
 @ExtendWith(SpringExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(
+    DefaultChatJacksonModules::class,
     Jackson2MapperConfiguration::class,
     JacksonAutoConfiguration::class,
     SerializationTests.SerializationConfiguration::class,
@@ -84,12 +67,12 @@ class SerializationTests {
     lateinit var mapper: ObjectMapper
 
     @Test
-    fun `serialization tests dont except`() {
-        val randomEventKey = Key.funKey(UUID.randomUUID())
+    fun `a key round trips through the key module`() {
+        val randomEventKey = TestKeys.key(UUID.randomUUID())
 
         val data = mapper.writeValueAsString(randomEventKey)
 
-        mapper.readValue(data, TestUUIDKey::class.java)
+        org.assertj.core.api.Assertions.assertThat(mapper.readValue(data, Key::class.java)).isEqualTo(randomEventKey)
     }
 
     class SerializationConfiguration {
@@ -100,34 +83,13 @@ class SerializationTests {
                 setSerializationInclusion(JsonInclude.Include.NON_NULL)
                 registerModule(KotlinModule.Builder().build())
                 val module = JacksonModules(JsonNodeToAnyConverter, JsonNodeToAnyConverter)
-                registerModules(
-                    module.keyModule(),
-                    module("TESTKEY", TestKey::class.java, ETestKey::class.java)
-                )
+                registerModules(module.keyModule())
                 setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY)
                 setVisibility(PropertyAccessor.CREATOR, JsonAutoDetect.Visibility.NONE)
                 setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.NONE)
                 setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.NONE)
                 setVisibility(PropertyAccessor.IS_GETTER, JsonAutoDetect.Visibility.NONE)
             }
-        }
-
-        // Register this abstract module to let the app know when it sees a Interface type, which
-        // concrete type to use on the way out.
-        fun <T> module(name: String, iface: Class<T>, concrete: Class<out T>) =
-            SimpleModule("CustomModel$name", Version.unknownVersion())
-                .apply { setAbstractTypes(SimpleAbstractTypeResolver().apply { addMapping(iface, concrete) }) }
-
-        // old but useful to explain where this could potentially happen where autoscanning is not
-        // used.
-        fun jacksonBuilder(): Jackson2ObjectMapperBuilder {
-            val b = Jackson2ObjectMapperBuilder()
-            b.indentOutput(true).dateFormat(SimpleDateFormat("yyyy-MM-dd"))
-            b.modules(
-                module("TESTKEY", TestKey::class.java, ETestKey::class.java),
-                module("EVENTKEY", Key::class.java, TestUUIDKey::class.java)
-            )
-            return b
         }
     }
 }

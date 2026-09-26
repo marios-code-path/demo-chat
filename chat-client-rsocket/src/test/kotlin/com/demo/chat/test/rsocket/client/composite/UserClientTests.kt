@@ -1,5 +1,7 @@
 package com.demo.chat.test.rsocket.client.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.composite.UserClient
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
@@ -29,7 +31,7 @@ class UserClientTests : UserControllerTests() {
     @Test
     fun `client should create`() {
         BDDMockito.given(userPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
 
         BDDMockito.given(userPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())

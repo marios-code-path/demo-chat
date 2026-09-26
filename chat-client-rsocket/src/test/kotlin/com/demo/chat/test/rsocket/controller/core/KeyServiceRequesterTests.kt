@@ -1,5 +1,9 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.core.KeyServiceController
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IKeyService
@@ -37,7 +41,7 @@ class KeyServiceRequesterTests : RSocketTestBase() {
             .create(
                 requester
                     .route("key.exists")
-                    .data(Key.funKey(0))
+                    .data(TestKeys.key(0))
                     .retrieveMono(Boolean::class.java)
             )
             .assertNext {
@@ -58,7 +62,7 @@ class KeyServiceRequesterTests : RSocketTestBase() {
             .create(
                 requester
                     .route("key.rem")
-                    .data(Key.funKey(0))
+                    .data(TestKeys.key(0))
                     .retrieveMono(Void::class.java)
             )
             .verifyComplete()
@@ -69,14 +73,14 @@ class KeyServiceRequesterTests : RSocketTestBase() {
         val randomID = UUID.randomUUID()
 
         BDDMockito
-            .given(keyService.key<Any>(anyObject()))
-            .willReturn(Mono.just(Key.funKey(randomID)))
+            .given(keyService.key(anyObject()))
+            .willReturn(Mono.just(TestKeys.key(randomID)))
 
         StepVerifier
             .create(
                 requester
                     .route("key.key")
-                    .data(Any::class.java)
+                    .data(ChatDomain.USER)
                     .retrieveMono(Key::class.java)
             )
             .assertNext {

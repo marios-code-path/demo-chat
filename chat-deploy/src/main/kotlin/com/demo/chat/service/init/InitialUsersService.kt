@@ -1,5 +1,7 @@
 package com.demo.chat.service.init
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.knownkey.ChatIdentity
 import com.demo.chat.domain.*
@@ -22,7 +24,9 @@ class InitialUsersService<T>(
 ) {
 
     fun initializeUsers(rootKeys: RootKeys<T>): Map<String, Key<T>> {
-        val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
+        // The grant placeholder only. A grant key is minted when the grant is
+        // stored. A user never takes this key. See CHAT-avduuqwp, C16.
+        val grantPlaceholder = Key.empty(typeUtil.assignFrom(Any()), rootKeys.of(ChatDomain.AUTH_METADATA).id)
         val identityKeys = mutableMapOf<String, Key<T>>()
 
         // add users
@@ -41,10 +45,11 @@ class InitialUsersService<T>(
                     userService
                         .findByUsername(ByStringRequest(thisUser.handle))
                         .map { u -> u.key }
-                        .switchIfEmpty(Mono.error(ChatException("Cannot Initialize User ${thisUser.handle}")))
+                        .switchIfEmpty(Mono.error(ChatException("Cannot initialize user ${thisUser.handle}")))
                         .single()
                 }
-                .defaultIfEmpty(emptyKey)
+                // No fallback key exists. A user that is neither created nor found fails the initialization.
+                .switchIfEmpty(Mono.error(ChatException("Cannot initialize user ${thisUser.handle}")))
                 .block()!!
 
             identityKeys[identity] = thisUserKey
@@ -68,7 +73,7 @@ class InitialUsersService<T>(
             if (user != null && target != null) {
                 initialRoles.add(
                     StringRoleAuthorizationMetadata(
-                        emptyKey,
+                        grantPlaceholder,
                         user,
                         target,
                         permission.role,
