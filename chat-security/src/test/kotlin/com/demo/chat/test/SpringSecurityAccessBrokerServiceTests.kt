@@ -1,6 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.User
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -39,7 +40,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val anonKey = keyGen.nextKey()
 
-        BDDMockito.given(rootKeys.getRootKey("Anon"))
+        BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
@@ -47,8 +48,8 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
 
-        BDDMockito.given(rootKeys.hasKey<Class<*>>(anyObject()))
-            .willReturn(true)
+        BDDMockito.given(rootKeys.of(ChatDomain.USER))
+            .willReturn(domainKey)
 
         val p = accessService.hasAccessToDomainByKind(User::class.java, "TEST")
 
@@ -69,7 +70,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val rootKeys: RootKeys<T> = BDDMockito.mock()
         val anonKey = keyGen.nextKey()
 
-        BDDMockito.given(rootKeys.getRootKey("Anon"))
+        BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
         val returnVal = Mono.just(true)
@@ -98,13 +99,16 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val rootKeys: RootKeys<T> = BDDMockito.mock()
         val anonKey = keyGen.nextKey()
 
-        BDDMockito.given(rootKeys.getRootKey("Anon"))
+        BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
+
+        BDDMockito.given(rootKeys.of(ChatDomain.USER))
+            .willReturn(domainKey)
 
         val p = accessService.hasAccessToDomain("User", "TEST")
 
@@ -126,7 +130,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val anonKey = keyGen.nextKey()
 
-        BDDMockito.given(rootKeys.getRootKey("Anon"))
+        BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
         val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
@@ -154,7 +158,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
 
         val anonKey = keyGen.nextKey()
 
-        BDDMockito.given(rootKeys.getRootKey("Anon"))
+        BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))

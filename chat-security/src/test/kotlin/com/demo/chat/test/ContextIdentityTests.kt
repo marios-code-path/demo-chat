@@ -1,6 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.Key
+import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
@@ -116,7 +117,7 @@ class ContextIdentityTests {
         }
 
     private fun rootKeys(): RootKeys<Long> =
-        RootKeys<Long>().apply { merge(mapOf(Anon::class.java.simpleName to ANON_KEY)) }
+        RootKeysFixture.ofLong(emptyMap(), admin = Key.funKey(9999L), anon = ANON_KEY)
 
     private companion object {
         val ANON_KEY: Key<Long> = Key.funKey(1L)

@@ -1,7 +1,7 @@
 package com.demo.chat.security.access
 
-import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.security.AccessBroker
 import org.springframework.stereotype.Component
@@ -12,14 +12,17 @@ class SpringSecurityAccessBrokerService<T>(
     val rootKeys: RootKeys<T>
 ) {
 
+    /**
+     * The check of an access expression that names a domain as text. The text
+     * is parsed into a [ChatDomain] first. An unknown name denies. It never
+     * reaches a map lookup as text. See `CHAT-avduuqwp`.
+     */
     fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
-        access.hasAccessByPrincipal(
-            getSecurityContextPrincipal(),
-            rootKeys.getRootKey(domain), perm
-        )
-            .doOnError { println("ERROR") }
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
+        ChatDomain.parse(domain)
+            ?.let { access.hasAccessByPrincipal(getSecurityContextPrincipal(), rootKeys.of(it), perm) }
+            ?.onErrorReturn(false)
+            ?.switchIfEmpty(Mono.just(false))
+            ?: Mono.just(false)
 
     fun hasAccessTo(who: T, target: T, perm: String): Mono<Boolean> =
         access.hasAccessByKeyId(who, target, perm)
@@ -43,17 +46,13 @@ class SpringSecurityAccessBrokerService<T>(
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
 
-    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> {
-        if(!rootKeys.hasKey(kind))
-            throw ChatException("Unknown key for domain ${kind.simpleName}")
-
-       return access.hasAccessByPrincipal(
-            getSecurityContextPrincipal(),
-            rootKeys.getRootKey(kind), perm
-        )
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
-    }
+    /**
+     * The check of `IKeyServiceAccess.key`, which still names a class until T3d
+     * of `CHAT-avduuqwp`. The simple name of [kind] is parsed into a
+     * [ChatDomain]. An unknown class denies. It no longer throws.
+     */
+    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> =
+        hasAccessToDomain(kind.simpleName, perm)
 
     /**
      * The principal of the current security context.

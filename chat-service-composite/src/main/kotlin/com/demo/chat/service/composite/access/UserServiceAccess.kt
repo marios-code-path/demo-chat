@@ -1,6 +1,7 @@
 package com.demo.chat.service.composite.access
 
 import com.demo.chat.domain.*
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.security.AccessBroker
@@ -15,11 +16,11 @@ open class UserServiceAccess<T>(
     private val that: ChatUserService<T>
 ) : ChatUserService<T> {
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> = authMetadataAccessBroker
-        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.getRootKey(User::class.java), "CREATE")
+        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "CREATE")
         .then(that.addUser(userReq))
 
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = authMetadataAccessBroker
-        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.getRootKey(User::class.java), "READ")
+        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "READ")
         .thenMany(that.findByUsername(req))
 
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = authMetadataAccessBroker

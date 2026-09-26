@@ -1,6 +1,8 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
@@ -337,17 +339,15 @@ class AnonymousAuthorizationMatrixTests {
         )
     }
 
-    private fun rootKeys(): RootKeys<Long> = RootKeys<Long>().apply {
-        merge(
-            mapOf(
-                Anon::class.java.simpleName to ANON_KEY,
-                Admin::class.java.simpleName to ADMIN_KEY,
-                User::class.java.simpleName to USER_ROOT,
-                Message::class.java.simpleName to MESSAGE_ROOT,
-                MessageTopic::class.java.simpleName to TOPIC_ROOT
-            )
-        )
-    }
+    private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(
+            ChatDomain.USER to USER_ROOT,
+            ChatDomain.MESSAGE to MESSAGE_ROOT,
+            ChatDomain.MESSAGE_TOPIC to TOPIC_ROOT
+        ),
+        admin = ADMIN_KEY,
+        anon = ANON_KEY
+    )
 
     private fun anonymousContext() = SecurityContextImpl(
         AnonymousAuthenticationToken(

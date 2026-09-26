@@ -1,12 +1,11 @@
 package com.demo.chat.security.service
 
 import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.Summarizer
 import com.demo.chat.security.access.AuthMetadataAccessBroker
@@ -33,8 +32,8 @@ open class CoreAuthBeans<T, V, Q>(
             indexServices.authMetadataIndex(),
             authMetaPrincipalSearch,
             authMetaTargetSearch,
-            { rootKeys.getRootKey(Anon::class.java) },
-            { rootKeys.getRootKey(User::class.java) },
+            { rootKeys.anon() },
+            { rootKeys.of(ChatDomain.USER) },
             authSummarizer,
         )
 

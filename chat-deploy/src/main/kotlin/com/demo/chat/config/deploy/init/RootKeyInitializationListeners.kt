@@ -42,7 +42,7 @@ class RootKeyInitializationListeners<T>(
         rootKeyGen: RootKeysSupplier<T>
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
-            rootKeys.merge(rootKeyGen.get())
+            rootKeys.loadDomains(rootKeyGen.get())
             publisher.publishEvent(StartupAnnouncementEvent("Root Keys Initialized"))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }

@@ -2,7 +2,6 @@ package com.demo.chat.security.service
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.UsernamePasswordAuthenticationException
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.security.AuthenticationService
@@ -31,13 +30,13 @@ open class CoreAuthenticationService<T, U, Q>(
 
     override fun authenticate(n: String, pw: String): Mono<out Key<T>> =
         if (n.isEmpty()) {
-            Mono.just(rootKeys.getRootKey(Anon::class.java))
+            Mono.just(rootKeys.anon())
         } else
             userIndex
                 .findUnique(userNameToQuery.apply(n))
                 .switchIfEmpty(Mono.error(UsernamePasswordAuthenticationException))
                 .flatMap { userKey ->  // this should only happen when rootKeys is there!!!
-                    if (rootKeys.isRootKeyWithValue(Anon::class.java, userKey))
+                    if (rootKeys.anon().id == userKey.id)
                         Mono.just(userKey)
                     else
                         secretsStore

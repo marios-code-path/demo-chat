@@ -58,12 +58,7 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
                 .bodyToMono(object : ParameterizedTypeReference<Map<String, RootKey>>() {})
                 .block()!!
 
-            result.keys.forEach { key ->
-                if (result.containsKey(key)) {
-                    val domain = result[key]!!
-                    rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
-                }
-            }
+            rootKeys.loadByWireName(result.mapValues { (_, root) -> Key.funKey(typeUtil.assignFrom(root.id)) })
 
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
         }

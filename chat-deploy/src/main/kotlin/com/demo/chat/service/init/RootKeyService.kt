@@ -31,13 +31,7 @@ class RootKeyService<T>(
                 reference
             )
 
-            result.keys.forEach { key ->
-                if (result.containsKey(key)) {
-                    val domain = result[key]!!
-
-                    rootKeys.addRootKey(key, Key.funKey(typeUtil.assignFrom(domain.id)))
-                }
-            }
+            rootKeys.loadByWireName(result.mapValues { (_, root) -> Key.funKey(typeUtil.assignFrom(root.id)) })
 
         }.block()
 
@@ -45,7 +39,7 @@ class RootKeyService<T>(
         .add(
             KeyValuePair.create(
                 Key.funKey(dataKey),
-                ObjectMapper(YAMLFactory()).writeValueAsString(rootKeys.getMapOfKeyMap())
+                ObjectMapper(YAMLFactory()).writeValueAsString(rootKeys.byWireName())
             )
         ).block()
 }

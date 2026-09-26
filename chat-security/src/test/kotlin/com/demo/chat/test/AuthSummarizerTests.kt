@@ -1,6 +1,8 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import com.demo.chat.domain.knownkey.Admin
@@ -29,16 +31,11 @@ class AuthSummarizerTests {
     private val ADMIN_KEY = keyGen.get()
     private val ANON_KEY = keyGen.get()
 
-    private val rootKeys = RootKeys<Long>().apply {
-        merge(
-            mapOf(
-                User::class.java.simpleName to USER_ROOT,
-                MessageTopic::class.java.simpleName to keyGen.get(),
-                Admin::class.java.simpleName to ADMIN_KEY,
-                Anon::class.java.simpleName to ANON_KEY
-            )
-        )
-    }
+    private val rootKeys = RootKeysFixture.of(
+        mapOf(ChatDomain.USER to USER_ROOT, ChatDomain.MESSAGE_TOPIC to keyGen.get()),
+        admin = ADMIN_KEY,
+        anon = ANON_KEY
+    ) { keyGen.get() }
 
     /** The whole rank. Level 3 is the injected key.id order until CHAT-ojbgbznh. */
     private val ranked = AuthSummarizer<Long>(

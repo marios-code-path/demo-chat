@@ -1,6 +1,9 @@
 package com.demo.chat.deploy.test
 
 import com.demo.chat.domain.Key
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.assertj.core.api.Assertions.assertThat
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
@@ -28,7 +31,20 @@ class RootKeysKVTests {
 
         svc.consumeRootKeys(rootKeys)
 
-        println(RootKeys.rootKeySummary(rootKeys))
+        assertThat(rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id).isEqualTo(1090429277138866181L)
+        assertThat(rootKeys.anon().id).isEqualTo(1090429277138866182L)
+    }
+
+    /**
+     * A stored map that names an unknown domain is refused. Before
+     * `CHAT-avduuqwp` the stale name `KeyDataPair` entered the map silently.
+     */
+    @Test
+    fun `an unknown name in the stored map is refused`() {
+        val svc = RootKeyService(TestKVStore(stale = true), TypeUtil.LongUtil, "foo")
+
+        assertThatThrownBy { svc.consumeRootKeys(RootKeys<Long>()) }
+            .hasMessageContaining("KeyDataPair")
     }
 }
 
@@ -37,7 +53,7 @@ class RootKeysKVTestsConfig {
 
 }
 
-class TestKVStore : KeyValueStore<String, String> {
+class TestKVStore(private val stale: Boolean = false) : KeyValueStore<String, String> {
     override fun key(): Mono<out Key<String>> = Mono.just(Key.funKey("foo"))
 
     override fun all(): Flux<out KeyValuePair<String, String>> {
@@ -47,6 +63,7 @@ class TestKVStore : KeyValueStore<String, String> {
     override fun get(key: Key<String>): Mono<out KeyValuePair<String, String>> =Mono.just(
         KeyValuePair.create(
             key,
+            (if (stale) "KeyDataPair:\n  id: 7\n  empty: false\n" else "") +
                 "User:\n" +
                     "  id: 1090429277138866176\n" +
                     "  empty: false\n" +
@@ -62,8 +79,14 @@ class TestKVStore : KeyValueStore<String, String> {
                     "MessageTopic:\n" +
                     "  id: 1090429277138866178\n" +
                     "  empty: false\n" +
-                    "KeyDataPair:\n" +
+                    "KeyValuePair:\n" +
                     "  id: 1090429277138866181\n" +
+                    "  empty: false\n" +
+                    "ConversationEpoch:\n" +
+                    "  id: 1090429277138866184\n" +
+                    "  empty: false\n" +
+                    "FrankingTag:\n" +
+                    "  id: 1090429277138866185\n" +
                     "  empty: false\n" +
                     "Anon:\n" +
                     "  id: 1090429277138866182\n" +

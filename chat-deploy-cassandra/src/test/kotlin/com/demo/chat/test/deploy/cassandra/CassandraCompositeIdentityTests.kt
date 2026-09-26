@@ -1,6 +1,8 @@
 package com.demo.chat.test.deploy.cassandra
 
 import com.demo.chat.config.deploy.cassandra.CompositeServiceConfiguration
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.service.composite.CompositeServiceBeansConfiguration
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.IndexSearchRequest
@@ -144,15 +146,11 @@ class CassandraCompositeIdentityTests {
     private fun chatUserDetails() =
         ChatUserDetails(User.create(USER_KEY, "u", "handle", "http://u"), listOf())
 
-    private fun rootKeys(): RootKeys<Long> = RootKeys<Long>().apply {
-        merge(
-            mapOf(
-                Anon::class.java.simpleName to ANON_KEY,
-                MessageTopic::class.java.simpleName to TOPIC_DOMAIN_KEY,
-                User::class.java.simpleName to USER_DOMAIN_KEY
-            )
-        )
-    }
+    private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(ChatDomain.MESSAGE_TOPIC to TOPIC_DOMAIN_KEY, ChatDomain.USER to USER_DOMAIN_KEY),
+        admin = Key.funKey(9999L),
+        anon = ANON_KEY
+    )
 
     /** Resolves the principal publisher and records the key it carried. */
     private class RecordingAccessBroker : AccessBroker<Long> {

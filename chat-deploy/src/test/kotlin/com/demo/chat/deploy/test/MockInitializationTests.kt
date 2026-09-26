@@ -2,7 +2,7 @@ package com.demo.chat.deploy.test
 
 import com.demo.chat.config.deploy.init.*
 import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.KnownRootKeys.Companion.knownRootKeys
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
@@ -58,7 +58,7 @@ open class MockInitializationTests<T>(
         val rootKeyCreator = RootKeysSupplier(keyService)
         val rootKeys = RootKeys<T>()
 
-        rootKeys.merge(rootKeyCreator.get())
+        rootKeys.loadDomains(rootKeyCreator.get())
         val summary = RootKeys.rootKeySummary(rootKeys)
 
         Assertions
@@ -66,10 +66,10 @@ open class MockInitializationTests<T>(
             .isNotNull
             .hasSizeGreaterThan("Root Keys: \n".length)
 
-        knownRootKeys.forEach {
+        ChatDomain.entries.forEach {
             Assertions
-                .assertThat(rootKeys.getMapOfKeyMap())
-                .containsKey(it.simpleName)
+                .assertThat(rootKeys.byWireName())
+                .containsKey(it.wireName)
         }
     }
 
@@ -114,14 +114,12 @@ open class MockInitializationTests<T>(
         val rootKeyService = RootKeyService(kvStore, typeUtil,"rootKeys")
         val rootKeyCreator = RootKeysSupplier(keyService)
             .apply {
-                rootKeys.merge(get())
+                rootKeys.loadDomains(get())
             }
 
         InitialUsersService(userService, authorizationService, secretsStore, properties, passwordEncoder, typeUtil)
             .apply {
-                rootKeys.merge(
-                    initializeUsers(rootKeys)
-                )
+                initializeUsers(rootKeys)
             }
 
         val summary = RootKeys.rootKeySummary(rootKeys)

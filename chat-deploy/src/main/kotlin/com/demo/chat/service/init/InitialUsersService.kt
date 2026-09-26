@@ -1,6 +1,7 @@
 package com.demo.chat.service.init
 
 import com.demo.chat.config.deploy.init.UserInitializationProperties
+import com.demo.chat.domain.knownkey.ChatIdentity
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
@@ -56,18 +57,20 @@ class InitialUsersService<T>(
                 .block()
         }
 
-        rootKeys.merge(identityKeys)
+        loadIdentities(rootKeys, identityKeys)
 
         val initialRoles: MutableSet<AuthMetadata<T>> = mutableSetOf()
 
         // get role definitions
         initializationProperties.initialRoles.roles.forEach { permission ->
-            if (rootKeys.hasKey(permission.target) && rootKeys.hasKey(permission.user)) {
+            val user = rootKeys.byName(permission.user)
+            val target = rootKeys.byName(permission.target)
+            if (user != null && target != null) {
                 initialRoles.add(
                     StringRoleAuthorizationMetadata(
                         emptyKey,
-                        rootKeys.getRootKey(permission.user)!!,
-                        rootKeys.getRootKey(permission.target)!!,
+                        user,
+                        target,
                         permission.role,
                     )
                 )
@@ -84,5 +87,20 @@ class InitialUsersService<T>(
             }.blockLast()
 
         return identityKeys
+    }
+
+    /**
+     * This method loads the two identities from the initial users. Each
+     * initial user name must parse to a [ChatIdentity]. Both identities must be
+     * present. See `CHAT-avduuqwp`.
+     */
+    private fun loadIdentities(rootKeys: RootKeys<T>, identityKeys: Map<String, Key<T>>) {
+        val unknown = identityKeys.keys.filter { ChatIdentity.parse(it) == null }
+        if (unknown.isNotEmpty()) throw ChatException("An initial user names an unknown identity: $unknown")
+        val admin = identityKeys[ChatIdentity.ADMIN.wireName]
+            ?: throw ChatException("The initial users do not name the ${ChatIdentity.ADMIN.wireName} identity.")
+        val anon = identityKeys[ChatIdentity.ANON.wireName]
+            ?: throw ChatException("The initial users do not name the ${ChatIdentity.ANON.wireName} identity.")
+        rootKeys.loadIdentities(admin, anon)
     }
 }

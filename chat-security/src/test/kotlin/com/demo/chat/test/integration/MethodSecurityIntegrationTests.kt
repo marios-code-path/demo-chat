@@ -1,6 +1,7 @@
 package com.demo.chat.test.integration
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.AuthMetadata
@@ -96,8 +97,8 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     ) {
         val userService = composites.userService()
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
 
         val data = AuthMetadata.create(
             key = keyGenerator.nextKey(),
@@ -130,7 +131,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
 
         val data = AuthMetadata.create(
             key = keyGenerator.nextKey(),
-            principal = rootKeys.getRootKey(Anon::class.java),
+            principal = rootKeys.anon(),
             target = objectForAccess, perm = "GET", muted = false, exp = Long.MAX_VALUE
         )
 
@@ -158,8 +159,8 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     ) {
         val store = beans.userPersistence()
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
         val data = AuthMetadata.create(
             key = keyGenerator.nextKey(),
             principal = principal,
@@ -190,8 +191,8 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
 
         val nextKey = keyGenerator.nextKey()
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
         val data = AuthMetadata.create(
             key = keyGenerator.nextKey(),
             principal = principal,

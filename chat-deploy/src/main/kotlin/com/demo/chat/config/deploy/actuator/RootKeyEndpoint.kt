@@ -14,5 +14,5 @@ class RootKeyEndpoint<T>(private val rootKeys: RootKeys<T>) {
 
     @ReadOperation
     @Bean
-    fun actuateRootKeys(): Map<String, Key<T>> = rootKeys.getMapOfKeyMap()
+    fun actuateRootKeys(): Map<String, Key<T>> = rootKeys.byWireName()
 }
