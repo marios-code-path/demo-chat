@@ -1,5 +1,11 @@
 package com.demo.chat.test.integration
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
@@ -64,13 +70,19 @@ class LongByIdsFilterTests {
     @Autowired
     private lateinit var membershipPersistence: PersistenceStore<Long, TopicMembership<Long>>
 
+    @Autowired
+    private lateinit var rootKeys: RootKeys<Long>
+
     @BeforeEach
     fun grantOneTargetAndEchoEveryKey() {
         BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willAnswer { call ->
                 val target = call.getArgument<Key<Long>>(1)
-                if (target == PERMITTED) Flux.just(
-                    AuthMetadata.create(Key.funKey(99L), CALLER, PERMITTED, "GET", false, Long.MAX_VALUE)
+                // A membership target carries the TOPIC_MEMBERSHIP root, so the
+                // grant on that target names that root. See CHAT-avduuqwp.
+                val permittedMembership = Key.of(PERMITTED.id, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id)
+                if (target == PERMITTED || target == permittedMembership) Flux.just(
+                    AuthMetadata.create(TestKeys.key(99L), CALLER, target, "GET", false, Long.MAX_VALUE)
                 )
                 else Flux.empty<AuthMetadata<Long>>()
             }
@@ -130,9 +142,9 @@ class LongByIdsFilterTests {
 }
 
 private const val CALLER_ID = 1L
-private val CALLER: Key<Long> = Key.funKey(CALLER_ID)
-private val PERMITTED: Key<Long> = Key.funKey(20L)
-private val DENIED: Key<Long> = Key.funKey(30L)
+private val CALLER: Key<Long> = TestKeys.key(CALLER_ID)
+private val PERMITTED: Key<Long> = TestKeys.key(20L)
+private val DENIED: Key<Long> = TestKeys.key(30L)
 
 /** A membership store behind the method security proxy. No production class implements this yet. */
 @Service

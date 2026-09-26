@@ -26,3 +26,12 @@ object FakeKeyServices {
     fun long(rootKeys: RootKeys<Long>): TestGeneratorKeyService<Long> =
         TestGeneratorKeyService(TestLongKeyGenerator(), rootKeys)
 }
+
+/**
+ * A verifier over a registry that holds nothing. Every `resolve` and `verify`
+ * fails. A test that never checks raw ids passes it to a broker.
+ */
+object TestVerifiers {
+    fun <T> resolvingNothing(): com.demo.chat.service.core.KeyVerifier<T> =
+        com.demo.chat.service.core.KeyVerifier(com.demo.chat.service.dummy.DummyKeyService(), RootKeys())
+}

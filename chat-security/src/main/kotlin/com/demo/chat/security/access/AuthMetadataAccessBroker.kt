@@ -1,5 +1,9 @@
 package com.demo.chat.security.access
 
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.service.security.AccessBroker
@@ -10,7 +14,19 @@ import java.util.stream.Collectors
 
 class AuthMetadataAccessBroker<T>(
     private val authMan: AuthorizationService<T, AuthMetadata<T>>,
+    private val verifier: KeyVerifier<T>,
 ) : AccessBroker<T> {
+
+    /**
+     * A raw id carries no root, so this method resolves both ids first. The
+     * principal resolves in USER, and the target in its stored domain. A
+     * failed resolution denies. See `CHAT-avduuqwp`, C4.
+     */
+    override fun hasAccessByKeyId(principal: T, key: T, action: String): Mono<Boolean> =
+        Mono.zip(verifier.resolve(principal, ChatDomain.USER), verifier.resolve(key, null))
+            .flatMap { hasAccessByKey(it.t1.key, it.t2.key, action) }
+            .onErrorReturn(false)
+            .defaultIfEmpty(false)
 
     private fun collectPermissionsAndProceed(meta: Flux<out AuthMetadata<T>>, perm: String): Mono<Boolean> {
         return meta

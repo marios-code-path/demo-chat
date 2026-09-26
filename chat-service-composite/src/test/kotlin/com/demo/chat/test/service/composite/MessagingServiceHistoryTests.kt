@@ -1,5 +1,9 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.MapRequestConverters
 import com.demo.chat.domain.Message
@@ -32,10 +36,11 @@ class MessagingServiceHistoryTests {
         messagePersistence = persistence,
         pubsub = pubsub,
         topicIdToQuery = MapRequestConverters()::topicIdToQuery,
+        verifier = TestVerifiers.resolvingNothing(),
     )
 
     private fun store(id: Long, topic: Long, text: String) {
-        val message = Message.create(MessageKey.create(id, 10L, topic), text, true)
+        val message = Message.create(TestKeys.message(id, 10L, topic), text, true)
         persistence.add(message).block()
         messageIndex.add(message).block()
     }

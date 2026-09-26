@@ -1,5 +1,9 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -323,7 +327,7 @@ class AnonymousAuthorizationMatrixTests {
     private fun grant(
         principal: Key<Long>, target: Key<Long>, permission: String, expires: Long = 0L
     ) = StringRoleAuthorizationMetadata(
-        Key.funKey(nextKey.incrementAndGet()), principal, target, permission, false, expires
+        TestKeys.key(nextKey.incrementAndGet()), principal, target, permission, false, expires
     )
 
     private fun broker(grants: List<AuthMetadata<Long>>): AuthMetadataAccessBroker<Long> {
@@ -335,7 +339,8 @@ class AnonymousAuthorizationMatrixTests {
             CoreAuthorizationService(
                 store, index, { it }, { it }, { ANON_KEY }, { USER_ROOT },
                 AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
-            )
+            ),
+            TestVerifiers.resolvingNothing(),
         )
     }
 
@@ -374,7 +379,7 @@ class AnonymousAuthorizationMatrixTests {
     private class MapAuthStore : PersistenceStore<Long, AuthMetadata<Long>> {
         val rows: MutableMap<Key<Long>, AuthMetadata<Long>> = linkedMapOf()
 
-        override fun key(): Mono<out Key<Long>> = Mono.just(Key.funKey(nextKey.incrementAndGet()))
+        override fun key(): Mono<out Key<Long>> = Mono.just(TestKeys.key(nextKey.incrementAndGet()))
         override fun add(ent: AuthMetadata<Long>): Mono<Void> {
             rows[ent.key] = ent
             return Mono.empty()
@@ -403,13 +408,13 @@ class AnonymousAuthorizationMatrixTests {
 
     private companion object {
         val nextKey = AtomicLong(100L)
-        val ANON_KEY: Key<Long> = Key.funKey(1L)
-        val ADMIN_KEY: Key<Long> = Key.funKey(2L)
-        val USER_ROOT: Key<Long> = Key.funKey(3L)
-        val MESSAGE_ROOT: Key<Long> = Key.funKey(4L)
-        val TOPIC_ROOT: Key<Long> = Key.funKey(5L)
-        val CALLER_KEY: Key<Long> = Key.funKey(6L)
-        val ROOM_KEY: Key<Long> = Key.funKey(7L)
-        val MESSAGE_KEY: Key<Long> = Key.funKey(8L)
+        val ANON_KEY: Key<Long> = TestKeys.key(1L)
+        val ADMIN_KEY: Key<Long> = TestKeys.key(2L)
+        val USER_ROOT: Key<Long> = TestKeys.key(3L)
+        val MESSAGE_ROOT: Key<Long> = TestKeys.key(4L)
+        val TOPIC_ROOT: Key<Long> = TestKeys.key(5L)
+        val CALLER_KEY: Key<Long> = TestKeys.key(6L)
+        val ROOM_KEY: Key<Long> = TestKeys.key(7L)
+        val MESSAGE_KEY: Key<Long> = TestKeys.key(8L)
     }
 }

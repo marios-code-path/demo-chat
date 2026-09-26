@@ -1,16 +1,18 @@
 package com.demo.chat.service.composite.impl
 
-import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.service.core.KeyValueIndexService
 import com.demo.chat.service.core.KeyValueStore
 import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.service.core.TopicPersistence
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.service.vector.IndexJobCodec
+import com.demo.chat.service.vector.JobLookupException
+import com.demo.chat.service.vector.JobLookupFault
 import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.service.vector.VectorIndexJobStore
 import reactor.core.publisher.Flux
@@ -18,42 +20,61 @@ import reactor.core.publisher.Mono
 import java.time.Duration
 import java.time.Instant
 
+/**
+ * The durable job record of the vector index. See `CHAT-avduuqwp`, D2 and D3.
+ *
+ * A job has two keys. The job key is a KEY_VALUE_PAIR key, and the job is
+ * stored under it. The topic key is a separate MESSAGE_TOPIC key, and the
+ * progress records go to that topic. The key-value index holds the field
+ * [TOPIC_ID] of each job, so a reader finds a job from its topic.
+ */
 class VectorIndexJobStoreImpl<T : Any, V, Q>(
     private val topicPersistence: TopicPersistence<T>,
     private val topicIndex: TopicIndexService<T, Q>,
     private val pubsub: TopicPubSubService<T, V>,
     private val keyValueStore: KeyValueStore<T, Any>,
+    private val keyValueIndex: KeyValueIndexService<T, Q>,
+    private val topicIdQuery: (String) -> Q,
     private val codec: IndexJobCodec<T>,
     private val nodeId: Int,
     private val keyType: String,
     private val embeddingIdentity: EmbeddingIdentity,
     private val incarnationId: String,
-    private val workerKey: Key<T>,
+    private val workerKey: Mono<out Key<T>>,
 ) : VectorIndexJobStore<T> {
 
+    /**
+     * The writes run in a fixed order, and none is atomic with another. A
+     * failed step emits its error and starts no later step. It does not undo
+     * the earlier steps. The index write starts only after the job write
+     * reports success.
+     */
     override fun createJob(startedAt: Instant): Mono<IndexJob<T>> =
-        topicPersistence
-            .key()
-            .flatMap { key ->
+        Mono.zip(keyValueStore.key(), topicPersistence.key(), workerKey)
+            .flatMap { keys ->
+                val jobKey: Key<T> = keys.t1
+                val topicKey: Key<T> = keys.t2
                 val topic = MessageTopic.create(
-                    key,
+                    topicKey,
                     JobTopicNames.nameFor(nodeId, keyType, startedAt, incarnationId)
                 )
                 val job = IndexJob(
-                    key = key,
+                    key = jobKey,
+                    topicKey = topicKey,
                     nodeId = nodeId,
                     keyType = keyType,
                     embeddingIdentity = embeddingIdentity.value,
                     incarnationId = incarnationId,
-                    startedBy = workerKey,
+                    startedBy = keys.t3,
                     startedAt = startedAt,
                 )
                 topicPersistence.add(topic)
                     .then(topicIndex.add(topic))
                     // A memory topic that was never opened answers sendMessage
                     // with Object not Found.
-                    .then(pubsub.open(key.id))
+                    .then(pubsub.open(topicKey.id))
                     .then(write(job))
+                    .then(keyValueIndex.add(KeyValuePair.create(job.key, job as Any)))
                     .thenReturn(job)
             }
 
@@ -61,27 +82,45 @@ class VectorIndexJobStoreImpl<T : Any, V, Q>(
         keyValueStore.add(KeyValuePair.create(job.key, job as Any))
 
     /**
-     * Reads the job that [topicKey] names.
+     * Reads the job stored under [jobKey]. A missing job answers empty.
      *
      * The stored value must hold the key it is stored under. The two are
      * separate facts, and only this read can compare them. A record under key
-     * A that holds key B makes every later caller act on B. The coverage
-     * policy adopts B as its invalidation target, key A stays clean, and key A
-     * can cover the index again after a restart.
+     * A that holds key B would make every later caller act on B.
      */
-    override fun readJob(topicKey: Key<T>): Mono<IndexJob<T>> =
-        keyValueStore.get(topicKey)
+    override fun readJob(jobKey: Key<T>): Mono<IndexJob<T>> =
+        keyValueStore.get(jobKey)
             .map { pair -> codec.decode(pair.data) }
             .flatMap { job ->
-                if (job.key == topicKey) {
-                    Mono.just(job)
-                } else {
-                    Mono.error(
-                        ChatException(
-                            "A job stored under key '$topicKey' holds root key '${job.key}'."
-                        )
+                if (job.key == jobKey) Mono.just(job)
+                else Mono.error(
+                    JobLookupException(
+                        JobLookupFault.STORED_KEY_MISMATCH,
+                        "The job stored under key '$jobKey' holds key '${job.key}'.",
                     )
+                )
+            }
+
+    /** Exactly one index entry must name [topicKey]. Every fault is an error. */
+    override fun readJobByTopic(topicKey: Key<T>): Mono<IndexJob<T>> =
+        keyValueIndex.findBy(topicIdQuery(topicKey.id.toString()))
+            .collectList()
+            .flatMap { matches ->
+                when (matches.size) {
+                    0 -> Mono.error(JobLookupException(JobLookupFault.MISSING, "No job names the topic '$topicKey'."))
+                    1 -> readJob(matches.single())
+                        .switchIfEmpty(Mono.error {
+                            JobLookupException(JobLookupFault.DANGLING, "The index names job '${matches.single()}', and the store holds none.")
+                        })
+                    else -> Mono.error(JobLookupException(JobLookupFault.DUPLICATE, "${matches.size} jobs name the topic '$topicKey'."))
                 }
+            }
+            .flatMap { job ->
+                // Key equality reads the root, so a reference with another root does not match.
+                if (job.topicKey == topicKey) Mono.just(job)
+                else Mono.error(
+                    JobLookupException(JobLookupFault.TOPIC_MISMATCH, "The job '${job.key}' names topic '${job.topicKey}', not '$topicKey'.")
+                )
             }
 
     /**
@@ -136,5 +175,10 @@ class VectorIndexJobStoreImpl<T : Any, V, Q>(
      */
     fun close() {
         writer.close().block()
+    }
+
+    companion object {
+        /** The key-value index field that names the topic of a job. */
+        const val TOPIC_ID = "topicId"
     }
 }

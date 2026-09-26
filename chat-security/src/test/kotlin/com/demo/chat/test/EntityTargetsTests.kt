@@ -1,5 +1,11 @@
 package com.demo.chat.test
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -15,7 +21,8 @@ import org.junit.jupiter.api.Test
 /** One case per entity that a many target read can answer. See `CHAT-wkwiipgy`. */
 class EntityTargetsTests {
 
-    private val key: Key<Long> = Key.funKey(7L)
+    private val roots = FakeKeyServices.longRoots()
+    private val key: Key<Long> = TestKeys.key(7L)
 
     @Test
     fun `a key bearer names its key`() {
@@ -23,27 +30,28 @@ class EntityTargetsTests {
             User.create(key, "n", "h", "http://u"),
             MessageTopic.create(key, "room"),
             KeyValuePair.create(key, "v"),
-            AuthMetadata.create(key, Key.funKey(1L), Key.funKey(2L), "GET", 0L)
+            AuthMetadata.create(key, TestKeys.key(1L), TestKeys.key(2L), "GET", 0L)
         )
 
-        entities.forEach { assertThat(EntityTargets.keyOf<Long>(it)).isEqualTo(key) }
+        entities.forEach { assertThat(EntityTargets.keyOf(it, roots)).isEqualTo(key) }
     }
 
     @Test
     fun `a message names its message key`() {
-        val message = Message.create(MessageKey.create(7L, 1L, 2L), "text", true)
+        val message = Message.create(TestKeys.message(7L, 1L, 2L), "text", true)
 
-        assertThat(EntityTargets.keyOf<Long>(message)).isEqualTo(key)
+        assertThat(EntityTargets.keyOf(message, roots)).isEqualTo(key)
     }
 
     @Test
-    fun `a membership names its raw id as a key`() {
-        assertThat(EntityTargets.keyOf<Long>(TopicMembership.create(7L, 1L, 2L))).isEqualTo(key)
+    fun `a membership names its raw id as a key under the TOPIC_MEMBERSHIP root`() {
+        assertThat(EntityTargets.keyOf(TopicMembership.create(7L, 1L, 2L), roots))
+            .isEqualTo(Key.of(7L, roots.of(ChatDomain.TOPIC_MEMBERSHIP).id))
     }
 
     @Test
     fun `an unknown entity names no target`() {
-        assertThat(EntityTargets.keyOf<Long>("not an entity")).isNull()
-        assertThat(EntityTargets.keyOf<Long>(null)).isNull()
+        assertThat(EntityTargets.keyOf("not an entity", roots)).isNull()
+        assertThat(EntityTargets.keyOf(null, roots)).isNull()
     }
 }

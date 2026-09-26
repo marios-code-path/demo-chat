@@ -111,6 +111,7 @@ class MessageReindexServiceImpl<T : Any, V>(
                     JobRecord(
                         key = recordKey,
                         jobKey = job.key,
+                        topicKey = job.topicKey,
                         workerKey = job.startedBy,
                         at = clock.instant(),
                         message = message,
@@ -150,7 +151,7 @@ class MessageReindexServiceImpl<T : Any, V>(
             // makes the rule independent of that. A store listing from a
             // cache or a replica could omit a topic written moments earlier,
             // and the run would then index its own records.
-            .map { topicIds -> topicIds.toSet() + job.key.id }
+            .map { topicIds -> topicIds.toSet() + job.topicKey.id }
             .onErrorResume { error ->
                 logger.error("Vector reindex could not list its job topics", error)
                 finishRun(

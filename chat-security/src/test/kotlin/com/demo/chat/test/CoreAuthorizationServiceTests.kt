@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.*
 import com.demo.chat.security.AuthMetadataPrincipleKeySearch
 import com.demo.chat.security.AuthMetadataTargetKeySearch
@@ -27,15 +29,15 @@ open class CoreAuthorizationServiceTests(
         authMetaIndex,
         AuthMetadataPrincipleKeySearch(TypeUtil.LongUtil),
         AuthMetadataTargetKeySearch(TypeUtil.LongUtil),
-        { Key.funKey(ANON_ID) },
-        { Key.funKey(USER_ROOT_ID) },
+        { TestKeys.key(ANON_ID) },
+        { TestKeys.key(USER_ROOT_ID) },
         AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(RootKeys()))
     ),
     Supplier {
         StringRoleAuthorizationMetadata(
-            Key.funKey(atomicLong.incrementAndGet()),
-            Key.funKey(PRINCIPAL_ID),
-            Key.funKey(TARGET_ID),
+            TestKeys.key(atomicLong.incrementAndGet()),
+            TestKeys.key(PRINCIPAL_ID),
+            TestKeys.key(TARGET_ID),
             TEST_PERMISSION,
             Long.MAX_VALUE
         )

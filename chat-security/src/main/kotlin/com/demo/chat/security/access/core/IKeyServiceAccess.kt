@@ -1,14 +1,16 @@
 package com.demo.chat.security.access.core
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.service.core.IKeyService
 import org.springframework.security.access.prepost.PreAuthorize
 import reactor.core.publisher.Mono
 
 interface IKeyServiceAccess<T> : IKeyService<T> {
 
-    @PreAuthorize("@chatAccess.hasAccessToDomainByKind(#kind, 'NEW')")
-    override fun <S> key(kind: Class<S>): Mono<out Key<T>>
+    /** A mint names a domain from the closed list. See `CHAT-avduuqwp`. */
+    @PreAuthorize("@chatAccess.hasAccessToDomain(#domain.wireName, 'NEW')")
+    override fun key(domain: ChatDomain): Mono<out Key<T>>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'DEL')")
     override fun rem(key: Key<T>): Mono<Void>

@@ -1,5 +1,9 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.service.core.IKeyGenerator
@@ -32,15 +36,15 @@ open class AccessBrokerTests<T>(
 
     @Test
     fun `empty authMetadata disallows access`() {
-        val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = targetKeyGenerator.nextKey()
+        val myPrincipal = TestKeys.key(keyGenerator.nextId())
+        val objectForAccess = TestKeys.key(targetKeyGenerator.nextId())
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         BDDMockito
             .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(Flux.empty())
 
-        val access = AuthMetadataAccessBroker(authSvc)
+        val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
             .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
@@ -54,18 +58,18 @@ open class AccessBrokerTests<T>(
 
     @Test
     fun `sufficient privileges allows access`() {
-        val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = targetKeyGenerator.nextKey()
+        val myPrincipal = TestKeys.key(keyGenerator.nextId())
+        val objectForAccess = TestKeys.key(targetKeyGenerator.nextId())
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(
             AuthMetadata.create(
-                key = keyGenerator.nextKey(),
+                key = TestKeys.key(keyGenerator.nextId()),
                 principal = myPrincipal,
                 target = objectForAccess, perm = "TEST", exp = Long.MAX_VALUE
             ),
             AuthMetadata.create(
-                key = keyGenerator.nextKey(),
+                key = TestKeys.key(keyGenerator.nextId()),
                 principal = myPrincipal,
                 target = objectForAccess, perm = "TEST2", exp = Long.MAX_VALUE
             )
@@ -75,7 +79,7 @@ open class AccessBrokerTests<T>(
             .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(authMetadataAgainstData)
 
-        val access = AuthMetadataAccessBroker(authSvc)
+        val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
             .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
@@ -89,18 +93,18 @@ open class AccessBrokerTests<T>(
 
     @Test
     fun `insufficient privileges disallows access`() {
-        val myPrincipal = keyGenerator.nextKey()
-        val objectForAccess = targetKeyGenerator.nextKey()
+        val myPrincipal = TestKeys.key(keyGenerator.nextId())
+        val objectForAccess = TestKeys.key(targetKeyGenerator.nextId())
         val authSvc: AuthorizationService<T, AuthMetadata<T>> = BDDMockito.mock()
 
         val authMetadataAgainstData = Flux.just(
             AuthMetadata.create(
-                key = keyGenerator.nextKey(),
+                key = TestKeys.key(keyGenerator.nextId()),
                 principal = myPrincipal,
                 target = objectForAccess, perm = "TEST", exp = Long.MAX_VALUE
             ),
             AuthMetadata.create(
-                key = keyGenerator.nextKey(),
+                key = TestKeys.key(keyGenerator.nextId()),
                 principal = myPrincipal,
                 target = objectForAccess, perm = "TEST2", exp = Long.MAX_VALUE
             )
@@ -110,7 +114,7 @@ open class AccessBrokerTests<T>(
             .given(authSvc.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
             .willReturn(authMetadataAgainstData)
 
-        val access = AuthMetadataAccessBroker(authSvc)
+        val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
             .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST3"))

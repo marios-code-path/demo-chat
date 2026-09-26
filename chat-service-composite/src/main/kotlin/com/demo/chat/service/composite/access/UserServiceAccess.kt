@@ -1,5 +1,7 @@
 package com.demo.chat.service.composite.access
 
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
@@ -13,7 +15,8 @@ open class UserServiceAccess<T>(
     private val authMetadataAccessBroker: AccessBroker<T>,
     private val principalSupplier: () -> Publisher<Key<T>>,
     private val rootKeys: RootKeys<T>,
-    private val that: ChatUserService<T>
+    private val that: ChatUserService<T>,
+    private val verifier: KeyVerifier<T>,
 ) : ChatUserService<T> {
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> = authMetadataAccessBroker
         .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "CREATE")
@@ -23,7 +26,7 @@ open class UserServiceAccess<T>(
         .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "READ")
         .thenMany(that.findByUsername(req))
 
-    override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = authMetadataAccessBroker
-        .hasAccessByPrincipal(Mono.from(principalSupplier()), Key.funKey(req.id), "READ")
+    override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = verifier.resolve(req.id, ChatDomain.USER)
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalSupplier()), it.key, "READ") }
         .then(that.findByUserId(req))
 }

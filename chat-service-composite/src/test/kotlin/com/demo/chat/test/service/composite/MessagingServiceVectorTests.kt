@@ -1,5 +1,9 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.LongUtil
@@ -39,7 +43,7 @@ class MessagingServiceVectorTests {
         VectorStoreMessageVectorIndexer<Long>(store, mapper, indexState, indexJobStore, VectorWriteMode.UPSERT)
 
     private fun givenKey() {
-        BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(Key.funKey(100L)))
+        BDDMockito.given(messagePersistence.key()).willReturn(Mono.just(TestKeys.key(100L)))
         BDDMockito.given(messagePersistence.add(any<Message<Long, String>>())).willReturn(Mono.empty())
         BDDMockito.given(messageIndex.add(any<Message<Long, String>>())).willReturn(Mono.empty())
         BDDMockito.given(pubsub.sendMessage(any<Message<Long, String>>())).willReturn(Mono.empty())
@@ -55,10 +59,10 @@ class MessagingServiceVectorTests {
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, indexer
+            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing(), indexer
         )
 
-        StepVerifier.create(service.send(request())).expectNext(Key.funKey(100L)).verifyComplete()
+        StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
 
         val inOrder: InOrder = Mockito.inOrder(messagePersistence, messageIndex, indexer, pubsub)
         inOrder.verify(messagePersistence).add(any<Message<Long, String>>())
@@ -73,10 +77,10 @@ class MessagingServiceVectorTests {
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }
+            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing()
         )
 
-        StepVerifier.create(service.send(request())).expectNext(Key.funKey(100L)).verifyComplete()
+        StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
 
         val inOrder: InOrder = Mockito.inOrder(messagePersistence, messageIndex, pubsub)
         inOrder.verify(messagePersistence).add(any<Message<Long, String>>())
@@ -94,7 +98,7 @@ class MessagingServiceVectorTests {
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, failing
+            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing(), failing
         )
 
         StepVerifier.create(service.send(request())).expectError().verify()
@@ -104,7 +108,7 @@ class MessagingServiceVectorTests {
 
     @Test
     fun `record false skips the vector write`() {
-        val alert = Message.create(MessageKey.create(100L, 20L, 30L), "joined", false)
+        val alert = Message.create(TestKeys.message(100L, 20L, 30L), "joined", false)
 
         StepVerifier.create(realIndexer.add(alert)).verifyComplete()
 
@@ -113,7 +117,7 @@ class MessagingServiceVectorTests {
 
     @Test
     fun `recorded message enters the store on bounded elastic`() {
-        val message = Message.create(MessageKey.create(100L, 20L, 30L), "hello apple", true)
+        val message = Message.create(TestKeys.message(100L, 20L, 30L), "hello apple", true)
 
         StepVerifier.create(realIndexer.add(message)).verifyComplete()
 
@@ -123,10 +127,10 @@ class MessagingServiceVectorTests {
 
     @Test
     fun `remove deletes by document id`() {
-        val message = Message.create(MessageKey.create(100L, 20L, 30L), "hello apple", true)
+        val message = Message.create(TestKeys.message(100L, 20L, 30L), "hello apple", true)
         StepVerifier.create(realIndexer.add(message)).verifyComplete()
 
-        StepVerifier.create(realIndexer.remove(Key.funKey(100L))).verifyComplete()
+        StepVerifier.create(realIndexer.remove(TestKeys.key(100L))).verifyComplete()
 
         Assertions.assertThat(store.ids).isEmpty()
     }

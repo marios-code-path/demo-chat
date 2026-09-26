@@ -16,6 +16,7 @@ class IndexJobTests {
     fun `a new job starts with no invalidation`() {
         val job = IndexJob(
             key = TestKeys.key(1L),
+            topicKey = TestKeys.key(900900L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "abc",
@@ -34,6 +35,7 @@ class IndexJobTests {
     fun `only a succeeded job with no invalidation covers`() {
         val job = IndexJob(
             key = TestKeys.key(1L),
+            topicKey = TestKeys.key(900900L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "abc",

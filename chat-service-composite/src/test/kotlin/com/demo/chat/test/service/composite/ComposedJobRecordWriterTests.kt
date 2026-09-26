@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.JobRecord
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
@@ -22,9 +24,10 @@ class ComposedJobRecordWriterTests {
     private val pubsub = FakePubSub(calls)
 
     private val record = JobRecord(
-        key = Key.funKey(7L),
-        jobKey = Key.funKey(500L),
-        workerKey = Key.funKey(1000L),
+        key = TestKeys.key(7L),
+        jobKey = TestKeys.key(500L),
+        topicKey = TestKeys.key(900900L),
+        workerKey = TestKeys.key(1000L),
         at = Instant.parse("2026-09-11T12:00:00Z"),
         message = "rebuild started",
     )
@@ -32,7 +35,7 @@ class ComposedJobRecordWriterTests {
     private fun writerUnderTest(failOn: String? = null): JobRecordWriter<Long> {
         // The double refuses a topic nobody opened, as the memory backend
         // does. The real store opens a job topic when it creates the job.
-        pubsub.open(record.jobKey.id).block()
+        pubsub.open(record.topicKey.id).block()
 
         return ComposedJobRecordWriter(
             messagePersistence = persistence,
@@ -62,7 +65,9 @@ class ComposedJobRecordWriterTests {
 
         val message = persistence.added.single()
         Assertions.assertThat(message.key.id).isEqualTo(record.key.id)
-        Assertions.assertThat(message.key.dest).isEqualTo(record.jobKey.id)
+        // The destination is the job topic, not the job key. See CHAT-avduuqwp, D2.
+        Assertions.assertThat(message.key.dest).isEqualTo(record.topicKey.id)
+        Assertions.assertThat(message.key.dest).isNotEqualTo(record.jobKey.id)
         Assertions.assertThat(message.record).isTrue()
         Assertions.assertThat(message.data).contains("\"version\"")
     }
@@ -75,7 +80,7 @@ class ComposedJobRecordWriterTests {
         val slowCalls = mutableListOf<String>()
         val slowPersistence = FakeMessagePersistence(slowCalls, Duration.ofMillis(60))
         val slowPubSub = FakePubSub(slowCalls)
-        slowPubSub.open(record.jobKey.id).block()
+        slowPubSub.open(record.topicKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = slowPersistence,
             messageIndex = FakeMessageIndex(slowCalls),
@@ -96,7 +101,7 @@ class ComposedJobRecordWriterTests {
         val failedCalls = mutableListOf<String>()
         val index = FakeMessageIndex(failedCalls)
         val sink = FakePubSub(failedCalls)
-        sink.open(record.jobKey.id).block()
+        sink.open(record.topicKey.id).block()
         val writer = ComposedJobRecordWriter(
             messagePersistence = FakeMessagePersistence(
                 failedCalls,

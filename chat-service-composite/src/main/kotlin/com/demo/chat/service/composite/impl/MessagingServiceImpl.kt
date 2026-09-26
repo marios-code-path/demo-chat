@@ -1,5 +1,9 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.core.MessageIndexService
@@ -17,6 +21,7 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     private val messagePersistence: MessagePersistence<T, V>,
     private val pubsub: TopicPubSubService<T, V>,
     private val topicIdToQuery: Function<ByIdRequest<T>, Q>,
+    private val verifier: KeyVerifier<T>,
     private val messageVectorIndexer: MessageVectorIndexer<T>? = null,
 ) : ChatMessageService<T, V> {
 
@@ -34,18 +39,19 @@ open class MessagingServiceImpl<T : Any, V, Q>(
         )
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
-        messagePersistence
-            .get(Key.funKey(req.id))
+        verifier.resolve(req.id, ChatDomain.MESSAGE)
+            .flatMap { messagePersistence.get(it.key) }
 
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> {
-        val sending: (T) -> Message<T, V> = {
-            Message.create(MessageKey.create(it, req.from, req.dest), req.msg, true)
+        // The message key keeps the id and root that the message store minted.
+        val sending: (Key<T>) -> Message<T, V> = {
+            Message.create(MessageKey.of(it.id, it.root, req.from, req.dest), req.msg, true)
         }
 
         return messagePersistence
             .key()
             .flatMap { messageKey ->
-                val message = sending(messageKey.id)
+                val message = sending(messageKey)
                 // Each write is deferred. A step starts only after the step
                 // before it completes, so a failed write stops the steps
                 // that follow it.

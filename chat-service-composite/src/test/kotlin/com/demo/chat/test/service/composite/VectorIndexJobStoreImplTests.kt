@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.EmbeddingIdentity
@@ -39,7 +41,7 @@ class VectorIndexJobStoreImplTests {
         Assertions.assertThat(topics.saved).hasSize(1)
         Assertions.assertThat(JobTopicNames.isJobTopic(topics.saved.first().data)).isTrue()
         Assertions.assertThat(topicIndex.saved).hasSize(1)
-        Assertions.assertThat(pubsub.opened).containsExactly(job.key.id)
+        Assertions.assertThat(pubsub.opened).containsExactly(job.topicKey.id)
         Assertions.assertThat(store.readJob(job.key).block()!!.key).isEqualTo(job.key)
     }
 
@@ -133,8 +135,8 @@ class VectorIndexJobStoreImplTests {
     fun `listJobTopics returns every reserved topic and no user topic`() {
         val store = storeUnderTest()
         store.createJob(startedAt).block()
-        topics.saved.add(MessageTopic.create(Key.funKey(99L), "general"))
-        topics.saved.add(MessageTopic.create(Key.funKey(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
+        topics.saved.add(MessageTopic.create(TestKeys.key(99L), "general"))
+        topics.saved.add(MessageTopic.create(TestKeys.key(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
 
         StepVerifier.create(store.listJobTopics()).expectNextCount(2).verifyComplete()
     }
@@ -147,7 +149,7 @@ class VectorIndexJobStoreImplTests {
     fun `a job whose root key differs from its storage key fails the read`() {
         val store = storeUnderTest()
         val job = store.createJob(startedAt).block()!!
-        val other = Key.funKey(4242L)
+        val other = TestKeys.key(4242L)
 
         keyValues.values[job.key.id] = KeyValuePair.create(job.key, job.copy(key = other) as Any)
 
@@ -175,6 +177,7 @@ class VectorIndexJobStoreImplTests {
     }
 
     private val topics = FakeTopicPersistence()
+    private val keyValueIndex = FakeKeyValueIndex()
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
 
@@ -205,12 +208,14 @@ class VectorIndexJobStoreImplTests {
             topicIndex = topicIndex,
             pubsub = pubsub,
             keyValueStore = keyValues,
+            keyValueIndex = keyValueIndex,
+            topicIdQuery = { value -> mapOf(VectorIndexJobStoreImpl.TOPIC_ID to value) },
             codec = IndexJobCodec(mapper),
             nodeId = 7,
             keyType = "long",
             embeddingIdentity = EmbeddingIdentity("acme-e5-small-v2"),
             incarnationId = "incarnation-a",
-            workerKey = Key.funKey(1000L),
+            workerKey = Mono.just(TestKeys.key(1000L)),
         )
     }
 }

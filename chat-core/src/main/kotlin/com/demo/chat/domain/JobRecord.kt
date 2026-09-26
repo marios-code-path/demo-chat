@@ -9,6 +9,8 @@ import java.time.Instant
 data class JobRecord<T>(
     override val key: Key<T>,
     val jobKey: Key<T>,
+    /** The topic of the job. A record message goes to this destination. See `CHAT-avduuqwp`, D2. */
+    val topicKey: Key<T>,
     val workerKey: Key<T>,
     val at: Instant,
     val message: String,

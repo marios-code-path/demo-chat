@@ -34,7 +34,7 @@ class SpringSecurityAccessBrokerService<T>(
      * target of [entity]. An entity with no target denies.
      */
     fun hasAccessToEntity(entity: Any?, perm: String): Mono<Boolean> =
-        EntityTargets.keyOf<T>(entity)
+        EntityTargets.keyOf(entity, rootKeys)
             ?.let { target -> hasAccessTo(target, perm) }
             ?: Mono.just(false)
 
@@ -45,14 +45,6 @@ class SpringSecurityAccessBrokerService<T>(
         )
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
-
-    /**
-     * The check of `IKeyServiceAccess.key`, which still names a class until T3d
-     * of `CHAT-avduuqwp`. The simple name of [kind] is parsed into a
-     * [ChatDomain]. An unknown class denies. It no longer throws.
-     */
-    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> =
-        hasAccessToDomain(kind.simpleName, perm)
 
     /**
      * The principal of the current security context.

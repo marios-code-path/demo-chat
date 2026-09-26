@@ -34,7 +34,18 @@ interface VectorIndexJobStore<T> {
      */
     fun finishJob(job: IndexJob<T>): Mono<Void>
 
-    fun readJob(topicKey: Key<T>): Mono<IndexJob<T>>
+    /**
+     * Reads the job stored under [jobKey]. A missing job answers empty. A
+     * stored job whose key differs fails with `JobLookupException`.
+     */
+    fun readJob(jobKey: Key<T>): Mono<IndexJob<T>>
+
+    /**
+     * Finds the one job whose topic is [topicKey], through the key-value index
+     * field `topicId`. Every fault fails with `JobLookupException`, and none
+     * answers empty. See `CHAT-avduuqwp`, D3.
+     */
+    fun readJobByTopic(topicKey: Key<T>): Mono<IndexJob<T>>
 
     /** One listing. The caller uses it for discovery and for scan exclusion. */
     fun listJobTopics(): Flux<out MessageTopic<T>>

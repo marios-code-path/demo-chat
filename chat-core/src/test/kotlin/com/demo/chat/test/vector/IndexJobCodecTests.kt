@@ -27,6 +27,7 @@ class IndexJobCodecTests {
 
     private val job = IndexJob(
         key = TestKeys.key(500L),
+        topicKey = TestKeys.key(900900L),
         nodeId = 7,
         keyType = "long",
         embeddingIdentity = "acme-e5",

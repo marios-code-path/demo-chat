@@ -1,5 +1,9 @@
 package com.demo.chat.security.service
 
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.service.core.IKeyService
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.PersistenceServiceBeans
@@ -47,5 +51,6 @@ open class CoreAuthBeans<T, V, Q>(
     )
 
     @Bean
-    open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authMan)
+    open fun accessBroker(authMan: AuthorizationService<T, AuthMetadata<T>>, keyService: IKeyService<T>) =
+        AuthMetadataAccessBroker(authMan, KeyVerifier(keyService, rootKeys))
 }

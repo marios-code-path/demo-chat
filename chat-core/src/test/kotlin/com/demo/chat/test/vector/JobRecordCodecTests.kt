@@ -25,6 +25,7 @@ class JobRecordCodecTests {
     private val record = JobRecord(
         key = TestKeys.key(7L),
         jobKey = TestKeys.key(500L),
+        topicKey = TestKeys.key(900900L),
         workerKey = TestKeys.key(1000L),
         at = Instant.parse("2026-09-12T12:00:00Z"),
         message = "rebuild started",

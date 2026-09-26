@@ -1,5 +1,9 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.TopicRecallRequest
@@ -33,6 +37,7 @@ class MessageRecallServiceImpl<T>(
     private val typeUtil: TypeUtil<T>,
     private val keyType: String,
     private val state: VectorIndexState<T>,
+    private val rootKeys: RootKeys<T>,
 ) : MessageRecallService<T> {
 
     override fun recallInTopic(req: TopicRecallRequest<T>): Mono<MessageRecallResult<T>> =
@@ -94,8 +99,10 @@ class MessageRecallServiceImpl<T>(
         val messageId = document.id.substringAfterLast(':')
         val metadata = document.metadata
         return MessageRecallHit(
-            key = MessageKey.create(
+            // This server wrote the vector metadata, so the id takes the MESSAGE root. C45.
+            key = MessageKey.of(
                 typeUtil.fromString(messageId),
+                rootKeys.of(ChatDomain.MESSAGE).id,
                 typeUtil.fromString(metadata["userId"].toString()),
                 typeUtil.fromString(metadata["topicId"].toString()),
             ),

@@ -1,5 +1,7 @@
 package com.demo.chat.test.config
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.security.ChatUserDetails
@@ -19,7 +21,7 @@ class ChatUserDetailSecurityContextFactory : WithSecurityContextFactory<WithLong
         val ctx: SecurityContext = SecurityContextHolder.createEmptyContext()
 
         val principal = ChatUserDetails(
-            User.create(Key.funKey(annotation.userId), "TestUser", "TestHandle", "http://test"),
+            User.create(TestKeys.key(annotation.userId), "TestUser", "TestHandle", "http://test"),
             annotation.roles.asList()
         )
 

@@ -1,5 +1,8 @@
 package com.demo.chat.security.access
 
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyBearer
 import com.demo.chat.domain.TopicMembership
@@ -10,7 +13,7 @@ import com.demo.chat.domain.TopicMembership
  * | Entity | Target key |
  * |---|---|
  * | A `KeyBearer`: `User`, `Message`, `MessageTopic`, `KeyValuePair`, `AuthMetadata` | its `key` |
- * | A `TopicMembership` | its raw `key` id, as a `Key` |
+ * | A `TopicMembership` | its raw `key` id, as a `Key` under the TOPIC_MEMBERSHIP root |
  * | Anything else | none, so the filter denies it |
  *
  * **`TopicMembership.key` is a raw id, not a `Key`.** A filter expression
@@ -22,10 +25,14 @@ import com.demo.chat.domain.TopicMembership
  */
 object EntityTargets {
 
+    /**
+     * The entity came from a typed store, so a membership takes the root of
+     * TOPIC_MEMBERSHIP. See `CHAT-avduuqwp`, C78.
+     */
     @Suppress("UNCHECKED_CAST")
-    fun <T> keyOf(entity: Any?): Key<T>? = when (entity) {
+    fun <T> keyOf(entity: Any?, rootKeys: RootKeys<T>): Key<T>? = when (entity) {
         is KeyBearer<*> -> entity.key as Key<T>
-        is TopicMembership<*> -> Key.funKey(entity.key as T)
+        is TopicMembership<*> -> Key.of(entity.key as T, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id)
         else -> null
     }
 }

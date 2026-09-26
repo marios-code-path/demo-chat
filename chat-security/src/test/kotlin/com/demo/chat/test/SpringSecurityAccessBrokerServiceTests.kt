@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
@@ -24,21 +26,21 @@ class SpringSecurityAccessBrokerServiceLongKeyTests() :
 @ExtendWith(SpringExtension::class)
 open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGenerator<T>) {
 
-    val user = User.create(keyGen.nextKey(), "TEST USER", "SOMENAME", "http://test/image.png")
-    private val targetKey = keyGen.nextKey()
+    val user = User.create(TestKeys.key(keyGen.nextId()), "TEST USER", "SOMENAME", "http://test/image.png")
+    private val targetKey = TestKeys.key(keyGen.nextId())
 
     private fun roles(): List<String> = emptyList()
     private fun grantedAuthorities() = roles().map { SimpleGrantedAuthority("ROLE_$it") }
 
-    private val anonId = keyGen.nextKey()
-    private val domainKey = keyGen.nextKey()
+    private val anonId = TestKeys.key(keyGen.nextId())
+    private val domainKey = TestKeys.key(keyGen.nextId())
 
     @Test
-    fun `calls hasAccessToDomain with class kind returns allow`() {
+    fun `calls hasAccessToDomain with a domain name returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
 
-        val anonKey = keyGen.nextKey()
+        val anonKey = TestKeys.key(keyGen.nextId())
 
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
@@ -51,7 +53,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(rootKeys.of(ChatDomain.USER))
             .willReturn(domainKey)
 
-        val p = accessService.hasAccessToDomainByKind(User::class.java, "TEST")
+        val p = accessService.hasAccessToDomain(ChatDomain.USER.wireName, "TEST")
 
         StepVerifier
             .create(p)
@@ -68,7 +70,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     fun `calls hasAccessTo with primitives returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
-        val anonKey = keyGen.nextKey()
+        val anonKey = TestKeys.key(keyGen.nextId())
 
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
@@ -97,7 +99,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
     fun `calls hasAccessToDomain returns allow`() {
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
-        val anonKey = keyGen.nextKey()
+        val anonKey = TestKeys.key(keyGen.nextId())
 
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
@@ -128,7 +130,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
 
-        val anonKey = keyGen.nextKey()
+        val anonKey = TestKeys.key(keyGen.nextId())
 
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
@@ -156,7 +158,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         val broker: AuthMetadataAccessBroker<T> = BDDMockito.mock()
         val rootKeys: RootKeys<T> = BDDMockito.mock()
 
-        val anonKey = keyGen.nextKey()
+        val anonKey = TestKeys.key(keyGen.nextId())
 
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)

@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -25,7 +27,7 @@ class AuthSummarizerTests {
         val atomicLong = AtomicLong(Random.nextLong(1024,999999))
     }
 
-    private val keyGen = Supplier { Key.funKey(atomicLong.incrementAndGet()) }
+    private val keyGen = Supplier { TestKeys.key(atomicLong.incrementAndGet()) }
 
     private val USER_ROOT = keyGen.get()
     private val ADMIN_KEY = keyGen.get()

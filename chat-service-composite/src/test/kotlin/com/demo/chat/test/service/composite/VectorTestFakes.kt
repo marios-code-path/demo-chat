@@ -1,5 +1,19 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.service.composite.impl.VectorIndexJobStoreImpl
+
+import com.demo.chat.service.core.KeyValueIndexService
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.service.vector.JobLookupFault
+
+import com.demo.chat.service.vector.JobLookupException
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.Key
@@ -30,10 +44,15 @@ import reactor.core.publisher.Sinks
  * A double that takes [calls] appends its own name on each write, so a test
  * can assert the order in which services were called.
  */
+/** The roots that every fake store mints under. See `CHAT-avduuqwp`. */
+internal val FAKE_ROOTS = FakeKeyServices.longRoots()
+
+internal fun fakeRoot(domain: ChatDomain): Long = FAKE_ROOTS.of(domain).id
+
 internal class FakeTopicPersistence : TopicPersistence<Long> {
     val saved = mutableListOf<MessageTopic<Long>>()
     private var nextId = 500L
-    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.of(nextId++, fakeRoot(ChatDomain.MESSAGE_TOPIC)) }
     override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { saved.add(ent) }
     override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { saved.removeIf { it.key == key } }
     // Every read defers. A real store reads when a caller subscribes, and a
@@ -100,13 +119,32 @@ internal class FakePubSub(private val calls: MutableList<String>? = null) : Topi
  */
 internal class FakeKeyValueStore(private val readDelay: Mono<Void> = Mono.empty()) : KeyValueStore<Long, Any> {
     val values = linkedMapOf<Long, KeyValuePair<Long, Any>>()
-    override fun key(): Mono<out Key<Long>> = Mono.empty()
+    private var nextId = 800L
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.of(nextId++, fakeRoot(ChatDomain.KEY_VALUE_PAIR)) }
     override fun add(ent: KeyValuePair<Long, Any>): Mono<Void> = Mono.fromRunnable { values[ent.key.id] = ent }
     override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { values.remove(key.id) }
     override fun get(key: Key<Long>): Mono<out KeyValuePair<Long, Any>> =
         readDelay.then(Mono.defer { Mono.justOrEmpty(values[key.id]) })
     override fun all(): Flux<out KeyValuePair<Long, Any>> =
         Flux.defer { Flux.fromIterable(values.values.toList()) }
+}
+
+/**
+ * The key-value index of a job. It holds the field `topicId` of each job, as
+ * the production entry registers it. [entries] is open, so a test can remove
+ * an entry or add a second one to build a lookup fault.
+ */
+internal class FakeKeyValueIndex : KeyValueIndexService<Long, Map<String, String>> {
+    val entries = linkedMapOf<Key<Long>, Map<String, String>>()
+    override fun add(entity: KeyValuePair<Long, Any>): Mono<Void> = Mono.fromRunnable {
+        val job = entity.data as IndexJob<*>
+        entries[entity.key] = mapOf(VectorIndexJobStoreImpl.TOPIC_ID to job.topicKey.id.toString())
+    }
+    override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { entries.remove(key) }
+    override fun findBy(query: Map<String, String>): Flux<out Key<Long>> = Flux.defer {
+        Flux.fromIterable(entries.filter { (_, fields) -> query.all { (k, v) -> fields[k] == v } }.keys.toList())
+    }
+    override fun findUnique(query: Map<String, String>): Mono<out Key<Long>> = findBy(query).singleOrEmpty()
 }
 
 /**
@@ -125,7 +163,7 @@ internal class FakeMessagePersistence(
     /** Runs before each add. A test uses it to read state at write time. */
     var onAdd: (() -> Unit)? = null
 
-    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+    override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { TestKeys.key(nextId++) }
     override fun add(ent: Message<Long, String>): Mono<Void> =
         Mono.delay(delay).then(
             Mono.defer {
@@ -212,13 +250,20 @@ internal class FakeVectorIndexJobStore : VectorIndexJobStore<Long> {
         }
     }
 
-    override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
-        readKeys.add(topicKey.id)
-        if (topicKey.id == malformedId) {
+    override fun readJob(jobKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
+        readKeys.add(jobKey.id)
+        if (jobKey.id == malformedId) {
             Mono.error(ChatException("cannot decode the stored job"))
         } else {
-            Mono.justOrEmpty(jobs[topicKey.id])
+            Mono.justOrEmpty(jobs[jobKey.id])
         }
+    }
+
+    /** The double finds the job whose topic key equals [topicKey]. No match is the missing fault. */
+    override fun readJobByTopic(topicKey: Key<Long>): Mono<IndexJob<Long>> = Mono.defer {
+        val job = jobs.values.firstOrNull { it.topicKey == topicKey }
+            ?: return@defer Mono.error(JobLookupException(JobLookupFault.MISSING, "No job names the topic '$topicKey'."))
+        readJob(job.key)
     }
 
     override fun listJobTopics(): Flux<out MessageTopic<Long>> =
@@ -228,7 +273,7 @@ internal class FakeVectorIndexJobStore : VectorIndexJobStore<Long> {
             Flux.fromIterable(
                 jobs.values.map { job ->
                     MessageTopic.create(
-                        job.key,
+                        job.topicKey,
                         names[job.key.id] ?: JobTopicNames.nameFor(
                             job.nodeId,
                             job.keyType,
