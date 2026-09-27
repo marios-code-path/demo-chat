@@ -173,9 +173,18 @@ ROOM=$(curl -sS -X PUT http://localhost:8080/persist/topic/add \
   -H 'Content-Type: application/json' \
   -d '{"type":"ByNameRequest","name":"recipes"}' | key_id)
 echo "SENDER=$SENDER ROOM=$ROOM"
+for id in "$SENDER" "$ROOM"; do
+  if [ -z "$id" ] || [ "$id" = null ]; then
+    echo "A create answer held no key id. SENDER=$SENDER ROOM=$ROOM" >&2
+    exit 1
+  fi
+done
 ```
 
-Stop if either value is empty or `null`. `jq -e` prints `null` and exits with 1 when an answer holds no id. A later request with such an id fails.
+Run the blocks of this scenario as one script. The check stops the script when
+either value is empty or `null`. `jq -e` prints `null` and exits with 1 when an
+answer holds no id, but a command substitution does not stop a script on that
+status. A later request with such an id fails.
 
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
