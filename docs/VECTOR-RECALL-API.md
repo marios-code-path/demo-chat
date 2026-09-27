@@ -165,7 +165,7 @@ These commands read the id at `key.id` into `SENDER` and `ROOM`.
 `UserRestTestBase` pins that path.
 
 ```bash
-key_id() { python3 -c 'import json, sys; print(json.load(sys.stdin)["key"]["id"])'; }
+key_id() { jq -er '.key.id'; }
 SENDER=$(curl -sS -X PUT http://localhost:8080/persist/user/add \
   -H 'Content-Type: application/json' \
   -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}' | key_id)
@@ -175,7 +175,7 @@ ROOM=$(curl -sS -X PUT http://localhost:8080/persist/topic/add \
 echo "SENDER=$SENDER ROOM=$ROOM"
 ```
 
-Stop if either value is empty. A later request with an empty id fails.
+Stop if either value is empty or `null`. `jq -e` prints `null` and exits with 1 when an answer holds no id. A later request with such an id fails.
 
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
