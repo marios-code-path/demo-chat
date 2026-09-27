@@ -30,6 +30,12 @@ enum class VerificationPath {
     /** The key of the authenticated principal. A typed store returned that user. */
     PRINCIPAL,
 
+    /**
+     * A value that the discovery reported and a person classified as no key and
+     * no id. [CatalogField.note] gives the reason.
+     */
+    NOT_IDENTITY,
+
     /** A later task verifies it. [CatalogEntry.note] names the task. */
     DEFERRED,
 }
@@ -39,7 +45,9 @@ data class CatalogField(val domain: String, val path: VerificationPath, val note
 
 /**
  * One handler in a route verification catalog. An empty [fields] map means the
- * route takes no key and no id, the classification `NO_IDENTITY`.
+ * discovery reported no value that needs a classification, the classification
+ * `NO_IDENTITY`. The discovery reports every value that it cannot prove free
+ * of identity, so an empty map is a result and not a default.
  */
 data class CatalogEntry(
     val owner: String,
@@ -62,6 +70,7 @@ object Catalog {
     fun query(domain: String) = CatalogField(domain, VerificationPath.QUERY)
     fun registry() = CatalogField("any", VerificationPath.REGISTRY)
     fun principal() = CatalogField("USER", VerificationPath.PRINCIPAL)
+    fun notIdentity(reason: String) = CatalogField("none", VerificationPath.NOT_IDENTITY, reason)
     fun deferred(domain: String, note: String) = CatalogField(domain, VerificationPath.DEFERRED, note)
 }
 

@@ -10,13 +10,15 @@ import org.springframework.util.ReflectionUtils
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 import java.lang.reflect.TypeVariable
+import java.time.temporal.Temporal
+import java.util.UUID
 
 /**
- * One handler that a guard found, with every key and id of its input. See
- * `CHAT-avduuqwp`, T4 step 7.
+ * One handler that a guard found, with every value of its input that needs a
+ * classification. See `CHAT-avduuqwp`, T4 step 7 and review correction 2.
  *
- * [signature] names the parameter types, so a changed handler no longer
- * matches its catalog entry.
+ * [signature] keeps the declared generic structure of each parameter, so a
+ * changed parameter type no longer matches its catalog entry.
  */
 data class DiscoveredHandler(
     val owner: String,
@@ -34,19 +36,26 @@ data class DiscoveredHandler(
  *   generic interface.
  * - Each parameter type resolves against the concrete class, so an entity
  *   type parameter becomes its entity.
- * - The walk follows getters into nested values and into collections.
+ * - The walk follows getters into nested values, collections, arrays, and
+ *   map keys and values. It has no depth limit. A cycle stops the walk at the
+ *   repeated type, and the path is reported.
  *
- * **Three rules decide what an id is.**
+ * **The walk reports every value that it cannot prove free of identity.** A
+ * guard then requires a classification for each one, so no input passes as
+ * free of identity only because the walk did not look.
  *
- * 1. A type variable named `T` that no class resolves is the key type of this
- *    repository. A value of that type is an id.
- * 2. A parameter bound from a path variable is an id, whatever its type.
- * 3. An untyped property named `key` is an id. `KVRequest` carries one.
+ * It reports these values:
  *
- * A `Key`, a `MessageKey`, and a `VerifiedKey` are keys.
+ * 1. A `Key`, a `MessageKey`, and a `VerifiedKey`.
+ * 2. A type variable named `T` that no class resolves. That is the key type
+ *    of this repository.
+ * 3. A parameter bound from a path variable, whatever its type.
+ * 4. A concrete `Long` or `UUID`, the two key types. The type cannot say what
+ *    the value is for, so the catalog classifies it.
+ * 5. An opaque value that the walk cannot examine: `Any`, an unresolved type
+ *    variable other than `T`, a class outside this project, or a cycle.
  */
 object HandlerDiscovery {
-    private const val MAX_DEPTH = 4
 
     fun all(
         types: Collection<Class<*>>,
@@ -68,53 +77,72 @@ object HandlerDiscovery {
                     owner = type.simpleName,
                     method = method.name,
                     route = routeOf(type, method),
-                    signature = parameters.joinToString(",") { typeName(ResolvableType.forMethodParameter(it)) },
+                    signature = parameters.joinToString(",") { render(ResolvableType.forMethodParameter(it)) },
                     identityFields = parameters.flatMap { parameter ->
                         val name = parameter.parameterName ?: "arg${parameter.parameterIndex}"
                         if (isPathVariable(parameter)) listOf(name)
-                        else walk(name, ResolvableType.forMethodParameter(parameter), 0, emptySet())
+                        else walk(name, ResolvableType.forMethodParameter(parameter), emptySet())
                     }.toSortedSet(),
                 )
             }
 
-    /** The names of every key and id inside a value of [type], rooted at [path]. */
-    fun walk(path: String, type: ResolvableType, depth: Int, seen: Set<Class<*>>): List<String> {
-        if (isId(type)) return listOf(path)
-        val raw = type.resolve() ?: return emptyList()
+    /** The paths of every value inside a value of [type] that needs a classification. */
+    fun walk(path: String, type: ResolvableType, seen: Set<Class<*>>): List<String> {
+        val declared = type.type
+        if (declared is TypeVariable<*> && type.resolve() in setOf(null, Any::class.java)) {
+            // Rule 2 for T, rule 5 for any other unresolved variable.
+            return listOf(path)
+        }
+        val raw = type.resolve() ?: return listOf(path)
 
         if (VerifiedKey::class.java.isAssignableFrom(raw)) return listOf(path)
         if (MessageKey::class.java.isAssignableFrom(raw)) return listOf(path, "$path.from", "$path.dest")
         if (Key::class.java.isAssignableFrom(raw)) return listOf(path)
 
-        if (Collection::class.java.isAssignableFrom(raw) || raw.isArray) {
-            val element = if (raw.isArray) type.componentType else type.asCollection().getGeneric(0)
-            return walk("$path[]", element, depth + 1, seen)
+        if (raw.isArray) return walk("$path[]", type.componentType, seen)
+        if (Collection::class.java.isAssignableFrom(raw)) return walk("$path[]", type.asCollection().getGeneric(0), seen)
+        if (Map::class.java.isAssignableFrom(raw)) {
+            val map = type.asMap()
+            return walk("$path{key}", map.getGeneric(0), seen) + walk("$path{}", map.getGeneric(1), seen)
         }
-        if (Map::class.java.isAssignableFrom(raw)) return emptyList()
 
-        if (depth >= MAX_DEPTH || raw in seen || !raw.name.startsWith("com.demo.chat")) return emptyList()
+        if (isIdType(raw)) return listOf(path)
+        if (isLeaf(raw)) return emptyList()
+        if (raw == Any::class.java || !raw.name.startsWith("com.demo.chat")) return listOf(path)
+        if (raw in seen) return listOf(path)
 
         return getters(raw).flatMap { getter ->
-            if (getter.returnType == Any::class.java && propertyName(getter) == "key") return@flatMap listOf("$path.key")
-            walk("$path.${propertyName(getter)}", ResolvableType.forMethodReturnType(getter, raw).let { declared ->
-                // A getter type variable resolves through the value type, so User<T>.key stays Key<T>.
-                if (declared.type is TypeVariable<*>) type.`as`(getter.declaringClass).getGeneric(
-                    getter.declaringClass.typeParameters.indexOfFirst { it.name == (declared.type as TypeVariable<*>).name }
-                        .coerceAtLeast(0)
-                ).takeIf { it != ResolvableType.NONE } ?: declared
-                else declared
-            }, depth + 1, seen + raw)
+            walk("$path.${propertyName(getter)}", returnType(getter, type), seen + raw)
         }
+    }
+
+    /**
+     * The getter type, with a type variable resolved through the value type.
+     * So `User<T>.key` stays `Key<T>`, and `Message<T, String>.data` becomes
+     * `String`.
+     */
+    private fun returnType(getter: Method, owner: ResolvableType): ResolvableType {
+        val declared = ResolvableType.forMethodReturnType(getter)
+        val variable = declared.type as? TypeVariable<*>
+            ?: return owner.resolve()?.let { ResolvableType.forMethodReturnType(getter, it) } ?: declared
+        val index = getter.declaringClass.typeParameters.indexOfFirst { it.name == variable.name }
+        if (index < 0) return declared
+        val resolved = owner.`as`(getter.declaringClass).getGeneric(index)
+        return if (resolved == ResolvableType.NONE) declared else resolved
     }
 
     // The web annotation is named, so this test jar needs no spring-web dependency.
     private fun isPathVariable(parameter: MethodParameter): Boolean =
         parameter.parameterAnnotations.any { it.annotationClass.java.name == "org.springframework.web.bind.annotation.PathVariable" }
 
-    private fun isId(type: ResolvableType): Boolean {
-        val declared = type.type
-        return declared is TypeVariable<*> && declared.name == "T" && type.resolve() in setOf(null, Any::class.java)
-    }
+    private fun isIdType(raw: Class<*>): Boolean =
+        raw == java.lang.Long::class.java || raw == java.lang.Long.TYPE || raw == UUID::class.java
+
+    private fun isLeaf(raw: Class<*>): Boolean =
+        raw.isPrimitive || raw.isEnum || CharSequence::class.java.isAssignableFrom(raw) ||
+            Number::class.java.isAssignableFrom(raw) || raw == java.lang.Boolean::class.java ||
+            raw == java.lang.Character::class.java || Temporal::class.java.isAssignableFrom(raw) ||
+            raw == java.time.Duration::class.java || raw == Class::class.java
 
     private fun getters(type: Class<*>): List<Method> = type.methods
         .filter { it.parameterCount == 0 && it.declaringClass != Any::class.java && !Modifier.isStatic(it.modifiers) }
@@ -128,8 +156,15 @@ object HandlerDiscovery {
         return bare.replaceFirstChar { it.lowercase() }
     }
 
-    private fun typeName(type: ResolvableType): String = when (val declared = type.type) {
-        is TypeVariable<*> -> type.resolve()?.simpleName ?: declared.name
-        else -> type.resolve()?.simpleName ?: declared.typeName
+    /** A type with its generic structure, such as `List<Key<T>>`. */
+    fun render(type: ResolvableType): String {
+        val declared = type.type
+        if (declared is TypeVariable<*>) {
+            return type.resolve()?.takeIf { it != Any::class.java }?.let { render(ResolvableType.forClass(it)) } ?: declared.name
+        }
+        val raw = type.resolve() ?: return declared.typeName
+        if (raw.isArray) return "${render(type.componentType)}[]"
+        val generics = type.generics
+        return if (generics.isEmpty()) raw.simpleName else "${raw.simpleName}<${generics.joinToString(",") { render(it) }}>"
     }
 }

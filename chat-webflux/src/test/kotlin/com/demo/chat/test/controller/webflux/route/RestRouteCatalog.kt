@@ -2,6 +2,7 @@ package com.demo.chat.test.controller.webflux.route
 
 import com.demo.chat.test.route.Catalog.entry
 import com.demo.chat.test.route.Catalog.deferred
+import com.demo.chat.test.route.Catalog.notIdentity
 import com.demo.chat.test.route.Catalog.principal
 import com.demo.chat.test.route.Catalog.query
 import com.demo.chat.test.route.Catalog.resolve
@@ -10,12 +11,15 @@ import com.demo.chat.test.route.Catalog.verify
 import com.demo.chat.test.route.CatalogEntry
 
 /**
- * The REST route verification catalog. See `CHAT-avduuqwp`, T4 step 7.
+ * The Rest route verification catalog. See `CHAT-avduuqwp`, T4 step 7 and
+ * review correction 2.
  *
- * Each entry names one handler, the keys and ids of its input, the domain of
- * each, and how the route verifies it. An entry with no field takes no key
- * and no id. `RestRouteGuardTests` compares this list with the handlers that
- * reflection finds, so a new or changed handler fails until it is named.
+ * Each entry names one handler and every value of its input that the
+ * discovery reported, with a domain and a verification path. A value that is
+ * no key and no id carries `notIdentity` and a reason. An entry with no field
+ * is one where the discovery reported nothing. `RestRouteGuardTests` compares this list
+ * with the handlers that reflection finds, so a new or changed handler fails
+ * until it is classified.
  *
  * The catalog proves that each route is named and classified. It does not
  * prove that a registry read ran. The boundary tests prove that.
@@ -23,56 +27,58 @@ import com.demo.chat.test.route.CatalogEntry
 object RestRouteCatalog {
     val entries: List<CatalogEntry> = listOf(
         // DELETE /index/auth/rem/{id}
-        entry("AuthMetadataIndexRestController", "restRem", "VerifiedKey",
+        entry("AuthMetadataIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("AUTH_METADATA")),
         // DELETE /index/kv/rem/{id}
-        entry("KeyValueIndexRestController", "restRem", "VerifiedKey",
+        entry("KeyValueIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("KEY_VALUE_PAIR")),
         // DELETE /index/membership/rem/{id}
-        entry("MembershipIndexRestController", "restRem", "VerifiedKey",
+        entry("MembershipIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("TOPIC_MEMBERSHIP")),
         // DELETE /index/message/rem/{id}
-        entry("MessageIndexRestController", "restRem", "VerifiedKey",
+        entry("MessageIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("MESSAGE")),
         // DELETE /index/topic/rem/{id}
-        entry("TopicIndexRestController", "restRem", "VerifiedKey",
+        entry("TopicIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // DELETE /index/user/rem/{id}
-        entry("UserIndexRestController", "restRem", "VerifiedKey",
+        entry("UserIndexRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("USER")),
         // DELETE /key/rem/{id}
-        entry("IKeyRestController", "restRem", "VerifiedKey",
+        entry("IKeyRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("any")),
         // DELETE /persist/kv/rem/{id}
-        entry("KeyValueStoreRestController", "restRem", "VerifiedKey",
+        entry("KeyValueStoreRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("KEY_VALUE_PAIR")),
         // DELETE /persist/membership/rem/{id}
-        entry("MembershipPersistenceRestController", "restRem", "VerifiedKey",
+        entry("MembershipPersistenceRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("TOPIC_MEMBERSHIP")),
         // DELETE /persist/message/rem/{id}
-        entry("MessagePersistenceRestController", "restRem", "VerifiedKey",
+        entry("MessagePersistenceRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("MESSAGE")),
         // DELETE /persist/topic/rem/{id}
-        entry("TopicPersistenceRestController", "restRem", "VerifiedKey",
+        entry("TopicPersistenceRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // DELETE /persist/user/rem/{id}
-        entry("UserPersistenceRestController", "restRem", "VerifiedKey",
+        entry("UserPersistenceRestController", "restRem", "VerifiedKey<T>",
             "id" to resolver("USER")),
         // DELETE /pubsub/members/{topic}
-        entry("PubSubRestController", "restUnSubscribeAllIn", "VerifiedKey",
+        entry("PubSubRestController", "restUnSubscribeAllIn", "VerifiedKey<T>",
             "topic" to resolver("MESSAGE_TOPIC")),
         // DELETE /pubsub/pub/{topicId}
-        entry("PubSubRestController", "restClose", "VerifiedKey",
+        entry("PubSubRestController", "restClose", "VerifiedKey<T>",
             "topicId" to resolver("MESSAGE_TOPIC")),
         // DELETE /pubsub/sub
-        entry("PubSubRestController", "restUnSubscribeAll", "ChatUserDetails",
+        entry("PubSubRestController", "restUnSubscribeAll", "ChatUserDetails<T>",
+            "userDetails.authorities[]" to notIdentity("a granted authority of the principal"),
             "userDetails.user.key" to principal()),
         // DELETE /pubsub/sub/{id}
-        entry("PubSubRestController", "unSubscribeOne", "VerifiedKey,ChatUserDetails",
+        entry("PubSubRestController", "unSubscribeOne", "VerifiedKey<T>,ChatUserDetails<T>",
             "id" to resolver("MESSAGE_TOPIC"),
+            "userDetails.authorities[]" to notIdentity("a granted authority of the principal"),
             "userDetails.user.key" to principal()),
         // DELETE /topic/id/{id}
-        entry("ChatTopicServiceController", "restDeleteRoom", "VerifiedKey",
+        entry("ChatTopicServiceController", "restDeleteRoom", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // GET /index/auth/findBy
         entry("AuthMetadataIndexRestController", "findBy", "IndexSearchRequest"),
@@ -102,81 +108,82 @@ object RestRouteCatalog {
         entry("IKeyRestController", "restExists", "String",
             "id" to resolve("any")),
         // GET /message/id/{id}
-        entry("ChatMessageServiceController", "restMessageById", "VerifiedKey",
+        entry("ChatMessageServiceController", "restMessageById", "VerifiedKey<T>",
             "id" to resolver("MESSAGE")),
         // GET /message/topic/{id}
-        entry("ChatMessageServiceController", "restListenTopic", "VerifiedKey",
+        entry("ChatMessageServiceController", "restListenTopic", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // GET /persist/kv/all
         entry("KeyValueStoreRestController", "all", ""),
         // GET /persist/kv/byIds
-        entry("KeyValueStoreRestController", "restByIds", "List",
+        entry("KeyValueStoreRestController", "restByIds", "List<Key<T>>",
             "ids[]" to verify("KEY_VALUE_PAIR")),
         // GET /persist/kv/get/{id}
-        entry("KeyValueStoreRestController", "restGet", "VerifiedKey",
+        entry("KeyValueStoreRestController", "restGet", "VerifiedKey<T>",
             "id" to resolver("KEY_VALUE_PAIR")),
         // GET /persist/membership/all
         entry("MembershipPersistenceRestController", "all", ""),
         // GET /persist/membership/get/{id}
-        entry("MembershipPersistenceRestController", "restGet", "VerifiedKey",
+        entry("MembershipPersistenceRestController", "restGet", "VerifiedKey<T>",
             "id" to resolver("TOPIC_MEMBERSHIP")),
         // GET /persist/message/all
         entry("MessagePersistenceRestController", "all", ""),
         // GET /persist/message/get/{id}
-        entry("MessagePersistenceRestController", "restGet", "VerifiedKey",
+        entry("MessagePersistenceRestController", "restGet", "VerifiedKey<T>",
             "id" to resolver("MESSAGE")),
         // GET /persist/topic/all
         entry("TopicPersistenceRestController", "all", ""),
         // GET /persist/topic/get/{id}
-        entry("TopicPersistenceRestController", "restGet", "VerifiedKey",
+        entry("TopicPersistenceRestController", "restGet", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // GET /persist/user/all
         entry("UserPersistenceRestController", "all", ""),
         // GET /persist/user/get/{id}
-        entry("UserPersistenceRestController", "restGet", "VerifiedKey",
+        entry("UserPersistenceRestController", "restGet", "VerifiedKey<T>",
             "id" to resolver("USER")),
         // GET /pubsub/exists/{topic}
-        entry("PubSubRestController", "restExists", "VerifiedKey",
+        entry("PubSubRestController", "restExists", "VerifiedKey<T>",
             "topic" to resolver("MESSAGE_TOPIC")),
         // GET /pubsub/listen/{topic}
-        entry("PubSubRestController", "restListenTo", "VerifiedKey",
+        entry("PubSubRestController", "restListenTo", "VerifiedKey<T>",
             "topic" to resolver("MESSAGE_TOPIC")),
         // GET /pubsub/pub/{topicId}
-        entry("PubSubRestController", "restGetUsersBy", "VerifiedKey",
+        entry("PubSubRestController", "restGetUsersBy", "VerifiedKey<T>",
             "topicId" to resolver("MESSAGE_TOPIC")),
         // GET /pubsub/user/{uid}
-        entry("PubSubRestController", "restGetByUser", "VerifiedKey",
+        entry("PubSubRestController", "restGetByUser", "VerifiedKey<T>",
             "uid" to resolver("USER")),
         // GET /secrets/{id}
-        entry("SecretsRestController", "restGetStoredCredentials", "VerifiedKey",
+        entry("SecretsRestController", "restGetStoredCredentials", "VerifiedKey<T>",
             "id" to resolver("USER")),
         // GET /topic/id/{id}
-        entry("ChatTopicServiceController", "restGetRoom", "VerifiedKey",
+        entry("ChatTopicServiceController", "restGetRoom", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // GET /topic/list
         entry("ChatTopicServiceController", "listRooms", ""),
         // GET /topic/members/{id}
-        entry("ChatTopicServiceController", "restRoomMembers", "VerifiedKey",
+        entry("ChatTopicServiceController", "restRoomMembers", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),
         // GET /topic/name/{name}
         entry("ChatTopicServiceController", "getRoomByName", "ByStringRequest"),
         // GET /user/handle/{name}
         entry("ChatUserServiceController", "findByUsername", "ByStringRequest"),
         // GET /user/id/{id}
-        entry("ChatUserServiceController", "restFindByUserId", "VerifiedKey",
+        entry("ChatUserServiceController", "restFindByUserId", "VerifiedKey<T>",
             "id" to resolver("USER")),
         // POST /key/new
         entry("IKeyRestController", "restKey", "DomainRequest"),
         // POST /message/recall/global
         entry("ChatMessageRecallController", "recallGlobal", "GlobalRecallRequest"),
         // POST /message/recall/topic
-        entry("ChatMessageRecallController", "recallInTopic", "TopicRecallRequest",
+        entry("ChatMessageRecallController", "recallInTopic", "TopicRecallRequest<T>",
             "req.topicId" to query("MESSAGE_TOPIC")),
         // POST /message/recall/user
-        entry("ChatMessageRecallController", "recallByUser", "UserRecallRequest",
+        entry("ChatMessageRecallController", "recallByUser", "UserRecallRequest<T>",
             "req.userId" to query("USER")),
         // POST /message/send/{id}
-        entry("ChatMessageServiceController", "restSend", "VerifiedKey,String,ChatUserDetails",
+        entry("ChatMessageServiceController", "restSend", "VerifiedKey<T>,String,ChatUserDetails<T>",
+            "details.authorities[]" to notIdentity("a granted authority of the principal"),
             "details.user.key" to principal(),
             "id" to resolver("MESSAGE_TOPIC")),
         // POST /persist/kv/key
@@ -190,58 +197,65 @@ object RestRouteCatalog {
         // POST /persist/user/key
         entry("UserPersistenceRestController", "key", ""),
         // POST /pubsub/pub/{topicId}
-        entry("PubSubRestController", "restOpen", "VerifiedKey",
+        entry("PubSubRestController", "restOpen", "VerifiedKey<T>",
             "topicId" to resolver("MESSAGE_TOPIC")),
         // POST /pubsub/send/{topic}
-        entry("PubSubRestController", "sendRestMessage", "VerifiedKey,String,ChatUserDetails",
+        entry("PubSubRestController", "sendRestMessage", "VerifiedKey<T>,String,ChatUserDetails<T>",
             "topic" to resolver("MESSAGE_TOPIC"),
+            "user.authorities[]" to notIdentity("a granted authority of the principal"),
             "user.user.key" to principal()),
         // POST /pubsub/sub/{id}
-        entry("PubSubRestController", "subscribeOne", "VerifiedKey,ChatUserDetails",
+        entry("PubSubRestController", "subscribeOne", "VerifiedKey<T>,ChatUserDetails<T>",
             "id" to resolver("MESSAGE_TOPIC"),
+            "userDetails.authorities[]" to notIdentity("a granted authority of the principal"),
             "userDetails.user.key" to principal()),
         // POST /secrets/compare/{id}
-        entry("SecretsRestController", "restCompareSecret", "VerifiedKey,String",
+        entry("SecretsRestController", "restCompareSecret", "VerifiedKey<T>,String",
             "id" to resolver("USER")),
         // POST /topic/new
         entry("ChatTopicServiceController", "addRoom", "ByStringRequest"),
         // POST /user/new
         entry("ChatUserServiceController", "addUser", "UserCreateRequest"),
         // PUT /index/auth/add
-        entry("AuthMetadataIndexRestController", "restAdd", "AuthMetadata",
+        entry("AuthMetadataIndexRestController", "restAdd", "AuthMetadata<T>",
+            "entity.expires" to notIdentity("an expiry time in milliseconds"),
             "entity.key" to verify("AUTH_METADATA"),
             "entity.principal" to deferred("any", "T6, CHAT-ihbesbmn"),
             "entity.target" to deferred("any", "T6, CHAT-ihbesbmn")),
         // PUT /index/kv/add
-        entry("KeyValueIndexRestController", "restAdd", "KeyValuePair",
+        entry("KeyValueIndexRestController", "restAdd", "KeyValuePair<T,E>",
+            "entity.data" to notIdentity("a payload value"),
             "entity.key" to verify("KEY_VALUE_PAIR")),
         // PUT /index/membership/add
-        entry("MembershipIndexRestController", "restAdd", "TopicMembership",
+        entry("MembershipIndexRestController", "restAdd", "TopicMembership<T>",
             "entity.key" to resolve("TOPIC_MEMBERSHIP"),
             "entity.member" to resolve("USER"),
             "entity.memberOf" to resolve("MESSAGE_TOPIC")),
         // PUT /index/message/add
-        entry("MessageIndexRestController", "restAdd", "Message",
+        entry("MessageIndexRestController", "restAdd", "Message<T,E>",
+            "entity.data" to notIdentity("a payload value"),
             "entity.key" to verify("MESSAGE"),
             "entity.key.dest" to resolve("MESSAGE_TOPIC"),
             "entity.key.from" to resolve("USER")),
         // PUT /index/topic/add
-        entry("TopicIndexRestController", "restAdd", "MessageTopic",
+        entry("TopicIndexRestController", "restAdd", "MessageTopic<T>",
             "entity.key" to verify("MESSAGE_TOPIC")),
         // PUT /index/user/add
-        entry("UserIndexRestController", "restAdd", "User",
+        entry("UserIndexRestController", "restAdd", "User<T>",
             "entity.key" to verify("USER")),
         // PUT /persist/kv/add
         entry("KeyValueStoreRestController", "addKv", "KVRequest",
+            "req.data" to notIdentity("a payload value"),
             "req.key" to resolve("KEY_VALUE_PAIR")),
         // PUT /persist/membership/add
-        entry("MembershipPersistenceRestController", "addMembership", "MembershipRequest",
+        entry("MembershipPersistenceRestController", "addMembership", "MembershipRequest<T>",
             "req.roomId" to resolve("MESSAGE_TOPIC"),
             "req.uid" to resolve("USER")),
         // PUT /persist/message/add
-        entry("MessagePersistenceRestController", "addMessage", "MessageSendRequest",
+        entry("MessagePersistenceRestController", "addMessage", "MessageSendRequest<T,V>",
             "req.dest" to resolve("MESSAGE_TOPIC"),
-            "req.from" to resolve("USER")),
+            "req.from" to resolve("USER"),
+            "req.msg" to notIdentity("a payload value")),
         // PUT /persist/topic/add
         entry("TopicPersistenceRestController", "addTopic", "ByStringRequest"),
         // PUT /persist/user/add
@@ -249,15 +263,17 @@ object RestRouteCatalog {
         // PUT /secrets/add
         entry("SecretsRestController", "restAddCredential", "String"),
         // PUT /secrets/add/{id}
-        entry("SecretsRestController", "restAddCredentialWithId", "VerifiedKey,String",
+        entry("SecretsRestController", "restAddCredentialWithId", "VerifiedKey<T>,String",
             "id" to resolver("USER")),
         // PUT /topic/join/{id}
-        entry("ChatTopicServiceController", "joinRestRoom", "VerifiedKey,ChatUserDetails",
+        entry("ChatTopicServiceController", "joinRestRoom", "VerifiedKey<T>,ChatUserDetails<T>",
             "id" to resolver("MESSAGE_TOPIC"),
+            "user.authorities[]" to notIdentity("a granted authority of the principal"),
             "user.user.key" to principal()),
         // PUT /topic/leave/{id}
-        entry("ChatTopicServiceController", "leaveRestRoom", "VerifiedKey,ChatUserDetails",
+        entry("ChatTopicServiceController", "leaveRestRoom", "VerifiedKey<T>,ChatUserDetails<T>",
             "id" to resolver("MESSAGE_TOPIC"),
+            "user.authorities[]" to notIdentity("a granted authority of the principal"),
             "user.user.key" to principal()),
     )
 }
