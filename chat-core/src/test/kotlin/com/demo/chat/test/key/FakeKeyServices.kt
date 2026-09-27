@@ -34,4 +34,43 @@ object FakeKeyServices {
 object TestVerifiers {
     fun <T> resolvingNothing(): com.demo.chat.service.core.KeyVerifier<T> =
         com.demo.chat.service.core.KeyVerifier(com.demo.chat.service.dummy.DummyKeyService(), RootKeys())
+
+    /**
+     * A verifier over a registry that holds [keys], each id under its own root.
+     * An id outside [keys] fails. [rootKeys] supplies the domain roots.
+     */
+    fun <T> holding(rootKeys: RootKeys<T>, keys: Collection<Key<T>>): com.demo.chat.service.core.KeyVerifier<T> =
+        com.demo.chat.service.core.KeyVerifier(MapKeyRegistry(keys.associate { it.id to it.root }), rootKeys)
+
+    /**
+     * A verifier that holds every id under the fixed [TestRoots] root. A method
+     * security test that does not test verification passes it. The boundary
+     * tests use [holding] or a real registry instead.
+     */
+    fun <T> acceptingTestRoot(rootKeys: RootKeys<T>): com.demo.chat.service.core.KeyVerifier<T> =
+        com.demo.chat.service.core.KeyVerifier(TestRootRegistry(), rootKeys)
+}
+
+/** A registry that answers the fixed test root for every id and mints nothing. */
+class TestRootRegistry<T> : com.demo.chat.service.core.IKeyService<T> {
+    override fun key(domain: ChatDomain): reactor.core.publisher.Mono<out Key<T>> =
+        reactor.core.publisher.Mono.error(IllegalStateException("This registry mints nothing."))
+    override fun rem(key: Key<T>): reactor.core.publisher.Mono<Void> = reactor.core.publisher.Mono.empty()
+    override fun exists(key: Key<T>): reactor.core.publisher.Mono<Boolean> =
+        reactor.core.publisher.Mono.just(key.root == TestRoots.of(key.id))
+    @Suppress("UNCHECKED_CAST")
+    override fun rootOf(id: T): reactor.core.publisher.Mono<T & Any> =
+        reactor.core.publisher.Mono.fromCallable { TestRoots.of(id) as Any } as reactor.core.publisher.Mono<T & Any>
+}
+
+/** A registry that answers `rootOf` from a map and mints nothing. */
+class MapKeyRegistry<T>(private val roots: Map<T, T>) : com.demo.chat.service.core.IKeyService<T> {
+    override fun key(domain: ChatDomain): reactor.core.publisher.Mono<out Key<T>> =
+        reactor.core.publisher.Mono.error(IllegalStateException("This registry mints nothing."))
+    override fun rem(key: Key<T>): reactor.core.publisher.Mono<Void> = reactor.core.publisher.Mono.empty()
+    override fun exists(key: Key<T>): reactor.core.publisher.Mono<Boolean> =
+        reactor.core.publisher.Mono.just(roots[key.id] == key.root)
+    @Suppress("UNCHECKED_CAST")
+    override fun rootOf(id: T): reactor.core.publisher.Mono<T & Any> =
+        reactor.core.publisher.Mono.justOrEmpty(roots[id]) as reactor.core.publisher.Mono<T & Any>
 }

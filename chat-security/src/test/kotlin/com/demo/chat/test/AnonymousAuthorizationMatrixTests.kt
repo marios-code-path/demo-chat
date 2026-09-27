@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.verified
+
 import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.test.key.TestKeys
@@ -156,7 +158,7 @@ class AnonymousAuthorizationMatrixTests {
     @Test
     fun `a row naming the User root reaches a caller through one target`() {
         val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
-        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys(), registry())
 
         val answer = service.hasAccessToDomain("MessageTopic", "ALL")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
@@ -186,7 +188,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a self grant does not reach a third caller`() {
         val broker = broker(shippedGrants())
 
-        assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY, "GET").block()).isFalse()
+        assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY.verified(), "GET").block()).isFalse()
         assertThat(permitted(broker, listOf(ADMIN_KEY), "GET")).isEmpty()
     }
 
@@ -198,13 +200,13 @@ class AnonymousAuthorizationMatrixTests {
     fun `the administrator holds every right over itself with no row`() {
         val broker = broker(listOf())
 
-        assertThat(broker.hasAccessByKey(ADMIN_KEY, ADMIN_KEY, "GET").block()).isTrue()
+        assertThat(broker.hasAccessByKey(ADMIN_KEY, ADMIN_KEY.verified(), "GET").block()).isTrue()
     }
 
     /** The same rule reaches the caller of the security context. */
     @Test
     fun `an authenticated caller holds every right over itself`() {
-        val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys(), registry())
 
         val answer = service.hasAccessTo(CALLER_KEY, "DEL")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
@@ -222,7 +224,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a close does not remove self authority`() {
         val close = grant(USER_ROOT, CALLER_KEY, "*", expires = 1L)
 
-        assertThat(broker(listOf(close)).hasAccessByKey(CALLER_KEY, CALLER_KEY, "GET").block()).isTrue()
+        assertThat(broker(listOf(close)).hasAccessByKey(CALLER_KEY, CALLER_KEY.verified(), "GET").block()).isTrue()
     }
 
     /**
@@ -262,7 +264,7 @@ class AnonymousAuthorizationMatrixTests {
     /** An entity with no target denies, whatever the grants hold. */
     @Test
     fun `an entity with no target denies`() {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
 
         val answer = service.hasAccessToEntity("not an entity", "GET")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
@@ -272,14 +274,14 @@ class AnonymousAuthorizationMatrixTests {
     }
 
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
-        broker.permittedTargets(CALLER_KEY, targets, perm).collectList().block()!!
+        broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
         operations().associate { (operation, call) -> operation to allowed(call, context) }
 
     /** Answers `User FIND` against one grant set, which the expiry tests use. */
     private fun allowedWith(grants: List<AuthMetadata<Long>>, context: SecurityContext?): Boolean {
-        val service = SpringSecurityAccessBrokerService(broker(grants), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(grants), rootKeys(), registry())
 
         return service.hasAccessToDomain("User", "FIND")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(context!!)))
@@ -301,7 +303,7 @@ class AnonymousAuthorizationMatrixTests {
         call: (SpringSecurityAccessBrokerService<Long>) -> Mono<Boolean>,
         context: SecurityContext?
     ): Boolean {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
         var answer = call(service)
         if (context != null) {
             answer = answer.contextWrite(
@@ -343,6 +345,12 @@ class AnonymousAuthorizationMatrixTests {
             TestVerifiers.resolvingNothing(),
         )
     }
+
+    /** The registry of every key of this test, each under its own root. */
+    private fun registry() = TestVerifiers.holding(
+        rootKeys(),
+        listOf(ANON_KEY, ADMIN_KEY, USER_ROOT, MESSAGE_ROOT, TOPIC_ROOT, CALLER_KEY, ROOM_KEY, MESSAGE_KEY),
+    )
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
         mapOf(

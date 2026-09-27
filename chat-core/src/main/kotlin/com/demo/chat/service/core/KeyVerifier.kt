@@ -38,6 +38,13 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
         if (key.root == rootKeys.of(domain).id) VerifiedKey(key)
         else throw KeyVerificationException("Key ${key.id} is not in ${domain.wireName}.")
 
+    /**
+     * The root key of [domain], from the roots that this verifier holds. A root
+     * key is the domain itself, and the roots load at startup from the root key
+     * source. So this conversion reads no registry and trusts no caller.
+     */
+    fun domainRoot(domain: ChatDomain): VerifiedKey<T> = VerifiedKey(rootKeys.of(domain))
+
     private fun check(key: Key<T>, expected: ChatDomain?): Mono<VerifiedKey<T>> =
         if (expected == null || rootKeys.of(expected).id == key.root) Mono.just(VerifiedKey(key))
         else Mono.error(KeyVerificationException("Key ${key.id} is not in ${expected.wireName}."))

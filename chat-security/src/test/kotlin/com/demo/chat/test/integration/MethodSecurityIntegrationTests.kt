@@ -3,6 +3,7 @@ package com.demo.chat.test.integration
 import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.test.key.TestKeys
+import com.demo.chat.test.key.TestRoots
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.test.key.RootKeysFixture
@@ -245,10 +246,18 @@ class MethodSecurityIntegrationTestConfiguration {
         AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
     @Bean
-    /** Every concrete test in this context uses Long keys. The roots are distinct fixed ids. */
-    fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(emptyMap(), TestKeys.key(8998L), TestKeys.key(8999L))
+    /**
+     * Every concrete test in this context uses Long keys. The roots are distinct
+     * fixed ids. The USER root is the fixed test root, because the test users
+     * carry it, and a typed user store returns keys under the USER root.
+     */
+    fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(ChatDomain.USER to Key.root(TestRoots.of(0L))),
+        TestKeys.key(8998L),
+        TestKeys.key(8999L),
+    )
 
     @Bean
     fun <T> chatAccess(access: AccessBroker<T>, rootKeys: RootKeys<T>): SpringSecurityAccessBrokerService<T> =
-        SpringSecurityAccessBrokerService(access, rootKeys)
+        SpringSecurityAccessBrokerService(access, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 }

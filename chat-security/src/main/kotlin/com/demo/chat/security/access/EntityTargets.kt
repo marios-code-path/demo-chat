@@ -3,7 +3,12 @@ package com.demo.chat.security.access
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.KeyValuePair
+import com.demo.chat.domain.Message
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.User
 import com.demo.chat.domain.KeyBearer
 import com.demo.chat.domain.TopicMembership
 
@@ -33,6 +38,20 @@ object EntityTargets {
     fun <T> keyOf(entity: Any?, rootKeys: RootKeys<T>): Key<T>? = when (entity) {
         is KeyBearer<*> -> entity.key as Key<T>
         is TopicMembership<*> -> Key.of(entity.key as T, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id)
+        else -> null
+    }
+
+    /**
+     * The domain of an entity type. The list is closed, as [keyOf] is.
+     * `MessageTopic` extends `KeyValuePair`, so it is tested first.
+     */
+    fun domainOf(entity: Any?): ChatDomain? = when (entity) {
+        is User<*> -> ChatDomain.USER
+        is Message<*, *> -> ChatDomain.MESSAGE
+        is MessageTopic<*> -> ChatDomain.MESSAGE_TOPIC
+        is AuthMetadata<*> -> ChatDomain.AUTH_METADATA
+        is KeyValuePair<*, *> -> ChatDomain.KEY_VALUE_PAIR
+        is TopicMembership<*> -> ChatDomain.TOPIC_MEMBERSHIP
         else -> null
     }
 }

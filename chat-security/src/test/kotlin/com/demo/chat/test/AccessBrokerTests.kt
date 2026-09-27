@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.verified
+
 import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.test.key.TestKeys
@@ -47,7 +49,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
-            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess.verified(), "TEST"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)
@@ -82,7 +84,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
-            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess.verified(), "TEST"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)
@@ -117,7 +119,7 @@ open class AccessBrokerTests<T>(
         val access = AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
         StepVerifier
-            .create(access.hasAccessByKey(myPrincipal, objectForAccess, "TEST3"))
+            .create(access.hasAccessByKey(myPrincipal, objectForAccess.verified(), "TEST3"))
             .assertNext { ret ->
                 Assertions
                     .assertThat(ret)

@@ -11,6 +11,7 @@ import com.demo.chat.config.service.composite.CompositeServiceBeansConfiguration
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.service.core.VerifiedKey
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
@@ -161,11 +162,11 @@ class CassandraCompositeIdentityTests {
         var reached: Key<Long>? = null
 
         override fun hasAccessByPrincipal(
-            principal: Mono<Key<Long>>, key: Key<Long>, action: String
+            principal: Mono<Key<Long>>, key: VerifiedKey<Long>, action: String
         ): Mono<Boolean> = principal.map { reached = it; true }
 
         override fun hasAccessByKey(
-            principal: Key<Long>, key: Key<Long>, action: String
+            principal: Key<Long>, key: VerifiedKey<Long>, action: String
         ): Mono<Boolean> = error("These tests never call hasAccessByKey")
 
         override fun hasAccessByKeyId(principal: Long, key: Long, action: String): Mono<Boolean> =

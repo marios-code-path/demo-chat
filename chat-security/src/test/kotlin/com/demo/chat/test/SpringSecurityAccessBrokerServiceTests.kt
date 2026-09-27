@@ -1,6 +1,7 @@
 package com.demo.chat.test
 
 import com.demo.chat.test.key.TestKeys
+import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -45,7 +46,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
-        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
@@ -81,7 +82,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
             .given(broker.hasAccessByKeyId(anyObject(), anyObject(), anyObject()))
             .willReturn(returnVal)
 
-        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
         val p = accessService.hasAccessTo(user.key.id, domainKey.id, "TEST")
 
         StepVerifier
@@ -104,7 +105,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
-        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
@@ -135,7 +136,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(rootKeys.anon())
             .willReturn(anonKey)
 
-        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(false))
@@ -166,7 +167,7 @@ open class SpringSecurityAccessBrokerServiceTests<T>(private val keyGen: IKeyGen
         BDDMockito.given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(true))
 
-        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys)
+        val accessService = SpringSecurityAccessBrokerService(broker, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 
         val p = accessService.hasAccessTo(targetKey, "TEST")
 

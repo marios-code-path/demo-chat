@@ -8,6 +8,8 @@ import com.demo.chat.domain.Key
  * A `VerifiedKey` from `verify` or `resolve` proves that the registry holds
  * the id with that root. A `VerifiedKey` from `trustTypedStore` proves only
  * that the root matches the store domain. That conversion trusts its caller.
+ * A `VerifiedKey` from `domainRoot` is a domain root key that the verifier
+ * loaded at startup.
  *
  * The constructor is `internal`, which is a module boundary and not a proof.
  * `KeyVerifierConstructionTests` limits the constructor calls in main source to

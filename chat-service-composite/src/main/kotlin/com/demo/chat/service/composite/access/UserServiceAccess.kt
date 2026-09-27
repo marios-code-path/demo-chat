@@ -19,14 +19,14 @@ open class UserServiceAccess<T>(
     private val verifier: KeyVerifier<T>,
 ) : ChatUserService<T> {
     override fun addUser(userReq: UserCreateRequest): Mono<out Key<T>> = authMetadataAccessBroker
-        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "CREATE")
+        .hasAccessByPrincipal(Mono.from(principalSupplier()), verifier.domainRoot(ChatDomain.USER), "CREATE")
         .then(that.addUser(userReq))
 
     override fun findByUsername(req: ByStringRequest): Flux<out User<T>> = authMetadataAccessBroker
-        .hasAccessByPrincipal(Mono.from(principalSupplier()), rootKeys.of(ChatDomain.USER), "READ")
+        .hasAccessByPrincipal(Mono.from(principalSupplier()), verifier.domainRoot(ChatDomain.USER), "READ")
         .thenMany(that.findByUsername(req))
 
     override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = verifier.resolve(req.id, ChatDomain.USER)
-        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalSupplier()), it.key, "READ") }
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalSupplier()), it, "READ") }
         .then(that.findByUserId(req))
 }

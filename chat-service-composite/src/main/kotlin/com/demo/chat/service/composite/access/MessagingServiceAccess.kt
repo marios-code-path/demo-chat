@@ -22,14 +22,14 @@ open class MessagingServiceAccess<T, V> (
 ): ChatMessageService<T, V> {
 
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> = verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC)
-        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it.key, "LISTEN") }
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "LISTEN") }
         .thenMany(that.listenTopic(req))
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> = verifier.resolve(req.id, ChatDomain.MESSAGE)
-        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it.key, "READ") }
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "READ") }
         .then(that.messageById(req))
 
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> = verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC)
-        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it.key, "SEND") }
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "SEND") }
         .then(that.send(req))
 }

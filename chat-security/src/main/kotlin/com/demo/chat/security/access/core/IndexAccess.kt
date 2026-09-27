@@ -8,7 +8,8 @@ import reactor.core.publisher.Mono
 
 interface IndexAccess<T, E, Q> : IndexService<T, E, Q> {
 
-    @PreAuthorize("@chatAccess.hasAccessToEntity(#entity, 'PUT')")
+    // The entity is caller input, so its key verifies against the registry. See CHAT-avduuqwp, D12.
+    @PreAuthorize("@chatAccess.hasAccessToSubmittedEntity(#entity, 'PUT')")
     override fun add(entity: E): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'REM')")

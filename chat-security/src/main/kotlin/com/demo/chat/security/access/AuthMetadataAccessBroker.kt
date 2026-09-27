@@ -1,6 +1,7 @@
 package com.demo.chat.security.access
 
 import com.demo.chat.service.core.KeyVerifier
+import com.demo.chat.service.core.VerifiedKey
 
 import com.demo.chat.domain.knownkey.ChatDomain
 
@@ -24,7 +25,7 @@ class AuthMetadataAccessBroker<T>(
      */
     override fun hasAccessByKeyId(principal: T, key: T, action: String): Mono<Boolean> =
         Mono.zip(verifier.resolve(principal, ChatDomain.USER), verifier.resolve(key, null))
-            .flatMap { hasAccessByKey(it.t1.key, it.t2.key, action) }
+            .flatMap { hasAccessByKey(it.t1.key, it.t2, action) }
             .onErrorReturn(false)
             .defaultIfEmpty(false)
 
@@ -53,10 +54,15 @@ class AuthMetadataAccessBroker<T>(
      */
     private fun isSelf(principal: Key<T>, target: Key<T>): Boolean = principal == target
 
-    override fun hasAccessByKey(principal: Key<T>, key: Key<T>, perm: String): Mono<Boolean> =
-        if (isSelf(principal, key)) Mono.just(true)
-        else collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(principal, key, perm), perm)
+    /**
+     * A key reaches [isSelf] only as a [VerifiedKey]. That key came from
+     * `KeyVerifier.verify`, `KeyVerifier.resolve`, `KeyVerifier.domainRoot`, or
+     * the one trusted conversion `trustTypedStore`. See `CHAT-avduuqwp`, D5.
+     */
+    override fun hasAccessByKey(principal: Key<T>, target: VerifiedKey<T>, perm: String): Mono<Boolean> =
+        if (isSelf(principal, target.key)) Mono.just(true)
+        else collectPermissionsAndProceed(authMan.getAuthorizationsAgainst(principal, target.key, perm), perm)
 
-    override fun hasAccessByPrincipal(principal: Mono<Key<T>>, target: Key<T>, perm: String): Mono<Boolean> =
+    override fun hasAccessByPrincipal(principal: Mono<Key<T>>, target: VerifiedKey<T>, perm: String): Mono<Boolean> =
         principal.flatMap { pKey -> hasAccessByKey(pKey, target, perm) }
 }
