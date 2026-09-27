@@ -62,7 +62,7 @@ class AuthMetadataIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, AuthMetadata<Long>, IndexSearchRequest>(
     "auth",
-    { AuthMetadata.create(inDomain(1001L, ChatDomain.AUTH_METADATA), TestKeys.key(1L), TestKeys.key(201L), "TEST", false, Long.MAX_VALUE) },
+    { AuthMetadata.create(inDomain(1001L, ChatDomain.AUTH_METADATA), inDomain(1L, ChatDomain.USER), inDomain(201L, ChatDomain.MESSAGE_TOPIC), "TEST", false, Long.MAX_VALUE) },
     { TestKeys.key(1001L) },
     { IndexSearchRequest("member", "120", 100) },
     beans.authMetadataIndex()

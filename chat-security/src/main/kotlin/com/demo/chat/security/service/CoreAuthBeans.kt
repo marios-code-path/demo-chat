@@ -31,7 +31,7 @@ open class CoreAuthBeans<T, V, Q>(
 ) {
 
     @Bean
-    open fun authorizationService(): AuthorizationService<T, AuthMetadata<T>> =
+    open fun authorizationService(keyBeans: KeyServiceBeans<T>): AuthorizationService<T, AuthMetadata<T>> =
         CoreAuthorizationService(
             persistServices.authMetaPersistence(),
             indexServices.authMetadataIndex(),
@@ -40,6 +40,7 @@ open class CoreAuthBeans<T, V, Q>(
             { rootKeys.anon() },
             { rootKeys.of(ChatDomain.USER) },
             authSummarizer,
+            KeyVerifier(keyBeans.keyService(), rootKeys),
         )
 
     @Bean

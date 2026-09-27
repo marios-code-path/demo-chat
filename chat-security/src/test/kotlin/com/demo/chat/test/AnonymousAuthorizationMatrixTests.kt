@@ -340,7 +340,8 @@ class AnonymousAuthorizationMatrixTests {
         return AuthMetadataAccessBroker(
             CoreAuthorizationService(
                 store, index, { it }, { it }, { ANON_KEY }, { USER_ROOT },
-                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
+                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
+                registry(),
             ),
             TestVerifiers.resolvingNothing(),
         )

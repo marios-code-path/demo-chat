@@ -1,7 +1,6 @@
 package com.demo.chat.test.resolve
 
 import com.demo.chat.test.route.Catalog.entry
-import com.demo.chat.test.route.Catalog.deferred
 import com.demo.chat.test.route.Catalog.notIdentity
 import com.demo.chat.test.route.Catalog.query
 import com.demo.chat.test.route.Catalog.registry
@@ -31,14 +30,14 @@ object RSocketRouteCatalog {
         entry("AuthMetaIndexController", "addRoute", "AuthMetadata<T>",
             "entity.expires" to notIdentity("an expiry time in milliseconds"),
             "entity.key" to verify("AUTH_METADATA"),
-            "entity.principal" to deferred("any", "T6, CHAT-ihbesbmn"),
-            "entity.target" to deferred("any", "T6, CHAT-ihbesbmn")),
+            "entity.principal" to verify("any"),
+            "entity.target" to verify("any")),
         // index.authmetadata.add
         entry("CassandraAuthMetaIndexController", "addRoute", "AuthMetadata<T>",
             "entity.expires" to notIdentity("an expiry time in milliseconds"),
             "entity.key" to verify("AUTH_METADATA"),
-            "entity.principal" to deferred("any", "T6, CHAT-ihbesbmn"),
-            "entity.target" to deferred("any", "T6, CHAT-ihbesbmn")),
+            "entity.principal" to verify("any"),
+            "entity.target" to verify("any")),
         // index.authmetadata.query
         entry("AuthMetaIndexController", "findBy", "IndexSearchRequest"),
         // index.authmetadata.query
@@ -175,8 +174,8 @@ object RSocketRouteCatalog {
         entry("AuthMetaPersistenceController", "addRoute", "AuthMetadata<T>",
             "ent.expires" to notIdentity("an expiry time in milliseconds"),
             "ent.key" to verify("AUTH_METADATA"),
-            "ent.principal" to deferred("any", "T6, CHAT-ihbesbmn"),
-            "ent.target" to deferred("any", "T6, CHAT-ihbesbmn")),
+            "ent.principal" to verify("any"),
+            "ent.target" to verify("any")),
         // persist.authmetadata.all
         entry("AuthMetaPersistenceController", "all", ""),
         // persist.authmetadata.get

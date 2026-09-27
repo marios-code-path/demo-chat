@@ -1,5 +1,7 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.TestVerifiers
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.*
@@ -31,7 +33,9 @@ open class CoreAuthorizationServiceTests(
         AuthMetadataTargetKeySearch(TypeUtil.LongUtil),
         { TestKeys.key(ANON_ID) },
         { TestKeys.key(USER_ROOT_ID) },
-        AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(RootKeys()))
+        AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(RootKeys())),
+        // Every key here carries the fixed test root. The T6 checks live in GrantRootVerificationTests.
+        TestVerifiers.acceptingTestRoot(RootKeys()),
     ),
     Supplier {
         StringRoleAuthorizationMetadata(

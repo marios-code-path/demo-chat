@@ -63,6 +63,10 @@ class RSocketRouteVerificationTests {
     class MessageController(store: PersistenceStore<Long, Message<Long, String>>, verifier: KeyVerifier<Long>) :
         PersistenceServiceController<Long, Message<Long, String>>(store, verifier)
 
+    @KeyDomain(ChatDomain.AUTH_METADATA)
+    class GrantController(store: PersistenceStore<Long, com.demo.chat.domain.AuthMetadata<Long>>, verifier: KeyVerifier<Long>) :
+        PersistenceServiceController<Long, com.demo.chat.domain.AuthMetadata<Long>>(store, verifier)
+
     @KeyDomain(ChatDomain.USER)
     class UserIndexController(index: IndexService<Long, User<Long>, IndexSearchRequest>, verifier: KeyVerifier<Long>) :
         IndexSearchRequestIndexServiceController<Long, User<Long>>(index, verifier)
@@ -103,6 +107,21 @@ class RSocketRouteVerificationTests {
         StepVerifier.create(
             MessageController(store, verifier)
                 .addRoute(Message.create(MessageKey.of(minted.id, minted.root, 424254L, room.id), "m", true))
+        ).verifyError(KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(store)
+    }
+
+    // T6. A grant stores a principal and a target beside its key.
+    @Test
+    fun `a grant add with an unknown principal never reaches the store`() {
+        val store = mockOf<PersistenceStore<Long, com.demo.chat.domain.AuthMetadata<Long>>>()
+        val grantKey = registry.register(4517L, ChatDomain.AUTH_METADATA)
+        val room = registry.register(4518L, ChatDomain.MESSAGE_TOPIC)
+        val unknown = Key.of(424281L, root(ChatDomain.USER))
+
+        StepVerifier.create(
+            GrantController(store, verifier)
+                .addRoute(com.demo.chat.domain.AuthMetadata.create(grantKey, unknown, room, "GET", Long.MAX_VALUE))
         ).verifyError(KeyVerificationException::class.java)
         Mockito.verifyNoInteractions(store)
     }

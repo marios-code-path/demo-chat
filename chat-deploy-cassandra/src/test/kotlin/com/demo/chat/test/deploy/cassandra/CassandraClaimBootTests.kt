@@ -142,6 +142,12 @@ class CassandraClaimBootTests : CassandraContainerBase() {
             "app.nodeid=22",
             "app.service.core.key=memory",
             "app.service.core.persistence=cassandra",
+            // A memory registry beside a shared Cassandra store would store the
+            // initial users under keys that no Cassandra registry holds. A later
+            // context in this JVM then finds those users, and its grant check
+            // refuses them. This test checks the claim store alone. See
+            // CHAT-avduuqwp, T6.
+            "app.users.create=false",
             ready = ready
         ).run().use { context ->
             val stores = context.getBeansOfType(NodeIdClaimStore::class.java)

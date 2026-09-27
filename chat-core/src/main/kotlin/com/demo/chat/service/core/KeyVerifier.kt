@@ -1,5 +1,6 @@
 package com.demo.chat.service.core
 
+import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMembership
@@ -62,8 +63,9 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
      *
      * - A `Message` stores a sender in USER and a destination in MESSAGE_TOPIC.
      * - A `TopicMembership` stores a member in USER and a room in MESSAGE_TOPIC.
-     * - Any other value stores none here. The grant principal and target of an
-     *   `AuthMetadata` verify in T6.
+     * - An `AuthMetadata` stores a principal and a target. Each verifies in its
+     *   stored domain, because a grant can name a user, a root, or an object.
+     * - Any other value stores none here.
      */
     @Suppress("UNCHECKED_CAST")
     fun verifyReferences(entity: Any?): Mono<Void> = when (entity) {
@@ -71,6 +73,8 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
             .then(resolve(entity.key.dest as T, ChatDomain.MESSAGE_TOPIC)).then()
         is TopicMembership<*> -> resolve(entity.member as T, ChatDomain.USER)
             .then(resolve(entity.memberOf as T, ChatDomain.MESSAGE_TOPIC)).then()
+        is AuthMetadata<*> -> verify(entity.principal as Key<T>, null)
+            .then(verify(entity.target as Key<T>, null)).then()
         else -> Mono.empty()
     }
 

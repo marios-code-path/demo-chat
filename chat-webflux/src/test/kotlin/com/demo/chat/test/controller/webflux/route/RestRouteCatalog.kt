@@ -1,7 +1,6 @@
 package com.demo.chat.test.controller.webflux.route
 
 import com.demo.chat.test.route.Catalog.entry
-import com.demo.chat.test.route.Catalog.deferred
 import com.demo.chat.test.route.Catalog.notIdentity
 import com.demo.chat.test.route.Catalog.principal
 import com.demo.chat.test.route.Catalog.query
@@ -220,8 +219,8 @@ object RestRouteCatalog {
         entry("AuthMetadataIndexRestController", "restAdd", "AuthMetadata<T>",
             "entity.expires" to notIdentity("an expiry time in milliseconds"),
             "entity.key" to verify("AUTH_METADATA"),
-            "entity.principal" to deferred("any", "T6, CHAT-ihbesbmn"),
-            "entity.target" to deferred("any", "T6, CHAT-ihbesbmn")),
+            "entity.principal" to verify("any"),
+            "entity.target" to verify("any")),
         // PUT /index/kv/add
         entry("KeyValueIndexRestController", "restAdd", "KeyValuePair<T,E>",
             "entity.data" to notIdentity("a payload value"),
