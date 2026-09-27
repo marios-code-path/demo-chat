@@ -27,7 +27,7 @@ class RedisMembershipPersistenceTests(
     @Autowired stringTemplate: ReactiveStringRedisTemplate,
 ) : RedisPersistenceTestBase<UUID, TopicMembership<UUID>>(
     stringTemplate,
-    TestUUIDTopicMembershipSupplier,
+    TestUUIDTopicMembershipSupplier(membershipPersistence),
     membershipPersistence,
     { t -> TestKeys.key(t.key) },
     { original, roundTripped ->

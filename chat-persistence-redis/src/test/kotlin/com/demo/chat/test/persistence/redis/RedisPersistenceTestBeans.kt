@@ -38,40 +38,40 @@ class RedisPersistenceTestBeans {
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): UserPersistenceRedis<UUID> = UserPersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): UserPersistenceRedis<UUID> = UserPersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 
     @Bean
     fun topicPersistenceRedis(
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): TopicPersistenceRedis<UUID> = TopicPersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): TopicPersistenceRedis<UUID> = TopicPersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 
     @Bean
     fun messagePersistenceRedis(
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): MessagePersistenceRedis<UUID, String> = MessagePersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): MessagePersistenceRedis<UUID, String> = MessagePersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 
     @Bean
     fun membershipPersistenceRedis(
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): MembershipPersistenceRedis<UUID> = MembershipPersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): MembershipPersistenceRedis<UUID> = MembershipPersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 
     @Bean
     fun authMetaPersistenceRedis(
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): AuthMetaPersistenceRedis<UUID> = AuthMetaPersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): AuthMetaPersistenceRedis<UUID> = AuthMetaPersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 
     @Bean
     fun keyValuePersistenceRedis(
         keyService: KeyServiceRedis<UUID>,
         stringTemplate: ReactiveStringRedisTemplate,
         objectMapper: ObjectMapper,
-    ): KeyValuePersistenceRedis<UUID> = KeyValuePersistenceRedis(keyService, stringTemplate, objectMapper)
+    ): KeyValuePersistenceRedis<UUID> = KeyValuePersistenceRedis(keyService, rootKeys(), stringTemplate, objectMapper)
 }

@@ -1,5 +1,9 @@
 package com.demo.chat.persistence.redis.impl
 
+import com.demo.chat.service.core.StoreDomain
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
@@ -26,6 +30,7 @@ import reactor.core.publisher.Mono
  */
 class MessagePersistenceRedis<T, V>(
     private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
     private val stringTemplate: ReactiveStringRedisTemplate,
     private val objectMapper: ObjectMapper,
     private val prefix: String = "chat:msg:",
@@ -34,7 +39,11 @@ class MessagePersistenceRedis<T, V>(
 
     override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.MESSAGE)
 
-    override fun add(ent: Message<T, V>): Mono<Void> {
+    /** The key must be in MESSAGE before the write. See `CHAT-avduuqwp`, T5. */
+    override fun add(ent: Message<T, V>): Mono<Void> =
+        StoreDomain.requireKey(ent.key, ChatDomain.MESSAGE, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: Message<T, V>): Mono<Void> {
         val redisKey = prefix + ent.key.id.toString()
         return Mono.fromCallable { objectMapper.writeValueAsString(ent) }
             .flatMap { json ->

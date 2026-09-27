@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.RootKeysFixture
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.domain.Key
@@ -38,7 +40,7 @@ class RedisReactiveContractTests {
     fun `add defers serialization to subscription`() {
         val mapper = mock<ObjectMapper>()
         whenever(mapper.writeValueAsString(any())).thenThrow(IllegalStateException("cannot serialize"))
-        val store = UserPersistenceRedis<UUID>(keyService, stringTemplate, mapper)
+        val store = UserPersistenceRedis<UUID>(keyService, RootKeysFixture.forTestRoot(ChatDomain.USER, UUID::class.java), stringTemplate, mapper)
         val ent = User.create(TestKeys.key(UUID.randomUUID()), "a", "b", "c")
 
         val mono = store.add(ent) // assembly must not throw

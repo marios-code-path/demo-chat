@@ -47,7 +47,7 @@ class RedisIndexJobDecodeTests(
 
     @Test
     fun `a stored job reads back through the codec`() {
-        val key = TestKeys.key(UUID.randomUUID())
+        val key = keyValuePersistence.key().block()!!
         val job = IndexJob(
             key = key,
             topicKey = TestKeys.key(UUID.randomUUID()),

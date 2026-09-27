@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.test.key.FakeKeyServices
 
 import com.demo.chat.test.key.TestKeys
@@ -70,7 +72,7 @@ class TopicPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    MessageTopic.create(TestKeys.key(UUIDs.timeBased()), name)
+                    MessageTopic.create(Key.of(UUIDs.timeBased(), roots.of(ChatDomain.MESSAGE_TOPIC).id), name)
                 }
                 .flatMap(roomSvc::add)
 

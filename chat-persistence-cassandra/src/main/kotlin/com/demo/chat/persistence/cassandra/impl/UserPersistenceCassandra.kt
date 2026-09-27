@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.cassandra.impl
 
+import com.demo.chat.service.core.StoreDomain
+
 import java.time.Instant
 
 import com.demo.chat.persistence.cassandra.domain.ChatUserKey
@@ -32,7 +34,11 @@ open class UserPersistenceCassandra<T : Any>(
 
     override fun rem(key: Key<T>): Mono<Void> = userRepo.rem(key)
 
+    /** The key must be in USER before the write. See `CHAT-avduuqwp`, T5. */
     override fun add(ent: User<T>): Mono<Void> =
+        StoreDomain.requireKey(ent.key, ChatDomain.USER, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: User<T>): Mono<Void> =
         userRepo.add(ChatUser(ChatUserKey(ent.key.id), ent.name, ent.handle, ent.imageUri, Instant.now()))
 
     override fun byIds(keys: List<Key<T>>): Flux<out User<T>> =

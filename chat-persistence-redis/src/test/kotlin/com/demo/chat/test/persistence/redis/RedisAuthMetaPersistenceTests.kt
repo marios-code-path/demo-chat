@@ -24,7 +24,7 @@ class RedisAuthMetaPersistenceTests(
     @Autowired stringTemplate: ReactiveStringRedisTemplate,
 ) : RedisPersistenceTestBase<UUID, AuthMetadata<UUID>>(
     stringTemplate,
-    TestUUIDAuthMetaSupplier,
+    TestUUIDAuthMetaSupplier(authMetaPersistence),
     authMetaPersistence,
     { t -> t.key },
     { original, roundTripped ->

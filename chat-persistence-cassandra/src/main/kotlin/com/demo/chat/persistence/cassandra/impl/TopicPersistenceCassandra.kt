@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.cassandra.impl
 
+import com.demo.chat.service.core.StoreDomain
+
 import com.demo.chat.persistence.cassandra.domain.ChatTopicKey
 
 import com.demo.chat.domain.Key
@@ -26,7 +28,11 @@ open class TopicPersistenceCassandra<T : Any>(
 
     override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.MESSAGE_TOPIC)
 
+    /** The key must be in MESSAGE_TOPIC before the write. See `CHAT-avduuqwp`, T5. */
     override fun add(ent: MessageTopic<T>): Mono<Void> =
+        StoreDomain.requireKey(ent.key, ChatDomain.MESSAGE_TOPIC, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: MessageTopic<T>): Mono<Void> =
         roomRepo
             .add(ChatTopic(ChatTopicKey(ent.key.id), ent.data, true))
             .then()

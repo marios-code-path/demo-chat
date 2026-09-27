@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.memory.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.DuplicateException
 import com.demo.chat.domain.Key
@@ -10,10 +12,11 @@ import java.util.function.Function
 open class ComparatorInMemoryPersistence<T, E : Any>(
     val keyService: IKeyService<T>,
     domain: ChatDomain,
+    rootKeys: RootKeys<T>,
     private val keyFromEntity: Function<E, Key<T>>,
     private val comparator: Comparator<E>
-) : InMemoryPersistence<T, E>(keyService, domain, keyFromEntity) {
-    override fun add(ent: E): Mono<Void> = Mono.create { sink ->
+) : InMemoryPersistence<T, E>(keyService, domain, rootKeys, keyFromEntity) {
+    override fun add(ent: E): Mono<Void> = domainCheck(ent).then(Mono.create { sink ->
         map.values.forEach { mapEntity ->
             if (comparator.compare(mapEntity, ent) == 0) {
                 sink.error(DuplicateException)
@@ -23,6 +26,6 @@ open class ComparatorInMemoryPersistence<T, E : Any>(
 
         map[keyFromEntity.apply(ent).id] = ent
         sink.success()
-    }
+    })
 
 }

@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.cassandra.impl
 
+import com.demo.chat.service.core.StoreDomain
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
@@ -47,7 +49,11 @@ class KeyValuePersistenceCassandra<T : Any>(
     override fun rem(key: Key<T>): Mono<Void> =
         repo.deleteByKeyId(key.id)
 
-    override fun add(ent: KeyValuePair<T, Any>): Mono<Void> {
+    /** The key must be in KEY_VALUE_PAIR before the write. See `CHAT-avduuqwp`, T5. */
+    override fun add(ent: KeyValuePair<T, Any>): Mono<Void> =
+        StoreDomain.requireKey(ent.key, ChatDomain.KEY_VALUE_PAIR, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: KeyValuePair<T, Any>): Mono<Void> {
         val dataString = mapper.writeValueAsString(ent.data)
         val sData = CSKeyValuePair(KVKey(ent.key.id), dataString)
 

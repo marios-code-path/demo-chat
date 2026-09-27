@@ -46,7 +46,7 @@ class RedisKeyValueTypedDomainTests(
 
     @Test
     fun `typedGet converts a domain object stored as data`() {
-        val key = TestKeys.key(UUID.randomUUID())
+        val key = keyValuePersistence.key().block()!!
         val user = User.create(TestKeys.key(UUID.randomUUID()), "alice", "alice", "http://img")
         keyValuePersistence.add(KeyValuePair.create(key, user)).block()
 
@@ -58,7 +58,7 @@ class RedisKeyValueTypedDomainTests(
 
     @Test
     fun `typedAll and typedByIds convert domain objects`() {
-        val key = TestKeys.key(UUID.randomUUID())
+        val key = keyValuePersistence.key().block()!!
         val user = User.create(TestKeys.key(UUID.randomUUID()), "bob", "bob", "http://img")
         keyValuePersistence.add(KeyValuePair.create(key, user)).block()
 

@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.memory.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -13,8 +15,9 @@ import java.util.function.Function
 
 open class InMemoryKeyValueStore<T>(
     keyService: IKeyService<T>,
+    rootKeys: RootKeys<T>,
     keyFromEntity: Function<KeyValuePair<T, Any>, Key<T>>,
-) : InMemoryPersistence<T, KeyValuePair<T, Any>>(keyService, ChatDomain.KEY_VALUE_PAIR, keyFromEntity),
+) : InMemoryPersistence<T, KeyValuePair<T, Any>>(keyService, ChatDomain.KEY_VALUE_PAIR, rootKeys, keyFromEntity),
     KeyValueStore<T, Any> {
     override fun <E> typedGet(key: Key<T>, typeArgument: Class<E>): Mono<KeyValuePair<T, E>> =
         Mono.create {

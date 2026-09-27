@@ -30,7 +30,7 @@ open class CassandraPersistenceServices<T : Any>(
         MessagePersistenceCassandra(keyService, rootKeys, messageRepo)
 
     override fun membershipPersistence(): MembershipPersistence<T> =
-        MembershipPersistenceCassandra(keyService, membershipRepo)
+        MembershipPersistenceCassandra(keyService, rootKeys, membershipRepo)
 
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
         AuthMetaPersistenceCassandra(keyService, rootKeys, authMetadataRepo)

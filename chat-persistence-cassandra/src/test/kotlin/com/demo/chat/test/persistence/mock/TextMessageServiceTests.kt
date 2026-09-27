@@ -97,7 +97,7 @@ class TextMessageServiceTests {
                 .flatMap {
                     persistence.add(
                             Message.create(
-                                    TestKeys.message(it.id, roomId, userId),
+                                    MessageKey.of(it.id, roots.of(ChatDomain.MESSAGE).id, roomId, userId),
                                     MSGTEXT,
                                     true
                             )

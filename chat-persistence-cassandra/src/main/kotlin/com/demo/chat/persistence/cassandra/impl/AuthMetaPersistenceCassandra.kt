@@ -1,5 +1,7 @@
 package com.demo.chat.persistence.cassandra.impl
 
+import com.demo.chat.service.core.StoreDomain
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
@@ -28,7 +30,11 @@ open class AuthMetaPersistenceCassandra<T : Any>(
 ) : AuthMetaPersistence<T> {
     override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.AUTH_METADATA)
 
-    override fun add(ent: AuthMetadata<T>): Mono<Void> = authMetadataRepo.save(
+    /** The key must be in AUTH_METADATA before the write. See `CHAT-avduuqwp`, T5. */
+    override fun add(ent: AuthMetadata<T>): Mono<Void> =
+        StoreDomain.requireKey(ent.key, ChatDomain.AUTH_METADATA, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: AuthMetadata<T>): Mono<Void> = authMetadataRepo.save(
         AuthMetadataById(
             AuthMetadataIdKey(ent.key.id),
             ent.target.id,

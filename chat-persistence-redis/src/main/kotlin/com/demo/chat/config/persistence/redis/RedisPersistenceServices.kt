@@ -1,5 +1,7 @@
 package com.demo.chat.config.persistence.redis
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.persistence.redis.impl.AuthMetaPersistenceRedis
 import com.demo.chat.persistence.redis.impl.KeyValuePersistenceRedis
@@ -31,29 +33,30 @@ class RedisPersistenceServices<T, V>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     @Qualifier(JACKSON_2_OBJECT_MAPPER) private val objectMapper: ObjectMapper,
     private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
 ) : PersistenceServiceBeans<T, V> {
 
     @Bean
     override fun userPersistence(): UserPersistence<T> =
-        UserPersistenceRedis(keyService, stringTemplate, objectMapper)
+        UserPersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 
     @Bean
     override fun topicPersistence(): TopicPersistence<T> =
-        TopicPersistenceRedis(keyService, stringTemplate, objectMapper)
+        TopicPersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 
     @Bean
     override fun messagePersistence(): MessagePersistence<T, V> =
-        MessagePersistenceRedis(keyService, stringTemplate, objectMapper)
+        MessagePersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 
     @Bean
     override fun membershipPersistence(): MembershipPersistence<T> =
-        MembershipPersistenceRedis(keyService, stringTemplate, objectMapper)
+        MembershipPersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 
     @Bean
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
-        AuthMetaPersistenceRedis(keyService, stringTemplate, objectMapper)
+        AuthMetaPersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 
     @Bean
     override fun keyValuePersistence(): KeyValueStore<T, Any> =
-        KeyValuePersistenceRedis(keyService, stringTemplate, objectMapper)
+        KeyValuePersistenceRedis(keyService, rootKeys, stringTemplate, objectMapper)
 }

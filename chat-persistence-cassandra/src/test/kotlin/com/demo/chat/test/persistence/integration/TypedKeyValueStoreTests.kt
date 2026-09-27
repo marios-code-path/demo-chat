@@ -127,3 +127,8 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
         private val ROOTS = FakeKeyServices.longRoots()
     }
 }
+
+/** A key under the KEY_VALUE_PAIR root, which the key-value store requires. See `CHAT-avduuqwp`, T5. */
+private fun kvKey(id: Long) = com.demo.chat.domain.Key.of(
+    id, com.demo.chat.test.key.FakeKeyServices.longRoots().of(com.demo.chat.domain.knownkey.ChatDomain.KEY_VALUE_PAIR).id,
+)

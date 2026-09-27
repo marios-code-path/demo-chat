@@ -57,14 +57,14 @@ class CassandraIndexJobDecodeTests {
     @Test
     fun `a stored job reads back through the codec`() {
         val store = store()
-        val key = TestKeys.key(ids.incrementAndGet())
+        val key = kvKey(ids.incrementAndGet())
         val job = IndexJob(
             key = key,
-            topicKey = TestKeys.key(900900L),
+            topicKey = kvKey(900900L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
-            startedBy = TestKeys.key(ids.incrementAndGet()),
+            startedBy = kvKey(ids.incrementAndGet()),
             startedAt = Instant.parse("2026-09-12T12:00:00Z"),
             outcome = JobOutcome.FAILED,
             failed = 2L,
@@ -82,3 +82,8 @@ class CassandraIndexJobDecodeTests {
         Assertions.assertThat(decoded.covers).isFalse()
     }
 }
+
+/** A key under the KEY_VALUE_PAIR root, which the key-value store requires. See `CHAT-avduuqwp`, T5. */
+private fun kvKey(id: Long) = com.demo.chat.domain.Key.of(
+    id, com.demo.chat.test.key.FakeKeyServices.longRoots().of(com.demo.chat.domain.knownkey.ChatDomain.KEY_VALUE_PAIR).id,
+)

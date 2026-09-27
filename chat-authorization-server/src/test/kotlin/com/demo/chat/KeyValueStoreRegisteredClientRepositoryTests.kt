@@ -1,5 +1,14 @@
 package com.demo.chat
 
+import com.demo.chat.service.core.StoreDomain
+
+
+
+
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.auth.client.KeyValueStoreRegisteredClientRepository
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -51,6 +60,38 @@ class KeyValueStoreRegisteredClientRepositoryTests {
     }
 
     /** Answers the `id` field from what it indexed, as the production index does. */
+    // E11 through a store that runs the production domain check, StoreDomain.requireKey.
+    // The memory backend cannot join this test classpath: its implicit default beans
+    // collide with the client beans here. See CHAT-avduuqwp, T5.
+    @Test
+    fun `a registered client is stored under a key that passes the store domain check`() {
+        val roots = RootKeys<UUID>().apply {
+            loadDomains(ChatDomain.entries.associateWith { Key.root(UUID(0x5A5AL, it.ordinal.toLong())) })
+        }
+        val store = DomainCheckedStore(roots)
+        val repository = KeyValueStoreRegisteredClientRepository(RecordingIndex(), store, UUIDUtil())
+
+        repository.save(client)
+        repository.save(client)
+
+        Assertions.assertThat(store.added).hasSize(2)
+        Assertions.assertThat(store.added.map { it.key }.distinct()).hasSize(1)
+        Assertions.assertThat(store.added.first().key.root).isEqualTo(roots.of(ChatDomain.KEY_VALUE_PAIR).id)
+    }
+
+    /** It mints under the KEY_VALUE_PAIR root and checks each write, as a real store does. */
+    private class DomainCheckedStore(private val roots: RootKeys<UUID>) : KeyValueStore<UUID, Any> {
+        val added = mutableListOf<KeyValuePair<UUID, Any>>()
+
+        override fun key(): Mono<out Key<UUID>> =
+            Mono.fromSupplier { Key.of(UUID.randomUUID(), roots.of(ChatDomain.KEY_VALUE_PAIR).id) }
+        override fun add(ent: KeyValuePair<UUID, Any>): Mono<Void> =
+            StoreDomain.requireKey(ent.key, ChatDomain.KEY_VALUE_PAIR, roots).then(Mono.fromRunnable { added.add(ent) })
+        override fun rem(key: Key<UUID>): Mono<Void> = Mono.empty()
+        override fun get(key: Key<UUID>): Mono<out KeyValuePair<UUID, Any>> = Mono.empty()
+        override fun all(): Flux<out KeyValuePair<UUID, Any>> = Flux.fromIterable(added)
+    }
+
     private class RecordingIndex : KeyValueIndexService<UUID, IndexSearchRequest> {
         val added = mutableListOf<KeyValuePair<UUID, Any>>()
 

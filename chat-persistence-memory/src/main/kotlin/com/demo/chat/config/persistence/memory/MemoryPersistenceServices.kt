@@ -26,26 +26,26 @@ class MemoryPersistenceServices<T, V>(
 
     @Bean
     override fun userPersistence(): UserPersistence<T> =
-        UserPersistenceInMemory(keyService) { t -> t.key }
+        UserPersistenceInMemory(keyService, rootKeys) { t -> t.key }
 
     @Bean
     override fun topicPersistence(): TopicPersistence<T> =
-        TopicPersistenceInMemory(keyService) { t -> t.key }
+        TopicPersistenceInMemory(keyService, rootKeys) { t -> t.key }
 
     @Bean
     override fun messagePersistence(): MessagePersistence<T, V> =
-        MessagePersistenceInMemory(keyService) { t -> t.key }
+        MessagePersistenceInMemory(keyService, rootKeys) { t -> t.key }
 
     @Bean
     override fun membershipPersistence(): MembershipPersistence<T> =
         // A membership holds a raw id. The store reads only the id of this key.
-        MembershipPersistenceInMemory(keyService) { t -> Key.of(t.key, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id) }
+        MembershipPersistenceInMemory(keyService, rootKeys) { t -> Key.of(t.key, rootKeys.of(ChatDomain.TOPIC_MEMBERSHIP).id) }
 
     @Bean
     override fun authMetaPersistence(): AuthMetaPersistence<T> =
-        AuthMetaPersistenceInMemory(keyService) { t -> t.key }
+        AuthMetaPersistenceInMemory(keyService, rootKeys) { t -> t.key }
 
     @Bean
     override fun keyValuePersistence(): KeyValueStore<T, Any> =
-        InMemoryKeyValueStore(keyService) { t -> t.key }
+        InMemoryKeyValueStore(keyService, rootKeys) { t -> t.key }
 }

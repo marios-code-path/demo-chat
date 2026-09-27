@@ -7,6 +7,7 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.RequestToQueryConverters
 import com.demo.chat.service.core.MessageIndexService
@@ -83,8 +84,12 @@ class VectorIndexRecoveryTests {
     @Autowired
     lateinit var jobStore: VectorIndexJobStore<Long>
 
-    private fun persistOnly(id: Long, text: String): Mono<Void> =
-        persistence.add(Message.create(TestKeys.message(id, 10L, 20L), text, true))
+    // The store refuses a key of another domain, so the message takes a key that the store minted. See CHAT-avduuqwp, T5.
+    @Suppress("UNUSED_PARAMETER")
+    private fun persistOnly(id: Long, text: String): Mono<Key<Long>> =
+        persistence.key().flatMap { key ->
+            persistence.add(Message.create(MessageKey.of(key.id, key.root, 10L, 20L), text, true)).thenReturn(key)
+        }
 
     private fun awaitFinished() {
         Flux.interval(Duration.ZERO, Duration.ofMillis(20))
@@ -141,7 +146,7 @@ class VectorIndexRecoveryTests {
     // corpus would grow on every run.
     @Test
     fun `a job message never enters recall`() {
-        persistOnly(1L, "apple pie recipe").block()
+        val message = persistOnly(1L, "apple pie recipe").block()!!
 
         reindex.start().block()
         awaitFinished()
@@ -162,7 +167,7 @@ class VectorIndexRecoveryTests {
         // The threshold accepts every document, so this read returns the whole
         // recall corpus. Only the one user message may appear in it.
         val hits = recall.recallGlobal(GlobalRecallRequest("rebuild", 50, 0.0)).block()!!
-        Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(1L)
+        Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(message.id)
         Assertions.assertThat(hits.indexComplete).isTrue()
     }
 }
