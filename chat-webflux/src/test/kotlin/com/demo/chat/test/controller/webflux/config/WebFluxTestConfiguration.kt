@@ -1,5 +1,9 @@
 package com.demo.chat.test.controller.webflux.config
 
+import com.demo.chat.config.KeyRefusalAdvice
+import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
+import com.demo.chat.domain.TypeUtil
+import org.springframework.beans.factory.ObjectProvider
 import com.demo.chat.test.key.FakeKeyServices
 
 import com.demo.chat.test.TestGeneratorKeyService
@@ -67,8 +71,13 @@ import org.springframework.web.reactive.result.method.annotation.ArgumentResolve
     DefaultChatJacksonModules::class,
     Jackson2MapperConfiguration::class,
     ChatJackson3Modules::class,
+    // Production reaches the advice through the component scan. A refused key answers 404.
+    KeyRefusalAdvice::class,
 )
-class WebFluxTestConfiguration : WebFluxConfigurer {
+class WebFluxTestConfiguration(
+    private val verifiers: ObjectProvider<KeyVerifier<*>>,
+    private val typeUtils: ObjectProvider<TypeUtil<*>>,
+) : WebFluxConfigurer {
 
     /**
      * The `@AuthenticationPrincipal` resolver, which the slice does not get.
@@ -92,6 +101,8 @@ class WebFluxTestConfiguration : WebFluxConfigurer {
         configurer.addCustomResolver(
             AuthenticationPrincipalArgumentResolver(ReactiveAdapterRegistry.getSharedInstance())
         )
+        // Production registers this in WebFluxKeyVerifierConfiguration. See CHAT-avduuqwp, D2.
+        configurer.addCustomResolver(ResolvedKeyArgumentResolver(verifiers, typeUtils))
     }
 
 

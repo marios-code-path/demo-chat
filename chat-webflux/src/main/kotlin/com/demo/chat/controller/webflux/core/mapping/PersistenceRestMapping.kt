@@ -1,6 +1,9 @@
 package com.demo.chat.controller.webflux.core.mapping
 
 import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.controller.webflux.resolve.DomainScoped
+import com.demo.chat.controller.webflux.resolve.Resolved
+import com.demo.chat.service.core.VerifiedKey
 
 import com.demo.chat.service.core.KeyVerifier
 
@@ -12,7 +15,7 @@ import org.springframework.web.bind.annotation.*
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
-interface PersistenceRestMapping<T, E : Any> : PersistenceStore<T, E> {
+interface PersistenceRestMapping<T, E : Any> : PersistenceStore<T, E>, DomainScoped {
     // The controller is generic in T, so T is erased where Spring resolves an
     // argument: it cannot bind a path segment as the key type. The segment
     // arrives as the String it is on the wire, and typeUtil() converts it to the
@@ -22,7 +25,7 @@ interface PersistenceRestMapping<T, E : Any> : PersistenceStore<T, E> {
     fun verifier(): KeyVerifier<T>
 
     /** The domain of this store. A path id resolves in it. See `CHAT-avduuqwp`, C70 and C71. */
-    fun domain(): ChatDomain
+    override fun domain(): ChatDomain
 
     @PostMapping("/key",  produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
@@ -30,10 +33,10 @@ interface PersistenceRestMapping<T, E : Any> : PersistenceStore<T, E> {
 
     @DeleteMapping("/rem/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun restRem(@PathVariable id: String): Mono<Void> = verifier().resolve(typeUtil().fromString(id), domain()).flatMap { rem(it.key) }
+    fun restRem(@Resolved id: VerifiedKey<T>): Mono<Void> = rem(id.key)
 
     @GetMapping("/get/{id}",  produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun restGet(@PathVariable id: String): Mono<out E> = verifier().resolve(typeUtil().fromString(id), domain()).flatMap { get(it.key) }
+    fun restGet(@Resolved id: VerifiedKey<T>): Mono<out E> = get(id.key)
 
     @GetMapping("/all", produces = [MediaType.APPLICATION_JSON_VALUE])
     override fun all(): Flux<out E>

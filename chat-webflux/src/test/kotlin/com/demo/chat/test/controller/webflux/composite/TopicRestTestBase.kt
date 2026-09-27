@@ -1,5 +1,12 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.controller.webflux.LongTypeUtilConfiguration
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import org.junit.jupiter.api.BeforeEach
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.config.CompositeServiceBeans
@@ -29,7 +36,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 @ContextConfiguration(
-    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatTopicServiceController::class]
+    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, LongTypeUtilConfiguration::class, ChatTopicServiceController::class]
 )
 class LongTopicRestTests : TopicRestTestBase<Long>(
     { TestKeys.key(1001L) },
@@ -45,6 +52,17 @@ open class TopicRestTestBase<T>(
     val keySupplier: () -> Key<T>,
     val topicSupplier: () -> MessageTopic<T>,
     )  {
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** Each path id resolves in its domain, as a minted id does. See CHAT-avduuqwp, D2. */
+    @BeforeEach
+    fun `register the path ids`() {
+        registry.register(12345L, ChatDomain.MESSAGE_TOPIC)
+        registry.register(112345L, ChatDomain.MESSAGE_TOPIC)
+        registry.register(123456L, ChatDomain.MESSAGE_TOPIC)
+    }
 
     @Autowired
     private lateinit var client: WebTestClient

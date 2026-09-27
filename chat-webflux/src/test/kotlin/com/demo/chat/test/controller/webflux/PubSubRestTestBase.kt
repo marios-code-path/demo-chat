@@ -1,5 +1,11 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import org.junit.jupiter.api.BeforeEach
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.config.KeyServiceBeans
@@ -43,7 +49,7 @@ import reactor.test.StepVerifier
 
 @ContextConfiguration(
     classes = [TestLongPubSubBeans::class, TestLongKeyServiceBeans::class, LongUserDetailsConfiguration::class,
-        WebFluxTestConfiguration::class, PubSubRestController::class]
+        WebFluxTestConfiguration::class, LongTypeUtilConfiguration::class, PubSubRestController::class]
 )
 class LongPubSubRestTests : PubSubRestTestBase<Long, String>(
     { User.create(TestKeys.key(1L), "Test", "Test", "Test") },
@@ -63,6 +69,16 @@ open class PubSubRestTestBase<T : Any, V>(
     private val keySupplier: () -> Key<T>,
     private val idSupplier: () -> T
 ) {
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** Each path id resolves in its domain, as a minted id does. See CHAT-avduuqwp, D2. */
+    @BeforeEach
+    fun `register the path ids`() {
+        registry.register(12345L, ChatDomain.MESSAGE_TOPIC)
+        registry.register(1001L, ChatDomain.USER)
+    }
 
     @Autowired
     private lateinit var beans: PubSubServiceBeans<T, String>
@@ -380,7 +396,7 @@ open class PubSubRestTestBase<T : Any, V>(
 
         client
             .get()
-            .uri("/pubsub/pub/1001")
+            .uri("/pubsub/pub/12345")
             .exchange()
             .expectStatus().isOk
             .expectBody()

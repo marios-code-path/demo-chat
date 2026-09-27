@@ -3,6 +3,8 @@ package com.demo.chat.test.controller.webflux
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.test.key.FakeKeyServices
 import com.demo.chat.controller.webflux.*
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.MessageIndexService
@@ -16,7 +18,7 @@ class UserIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, User<Long>, IndexSearchRequest>(
     "user",
-    { User.create(TestKeys.key(1001L), "userName", "userHandle", "imageUri") },
+    { User.create(inDomain(1001L, ChatDomain.USER), "userName", "userHandle", "imageUri") },
     { TestKeys.key(1001L) },
     { IndexSearchRequest("name", "userName", 100) },
     beans.userIndex()
@@ -27,7 +29,7 @@ class TopicIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, MessageTopic<Long>, IndexSearchRequest>(
     "topic",
-    { MessageTopic.create(TestKeys.key(1001L), "testTopic") },
+    { MessageTopic.create(inDomain(1001L, ChatDomain.MESSAGE_TOPIC), "testTopic") },
     { TestKeys.key(1001L) },
     { IndexSearchRequest("name", "testTopic", 100) },
     beans.topicIndex()
@@ -49,7 +51,7 @@ class TopicMessageIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, Message<Long, String>, IndexSearchRequest>(
     "message",
-    { Message.create(TestKeys.message(1001L, 1L, 201L), "Test", true) },
+    { Message.create(MessageKey.of(1001L, inDomain(1001L, ChatDomain.MESSAGE).root, 1L, 201L), "Test", true) },
     { TestKeys.key(1001L) },
     { IndexSearchRequest(MessageIndexService.USER, "1", 100) },
     beans.messageIndex()
@@ -60,7 +62,7 @@ class AuthMetadataIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, AuthMetadata<Long>, IndexSearchRequest>(
     "auth",
-    { AuthMetadata.create(TestKeys.key(1001L), TestKeys.key(1L), TestKeys.key(201L), "TEST", false, Long.MAX_VALUE) },
+    { AuthMetadata.create(inDomain(1001L, ChatDomain.AUTH_METADATA), TestKeys.key(1L), TestKeys.key(201L), "TEST", false, Long.MAX_VALUE) },
     { TestKeys.key(1001L) },
     { IndexSearchRequest("member", "120", 100) },
     beans.authMetadataIndex()
@@ -71,8 +73,14 @@ class KeyValueIndexRestTests(
     @Autowired beans: IndexServiceBeans<Long, String, IndexSearchRequest>
 ) : IndexRestTestBase<Long, KeyValuePair<Long, Any>, IndexSearchRequest>(
     "kv",
-    { KeyValuePair.create(TestKeys.key(1001L), "TEST")},
+    { KeyValuePair.create(inDomain(1001L, ChatDomain.KEY_VALUE_PAIR), "TEST")},
     { TestKeys.key(1001L) },
     { IndexSearchRequest("data", "test", 100) },
     beans.KVPairIndex()
 )
+
+/**
+ * A key under the domain root of the slice registry. The base test registers
+ * the id 1001 in the domain of each index, so an added entity verifies there.
+ */
+private fun inDomain(id: Long, domain: ChatDomain): Key<Long> = Key.of(id, FakeKeyServices.longRoots().of(domain).id)

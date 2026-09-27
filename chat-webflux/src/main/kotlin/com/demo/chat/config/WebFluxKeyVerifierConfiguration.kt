@@ -1,6 +1,11 @@
 package com.demo.chat.config
 
+import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
 import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.TypeUtil
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.web.reactive.config.WebFluxConfigurer
+import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer
 import com.demo.chat.domain.UnsupportedDomainException
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.KeyVerifier
@@ -17,7 +22,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
  * registry before a store sees it. See `CHAT-avduuqwp`.
  */
 @Configuration
-class WebFluxKeyVerifierConfiguration {
+class WebFluxKeyVerifierConfiguration(
+    private val verifiers: ObjectProvider<KeyVerifier<*>>,
+    private val typeUtils: ObjectProvider<TypeUtil<*>>,
+) : WebFluxConfigurer {
+
+    /** Each `@Resolved` path id resolves through the verifier before a handler runs. See `CHAT-avduuqwp`, D2. */
+    override fun configureArgumentResolvers(configurer: ArgumentResolverConfigurer) {
+        configurer.addCustomResolver(ResolvedKeyArgumentResolver(verifiers, typeUtils))
+    }
+
     @Bean
     @ConditionalOnMissingBean
     fun <T> keyVerifier(keyBeans: KeyServiceBeans<T>, rootKeys: RootKeys<T>): KeyVerifier<T> =

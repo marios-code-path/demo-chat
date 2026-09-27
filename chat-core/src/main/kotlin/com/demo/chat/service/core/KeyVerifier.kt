@@ -1,6 +1,8 @@
 package com.demo.chat.service.core
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TopicMembership
+import com.demo.chat.domain.KeyBearer
 import com.demo.chat.domain.KeyVerificationException
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
@@ -37,6 +39,21 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
     fun trustTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T> =
         if (key.root == rootKeys.of(domain).id) VerifiedKey(key)
         else throw KeyVerificationException("Key ${key.id} is not in ${domain.wireName}.")
+
+    /**
+     * The key of an entity that a caller sent, verified in [domain]. See
+     * `CHAT-avduuqwp`, D6 and D12.
+     *
+     * - An entity with a `Key` verifies it, so a forged root fails.
+     * - A `TopicMembership` carries a raw id, so the id resolves.
+     * - Any other value fails, because it names no key.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun verifyEntity(entity: Any?, domain: ChatDomain): Mono<VerifiedKey<T>> = when (entity) {
+        is KeyBearer<*> -> verify(entity.key as Key<T>, domain)
+        is TopicMembership<*> -> resolve(entity.key as T, domain)
+        else -> Mono.error(KeyVerificationException("The value names no key."))
+    }
 
     /**
      * The root key of [domain], from the roots that this verifier holds. A root

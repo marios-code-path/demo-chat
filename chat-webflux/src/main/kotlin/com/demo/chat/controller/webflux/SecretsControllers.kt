@@ -1,11 +1,9 @@
 package com.demo.chat.controller.webflux
 
-import com.demo.chat.service.core.KeyVerifier
 
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.controller.webflux.core.mapping.SecretsRestMapping
-import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.SecretsStore
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -19,11 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 class SecretsRestController<T>(
     private val that: SecretsStoreBeans<T>,
     private val keyService: KeyServiceBeans<T>,
-    private val verifier: KeyVerifier<T>,
-    private val typeUtil: TypeUtil<T>,
 ) : SecretsRestMapping<T>,
     SecretsStore<T> by that.secretsStore() {
     override fun keyService(): IKeyService<T> = keyService.keyService()
-    override fun verifier(): KeyVerifier<T> = verifier
-    override fun typeUtil(): TypeUtil<T> = typeUtil
 }

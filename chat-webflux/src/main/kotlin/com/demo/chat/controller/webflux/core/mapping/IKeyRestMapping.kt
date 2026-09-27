@@ -1,5 +1,7 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.controller.webflux.resolve.Resolved
+import com.demo.chat.service.core.VerifiedKey
 import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.service.core.KeyVerifier
@@ -30,9 +32,10 @@ interface IKeyRestMapping<T> : IKeyService<T> {
     @DeleteMapping("/rem/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun restRem(@PathVariable id: String): Mono<Void> =
-        verifier().resolve(typeUtil().fromString(id), null).flatMap { rem(it.key) }
+    fun restRem(@Resolved(anyDomain = true) id: VerifiedKey<T>): Mono<Void> = rem(id.key)
 
+    // An existence query answers false for an unknown id, so this route resolves
+    // by itself rather than through @Resolved, which answers 404.
     @GetMapping("/exists/{id}",
         produces = [MediaType.APPLICATION_JSON_VALUE])
     fun restExists(@PathVariable id: String): Mono<Boolean> =
