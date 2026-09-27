@@ -144,7 +144,7 @@ Two distinct key/value paths, easy to confuse:
 
 ## 3. Startup and Root-Key Bootstrap
 
-A service cannot serve requests until it holds the root key of each `ChatDomain`. `Admin` and `Anon` are user identities, and their keys carry the `USER` root. `chat-deploy` loads the roots in an `ApplicationStartedEvent` listener, before any request. See `CHAT-avduuqwp` and `docs/KEY-ROOT-IDENTITY.md`.
+A service cannot serve requests until it holds the root key of each `ChatDomain`. The exception is a service with the `NONE` source. It loads no roots, and its supported operations read no root. The authorization server is that role. `Admin` and `Anon` are user identities, and their keys carry the `USER` root. `chat-deploy` loads the roots in an `ApplicationStartedEvent` listener, before any request. See `CHAT-avduuqwp` and `docs/KEY-ROOT-IDENTITY.md`.
 
 `RootKeySource` reads the settings and selects one source. It refuses any other combination at start.
 

@@ -160,17 +160,22 @@ The route resolves the sender in `USER` and the topic in `MESSAGE_TOPIC`. It
 refuses an id that the key registry does not hold, with status 404. So create
 a user and a topic first, and send their ids. See `CHAT-avduuqwp`.
 
+Each answer carries the new key, such as `{"key":{"empty":false,"id":11,"root":1}}`.
+These commands read the id at `key.id` into `SENDER` and `ROOM`.
+`UserRestTestBase` pins that path.
+
 ```bash
-curl -sS -X PUT http://localhost:8080/persist/user/add \
+key_id() { python3 -c 'import json, sys; print(json.load(sys.stdin)["key"]["id"])'; }
+SENDER=$(curl -sS -X PUT http://localhost:8080/persist/user/add \
   -H 'Content-Type: application/json' \
-  -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}'
-curl -sS -X PUT http://localhost:8080/persist/topic/add \
+  -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}' | key_id)
+ROOM=$(curl -sS -X PUT http://localhost:8080/persist/topic/add \
   -H 'Content-Type: application/json' \
-  -d '{"type":"ByNameRequest","name":"recipes"}'
+  -d '{"type":"ByNameRequest","name":"recipes"}' | key_id)
+echo "SENDER=$SENDER ROOM=$ROOM"
 ```
 
-Each answer carries the new key, such as `{"key":{"empty":false,"id":11,"root":1}}`.
-Set `SENDER` to the user id and `ROOM` to the topic id.
+Stop if either value is empty. A later request with an empty id fails.
 
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
