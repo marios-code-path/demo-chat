@@ -1,5 +1,9 @@
 package com.demo.chat.config.deploy.init
 
+import org.springframework.beans.factory.ObjectProvider
+
+import com.demo.chat.service.core.StoreShapeCheck
+
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.domain.knownkey.RootKeySnapshot
 import com.demo.chat.domain.ChatException
@@ -35,9 +39,12 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
         typeUtil: TypeUtil<T>,
         @Value("\${app.key.type}") keyType: String,
         @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper,
-        rootKeys: RootKeys<T>
+        rootKeys: RootKeys<T>,
+        shapeChecks: ObjectProvider<StoreShapeCheck>,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
+            // A snapshot consumer still writes to its own stores. They are checked first. See CHAT-avduuqwp, T7.
+            shapeChecks.orderedStream().forEach { it.check() }
             val exchangeStrategies = ExchangeStrategies.builder()
                 .codecs { configurer ->
                     configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))

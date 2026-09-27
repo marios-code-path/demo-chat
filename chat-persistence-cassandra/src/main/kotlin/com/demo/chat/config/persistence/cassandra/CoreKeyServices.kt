@@ -4,7 +4,6 @@ import com.demo.chat.persistence.cassandra.impl.CassandraStoreShapeCheck
 
 import com.demo.chat.service.core.StoreShapeCheck
 
-import com.demo.chat.domain.ChatException
 
 import com.datastax.oss.driver.api.core.CqlSession
 
@@ -31,15 +30,10 @@ class CoreKeyServices<T : Any>(
     @Bean
     override fun keyService(): IKeyService<T> = KeyServiceCassandra(reactiveTemplate, keyGenerator, rootKeys)
 
-    /** The start check of the keyspace shape. It runs before the root keys load. See `CHAT-avduuqwp`, T7. */
+    /** The shape of the key registry tables. It runs before the root keys load. See `CHAT-avduuqwp`, T7. */
     @Bean
-    fun storeShapeCheck(session: CqlSession): StoreShapeCheck = StoreShapeCheck {
-        // The keyspace is read when the check runs, at start, and not when the bean is built.
-        val keyspace = session.keyspace.map { it.asInternal() }.orElseThrow {
-            ChatException("The Cassandra session names no keyspace, so the store shape cannot be checked.")
-        }
-        CassandraStoreShapeCheck(session, keyspace).check()
-    }
+    fun cassandraKeyShapeCheck(session: CqlSession): StoreShapeCheck =
+        CassandraStoreShapeCheck.lazy(session, CassandraStoreShapeCheck.KEY_TABLES)
 
     @Bean
     fun rootKeyStore(): RootKeyStore<T> = RootKeyStoreCassandra(reactiveTemplate)

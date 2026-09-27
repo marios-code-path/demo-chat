@@ -36,7 +36,7 @@ class RedisKeyServices<T : Any>(
 
     /** The start check of the Redis store shape. It runs before the root keys load. See `CHAT-avduuqwp`, T7. */
     @Bean
-    fun storeShapeCheck(): StoreShapeCheck = RedisStoreShapeCheck(stringTemplate)
+    fun redisKeyShapeCheck(): StoreShapeCheck = RedisStoreShapeCheck(stringTemplate)
 
     @Bean
     fun rootKeyStore(): RootKeyStore<T> =

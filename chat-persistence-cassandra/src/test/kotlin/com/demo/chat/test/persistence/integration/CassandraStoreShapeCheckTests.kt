@@ -29,6 +29,12 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
 
     private companion object {
         val next = AtomicInteger()
+
+        /** Every table that a backend requires. The index tables belong to chat-index-cassandra. */
+        val ALL = CassandraStoreShapeCheck.KEY_TABLES + CassandraStoreShapeCheck.PERSISTENCE_TABLES + mapOf(
+            "auth_metadata_principal" to setOf("principal_root", "target_root"),
+            "auth_metadata_target" to setOf("principal_root", "target_root"),
+        )
     }
 
     /** A new keyspace from keyspace-long.cql, with every table this release reads. */
@@ -55,7 +61,7 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
 
     @Test
     fun `a complete keyspace passes`() {
-        assertThatCode { CassandraStoreShapeCheck(session, completeKeyspace()).check() }.doesNotThrowAnyException()
+        assertThatCode { CassandraStoreShapeCheck(session, completeKeyspace(), ALL).check() }.doesNotThrowAnyException()
     }
 
     @ParameterizedTest
@@ -69,7 +75,7 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
     fun `a store without a required element fails at start`(element: String) {
         val keyspace = keyspaceWithout(element)
 
-        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace).check() }
+        assertThatThrownBy { CassandraStoreShapeCheck(session, keyspace, ALL).check() }
             .hasMessageContaining(element)
             .hasMessageContaining("Recreate the store")
     }

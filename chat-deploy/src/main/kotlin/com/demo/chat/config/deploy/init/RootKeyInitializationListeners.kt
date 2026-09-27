@@ -81,6 +81,9 @@ class RootKeyInitializationListeners<T : Any>(
         shapeChecks: ObjectProvider<StoreShapeCheck>,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
+            // Every registered store is checked before any root source loads, and
+            // in a process that loads no roots. See CHAT-avduuqwp, T7.
+            shapeChecks.orderedStream().forEach { it.check() }
             if (source == RootKeySource.NONE) {
                 logger.info("${RootKeySource.REQUIRED}=false. This process loads no root keys.")
                 return@ApplicationListener
@@ -92,9 +95,6 @@ class RootKeyInitializationListeners<T : Any>(
             val generator = ids.ifAvailable ?: throw ChatException(
                 "This node has a root key store but no IKeyGenerator. It cannot create a missing root."
             )
-            // The store shape is checked before any root is read. A store from an
-            // earlier release fails here and names the recreation. See CHAT-avduuqwp, T7.
-            shapeChecks.orderedStream().forEach { it.check() }
             val roots = RootKeyLoader(rootKeyStore, generator).load().block()
                 ?: throw ChatException("The root key load returned no roots.")
             rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })
@@ -124,9 +124,12 @@ class RootKeyInitializationListeners<T : Any>(
     @ConditionalOnProperty("app.rootkeys.consume.scheme", havingValue = "kv")
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
-        rootKeyService: RootKeyService<T>
+        rootKeyService: RootKeyService<T>,
+        shapeChecks: ObjectProvider<StoreShapeCheck>,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
+            // A snapshot consumer still writes to its own stores. They are checked first. See CHAT-avduuqwp, T7.
+            shapeChecks.orderedStream().forEach { it.check() }
             rootKeyService.consumeRootKeys(rootKeys)
             publisher.publishEvent(RootKeyUpdatedEvent(rootKeys))
             publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))

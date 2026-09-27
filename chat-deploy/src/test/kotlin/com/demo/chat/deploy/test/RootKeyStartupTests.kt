@@ -1,5 +1,11 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
+
+import com.fasterxml.jackson.databind.ObjectMapper
+
+import com.demo.chat.service.core.InitializingKVStore
+
 import com.demo.chat.service.core.StoreShapeCheck
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
@@ -154,6 +160,42 @@ class RootKeyStartupTests {
             assertThat(ctx).hasFailed()
             assertThat(ctx.startupFailure).rootCause().hasMessageContaining("app.kv.rootkeys")
         }
+    }
+
+    private val wrongShape = StoreShapeCheck { throw ChatException("Missing: auth_metadata.principal_root. Recreate the store.") }
+
+    // T7 review. A snapshot consumer checks its stores before it reads the snapshot.
+    @Test
+    fun `a kv consumer of the wrong shape fails the start before the snapshot is read`() {
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        val kv = object : InitializingKVStore {
+            override fun read(name: String): Mono<String> = Mono.fromCallable { reads.incrementAndGet(); "" }
+            override fun write(name: String, value: String): Mono<Void> = Mono.empty()
+            override fun remove(name: String): Mono<Void> = Mono.empty()
+            override fun names(): reactor.core.publisher.Flux<String> =
+                reactor.core.publisher.Flux.defer { reads.incrementAndGet(); reactor.core.publisher.Flux.empty() }
+        }
+        base.withPropertyValues("app.rootkeys.consume.scheme=kv", "app.kv.rootkeys=rootkeys", "app.key.type=long")
+            .withBean(InitializingKVStore::class.java, { kv })
+            .withBean(StoreShapeCheck::class.java, { wrongShape })
+            .run { ctx ->
+                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
+                assertThat(reads.get()).isZero()
+                assertThat(roots(ctx).domains()).isEmpty()
+            }
+    }
+
+    // The source is a closed local port. The failure names the shape, so no request was made.
+    @Test
+    fun `an http consumer of the wrong shape fails the start before the source is asked`() {
+        base.withPropertyValues("app.rootkeys.consume.scheme=http", "app.rootkeys.consume.source=http://127.0.0.1:1", "app.key.type=long")
+            .withUserConfiguration(HttpRootKeyConsumeOnStart::class.java)
+            .withBean(JACKSON_2_OBJECT_MAPPER, ObjectMapper::class.java, { ObjectMapper() })
+            .withBean(StoreShapeCheck::class.java, { wrongShape })
+            .run { ctx ->
+                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
+                assertThat(roots(ctx).domains()).isEmpty()
+            }
     }
 
     @Test
