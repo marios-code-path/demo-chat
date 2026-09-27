@@ -39,19 +39,45 @@ and root deletion protection on both persistent backends.
 
 ## Decision D1: the Redis auth index
 
-Fact 4 blocks task 2. The owner decides.
+**Decided by the owner on 2026-09-27: A.** Reload the Lucene auth index from
+persistence at start. The owner set these conditions:
 
-- **A. Reload the Lucene auth index from Redis persistence at start.** Build
-  the auth index as a `LoadablePersistedIndex`. Load it before the process
-  serves a request. The load runs after the root load, in the same startup
-  sequence.
-- **B. Record that Redis gives no grant continuity.** The Redis test then
-  proves stable roots only. `CHAT-bafkgkko` closes with a stated gap.
+1. Load all persisted auth metadata after the roots load.
+2. Complete the load before `RootKeyInitializationReadyEvent`.
+3. Fail the start on any load error.
+4. Do not serve with a partial or empty auth index. See D2.
+5. Test the production `AccessBroker` across a Redis context restart.
+6. Keep the reload of the other Redis indexes in a separate issue.
+7. Run `--ci`, because the Redis startup changes.
 
-**Recommendation: A, for the auth index only.** The user, topic, message and
-membership Lucene indexes have the same defect. File that as a separate issue.
-Task 2 measures one consequence and records it: whether `InitialUsersService`
-finds `Admin` through the user index after a Redis restart.
+Option B, no grant continuity on Redis, is rejected.
+
+## Decision D2: the serving window
+
+**Open. The owner decides before task 2 step 4.**
+
+Read from the Spring Boot 4.0.8 bytecode. Not measured.
+
+- `SpringApplication.run` calls `refreshContext` before the `started`
+  listeners.
+- Both servers start inside the refresh. `WebServerStartStopLifecycle` is a
+  `SmartLifecycle` at phase 2147481599. `RSocketServerBootstrap` is a
+  `SmartLifecycle` at the default phase.
+- `loadRootKeysFromStore` listens for `ApplicationStartedEvent`.
+
+So both servers accept connections before the roots load. The same window
+exists at master today, for every read of a root. A load in the same listener
+completes before `RootKeyInitializationReadyEvent`, and a failed load stops the
+process. It cannot prevent a request that arrives before the load.
+
+- **A. Accept the window and record it.** File an issue that moves the whole
+  root and index load before the servers start.
+- **B. Move the load before the servers in this issue.** Run the shape checks,
+  the root load and the index load in a `SmartLifecycle` with a phase below
+  both servers. This changes the startup that T2 of `CHAT-avduuqwp` approved.
+
+**Recommendation: B.** It is the only option that meets condition 4. Tasks 1
+and 3 do not depend on D2, so they start first.
 
 ## Task 1: Cassandra runtime grant survives a context restart
 
@@ -91,16 +117,28 @@ The steps are the same as task 1. The settings are
 `app.service.core.index=lucene`, `app.service.composite.auth`,
 `app.users.create=false` and `app.nodeid=13`.
 
-If D1 is A, this task also builds the reload.
+This task also builds the reload.
 
-1. Make the Lucene auth index a `LoadablePersistedIndex` over the auth
-   persistence.
-2. Load it in the startup listener after the roots load, and before
-   `RootKeyInitializationReadyEvent`.
-3. Add a unit test. A grant stored before the load is found after it.
+1. Add `fun interface StartupIndexLoad { fun load(): Mono<Void> }` in
+   `chat-core`, beside `StoreShapeCheck`.
+2. Register one in `chat-deploy` when `app.service.core.index` is `lucene`. It
+   reads `authMetaPersistence().all()` and adds each row to
+   `authMetadataIndex()`. Any error ends the load with that error.
+3. Run every registered load after the roots load and before
+   `RootKeyInitializationReadyEvent`, in the `STORE`, `KV` and `HTTP` paths.
+   Block on each load. A `NONE` process loads no roots, so it runs no load.
+4. Apply D2.
+5. **Startup failure test, listener level.** In `RootKeyStartupTests`, a load
+   emits one row and then fails. The listener throws that error. No
+   `RootKeyInitializationReadyEvent` is published.
+6. **Startup failure test, Redis context level.** Before context B starts,
+   write one auth metadata row that cannot decode into the Redis auth store.
+   Context B fails to start, and the failure names the load.
+7. **Load test.** A grant stored before the load is found through the index
+   after it.
 
-If D1 is B, steps 10 and 11 of task 1 change. The test asserts the root at
-step 9 only. The register records the gap.
+The owner decides whether a Lucene index of another domain reloads in a
+separate issue. This task changes no other index.
 
 ## Task 3: key-type isolation and root deletion protection
 
@@ -123,7 +161,8 @@ proves each restore.
 | Id | Mutation | Expected failure |
 |---|---|---|
 | M1 | `loadRootKeysFromStore` mints fresh roots on each start, in place of `RootKeyLoader.load()` | Task 1 at step 9 or 10. Task 2 the same. |
-| M2 | Remove the auth index load, if D1 is A | Task 2 at step 10 |
+| M2 | Remove the auth index load | Task 2 at step 10 |
+| M6 | The load ignores an error and continues | Task 2 steps 5 and 6 |
 | M3 | Remove the root guard in `KeyServiceRedis.rem` | Task 3 item 3 |
 | M4 | Remove the root guard in `KeyServiceCassandra.rem` | Task 3 item 4 |
 | M5 | Give the Cassandra `uuid` loader the `chat_long` keyspace | Task 3 item 1 |
@@ -134,17 +173,16 @@ proves each restore.
    upstream reactor, `-am`.
 2. `shell-scripts/build-health.sh --integration`.
 
-The full `--ci` gate is not required. No wire format and no image content
-changes. If D1 is A, the Redis startup changes, and `--ci` runs as well.
+3. `shell-scripts/build-health.sh --ci`, because the Redis startup changes.
 
 ## Documents
 
 - `docs/NODEID-CLAIM.md`: add node ids 23 and 13 to the allocation table.
 - `forward-register.md`: record the result, and the Redis index finding.
-- `docs/ARCHITECTURE.md` section 3: add the auth index load, if D1 is A.
+- `docs/ARCHITECTURE.md` section 3: add the auth index load, and the D2
+  result.
 
 ## Closure
 
 `CHAT-bafkgkko` closes when tasks 1 to 4 pass. Its closing comment names each
-test, each mutation result, and each gate result. If D1 is B, the comment
-states the Redis gap.
+test, each mutation result, and each gate result.
