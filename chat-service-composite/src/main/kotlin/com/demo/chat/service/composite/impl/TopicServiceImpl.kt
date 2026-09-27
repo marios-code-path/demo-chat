@@ -108,11 +108,14 @@ open class TopicServiceImpl<T : Any, V, Q>(
             }
             .switchIfEmpty(Mono.error(NotFoundException))
 
+    // The member resolves in USER before the room, so a membership never stores an unknown user. D7.
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void> {
-        return verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC)
+        return verifier.resolve(req.uid, ChatDomain.USER)
+            .then(verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC))
             .flatMap { topicPersistence.get(it.key) }
             .switchIfEmpty(Mono.error(NotFoundException))
-            .then(membershipPersistence.key())
+            // defer keeps the mint out of assembly, so a refused request mints nothing.
+            .then(Mono.defer { membershipPersistence.key() })
             .map { key -> TopicMembership.create(key.id, req.uid, req.roomId) }
             .flatMapMany { membership ->
                 membershipPersistence
@@ -132,9 +135,11 @@ open class TopicServiceImpl<T : Any, V, Q>(
             .then(pubsub.subscribe(req.uid, req.roomId))
     }
 
+    // Both ids resolve before the index read and the pub/sub calls. D7.
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
-        membershipIndex
-            .findBy(memberWithTopicToQuery.apply(req))
+        verifier.resolve(req.uid, ChatDomain.USER)
+            .then(verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC))
+            .thenMany(Flux.defer { membershipIndex.findBy(memberWithTopicToQuery.apply(req)) })
             .switchIfEmpty(Mono.error(NotFoundException))
             .last()
             .flatMap { key ->

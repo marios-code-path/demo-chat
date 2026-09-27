@@ -109,7 +109,7 @@ class MessageControllerTests : RSocketTestBase() {
 
         val receiverFlux = requester
                 .route("message-listen-topic")
-                .data(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE).id))
+                .data(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id))
                 .retrieveFlux<ChatMessage<UUID, String>>()
 
         StepVerifier

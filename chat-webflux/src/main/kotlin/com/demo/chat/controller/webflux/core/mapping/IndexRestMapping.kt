@@ -29,7 +29,9 @@ interface IndexRestMapping<T, E, Q> : IndexService<T, E, Q>, DomainScoped {
     @ResponseStatus(HttpStatus.CREATED)
     fun restAdd(@RequestBody entity: E): Mono<Void> =
         // defer keeps the store call out of assembly, so a refused key never calls it.
-        verifier().verifyEntity(entity, domain()).then(Mono.defer { add(entity) })
+        verifier().verifyEntity(entity, domain())
+            .then(verifier().verifyReferences(entity))
+            .then(Mono.defer { add(entity) })
 
     @DeleteMapping("/rem/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.NO_CONTENT)

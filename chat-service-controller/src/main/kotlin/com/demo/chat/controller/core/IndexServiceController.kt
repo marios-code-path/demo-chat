@@ -22,7 +22,9 @@ open class IndexSearchRequestIndexServiceController<T, E>(
     /** The entity key verifies in the index domain before the index write. See `CHAT-avduuqwp`, D12. */
     @MessageMapping("add")
     fun addRoute(entity: E): Mono<Void> =
-        verifier.verifyEntity(entity, keyDomainOf(this::class.java)).then(Mono.defer { that.add(entity) })
+        verifier.verifyEntity(entity, keyDomainOf(this::class.java))
+            .then(verifier.verifyReferences(entity))
+            .then(Mono.defer { that.add(entity) })
 
     @MessageMapping("rem")
     fun remRoute(@Verified key: VerifiedKey<T>): Mono<Void> = that.rem(key.key)
@@ -41,7 +43,9 @@ open class MapIndexServiceController<T, E>(
     /** The entity key verifies in the index domain before the index write. See `CHAT-avduuqwp`, D12. */
     @MessageMapping("add")
     fun addRoute(entity: E): Mono<Void> =
-        verifier.verifyEntity(entity, keyDomainOf(this::class.java)).then(Mono.defer { that.add(entity) })
+        verifier.verifyEntity(entity, keyDomainOf(this::class.java))
+            .then(verifier.verifyReferences(entity))
+            .then(Mono.defer { that.add(entity) })
 
     @MessageMapping("rem")
     fun remRoute(@Verified key: VerifiedKey<T>): Mono<Void> = that.rem(key.key)

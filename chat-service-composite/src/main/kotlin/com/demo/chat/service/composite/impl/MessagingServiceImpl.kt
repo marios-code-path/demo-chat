@@ -27,16 +27,19 @@ open class MessagingServiceImpl<T : Any, V, Q>(
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
+    /** The topic resolves in MESSAGE_TOPIC before the index read and the listener. D7. */
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
-        Flux.concat(
-            messageIndex
-                .findBy(topicIdToQuery.apply(req))
-                .collectList()
-                .flatMapMany { messageKeys ->
-                    messagePersistence.byIds(messageKeys)
-                },
-            pubsub.listenTo(req.id)
-        )
+        verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC).flatMapMany {
+            Flux.concat(
+                messageIndex
+                    .findBy(topicIdToQuery.apply(req))
+                    .collectList()
+                    .flatMapMany { messageKeys ->
+                        messagePersistence.byIds(messageKeys)
+                    },
+                pubsub.listenTo(req.id)
+            )
+        }
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
         verifier.resolve(req.id, ChatDomain.MESSAGE)
@@ -48,8 +51,11 @@ open class MessagingServiceImpl<T : Any, V, Q>(
             Message.create(MessageKey.of(it.id, it.root, req.from, req.dest), req.msg, true)
         }
 
-        return messagePersistence
-            .key()
+        // The sender resolves in USER and the destination in MESSAGE_TOPIC
+        // before the mint, so a refused request mints nothing. D7.
+        return verifier.resolve(req.from, ChatDomain.USER)
+            .then(verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC))
+            .then(Mono.defer { messagePersistence.key() })
             .flatMap { messageKey ->
                 val message = sending(messageKey)
                 // Each write is deferred. A step starts only after the step

@@ -1,5 +1,11 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.test.key.TestKeys
@@ -31,6 +37,15 @@ import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 
 class MessagingServiceVectorTests {
+    /** The sender 20 and the room 30, registered in their domains. See CHAT-avduuqwp, D7. */
+    private val sendVerifier = KeyVerifier(
+        FakeKeyServices.long(FAKE_ROOTS).apply {
+            register(20L, ChatDomain.USER)
+            register(30L, ChatDomain.MESSAGE_TOPIC)
+        },
+        FAKE_ROOTS,
+    )
+
 
     private val messageIndex = mock<MessageIndexService<Long, String, Any>>()
     private val messagePersistence = mock<MessagePersistence<Long, String>>()
@@ -59,7 +74,7 @@ class MessagingServiceVectorTests {
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing(), indexer
+            { ByStringRequest("unused") }, sendVerifier, indexer
         )
 
         StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
@@ -71,13 +86,50 @@ class MessagingServiceVectorTests {
         inOrder.verify(pubsub).sendMessage(any<Message<Long, String>>())
     }
 
+    // D7. A refused sender or destination mints no key and writes nothing.
+    @Test
+    fun `send from an unknown sender mints nothing and writes nothing`() {
+        val service = MessagingServiceImpl(
+            messageIndex, messagePersistence, pubsub,
+            { ByStringRequest("unused") }, sendVerifier
+        )
+
+        StepVerifier.create(service.send(MessageSendRequest("hello", 424260L, 30L)))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
+    }
+
+    @Test
+    fun `send to a destination outside MESSAGE_TOPIC mints nothing and writes nothing`() {
+        val service = MessagingServiceImpl(
+            messageIndex, messagePersistence, pubsub,
+            { ByStringRequest("unused") }, sendVerifier
+        )
+
+        StepVerifier.create(service.send(MessageSendRequest("hello", 20L, 20L)))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
+    }
+
+    @Test
+    fun `listen to an unknown topic opens no listener`() {
+        val service = MessagingServiceImpl(
+            messageIndex, messagePersistence, pubsub,
+            { ByStringRequest("unused") }, sendVerifier
+        )
+
+        StepVerifier.create(service.listenTopic(com.demo.chat.domain.ByIdRequest(424261L)))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(messagePersistence, messageIndex, pubsub)
+    }
+
     @Test
     fun `inactive chain stays three steps when there is no indexer`() {
         givenKey()
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing()
+            { ByStringRequest("unused") }, sendVerifier
         )
 
         StepVerifier.create(service.send(request())).expectNext(TestKeys.key(100L)).verifyComplete()
@@ -98,7 +150,7 @@ class MessagingServiceVectorTests {
 
         val service = MessagingServiceImpl(
             messageIndex, messagePersistence, pubsub,
-            { ByStringRequest("unused") }, TestVerifiers.resolvingNothing(), failing
+            { ByStringRequest("unused") }, sendVerifier, failing
         )
 
         StepVerifier.create(service.send(request())).expectError().verify()

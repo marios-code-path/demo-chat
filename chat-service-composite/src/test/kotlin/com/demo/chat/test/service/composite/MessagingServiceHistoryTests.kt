@@ -1,5 +1,11 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.test.key.TestVerifiers
 
 import com.demo.chat.test.key.TestKeys
@@ -26,6 +32,12 @@ import java.time.Duration
  * here, exactly as it finds nothing on lucene and on cassandra.
  */
 class MessagingServiceHistoryTests {
+    /** The topics of these tests, registered in MESSAGE_TOPIC. See CHAT-avduuqwp, D7. */
+    private val historyRegistry = FakeKeyServices.long(FAKE_ROOTS).apply {
+        register(100L, ChatDomain.MESSAGE_TOPIC)
+        register(999L, ChatDomain.MESSAGE_TOPIC)
+    }
+
 
     private val messageIndex = FakeMessageIndex()
     private val persistence = FakeMessagePersistence()
@@ -36,7 +48,7 @@ class MessagingServiceHistoryTests {
         messagePersistence = persistence,
         pubsub = pubsub,
         topicIdToQuery = MapRequestConverters()::topicIdToQuery,
-        verifier = TestVerifiers.resolvingNothing(),
+        verifier = KeyVerifier(historyRegistry, FAKE_ROOTS),
     )
 
     private fun store(id: Long, topic: Long, text: String) {

@@ -93,7 +93,7 @@ class MessagClientTests : RSocketTestBase() {
         val client = MessagingClient<UUID, String>(svcPrefix, requester)
 
         StepVerifier
-                .create(client.listenTopic(ByIdRequest(UUID.randomUUID())))
+                .create(client.listenTopic(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id)))
                 .expectSubscription()
                 .expectNextCount(10)
                 .thenConsumeWhile({

@@ -21,8 +21,19 @@ interface KeyValueStoreRestMapping<T> :
     PersistenceRestMapping<T, KeyValuePair<T, Any>>,
     KeyValueStore<T, Any> {
 
+    /**
+     * Every key verifies in KEY_VALUE_PAIR before the bulk read. One refused
+     * key refuses the request. An empty list reads nothing. See
+     * `CHAT-avduuqwp`, D9.
+     */
     @GetMapping("/byIds")
-    fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> = typedByIds(ids, Any::class.java)
+    fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> =
+        if (ids.isEmpty()) Flux.empty()
+        else Flux.fromIterable(ids)
+            .concatMap { verifier().verify(it, ChatDomain.KEY_VALUE_PAIR) }
+            .map { it.key }
+            .collectList()
+            .flatMapMany { verified -> typedByIds(verified, Any::class.java) }
 
     // Jackson has no more of T here than Spring does for a path segment: it infers
     // the key type from the JSON alone. The key arrives as Any and typeUtil(),

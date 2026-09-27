@@ -59,6 +59,10 @@ class RSocketRouteVerificationTests {
     class UserController(store: PersistenceStore<Long, User<Long>>, verifier: KeyVerifier<Long>) :
         PersistenceServiceController<Long, User<Long>>(store, verifier)
 
+    @KeyDomain(ChatDomain.MESSAGE)
+    class MessageController(store: PersistenceStore<Long, Message<Long, String>>, verifier: KeyVerifier<Long>) :
+        PersistenceServiceController<Long, Message<Long, String>>(store, verifier)
+
     @KeyDomain(ChatDomain.USER)
     class UserIndexController(index: IndexService<Long, User<Long>, IndexSearchRequest>, verifier: KeyVerifier<Long>) :
         IndexSearchRequestIndexServiceController<Long, User<Long>>(index, verifier)
@@ -87,6 +91,20 @@ class RSocketRouteVerificationTests {
 
         StepVerifier.create(UserController(store, verifier).addRoute(user)).verifyComplete()
         verify(store).add(user)
+    }
+
+    // D6 and E8. A message stores a sender and a destination beside its key.
+    @Test
+    fun `a message add with an unknown sender never reaches the store`() {
+        val store = mockOf<PersistenceStore<Long, Message<Long, String>>>()
+        val minted = registry.register(4515L, ChatDomain.MESSAGE)
+        val room = registry.register(4516L, ChatDomain.MESSAGE_TOPIC)
+
+        StepVerifier.create(
+            MessageController(store, verifier)
+                .addRoute(Message.create(MessageKey.of(minted.id, minted.root, 424254L, room.id), "m", true))
+        ).verifyError(KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(store)
     }
 
     // D8

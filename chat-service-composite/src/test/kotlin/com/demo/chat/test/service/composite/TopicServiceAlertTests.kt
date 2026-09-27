@@ -17,6 +17,7 @@ import com.demo.chat.test.key.FakeKeyServices
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import reactor.test.StepVerifier
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
@@ -29,7 +30,7 @@ import java.util.function.Supplier
 class TopicServiceAlertTests {
     private val keys = FakeKeyServices.long(FAKE_ROOTS)
     private val room = MessageTopic.create(keys.register(70L, ChatDomain.MESSAGE_TOPIC), "general")
-    private val userId = 71L
+    private val userId = keys.register(71L, ChatDomain.USER).id
 
     private val memberships = mutableListOf<TopicMembership<Long>>()
     private val alerts = FakePubSub()
@@ -108,5 +109,26 @@ class TopicServiceAlertTests {
         assertThat(alert.key.root).isEqualTo(fakeRoot(ChatDomain.MESSAGE))
         assertThat(membershipIds).doesNotContain(alert.key.id)
         assertThat(alert.key.id).isNotEqualTo(alerts.sent.first().key.id)
+    }
+
+    // D7. A membership never stores a user that the registry does not hold.
+    @Test
+    fun `a join by an unknown user stores nothing and sends nothing`() {
+        StepVerifier.create(service.joinRoom(MembershipRequest(424262L, room.key.id)))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+
+        assertThat(memberships).isEmpty()
+        assertThat(alerts.sent).isEmpty()
+    }
+
+    @Test
+    fun `a leave by an unknown user removes nothing and sends nothing`() {
+        service.joinRoom(MembershipRequest(userId, room.key.id)).block()
+
+        StepVerifier.create(service.leaveRoom(MembershipRequest(424263L, room.key.id)))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+
+        assertThat(memberships).hasSize(1)
+        assertThat(alerts.sent).hasSize(1)
     }
 }

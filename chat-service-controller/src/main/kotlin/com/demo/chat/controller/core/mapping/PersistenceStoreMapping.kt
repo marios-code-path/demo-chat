@@ -26,10 +26,15 @@ interface PersistenceStoreMapping<T, E : Any> : PersistenceStore<T, E> {
     @MessageMapping("key")
     override fun key(): Mono<out Key<T>>
 
-    /** The entity key verifies in the store domain before the store. D6. */
+    /**
+     * The entity key verifies in the store domain, and each id the entity
+     * stores resolves in its domain, before the store. D6 and E8.
+     */
     @MessageMapping("add")
     fun addRoute(ent: E): Mono<Void> =
-        verifier().verifyEntity(ent, keyDomainOf(this::class.java)).then(Mono.defer { add(ent) })
+        verifier().verifyEntity(ent, keyDomainOf(this::class.java))
+            .then(verifier().verifyReferences(ent))
+            .then(Mono.defer { add(ent) })
 
     @MessageMapping("rem")
     fun remRoute(@Verified key: VerifiedKey<T>): Mono<Void> = rem(key.key)

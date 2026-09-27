@@ -4,6 +4,7 @@ import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.UserIndexRestController
 import com.demo.chat.controller.webflux.UserPersistenceRestController
+import com.demo.chat.controller.webflux.KeyValueStoreRestController
 import com.demo.chat.controller.webflux.MessagePersistenceRestController
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.IndexSearchRequest
@@ -163,6 +164,47 @@ class MessageAddVerificationTests(@Autowired beans: PersistenceServiceBeans<Long
         val user = registry.register(4602L, ChatDomain.USER)
 
         add(user.id, user.id).expectStatus().isNotFound
+        Mockito.verifyNoInteractions(store)
+    }
+}
+
+/**
+ * A bulk read verifies every key in KEY_VALUE_PAIR before the store. An empty
+ * list reads nothing. See `CHAT-avduuqwp`, D9.
+ */
+@WebFluxTest
+@ExtendWith(SpringExtension::class)
+@TestPropertySource(properties = ["app.controller.persistence"])
+@ContextConfiguration(
+    classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, KeyValueStoreRestController::class, WebFluxTestConfiguration::class]
+)
+class KeyValueByIdsVerificationTests(@Autowired beans: PersistenceServiceBeans<Long, String>) {
+    private val store = beans.keyValuePersistence()
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    @Autowired
+    private lateinit var controller: KeyValueStoreRestController<Long, String>
+
+    @BeforeEach
+    fun `reset the store`() {
+        Mockito.reset(store)
+    }
+
+    @Test
+    fun `one unknown key refuses the bulk read and the store is not called`() {
+        val known = registry.register(4701L, ChatDomain.KEY_VALUE_PAIR)
+
+        reactor.test.StepVerifier
+            .create(controller.restByIds(listOf(known, Key.of(424253L, ROOTS.of(ChatDomain.KEY_VALUE_PAIR).id))))
+            .verifyError(com.demo.chat.domain.KeyVerificationException::class.java)
+        Mockito.verifyNoInteractions(store)
+    }
+
+    @Test
+    fun `an empty list reads nothing`() {
+        reactor.test.StepVerifier.create(controller.restByIds(listOf())).verifyComplete()
         Mockito.verifyNoInteractions(store)
     }
 }

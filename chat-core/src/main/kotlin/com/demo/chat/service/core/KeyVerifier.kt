@@ -1,6 +1,7 @@
 package com.demo.chat.service.core
 
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.Message
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.KeyBearer
 import com.demo.chat.domain.KeyVerificationException
@@ -53,6 +54,24 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
         is KeyBearer<*> -> verify(entity.key as Key<T>, domain)
         is TopicMembership<*> -> resolve(entity.key as T, domain)
         else -> Mono.error(KeyVerificationException("The value names no key."))
+    }
+
+    /**
+     * The ids that an entity stores beside its own key, each resolved in its
+     * domain. See `CHAT-avduuqwp`, E8 and D6.
+     *
+     * - A `Message` stores a sender in USER and a destination in MESSAGE_TOPIC.
+     * - A `TopicMembership` stores a member in USER and a room in MESSAGE_TOPIC.
+     * - Any other value stores none here. The grant principal and target of an
+     *   `AuthMetadata` verify in T6.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun verifyReferences(entity: Any?): Mono<Void> = when (entity) {
+        is Message<*, *> -> resolve(entity.key.from as T, ChatDomain.USER)
+            .then(resolve(entity.key.dest as T, ChatDomain.MESSAGE_TOPIC)).then()
+        is TopicMembership<*> -> resolve(entity.member as T, ChatDomain.USER)
+            .then(resolve(entity.memberOf as T, ChatDomain.MESSAGE_TOPIC)).then()
+        else -> Mono.empty()
     }
 
     /**

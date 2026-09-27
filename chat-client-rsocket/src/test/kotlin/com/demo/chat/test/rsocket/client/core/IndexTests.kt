@@ -39,7 +39,14 @@ open class IndexTests : RSocketTestBase() {
 
     private val message =
         RSocketTestRegistry.registered(ChatDomain.MESSAGE).let { minted ->
-            Message.create(MessageKey.of(minted.id, minted.root, UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+            Message.create(
+                MessageKey.of(
+                    minted.id, minted.root,
+                    RSocketTestRegistry.registered(ChatDomain.USER).id,
+                    RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id,
+                ),
+                "TEST", true,
+            )
         }
 
     @Test
