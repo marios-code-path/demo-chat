@@ -32,19 +32,23 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
 
     /**
-     * The per element check of a `@PostFilter`. [EntityTargets] names the
-     * target of [entity] and its domain. An entity with no target denies.
+     * The per element check of a `@PostFilter`. [storeDomain] is the domain of
+     * the typed store that returned [entity]. The store states it through
+     * `PersistenceAccess.storeDomain`. The entity does not state it.
      *
-     * **This method trusts the store.** A `@PostFilter` reads entities that a
-     * typed store returned, so the key converts through `trustTypedStore` in
-     * the domain of the entity type. It reads no registry. This method is the
-     * one permitted caller of that conversion. Do not call it for input that
-     * a caller sent. Use [hasAccessToSubmittedEntity] for that.
+     * **This method trusts the store.** It reads no registry. It converts the
+     * key through `trustTypedStore` in [storeDomain], and it is the one
+     * permitted caller of that conversion. Do not call it for input that a
+     * caller sent. Use [hasAccessToSubmittedEntity] for that.
+     *
+     * An entity with no target denies. An entity whose type belongs to another
+     * domain denies before the broker, because this store should not hold it.
+     * See `CHAT-avduuqwp`, T4 review correction 3.
      */
-    fun hasAccessToEntity(entity: Any?, perm: String): Mono<Boolean> {
+    fun hasAccessToEntity(entity: Any?, perm: String, storeDomain: ChatDomain): Mono<Boolean> {
         val key = EntityTargets.keyOf(entity, rootKeys) ?: return Mono.just(false)
-        val domain = EntityTargets.domainOf(entity) ?: return Mono.just(false)
-        return Mono.fromCallable { verifier.trustTypedStore(key, domain) }
+        if (EntityTargets.domainOf(entity) != storeDomain) return Mono.just(false)
+        return Mono.fromCallable { verifier.trustTypedStore(key, storeDomain) }
             .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))

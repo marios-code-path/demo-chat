@@ -266,7 +266,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `an entity with no target denies`() {
         val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
 
-        val answer = service.hasAccessToEntity("not an entity", "GET")
+        val answer = service.hasAccessToEntity("not an entity", "GET", ChatDomain.USER)
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
             .block()
 

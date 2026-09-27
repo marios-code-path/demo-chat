@@ -150,4 +150,6 @@ private val DENIED: Key<Long> = TestKeys.key(30L)
 @Service
 class TestMembershipPersistence(that: PersistenceServiceBeans<Long, String>) :
     PersistenceAccess<Long, TopicMembership<Long>>,
-    PersistenceStore<Long, TopicMembership<Long>> by that.membershipPersistence()
+    PersistenceStore<Long, TopicMembership<Long>> by that.membershipPersistence() {
+    override fun storeDomain(): ChatDomain = ChatDomain.TOPIC_MEMBERSHIP
+}

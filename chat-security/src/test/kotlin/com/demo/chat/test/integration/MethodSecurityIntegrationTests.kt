@@ -229,7 +229,9 @@ class TestKeyService<T>(that: KeyServiceBeans<T>) : IKeyServiceAccess<T>, IKeySe
 
 @Service
 class TestUserPersistence<T>(that: PersistenceServiceBeans<T, *>) : PersistenceAccess<T, User<T>>,
-    PersistenceStore<T, User<T>> by that.userPersistence()
+    PersistenceStore<T, User<T>> by that.userPersistence() {
+    override fun storeDomain(): ChatDomain = ChatDomain.USER
+}
 
 @Service
 class TestUserService<T>(that: CompositeServiceBeans<T, *>) : UserServiceAccess<T>,
