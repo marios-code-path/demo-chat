@@ -156,17 +156,32 @@ shared text.
 is always null on this chain. So this scenario writes through the persistence
 route, which binds a request body alone.
 
+The route resolves the sender in `USER` and the topic in `MESSAGE_TOPIC`. It
+refuses an id that the key registry does not hold, with status 404. So create
+a user and a topic first, and send their ids. See `CHAT-avduuqwp`.
+
+```bash
+curl -sS -X PUT http://localhost:8080/persist/user/add \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}'
+curl -sS -X PUT http://localhost:8080/persist/topic/add \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"ByNameRequest","name":"recipes"}'
+```
+
+Each answer carries the new key, such as `{"key":{"empty":false,"id":11,"root":1}}`.
+Set `SENDER` to the user id and `ROOM` to the topic id.
+
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
   curl -sS \
     -X PUT http://localhost:8080/persist/message/add \
     -H 'Content-Type: application/json' \
-    -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":10,\"dest\":20}"
+    -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}"
 done
 ```
 
-`10` is the sender id and `20` is the topic id. Each answer carries the new
-message key, and the status is 201.
+Each answer carries the new message key, and the status is 201.
 
 ### Step 2. Rebuild the index
 
@@ -197,17 +212,18 @@ alone does not prove that the durable record is written.
 curl -sS \
   -X POST http://localhost:8080/message/recall/topic \
   -H 'Content-Type: application/json' \
-  -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":10}'
+  -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":10}"
 ```
 
-The answer is one JSON object.
+The answer is one JSON object. The ids and roots below are examples. A run
+gives its own values.
 
 ```json
 {
   "indexComplete": true,
   "hits": [
-    { "key": { "key": { "id": 1, "from": 10, "dest": 20 } }, "score": 0.87 },
-    { "key": { "key": { "id": 2, "from": 10, "dest": 20 } }, "score": 0.81 }
+    { "key": { "key": { "empty": false, "id": 13, "root": 2, "from": 11, "dest": 12 } }, "score": 0.87 },
+    { "key": { "key": { "empty": false, "id": 14, "root": 2, "from": 11, "dest": 12 } }, "score": 0.81 }
   ]
 }
 ```
@@ -225,7 +241,7 @@ through `GET /message/id/{id}`.
 # One sender, across every topic.
 curl -sS -X POST http://localhost:8080/message/recall/user \
   -H 'Content-Type: application/json' \
-  -d '{"type":"UserRecallRequest","userId":10,"query":"recipe"}'
+  -d "{\"type\":\"UserRecallRequest\",\"userId\":$SENDER,\"query\":\"recipe\"}"
 
 # Every message this node indexed.
 curl -sS -X POST http://localhost:8080/message/recall/global \

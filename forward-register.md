@@ -2282,6 +2282,11 @@ roots to start and the images to rebuild on Boot 4. Merge them or close one.
 | 8 | `CHAT-avduuqwp` | A stable root identity on keys, replacing string matching between `IKeyService.kind` and `RootKeys`. Large and structural. Read the scope before committing to it. |
 | 9 | `CHAT-ruduojeu` | Backend fanout semantics for messaging. |
 
+**Correction, 2026-09-27.** Row 8 describes `CHAT-avduuqwp` before its work.
+The work is implemented on the branch `chat-avduuqwp-root-identity` and is not
+merged. `IKeyService.kind` string matching is gone. See the root identity
+section at the end of this file.
+
 ### Tier 4: native image
 
 `CHAT-arcqfjuc` blocks a native start and needs an owner decision about moving
@@ -2398,3 +2403,73 @@ Two facts that cost a measurement:
 
 `AuthorizationService.getAuthorizationsAgainstMany` stays. No production code
 calls it now.
+
+
+## Root identity on keys (2026-09-25/27)
+
+`CHAT-avduuqwp`. Spec:
+`docs/superpowers/specs/2026-09-24-key-root-identity-design.md`. Plan:
+`docs/superpowers/plans/2026-09-25-key-root-identity.md`. Diagrams:
+`docs/KEY-ROOT-IDENTITY.md`.
+
+**This work is not merged.** The branch is `chat-avduuqwp-root-identity`. The
+owner approved T0 to T7 in batches. T8 holds the documents and the final gates.
+Merge approval is open.
+
+### What exists
+
+- A key holds `id`, `root` and `empty`. The root is the id of the domain root
+  key. `Key.funKey` is removed, and every factory needs both values.
+- `ChatDomain` names eight domains. `Admin` and `Anon` are users, and their
+  keys carry the `USER` root.
+- Roots load from a `RootKeyStore`, and a missing root is created with a
+  conditional write. `app.rootkeys.create` is removed. `RootKeySource` selects
+  `STORE`, `KV`, `HTTP` or `NONE`, and it refuses any other setting.
+- `KeyVerifier` reads the registry. A web path id resolves through `@Resolved`.
+  An RSocket payload key verifies through `@Verified`. A route catalog test
+  fails when a route takes a key with no stated verification path.
+- Every store refuses a key of another domain on add. A grant verifies its
+  principal and its target before the write.
+- Each store backend registers a `StoreShapeCheck`. Every root source runs the
+  checks before it loads.
+
+### Decisions of the owner
+
+1. **An id converts exactly or fails.** A fraction, an overflow or an
+   unsupported shape is `KeyInputException`, and HTTP answers 400. Empty means
+   a valid id that the registry does not hold.
+2. **No migration.** A store with the schema of an earlier release fails the
+   start. The error names the missing table or column. The operator recreates
+   the store from `keyspace-*.cql`.
+3. **Authorization runs on an intercepted route or a separately proxied
+   service.** A call inside one object is not enough. This applies to
+   `CHAT-znprrzhn`.
+
+### Traps found, each of which cost a cycle
+
+- **A blocking call on a Netty thread fails.** The shell resolved ids inside a
+  reactive callback. It now takes its clients and resolves ids on the command
+  thread.
+- **`PayloadMethodArgumentResolver.resolveArgument` is final.** The RSocket
+  resolver wraps it by composition.
+- **A Cassandra `TIMEUUID` column accepts only a time based UUID.** A test that
+  mints message keys with random UUIDs fails on insert.
+- **The Lucene handle and topic name fields split on a hyphen.** Two names that
+  share one token match one query. Tests use single token names.
+  `CHAT-hajmhslp` holds the defect.
+- **A test that creates users needs a registry that holds them.**
+  `CassandraClaimBootTests` sets `app.users.create=false` for this reason.
+- **The launch gate seeded unregistered ids.** It sent sender 10 and topic 20.
+  The message route now resolves both ids, so it answered 404. The gate and
+  `docs/VECTOR-RECALL-API.md` create a user and a topic first now. No test
+  found this, because only the packaged gate uses that seed.
+- **A shape check condition test needs a session stub.** The keyspace name is
+  read lazily, so a mocked `CqlSession` is enough.
+
+### Open
+
+- Merge approval.
+- The runtime grant restart proof.
+- The parent scope decisions on `CHAT-avduuqwp`.
+- `CHAT-hajmhslp`, `CHAT-jwayirni` and `CHAT-qcmnxaoz`. The owner filed them
+  and required no work on them in this batch.

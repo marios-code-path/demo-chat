@@ -1,7 +1,7 @@
 # Key and root identity data graph
 
-These diagrams describe the approved design for `CHAT-avduuqwp`.
-They do not report implementation completion.
+These diagrams describe `CHAT-avduuqwp` as the code implements it.
+Tasks T1 to T7 of the plan are implemented.
 `T` is the ID type, such as `Long` or UUID.
 
 The sources are the [design specification](superpowers/specs/2026-09-24-key-root-identity-design.md)
@@ -72,6 +72,12 @@ A root key is an ordinary key whose `id` equals its `root`.
 Each domain has one root per key type in the configured root store.
 Persistent backends retain these roots across restarts.
 The memory backend does not retain roots across process restarts.
+
+At start, each registered `StoreShapeCheck` runs before any root source loads.
+A store with the schema of an earlier release fails the start.
+The error names the missing table or column.
+This release has no migration. The operator recreates the store.
+`docs/ARCHITECTURE.md` section 3 describes the four root sources.
 
 `Admin` and `Anon` remain user identities.
 Their keys carry the `USER` root.
