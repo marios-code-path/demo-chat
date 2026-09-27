@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.persistence.redis.impl.MembershipPersistenceRedis
@@ -25,9 +27,9 @@ class RedisMembershipPersistenceTests(
     @Autowired stringTemplate: ReactiveStringRedisTemplate,
 ) : RedisPersistenceTestBase<UUID, TopicMembership<UUID>>(
     stringTemplate,
-    TestUUIDTopicMembershipSupplier,
+    TestUUIDTopicMembershipSupplier(membershipPersistence),
     membershipPersistence,
-    { t -> Key.funKey(t.key) },
+    { t -> TestKeys.key(t.key) },
     { original, roundTripped ->
         assertThat(roundTripped.key).isEqualTo(original.key)
         assertThat(roundTripped.member).isEqualTo(original.member)

@@ -1,17 +1,16 @@
 package com.demo.chat.persistence.cassandra.domain
 
-import com.demo.chat.domain.Key
-import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn
 import org.springframework.data.cassandra.core.mapping.Table
 
+/**
+ * A row of the key registry. It records the root of each minted id. **It is
+ * not a `Key`.** See `CHAT-avduuqwp`.
+ */
 @Table("keys")
-data class CSKey<T>(
+data class CSKeyRow<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val id: T,
-    val kind: String
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val id: T,
+    val root: T,
+)

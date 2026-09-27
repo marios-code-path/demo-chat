@@ -1,5 +1,6 @@
 package com.demo.chat
 
+import com.demo.chat.domain.knownkey.RootKeys
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -134,8 +135,18 @@ class AuthorizationCodeFlowTests {
     @Autowired
     private lateinit var jwtDecoder: JwtDecoder
 
+    @Autowired
+    private lateinit var rootKeys: RootKeys<Long>
+
+    private fun assertNoRootKeys() {
+        assertThat(rootKeys.domains()).isEmpty()
+        assertThat(rootKeys.identities()).isEmpty()
+    }
+
     @Test
     fun authorizationCodeFlowIssuesAndDecodesTokens() {
+        // This role holds no root keys, so the flow must run without one. See CHAT-avduuqwp.
+        assertNoRootKeys()
         val authorizationResult = mockMvc.perform(
             get(AUTHORIZATION_ENDPOINT)
                 .with(user(TEST_USER).authorities(PASSWORD_FACTOR, SimpleGrantedAuthority("ROLE_USER")))
@@ -210,5 +221,6 @@ class AuthorizationCodeFlowTests {
         assertThat(idJwt.subject).isEqualTo(TEST_USER)
         assertThat(accessJwt.getClaimAsStringList(OAuth2ParameterNames.SCOPE))
             .containsExactlyInAnyOrder(OPENID_SCOPE, PROFILE_SCOPE)
+        assertNoRootKeys()
     }
 }

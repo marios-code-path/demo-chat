@@ -1,6 +1,10 @@
 package com.demo.chat.test.persistence
 
-import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.RootKeysFixture
+
+import com.demo.chat.test.key.TestKeys
 import com.demo.chat.domain.User
 import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.persistence.memory.impl.UserPersistenceInMemory
@@ -12,13 +16,14 @@ import reactor.test.StepVerifier
 
 class InMemoryUserPersistenceTests {
     private val persistence: UserPersistence<Long> = UserPersistenceInMemory(
-        TestLongKeyService()
+        TestLongKeyService(),
+        RootKeysFixture.forTestRoot(ChatDomain.USER, Long::class.java),
     ) { user -> user.key }
 
 
     @Test
     fun `should not add user with same handle`() {
-        val user = User.create(Key.funKey(1L), "TEST", "HANDLE", "HTTP")
+        val user = User.create(TestKeys.key(1L), "TEST", "HANDLE", "HTTP")
 
         val publisher = persistence
             .add(user)

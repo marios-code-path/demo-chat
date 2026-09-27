@@ -1,5 +1,7 @@
 package com.demo.chat.security.service
 
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.security.Summarizer
@@ -42,7 +44,8 @@ class CoreAuthorizationService<T, Q>(
      * key.
      */
     private val principalRootKey: Supplier<out Key<T>>,
-    private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>
+    private val summarizer: Summarizer<AuthMetadata<T>, Key<T>>,
+    private val verifier: KeyVerifier<T>,
 ) : AuthorizationService<T, AuthMetadata<T>> {
 
     /**
@@ -57,7 +60,23 @@ class CoreAuthorizationService<T, Q>(
     private fun actors(vararg keys: Key<T>): Sequence<Key<T>> =
         sequenceOf(anonKey.get(), principalRootKey.get()) + keys.asSequence()
 
-    override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> = when (auth.key.empty) {
+    /**
+     * A grant write verifies its principal and its target first. Each resolves
+     * in its stored domain, because a grant can name a user, a domain root, or
+     * an object. A forged root or an unknown key fails before the write. A
+     * revoke removes by the grant key alone, so it writes no party. See
+     * `CHAT-avduuqwp`, T6.
+     */
+    override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> =
+        (if (exist) verifyParties(auth) else Mono.empty())
+            .then(Mono.defer { write(auth, exist) })
+
+    private fun verifyParties(auth: AuthMetadata<T>): Mono<Void> =
+        verifier.verify(auth.principal, null)
+            .then(verifier.verify(auth.target, null))
+            .then()
+
+    private fun write(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> = when (auth.key.empty) {
         true -> authPersist
             .key()
             .map { key -> AuthMetadata.create(key, auth.principal, auth.target, auth.permission, auth.expires) }

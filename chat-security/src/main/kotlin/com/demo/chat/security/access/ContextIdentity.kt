@@ -2,7 +2,6 @@ package com.demo.chat.security.access
 
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.ChatUserDetails
 import org.springframework.security.authentication.AnonymousAuthenticationToken
@@ -53,7 +52,7 @@ class ContextIdentity<T>(private val rootKeys: RootKeys<T>) {
     fun identityOf(authentication: Authentication?): Key<T>? {
         if (authentication == null) return null
         if (!authentication.isAuthenticated) return null
-        if (authentication is AnonymousAuthenticationToken) return rootKeys.getRootKey(Anon::class.java)
+        if (authentication is AnonymousAuthenticationToken) return rootKeys.anon()
 
         return when (val principal = authentication.principal) {
             is ChatUserDetails<*> -> (principal as ChatUserDetails<T>).user.key

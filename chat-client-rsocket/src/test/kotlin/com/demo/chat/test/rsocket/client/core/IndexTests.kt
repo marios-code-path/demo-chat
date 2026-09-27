@@ -1,5 +1,11 @@
 package com.demo.chat.test.rsocket.client.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.core.config.MessageIndexClient
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
@@ -32,7 +38,16 @@ open class IndexTests : RSocketTestBase() {
     private val svcPrefix = ""
 
     private val message =
-        Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+        RSocketTestRegistry.registered(ChatDomain.MESSAGE).let { minted ->
+            Message.create(
+                MessageKey.of(
+                    minted.id, minted.root,
+                    RSocketTestRegistry.registered(ChatDomain.USER).id,
+                    RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id,
+                ),
+                "TEST", true,
+            )
+        }
 
     @Test
     fun `should query for entities`() {

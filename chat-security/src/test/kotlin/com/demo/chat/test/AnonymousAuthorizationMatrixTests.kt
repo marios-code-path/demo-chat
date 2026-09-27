@@ -1,6 +1,14 @@
 package com.demo.chat.test
 
+import com.demo.chat.test.key.verified
+
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageTopic
@@ -150,7 +158,7 @@ class AnonymousAuthorizationMatrixTests {
     @Test
     fun `a row naming the User root reaches a caller through one target`() {
         val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
-        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys(), registry())
 
         val answer = service.hasAccessToDomain("MessageTopic", "ALL")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
@@ -180,7 +188,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a self grant does not reach a third caller`() {
         val broker = broker(shippedGrants())
 
-        assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY, "GET").block()).isFalse()
+        assertThat(broker.hasAccessByKey(CALLER_KEY, ADMIN_KEY.verified(), "GET").block()).isFalse()
         assertThat(permitted(broker, listOf(ADMIN_KEY), "GET")).isEmpty()
     }
 
@@ -192,13 +200,13 @@ class AnonymousAuthorizationMatrixTests {
     fun `the administrator holds every right over itself with no row`() {
         val broker = broker(listOf())
 
-        assertThat(broker.hasAccessByKey(ADMIN_KEY, ADMIN_KEY, "GET").block()).isTrue()
+        assertThat(broker.hasAccessByKey(ADMIN_KEY, ADMIN_KEY.verified(), "GET").block()).isTrue()
     }
 
     /** The same rule reaches the caller of the security context. */
     @Test
     fun `an authenticated caller holds every right over itself`() {
-        val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(listOf()), rootKeys(), registry())
 
         val answer = service.hasAccessTo(CALLER_KEY, "DEL")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
@@ -216,7 +224,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a close does not remove self authority`() {
         val close = grant(USER_ROOT, CALLER_KEY, "*", expires = 1L)
 
-        assertThat(broker(listOf(close)).hasAccessByKey(CALLER_KEY, CALLER_KEY, "GET").block()).isTrue()
+        assertThat(broker(listOf(close)).hasAccessByKey(CALLER_KEY, CALLER_KEY.verified(), "GET").block()).isTrue()
     }
 
     /**
@@ -256,9 +264,9 @@ class AnonymousAuthorizationMatrixTests {
     /** An entity with no target denies, whatever the grants hold. */
     @Test
     fun `an entity with no target denies`() {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
 
-        val answer = service.hasAccessToEntity("not an entity", "GET")
+        val answer = service.hasAccessToEntity("not an entity", "GET", ChatDomain.USER)
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
             .block()
 
@@ -266,14 +274,14 @@ class AnonymousAuthorizationMatrixTests {
     }
 
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
-        broker.permittedTargets(CALLER_KEY, targets, perm).collectList().block()!!
+        broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
         operations().associate { (operation, call) -> operation to allowed(call, context) }
 
     /** Answers `User FIND` against one grant set, which the expiry tests use. */
     private fun allowedWith(grants: List<AuthMetadata<Long>>, context: SecurityContext?): Boolean {
-        val service = SpringSecurityAccessBrokerService(broker(grants), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(grants), rootKeys(), registry())
 
         return service.hasAccessToDomain("User", "FIND")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(context!!)))
@@ -295,7 +303,7 @@ class AnonymousAuthorizationMatrixTests {
         call: (SpringSecurityAccessBrokerService<Long>) -> Mono<Boolean>,
         context: SecurityContext?
     ): Boolean {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys())
+        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
         var answer = call(service)
         if (context != null) {
             answer = answer.contextWrite(
@@ -321,7 +329,7 @@ class AnonymousAuthorizationMatrixTests {
     private fun grant(
         principal: Key<Long>, target: Key<Long>, permission: String, expires: Long = 0L
     ) = StringRoleAuthorizationMetadata(
-        Key.funKey(nextKey.incrementAndGet()), principal, target, permission, false, expires
+        TestKeys.key(nextKey.incrementAndGet()), principal, target, permission, false, expires
     )
 
     private fun broker(grants: List<AuthMetadata<Long>>): AuthMetadataAccessBroker<Long> {
@@ -332,22 +340,28 @@ class AnonymousAuthorizationMatrixTests {
         return AuthMetadataAccessBroker(
             CoreAuthorizationService(
                 store, index, { it }, { it }, { ANON_KEY }, { USER_ROOT },
-                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys()))
-            )
+                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
+                registry(),
+            ),
+            TestVerifiers.resolvingNothing(),
         )
     }
 
-    private fun rootKeys(): RootKeys<Long> = RootKeys<Long>().apply {
-        merge(
-            mapOf(
-                Anon::class.java.simpleName to ANON_KEY,
-                Admin::class.java.simpleName to ADMIN_KEY,
-                User::class.java.simpleName to USER_ROOT,
-                Message::class.java.simpleName to MESSAGE_ROOT,
-                MessageTopic::class.java.simpleName to TOPIC_ROOT
-            )
-        )
-    }
+    /** The registry of every key of this test, each under its own root. */
+    private fun registry() = TestVerifiers.holding(
+        rootKeys(),
+        listOf(ANON_KEY, ADMIN_KEY, USER_ROOT, MESSAGE_ROOT, TOPIC_ROOT, CALLER_KEY, ROOM_KEY, MESSAGE_KEY),
+    )
+
+    private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(
+            ChatDomain.USER to USER_ROOT,
+            ChatDomain.MESSAGE to MESSAGE_ROOT,
+            ChatDomain.MESSAGE_TOPIC to TOPIC_ROOT
+        ),
+        admin = ADMIN_KEY,
+        anon = ANON_KEY
+    )
 
     private fun anonymousContext() = SecurityContextImpl(
         AnonymousAuthenticationToken(
@@ -374,7 +388,7 @@ class AnonymousAuthorizationMatrixTests {
     private class MapAuthStore : PersistenceStore<Long, AuthMetadata<Long>> {
         val rows: MutableMap<Key<Long>, AuthMetadata<Long>> = linkedMapOf()
 
-        override fun key(): Mono<out Key<Long>> = Mono.just(Key.funKey(nextKey.incrementAndGet()))
+        override fun key(): Mono<out Key<Long>> = Mono.just(TestKeys.key(nextKey.incrementAndGet()))
         override fun add(ent: AuthMetadata<Long>): Mono<Void> {
             rows[ent.key] = ent
             return Mono.empty()
@@ -403,13 +417,13 @@ class AnonymousAuthorizationMatrixTests {
 
     private companion object {
         val nextKey = AtomicLong(100L)
-        val ANON_KEY: Key<Long> = Key.funKey(1L)
-        val ADMIN_KEY: Key<Long> = Key.funKey(2L)
-        val USER_ROOT: Key<Long> = Key.funKey(3L)
-        val MESSAGE_ROOT: Key<Long> = Key.funKey(4L)
-        val TOPIC_ROOT: Key<Long> = Key.funKey(5L)
-        val CALLER_KEY: Key<Long> = Key.funKey(6L)
-        val ROOM_KEY: Key<Long> = Key.funKey(7L)
-        val MESSAGE_KEY: Key<Long> = Key.funKey(8L)
+        val ANON_KEY: Key<Long> = TestKeys.key(1L)
+        val ADMIN_KEY: Key<Long> = TestKeys.key(2L)
+        val USER_ROOT: Key<Long> = TestKeys.key(3L)
+        val MESSAGE_ROOT: Key<Long> = TestKeys.key(4L)
+        val TOPIC_ROOT: Key<Long> = TestKeys.key(5L)
+        val CALLER_KEY: Key<Long> = TestKeys.key(6L)
+        val ROOM_KEY: Key<Long> = TestKeys.key(7L)
+        val MESSAGE_KEY: Key<Long> = TestKeys.key(8L)
     }
 }

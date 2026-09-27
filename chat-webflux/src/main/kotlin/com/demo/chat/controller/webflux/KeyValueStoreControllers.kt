@@ -1,5 +1,9 @@
 package com.demo.chat.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.core.mapping.KeyValueStoreRestMapping
 import com.demo.chat.domain.TypeUtil
@@ -13,9 +17,12 @@ import org.springframework.web.bind.annotation.RestController
 @ConditionalOnProperty(prefix = "app.controller", name = ["persistence"])
 class KeyValueStoreRestController<T, V>(
     s: PersistenceServiceBeans<T, V>,
-    private val typeUtil: TypeUtil<T>
+    private val typeUtil: TypeUtil<T>,
+    private val verifier: KeyVerifier<T>,
 ) : KeyValueStoreRestMapping<T>,
     KeyValueStore<T, Any> by s.keyValuePersistence() {
 
     override fun typeUtil(): TypeUtil<T> = typeUtil
+    override fun verifier(): KeyVerifier<T> = verifier
+    override fun domain(): ChatDomain = ChatDomain.KEY_VALUE_PAIR
 }

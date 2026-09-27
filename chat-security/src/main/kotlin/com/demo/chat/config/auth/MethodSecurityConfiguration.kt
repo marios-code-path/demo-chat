@@ -1,6 +1,8 @@
 package com.demo.chat.config.auth
 
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.service.security.AccessBroker
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -18,7 +20,8 @@ class MethodSecurityConfiguration {
     @Bean
     fun <T> chatAccess(
         access: AccessBroker<T>,
-        rootKeys: RootKeys<T>
+        rootKeys: RootKeys<T>,
+        keyBeans: KeyServiceBeans<T>,
     ): SpringSecurityAccessBrokerService<T> =
-        SpringSecurityAccessBrokerService(access, rootKeys)
+        SpringSecurityAccessBrokerService(access, rootKeys, KeyVerifier(keyBeans.keyService(), rootKeys))
 }

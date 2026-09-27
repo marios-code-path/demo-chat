@@ -12,49 +12,38 @@ interface NoKey<T>: Key<T>
 
 object Empty
 
+/**
+ * A key names one object. [id] names the object, and [root] names the domain
+ * or identity root that minted it. See `CHAT-avduuqwp`.
+ *
+ * The root is required. A key service mints a key with the root of its domain.
+ * A root key is its own root. Equality reads [id], [root] and [empty]. It does
+ * not verify the root. `KeyVerifier` does that against the registry.
+ *
+ * Three classes implement this interface: `SimpleKey`, `EmptyKey` and
+ * `SimpleMessageKey`. Each uses `KeyEquality`, so equality is symmetric.
+ */
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)
 @JsonTypeName("key")
 @JsonSubTypes(JsonSubTypes.Type(MessageKey::class))
 interface Key<T> {
     val id: T
+    val root: T
     val empty: Boolean
 
     companion object Factory {
+        /** This method builds the key of object [id], minted under [root]. */
         @JvmStatic
-        fun <T> funKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : Key<T> {
-            override val id: T
-                get() = id
-            override val empty: Boolean
-                get() = false
-            override fun toString(): String {
-                return id.toString()
-            }
+        fun <T> of(id: T, root: T): Key<T> = SimpleKey(id, root)
 
-            // A populated key never equals an empty one, in either direction: the
-            // empty key below refuses this class, so this one refuses empty keys.
-            override fun equals(k2: Any?): Boolean =
-                (k2 != null && (k2 is Key<*>) && !k2.empty && k2.id == this.id)
+        /** This method builds a root key. A root key is its own root. */
+        @JvmStatic
+        fun <T> root(id: T): Key<T> = SimpleKey(id, id)
 
-            override fun hashCode(): Int = id.hashCode()
-        }
-
-        fun <T> emptyKey(id: T): Key<T> = @com.fasterxml.jackson.annotation.JsonTypeName("key") object : NoKey<T> {
-            override val id: T
-                get() = id
-            override val empty: Boolean
-                get() = true
-            override fun toString(): String {
-                return id.toString()
-            }
-
-            override fun equals(k2: Any?): Boolean =
-                (k2 != null && k2::class == this::class) &&
-                        (k2 is Key<*> && k2.id == this.id)
-
-            override fun hashCode(): Int = id.hashCode()
-        }
+        /** This method builds an empty key. It never equals a populated key. */
+        @JvmStatic
+        fun <T> empty(placeholder: T, root: T): Key<T> = EmptyKey(placeholder, root)
     }
-
 }
 
 @JsonTypeInfo(include = JsonTypeInfo.As.WRAPPER_OBJECT, use = JsonTypeInfo.Id.NAME)

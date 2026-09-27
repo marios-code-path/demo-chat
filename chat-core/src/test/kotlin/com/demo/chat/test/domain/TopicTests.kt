@@ -1,5 +1,7 @@
 package com.demo.chat.test.domain
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.test.TestBase
@@ -13,7 +15,7 @@ class TopicTests : TestBase() {
     @Test
     fun `should create`() {
         Assertions
-                .assertThat(MessageTopic.create(Key.funKey("Key1"), "TEST"))
+                .assertThat(MessageTopic.create(TestKeys.key("Key1"), "TEST"))
                 .isNotNull
                 .hasNoNullFieldsOrProperties()
     }
@@ -27,8 +29,8 @@ class TopicTests : TestBase() {
                 .create(topicFlux)
                 .expectSubscription()
                 .then {
-                    topicPub.next(MessageTopic.create(Key.funKey(3), "Test-Topic-3"))
-                    topicPub.next(MessageTopic.create(Key.funKey("foo-3"), "Test-Topic-foo"))
+                    topicPub.next(MessageTopic.create(TestKeys.key(3), "Test-Topic-3"))
+                    topicPub.next(MessageTopic.create(TestKeys.key("foo-3"), "Test-Topic-foo"))
                 }
                 .assertNext {
                     Assertions

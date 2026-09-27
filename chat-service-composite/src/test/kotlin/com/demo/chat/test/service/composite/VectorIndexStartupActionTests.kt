@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -39,11 +41,12 @@ class VectorIndexStartupActionTests {
         nodeId: Int = 7,
         keyType: String = "long",
     ): IndexJob<Long> = IndexJob(
-        key = Key.funKey(id),
+        key = TestKeys.key(id),
+        topicKey = TestKeys.key((id) + 1_000_000L),
         nodeId = nodeId,
         keyType = keyType,
         incarnationId = incarnationId,
-        startedBy = Key.funKey(1000L),
+        startedBy = TestKeys.key(1000L),
         startedAt = start,
         outcome = outcome,
         invalidationCount = invalidations,
@@ -179,7 +182,7 @@ class VectorIndexStartupActionTests {
 
         Assertions.assertThat(store.jobs[1L]!!.outcome).isEqualTo(JobOutcome.RUNNING)
         Assertions.assertThat(store.jobs[2L]!!.outcome).isEqualTo(JobOutcome.RELEASED)
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(3L))
+        Assertions.assertThat(state.coveringJob()).isEqualTo(TestKeys.key(3L))
     }
 
     // The sweep runs first. A released job must not reach the policy as a
@@ -207,7 +210,7 @@ class VectorIndexStartupActionTests {
             startRebuild = true,
         ).run().block()
 
-        Assertions.assertThat(reindex.coveringAtStart.single()).isEqualTo(Key.funKey(1L))
+        Assertions.assertThat(reindex.coveringAtStart.single()).isEqualTo(TestKeys.key(1L))
         Assertions.assertThat(calls).containsExactly("select", "rebuild")
     }
 
@@ -218,7 +221,7 @@ class VectorIndexStartupActionTests {
         action(RecordingPolicy(job(1L)), reindex = reindex).run().block()
 
         Assertions.assertThat(reindex.coveringAtStart).isEmpty()
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(1L))
+        Assertions.assertThat(state.coveringJob()).isEqualTo(TestKeys.key(1L))
     }
 
     @Test
@@ -237,7 +240,7 @@ class VectorIndexStartupActionTests {
 
         action(RecordingPolicy(job(1L))).run().block()
 
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(1L))
+        Assertions.assertThat(state.coveringJob()).isEqualTo(TestKeys.key(1L))
     }
 
     @Test
@@ -260,6 +263,6 @@ class VectorIndexStartupActionTests {
 
         action(RecordingPolicy(job(2L)), reindex = reindex, startRebuild = true).run().block()
 
-        Assertions.assertThat(reindex.coveringAtStart.single()).isEqualTo(Key.funKey(2L))
+        Assertions.assertThat(reindex.coveringAtStart.single()).isEqualTo(TestKeys.key(2L))
     }
 }

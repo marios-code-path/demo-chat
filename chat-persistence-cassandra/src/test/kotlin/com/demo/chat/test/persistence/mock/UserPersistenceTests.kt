@@ -1,5 +1,13 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.User
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.ChatUser
 import com.demo.chat.persistence.cassandra.domain.ChatUserKey
@@ -33,6 +41,8 @@ class UserPersistenceTests {
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
+    private val roots = FakeKeyServices.uuidRoots()
+
     val uid: UUID = UUID.randomUUID()
 
     @BeforeEach
@@ -59,7 +69,7 @@ class UserPersistenceTests {
                 .given(userRepo.findAll())
                 .willReturn(Flux.just(newUser))
 
-        userSvc = UserPersistenceCassandra(keyService, userRepo)
+        userSvc = UserPersistenceCassandra(keyService, roots, userRepo)
     }
 
     @Test
@@ -78,7 +88,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get many by Ids`() {
-        val publisher = userSvc.byIds(listOf(Key.funKey(UUID.randomUUID())))
+        val publisher = userSvc.byIds(listOf(TestKeys.key(UUID.randomUUID())))
 
         StepVerifier
                 .create(publisher)
@@ -93,7 +103,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should get single`() {
-        val publisher = userSvc.get(Key.funKey(UUID.randomUUID()))
+        val publisher = userSvc.get(TestKeys.key(UUID.randomUUID()))
 
         StepVerifier
                 .create(publisher)
@@ -108,7 +118,7 @@ class UserPersistenceTests {
 
     @Test
     fun `should save and find users`() {
-        val newUser = ChatUser(ChatUserKey(uid), "test-name", "test-handle", "", Instant.now())
+        val newUser = User.create(Key.of(uid, roots.of(ChatDomain.USER).id), "test-name", "test-handle", "")
 
         val publisher = userSvc
                 .add(newUser)
@@ -125,4 +135,23 @@ class UserPersistenceTests {
                 .verifyComplete()
     }
 
+
+    @Test
+    fun `get, all and byIds keep the stored timestamp`() {
+        val row = ChatUser(ChatUserKey(uid), "stored-name", "stored-handle", "", Instant.EPOCH)
+        BDDMockito.given(userRepo.findByKeyId(TestBase.anyObject())).willReturn(Mono.just(row))
+        BDDMockito.given(userRepo.findAll()).willReturn(Flux.just(row))
+        BDDMockito.given(userRepo.findByKeyIdIn(TestBase.anyObject())).willReturn(Flux.just(row))
+        val key = Key.of(uid, roots.of(ChatDomain.USER).id)
+
+        listOf(
+            userSvc.get(key).block()!!,
+            userSvc.all().blockFirst()!!,
+            userSvc.byIds(listOf(key)).blockFirst()!!,
+        ).forEach { user ->
+            // Two reads of the property must agree. A getter that reads the clock would not.
+            Assertions.assertThat(user.timestamp).isEqualTo(Instant.EPOCH)
+            Assertions.assertThat(user.timestamp).isEqualTo(Instant.EPOCH)
+        }
+    }
 }

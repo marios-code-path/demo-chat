@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.EmbeddingIdentity
@@ -8,6 +10,7 @@ import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.service.vector.IndexJobCodec
 import com.demo.chat.service.composite.impl.VectorIndexJobStoreImpl
 import com.demo.chat.service.vector.JobTopicNames
@@ -39,8 +42,28 @@ class VectorIndexJobStoreImplTests {
         Assertions.assertThat(topics.saved).hasSize(1)
         Assertions.assertThat(JobTopicNames.isJobTopic(topics.saved.first().data)).isTrue()
         Assertions.assertThat(topicIndex.saved).hasSize(1)
-        Assertions.assertThat(pubsub.opened).containsExactly(job.key.id)
+        Assertions.assertThat(pubsub.opened).containsExactly(job.topicKey.id)
         Assertions.assertThat(store.readJob(job.key).block()!!.key).isEqualTo(job.key)
+    }
+
+    // The job key and the topic key come from two mints. See CHAT-avduuqwp, D2.
+    @Test
+    fun `the job key and the topic key are distinct, with their own roots`() {
+        val job = storeUnderTest().createJob(startedAt).block()!!
+
+        Assertions.assertThat(job.key.id).isNotEqualTo(job.topicKey.id)
+        Assertions.assertThat(job.key.root).isEqualTo(fakeRoot(ChatDomain.KEY_VALUE_PAIR))
+        Assertions.assertThat(job.topicKey.root).isEqualTo(fakeRoot(ChatDomain.MESSAGE_TOPIC))
+        Assertions.assertThat(topics.saved.single().key).isEqualTo(job.topicKey)
+    }
+
+    @Test
+    fun `a stored job keeps its topic reference`() {
+        val store = storeUnderTest()
+        val job = store.createJob(startedAt).block()!!
+
+        Assertions.assertThat(store.readJob(job.key).block()!!.topicKey).isEqualTo(job.topicKey)
+        Assertions.assertThat(store.readJobByTopic(job.topicKey).block()!!.key).isEqualTo(job.key)
     }
 
     @Test
@@ -133,8 +156,8 @@ class VectorIndexJobStoreImplTests {
     fun `listJobTopics returns every reserved topic and no user topic`() {
         val store = storeUnderTest()
         store.createJob(startedAt).block()
-        topics.saved.add(MessageTopic.create(Key.funKey(99L), "general"))
-        topics.saved.add(MessageTopic.create(Key.funKey(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
+        topics.saved.add(MessageTopic.create(TestKeys.key(99L), "general"))
+        topics.saved.add(MessageTopic.create(TestKeys.key(98L), JobTopicNames.nameFor(8, "long", startedAt, "other")))
 
         StepVerifier.create(store.listJobTopics()).expectNextCount(2).verifyComplete()
     }
@@ -147,7 +170,7 @@ class VectorIndexJobStoreImplTests {
     fun `a job whose root key differs from its storage key fails the read`() {
         val store = storeUnderTest()
         val job = store.createJob(startedAt).block()!!
-        val other = Key.funKey(4242L)
+        val other = TestKeys.key(4242L)
 
         keyValues.values[job.key.id] = KeyValuePair.create(job.key, job.copy(key = other) as Any)
 
@@ -175,6 +198,7 @@ class VectorIndexJobStoreImplTests {
     }
 
     private val topics = FakeTopicPersistence()
+    private val keyValueIndex = FakeKeyValueIndex()
     private val topicIndex = FakeTopicIndex()
     private val pubsub = FakePubSub()
 
@@ -205,12 +229,14 @@ class VectorIndexJobStoreImplTests {
             topicIndex = topicIndex,
             pubsub = pubsub,
             keyValueStore = keyValues,
+            keyValueIndex = keyValueIndex,
+            topicIdQuery = { value -> mapOf(VectorIndexJobStoreImpl.TOPIC_ID to value) },
             codec = IndexJobCodec(mapper),
             nodeId = 7,
             keyType = "long",
             embeddingIdentity = EmbeddingIdentity("acme-e5-small-v2"),
             incarnationId = "incarnation-a",
-            workerKey = Key.funKey(1000L),
+            workerKey = Mono.just(TestKeys.key(1000L)),
         )
     }
 }

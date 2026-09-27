@@ -1,5 +1,7 @@
 package com.demo.chat.config.controller.core
 
+import com.demo.chat.domain.TypeUtil
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.core.KeyServiceController
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -12,6 +14,6 @@ class KeyControllersConfiguration {
     @Controller
     @MessageMapping("key")
     @ConditionalOnProperty(prefix = "app.controller", name = ["key"])
-    class KeyController<T>(factory: KeyServiceBeans<T>) :
-            KeyServiceController<T>(factory.keyService())
+    class KeyController<T>(factory: KeyServiceBeans<T>, typeUtil: TypeUtil<T>) :
+            KeyServiceController<T>(factory.keyService(), typeUtil)
 }

@@ -32,7 +32,7 @@ class LKeyCredentialRepositoryTests :  CassandraSchemaTest<Long>(TestLongKeyGene
     @Test
     fun `save and find key cred`() {
         val keyId = keyGenerator.nextId()
-        val keyCred = KeyCredentialById(CredKey(keyId, "CREDENTIAL"), "SECRET")
+        val keyCred = KeyCredentialById(CredKey(keyId), "SECRET")
 
         val saveStream = repo.save(keyCred)
 

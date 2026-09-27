@@ -1,6 +1,9 @@
 package com.demo.chat.config.rsocket
 
 //import com.demo.chat.secure.service.CoreReactiveAuthenticationManager
+import com.demo.chat.controller.resolve.VerifiedKeyArgumentResolver
+import com.demo.chat.service.core.KeyVerifier
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.rsocket.autoconfigure.RSocketMessageHandlerCustomizer
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
@@ -91,11 +94,19 @@ class RSocketServerConfiguration<T> {
         }
     }
 
+    /**
+     * Two argument resolvers. The first reads the principal. The second
+     * verifies each `@Verified` key payload before a handler runs. See
+     * `CHAT-avduuqwp`, D1.
+     */
     @Bean
-    fun messageHandlerCustomizer(): RSocketMessageHandlerCustomizer =
+    fun messageHandlerCustomizer(verifiers: ObjectProvider<KeyVerifier<*>>): RSocketMessageHandlerCustomizer =
         RSocketMessageHandlerCustomizer { messageHandler ->
             val ar: HandlerMethodArgumentResolver = AuthenticationPrincipalArgumentResolver()
             messageHandler.argumentResolverConfigurer.addCustomResolver(ar)
+            messageHandler.argumentResolverConfigurer.addCustomResolver(
+                VerifiedKeyArgumentResolver(messageHandler.decoders, verifiers)
+            )
         }
 }
 

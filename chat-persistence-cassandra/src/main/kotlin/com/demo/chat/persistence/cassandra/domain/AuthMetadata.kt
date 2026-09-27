@@ -1,38 +1,34 @@
 package com.demo.chat.persistence.cassandra.domain
 
-import com.demo.chat.domain.AuthMetadata
-import com.demo.chat.domain.Key
-import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 
+/**
+ * A row of the Cassandra backend. **It is not a domain object and not a
+ * `Key`.** The store maps it under the root of its domain. See `CHAT-avduuqwp`.
+ */
 @Table("auth_metadata")
 data class AuthMetadataById<T>(
     @PrimaryKey
-    override val key: AuthMetadataIdKey<T>,
+    val key: AuthMetadataIdKey<T>,
     @field:Column("target")
     val targetId: T,
     @field:Column("principal")
     val principalId: T,
+    @field:Column("target_root")
+    val targetRoot: T,
+    @field:Column("principal_root")
+    val principalRoot: T,
     @field:Column("permission")
-    override val permission: String,
+    val permission: String,
     @field:Column("mute")
-    override val mute: Boolean,
+    val mute: Boolean,
     @field:Column("expires")
-    override val expires: Long
-) : AuthMetadata<T> {
-    @Transient
-    override val principal: Key<T> = Key.funKey(principalId)
-
-    @Transient
-    override val target: Key<T> = Key.funKey(targetId)
-}
+    val expires: Long
+)
 
 @PrimaryKeyClass
 data class AuthMetadataIdKey<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val id: T
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val id: T
+)

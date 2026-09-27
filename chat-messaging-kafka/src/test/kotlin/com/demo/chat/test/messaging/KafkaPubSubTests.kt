@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -48,7 +50,7 @@ class KafkaPubSubTests @Autowired constructor(
     @Test
     fun `producer omits the type header and keeps the message wrapper`() {
         val message = Message.create(
-            MessageKey.create(3L, 10L, 20L),
+            TestKeys.message(3L, 10L, 20L),
             "hello",
             true,
         )
@@ -65,7 +67,7 @@ class KafkaPubSubTests @Autowired constructor(
     @Test
     fun `consumer ignores an old anonymous type header`() {
         val message = Message.create(
-            MessageKey.create(3L, 10L, 20L),
+            TestKeys.message(3L, 10L, 20L),
             "hello",
             true,
         )

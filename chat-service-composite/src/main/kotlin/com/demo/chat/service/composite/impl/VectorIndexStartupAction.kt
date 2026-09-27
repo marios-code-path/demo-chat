@@ -1,5 +1,7 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.service.vector.JobLookupException
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -71,19 +73,20 @@ class VectorIndexStartupAction<T>(
             }
             .then()
 
-    private fun releaseOne(jobKey: Key<T>): Mono<Void> =
-        jobStore.readJob(jobKey)
+    /** A lookup fault for one topic logs and skips that topic. See `CHAT-avduuqwp`, D3. */
+    private fun releaseOne(topicKey: Key<T>): Mono<Void> =
+        jobStore.readJobByTopic(topicKey)
             // The identity check runs before the outcome filter. A topic name
             // and a record are two stored things, and only the record can
             // confirm what the name claims.
-            .filter { job -> ownedByThisDeployment(job, jobKey) }
+            .filter { job -> ownedByThisDeployment(job, job.key) }
             .filter { job -> job.outcome == JobOutcome.RUNNING && job.incarnationId != incarnationId }
             // finishJob applies a terminal outcome and never lowers the stored
             // invalidation fields. A plain write would drop an invalidation that
             // the crashed process recorded.
             .flatMap { job -> jobStore.finishJob(released(job)) }
             .onErrorResume { error ->
-                logger.error("Vector index could not release the stale job {}", jobKey, error)
+                logger.error("Vector index could not release the stale job of topic {}: {}", topicKey, error.message, error)
                 Mono.empty()
             }
 
@@ -121,11 +124,20 @@ class VectorIndexStartupAction<T>(
             ?: "An earlier incarnation left this job running.",
     )
 
+    /**
+     * A lookup fault means no coverage here. The fault logs, no job is
+     * adopted, and `run()` still starts the requested rebuild. Any other error
+     * keeps its earlier behavior. See `CHAT-avduuqwp`, D3.
+     */
     private fun adoptCoverage(): Mono<Void> =
         policy.selectCoveringJob()
             .doOnNext { job ->
                 logger.info("Vector index coverage comes from job {}", job.key)
                 state.adoptCoveringJob(job.key)
+            }
+            .onErrorResume(JobLookupException::class.java) { error ->
+                logger.error("Vector index adopts no coverage: {}", error.message, error)
+                Mono.empty()
             }
             .then()
 

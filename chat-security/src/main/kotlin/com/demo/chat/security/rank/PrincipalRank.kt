@@ -1,8 +1,6 @@
 package com.demo.chat.security.rank
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.knownkey.Admin
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 
 /**
@@ -20,33 +18,25 @@ enum class PrincipalSpecificity { DOMAIN_ROOT, ENTITY }
 /**
  * Read the specificity of a principal.
  *
- * **A root key is not always a domain root.** `RootKeys` holds `Anon` and
- * `Admin` beside the domain roots, and each of those two names one user. They
- * are objects of the `User` domain, so this class reads them as `ENTITY`.
+ * **A domain root is `DOMAIN_ROOT`. Every other principal is `ENTITY`.**
+ * `RootKeys` holds the `Anon` and `Admin` identities apart from the domain
+ * roots. Each identity names one user, so it is an object of the `User` domain
+ * and reads as `ENTITY`.
  *
- * That exclusion carries the administrator invariant. The row
+ * That separation carries the administrator invariant. The row
  * `{ADMIN, ENTITY_ROOT, '*', never}` must outrank a close, and a close names a
- * domain root. A rank that read `RootKeys` membership alone would place the
- * administrator and the close at one level, and a closed target would then be
+ * domain root. A rank that read the identities as domain roots would place the
+ * administrator and the close at one level. A closed target would then be
  * beyond administration.
  *
- * **The excluded set is closed.** Add a name only when that name stops being a
- * domain.
+ * Before `CHAT-avduuqwp`, `RootKeys` held the identities and the domain roots
+ * in one map, and this class excluded the identity names from it. The typed
+ * `RootKeys.domains()` now holds the domain roots alone.
  */
-class PrincipalRank<T>(
-    private val rootKeys: RootKeys<T>,
-    private val userObjects: Set<String> = setOf(
-        Anon::class.java.simpleName,
-        Admin::class.java.simpleName
-    )
-) {
+class PrincipalRank<T>(private val rootKeys: RootKeys<T>) {
+
     fun of(principal: Key<T>): PrincipalSpecificity = when {
-        domainRoots().any { root -> root == principal } -> PrincipalSpecificity.DOMAIN_ROOT
+        rootKeys.domains().values.any { root -> root == principal } -> PrincipalSpecificity.DOMAIN_ROOT
         else -> PrincipalSpecificity.ENTITY
     }
-
-    private fun domainRoots(): Collection<Key<T>> = rootKeys
-        .getMapOfKeyMap()
-        .filterKeys { name -> !userObjects.contains(name) }
-        .values
 }

@@ -22,6 +22,12 @@ enum class JobOutcome {
  */
 data class IndexJob<T>(
     override val key: Key<T>,
+    /**
+     * The topic that holds the progress records of this job. The job key is a
+     * KEY_VALUE_PAIR key, and this key is a separate MESSAGE_TOPIC key. See
+     * `CHAT-avduuqwp`, D2.
+     */
+    val topicKey: Key<T>,
     val nodeId: Int,
     val keyType: String,
     /**

@@ -1,5 +1,7 @@
 package com.demo.chat.test.serializers
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.convert.JsonNodeToAnyConverter
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
@@ -30,8 +32,8 @@ class KeySerializerTests : TestBase() {
         val publisher = TestPublisher.create<Key<out Any>>()
 
         val keysSerialized = listOf(
-            Key.funKey(1L),
-            MessageKey.create("a", "a", "1")
+            TestKeys.key(1L),
+            TestKeys.message("a", "a", "1")
         ).map(mapper::writeValueAsString)
 
         StepVerifier
@@ -74,9 +76,9 @@ class KeySerializerTests : TestBase() {
         }
 
         val keys = listOf(
-            Key.funKey(1L),
-            Key.funKey("a"),
-            Key.funKey(UUID.randomUUID())
+            TestKeys.key(1L),
+            TestKeys.key("a"),
+            TestKeys.key(UUID.randomUUID())
         )
 
         keys.forEach { key ->
@@ -98,9 +100,9 @@ class KeySerializerTests : TestBase() {
         }
 
         val keyJsons = Flux.just(
-            Key.funKey(1L),
-            Key.funKey("a"),
-            Key.funKey(UUID.randomUUID())
+            TestKeys.key(1L),
+            TestKeys.key("a"),
+            TestKeys.key(UUID.randomUUID())
         )
             .map(mapper::writeValueAsString)
             .map<Key<out Any>>(mapper::readValue)

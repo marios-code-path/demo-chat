@@ -1,6 +1,11 @@
 package com.demo.chat.persistence.cassandra.impl
 
+import com.demo.chat.service.core.StoreDomain
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
@@ -11,12 +16,17 @@ import reactor.core.publisher.Mono
 
 class MembershipPersistenceCassandra<T : Any>(
     private val keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
     private val membershipRepo: TopicMembershipRepository<T>
 ) : MembershipPersistence<T> {
 
-    override fun key(): Mono<out Key<T>> = keyService.key(TopicMembershipByKey::class.java)
+    override fun key(): Mono<out Key<T>> = keyService.key(ChatDomain.TOPIC_MEMBERSHIP)
 
-    override fun add(ent: TopicMembership<T>): Mono<Void> = membershipRepo
+    /** The key must be in TOPIC_MEMBERSHIP before the write. See `CHAT-avduuqwp`, T5. */
+    override fun add(ent: TopicMembership<T>): Mono<Void> =
+        StoreDomain.requireId(ent.key, ChatDomain.TOPIC_MEMBERSHIP, keyService, rootKeys).then(Mono.defer { write(ent) })
+
+    private fun write(ent: TopicMembership<T>): Mono<Void> = membershipRepo
         .save(
             TopicMembershipByKey(
                 ent.key,

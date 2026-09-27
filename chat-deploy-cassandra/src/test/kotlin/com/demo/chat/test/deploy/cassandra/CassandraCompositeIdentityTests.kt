@@ -1,10 +1,17 @@
 package com.demo.chat.test.deploy.cassandra
 
+import com.demo.chat.test.TestLongKeyService
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.deploy.cassandra.CompositeServiceConfiguration
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.service.composite.CompositeServiceBeansConfiguration
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.service.core.VerifiedKey
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
@@ -91,7 +98,7 @@ class CassandraCompositeIdentityTests {
     private fun identityAt(context: SecurityContext?): Key<Long>? {
         val broker = RecordingAccessBroker()
         val beans = CompositeServiceConfiguration()
-            .serviceAccessCompositeServiceAccessBeans(broker, rootKeys(), composedBeans())
+            .serviceAccessCompositeServiceAccessBeans(broker, rootKeys(), composedBeans(), TestLongKeyService())
 
         run(beans.topicService().addRoom(ByStringRequest("a-room")).then(), context)
 
@@ -144,34 +151,33 @@ class CassandraCompositeIdentityTests {
     private fun chatUserDetails() =
         ChatUserDetails(User.create(USER_KEY, "u", "handle", "http://u"), listOf())
 
-    private fun rootKeys(): RootKeys<Long> = RootKeys<Long>().apply {
-        merge(
-            mapOf(
-                Anon::class.java.simpleName to ANON_KEY,
-                MessageTopic::class.java.simpleName to TOPIC_DOMAIN_KEY,
-                User::class.java.simpleName to USER_DOMAIN_KEY
-            )
-        )
-    }
+    private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(ChatDomain.MESSAGE_TOPIC to TOPIC_DOMAIN_KEY, ChatDomain.USER to USER_DOMAIN_KEY),
+        admin = TestKeys.key(9999L),
+        anon = ANON_KEY
+    )
 
     /** Resolves the principal publisher and records the key it carried. */
     private class RecordingAccessBroker : AccessBroker<Long> {
         var reached: Key<Long>? = null
 
         override fun hasAccessByPrincipal(
-            principal: Mono<Key<Long>>, key: Key<Long>, action: String
+            principal: Mono<Key<Long>>, key: VerifiedKey<Long>, action: String
         ): Mono<Boolean> = principal.map { reached = it; true }
 
         override fun hasAccessByKey(
-            principal: Key<Long>, key: Key<Long>, action: String
+            principal: Key<Long>, key: VerifiedKey<Long>, action: String
         ): Mono<Boolean> = error("These tests never call hasAccessByKey")
+
+        override fun hasAccessByKeyId(principal: Long, key: Long, action: String): Mono<Boolean> =
+            error("These tests never call hasAccessByKeyId")
     }
 
     private companion object {
-        val ANON_KEY: Key<Long> = Key.funKey(1L)
-        val USER_KEY: Key<Long> = Key.funKey(2L)
-        val ROOM_KEY: Key<Long> = Key.funKey(3L)
-        val TOPIC_DOMAIN_KEY: Key<Long> = Key.funKey(4L)
-        val USER_DOMAIN_KEY: Key<Long> = Key.funKey(5L)
+        val ANON_KEY: Key<Long> = TestKeys.key(1L)
+        val USER_KEY: Key<Long> = TestKeys.key(2L)
+        val ROOM_KEY: Key<Long> = TestKeys.key(3L)
+        val TOPIC_DOMAIN_KEY: Key<Long> = TestKeys.key(4L)
+        val USER_DOMAIN_KEY: Key<Long> = TestKeys.key(5L)
     }
 }

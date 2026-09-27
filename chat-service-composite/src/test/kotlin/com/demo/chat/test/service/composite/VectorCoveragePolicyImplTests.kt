@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
@@ -29,12 +31,13 @@ class VectorCoveragePolicyImplTests {
         startedAt: Instant = start,
         embeddingIdentity: String? = thisIdentity.value,
     ): IndexJob<Long> = IndexJob(
-        key = Key.funKey(id),
+        key = TestKeys.key(id),
+        topicKey = TestKeys.key((id) + 1_000_000L),
         nodeId = 7,
         keyType = "long",
         embeddingIdentity = embeddingIdentity,
         incarnationId = incarnationId,
-        startedBy = Key.funKey(1000L),
+        startedBy = TestKeys.key(1000L),
         startedAt = startedAt,
         outcome = outcome,
         invalidationCount = invalidations,

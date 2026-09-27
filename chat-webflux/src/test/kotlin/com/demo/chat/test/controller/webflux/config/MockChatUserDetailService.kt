@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux.config
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.security.ChatUserDetails
@@ -9,7 +11,7 @@ import org.springframework.security.core.userdetails.MapReactiveUserDetailsServi
 
 class MockChatUserDetailService<T>(uid: T, roles: Collection<String>) : MapReactiveUserDetailsService(
     ChatUserDetails(
-        User.create(Key.funKey(uid), "TestUser", "TestHandle", "http://test"),
+        User.create(TestKeys.key(uid), "TestUser", "TestHandle", "http://test"),
         roles
     ).apply {
         password = "password"

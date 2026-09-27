@@ -1,6 +1,13 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.domain.UnsupportedDomainException
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+
 import com.demo.chat.domain.Key
+import com.demo.chat.controller.webflux.resolve.Resolved
+import com.demo.chat.service.core.VerifiedKey
 import com.demo.chat.service.core.IKeyService
 import com.demo.chat.service.security.KeyCredential
 import com.demo.chat.service.security.SecretsStore
@@ -13,28 +20,26 @@ interface SecretsRestMapping<T> : SecretsStore<T> {
 
     fun keyService(): IKeyService<T>
 
+    // A credential belongs to a user, so each path id resolves in USER. See CHAT-avduuqwp, C72 to C74.
+
+
     @GetMapping("/{id}")
-    fun restGetStoredCredentials(@PathVariable id: T): Mono<String> = getStoredCredentials(Key.funKey(id))
+    fun restGetStoredCredentials(@Resolved(ChatDomain.USER) id: VerifiedKey<T>): Mono<String> =
+        getStoredCredentials(id.key)
 
     @PutMapping("/add/{id}")
     @ResponseStatus(HttpStatus.CREATED)
-    fun restAddCredentialWithId(@PathVariable id: T, @RequestBody cred: String): Mono<Void> =
-        addCredential(KeyCredential(Key.funKey(id), cred))
+    fun restAddCredentialWithId(@Resolved(ChatDomain.USER) id: VerifiedKey<T>, @RequestBody cred: String): Mono<Void> =
+        addCredential(KeyCredential(id.key, cred))
 
     @PutMapping("/add", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
     fun restAddCredential(@RequestBody keyCredential: String): Mono<Key<T>> =
-        keyService()
-            .key(KeyCredential::class.java)
-            .map { key ->
-                KeyCredential(key, keyCredential)
-            }
-            .flatMap { kc ->
-                addCredential(kc).thenReturn(kc.key)
-            }
+        // A credential has no domain, so no key service mints one. The route
+        // answers 501. See CHAT-avduuqwp, E19.
+        Mono.error(UnsupportedDomainException("KeyCredential"))
 
     @PostMapping("/compare/{id}")
-    fun restCompareSecret(@PathVariable id: T, @RequestBody cred: String): Mono<Boolean> = compareSecret(
-        KeyCredential(Key.funKey(id), cred)
-    )
+    fun restCompareSecret(@Resolved(ChatDomain.USER) id: VerifiedKey<T>, @RequestBody cred: String): Mono<Boolean> =
+        compareSecret(KeyCredential(id.key, cred))
 }

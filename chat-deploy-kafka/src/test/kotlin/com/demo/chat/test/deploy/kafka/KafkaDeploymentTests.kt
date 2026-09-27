@@ -1,5 +1,7 @@
 package com.demo.chat.test.deploy.kafka
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.ChatApp
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.PubSubServiceBeans
@@ -136,7 +138,7 @@ class KafkaDeploymentTests {
         val topic = System.nanoTime()
         val sender = topic + 1
         val message = Message.create(
-            MessageKey.create(topic + 2, sender, topic),
+            TestKeys.message(topic + 2, sender, topic),
             "production-payload",
             true,
         )
@@ -167,7 +169,7 @@ class KafkaDeploymentTests {
         val topic = System.nanoTime()
         val topicName = topic.toString()
         val message = Message.create(
-            MessageKey.create(topic + 2, topic + 1, topic),
+            TestKeys.message(topic + 2, topic + 1, topic),
             "production-header-payload",
             true,
         )
@@ -208,7 +210,7 @@ class KafkaDeploymentTests {
         val topicName = topic.toString()
         val sender = topic + 1
         val message = Message.create(
-            MessageKey.create(topic + 2, sender, topic),
+            TestKeys.message(topic + 2, sender, topic),
             "legacy-header-payload",
             true,
         )

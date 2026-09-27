@@ -32,7 +32,9 @@ class ComposedJobRecordWriter<T : Any, V, Q>(
 
     override fun write(record: JobRecord<T>): Mono<Void> {
         val message = Message.create(
-            MessageKey.create(record.key.id, record.workerKey.id, record.jobKey.id),
+            // The record key was minted in the message store, so it keeps its root.
+            // The destination is the job topic, not the job key. See CHAT-avduuqwp, D2.
+            MessageKey.of(record.key.id, record.key.root, record.workerKey.id, record.topicKey.id),
             asValue(codec.encode(record)),
             true,
         )

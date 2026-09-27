@@ -1,5 +1,13 @@
 package com.demo.chat.test.rsocket
 
+import org.springframework.boot.rsocket.autoconfigure.RSocketMessageHandlerCustomizer
+
+import org.springframework.beans.factory.ObjectProvider
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.controller.resolve.VerifiedKeyArgumentResolver
+
 import com.demo.chat.config.ChatJackson3Modules
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.http.codec.json.JacksonJsonDecoder
@@ -63,6 +71,16 @@ class RSocketSecurityTestConfiguration {
      * derived a target from the payload, and it is removed. Authorization
      * goes through SpringSecurityAccessBrokerService. See CHAT-bgsqwjph.
      */
+    /**
+     * The key payload resolver, as production registers it. Each test context
+     * supplies its own verifier. See CHAT-avduuqwp, D1.
+     */
+    @Bean
+    fun verifiedKeyResolverCustomizer(verifiers: ObjectProvider<KeyVerifier<*>>): RSocketMessageHandlerCustomizer =
+        RSocketMessageHandlerCustomizer { handler ->
+            handler.argumentResolverConfigurer.addCustomResolver(VerifiedKeyArgumentResolver(handler.decoders, verifiers))
+        }
+
     @Bean
     fun rSocketStrategiesCustomizer(): RSocketStrategiesCustomizer {
         val mapper = JsonMapper.builder()

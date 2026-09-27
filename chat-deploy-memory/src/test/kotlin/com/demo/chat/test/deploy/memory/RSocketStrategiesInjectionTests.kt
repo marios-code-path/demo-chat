@@ -77,7 +77,7 @@ class RSocketStrategiesInjectionTests {
 
     @Test
     fun `the deployment strategies decode a Key`() {
-        val decoded = decode("""{"key":{"empty":false,"id":1001}}""")
+        val decoded = decode("""{"key":{"empty":false,"id":1001,"root":5001}}""")
 
         assertThat(decoded)
             .describedAs("the domain module reached the server strategies of a real deployment")
@@ -92,7 +92,7 @@ class RSocketStrategiesInjectionTests {
 
     @Test
     fun `the deployment strategies decode a MessageKey`() {
-        val decoded = decode("""{"key":{"empty":false,"id":7,"from":10,"dest":20}}""")
+        val decoded = decode("""{"key":{"empty":false,"id":7,"root":5002,"from":10,"dest":20}}""")
 
         assertThat(decoded).isInstanceOf(MessageKey::class.java)
 

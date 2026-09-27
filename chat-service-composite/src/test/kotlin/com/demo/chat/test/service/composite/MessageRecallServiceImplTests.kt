@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.InvalidRecallRequestException
 import com.demo.chat.domain.Key
@@ -26,18 +28,18 @@ class MessageRecallServiceImplTests {
     private val store = MockVectorStore()
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
     private val state = InMemoryVectorIndexState<Long>()
-    private val service = MessageRecallServiceImpl(store, LongUtil(), "long", state)
+    private val service = MessageRecallServiceImpl(store, LongUtil(), "long", state, FAKE_ROOTS)
     private val parser = FilterExpressionTextParser()
-    private val coveringKey = Key.funKey(500L)
+    private val coveringKey = TestKeys.key(500L)
 
     @BeforeEach
     fun seed() {
         store.add(
             listOf(
-                mapper.toDocument(Message.create(MessageKey.create(1L, 10L, 100L), "apple banana", true)),
-                mapper.toDocument(Message.create(MessageKey.create(2L, 10L, 100L), "apple pie", true)),
-                mapper.toDocument(Message.create(MessageKey.create(3L, 20L, 100L), "zebra stripe", true)),
-                mapper.toDocument(Message.create(MessageKey.create(4L, 20L, 200L), "apple banana cake", true)),
+                mapper.toDocument(Message.create(TestKeys.message(1L, 10L, 100L), "apple banana", true)),
+                mapper.toDocument(Message.create(TestKeys.message(2L, 10L, 100L), "apple pie", true)),
+                mapper.toDocument(Message.create(TestKeys.message(3L, 20L, 100L), "zebra stripe", true)),
+                mapper.toDocument(Message.create(TestKeys.message(4L, 20L, 200L), "apple banana cake", true)),
             )
         )
     }

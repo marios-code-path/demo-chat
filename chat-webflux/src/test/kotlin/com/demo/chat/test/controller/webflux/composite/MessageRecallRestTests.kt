@@ -1,5 +1,7 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.controller.webflux.ChatMessageRecallController
 import com.demo.chat.domain.MessageKey
@@ -69,8 +71,8 @@ class MessageRecallRestTests {
                     MessageRecallResult(
                         indexComplete = true,
                         hits = listOf(
-                            MessageRecallHit(MessageKey.create(10L, 20L, 30L), 0.9),
-                            MessageRecallHit(MessageKey.create(11L, 20L, 30L), 0.5),
+                            MessageRecallHit(TestKeys.message(10L, 20L, 30L), 0.9),
+                            MessageRecallHit(TestKeys.message(11L, 20L, 30L), 0.5),
                         ),
                     )
                 )
@@ -121,7 +123,7 @@ class MessageRecallRestTests {
                 Mono.just(
                     MessageRecallResult(
                         indexComplete = true,
-                        hits = listOf(MessageRecallHit(MessageKey.create(12L, 20L, 30L), 0.7)),
+                        hits = listOf(MessageRecallHit(TestKeys.message(12L, 20L, 30L), 0.7)),
                     )
                 )
             )

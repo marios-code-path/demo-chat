@@ -1,5 +1,11 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.persistence.cassandra.domain.ChatTopic
@@ -33,6 +39,8 @@ class TopicPersistenceTests {
 
     private val keyService: IKeyService<UUID> = TestUUIDKeyService()
 
+    private val roots = FakeKeyServices.uuidRoots()
+
     private val rid: UUID = UUID.randomUUID()
 
     private val uid: UUID = UUID.randomUUID()
@@ -54,7 +62,7 @@ class TopicPersistenceTests {
         BDDMockito.given(roomRepo.rem(TestBase.anyObject()))
                 .willReturn(Mono.empty())
 
-        roomSvc = TopicPersistenceCassandra(keyService, roomRepo)
+        roomSvc = TopicPersistenceCassandra(keyService, roots, roomRepo)
     }
 
     @Test
@@ -64,7 +72,7 @@ class TopicPersistenceTests {
         val roomStore = Flux
                 .fromStream(names.stream())
                 .map { name ->
-                    MessageTopic.create(Key.funKey(UUIDs.timeBased()), name)
+                    MessageTopic.create(Key.of(UUIDs.timeBased(), roots.of(ChatDomain.MESSAGE_TOPIC).id), name)
                 }
                 .flatMap(roomSvc::add)
 

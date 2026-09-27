@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -60,7 +62,7 @@ class MessageReindexServiceImplTests {
     fun configureService() {
         given(clock.instant()).willReturn(startedAt, finishedAt)
         // Record ids come from the message store, as every message id does.
-        given(persistence.key()).willAnswer { Mono.just(Key.funKey(nextRecordId++)) }
+        given(persistence.key()).willAnswer { Mono.just(TestKeys.key(nextRecordId++)) }
         scheduler = Schedulers.newSingle("reindex-test")
         service = MessageReindexServiceImpl(
             persistence,
@@ -258,11 +260,12 @@ class MessageReindexServiceImplTests {
     @Test
     fun `a released durable job ends a reader wait and is not success`() {
         val stale = IndexJob(
-            key = Key.funKey(700L),
+            key = TestKeys.key(700L),
+            topicKey = TestKeys.key((700L) + 1_000_000L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-earlier",
-            startedBy = Key.funKey(1000L),
+            startedBy = TestKeys.key(1000L),
             startedAt = startedAt,
             finishedAt = finishedAt,
             outcome = JobOutcome.RELEASED,
@@ -349,11 +352,11 @@ class MessageReindexServiceImplTests {
         text: String = "message $id",
         record: Boolean = true,
     ): Message<Long, String> =
-        Message.create(MessageKey.create(id, 10L, 20L), text, record)
+        Message.create(TestKeys.message(id, 10L, 20L), text, record)
 
 
     private fun messageTo(id: Long, dest: Long): Message<Long, String> =
-        Message.create(MessageKey.create(id, 10L, dest), "message $id", true)
+        Message.create(TestKeys.message(id, 10L, dest), "message $id", true)
 
     /**
      * Records every durable write. [topics] is what one listing returns, and
@@ -376,17 +379,19 @@ class MessageReindexServiceImplTests {
         private var nextId = FIRST_JOB_ID
 
         override fun createJob(startedAt: Instant): Mono<IndexJob<Long>> = Mono.fromSupplier<IndexJob<Long>> {
+            val id = nextId++
             val job = IndexJob(
-                key = Key.funKey(nextId++),
+                key = TestKeys.key(id),
+                topicKey = TestKeys.key(id + TOPIC_OFFSET),
                 nodeId = 7,
                 keyType = "long",
                 incarnationId = "incarnation-a",
-                startedBy = Key.funKey(1000L),
+                startedBy = TestKeys.key(1000L),
                 startedAt = startedAt,
             )
             written.add(job)
             job
-        }.flatMap { job -> pubsub.open(job.key.id).thenReturn(job) }
+        }.flatMap { job -> pubsub.open(job.topicKey.id).thenReturn(job) }
 
         override fun write(job: IndexJob<Long>): Mono<Void> = Mono.fromRunnable { written.add(job) }
 
@@ -402,8 +407,11 @@ class MessageReindexServiceImplTests {
             }
         }.delaySubscription(finishDelay)
 
-        override fun readJob(topicKey: Key<Long>): Mono<IndexJob<Long>> =
-            Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == topicKey }) }
+        override fun readJob(jobKey: Key<Long>): Mono<IndexJob<Long>> =
+            Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.key == jobKey }) }
+
+        override fun readJobByTopic(topicKey: Key<Long>): Mono<IndexJob<Long>> =
+            Mono.defer { Mono.justOrEmpty(written.lastOrNull { it.topicKey == topicKey }) }
 
         override fun listJobTopics(): Flux<out MessageTopic<Long>> = Flux.defer {
             if (failListing) {
@@ -418,6 +426,9 @@ class MessageReindexServiceImplTests {
         companion object {
             /** The first job this store creates. A test can address it. */
             const val FIRST_JOB_ID = 500L
+
+            /** A job topic id is its job id plus this offset. The two keys differ, as D2 requires. */
+            const val TOPIC_OFFSET = 1_000_000L
         }
     }
 
@@ -454,17 +465,17 @@ class MessageReindexServiceImplTests {
     fun `a failed rebuild marks the job failed and keeps the earlier covering job`() {
         indexer.failOn.add(1L)
         given(persistence.all()).willReturn(Flux.just(message(1L)))
-        state.adoptCoveringJob(Key.funKey(900L))
+        state.adoptCoveringJob(TestKeys.key(900L))
 
         runAndAwait(service)
 
         Assertions.assertThat(jobStore.written.last().outcome).isEqualTo(JobOutcome.FAILED)
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(900L))
+        Assertions.assertThat(state.coveringJob()).isEqualTo(TestKeys.key(900L))
     }
 
     @Test
     fun `the scan drops a message addressed to a job topic before the counters`() {
-        jobStore.topics.add(MessageTopic.create(Key.funKey(500L), jobTopicName))
+        jobStore.topics.add(MessageTopic.create(TestKeys.key(500L), jobTopicName))
         given(persistence.all()).willReturn(
             Flux.just(message(1L), messageTo(2L, dest = 500L), message(3L))
         )
@@ -484,7 +495,7 @@ class MessageReindexServiceImplTests {
         given(persistence.all()).willReturn(
             Flux.just(message(1L)).delayElements(Duration.ofMillis(50))
         )
-        state.adoptCoveringJob(Key.funKey(900L))
+        state.adoptCoveringJob(TestKeys.key(900L))
 
         service.start().block()
         state.invalidate("live vector add failed")
@@ -502,7 +513,7 @@ class MessageReindexServiceImplTests {
     @Test
     fun `the scan drops a message addressed to the running job topic`() {
         given(persistence.all()).willReturn(
-            Flux.just(message(1L), messageTo(2L, dest = FakeJobStore.FIRST_JOB_ID))
+            Flux.just(message(1L), messageTo(2L, dest = FakeJobStore.FIRST_JOB_ID + FakeJobStore.TOPIC_OFFSET))
         )
 
         val status = runAndAwait(service)
@@ -521,7 +532,7 @@ class MessageReindexServiceImplTests {
 
         runAndAwait(service)
 
-        val jobTopicId = jobStore.written.first().key.id
+        val jobTopicId = jobStore.written.first().topicKey.id
 
         Assertions.assertThat(recordPersistence.added).hasSize(2)
         Assertions.assertThat(recordIndex.added).hasSize(2)
@@ -542,7 +553,7 @@ class MessageReindexServiceImplTests {
 
         // The run creates its own job, so the topic is known only afterwards.
         // The double replays, so a later subscriber still receives both.
-        val jobTopicId = jobStore.written.first().key.id
+        val jobTopicId = jobStore.written.first().topicKey.id
         val messages = recordPubSub.listenTo(jobTopicId)
             .take(2)
             .collectList()
@@ -628,7 +639,7 @@ class MessageReindexServiceImplTests {
         runAndAwait(service)
 
         Assertions.assertThat(activeAtFirstRecord.first())
-            .isEqualTo(Key.funKey(FakeJobStore.FIRST_JOB_ID))
+            .isEqualTo(TestKeys.key(FakeJobStore.FIRST_JOB_ID))
         Assertions.assertThat(state.status().activeJob).isNull()
     }
 }

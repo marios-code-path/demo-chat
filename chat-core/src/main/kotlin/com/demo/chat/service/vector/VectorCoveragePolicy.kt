@@ -19,6 +19,9 @@ enum class VectorTrust {
 }
 
 fun interface VectorCoveragePolicy<T> {
-    /** Empty when no job covers the index. */
+    /**
+     * Empty when no job covers the index. A job lookup fault fails with
+     * `JobLookupException`. See `CHAT-avduuqwp`, D3.
+     */
     fun selectCoveringJob(): Mono<IndexJob<T>>
 }

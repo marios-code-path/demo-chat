@@ -2,59 +2,92 @@ package com.demo.chat.test.knownkey
 
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
-import com.demo.chat.domain.knownkey.Anon
+import com.demo.chat.domain.knownkey.ChatDomain
+import com.demo.chat.domain.knownkey.ChatIdentity
 import com.demo.chat.domain.knownkey.RootKeys
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 /**
- * A missing root key used to surface as a bare NullPointerException from
- * `keyMap[domain]!!`, naming neither the domain requested nor the map's
- * contents. Those two facts are what separate "initialization never ran" from
- * "this one domain was never registered" — identical symptoms, different
- * faults. These tests pin both messages.
+ * A missing root key must name what the caller asked for. An empty set and a
+ * partial set are different faults: the first means that loading never ran,
+ * and the second is refused when it is loaded. See `CHAT-avduuqwp`.
  */
 class RootKeysTests {
 
     @Test
-    fun `an empty map says initialization never ran`() {
-        val rootKeys = RootKeys<Long>()
+    fun `an empty set says that the root keys are not loaded`() {
+        assertThatThrownBy { RootKeys<Long>().of(ChatDomain.USER) }
+            .isInstanceOf(ChatException::class.java)
+            .hasMessageContaining("User")
+            .hasMessageContaining("not loaded")
+    }
 
-        assertThatThrownBy { rootKeys.getRootKey(Anon::class.java) }
+    @Test
+    fun `a partial domain set is refused, and the refusal names the missing domains`() {
+        assertThatThrownBy { RootKeys<Long>().loadDomains(mapOf(ChatDomain.USER to Key.root(1L))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("MESSAGE")
+            .hasMessageContaining("FRANKING_TAG")
+    }
+
+    @Test
+    fun `a complete set returns each domain root`() {
+        val rootKeys = RootKeys<Long>().apply { loadDomains(complete()) }
+
+        ChatDomain.entries.forEach { assertThat(rootKeys.of(it)).isEqualTo(complete()[it]) }
+    }
+
+    @Test
+    fun `a domain root id answers its domain, and a user identity answers none`() {
+        val rootKeys = RootKeys<Long>().apply {
+            loadDomains(complete())
+            loadIdentities(admin, anon)
+        }
+
+        assertThat(rootKeys.domainOfRoot(complete().getValue(ChatDomain.MESSAGE).id)).isEqualTo(ChatDomain.MESSAGE)
+        assertThat(rootKeys.domainOfRoot(900L)).isNull()
+        assertThat(rootKeys.domainOfRoot(901L)).isNull()
+    }
+
+    @Test
+    fun `the identities are users, not domains`() {
+        val rootKeys = RootKeys<Long>().apply {
+            loadDomains(complete())
+            loadIdentities(admin, anon)
+        }
+
+        assertThat(rootKeys.admin()).isEqualTo(admin)
+        assertThat(rootKeys.anon()).isEqualTo(anon)
+        assertThat(rootKeys.identity(ChatIdentity.ANON)).isEqualTo(anon)
+        assertThat(rootKeys.domains().values).doesNotContain(admin, anon)
+    }
+
+    @Test
+    fun `an identity that is not loaded is named`() {
+        assertThatThrownBy { RootKeys<Long>().anon() }
             .isInstanceOf(ChatException::class.java)
             .hasMessageContaining("Anon")
-            .hasMessageContaining("no root keys are initialized at all")
     }
 
     @Test
-    fun `a populated map names what it does hold`() {
-        val rootKeys = RootKeys<Long>()
-        rootKeys.addRootKey(User::class.java, Key.funKey(1L))
-        rootKeys.addRootKey("Topic", Key.funKey(2L))
+    fun `a configuration name resolves to a domain root or an identity, and nothing else`() {
+        val rootKeys = RootKeys<Long>().apply {
+            loadDomains(complete())
+            loadIdentities(admin, anon)
+        }
 
-        assertThatThrownBy { rootKeys.getRootKey(Anon::class.java) }
-            .isInstanceOf(ChatException::class.java)
-            .hasMessageContaining("Anon")
-            .hasMessageContaining("Known root keys: Topic, User")
+        assertThat(rootKeys.byName("MessageTopic")).isEqualTo(complete()[ChatDomain.MESSAGE_TOPIC])
+        assertThat(rootKeys.byName("Admin")).isEqualTo(admin)
+        assertThat(rootKeys.byName("KeyCredential")).isNull()
+        assertThat(rootKeys.byName("user")).isNull()
     }
 
-    @Test
-    fun `both overloads agree`() {
-        val rootKeys = RootKeys<Long>()
-        rootKeys.addRootKey(User::class.java, Key.funKey(7L))
+    /** The identities are users, so they carry the root of the USER domain. */
+    private val admin = Key.of(900L, 100L + ChatDomain.USER.ordinal)
+    private val anon = Key.of(901L, 100L + ChatDomain.USER.ordinal)
 
-        assertThat(rootKeys.getRootKey(User::class.java).id)
-            .isEqualTo(rootKeys.getRootKey("User").id)
-            .isEqualTo(7L)
-    }
-
-    @Test
-    fun `a present key is returned rather than thrown for`() {
-        val rootKeys = RootKeys<Long>()
-        rootKeys.addRootKey(Anon::class.java, Key.funKey(42L))
-
-        assertThat(rootKeys.getRootKey(Anon::class.java).id).isEqualTo(42L)
-    }
+    private fun complete(): Map<ChatDomain, Key<Long>> =
+        ChatDomain.entries.associateWith { Key.root(100L + it.ordinal) }
 }

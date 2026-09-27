@@ -1,49 +1,43 @@
 package com.demo.chat.index.cassandra.domain
 
-import com.demo.chat.domain.Message
-import com.demo.chat.domain.MessageKey
-import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
 
-
+/**
+ * A row of a Cassandra index. **It is not a domain object and not a `Key`.**
+ * The index maps it under the root of its domain. See `CHAT-avduuqwp`.
+ */
 @Table("chat_message_user")
-class ChatMessageByUser<T>(@PrimaryKey override val key: ChatMessageByUserKey<T>,
-                           @field:Column("text") override val data: String,
-                           @field:Column("visible") override val record: Boolean) : Message<T, String>
+class ChatMessageByUser<T>(@PrimaryKey val key: ChatMessageByUserKey<T>,
+                           @field:Column("text") val data: String,
+                           @field:Column("visible") val record: Boolean)
 
 @Table("chat_message_topic")
-data class ChatMessageByTopic<T>(@PrimaryKey override val key: ChatMessageByTopicKey<T>,
-                                 @field:Column("text") override val data: String,
-                                 @field:Column("visible") override val record: Boolean) : Message<T, String>
+data class ChatMessageByTopic<T>(@PrimaryKey val key: ChatMessageByTopicKey<T>,
+                                 @field:Column("text") val data: String,
+                                 @field:Column("visible") val record: Boolean)
 
 @PrimaryKeyClass
 data class ChatMessageByUserKey<T>(
     @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-    override val id: T,
+    val id: T,
     @PrimaryKeyColumn(name = "user_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val from: T,
+    val from: T,
     @field:Column("topic_id")
-    override val dest: T,
+    val dest: T,
     @field:Column("msg_time")
-    override val timestamp: Instant
-) : MessageKey<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val timestamp: Instant
+)
 
 @PrimaryKeyClass
 data class ChatMessageByTopicKey<T>(
     @PrimaryKeyColumn(name = "msg_id", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
-    override val id: T,
+    val id: T,
     @field:Column("user_id")
-    override val from: T,
+    val from: T,
     @PrimaryKeyColumn(name = "topic_id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val dest: T,
+    val dest: T,
     @field:Column("msg_time")
-    override val timestamp: Instant
-) : MessageKey<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val timestamp: Instant
+)

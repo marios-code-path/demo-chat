@@ -1,5 +1,23 @@
 package com.demo.chat.test.rsocket.controller.composite
 
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.domain.Key
+
+import com.demo.chat.domain.Message
+
+import com.demo.chat.service.core.MessagePersistence
+
+import com.demo.chat.service.dummy.DummyPersistenceStore
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 
 import com.demo.chat.controller.composite.mapping.TopicServiceControllerMapping
 import com.demo.chat.domain.*
@@ -9,7 +27,6 @@ import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.core.*
 import com.demo.chat.test.TestBase
 import com.demo.chat.test.TestChatMessageTopic
-import com.demo.chat.test.TestChatRoomKey
 import com.demo.chat.test.rsocket.RSocketTestBase
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
@@ -53,18 +70,18 @@ open class TopicControllerTests : RSocketTestBase() {
     lateinit var membershipPersistence: MembershipPersistence<UUID>
 
     val randomUserHandle = TestBase.randomAlphaNumeric(4) + "User"
-    val randomUserId: UUID = UUID.fromString("4455814b-9886-499a-8547-55968e3183c6")
+    val randomUserId: UUID = RSocketTestRegistry.register(UUID.fromString("4455814b-9886-499a-8547-55968e3183c6"), ChatDomain.USER).id
 
     val randomRoomName = TestBase.randomAlphaNumeric(6) + "Room"
-    val randomTopicId: UUID = UUID.randomUUID()
+    val randomTopicId: UUID = RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id
 
     val room = TestChatMessageTopic(
-        TestChatRoomKey(randomTopicId, randomRoomName),
+        TestKeys.key(randomTopicId), randomRoomName,
         true
     )
 
     val roomWithMembers = TestChatMessageTopic(
-        TestChatRoomKey(randomTopicId, randomRoomName),
+        TestKeys.key(randomTopicId), randomRoomName,
         true
     )
 
@@ -87,8 +104,8 @@ open class TopicControllerTests : RSocketTestBase() {
                     .assertThat(it)
                     .hasNoNullFieldsOrProperties()
                     .hasFieldOrProperty("key")
+                    .hasFieldOrPropertyWithValue("data", randomRoomName)
                     .extracting("key")
-                    .hasFieldOrPropertyWithValue("name", randomRoomName)
                     .hasFieldOrPropertyWithValue("id", randomTopicId)
             }
             .verifyComplete()
@@ -117,7 +134,7 @@ open class TopicControllerTests : RSocketTestBase() {
 
         BDDMockito
             .given(topicPersistence.key())
-            .willReturn(Mono.just(Key.funKey(theRoomId)))
+            .willReturn(Mono.just(TestKeys.key(theRoomId)))
 
         StepVerifier.create(
             requester.route("topic-add")
@@ -127,14 +144,14 @@ open class TopicControllerTests : RSocketTestBase() {
             .expectSubscription()
             .verifyComplete()
 
-        val topicRoom = MessageTopic.create(Key.funKey(theRoomId), randomRoomName)
+        val topicRoom = MessageTopic.create(TestKeys.key(theRoomId), randomRoomName)
 
         BDDMockito
             .given(topicPersistence.get(TestBase.anyObject()))
             .willReturn(Mono.just(topicRoom))
         BDDMockito
             .given(membershipPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
         BDDMockito
             .given(membershipPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -167,7 +184,7 @@ open class TopicControllerTests : RSocketTestBase() {
             .willReturn(Mono.empty())
         BDDMockito
             .given(membershipPersistence.key())
-            .willReturn(Mono.just(Key.funKey(UUID.randomUUID())))
+            .willReturn(Mono.just(TestKeys.key(UUID.randomUUID())))
         BDDMockito
             .given(membershipPersistence.add(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -199,7 +216,7 @@ open class TopicControllerTests : RSocketTestBase() {
             .willReturn(
                 Mono.just(
                     User.create(
-                        Key.funKey(randomUserId), "NAME", randomUserHandle, "http://imageURI"
+                        TestKeys.key(randomUserId), "NAME", randomUserHandle, "http://imageURI"
                     )
                 )
             )
@@ -218,7 +235,7 @@ open class TopicControllerTests : RSocketTestBase() {
 
         BDDMockito
             .given(membershipIndex.findBy(TestBase.anyObject()))
-            .willReturn(Flux.just(Key.funKey(membershipId)))
+            .willReturn(Flux.just(TestKeys.key(membershipId)))
 
         StepVerifier
             .create(
@@ -280,7 +297,7 @@ open class TopicControllerTests : RSocketTestBase() {
     fun `should report not found when an index hit has no persistence row`() {
         BDDMockito
             .given(topicIndex.findBy(TestBase.anyObject()))
-            .willReturn(Flux.just(Key.funKey(randomTopicId)))
+            .willReturn(Flux.just(TestKeys.key(randomTopicId)))
         BDDMockito
             .given(topicPersistence.get(TestBase.anyObject()))
             .willReturn(Mono.empty())
@@ -329,7 +346,7 @@ open class TopicControllerTests : RSocketTestBase() {
         // duplicate instead of creating a second room. fp issue CHAT-qktlglfa.
         BDDMockito
             .given(topicIndex.findBy(TestBase.anyObject()))
-            .willReturn(Flux.just(Key.funKey(randomTopicId)))
+            .willReturn(Flux.just(TestKeys.key(randomTopicId)))
 
         StepVerifier
             .create(
@@ -379,7 +396,14 @@ open class TopicControllerTests : RSocketTestBase() {
                                     }"
                         )
                     )
-                }
+                },
+                // The alerts mint a MESSAGE key. This store mints under the MESSAGE root. See CHAT-avduuqwp.
+                object : DummyPersistenceStore<UUID, Message<UUID, String>>(), MessagePersistence<UUID, String> {
+                    override fun key(): Mono<out Key<UUID>> =
+                        Mono.fromSupplier { Key.of(UUID.randomUUID(), ALERT_ROOTS.of(ChatDomain.MESSAGE).id) }
+                },
+                RSocketTestRegistry.verifier,
+                RSocketTestRegistry.roots,
             )
 
         @Controller
@@ -388,3 +412,5 @@ open class TopicControllerTests : RSocketTestBase() {
 
     }
 }
+
+private val ALERT_ROOTS = RSocketTestRegistry.roots

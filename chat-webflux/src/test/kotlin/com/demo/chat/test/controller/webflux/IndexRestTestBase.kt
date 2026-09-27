@@ -1,5 +1,12 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.controller.webflux.config.WebFluxTestDomains
+
+import com.demo.chat.test.TestGeneratorKeyService
+
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.service.core.IndexService
@@ -37,6 +44,18 @@ open class IndexRestTestBase<T, V : Any, Q : IndexSearchRequest>(
 
     @Autowired
     private lateinit var client: WebTestClient
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The path id 1001 resolves in the domain of this index, as a minted id does. */
+    @BeforeEach
+    fun `register the path id`() {
+        registry.register(1001L, WebFluxTestDomains.of(entityPath))
+        // A message and a membership store a user 1 and a room 201. See CHAT-avduuqwp, E8.
+        registry.register(1L, ChatDomain.USER)
+        registry.register(201L, ChatDomain.MESSAGE_TOPIC)
+    }
 
     @Test
     fun `should add`() {

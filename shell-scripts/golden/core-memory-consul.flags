@@ -16,7 +16,6 @@
 -Dapp.kv.store=consul
 -Dapp.nodeid=0
 -Dapp.primary=core-service
--Dapp.rootkeys.create=true
 -Dapp.rootkeys.publish.scheme=kv
 -Dapp.server.proto=rsocket
 -Dapp.service.composite

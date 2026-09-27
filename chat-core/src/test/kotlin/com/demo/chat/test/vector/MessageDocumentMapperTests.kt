@@ -1,5 +1,7 @@
 package com.demo.chat.test.vector
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -14,7 +16,7 @@ class MessageDocumentMapperTests {
     private val mapper = MessageDocumentMapper<Long>(LongUtil(), "long")
 
     private val message: Message<Long, String> =
-        Message.create(MessageKey.create(10L, 20L, 30L), "hello apple", true)
+        Message.create(TestKeys.message(10L, 20L, 30L), "hello apple", true)
 
     @Test
     fun `message becomes one document with id text and metadata`() {
@@ -44,7 +46,7 @@ class MessageDocumentMapperTests {
         val messageId = UUID.randomUUID()
         val doc = uuidMapper.toDocument(
             Message.create(
-                MessageKey.create(messageId, UUID.randomUUID(), UUID.randomUUID()),
+                TestKeys.message(messageId, UUID.randomUUID(), UUID.randomUUID()),
                 "hi",
                 true,
             )

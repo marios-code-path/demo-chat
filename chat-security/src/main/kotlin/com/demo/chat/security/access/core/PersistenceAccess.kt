@@ -1,5 +1,7 @@
 package com.demo.chat.security.access.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.PersistenceStore
 import org.springframework.security.access.prepost.PostFilter
@@ -8,6 +10,13 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
+    /**
+     * The domain of this store, from trusted store configuration. The
+     * post-filter checks each returned entity in it. See `CHAT-avduuqwp`,
+     * T4 review correction 3.
+     */
+    fun storeDomain(): ChatDomain
+
     @PreAuthorize("@chatAccess.hasAccessTo(#ent.key, 'PUT')")
     override fun add(ent: E): Mono<Void>
     @PreAuthorize("@chatAccess.hasAccessTo(#key, 'DEL')")
@@ -27,7 +36,7 @@ interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
      * `EntityTargets` names the target of each entity. A membership carries a
      * raw id, so `filterObject.key` alone does not name its target.
      */
-    @PostFilter("@chatAccess.hasAccessToEntity(filterObject, 'GET')")
+    @PostFilter("@chatAccess.hasAccessToEntity(filterObject, 'GET', #root.this.storeDomain())")
     override fun byIds(keys: List<Key<T>>): Flux<out E>
 }
 

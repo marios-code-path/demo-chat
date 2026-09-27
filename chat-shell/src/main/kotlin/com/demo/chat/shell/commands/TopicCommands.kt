@@ -1,5 +1,9 @@
 package com.demo.chat.shell.commands
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
@@ -17,8 +21,10 @@ class TopicCommands<T : Any>(
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
-    rootKeys: RootKeys<T>
+    private val rootKeys: RootKeys<T>
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
+
+    private val verifier = KeyVerifier(coreServices.keyService(), rootKeys)
 
     fun topicToString(topic: MessageTopic<T>): String = "${topic.key.id} | ${topic.data}\n"
 
@@ -34,19 +40,26 @@ class TopicCommands<T : Any>(
     ) {
         val identity = identity(userId)
 
-        topicService
-            .addRoom(ByStringRequest(name))
-            .flatMap { topicKey ->
-                authorizationService
-                    .authorize(
-                        AuthMetadata.create(
-                            Key.emptyKey(typeUtil.empty()),
-                            Key.funKey(identity),
-                            topicKey,
-                            "*",
-                            Long.MAX_VALUE
-                        ), true
-                    )
+        // The creator resolves in USER through the server registry before the
+        // room exists. An unknown creator creates no room. No call blocks
+        // inside the chain, because a remote answer runs it on a Netty thread.
+        verifier.resolve(identity, ChatDomain.USER)
+            .flatMap { creator ->
+                topicService
+                    .addRoom(ByStringRequest(name))
+                    .flatMap { topicKey ->
+                        authorizationService
+                            .authorize(
+                                // The grant key is a placeholder under the AUTH_METADATA root. C61, C62.
+                                AuthMetadata.create(
+                                    Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
+                                    creator.key,
+                                    topicKey,
+                                    "*",
+                                    Long.MAX_VALUE
+                                ), true
+                            )
+                    }
             }
             .block()
     }

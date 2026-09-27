@@ -1,5 +1,11 @@
 package com.demo.chat.test.memory
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -19,10 +25,14 @@ class UserIndexTests : IndexTests<Long, User<Long>, IndexSearchRequest>(
                             Pair("handle", t.handle),
                             Pair("name", t.name)
                     )
-                }, { q -> Key.funKey(q.toLong()) }, { t -> t.key} ),
-        Supplier { User.create(Key.funKey(abs(Random.nextLong())), "test", "test1234"+ abs(Random.nextInt()), "localhost") },
+                }, { q -> Key.of(q.toLong(), ROOTS.of(ChatDomain.USER).id) }, { t -> t.key} ),
+        Supplier { User.create(TestKeys.key(abs(Random.nextLong())), "test", "test1234"+ abs(Random.nextInt()), "localhost") },
         Function<User<Long>, Key<Long>> { user -> user.key},
-        Supplier { IndexSearchRequest("name", "+test*", 1000) }
+        Supplier { IndexSearchRequest("name", "+test*", 1000) },
+    ROOTS,
+    ChatDomain.USER,
 ) {
     override fun getIndex(): IndexService<Long, User<Long>, IndexSearchRequest> = myIndex
 }
+
+private val ROOTS = FakeKeyServices.longRoots()

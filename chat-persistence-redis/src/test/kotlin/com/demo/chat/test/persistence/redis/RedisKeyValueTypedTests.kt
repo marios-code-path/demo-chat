@@ -27,7 +27,7 @@ class RedisKeyValueTypedTests(
     @Autowired keyValuePersistence: KeyValuePersistenceRedis<UUID>,
     @Autowired private val stringTemplate: ReactiveStringRedisTemplate,
 ) : KeyValueStoreTestBase<UUID, Any>(
-    TestUUIDKeyValuePairSupplier,
+    TestUUIDKeyValuePairSupplier(keyValuePersistence),
     { String::class.java },
     keyValuePersistence,
     { t -> t.key },

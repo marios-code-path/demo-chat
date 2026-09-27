@@ -1,5 +1,14 @@
 package com.demo.chat.test.controller.webflux.composite
 
+import com.demo.chat.test.controller.webflux.LongTypeUtilConfiguration
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatMessageServiceController
 import com.demo.chat.domain.Key
@@ -37,7 +46,7 @@ import reactor.test.StepVerifier
 import java.net.URI
 
 @ContextConfiguration(
-    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, ChatMessageServiceController::class]
+    classes = [TestLongCompositeServiceBeans::class, WebFluxTestConfiguration::class, LongTypeUtilConfiguration::class, ChatMessageServiceController::class]
 )
 class LongMessageRestTests : MessageRestTestBase<Long>({ 1001L })
 
@@ -49,6 +58,16 @@ class LongMessageRestTests : MessageRestTestBase<Long>({ 1001L })
 open class MessageRestTestBase<T>(
     val idSupply: () -> T
 ) {
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** Each path id resolves in its domain, as a minted id does. See CHAT-avduuqwp, D2. */
+    @BeforeEach
+    fun `register the path ids`() {
+        registry.register(12345L, ChatDomain.MESSAGE_TOPIC)
+        registry.register(1234566L, ChatDomain.MESSAGE)
+    }
 
     @Autowired
     private lateinit var beans: CompositeServiceBeans<T, String>
@@ -74,7 +93,7 @@ open class MessageRestTestBase<T>(
             .willReturn(
                 Flux.just(
                     Message.create(
-                        MessageKey.Factory.create(idSupply(), idSupply(), idSupply()),
+                        TestKeys.message(idSupply(), idSupply(), idSupply()),
                         "TEST", true
                     )
                 ).repeat(3)
@@ -117,7 +136,7 @@ open class MessageRestTestBase<T>(
 
         BDDMockito
             .given(service.send(anyObject()))
-            .willReturn(Mono.just(Key.funKey(messageId)))
+            .willReturn(Mono.just(TestKeys.key(messageId)))
 
         client
             .post()
@@ -155,7 +174,7 @@ open class MessageRestTestBase<T>(
             .willReturn(
                 Mono.just(
                     Message.create(
-                        MessageKey.create(idSupply(), idSupply(), idSupply()),
+                        TestKeys.message(idSupply(), idSupply(), idSupply()),
                         "TEST",
                         true
                     )

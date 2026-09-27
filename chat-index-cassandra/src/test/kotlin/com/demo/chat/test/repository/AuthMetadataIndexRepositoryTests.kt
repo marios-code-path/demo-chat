@@ -1,5 +1,9 @@
 package com.demo.chat.test.repository
 
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.index.cassandra.domain.AuthMetadataByPrincipal
 import com.demo.chat.index.cassandra.domain.AuthMetadataByTarget
@@ -50,6 +54,8 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
             keyGenerator.nextId(),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -72,11 +78,13 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
     @Test
     fun `byPrincipalRepo should save, find by Principal`() {
-        val keyId = Key.funKey(keyGenerator.nextId())
+        val keyId = TestKeys.key(keyGenerator.nextId())
         val authMeta = AuthMetadataByPrincipal(
             keyId.id,
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -84,7 +92,7 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
         val authMetaSave = byPrincipalRepo
             .save(authMeta)
-            .thenMany(byPrincipalRepo.findByPrincipalId(authMeta.principal.id))
+            .thenMany(byPrincipalRepo.findByPrincipalId(authMeta.principalId))
 
         StepVerifier
             .create(authMetaSave)
@@ -99,11 +107,13 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
     @Test
     fun `byTargetRepo should save, find by Target`() {
-        val keyId = Key.funKey(keyGenerator.nextId())
+        val keyId = TestKeys.key(keyGenerator.nextId())
         val authMeta = AuthMetadataByTarget(
             keyId.id,
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -111,7 +121,7 @@ class AuthMetadataIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGe
 
         val authMetaSave = byTargetRepo
             .save(authMeta)
-            .thenMany(byTargetRepo.findByTargetId(authMeta.target.id))
+            .thenMany(byTargetRepo.findByTargetId(authMeta.targetId))
 
         StepVerifier
             .create(authMetaSave)

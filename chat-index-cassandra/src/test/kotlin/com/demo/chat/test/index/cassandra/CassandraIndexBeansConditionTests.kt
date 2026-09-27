@@ -1,5 +1,11 @@
 package com.demo.chat.test.index.cassandra
 
+import com.demo.chat.service.core.StoreShapeCheck
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.domain.LongUtil
@@ -34,8 +40,15 @@ class CassandraIndexBeansConditionTests {
 
     @Configuration(proxyBeanMethods = false)
     class CassandraDependencyStubs {
+        // The store shape check reads the session. A deployment always has one. See CHAT-avduuqwp, T7.
+        @Bean
+        fun cqlSession(): com.datastax.oss.driver.api.core.CqlSession = mock(com.datastax.oss.driver.api.core.CqlSession::class.java)
+
         @Bean
         fun typeUtil(): TypeUtil<Long> = LongUtil()
+
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
 
         @Bean
         fun cassandraTemplate(): ReactiveCassandraTemplate = mock(ReactiveCassandraTemplate::class.java)
@@ -87,6 +100,17 @@ class CassandraIndexBeansConditionTests {
             .withPropertyValues("app.service.core.index=cassandra")
             .run { context ->
                 assertThat(context).hasSingleBean(IndexServiceBeans::class.java)
+            }
+    }
+
+    // T7 review. The index tables are checked when another backend provides the keys.
+    @Test
+    fun `registers its shape check when another backend provides the keys`() {
+        runner()
+            .withPropertyValues("app.service.core.index=cassandra", "app.service.core.key=memory")
+            .run { context ->
+                assertThat(context.getBeansOfType(StoreShapeCheck::class.java).keys)
+                    .containsExactly("cassandraIndexShapeCheck")
             }
     }
 

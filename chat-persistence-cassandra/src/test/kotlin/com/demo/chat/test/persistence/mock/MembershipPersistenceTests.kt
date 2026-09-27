@@ -1,5 +1,15 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.TestUUIDKeyGenerator
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.persistence.cassandra.domain.TopicMembershipByKey
 import com.demo.chat.persistence.cassandra.repository.TopicMembershipRepository
@@ -29,7 +39,9 @@ class MembershipPersistenceTests {
     @MockitoBean
     lateinit var repo: TopicMembershipRepository<UUID>
 
-    private val keyService = TestUUIDKeyService()
+    // The registry shares the store roots, so a registered membership id passes the domain check.
+    private val registry = TestGeneratorKeyService(TestUUIDKeyGenerator(), FakeKeyServices.uuidRoots())
+    private val keyService = TestUUIDKeyService(registry)
 
     private val testChatMembership = TopicMembershipByKey(keyService.nextId(), keyService.nextId(), keyService.nextId())
 
@@ -55,7 +67,8 @@ class MembershipPersistenceTests {
                 .given(repo.deleteById(Mockito.any(UUID::class.java)))
                 .willReturn(Mono.empty())
 
-        membershipPersistence = MembershipPersistenceCassandra(keyService, repo)
+        membershipPersistence = MembershipPersistenceCassandra(keyService, FakeKeyServices.uuidRoots(), repo)
+        registry.register(testChatMembership.key, ChatDomain.TOPIC_MEMBERSHIP)
     }
 
     @Test
@@ -93,14 +106,14 @@ class MembershipPersistenceTests {
     @Test
     fun `deletes a membership`() {
         StepVerifier
-                .create(membershipPersistence.rem(Key.funKey(testChatMembership.key)))
+                .create(membershipPersistence.rem(TestKeys.key(testChatMembership.key)))
                 .verifyComplete()
     }
 
     @Test
     fun `gets a single membership`() {
         StepVerifier
-                .create(membershipPersistence.get(Key.funKey(testChatMembership.key)))
+                .create(membershipPersistence.get(TestKeys.key(testChatMembership.key)))
                 .assertNext {
                     Assertions
                             .assertThat(it)

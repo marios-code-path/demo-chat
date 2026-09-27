@@ -37,6 +37,12 @@ when `CHAT-qucgqaye` added the cassandra composite identity tests, and to
 873 when `CHAT-zhjltbky` added the configuration binding guard, and to 903
 when the grant order clock landed.
 
+On 2026-09-26 the branch `chat-avduuqwp-root-identity` reported 1073 tests, 0
+failures, 0 errors and 35 skipped, in 28 modules that ran tests. The key root
+work of `CHAT-avduuqwp` adds tests to that count. This file does not record
+the count at the branch base, so the size of each step after 903 is not
+measured.
+
 Plain `mvn -B clean test`, which is the command CI runs, also reports
 **BUILD SUCCESS**. That matters: CI does not read `KNOWN_FAILING`, so a
 module that the verifier tolerates would still hold CI red.

@@ -1,5 +1,11 @@
 package com.demo.chat.index.cassandra.impl
 
+import com.demo.chat.domain.SimpleMessageKey
+
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -23,6 +29,7 @@ class MessageIndex<T : Any>(
     private val stringToKey: Function<String, T>,
     private val byUserRepo: ChatMessageByUserRepository<T>,
     private val byTopicRepo: ChatMessageByTopicRepository<T>,
+    private val rootKeys: RootKeys<T>,
 ) : MessageIndexService<T, String, Map<String, String>> {
     override fun add(entity: Message<T, String>): Mono<Void> {
         val instant = Instant.now()
@@ -65,12 +72,14 @@ class MessageIndex<T : Any>(
         val searchFor = query.keys.first()
         return when (searchFor) {
             TOPIC -> findByTopic(stringToKey.apply(query[searchFor] ?: error("Missing Topic")))
+                .map { SimpleMessageKey(it.key.id, root(), it.key.from, it.key.dest, it.key.timestamp) }
             USER -> findByUser(stringToKey.apply(query[searchFor] ?: error("Missing User")))
+                .map { SimpleMessageKey(it.key.id, root(), it.key.from, it.key.dest, it.key.timestamp) }
             else -> empty()
-        }.map {
-            it.key
         }
     }
+
+    private fun root(): T = rootKeys.of(ChatDomain.MESSAGE).id
 
     private fun findByTopic(topic: T) = byTopicRepo.findByKeyDest(topic)
     private fun findByUser(uid: T) = byUserRepo.findByKeyFrom(uid)

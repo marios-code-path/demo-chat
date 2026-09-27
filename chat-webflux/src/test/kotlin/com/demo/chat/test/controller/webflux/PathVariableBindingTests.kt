@@ -1,5 +1,13 @@
 package com.demo.chat.test.controller.webflux
 
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.IKeyRestController
@@ -36,6 +44,15 @@ import java.util.concurrent.atomic.AtomicReference
 )
 class PersistencePathVariableBindingTests(@Autowired beans: PersistenceServiceBeans<Long, String>) {
 
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The id 1001 is registered in USER, as a minted id is. See CHAT-avduuqwp. */
+    @BeforeEach
+    fun `register the id`() {
+        registry.register(1001L, ChatDomain.USER)
+    }
+
     private val store = beans.userPersistence()
 
     @Autowired
@@ -48,7 +65,7 @@ class PersistencePathVariableBindingTests(@Autowired beans: PersistenceServiceBe
         BDDMockito.given(store.get(anyObject()))
             .willAnswer { invocation ->
                 requestedId.set((invocation.arguments[0] as Key<*>).id)
-                Mono.just(User.create(Key.funKey(1001L), "userName", "userHandle", "imageUri"))
+                Mono.just(User.create(TestKeys.key(1001L), "userName", "userHandle", "imageUri"))
             }
 
         client
@@ -98,6 +115,15 @@ class PersistencePathVariableBindingTests(@Autowired beans: PersistenceServiceBe
     ]
 )
 class KeyServicePathVariableBindingTests(@Autowired beans: KeyServiceBeans<Long>) {
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** The id 1001 is registered in USER, as a minted id is. See CHAT-avduuqwp. */
+    @BeforeEach
+    fun `register the id`() {
+        registry.register(1001L, ChatDomain.USER)
+    }
 
     private val keyService = beans.keyService()
 

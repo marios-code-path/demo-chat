@@ -32,6 +32,21 @@ interface KeyValueStore<T, V> : PersistenceImpl<T, KeyValuePair<T, V>> {
     fun <E> typedByIds(ids: List<Key<T>>, typedArgument: Class<E>): Flux<KeyValuePair<T,E>> = Flux.empty()
 }
 
-interface InitializingKVStore : KeyValueStore<String, String>
+/**
+ * A string keyed store for values that a process needs before its domain
+ * stores exist, such as the root key snapshot. It holds no domain key. See
+ * `CHAT-avduuqwp`.
+ */
+interface InitializingKVStore {
+    /** This method returns the value stored under [name], or an empty Mono. */
+    fun read(name: String): Mono<String>
+
+    fun write(name: String, value: String): Mono<Void>
+
+    fun remove(name: String): Mono<Void>
+
+    /** This method returns every stored name. */
+    fun names(): Flux<String>
+}
 
 interface PersistenceImpl<T, V : Any> : PersistenceStore<T, V>

@@ -1,5 +1,7 @@
 package com.demo.chat.test.repository
 
+import com.demo.chat.test.key.TestKeys
+
 import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.domain.Key
 import com.demo.chat.index.cassandra.domain.ChatTopicName
@@ -36,7 +38,7 @@ class TopicIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator
 
     @Test
     fun `should save and find by name`() {
-        val saveFlux = Flux.just(Key.funKey(Uuids.timeBased()))
+        val saveFlux = Flux.just(TestKeys.key(Uuids.timeBased()))
             .flatMap {
                 byNameRepo.save(ChatTopicName(ChatTopicNameKey(it.id, "XYZ"), true))
             }
@@ -51,7 +53,9 @@ class TopicIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator
         StepVerifier
             .create(composed)
             .assertNext {
-                TestBase.topicAssertions(it)
+                // A row of chat_room_name holds an id and a name. See CHAT-avduuqwp.
+                org.assertj.core.api.Assertions.assertThat(it.key.id).isNotNull
+                org.assertj.core.api.Assertions.assertThat(it.key.name).isNotBlank
             }
             .verifyComplete()
     }

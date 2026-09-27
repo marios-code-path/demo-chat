@@ -1,5 +1,9 @@
 package com.demo.chat.crypto.memory
 
+import com.demo.chat.service.core.IKeyService
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.*
 import com.demo.chat.service.core.*
 import reactor.core.publisher.Flux
@@ -71,25 +75,28 @@ class InMemoryPreKeyService<T> : PreKeyService<T> {
  * Stores ciphertext envelopes keyed by (deviceId, conversationId, seq).
  * The server never decrypts — it routes by metadata only.
  */
-class InMemoryEncryptedMessageService<T> : EncryptedMessageService<T> {
+/**
+ * The send path takes the [frankingService] bean, so a tag key is minted in
+ * FRANKING_TAG through the key service. See `CHAT-avduuqwp`, D1.
+ */
+class InMemoryEncryptedMessageService<T>(private val frankingService: FrankingService<T>) : EncryptedMessageService<T> {
     private val envelopes = ConcurrentHashMap<T, MutableList<EncryptedEnvelope<T>>>()
-    private val frankingService = InMemoryFrankingService<T>()
 
-    override fun send(envelope: EncryptedEnvelope<T>): Mono<FrankingTag<T>> {
-        return Mono.fromCallable {
+    override fun send(envelope: EncryptedEnvelope<T>): Mono<FrankingTag<T>> =
+        Mono.fromRunnable<Void> {
             // Store in recipient's device inbox
             envelopes.computeIfAbsent(envelope.recipientDeviceId.id) { mutableListOf() }
                 .add(envelope)
+        }.then(
             // Generate franking tag (proof of message existence for abuse reporting)
-            frankingService.generateTagSync(
+            frankingService.generateTag(
                 envelope.conversationId,
                 envelope.seq,
                 envelope.senderDeviceId,
                 envelope.messageKind,
                 envelope.ciphertext
             )
-        }
-    }
+        )
 
     override fun fetchByConversation(conversationId: Key<T>, afterSeq: Long, limit: Int): Flux<EncryptedEnvelope<T>> =
         Flux.fromIterable(
@@ -140,13 +147,12 @@ class InMemoryConversationSeqService<T> : ConversationSeqService<T> {
  * In-memory conversation epoch service — tracks membership boundaries.
  * Each membership change (join/leave) starts a new epoch.
  */
-class InMemoryConversationEpochService<T> : ConversationEpochService<T> {
+class InMemoryConversationEpochService<T>(private val keys: IKeyService<T>) : ConversationEpochService<T> {
     private val epochs = ConcurrentHashMap<T, MutableList<ConversationEpoch<T>>>()
 
+    /** The epoch key is minted in CONVERSATION_EPOCH. See `CHAT-avduuqwp`, D1. */
     override fun startEpoch(conversationId: Key<T>): Mono<ConversationEpoch<T>> =
-        Mono.fromCallable {
-            @Suppress("UNCHECKED_CAST")
-            val epochKey = Key.funKey(java.util.UUID.randomUUID().toString() as T)
+        keys.key(ChatDomain.CONVERSATION_EPOCH).map { epochKey ->
             val epoch = ConversationEpoch.create(
                 epochKey,
                 conversationId,
@@ -172,33 +178,11 @@ class InMemoryConversationEpochService<T> : ConversationEpochService<T> {
  * In-memory franking service — generates HMAC-style tags for abuse reporting.
  * Production would use a rotated server-side key.
  */
-class InMemoryFrankingService<T> : FrankingService<T> {
+class InMemoryFrankingService<T>(private val keys: IKeyService<T>) : FrankingService<T> {
     private val currentKeyId = java.util.concurrent.atomic.AtomicInteger(1)
     private val key = "franking-secret-key-v1".toByteArray()
 
-    @Suppress("UNCHECKED_CAST")
-    fun generateTagSync(
-        conversationId: Key<T>,
-        seq: Long,
-        senderDeviceId: Key<T>,
-        messageKind: MessageKind,
-        ciphertext: ByteArray
-    ): FrankingTag<T> {
-        val tagInput = "${conversationId.id}:$seq:${senderDeviceId.id}:${messageKind}".toByteArray()
-        val combined = tagInput + ciphertext
-        val tag = java.security.MessageDigest.getInstance("SHA-256").digest(combined + key)
-        val tagId: T = java.util.UUID.randomUUID().toString() as T
-        return FrankingTag.create(
-            Key.funKey(tagId),
-            conversationId,
-            seq,
-            senderDeviceId,
-            messageKind,
-            tag,
-            currentKeyId.get()
-        )
-    }
-
+    /** The tag key is minted in FRANKING_TAG. See `CHAT-avduuqwp`, D1. */
     override fun generateTag(
         conversationId: Key<T>,
         seq: Long,
@@ -206,7 +190,20 @@ class InMemoryFrankingService<T> : FrankingService<T> {
         messageKind: MessageKind,
         ciphertextHash: ByteArray
     ): Mono<FrankingTag<T>> =
-        Mono.fromCallable { generateTagSync(conversationId, seq, senderDeviceId, messageKind, ciphertextHash) }
+        keys.key(ChatDomain.FRANKING_TAG).map { tagKey ->
+            val tagInput = "${conversationId.id}:$seq:${senderDeviceId.id}:${messageKind}".toByteArray()
+            val combined = tagInput + ciphertextHash
+            val tag = java.security.MessageDigest.getInstance("SHA-256").digest(combined + key)
+            FrankingTag.create(
+                tagKey,
+                conversationId,
+                seq,
+                senderDeviceId,
+                messageKind,
+                tag,
+                currentKeyId.get()
+            )
+        }
 
     override fun verifyTag(tag: FrankingTag<T>, ciphertextHash: ByteArray): Mono<Boolean> =
         Mono.fromCallable {

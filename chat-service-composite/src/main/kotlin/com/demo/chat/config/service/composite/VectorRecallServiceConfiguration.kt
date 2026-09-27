@@ -1,5 +1,14 @@
 package com.demo.chat.config.service.composite
 
+import reactor.core.publisher.Mono
+
+import com.demo.chat.domain.IndexJob
+
+import com.demo.chat.service.core.KeyValueIndexFields
+import com.demo.chat.service.core.KeyValueIndexFieldsEntry
+
+import com.demo.chat.domain.RequestToQueryConverters
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
@@ -66,6 +75,7 @@ class VectorRecallServiceConfiguration<T : Any, V, Q>(
      * backend decode tests bind this same bean.
      */
     @Qualifier(JACKSON_2_OBJECT_MAPPER) private val codecMapper: ObjectMapper,
+    private val queryConverters: RequestToQueryConverters<Q>,
 ) {
     /** One value per process start. It separates this run from an earlier one. */
     private val incarnationId: String = UUID.randomUUID().toString()
@@ -73,6 +83,14 @@ class VectorRecallServiceConfiguration<T : Any, V, Q>(
     @Bean
     @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
     fun vectorIndexState(): VectorIndexState<T> = InMemoryVectorIndexState()
+
+    /** A job is indexed by its topic, so a reader finds a job from its topic. See `CHAT-avduuqwp`, D3. */
+    @Bean
+    @ConditionalOnProperty(prefix = "app.service.core", name = ["vector", "embedding"])
+    fun indexJobFields(): KeyValueIndexFieldsEntry = KeyValueIndexFieldsEntry(
+        IndexJob::class.java,
+        KeyValueIndexFields { value -> listOf(VectorIndexJobStoreImpl.TOPIC_ID to (value as IndexJob<*>).topicKey.id.toString()) },
+    )
 
     /**
      * The durable job store.
@@ -93,16 +111,17 @@ class VectorRecallServiceConfiguration<T : Any, V, Q>(
         @Value("\${app.nodeid}") nodeId: Int,
         @Value("\${app.key.type}") keyType: String,
     ): VectorIndexJobStoreImpl<T, V, Q> {
-        val workerKey: Key<T> = persistenceBeans.topicPersistence()
-            .key()
-            .block(Duration.ofSeconds(30))
-            ?: throw ChatException("The topic key generator answered with no key for the vector worker.")
+        // The worker key is minted at its first use and cached. A mint needs the
+        // root keys, which load after the context refresh. See CHAT-avduuqwp.
+        val workerKey: Mono<out Key<T>> = persistenceBeans.topicPersistence().key().cache()
 
         return VectorIndexJobStoreImpl(
             topicPersistence = persistenceBeans.topicPersistence(),
             topicIndex = indexBeans.topicIndex(),
             pubsub = pubSubBeans.pubSubService(),
             keyValueStore = persistenceBeans.keyValuePersistence(),
+            keyValueIndex = indexBeans.KVPairIndex(),
+            topicIdQuery = { value -> queryConverters.keyValueFieldToQuery(VectorIndexJobStoreImpl.TOPIC_ID, value) },
             codec = IndexJobCodec(codecMapper),
             nodeId = nodeId,
             keyType = keyType,

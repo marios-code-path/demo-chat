@@ -1,13 +1,20 @@
 package com.demo.chat.test.integration
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+import com.demo.chat.test.key.TestRoots
+
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.test.key.RootKeysFixture
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
-import com.demo.chat.domain.knownkey.GenerateRootKeyInitializer
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
@@ -96,11 +103,11 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     ) {
         val userService = composites.userService()
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
 
         val data = AuthMetadata.create(
-            key = keyGenerator.nextKey(),
+            key = TestKeys.key(keyGenerator.nextId()),
             principal = principal,
             target = objectForAccess, perm = "FIND", muted = false, exp = Long.MAX_VALUE
         )
@@ -126,11 +133,11 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     ) {
         val store = beans.userPersistence()
 
-        val objectForAccess = keyGenerator.nextKey()
+        val objectForAccess = TestKeys.key(keyGenerator.nextId())
 
         val data = AuthMetadata.create(
-            key = keyGenerator.nextKey(),
-            principal = rootKeys.getRootKey(Anon::class.java),
+            key = TestKeys.key(keyGenerator.nextId()),
+            principal = rootKeys.anon(),
             target = objectForAccess, perm = "GET", muted = false, exp = Long.MAX_VALUE
         )
 
@@ -143,7 +150,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
 
         StepVerifier
             .create(
-                userPersistence.byIds(listOf(keyGenerator.nextKey()))
+                userPersistence.byIds(listOf(TestKeys.key(keyGenerator.nextId())))
             )
             .verifyComplete()
     }
@@ -158,10 +165,10 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     ) {
         val store = beans.userPersistence()
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
         val data = AuthMetadata.create(
-            key = keyGenerator.nextKey(),
+            key = TestKeys.key(keyGenerator.nextId()),
             principal = principal,
             target = objectForAccess, perm = "PUT", muted = false, exp = Long.MAX_VALUE
         )
@@ -176,7 +183,7 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
 
         StepVerifier
             .create(
-                userPersistence.add(User.create(keyGenerator.nextKey(), "test", "test", "test"))
+                userPersistence.add(User.create(TestKeys.key(keyGenerator.nextId()), "test", "test", "test"))
             )
             .verifyComplete()
     }
@@ -185,15 +192,15 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
     @WithLongCustomChatUser(userId = 1L, roles = [])
     @DirtiesContext()
     fun `call key service for new key, deny access`() {
-        val kindClass = User::class.java
+        val kindClass = ChatDomain.USER
         val serviceImpl: IKeyService<T> = keyServiceBeans.keyService()
 
-        val nextKey = keyGenerator.nextKey()
+        val nextKey = TestKeys.key(keyGenerator.nextId())
 
-        val principal = rootKeys.getRootKey(Anon::class.java)
-        val objectForAccess = rootKeys.getRootKey(User::class.java)
+        val principal = rootKeys.anon()
+        val objectForAccess = rootKeys.of(ChatDomain.USER)
         val data = AuthMetadata.create(
-            key = keyGenerator.nextKey(),
+            key = TestKeys.key(keyGenerator.nextId()),
             principal = principal,
             target = objectForAccess, perm = "NON", muted = false, exp = Long.MAX_VALUE
         )
@@ -222,7 +229,9 @@ class TestKeyService<T>(that: KeyServiceBeans<T>) : IKeyServiceAccess<T>, IKeySe
 
 @Service
 class TestUserPersistence<T>(that: PersistenceServiceBeans<T, *>) : PersistenceAccess<T, User<T>>,
-    PersistenceStore<T, User<T>> by that.userPersistence()
+    PersistenceStore<T, User<T>> by that.userPersistence() {
+    override fun storeDomain(): ChatDomain = ChatDomain.USER
+}
 
 @Service
 class TestUserService<T>(that: CompositeServiceBeans<T, *>) : UserServiceAccess<T>,
@@ -235,14 +244,22 @@ class TestUserService<T>(that: CompositeServiceBeans<T, *>) : UserServiceAccess<
 class MethodSecurityIntegrationTestConfiguration {
 
     @Bean
-    fun <T> accessBroker(authSvc: AuthorizationService<T, AuthMetadata<T>>) = AuthMetadataAccessBroker(authSvc)
+    fun <T> accessBroker(authSvc: AuthorizationService<T, AuthMetadata<T>>) =
+        AuthMetadataAccessBroker(authSvc, TestVerifiers.resolvingNothing())
 
     @Bean
-    fun <T> rootKeys(keyGen: IKeyGenerator<T>): RootKeys<T> = RootKeys<T>().apply {
-        GenerateRootKeyInitializer(keyGen).initRootKeys(this)
-    }
+    /**
+     * Every concrete test in this context uses Long keys. The roots are distinct
+     * fixed ids. The USER root is the fixed test root, because the test users
+     * carry it, and a typed user store returns keys under the USER root.
+     */
+    fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
+        mapOf(ChatDomain.USER to Key.root(TestRoots.of(0L))),
+        TestKeys.key(8998L),
+        TestKeys.key(8999L),
+    )
 
     @Bean
     fun <T> chatAccess(access: AccessBroker<T>, rootKeys: RootKeys<T>): SpringSecurityAccessBrokerService<T> =
-        SpringSecurityAccessBrokerService(access, rootKeys)
+        SpringSecurityAccessBrokerService(access, rootKeys, TestVerifiers.acceptingTestRoot(rootKeys))
 }

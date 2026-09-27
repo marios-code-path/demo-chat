@@ -1,5 +1,11 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.UserIndexService
@@ -15,6 +21,8 @@ open class UserServiceImpl<T, Q>(
     val userPersistence: UserPersistence<T>,
     private val userIndex: UserIndexService<T, Q>,
     private val userHandleToQuery: Function<ByStringRequest, Q>,
+    private val verifier: KeyVerifier<T>,
+    private val rootKeys: RootKeys<T>,
 ) : ChatUserService<T> {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
@@ -29,8 +37,9 @@ open class UserServiceImpl<T, Q>(
                 userPersistence
                     .key()
                     .doOnNext { key ->
+                        // The minted key already carries the USER root. C41.
                         val user = User.create(
-                            Key.funKey(key.id),
+                            key,
                             userReq.name,
                             userReq.handle,
                             userReq.imgUri
@@ -50,14 +59,15 @@ open class UserServiceImpl<T, Q>(
             userPersistence::get
         )
 
-    override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> = userPersistence
-        .get(Key.funKey(req.id))
+    override fun findByUserId(req: ByIdRequest<T>): Mono<out User<T>> =
+        verifier.resolve(req.id, ChatDomain.USER).flatMap { userPersistence.get(it.key) }
 
     fun findByUserIdList(userReq: List<ByIdRequest<T>>): Flux<out User<T>> =
         userPersistence.byIds(
             userReq
                 .stream()
-                .map { Key.funKey(it.id) }
+                // The ids come from the user index, so they take the USER root. C43.
+                .map { Key.of(it.id, rootKeys.of(ChatDomain.USER).id) }
                 .collect(Collectors.toList())
         )
 }

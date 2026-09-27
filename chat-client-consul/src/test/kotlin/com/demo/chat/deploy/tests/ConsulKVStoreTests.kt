@@ -1,10 +1,7 @@
 package com.demo.chat.deploy.tests
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.persistence.consul.ConsulKVStore
 import com.ecwid.consul.v1.ConsulClient
-import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
@@ -12,7 +9,6 @@ import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.test.context.junit.jupiter.SpringExtension
-import reactor.core.publisher.Hooks
 import reactor.test.StepVerifier
 
 @ExtendWith(SpringExtension::class)
@@ -33,57 +29,45 @@ class ConsulKVStoreTests : ConsulContainerSetup() {
     }
 
     @Test
-    fun `should set key`() {
+    fun `should write a name`() {
         StepVerifier
-            .create(kvStore.add(KeyValuePair.create(Key.funKey("test"), "test")))
+            .create(kvStore.write("test", "test"))
             .verifyComplete()
     }
 
     @Test
-    fun `should set keys and list`() {
-        val kvKeys = kvStore
-            .add(KeyValuePair.create(Key.funKey("test/1"), "test"))
-            .then(kvStore.add(KeyValuePair.create(Key.funKey("test/1"), "test")))
-            .then(kvStore.add(KeyValuePair.create(Key.funKey("test/2"), "test")))
-            .thenMany(kvStore.all())
+    fun `should write names and list them`() {
+        val names = kvStore.write("list/1", "test")
+            .then(kvStore.write("list/1", "test"))
+            .then(kvStore.write("list/2", "test"))
+            .thenMany(kvStore.names())
+            .filter { it.startsWith("TEST/list/") }
 
         StepVerifier
-            .create(kvKeys)
-            .expectNextCount(3)
+            .create(names)
+            .expectNextCount(2)
             .verifyComplete()
     }
 
     @Test
-    fun `should add then remove key`() {
-        Hooks.onOperatorDebug()
-        val kvProcess = kvStore
-            .add(KeyValuePair.create(Key.funKey("test1"), "test"))
-            .then(kvStore.rem(Key.funKey("test1")))
-            .thenMany(kvStore.all())
+    fun `should write then remove a name`() {
+        val value = kvStore.write("gone", "test")
+            .then(kvStore.remove("gone"))
+            .then(kvStore.read("gone"))
 
-        kvProcess
-            .doOnNext{println("------$it")}
-            .blockLast()
         StepVerifier
-            .create(kvProcess)
-            .expectNextCount(0)
+            .create(value)
             .verifyComplete()
     }
 
     @Test
-    fun `should get Key and validate contents`() {
-        val kvProcess = kvStore
-            .add(KeyValuePair.create(Key.funKey("test/1"), "test"))
-            .then(kvStore.get(Key.funKey("test/1")))
+    fun `should read the value it wrote`() {
+        val value = kvStore.write("read/1", "test")
+            .then(kvStore.read("read/1"))
 
         StepVerifier
-            .create(kvProcess)
-            .assertNext { kv ->
-                Assertions
-                    .assertThat(kv)
-                    .isNotNull
-                    .hasFieldOrPropertyWithValue("data", "test")
-            }
+            .create(value)
+            .expectNext("test")
             .verifyComplete()
     }
 }

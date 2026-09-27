@@ -1,5 +1,17 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import org.springframework.context.annotation.Bean
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.controller.resolve.KeyDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
@@ -29,13 +41,13 @@ class KeyValueIndexRequesterTests : RSocketTestBase() {
 //    private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 //
 //    private val message =
-//        Message.create(MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+//        Message.create(TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
 
     @MockitoBean
     private lateinit var indexService: KeyValueIndexService<UUID, IndexSearchRequest>
 
     private val kvData =
-        KeyValuePair.create(Key.funKey(UUID.randomUUID()), "DATA")
+        KeyValuePair.create(RSocketTestRegistry.registered(ChatDomain.KEY_VALUE_PAIR), "DATA")
 
     @Test
     fun `should query for entities`() {
@@ -65,7 +77,11 @@ class KeyValueIndexRequesterTests : RSocketTestBase() {
 
 @TestConfiguration
 class KVIndexTestConfiguration {
+    @Bean
+    fun testKeyVerifier(): KeyVerifier<UUID> = RSocketTestRegistry.verifier
+
     @Controller
-    class TestKVIndexController<T>(that: KeyValueIndexService<T, IndexSearchRequest>) :
-        IndexSearchRequestIndexServiceController<T, KeyValuePair<T, Any>>(that)
+    @KeyDomain(ChatDomain.KEY_VALUE_PAIR)
+    class TestKVIndexController<T>(that: KeyValueIndexService<T, IndexSearchRequest>, v: KeyVerifier<T>) :
+        IndexSearchRequestIndexServiceController<T, KeyValuePair<T, Any>>(that, v)
 }

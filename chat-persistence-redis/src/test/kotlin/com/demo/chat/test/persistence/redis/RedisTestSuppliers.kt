@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.redis
 
+import com.demo.chat.service.core.PersistenceStore
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -15,43 +19,61 @@ import java.util.function.Supplier
  * UUID-keyed entity suppliers for the Redis persistence tests.
  * (chat-core's TestSupplier.kt only provides String-keyed suppliers.)
  */
-object TestUUIDUserSupplier : Supplier<User<UUID>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDUserSupplier(private val store: PersistenceStore<UUID, User<UUID>>) : Supplier<User<UUID>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): User<UUID> =
-        User.create(Key.funKey(UUID.randomUUID()), "TEST", "TEST", "TEST")
+        User.create(minted(), "TEST", "TEST-${UUID.randomUUID()}", "TEST")
 }
 
-object TestUUIDMessageTopicSupplier : Supplier<MessageTopic<UUID>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDMessageTopicSupplier(private val store: PersistenceStore<UUID, MessageTopic<UUID>>) : Supplier<MessageTopic<UUID>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): MessageTopic<UUID> =
-        MessageTopic.create(Key.funKey(UUID.randomUUID()), "TEST")
+        MessageTopic.create(minted(), "TEST")
 }
 
-object TestUUIDMessageSupplier : Supplier<Message<UUID, String>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDMessageSupplier(private val store: PersistenceStore<UUID, Message<UUID, String>>) : Supplier<Message<UUID, String>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): Message<UUID, String> =
         Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()),
+            minted().let { MessageKey.of(it.id, it.root, UUID.randomUUID(), UUID.randomUUID()) },
             "TEST",
             true,
         )
 }
 
-object TestUUIDTopicMembershipSupplier : Supplier<TopicMembership<UUID>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDTopicMembershipSupplier(private val store: PersistenceStore<UUID, TopicMembership<UUID>>) : Supplier<TopicMembership<UUID>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): TopicMembership<UUID> =
-        TopicMembership.create(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID())
+        TopicMembership.create(minted().id, UUID.randomUUID(), UUID.randomUUID())
 }
 
-object TestUUIDAuthMetaSupplier : Supplier<AuthMetadata<UUID>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDAuthMetaSupplier(private val store: PersistenceStore<UUID, AuthMetadata<UUID>>) : Supplier<AuthMetadata<UUID>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): AuthMetadata<UUID> =
         AuthMetadata.create(
-            Key.funKey(UUID.randomUUID()),
-            Key.funKey(UUID.randomUUID()),
-            Key.funKey(UUID.randomUUID()),
+            minted(),
+            TestKeys.key(UUID.randomUUID()),
+            TestKeys.key(UUID.randomUUID()),
             "TEST",
             false,
             Long.MAX_VALUE,
         )
 }
 
-object TestUUIDKeyValuePairSupplier : Supplier<KeyValuePair<UUID, Any>> {
+/** Each entity takes a key that its store minted, so the key carries the store root. See `CHAT-avduuqwp`, T5. */
+class TestUUIDKeyValuePairSupplier(private val store: PersistenceStore<UUID, KeyValuePair<UUID, Any>>) : Supplier<KeyValuePair<UUID, Any>> {
+    private fun minted() = store.key().block()!!
+
     override fun get(): KeyValuePair<UUID, Any> =
-        KeyValuePair.create(Key.funKey(UUID.randomUUID()), "TEST")
+        KeyValuePair.create(minted(), "TEST")
 }

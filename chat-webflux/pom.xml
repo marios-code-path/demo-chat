@@ -31,6 +31,13 @@
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
+        <!-- Real memory stores, for the store write path tests of CHAT-avduuqwp T5. -->
+        <dependency>
+            <groupId>com.demo</groupId>
+            <artifactId>chat-persistence-memory</artifactId>
+            <version>0.0.1</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>

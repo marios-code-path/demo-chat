@@ -1,6 +1,5 @@
 package com.demo.chat.index.cassandra.domain
 
-import com.demo.chat.domain.Key
 import org.springframework.data.annotation.Transient
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.PrimaryKey
@@ -25,11 +24,8 @@ data class ChatKeyValueIndexKey<T>(
     @PrimaryKeyColumn(name = "value", type = PrimaryKeyType.PARTITIONED, ordinal = 1)
     val value: String,
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.CLUSTERED, ordinal = 2)
-    override val id: T,
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+    val id: T,
+)
 
 /**
  * The same rows keyed by the entity id.
@@ -48,12 +44,9 @@ data class ChatKeyValueIndexById<T>(
 @PrimaryKeyClass
 data class ChatKeyValueIndexByIdKey<T>(
     @PrimaryKeyColumn(name = "id", type = PrimaryKeyType.PARTITIONED, ordinal = 0)
-    override val id: T,
+    val id: T,
     @PrimaryKeyColumn(name = "field", type = PrimaryKeyType.CLUSTERED, ordinal = 1)
     val field: String,
     @PrimaryKeyColumn(name = "value", type = PrimaryKeyType.CLUSTERED, ordinal = 2)
     val value: String,
-) : Key<T> {
-    @Transient
-    override val empty: Boolean = false
-}
+)

@@ -1,7 +1,6 @@
 package com.demo.chat.shell.commands
 
 import com.demo.chat.domain.TypeUtil
-import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
 
@@ -15,7 +14,7 @@ open class CommandsUtil<T>(
             "_" -> {
                 loggedInUser
                     .map { typeUtil.assignFrom(it) }
-                    .orElseGet { rootKeys.getRootKey(Anon::class.java.simpleName).id }
+                    .orElseGet { rootKeys.anon().id }
             }
 
             else -> typeUtil.fromString(uId)

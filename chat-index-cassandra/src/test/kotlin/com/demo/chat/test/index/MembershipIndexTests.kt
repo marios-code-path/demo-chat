@@ -1,5 +1,7 @@
 package com.demo.chat.test.index
 
+import com.demo.chat.test.key.FakeKeyServices
+
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.index.cassandra.domain.TopicMembershipByMember
 import com.demo.chat.index.cassandra.domain.TopicMembershipByMemberOf
@@ -62,7 +64,7 @@ class MembershipIndexTests {
         BDDMockito.given(byMemberOfRepository.findByMemberOf(anyObject()))
                 .willReturn(Flux.just(membershipOf))
 
-        this.membershipIndex = MembershipIndex(UUID::fromString, byMemberRepository, byMemberOfRepository)
+        this.membershipIndex = MembershipIndex(UUID::fromString, byMemberRepository, byMemberOfRepository, FakeKeyServices.uuidRoots())
     }
 
     @Test

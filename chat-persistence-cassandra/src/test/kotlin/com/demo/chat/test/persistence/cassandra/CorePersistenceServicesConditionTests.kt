@@ -1,5 +1,11 @@
 package com.demo.chat.test.persistence.cassandra
 
+import com.demo.chat.service.core.StoreShapeCheck
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
@@ -32,6 +38,13 @@ class CorePersistenceServicesConditionTests {
     @Suppress("UNCHECKED_CAST")
     @Configuration(proxyBeanMethods = false)
     class CassandraDependencyStubs {
+        // The store shape check reads the session. A deployment always has one. See CHAT-avduuqwp, T7.
+        @Bean
+        fun cqlSession(): com.datastax.oss.driver.api.core.CqlSession = mock(com.datastax.oss.driver.api.core.CqlSession::class.java)
+
+        @Bean
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
         @Bean
         fun keyService(): IKeyService<Long> = TestLongKeyService()
 
@@ -76,6 +89,17 @@ class CorePersistenceServicesConditionTests {
             .withPropertyValues("app.service.core.persistence=cassandra")
             .run { context ->
                 assertThat(context).hasSingleBean(CorePersistenceServices::class.java)
+            }
+    }
+
+    // T7 review. The persistence tables are checked when another backend provides the keys.
+    @Test
+    fun `registers its shape check when another backend provides the keys`() {
+        runner()
+            .withPropertyValues("app.service.core.persistence=cassandra", "app.service.core.key=memory")
+            .run { context ->
+                assertThat(context.getBeansOfType(StoreShapeCheck::class.java).keys)
+                    .containsExactly("cassandraPersistenceShapeCheck")
             }
     }
 

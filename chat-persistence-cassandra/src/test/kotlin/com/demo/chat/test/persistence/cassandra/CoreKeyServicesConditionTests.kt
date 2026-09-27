@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.cassandra
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.persistence.cassandra.CoreKeyServices
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.test.TestLongKeyService
@@ -28,7 +32,16 @@ class CoreKeyServicesConditionTests {
         fun keyGenerator(): IKeyGenerator<Long> = TestLongKeyService()
 
         @Bean
+
+        fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
+
+        @Bean
         fun cassandraTemplate(): ReactiveCassandraTemplate = mock(ReactiveCassandraTemplate::class.java)
+
+        // The store shape check reads the session. A deployment always has one. See CHAT-avduuqwp, T7.
+        @Bean
+        fun cqlSession(): com.datastax.oss.driver.api.core.CqlSession = mock(com.datastax.oss.driver.api.core.CqlSession::class.java)
     }
 
     /**

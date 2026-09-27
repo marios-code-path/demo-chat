@@ -1,5 +1,9 @@
 package com.demo.chat.index.cassandra.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.index.cassandra.domain.ChatKeyValueIndex
@@ -29,6 +33,7 @@ class KeyValueIndex<T : Any>(
     private val fields: KeyValueIndexFields,
     private val byFieldRepo: KeyValueIndexRepository<T>,
     private val byIdRepo: KeyValueIndexByIdRepository<T>,
+    private val rootKeys: RootKeys<T>,
 ) : KeyValueIndexService<T, Map<String, String>> {
 
     /**
@@ -81,7 +86,7 @@ class KeyValueIndex<T : Any>(
 
         return byFieldRepo
             .findByKeyFieldAndKeyValue(field, value)
-            .map { row -> Key.funKey(row.key.id) }
+            .map { row -> Key.of(row.key.id, rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id) }
     }
 
     override fun findUnique(query: Map<String, String>): Mono<out Key<T>> =

@@ -1,5 +1,9 @@
 package com.demo.chat.index.lucene.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
@@ -18,11 +22,12 @@ import reactor.core.publisher.Mono
  */
 open class KeyValueLuceneIndex<T>(
     typeUtil: TypeUtil<T>,
+    rootKeys: RootKeys<T>,
     private val entryEncoder: IndexEntryEncoder<KeyValuePair<T, Any>>
 ) : KeyValueIndexService<T, IndexSearchRequest>,
     LuceneIndex<T, KeyValuePair<T, Any>>(
         entryEncoder,
-        keyEncoder = { str -> Key.funKey(typeUtil.fromString(str)) },
+        keyEncoder = { str -> Key.of(typeUtil.fromString(str), rootKeys.of(ChatDomain.KEY_VALUE_PAIR).id) },
         keyReceiver = { t -> t.key }
     ) {
 

@@ -1,16 +1,20 @@
 package com.demo.chat.test.deploy.memory
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.ChatApp
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.GlobalRecallRequest
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Message
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.RequestToQueryConverters
 import com.demo.chat.service.core.MessageIndexService
 import com.demo.chat.service.core.MessagePersistence
 import com.demo.chat.service.vector.MessageRecallService
 import com.demo.chat.service.vector.MessageReindexService
+import com.demo.chat.service.vector.VectorIndexJobStore
 import com.demo.chat.service.vector.VectorIndexPhase
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
@@ -77,8 +81,15 @@ class VectorIndexRecoveryTests {
     @Autowired
     lateinit var queryConverters: RequestToQueryConverters<IndexSearchRequest>
 
-    private fun persistOnly(id: Long, text: String): Mono<Void> =
-        persistence.add(Message.create(MessageKey.create(id, 10L, 20L), text, true))
+    @Autowired
+    lateinit var jobStore: VectorIndexJobStore<Long>
+
+    // The store refuses a key of another domain, so the message takes a key that the store minted. See CHAT-avduuqwp, T5.
+    @Suppress("UNUSED_PARAMETER")
+    private fun persistOnly(id: Long, text: String): Mono<Key<Long>> =
+        persistence.key().flatMap { key ->
+            persistence.add(Message.create(MessageKey.of(key.id, key.root, 10L, 20L), text, true)).thenReturn(key)
+        }
 
     private fun awaitFinished() {
         Flux.interval(Duration.ZERO, Duration.ofMillis(20))
@@ -121,11 +132,13 @@ class VectorIndexRecoveryTests {
         reindex.start().block()
         awaitFinished()
 
-        val jobKey = reindex.status().coveringJob!!
-        val records = messagesOfTopic(jobKey.id)
+        // The records go to the job topic, and the topic key is not the job key. See CHAT-avduuqwp, D2.
+        val job = jobStore.readJob(reindex.status().coveringJob!!).block()!!
+        val records = messagesOfTopic(job.topicKey.id)
 
+        Assertions.assertThat(job.topicKey.id).isNotEqualTo(job.key.id)
         Assertions.assertThat(records).isNotEmpty
-        Assertions.assertThat(records.map { it.key.dest }).containsOnly(jobKey.id)
+        Assertions.assertThat(records.map { it.key.dest }).containsOnly(job.topicKey.id)
     }
 
     // Job messages are stored and indexed, so a scan sees them. They must never
@@ -133,7 +146,7 @@ class VectorIndexRecoveryTests {
     // corpus would grow on every run.
     @Test
     fun `a job message never enters recall`() {
-        persistOnly(1L, "apple pie recipe").block()
+        val message = persistOnly(1L, "apple pie recipe").block()!!
 
         reindex.start().block()
         awaitFinished()
@@ -154,7 +167,7 @@ class VectorIndexRecoveryTests {
         // The threshold accepts every document, so this read returns the whole
         // recall corpus. Only the one user message may appear in it.
         val hits = recall.recallGlobal(GlobalRecallRequest("rebuild", 50, 0.0)).block()!!
-        Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(1L)
+        Assertions.assertThat(hits.hits.map { it.key.id }).containsExactly(message.id)
         Assertions.assertThat(hits.indexComplete).isTrue()
     }
 }

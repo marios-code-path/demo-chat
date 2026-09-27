@@ -1,5 +1,17 @@
 package com.demo.chat.test.controller.webflux.config
 
+import com.demo.chat.config.KeyRefusalAdvice
+import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
+import com.demo.chat.domain.TypeUtil
+import org.springframework.beans.factory.ObjectProvider
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.Jackson2MapperConfiguration
@@ -59,8 +71,13 @@ import org.springframework.web.reactive.result.method.annotation.ArgumentResolve
     DefaultChatJacksonModules::class,
     Jackson2MapperConfiguration::class,
     ChatJackson3Modules::class,
+    // Production reaches the advice through the component scan. A refused key answers 404.
+    KeyRefusalAdvice::class,
 )
-class WebFluxTestConfiguration : WebFluxConfigurer {
+class WebFluxTestConfiguration(
+    private val verifiers: ObjectProvider<KeyVerifier<*>>,
+    private val typeUtils: ObjectProvider<TypeUtil<*>>,
+) : WebFluxConfigurer {
 
     /**
      * The `@AuthenticationPrincipal` resolver, which the slice does not get.
@@ -84,8 +101,26 @@ class WebFluxTestConfiguration : WebFluxConfigurer {
         configurer.addCustomResolver(
             AuthenticationPrincipalArgumentResolver(ReactiveAdapterRegistry.getSharedInstance())
         )
+        // Production registers this in WebFluxKeyVerifierConfiguration. See CHAT-avduuqwp, D2.
+        configurer.addCustomResolver(ResolvedKeyArgumentResolver(verifiers, typeUtils))
     }
 
+
+    /**
+     * The key registry of the slice tests. A test registers each path id under
+     * its domain, so the route resolves it as production does. See
+     * `CHAT-avduuqwp`.
+     */
+    @Bean
+    fun testRootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
+    @Bean
+    fun testKeyRegistry(testRootKeys: RootKeys<Long>): TestGeneratorKeyService<Long> =
+        FakeKeyServices.long(testRootKeys)
+
+    @Bean
+    fun testKeyVerifier(registry: TestGeneratorKeyService<Long>, testRootKeys: RootKeys<Long>): KeyVerifier<Long> =
+        KeyVerifier(registry, testRootKeys)
 
     @Bean
     fun filterChain(): SecurityWebFilterChain? = ServerHttpSecurity.http()

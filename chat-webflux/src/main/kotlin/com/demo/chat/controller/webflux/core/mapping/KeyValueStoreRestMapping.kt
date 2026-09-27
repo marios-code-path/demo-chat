@@ -1,5 +1,8 @@
 package com.demo.chat.controller.webflux.core.mapping
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.MembershipRequest
@@ -18,19 +21,31 @@ interface KeyValueStoreRestMapping<T> :
     PersistenceRestMapping<T, KeyValuePair<T, Any>>,
     KeyValueStore<T, Any> {
 
+    /**
+     * Every key verifies in KEY_VALUE_PAIR before the bulk read. One refused
+     * key refuses the request. An empty list reads nothing. See
+     * `CHAT-avduuqwp`, D9.
+     */
     @GetMapping("/byIds")
-    fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> = typedByIds(ids, Any::class.java)
+    fun restByIds(ids: List<Key<T>>): Flux<KeyValuePair<T, Any>> =
+        if (ids.isEmpty()) Flux.empty()
+        else Flux.fromIterable(ids)
+            .concatMap { verifier().verify(it, ChatDomain.KEY_VALUE_PAIR) }
+            .map { it.key }
+            .collectList()
+            .flatMapMany { verified -> typedByIds(verified, Any::class.java) }
 
     // Jackson has no more of T here than Spring does for a path segment: it infers
     // the key type from the JSON alone. The key arrives as Any and typeUtil(),
     // inherited from PersistenceRestMapping, converts it to the store's key type.
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addKv(@RequestBody req: KVRequest) = key()
-        .flatMap { key ->
-            add(KeyValuePair.create(Key.funKey(typeUtil().assignFrom(req.key)), req.data))
-                .thenReturn(key)
-        }
+    fun addKv(@RequestBody req: KVRequest): Mono<Key<T>> =
+        // The caller mints first, so the key must resolve in KEY_VALUE_PAIR.
+        // An unknown id is refused. C68.
+        Mono.fromCallable { typeUtil().exactFrom(req.key) }
+            .flatMap { verifier().resolve(it, ChatDomain.KEY_VALUE_PAIR) }
+            .flatMap { add(KeyValuePair.create(it.key, req.data)).thenReturn(it.key) }
 }
 
 data class KVRequest(val key: Any, val data: Any)

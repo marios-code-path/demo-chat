@@ -301,7 +301,9 @@ A decoded key is a claim. It becomes a `VerifiedKey` only through T4.
 
 ### C. Factory calls in main source
 
-Seventy-seven calls. Corrections from the review are marked **fixed**.
+The plan counted 77 lines at `3527e7cb`. T0 measured 78 calls at `141dee77`.
+See the T0 measurement below this table. Corrections from the review are marked
+**fixed**.
 
 | # | Site | Src | After | Task |
 |---|---|---|---|---|
@@ -354,6 +356,25 @@ Seventy-seven calls. Corrections from the review are marked **fixed**.
 | C74 | `SecretsRestMapping.kt:38` `compare/{id}` | R | **fixed.** `resolve(id, USER)`. Not refused | T3d |
 | C75 | `PubSubRestMapping.kt:53` | P | the minted message key | T3d |
 | C76, C77 | `IKeyRestMapping.kt:27`, `:31` | R | `@Resolved` with no expected domain | T3d, T4 |
+| C78 | `EntityTargets.kt:28`, membership target | S | **T0, new.** The entity came from a typed store of `TOPIC_MEMBERSHIP`. Use the root of that domain. PR #139 added this site after the first measurement | T3d |
+
+**The T0 measurement, 2026-09-25, at master `141dee77`.** The semantic tools
+counted calls, not lines.
+
+| Factory | Tool | Calls in main source |
+|---|---|---|
+| `Key.funKey` | `mcp__treesitter-mcp__find_usages` | 64 |
+| `MessageKey.create(T, T, T)` | `mcp__idea__analyze_calls` | 12 |
+| `MessageKey.create(T, T)` | `mcp__idea__analyze_calls` | 0. One test calls it |
+| `Key.emptyKey` | `mcp__treesitter-mcp__find_usages` | 2 |
+| **Total** | | **78** |
+
+Three facts explain 64 `funKey` calls against the 63 lines of the first
+measurement:
+
+- C21 is a commented-out line. The tool does not count it. That removes one.
+- `AccessBroker.kt:12` holds two calls on one line. That adds one.
+- C78 is a new site. That adds one.
 
 **The C16 contract.**
 
@@ -393,6 +414,38 @@ Mint calls with a class today:
 | D6 | `PersistenceStoreMapping.add(ent)`, RSocket | **new.** Verifies the entity key in the store domain before the store | T4 |
 | D7 | Request ids in `ByIdRequest`, `MembershipRequest`, `MessageSendRequest`, `MemberTopicRequest` | resolved in the composite service, sites C39 to C60 | T3d, T4 |
 
+**Routes that T0 found, with no entry before.** The owner decided them on
+2026-09-25. Each belongs to the existing verification work in T4. None is a
+separate feature, and none keeps a legacy path.
+
+| # | Route | Caller input | Required verification | Task |
+|---|---|---|---|---|
+| D8 | RSocket `SecretsStoreMapping.addCredential`, `compareSecret` | a `KeyCredential` with an owner key | Verify the credential owner key in `USER` before a credential read, write, or comparison | T4 |
+| D9 | RSocket `KeyValueStoreMapping.typedByIds` | a `List<Key<T>>` | Verify every input key in `KEY_VALUE_PAIR` before the bulk store call | T4 |
+| D10 | RSocket `TopicPubSubServiceMapping.sendMessage` | a `Message` with a caller key and caller ids | Verify the message key in `MESSAGE`. Resolve the sender in `USER`. Resolve the destination in `MESSAGE_TOPIC` | T4 |
+| D11 | RSocket `TopicPubSubServiceMapping`: `subscribe`, `unsubscribe`, `unSubscribeAll`, `unSubscribeAllIn`, `receiveOn`, `exists`, `add`, `rem`, `getByUser`, `getUsersBy` | raw ids, and `MemberTopicRequest` | Resolve each user or member id in `USER`. Resolve each topic id in `MESSAGE_TOPIC` | T4 |
+| D12 | RSocket `IndexServiceController.add`, both controllers, and REST `IndexRestMapping.add` | an entity with a caller key | Verify the entity key in the index domain before an external index write | T4 |
+
+**The D9 label in the T0 inventory was wrong.** `typedByIds` belongs to
+`KeyValueStoreMapping`, not to `PersistenceStoreMapping`. Both interfaces sit
+in the file `PersistenceStoreMapping.kt`.
+
+Four rules apply to every row:
+
+1. Invalid identity input fails verification. A bulk request does not filter
+   it out.
+2. Permission filtering stays a separate authorization contract.
+3. An empty input list needs no key lookup. It answers no entities.
+4. Domain verification grants no permission. It does not prove that a sender
+   is the authenticated caller.
+
+D6 covers the `KeyValuePair` variant of `PersistenceStoreMapping.add` too.
+
+**The route guard of T4 reads a verification catalog.** The owner decided the
+rule on 2026-09-25. T4 step 7 states it. The earlier guard checked only
+parameters of type `Key` and parameters with `@PathVariable`. It could not see
+an entity, a `KeyCredential`, a `Message`, a list of keys, or a raw id.
+
 ### E. Every `add` path, and its key source
 
 **Measured on 2026-09-25 with `mcp__treesitter-mcp__find_usages` for `add`**
@@ -408,7 +461,7 @@ and are not listed. T0 step 2 measures again.
 | E5 | `VectorIndexJobStoreImpl.start`, `topicPersistence.add` | M, `MESSAGE_TOPIC`. **D2.** A separate key from the job key | T5 |
 | E6 | `VectorIndexJobStoreImpl.write`, `keyValueStore.add(job.key)` | M. **D2.** The job key is minted in `KEY_VALUE_PAIR` | T5 |
 | E7 | `ComposedJobRecordWriter.write`, `messagePersistence.add` | M, minted from the message store in `MessageReindexServiceImpl.emit` | T5 |
-| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. T0 step 2 confirms each key comes from `key()` | T5 |
+| E8 | `PersistenceControllers` in `chat-webflux`, lines 35, 50, 64, 78 | M. **T0 confirmed** that each key comes from `key()`. One observation for owner review: `addMessage` stores the caller ids `req.from` and `req.dest`, and `addMembership` stores `req.uid` and `req.roomId`. These are raw ids, not keys. **The owner decided on 2026-09-25.** Resolve the message sender in `USER` and the destination in `MESSAGE_TOPIC`. Resolve the membership user in `USER` and the room in `MESSAGE_TOPIC` | T4, T5 |
 | E9 | `KeyValueStoreRestMapping` add | R, `KEY_VALUE_PAIR` | T4, T5 |
 | E10 | `PersistenceStoreMapping.add(ent)`, RSocket | R, the store domain | T4, T5 |
 | E11 | `KeyValueStoreRegisteredClientRepository.save` | M on first save, S after | T5 |
@@ -416,6 +469,21 @@ and are not listed. T0 step 2 measures again.
 | E13 | `RootKeyService.publishRootKeys`, `kvStore.add` | B | T2 |
 | E14 | `CoreAuthorizationService.authorize`, `authPersist.add` | M for the grant key. Principal and target verified in T6 | T5, T6 |
 | E15 | `UserCommands.kv`, `keyValuePersistence.add` | M | T5 |
+
+**Credential writes, found in T0.** Section E listed only one credential
+write, E12. T0 searched `addCredential` with `mcp__treesitter-mcp__find_usages`.
+
+| # | Path | Key source | Task |
+|---|---|---|---|
+| E16 | `CoreAuthenticationService.setAuthentication`, from `CoreUserDetailsService.updatePassword` | S. `mcp__idea__analyze_calls` finds one production caller. It passes a `UserDetails` that a store read built | T5 |
+| E17 | `UserCommands.passwd` in `chat-shell` | The shell reads the user from the server, then sends the credential to the RSocket route of D8. The server verifies it there | T5 |
+| E18 | RSocket `SecretsStoreMapping.addCredential` | R. See D8. **The owner decided on 2026-09-25.** Verify the owner key in `USER` before the write | T4, T5 |
+| E19 | REST `restAddCredential` | X. The mint is refused. See the mint table | T3d |
+| E20 | `MessagePersistenceCassandra.add` | **Found in T3b, not measured by T0.** It mints a new message id and stores the caller key id as the sender. So a stored message cannot be read by its own key. **The owner decided on 2026-09-26.** Preserve the supplied id, sender, destination and timestamp. Do not mint inside `add` | T5 |
+
+**The count of add paths.** T0 measured the store and key-value `add` paths
+again. The count is 15, as before. PR #139 changed no `add` path. The
+credential writes add four entries, E16 to E19.
 
 ---
 
@@ -769,6 +837,74 @@ object RootKeysFixture {
 
 10. **Commit.** `git commit -am "Load stable roots. Add a root snapshot contract. (CHAT-avduuqwp, CHAT-bafkgkko)"`
 
+
+**Review corrections, 2026-09-25.** The owner review of `8eff96ee` found two
+defects. Both are corrected before T3a starts.
+
+1. **A malformed id became zero.** `TypeUtil.LongUtil.fromString` answers zero
+   for malformed or overflowing text. `RootIds.parse` now reads every root and
+   identity id that arrives as text. It accepts a value only when the value
+   writes back to the same text. It refuses the empty value of the key type.
+   The snapshot and the Redis store use it, on a read and on the read after a
+   conditional write. A snapshot parses every id before it loads one.
+   `RootKeys` refuses two domains that share an id, and Admin and Anon that
+   share an id.
+2. **A process could start with no roots.** `RootKeySource` now reads the
+   source of each process at context refresh:
+
+   | Setting | Source | Requirement |
+   |---|---|---|
+   | `app.rootkeys.consume.scheme` unset | `STORE` | a `RootKeyStore` and an `IKeyGenerator`, or the start fails |
+   | `kv` | `KV` | `app.kv.rootkeys` |
+   | `http` | `HTTP` | `app.rootkeys.consume.source` |
+   | `app.rootkeys.required=false` | `NONE` | no consume scheme |
+
+   Any other scheme fails the refresh with a named error. `NONE` is the one
+   explicit role that holds no roots. The authorization server declares it.
+   Its user lookup and its password upgrade read no root.
+   `AuthorizationCodeFlowTests` asserts that `RootKeys` stays empty while the
+   flow runs.
+
+**Second review corrections, 2026-09-26.** The owner review of `de67b9df`
+found two more defects.
+
+3. **A scheme with spaces bypassed the loader.** `RootKeySource` trimmed the
+   scheme, and the listener conditions compared the raw text. So `" "` and
+   `" http "` started with no roots. `RootKeySource` now reads the raw text.
+   It refuses any value that is not canonical, for the scheme and for
+   `app.rootkeys.required`.
+4. **The authorization server launch conflicted with its configuration.**
+   `chat-build` emitted HTTP consumption for every client. Each service now
+   has one root key role:
+
+   | Role | Services | Local discovery | Consul discovery |
+   |---|---|---|---|
+   | `store` | `core` | loads from its store | loads from its store, and the `rootkeys` phase publishes to Consul KV |
+   | `consume` | `rest`, `gateway`, `shell` | the HTTP snapshot | the Consul KV snapshot |
+   | `none` | `authserv` | `app.rootkeys.required=false` | `app.rootkeys.required=false` |
+
+   The owner decided the Consul row on 2026-09-26. A core node without the
+   `rootkeys` phase no longer consumes from a peer. It loads from its own
+   store. Seven core goldens changed for that reason.
+
+`LaunchRootKeySourceTests` in `chat-deploy` reads every golden flag file. It
+runs `RootKeySource` on the flags. For the authorization server, it also loads
+the `application.yml` of that module. `test-flags.sh` proves that `chat-build`
+emits the goldens. So the two checks tie a generated launch to the startup
+rule.
+
+`RootKeyStartupTests` in `chat-deploy` drives the Spring configuration. It
+covers these cases:
+
+- a missing store
+- an unsupported scheme
+- a store failure
+- incomplete roots
+- a missing generator
+- each consume scheme without its setting
+- the `NONE` role
+- a scheme or a required value that is not canonical text
+
 ---
 
 ## T3a: Key contract in chat-core
@@ -966,12 +1102,20 @@ class KeyVerifierConstructionTests {
     /** This pattern matches a call or a callable reference. */
     private val trustCall = Regex("""(\btrustTypedStore\s*\()|(::\s*trustTypedStore\b)""")
 
+    /** The guard excludes `KeyVerifier.kt` alone. Every other file, `VerifiedKey.kt` included, is scanned. */
+    private fun constructorOffenders(files: List<Pair<String, String>>): List<String> =
+        files.filter { (name, _) -> name != "KeyVerifier.kt" }
+            .flatMap { (name, text) -> constructorCall.findAll(text).map { "$name: ${it.value}" }.toList() }
+
     @Test
     fun `only KeyVerifier constructs a VerifiedKey`() {
-        val offenders = mainSources()
-            .filter { it.name != "KeyVerifier.kt" }
-            .flatMap { f -> constructorCall.findAll(f.readText()).map { "${f.name}: ${it.value}" }.toList() }
-        assertThat(offenders).isEmpty()
+        assertThat(constructorOffenders(mainSources().map { it.name to it.readText() })).isEmpty()
+    }
+
+    @Test
+    fun `a constructor call inside VerifiedKey kt fails the guard`() {
+        val helper = "class VerifiedKey<T> internal constructor(val key: Key<T>)\nfun <T> unchecked(k: Key<T>) = VerifiedKey(k)"
+        assertThat(constructorOffenders(listOf("VerifiedKey.kt" to helper))).containsExactly("VerifiedKey.kt: VerifiedKey(")
     }
 
     @Test
@@ -1036,10 +1180,17 @@ object KeyEquality {
         other is Key<*> && other.empty == a.empty && other.id == a.id && other.root == a.root
 
     fun hash(k: Key<*>): Int = Objects.hash(k.id, k.root, k.empty)
+
+    /** The generic type admits a nullable argument, so every canonical class checks at construction. */
+    fun requireMembers(id: Any?, root: Any?) {
+        requireNotNull(id) { "A key needs an id. The id is null." }
+        requireNotNull(root) { "A key needs a root. The root is null." }
+    }
 }
 
 @JsonTypeName("key")
 class SimpleKey<T>(override val id: T, override val root: T) : Key<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = false
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1048,6 +1199,7 @@ class SimpleKey<T>(override val id: T, override val root: T) : Key<T> {
 
 @JsonTypeName("key")
 class EmptyKey<T>(override val id: T, override val root: T) : NoKey<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = true
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1058,6 +1210,7 @@ class EmptyKey<T>(override val id: T, override val root: T) : NoKey<T> {
 class SimpleMessageKey<T>(
     override val id: T, override val root: T, override val from: T, override val dest: T
 ) : MessageKey<T> {
+    init { KeyEquality.requireMembers(id, root) }
     override val empty: Boolean get() = false
     override fun equals(other: Any?) = KeyEquality.equals(this, other)
     override fun hashCode() = KeyEquality.hash(this)
@@ -1199,7 +1352,7 @@ class KeyServiceInMemory<T>(private val keyGen: Supplier<T>, private val rootKey
 
 ```kotlin
 override fun get(key: Key<T>): Mono<out User<T>> =
-    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri) }
+    userRepo.findByKeyId(key.id).map { row -> User.create(Key.of(row.key.id, root()), row.name, row.handle, row.imageUri, row.timestamp) }
 ```
 
    `AuthMetadataById` maps `principal_root` and `target_root`. `CredKey` loses
@@ -1235,8 +1388,10 @@ fun `a found key carries the root of the index domain`() {
 
 2. **Each index takes its `ChatDomain`,** and builds
    `Key.of(id, rootKeys.of(domain).id)` for every key it returns. C20 to C33.
-   The Cassandra authorization index reads `principal_root` and `target_root`
-   from its rows.
+   The Cassandra authorization index stores `principal_root` and
+   `target_root` in its rows. Its `findBy` returns grant keys alone, so it does
+   not consume those columns. The stored roots are consumed where authorization
+   reads the principal and the target, which is the grant store of T3b.
 
 3. **Checkpoint.** Run
    `mvn -o -q -B -pl chat-core,chat-index-lucene,chat-index-cassandra test -Pintegration`.
@@ -1493,7 +1648,8 @@ FP: `CHAT-kliyrune`.
 - Modify: `chat-security/.../access/AuthMetadataAccessBroker.kt`, `SpringSecurityAccessBrokerService.kt`
 - Create: `chat-webflux/.../config/ResolvedKeyArgumentResolver.kt`, and the `@Resolved` annotation
 - Create: `chat-service-controller/.../config/rsocket/VerifiedKeyArgumentResolver.kt`
-- Modify: every D1, D2 and D6 route
+- Modify: every D1, D2, D6 and D8 to D12 route, and the E8 controllers
+- Create: `chat-service-controller/src/test/.../RouteVerificationCatalog.kt`
 - Test: `chat-security/src/test/.../VerificationBoundaryTests.kt`
 - Test: `chat-webflux/src/test/.../ResolvedKeyArgumentResolverTests.kt`
 - Test: `chat-service-controller/src/test/.../VerifiedKeyArgumentResolverTests.kt`
@@ -1613,30 +1769,62 @@ fun hasAccessToEntity(entity: Any?, perm: String, domain: ChatDomain): Mono<Bool
 6. **Move every D1, D2 and D6 route** to `VerifiedKey`. D6 verifies the entity
    key in the store domain before it calls the store.
 
-7. **Write the route signature guard.** It reads the route interfaces through
-   reflection, not through text.
+7. **Write the route verification catalog and its guard.** The owner decided
+   this rule on 2026-09-25.
+
+   The catalog is an explicit list in test source. Each entry names one
+   handler, and it records these facts:
+
+   - the key fields and the id fields of the input
+   - the expected domain of each field
+   - the verification path, which is `verify`, `resolve`, or a resolver
+   - the classification `NO_IDENTITY` for a route that takes no key and no id
+
+   The guard discovers every REST and RSocket handler by reflection. It
+   includes inherited handlers and handlers on generic interfaces. It walks each
+   parameter type into nested values and into collections. It reports a key or
+   an id at any depth.
+
+   The guard compares the discovered handlers with the catalog. Each of these
+   conditions fails the guard:
+
+   - a discovered handler with no catalog entry
+   - a catalog entry with no discovered handler
+   - a discovered key or id field that its entry does not name
+   - an entry whose signature no longer matches its handler
+
+   So a new or changed handler fails the guard until the catalog names it.
 
 ```kotlin
 @Test
-fun `no route takes an unverified key or a raw path id`() {
-    val offenders = routeInterfaces().flatMap { type ->
-        type.methods
-            .filter { it.isAnnotationPresent(MessageMapping::class.java) || it.hasWebMapping() }
-            .flatMap { m ->
-                m.parameters
-                    .filter { p -> p.type == Key::class.java || p.isAnnotationPresent(PathVariable::class.java) }
-                    .map { "${type.simpleName}.${m.name}(${it.name})" }
-            }
-    }
-    assertThat(offenders).isEmpty()
+fun `every handler matches its verification catalog entry`() {
+    val discovered = HandlerDiscovery.all(routeInterfaces())
+    val problems = RouteVerificationCatalog.compare(discovered)
+    assertThat(problems).isEmpty()
+}
+
+@Test
+fun `the discovery reaches nested values, collections and inherited handlers`() {
+    val found = HandlerDiscovery.all(listOf(ProbeRoutes::class.java)).single().identityFields()
+    assertThat(found).contains("request.members[].uid", "keys[]", "message.key", "message.record.dest")
 }
 ```
 
-   **The test KDoc states the limit.** The guard proves that each route declares
-   the verified type. It does not prove that a registry read ran. A route
-   parameter gets its `VerifiedKey` from a resolver, and step 5 proves that each
-   resolver calls `verify` or `resolve`. No route calls `trustTypedStore`. The
-   T3a guard enforces that.
+   **Structural coverage does not prove runtime verification.** The catalog
+   proves that each route is named and classified. It does not prove that a
+   registry read ran. So each boundary keeps its runtime tests:
+
+   - An invalid input test uses a recording store, index, or pub/sub service.
+     It asserts zero downstream calls.
+   - A mutation test removes the verification call of one boundary. That test
+     must fail. Step 2 records each mutation.
+
+   D8 to D12 and E8 each get one invalid input test and one mutation. D9 also
+   gets an empty list test. It asserts no key lookup and no entity.
+
+   A route parameter gets its `VerifiedKey` from a resolver, and step 5 proves
+   that each resolver calls `verify` or `resolve`. No route calls
+   `trustTypedStore`. The T3a guard enforces that.
 
 8. **Checkpoint.** Run `shell-scripts/build-health.sh`. Confirm that it exits
    with 0.
@@ -1691,13 +1879,22 @@ fun `the key-value store refuses a topic key`() {
 }
 ```
 
-5. **Test each path E1 to E15** through its caller. Each test asserts that the
+5. **Repair the Cassandra message add, E20.** The owner decided this on
+   2026-09-26. `MessagePersistenceCassandra.add` stores the supplied message
+   id, sender, destination and timestamp. It does not mint another id. The
+   incoming key meets the domain check of step 3.
+
+   Add a regression through the real Cassandra store. Use distinct message,
+   sender and destination ids. Read the stored message by its supplied key.
+   Check every identity field and the registry mapping.
+
+6. **Test each path E1 to E15** through its caller. Each test asserts that the
    write succeeds with its listed key source.
 
-6. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
+7. **Checkpoint.** Run `shell-scripts/build-health.sh --integration`. Confirm
    that it exits with 0.
 
-7. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
+8. **Commit.** `git commit -am "Every store refuses a key of another domain (CHAT-avduuqwp)"`
 
 ---
 
@@ -1972,3 +2169,33 @@ not include the official dictionary.
    that" sentence replaces each result fragment such as "Expected: exit 0."
    The audit did not list these steps. They had the same fragment pattern.
 4. "Memory, in full:" is a complete sentence.
+
+**Ninth revision, 2026-09-25, after the owner review of T0 to T2 at `8eff96ee`.**
+
+1. **D8 to D12, E8 and E18 are decided.** Each belongs to T4. The D section
+   states the required verification of each row and four shared rules.
+2. **The D9 label is corrected.** The route is
+   `KeyValueStoreMapping.typedByIds`.
+3. **The route guard reads an explicit verification catalog.** T4 step 7
+   states the catalog, the discovery, and the failure conditions. Runtime
+   boundary tests and mutation tests stay.
+4. **T2 has two corrections.** The T2 section records the strict id parser and
+   the root key source.
+
+**Tenth revision, 2026-09-26, after the owner review of `de67b9df`.**
+
+1. **Canonical source text.** The T2 section records that `RootKeySource`
+   refuses a scheme or a required value that is not canonical.
+2. **Launch roles.** The T2 section records the root key role of each
+   `chat-build` service, and the Consul decision of the owner.
+
+**Eleventh revision, 2026-09-26, after the owner review of T3a to T3c at `736f92cd`.**
+
+1. **A key refuses a null id or root.** Every canonical class checks at
+   construction, so every factory checks too. The T3a example shows it.
+2. **A Cassandra user read keeps its stored timestamp.** `User.create` gains a
+   timestamp overload. The T3b example uses it.
+3. **The construction guard excludes `KeyVerifier.kt` alone.** A test feeds it a
+   constructor call inside `VerifiedKey.kt`.
+4. **The T3c wording separates stored columns from consumed values.**
+5. **E20 records the Cassandra message add.** T5 step 5 repairs it.

@@ -133,7 +133,7 @@ class VectorIndexEndpoint<T>(
     private fun recentJobs(): Mono<List<IndexJob<T>>> = Mono.defer {
         jobStore.listJobTopics()
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
-            .flatMap { topic -> jobStore.readJob(topic.key) }
+            .flatMap { topic -> jobStore.readJobByTopic(topic.key) }
             // The name and the record are two stored things. A local name over
             // a foreign record must not reach an operator as this deployment's
             // job. The coverage policy and the release sweep check the same

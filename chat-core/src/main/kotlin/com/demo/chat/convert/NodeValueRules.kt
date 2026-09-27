@@ -64,13 +64,20 @@ object NodeValueRules {
  * **A `Key` and a `MessageKey` share one wire shape**, and the presence of
  * `from` and `dest` is what separates them. Both Jackson generations apply
  * this rule, so a key decoded over HTTP and a key decoded from a store agree.
+ *
+ * **A key needs a root.** Each generation refuses a payload with no `root`, or
+ * with a null `root`, and raises its own mapping exception with
+ * [MISSING_ROOT]. A payload with `empty` set to true decodes to an empty key.
+ * See `CHAT-avduuqwp`.
  */
 object KeyAssembly {
 
-    fun <T : Any> key(id: T, from: T?, dest: T?): com.demo.chat.domain.Key<T> =
-        if (from != null && dest != null) {
-            com.demo.chat.domain.MessageKey.create(id, from, dest)
-        } else {
-            com.demo.chat.domain.Key.funKey(id)
+    const val MISSING_ROOT = "A key needs a root. The payload holds none."
+
+    fun <T : Any> key(id: T, root: T, empty: Boolean, from: T?, dest: T?): com.demo.chat.domain.Key<T> =
+        when {
+            empty -> com.demo.chat.domain.Key.empty(id, root)
+            from != null && dest != null -> com.demo.chat.domain.MessageKey.of(id, root, from, dest)
+            else -> com.demo.chat.domain.Key.of(id, root)
         }
 }

@@ -1,5 +1,9 @@
 package com.demo.chat.test.config
 
+import com.demo.chat.test.service.composite.FAKE_ROOTS
+
+import com.demo.chat.domain.MapRequestConverters
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.service.composite.VectorRecallBeansConfiguration
@@ -52,6 +56,8 @@ class VectorRecallServiceConfigurationTests {
         context.beanFactory.registerSingleton("persistenceBeans", beans.persistence())
         context.beanFactory.registerSingleton("indexBeans", beans.index())
         context.beanFactory.registerSingleton("pubSubBeans", beans.pubSub())
+        context.beanFactory.registerSingleton("queryConverters", MapRequestConverters())
+        context.beanFactory.registerSingleton("rootKeys", FAKE_ROOTS)
         // A deployment builds this mapper from the Module beans that
         // JacksonModules declares. The registration repeats that result.
         //

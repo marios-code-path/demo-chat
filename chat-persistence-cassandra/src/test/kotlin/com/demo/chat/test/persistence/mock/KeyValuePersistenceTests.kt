@@ -1,5 +1,11 @@
 package com.demo.chat.test.persistence.mock
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.persistence.cassandra.domain.CSKeyValuePair
@@ -42,7 +48,8 @@ class KeyValuePersistenceTests {
 
     private val keyService = TestLongKeyService()
 
-    private val testData = KeyValuePair.create(Key.funKey(1L), "test")
+    // The key carries the KEY_VALUE_PAIR root, so the store accepts it. See CHAT-avduuqwp, T5.
+    private val testData = KeyValuePair.create(Key.of(1L, FakeKeyServices.longRoots().of(ChatDomain.KEY_VALUE_PAIR).id), "test")
     private val testCSData = CSKeyValuePair(KVKey(1L), "test")
 
     @BeforeEach
@@ -83,7 +90,7 @@ class KeyValuePersistenceTests {
             .given(mapper.readValue(Mockito.anyString(), Mockito.any(Class::class.java)))
             .willReturn("test")
 
-        persistence = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
+        persistence = KeyValuePersistenceCassandra(TestLongKeyService(), FakeKeyServices.longRoots(), repo, mapper)
     }
 
     @Test
@@ -101,14 +108,14 @@ class KeyValuePersistenceTests {
 
     @Test
     fun `should rem()`() {
-        StepVerifier.create(persistence.rem(Key.funKey(1L)))
+        StepVerifier.create(persistence.rem(TestKeys.key(1L)))
             .expectSubscription()
             .verifyComplete()
     }
 
     @Test
     fun `should get()`() {
-        StepVerifier.create(persistence.get(Key.funKey(1L)))
+        StepVerifier.create(persistence.get(TestKeys.key(1L)))
             .expectSubscription()
             .assertNext {
                 Assertions
@@ -129,7 +136,7 @@ class KeyValuePersistenceTests {
 
     @Test
     fun `should byIds()`() {
-        StepVerifier.create(persistence.byIds(listOf(Key.funKey(1L))))
+        StepVerifier.create(persistence.byIds(listOf(TestKeys.key(1L))))
             .expectSubscription()
             .assertNext {
                 Assertions

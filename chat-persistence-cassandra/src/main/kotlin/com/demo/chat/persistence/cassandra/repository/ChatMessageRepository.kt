@@ -1,7 +1,6 @@
 package com.demo.chat.persistence.cassandra.repository
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.Message
 import com.demo.chat.persistence.cassandra.domain.ChatMessageById
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
@@ -18,7 +17,7 @@ interface ChatMessageRepository<T : Any> : ChatMessageRepositoryCustom<T>, React
 
 interface ChatMessageRepositoryCustom<T> {
     fun rem(key: Key<T>): Mono<Void>
-    fun add(msg: Message<T, String>): Mono<Void>
+    fun add(msg: ChatMessageById<T>): Mono<Void>
 }
 
 @Suppress("unused")
@@ -32,7 +31,7 @@ class ChatMessageRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplat
                     )
                     .then()
 
-    override fun add(msg: Message<T, String>): Mono<Void> =
+    override fun add(msg: ChatMessageById<T>): Mono<Void> =
             cassandra
                     .insert(msg)
                     .then()

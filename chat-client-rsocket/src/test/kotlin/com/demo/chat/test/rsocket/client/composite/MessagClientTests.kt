@@ -1,5 +1,11 @@
 package com.demo.chat.test.rsocket.client.composite
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.composite.MessagingClient
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Message
@@ -55,7 +61,7 @@ class MessagClientTests : RSocketTestBase() {
 
         StepVerifier
                 .create(
-                        client.messageById(ByIdRequest(UUID.randomUUID()))
+                        client.messageById(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE).id))
                 )
                 .expectSubscription()
                 .assertNext {
@@ -87,7 +93,7 @@ class MessagClientTests : RSocketTestBase() {
         val client = MessagingClient<UUID, String>(svcPrefix, requester)
 
         StepVerifier
-                .create(client.listenTopic(ByIdRequest(UUID.randomUUID())))
+                .create(client.listenTopic(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id)))
                 .expectSubscription()
                 .expectNextCount(10)
                 .thenConsumeWhile({
@@ -117,6 +123,6 @@ class MessagClientTests : RSocketTestBase() {
         val messageId = UUID.randomUUID()
         counter++
 
-        return Message.create(MessageKey.create(messageId, roomId, userId), "Hello $counter !", true)
+        return Message.create(TestKeys.message(messageId, roomId, userId), "Hello $counter !", true)
     }
 }

@@ -144,34 +144,49 @@ Two distinct key/value paths, easy to confuse:
 
 ## 3. Startup and Root-Key Bootstrap
 
-The single most non-obvious runtime behavior. Services cannot serve requests until well-known "root keys" (`Admin`, `Anon`, and domain roots) exist and agree across the cluster. `chat-deploy` drives this with an application-event chain.
+A service cannot serve requests until it holds the root key of each `ChatDomain`. The exception is a service with the `NONE` source. It loads no roots, and its supported operations read no root. The authorization server is that role. `Admin` and `Anon` are user identities, and their keys carry the `USER` root. `chat-deploy` loads the roots in an `ApplicationStartedEvent` listener, before any request. See `CHAT-avduuqwp` and `docs/KEY-ROOT-IDENTITY.md`.
+
+`RootKeySource` reads the settings and selects one source. It refuses any other combination at start.
+
+| Source | Setting | Behavior |
+|---|---|---|
+| `STORE` | `app.rootkeys.consume.scheme` unset | The node loads each root from its `RootKeyStore`. It creates a missing root with a conditional write. Only this path creates a root. |
+| `KV` | `app.rootkeys.consume.scheme=kv` | The node reads a `RootKeySnapshot` from the key-value store that `app.kv.rootkeys` names. |
+| `HTTP` | `app.rootkeys.consume.scheme=http` | The node reads a snapshot from the `rootkeys` actuator at `app.rootkeys.consume.source`. |
+| `NONE` | `app.rootkeys.required=false` | The node loads no roots. The authorization server is that role. |
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant App as ChatApp (chat-deploy)
-    participant RK as RootKeyService
-    participant KV as Consul KV / HTTP peer
+    participant Chk as StoreShapeCheck beans
+    participant RS as RootKeyStore
+    participant Snap as Consul KV / HTTP peer
     participant Init as UserInitializationListener
-    participant Sec as RSocket server
 
-    App->>RK: RootKeyInitRunner
-    alt this node is the origin
-        RK->>RK: GenerateRootKeyInitializer
-        RK->>KV: publish root keys
-    else joining node
-        RK->>KV: RootKeyConsumerHttp / HttpRootKeyConsumeOnStart
-        KV-->>RK: root keys
+    App->>Chk: check() on every registered check
+    Note over Chk: A store with the old schema<br/>fails the start here
+    alt STORE
+        App->>RS: RootKeyLoader.load()
+        RS-->>App: ChatDomain to root id
+    else KV or HTTP
+        App->>Snap: read the snapshot
+        Snap-->>App: ChatDomain to root id
     end
-    RK-->>App: RootKeyInitializationReadyEvent
-    App->>Init: InitOnRootKeyInitialized
-    Init->>Init: seed initial users (app.init=users,rootkeys)
-    Init-->>App: StartupAnnouncementEvent
-    App->>Sec: accept payloads
-    Note over Sec: DefaultingAnonymousPayloadInterceptor<br/>needs rootKeys.getRootKey(Anon) —<br/>which is why ordering matters
+    App-->>App: RootKeyInitializationReadyEvent
+    App->>Init: app.users.create=true
+    Init->>Init: store the initial users
+    Init-->>App: RootKeyUpdatedEvent
+    opt app.rootkeys.publish.scheme=kv
+        App->>Snap: publish the snapshot
+    end
 ```
 
-Root keys are also exposed as a custom actuator endpoint (`RootKeyEndpoint`, management id `rootkeys`), which is how a second node discovers them over HTTP when Consul is not in play. `ActuatorWebSecurityConfiguration` guards that surface.
+**The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. This release has no migration.
+
+A store node publishes the snapshot to Consul only after it stores the initial users, because `RootKeyUpdatedEvent` starts the publish.
+
+The `rootkeys` actuator endpoint (`RootKeyEndpoint`) serves the snapshot for the HTTP source. `ActuatorWebSecurityConfiguration` guards that surface.
 
 ---
 

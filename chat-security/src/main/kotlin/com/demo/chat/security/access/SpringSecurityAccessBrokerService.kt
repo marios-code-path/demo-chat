@@ -1,25 +1,30 @@
 package com.demo.chat.security.access
 
-import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.service.security.AccessBroker
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
 
 class SpringSecurityAccessBrokerService<T>(
     val access: AccessBroker<T>,
-    val rootKeys: RootKeys<T>
+    val rootKeys: RootKeys<T>,
+    private val verifier: KeyVerifier<T>,
 ) {
 
+    /**
+     * The check of an access expression that names a domain as text. The text
+     * is parsed into a [ChatDomain] first. An unknown name denies. It never
+     * reaches a map lookup as text. See `CHAT-avduuqwp`.
+     */
     fun hasAccessToDomain(domain: String, perm: String): Mono<Boolean> =
-        access.hasAccessByPrincipal(
-            getSecurityContextPrincipal(),
-            rootKeys.getRootKey(domain), perm
-        )
-            .doOnError { println("ERROR") }
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
+        ChatDomain.parse(domain)
+            ?.let { access.hasAccessByPrincipal(getSecurityContextPrincipal(), verifier.domainRoot(it), perm) }
+            ?.onErrorReturn(false)
+            ?.switchIfEmpty(Mono.just(false))
+            ?: Mono.just(false)
 
     fun hasAccessTo(who: T, target: T, perm: String): Mono<Boolean> =
         access.hasAccessByKeyId(who, target, perm)
@@ -27,33 +32,52 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
 
     /**
-     * The per element check of a `@PostFilter`. [EntityTargets] names the
-     * target of [entity]. An entity with no target denies.
+     * The per element check of a `@PostFilter`. [storeDomain] is the domain of
+     * the typed store that returned [entity]. The store states it through
+     * `PersistenceAccess.storeDomain`. The entity does not state it.
+     *
+     * **This method trusts the store.** It reads no registry. It converts the
+     * key through `trustTypedStore` in [storeDomain], and it is the one
+     * permitted caller of that conversion. Do not call it for input that a
+     * caller sent. Use [hasAccessToSubmittedEntity] for that.
+     *
+     * An entity with no target denies. An entity whose type belongs to another
+     * domain denies before the broker, because this store should not hold it.
+     * See `CHAT-avduuqwp`, T4 review correction 3.
      */
-    fun hasAccessToEntity(entity: Any?, perm: String): Mono<Boolean> =
-        EntityTargets.keyOf<T>(entity)
-            ?.let { target -> hasAccessTo(target, perm) }
-            ?: Mono.just(false)
-
-    fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
-        access.hasAccessByPrincipal(
-            getSecurityContextPrincipal(),
-            target, perm
-        )
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
-
-    fun <S> hasAccessToDomainByKind(kind: Class<S>, perm: String): Mono<Boolean> {
-        if(!rootKeys.hasKey(kind))
-            throw ChatException("Unknown key for domain ${kind.simpleName}")
-
-       return access.hasAccessByPrincipal(
-            getSecurityContextPrincipal(),
-            rootKeys.getRootKey(kind), perm
-        )
+    fun hasAccessToEntity(entity: Any?, perm: String, storeDomain: ChatDomain): Mono<Boolean> {
+        val key = EntityTargets.keyOf(entity, rootKeys) ?: return Mono.just(false)
+        if (EntityTargets.domainOf(entity) != storeDomain) return Mono.just(false)
+        return Mono.fromCallable { verifier.trustTypedStore(key, storeDomain) }
+            .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
             .onErrorReturn(false)
             .switchIfEmpty(Mono.just(false))
     }
+
+    /**
+     * The check of an entity that a caller sent, such as an index write. The
+     * key verifies against the registry in the domain of the entity type. An
+     * unknown key or a forged root denies, and the broker is not called.
+     */
+    fun hasAccessToSubmittedEntity(entity: Any?, perm: String): Mono<Boolean> {
+        val key = EntityTargets.keyOf(entity, rootKeys) ?: return Mono.just(false)
+        val domain = EntityTargets.domainOf(entity) ?: return Mono.just(false)
+        return verifier.verify(key, domain)
+            .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
+            .onErrorReturn(false)
+            .switchIfEmpty(Mono.just(false))
+    }
+
+    /**
+     * The target verifies against the registry before the broker sees it. An
+     * unknown key or a forged root denies, and the broker is not called. See
+     * `CHAT-avduuqwp`, D4.
+     */
+    fun hasAccessTo(target: Key<T>, perm: String): Mono<Boolean> =
+        verifier.verify(target, null)
+            .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
+            .onErrorReturn(false)
+            .switchIfEmpty(Mono.just(false))
 
     /**
      * The principal of the current security context.

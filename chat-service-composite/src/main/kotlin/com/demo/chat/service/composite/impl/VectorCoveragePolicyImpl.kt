@@ -4,6 +4,7 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.EmbeddingIdentity
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
+import com.demo.chat.service.vector.JobLookupException
 import com.demo.chat.service.vector.JobTopicNames
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.vector.VectorCoveragePolicy
@@ -40,14 +41,14 @@ class VectorCoveragePolicyImpl<T>(
             // needs all of them. Narrowing here rather than after the read
             // means this node never reads another node's job at all.
             .filter { topic -> JobTopicNames.matches(topic.data, nodeId, keyType) }
-            .flatMap { topic -> jobStore.readJob(topic.key) }
+            .flatMap { topic -> jobStore.readJobByTopic(topic.key) }
             // A name and a record that disagree fail the read rather than
             // dropping that job. Dropping it would expose an older clean job,
             // and the spec requires the read to fail closed.
             //
-            // The root key needs no check here. The topic key leaves this
-            // chain at readJob, and only readJob can compare it with the key
-            // the record holds. Task 5 makes that comparison.
+            // A lookup fault fails the selection. The policy never skips a
+            // broken topic, because that would expose an older job. See
+            // CHAT-avduuqwp, D3.
             .flatMap { job ->
                 if (job.nodeId == nodeId && job.keyType == keyType) {
                     Mono.just(job)
@@ -90,7 +91,9 @@ class VectorCoveragePolicyImpl<T>(
             )
             .next()
             .filter { job -> job.covers }
-            .onErrorResume { error ->
+            // A lookup fault reaches the caller as an error. Any other read
+            // failure logs and answers no coverage. See CHAT-avduuqwp, D3.
+            .onErrorResume({ error -> error !is JobLookupException }) { error ->
                 logger.error("Vector coverage read failed", error)
                 Mono.empty()
             }

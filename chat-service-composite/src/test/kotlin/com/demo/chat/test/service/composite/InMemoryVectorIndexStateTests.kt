@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.service.vector.VectorFinishResult
 import com.demo.chat.service.vector.VectorInvalidation
@@ -46,7 +48,7 @@ class InMemoryVectorIndexStateTests {
         val claim = state.claim()
         val report = VectorRebuildReport(startedAt, finishedAt, 2L, 2L, 0L, 0L)
 
-        val result = state.finish(claim, report, null, Key.funKey(11L))
+        val result = state.finish(claim, report, null, TestKeys.key(11L))
 
         Assertions.assertThat(result.succeeded).isTrue()
         Assertions.assertThat(result.status.complete).isTrue()
@@ -64,7 +66,7 @@ class InMemoryVectorIndexStateTests {
         state.invalidate("live vector add failed")
         val report = VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L)
 
-        val result = state.finish(claim, report, null, Key.funKey(11L))
+        val result = state.finish(claim, report, null, TestKeys.key(11L))
 
         Assertions.assertThat(result.succeeded).isFalse()
         Assertions.assertThat(result.status.phase).isEqualTo(VectorIndexPhase.INCOMPLETE)
@@ -79,7 +81,7 @@ class InMemoryVectorIndexStateTests {
             first,
             VectorRebuildReport(startedAt, finishedAt, 2L, 2L, 0L, 0L),
             null,
-            Key.funKey(11L),
+            TestKeys.key(11L),
         )
         val second = state.claim()
         val failedAt = finishedAt.plusSeconds(1)
@@ -88,7 +90,7 @@ class InMemoryVectorIndexStateTests {
             second,
             VectorRebuildReport(finishedAt, failedAt, 2L, 1L, 0L, 1L),
             "IllegalStateException: vector down",
-            Key.funKey(12L),
+            TestKeys.key(12L),
         )
 
         Assertions.assertThat(result.succeeded).isFalse()
@@ -104,7 +106,7 @@ class InMemoryVectorIndexStateTests {
     fun `a successful finish installs its job as the invalidation target`() {
         val state = InMemoryVectorIndexState<Long>()
         val claim = state.claim()
-        val jobKey = Key.funKey(11L)
+        val jobKey = TestKeys.key(11L)
 
         val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L), null, jobKey)
 
@@ -115,23 +117,23 @@ class InMemoryVectorIndexStateTests {
     @Test
     fun `a failed finish does not install its job as the target`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(9L))
+        state.adoptCoveringJob(TestKeys.key(9L))
         val claim = state.claim()
 
-        val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 0L, 0L, 1L), "boom", Key.funKey(11L))
+        val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 0L, 0L, 1L), "boom", TestKeys.key(11L))
 
         Assertions.assertThat(result.succeeded).isFalse()
-        Assertions.assertThat(state.coveringJob()).isEqualTo(Key.funKey(9L))
+        Assertions.assertThat(state.coveringJob()).isEqualTo(TestKeys.key(9L))
     }
 
     @Test
     fun `invalidate returns the target that the state holds and clears it`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(9L))
+        state.adoptCoveringJob(TestKeys.key(9L))
 
         val invalidation = state.invalidate("live vector add failed")
 
-        Assertions.assertThat(invalidation.target).isEqualTo(Key.funKey(9L))
+        Assertions.assertThat(invalidation.target).isEqualTo(TestKeys.key(9L))
         Assertions.assertThat(invalidation.generation).isEqualTo(1L)
         Assertions.assertThat(state.coveringJob()).isNull()
     }
@@ -139,7 +141,7 @@ class InMemoryVectorIndexStateTests {
     @Test
     fun `a second invalidation finds no target`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(9L))
+        state.adoptCoveringJob(TestKeys.key(9L))
         state.invalidate("first")
 
         Assertions.assertThat(state.invalidate("second").target).isNull()
@@ -148,11 +150,11 @@ class InMemoryVectorIndexStateTests {
     @Test
     fun `an invalidation that wins the race keeps the new job from covering`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(9L))
+        state.adoptCoveringJob(TestKeys.key(9L))
         val claim = state.claim()
         state.invalidate("live vector add failed")
 
-        val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L), null, Key.funKey(11L))
+        val result = state.finish(claim, VectorRebuildReport(startedAt, finishedAt, 1L, 1L, 0L, 0L), null, TestKeys.key(11L))
 
         Assertions.assertThat(result.succeeded).isFalse()
         Assertions.assertThat(result.status.complete).isFalse()
@@ -209,8 +211,8 @@ class InMemoryVectorIndexStateTests {
      */
     @Test
     fun `a concurrent finish and invalidation reach one coherent outcome`() {
-        val prior = Key.funKey(9L)
-        val fresh = Key.funKey(11L)
+        val prior = TestKeys.key(9L)
+        val fresh = TestKeys.key(11L)
         val pool = Executors.newFixedThreadPool(2)
 
         try {
@@ -262,14 +264,14 @@ class InMemoryVectorIndexStateTests {
     @Test
     fun `a failed run reports a false verdict while an earlier job still covers`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(500L))
+        state.adoptCoveringJob(TestKeys.key(500L))
         val claim = state.claim()
 
         val result = state.finish(
             claim,
             VectorRebuildReport(startedAt, finishedAt, 2L, 1L, 0L, 1L),
             null,
-            Key.funKey(11L),
+            TestKeys.key(11L),
         )
 
         Assertions.assertThat(result.succeeded).isFalse()
@@ -281,16 +283,16 @@ class InMemoryVectorIndexStateTests {
         val state = InMemoryVectorIndexState<Long>()
         state.claim()
 
-        state.markActiveJob(Key.funKey(600L))
+        state.markActiveJob(TestKeys.key(600L))
 
-        Assertions.assertThat(state.status().activeJob).isEqualTo(Key.funKey(600L))
+        Assertions.assertThat(state.status().activeJob).isEqualTo(TestKeys.key(600L))
     }
 
     @Test
     fun `every finish clears the active job`() {
         val state = InMemoryVectorIndexState<Long>()
         val claim = state.claim()
-        state.markActiveJob(Key.funKey(600L))
+        state.markActiveJob(TestKeys.key(600L))
 
         state.finish(
             claim,
@@ -307,13 +309,13 @@ class InMemoryVectorIndexStateTests {
     @Test
     fun `an invalidation keeps the active job`() {
         val state = InMemoryVectorIndexState<Long>()
-        state.adoptCoveringJob(Key.funKey(500L))
+        state.adoptCoveringJob(TestKeys.key(500L))
         state.claim()
-        state.markActiveJob(Key.funKey(600L))
+        state.markActiveJob(TestKeys.key(600L))
 
         state.invalidate("live vector add failed")
 
-        Assertions.assertThat(state.status().activeJob).isEqualTo(Key.funKey(600L))
+        Assertions.assertThat(state.status().activeJob).isEqualTo(TestKeys.key(600L))
         Assertions.assertThat(state.coveringJob()).isNull()
     }
 
@@ -323,7 +325,7 @@ class InMemoryVectorIndexStateTests {
     fun `markActiveJob outside a running state changes nothing`() {
         val state = InMemoryVectorIndexState<Long>()
 
-        state.markActiveJob(Key.funKey(600L))
+        state.markActiveJob(TestKeys.key(600L))
 
         Assertions.assertThat(state.status().activeJob).isNull()
     }

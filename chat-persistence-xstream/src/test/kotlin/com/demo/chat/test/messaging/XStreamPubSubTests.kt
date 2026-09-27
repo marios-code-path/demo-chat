@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -49,7 +51,7 @@ class XStreamPubSubTests(
         val topic = UUID.randomUUID()
         val sender = UUID.randomUUID()
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), sender, topic),
+            TestKeys.message(UUID.randomUUID(), sender, topic),
             "stream-payload",
             true,
         )
@@ -72,7 +74,7 @@ class XStreamPubSubTests(
     fun `repeated open delivers one stream message once`() {
         val topic = UUID.randomUUID()
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "repeated-open-payload",
             true,
         )
@@ -93,7 +95,7 @@ class XStreamPubSubTests(
     fun `concurrent open delivers one stream message once`() {
         val topic = UUID.randomUUID()
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "concurrent-open-payload",
             true,
         )
@@ -124,7 +126,7 @@ class XStreamPubSubTests(
             .verifyComplete()
 
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "reopened-payload",
             true,
         )
@@ -191,7 +193,7 @@ class XStreamPubSubTests(
             .isSameAs(newerEntry)
 
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "after-older-failure",
             true,
         )
@@ -262,7 +264,7 @@ class XStreamPubSubTests(
             .isNotSameAs(olderSink)
 
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "newer-sink-survives",
             true,
         )

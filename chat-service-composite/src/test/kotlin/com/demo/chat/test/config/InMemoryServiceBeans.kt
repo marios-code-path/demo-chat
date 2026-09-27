@@ -1,5 +1,7 @@
 package com.demo.chat.test.config
 
+import com.demo.chat.test.service.composite.FakeKeyValueIndex
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
@@ -44,6 +46,7 @@ internal class InMemoryServiceBeans {
     val messages = FakeMessagePersistence()
     val messageIndex = FakeMessageIndex()
     val keyValues = FakeKeyValueStore()
+    val keyValueIndex = FakeKeyValueIndex()
 
     fun persistence(): PersistenceServiceBeans<Long, String> =
         object : PersistenceServiceBeans<Long, String> {
@@ -85,8 +88,7 @@ internal class InMemoryServiceBeans {
                 object : DummyIndexService<Long, AuthMetadata<Long>, Map<String, String>>(),
                     AuthMetaIndex<Long, Map<String, String>> {}
 
-            override fun KVPairIndex(): KeyValueIndexService<Long, Map<String, String>> =
-                DummyKeyValueIndexService()
+            override fun KVPairIndex(): KeyValueIndexService<Long, Map<String, String>> = keyValueIndex
         }
 
     fun pubSub(): PubSubServiceBeans<Long, String> =

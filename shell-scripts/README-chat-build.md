@@ -115,8 +115,8 @@ before using either flag, or the single-module build cannot resolve them.
 
 | Flag | Effect |
 |---|---|
-| `--local` | Default. Disables Consul. When `rootkeys` is *not* an init phase, adds the HTTP root-key consume chain so a joining node pulls keys off a peer's actuator. |
-| `--consul` | Adds `register-consul`. When `rootkeys` *is* an init phase, publishes keys to Consul KV instead. Falls back to `docker inspect` to find the Consul IP if `CONSUL_HOST` is unset. |
+| `--local` | Default. Disables Consul. A client with no store reads the root key snapshot from the actuator of a store node over HTTP. |
+| `--consul` | Adds `register-consul`. A store node with the `rootkeys` phase publishes the root key snapshot to Consul KV. A client with no store reads that snapshot. Falls back to `docker inspect` to find the Consul IP if `CONSUL_HOST` is unset. |
 
 ### Key type (pick one)
 
@@ -137,6 +137,18 @@ before using either flag, or the single-module build cannot resolve them.
 | `--env-file PATH` | Where to write the env file. |
 | `--dry-run` | Print everything, execute nothing. |
 | `--native` | Rejected — GraalVM native builds are still unsupported. |
+
+**Root keys.** Each service has one root key role. `RootKeySource` in
+`chat-deploy` refuses any other combination at start.
+
+| Role | Services | Local discovery | Consul discovery |
+|---|---|---|---|
+| `store` | `core` | loads or creates each root in its store | the same, and the `rootkeys` phase publishes the snapshot to Consul KV |
+| `consume` | `rest`, `gateway`, `shell` | reads the snapshot over HTTP | reads the snapshot from Consul KV |
+| `none` | `authserv` | sets `app.rootkeys.required=false` | sets `app.rootkeys.required=false` |
+
+A client under Consul discovery needs a store node that ran the `rootkeys`
+phase. Without a published snapshot, the client fails its start.
 
 **TLS is fail-closed.** You must pass `--tls <dir>` or `--notls`; there is no
 implicit default, as `build-app.sh` required before it was removed.

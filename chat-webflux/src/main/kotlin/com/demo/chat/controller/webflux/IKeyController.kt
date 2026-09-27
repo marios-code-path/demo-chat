@@ -1,5 +1,7 @@
 package com.demo.chat.controller.webflux
 
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.webflux.core.mapping.IKeyRestMapping
 import com.demo.chat.domain.TypeUtil
@@ -14,9 +16,11 @@ import org.springframework.web.bind.annotation.RestController
 @ConditionalOnProperty(prefix = "app.controller", name = ["key"])
 class IKeyRestController<T>(
     private val that: KeyServiceBeans<T>,
-    private val typeUtil: TypeUtil<T>
+    private val typeUtil: TypeUtil<T>,
+    private val verifier: KeyVerifier<T>,
 ) : IKeyRestMapping<T>,
     IKeyService<T> by that.keyService() {
 
     override fun typeUtil(): TypeUtil<T> = typeUtil
+    override fun verifier(): KeyVerifier<T> = verifier
 }

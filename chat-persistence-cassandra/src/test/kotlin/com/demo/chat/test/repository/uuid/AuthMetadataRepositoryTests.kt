@@ -1,5 +1,9 @@
 package com.demo.chat.test.repository.uuid
 
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
@@ -41,6 +45,8 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -70,6 +76,8 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -102,6 +110,8 @@ class AuthMetadataRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerat
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.UUID_ROOT,
+            TestRoots.UUID_ROOT,
             "TEST",
             false,
             System.currentTimeMillis()

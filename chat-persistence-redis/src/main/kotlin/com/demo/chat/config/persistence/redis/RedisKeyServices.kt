@@ -1,7 +1,16 @@
 package com.demo.chat.config.persistence.redis
 
+import com.demo.chat.persistence.redis.impl.RedisStoreShapeCheck
+
+import com.demo.chat.service.core.StoreShapeCheck
+
 import com.demo.chat.config.KeyServiceBeans
+import org.springframework.beans.factory.annotation.Value
+import com.demo.chat.domain.TypeUtil
+import com.demo.chat.persistence.redis.impl.RootKeyStoreRedis
+import com.demo.chat.service.core.RootKeyStore
 import com.demo.chat.persistence.redis.impl.KeyServiceRedis
+import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -17,8 +26,19 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate
 class RedisKeyServices<T : Any>(
     private val stringTemplate: ReactiveStringRedisTemplate,
     private val keyGen: IKeyGenerator<T>,
+    private val rootKeys: RootKeys<T>,
+    private val typeUtil: TypeUtil<T>,
+    @Value("\${app.key.type}") private val keyType: String,
 ) : KeyServiceBeans<T> {
 
     @Bean
-    override fun keyService(): IKeyService<T> = KeyServiceRedis(stringTemplate, keyGen)
+    override fun keyService(): IKeyService<T> = KeyServiceRedis(stringTemplate, keyGen, rootKeys, typeUtil, keyType)
+
+    /** The start check of the Redis store shape. It runs before the root keys load. See `CHAT-avduuqwp`, T7. */
+    @Bean
+    fun redisKeyShapeCheck(): StoreShapeCheck = RedisStoreShapeCheck(stringTemplate)
+
+    @Bean
+    fun rootKeyStore(): RootKeyStore<T> =
+        RootKeyStoreRedis(stringTemplate, typeUtil, keyType)
 }

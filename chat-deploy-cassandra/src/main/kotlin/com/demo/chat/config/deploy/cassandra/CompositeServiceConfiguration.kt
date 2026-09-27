@@ -1,5 +1,9 @@
 package com.demo.chat.config.deploy.cassandra
 
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.service.core.IKeyService
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.service.composite.CompositeServiceBeansConfiguration
 import com.demo.chat.config.service.composite.access.CompositeServiceAccessBeansConfiguration
@@ -19,7 +23,8 @@ class CompositeServiceConfiguration {
     fun <T : Any> serviceAccessCompositeServiceAccessBeans(
         accessBroker: AccessBroker<T>,
         rootKeys: RootKeys<T>,
-        compositeServiceBeansConfiguration: CompositeServiceBeansConfiguration<T, String, IndexSearchRequest>
+        compositeServiceBeansConfiguration: CompositeServiceBeansConfiguration<T, String, IndexSearchRequest>,
+        keyService: IKeyService<T>,
     ): CompositeServiceBeans<T, String> = CompositeServiceAccessBeansConfiguration(
         accessBroker = accessBroker,
         // **`ContextIdentity` holds the rule.** This seam carried its own
@@ -28,6 +33,7 @@ class CompositeServiceConfiguration {
         // See `docs/IDENTITY-POLICY.md`.
         principalKeyPublisher = { ContextIdentity(rootKeys).identity() },
         rootKeys = rootKeys,
+        verifier = KeyVerifier(keyService, rootKeys),
         compositeServiceBeansConfiguration = compositeServiceBeansConfiguration
     )
 }

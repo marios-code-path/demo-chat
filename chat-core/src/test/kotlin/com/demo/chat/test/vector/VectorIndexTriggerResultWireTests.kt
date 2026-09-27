@@ -1,5 +1,7 @@
 package com.demo.chat.test.vector
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.DefaultChatJacksonModules
 import com.demo.chat.domain.Key
 import com.demo.chat.service.vector.VectorIndexPhase
@@ -25,7 +27,7 @@ class VectorIndexTriggerResultWireTests {
 
     private val status = VectorIndexStatus<Long>(
         phase = VectorIndexPhase.REBUILDING,
-        activeJob = Key.funKey(500L),
+        activeJob = TestKeys.key(500L),
     )
 
     @Test

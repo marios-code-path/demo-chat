@@ -1,5 +1,7 @@
 package com.demo.chat.test.auth
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import org.assertj.core.api.Assertions
@@ -11,7 +13,7 @@ class StringRoleAuthorizationMetaTests {
     @Test
     fun `should create`() {
         Assertions
-            .assertThat(StringRoleAuthorizationMetadata(Key.funKey(1024L), Key.funKey(1L), Key.funKey(2L), "TEST"))
+            .assertThat(StringRoleAuthorizationMetadata(TestKeys.key(1024L), TestKeys.key(1L), TestKeys.key(2L), "TEST"))
             .isNotNull
             .hasNoNullFieldsOrProperties()
     }
@@ -20,9 +22,9 @@ class StringRoleAuthorizationMetaTests {
     fun `should create with strange input`() {
         Assertions
             .assertThat(StringRoleAuthorizationMetadata(
-                Key.funKey(1024L),
-                Key.funKey(Long.MAX_VALUE),
-                Key.funKey(Long.MIN_VALUE),
+                TestKeys.key(1024L),
+                TestKeys.key(Long.MAX_VALUE),
+                TestKeys.key(Long.MIN_VALUE),
                 Random.nextLong().toString()))
             .isNotNull
             .hasNoNullFieldsOrProperties()

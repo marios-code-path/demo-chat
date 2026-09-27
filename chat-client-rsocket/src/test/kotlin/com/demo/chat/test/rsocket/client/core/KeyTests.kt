@@ -1,5 +1,11 @@
 package com.demo.chat.test.rsocket.client.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.domain.UUIDUtil
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.client.rsocket.clients.core.KeyClient
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.controller.core.KeyServiceController
@@ -40,10 +46,10 @@ class KeyTests : RSocketTestBase() {
             .given(keyService.exists(anyObject()))
             .willReturn(Mono.just(true))
 
-        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
         StepVerifier
-            .create(client.exists(Key.funKey(UUID.randomUUID())))
+            .create(client.exists(TestKeys.key(UUID.randomUUID())))
             .assertNext {
                 Assertions
                     .assertThat(it)
@@ -60,10 +66,10 @@ class KeyTests : RSocketTestBase() {
             .given(keyService.rem(anyObject()))
             .willReturn(Mono.empty())
 
-        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
         StepVerifier
-            .create(client.rem(Key.funKey(UUID.randomUUID())))
+            .create(client.rem(TestKeys.key(UUID.randomUUID())))
             .verifyComplete()
     }
 
@@ -72,17 +78,21 @@ class KeyTests : RSocketTestBase() {
         val keyService = keyBeans.keyService()
 
         BDDMockito
-            .given(keyService.key<Any>(anyObject()))
+            .given(keyService.key(anyObject()))
             .willReturn(Mono.empty())
 
-        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester)
+        val client: IKeyService<UUID> = KeyClient(svcPrefix, requester, UUIDUtil())
 
         StepVerifier
-            .create(client.key(String::class.java))
+            .create(client.key(ChatDomain.USER))
             .verifyComplete()
     }
 }
 
 @Controller
 @MessageMapping("key")
-class TestKeyController<T>(keyServices: KeyServiceBeans<T>) : KeyServiceController<T>(keyServices.keyService())
+// Every test here sends UUID keys. The type util is built here, so this scanned
+// controller asks no new bean of any other context.
+@Suppress("UNCHECKED_CAST")
+class TestKeyController<T>(keyServices: KeyServiceBeans<T>) :
+    KeyServiceController<T>(keyServices.keyService(), UUIDUtil() as com.demo.chat.domain.TypeUtil<T>)

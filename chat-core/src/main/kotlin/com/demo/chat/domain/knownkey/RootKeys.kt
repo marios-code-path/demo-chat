@@ -4,77 +4,67 @@ import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Key
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * The root key of each domain, and the two user identities.
+ *
+ * A domain root and an identity are different things. A domain root names a
+ * domain. An identity names one user, so it is an object of the `User`
+ * domain. Each has its own typed accessor. See `CHAT-avduuqwp`.
+ *
+ * **A partial domain set is refused.** [loadDomains] requires every
+ * [ChatDomain]. So a node never serves with a partial set.
+ */
 class RootKeys<T> {
 
-    private var keyMap: MutableMap<String, Key<T>> = ConcurrentHashMap(20)
-        set(value) {
-            field.clear()
-            field.putAll(value)
-        }
-        get() = field
+    private val domains: MutableMap<ChatDomain, Key<T>> = ConcurrentHashMap()
+    private val identities: MutableMap<ChatIdentity, Key<T>> = ConcurrentHashMap()
 
-    fun merge(other: Map<String, Key<T>>) {
-        keyMap.putAll(other)
-    }
-    fun getMapOfKeyMap(): Map<String, Key<T>> = keyMap.toMap()
+    fun of(domain: ChatDomain): Key<T> = domains[domain] ?: throw ChatException(
+        if (domains.isEmpty()) "The root key '${domain.wireName}' is missing. The root keys are not loaded."
+        else "The root key '${domain.wireName}' is missing. Loaded: ${domains.keys.sorted().joinToString { it.wireName }}"
+    )
 
-    fun <S> getRootKey(domain: Class<S>): Key<T> = getRootKey(domain.simpleName)
+    fun identity(identity: ChatIdentity): Key<T> = identities[identity]
+        ?: throw ChatException("The ${identity.wireName} identity is not loaded.")
+
+    fun admin(): Key<T> = identity(ChatIdentity.ADMIN)
+
+    fun anon(): Key<T> = identity(ChatIdentity.ANON)
+
+    /** This method returns the domain whose root has [id]. It returns null for any other id. */
+    fun domainOfRoot(id: T): ChatDomain? = domains.entries.firstOrNull { it.value.id == id }?.key
 
     /**
-     * Both overloads route through here so they cannot drift.
-     *
-     * This used to be `keyMap[domain]!!`, which turned a missing key into a
-     * bare NullPointerException naming neither the domain requested nor what
-     * the map held. Those two cases look identical from the stack trace and
-     * are entirely different faults:
-     *
-     *  - the map is empty, so root-key initialization never ran; or
-     *  - the map is populated and this one domain is genuinely absent.
-     *
-     * The first is a deployment or startup-ordering problem, the second a
-     * caller asking for something that was never registered. Naming the
-     * contents is what separates them.
-     *
-     * The return stays non-null. Every one of the callers - authentication,
-     * access checks, the anonymous payload interceptor, shell identity -
-     * requires the key to proceed, so a nullable return would only push an
-     * unhandleable condition outward.
+     * This method returns the domain root or the identity that a configuration
+     * name names. It returns null for any other name. The name is parsed into a
+     * [ChatDomain] or a [ChatIdentity] first, so free text never reaches a map.
      */
-    fun getRootKey(domain: String): Key<T> =
-        keyMap[domain] ?: throw ChatException(
-            if (keyMap.isEmpty()) {
-                "No root key '$domain': no root keys are initialized at all. " +
-                    "Root keys are populated at startup - locally when app.rootkeys.create is set, " +
-                    "or fetched from a peer's /actuator/rootkeys when app.rootkeys.consume.scheme=http. " +
-                    "An empty map means neither ran, or ran before the source was ready."
-            } else {
-                "No root key '$domain'. Known root keys: ${keyMap.keys.sorted().joinToString(", ")}"
-            }
-        )
-    fun <S> addRootKey(domain: Class<S>, key: Key<T>) = keyMap.put(domain.simpleName, key)
-    fun <S> isRootKeyWithValue(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
-    fun hasKey(key: String) = keyMap.containsKey(key)
-    fun <S> hasKey(domain: Class<S>) = keyMap.containsKey(domain.simpleName)
-    fun addRootKey(domain: String, key: Key<T>) = keyMap.put(domain, key)
-    fun <S> isRootKeyWithValue(domain: Class<S>, key: Key<T>): Boolean {
-        return if(isRootKeyWithValue(domain)) {
-            getRootKey(domain).id == key.id
-        }
-        else {
-            false
-        }
+    fun byName(name: String): Key<T>? =
+        ChatDomain.parse(name)?.let { domains[it] }
+            ?: ChatIdentity.parse(name)?.let { identities[it] }
+
+    fun loadDomains(roots: Map<ChatDomain, Key<T>>) {
+        val missing = ChatDomain.entries - roots.keys
+        require(missing.isEmpty()) { "A root key set must name every domain. Missing: $missing" }
+        val shared = roots.entries.groupBy({ it.value.id }, { it.key }).filterValues { it.size > 1 }
+        require(shared.isEmpty()) { "Two domains must not share a root id. Shared: $shared" }
+        domains.putAll(roots)
     }
 
+    fun loadIdentities(admin: Key<T>, anon: Key<T>) {
+        require(admin.id != anon.id) { "The Admin and Anon identities must not share an id: ${admin.id}" }
+        identities[ChatIdentity.ADMIN] = admin
+        identities[ChatIdentity.ANON] = anon
+    }
+
+    fun domains(): Map<ChatDomain, Key<T>> = domains.toMap()
+
+    fun identities(): Map<ChatIdentity, Key<T>> = identities.toMap()
+
     companion object {
-        fun <T> rootKeySummary(rootKeys: RootKeys<T>): String {
-            val sb = StringBuilder()
-
-            sb.append("Root Keys: \n")
-            for (rootKey in rootKeys.keyMap.keys) {
-                sb.append("${rootKey}=${rootKeys.getRootKey(rootKey)}\n")
-            }
-
-            return sb.toString()
-        }
+        fun <T> rootKeySummary(rootKeys: RootKeys<T>): String =
+            "Root Keys: \n" +
+                rootKeys.domains().entries.joinToString("") { "${it.key.wireName}=${it.value}\n" } +
+                rootKeys.identities().entries.joinToString("") { "${it.key.wireName}=${it.value}\n" }
     }
 }

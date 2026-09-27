@@ -60,7 +60,7 @@ fun interface IndexEntryEncoder<E> : Function<E, List<Pair<String, String>>> {
         fun <T> ofTopicMembership(): IndexEntryEncoder<TopicMembership<T>> =
             IndexEntryEncoder { t ->
                 listOf(
-                    Pair("key", Key.funKey(t.key).toString()),
+                    Pair("key", t.key.toString()),
                     Pair(MembershipIndexService.MEMBER, t.member.toString()),
                     Pair(MembershipIndexService.MEMBEROF, t.memberOf.toString())
                 )

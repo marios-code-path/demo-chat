@@ -47,4 +47,6 @@ class MapRequestConverters : RequestToQueryConverters<Map<String, String>> {
         Pair(MembershipIndexService.MEMBER, req.uid.toString()),
         Pair(MembershipIndexService.MEMBEROF, req.roomId.toString())
     )
+
+    override fun keyValueFieldToQuery(field: String, value: String) = mapOf(field to value)
 }

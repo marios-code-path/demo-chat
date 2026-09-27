@@ -1,5 +1,13 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.TestGeneratorKeyService
+
+import org.junit.jupiter.api.BeforeEach
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.controller.webflux.PubSubRestController
@@ -41,12 +49,12 @@ import reactor.test.StepVerifier
 
 @ContextConfiguration(
     classes = [TestLongPubSubBeans::class, TestLongKeyServiceBeans::class, LongUserDetailsConfiguration::class,
-        WebFluxTestConfiguration::class, PubSubRestController::class]
+        WebFluxTestConfiguration::class, LongTypeUtilConfiguration::class, PubSubRestController::class]
 )
 class LongPubSubRestTests : PubSubRestTestBase<Long, String>(
-    { User.create(Key.funKey(1L), "Test", "Test", "Test") },
-    { MessageTopic.create(Key.funKey(10L), "TestTopic") },
-    { Key.funKey(1001L) },
+    { User.create(TestKeys.key(1L), "Test", "Test", "Test") },
+    { MessageTopic.create(TestKeys.key(10L), "TestTopic") },
+    { TestKeys.key(1001L) },
     { 1001L }
 )
 
@@ -61,6 +69,16 @@ open class PubSubRestTestBase<T : Any, V>(
     private val keySupplier: () -> Key<T>,
     private val idSupplier: () -> T
 ) {
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    /** Each path id resolves in its domain, as a minted id does. See CHAT-avduuqwp, D2. */
+    @BeforeEach
+    fun `register the path ids`() {
+        registry.register(12345L, ChatDomain.MESSAGE_TOPIC)
+        registry.register(1001L, ChatDomain.USER)
+    }
 
     @Autowired
     private lateinit var beans: PubSubServiceBeans<T, String>
@@ -83,7 +101,7 @@ open class PubSubRestTestBase<T : Any, V>(
             .willReturn(
                 Flux.just(
                     Message.create(
-                        MessageKey.Factory.create(keySupplier().id, keySupplier().id, keySupplier().id),
+                        TestKeys.message(keySupplier().id, keySupplier().id, keySupplier().id),
                         "TEST", true
                     )
                 ).repeat(3)
@@ -242,7 +260,7 @@ open class PubSubRestTestBase<T : Any, V>(
             .willReturn(Mono.empty())
 
         BDDMockito
-            .given(keyService.key<Any>(anyObject()))
+            .given(keyService.key(anyObject()))
             .willReturn(Mono.just(key))
 
         client
@@ -378,7 +396,7 @@ open class PubSubRestTestBase<T : Any, V>(
 
         client
             .get()
-            .uri("/pubsub/pub/1001")
+            .uri("/pubsub/pub/12345")
             .exchange()
             .expectStatus().isOk
             .expectBody()

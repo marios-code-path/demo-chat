@@ -1,5 +1,9 @@
 package com.demo.chat.test.repository.long
 
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataById
 import com.demo.chat.persistence.cassandra.domain.AuthMetadataIdKey
 import com.demo.chat.persistence.cassandra.repository.AuthMetadataRepository
@@ -38,6 +42,8 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.LONG,
+            TestRoots.LONG,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -67,6 +73,8 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.LONG,
+            TestRoots.LONG,
             "TEST",
             false,
             System.currentTimeMillis()
@@ -99,6 +107,8 @@ class LAuthMetadataRepositoryTests : CassandraSchemaTest<Long>(TestLongKeyGenera
             AuthMetadataIdKey(keyGenerator.nextId()),
             keyGenerator.nextId(),
             keyGenerator.nextId(),
+            TestRoots.LONG,
+            TestRoots.LONG,
             "TEST",
             false,
             System.currentTimeMillis()

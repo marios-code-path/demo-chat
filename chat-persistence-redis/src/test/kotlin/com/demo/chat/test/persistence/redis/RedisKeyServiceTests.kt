@@ -13,6 +13,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.UUID
+import com.demo.chat.domain.knownkey.RootKeys
 
 @Extensions(
     ExtendWith(SpringExtension::class)
@@ -21,8 +22,9 @@ import java.util.UUID
 @Tag("integration")
 class RedisKeyServiceTests(
     @Autowired keyService: KeyServiceRedis<UUID>,
+    @Autowired rootKeys: RootKeys<UUID>,
     @Autowired private val stringTemplate: ReactiveStringRedisTemplate,
-) : TestKeyServiceBase<UUID>(keyService) {
+) : TestKeyServiceBase<UUID>(keyService, rootKeys) {
 
     @BeforeEach
     fun `flush redis`() {

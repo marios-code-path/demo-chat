@@ -1,5 +1,10 @@
 package com.demo.chat.persistence.memory.impl
 
+import com.demo.chat.service.core.StoreDomain
+
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.service.core.IKeyService
@@ -12,18 +17,25 @@ import java.util.function.Function
 
 open class InMemoryPersistence<T, E : Any>(
     private val keyService: IKeyService<T>,
-    private val entityClass: Class<*>,
+    private val domain: ChatDomain,
+    private val rootKeys: RootKeys<T>,
     private val keyFromEntity: Function<E, Key<T>>,
 ) : PersistenceStore<T, E> {
     val map = ConcurrentHashMap<T, E>()
 
-    override fun key(): Mono<out Key<T>> = keyService.key(entityClass)
+    override fun key(): Mono<out Key<T>> = keyService.key(domain)
+
+    /**
+     * The key of [ent] must be in the domain of this store. A key of another
+     * domain fails before the write. See `CHAT-avduuqwp`, T5.
+     */
+    open fun domainCheck(ent: E): Mono<Void> = StoreDomain.requireKey(keyFromEntity.apply(ent), domain, rootKeys)
 
     //@Synchronized
-    override fun add(ent: E): Mono<Void> = Mono.create {
+    override fun add(ent: E): Mono<Void> = domainCheck(ent).then(Mono.create {
         map[keyFromEntity.apply(ent).id] = ent
         it.success()
-    }
+    })
 
     override fun rem(key: Key<T>): Mono<Void> = Mono.create {
         map.remove(key.id!!)

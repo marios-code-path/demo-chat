@@ -1,5 +1,11 @@
 package com.demo.chat.config.service.composite
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.service.core.IKeyService
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -25,7 +31,12 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     private val emptyMessageSupplier: EmptyMessageUtil<V>,
     private val queryConverters: RequestToQueryConverters<Q>,
     private val vectorIndexers: ObjectProvider<MessageVectorIndexer<T>>,
+    keyService: IKeyService<T>,
+    private val rootKeys: RootKeys<T>,
 ) : CompositeServiceBeans<T, V> {
+
+    /** Every inbound id resolves through the registry. See `CHAT-avduuqwp`. */
+    private val verifier = KeyVerifier(keyService, rootKeys)
 
     @Bean
     override fun messageService() = MessagingServiceImpl(
@@ -33,6 +44,7 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
         messagePersistence = persistenceBeans.messagePersistence(),
         pubsub = pubsub.pubSubService(),
         topicIdToQuery = queryConverters::topicIdToQuery,
+        verifier = verifier,
         messageVectorIndexer = vectorIndexers.ifAvailable,
     )
 
@@ -47,14 +59,19 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
         emptyDataCodec = emptyMessageSupplier,
         topicNameToQuery = queryConverters::topicNameToQuery,
         memberOfIdToQuery = queryConverters::membershipIdToQuery,
-        memberWithTopicToQuery = queryConverters::membershipRequestToQuery
+        memberWithTopicToQuery = queryConverters::membershipRequestToQuery,
+        messagePersistence = persistenceBeans.messagePersistence(),
+        verifier = verifier,
+        rootKeys = rootKeys,
     )
 
     @Bean
     override fun userService() = UserServiceImpl<T, Q>(
         userPersistence = persistenceBeans.userPersistence(),
         userIndex = indexBeans.userIndex(),
-        userHandleToQuery = queryConverters::userHandleToQuery
+        userHandleToQuery = queryConverters::userHandleToQuery,
+        verifier = verifier,
+        rootKeys = rootKeys,
     )
 }
 

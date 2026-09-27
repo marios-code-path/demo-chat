@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.RedisTemplateConfiguration
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -80,7 +82,7 @@ class RedisPubSubMessagingTests(
     fun `concurrent open creates one channel reader`() {
         val topic = UUID.randomUUID()
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "concurrent-open-payload",
             true,
         )
@@ -169,7 +171,7 @@ class RedisPubSubMessagingTests(
             .isSameAs(newerEntry)
 
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "after-older-failure",
             true,
         )
@@ -248,7 +250,7 @@ class RedisPubSubMessagingTests(
             .isNotSameAs(olderSink)
 
         val message = Message.create(
-            MessageKey.create(UUID.randomUUID(), UUID.randomUUID(), topic),
+            TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), topic),
             "newer-sink-survives",
             true,
         )

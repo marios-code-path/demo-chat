@@ -1,5 +1,9 @@
 package com.demo.chat.test.persistence.integration
 
+import com.demo.chat.test.key.FakeKeyServices
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -48,18 +52,19 @@ class CassandraIndexJobDecodeTests {
 
     private fun codec() = IndexJobCodec<Long>(mapper)
 
-    private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), repo, mapper)
+    private fun store() = KeyValuePersistenceCassandra(TestLongKeyService(), FakeKeyServices.longRoots(), repo, mapper)
 
     @Test
     fun `a stored job reads back through the codec`() {
         val store = store()
-        val key = Key.funKey(ids.incrementAndGet())
+        val key = kvKey(ids.incrementAndGet())
         val job = IndexJob(
             key = key,
+            topicKey = kvKey(900900L),
             nodeId = 7,
             keyType = "long",
             incarnationId = "incarnation-a",
-            startedBy = Key.funKey(ids.incrementAndGet()),
+            startedBy = kvKey(ids.incrementAndGet()),
             startedAt = Instant.parse("2026-09-12T12:00:00Z"),
             outcome = JobOutcome.FAILED,
             failed = 2L,
@@ -77,3 +82,8 @@ class CassandraIndexJobDecodeTests {
         Assertions.assertThat(decoded.covers).isFalse()
     }
 }
+
+/** A key under the KEY_VALUE_PAIR root, which the key-value store requires. See `CHAT-avduuqwp`, T5. */
+private fun kvKey(id: Long) = com.demo.chat.domain.Key.of(
+    id, com.demo.chat.test.key.FakeKeyServices.longRoots().of(com.demo.chat.domain.knownkey.ChatDomain.KEY_VALUE_PAIR).id,
+)

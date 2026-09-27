@@ -1,5 +1,9 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestVerifiers
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.ChatException
@@ -67,8 +71,8 @@ class TopicServiceReservedNameTests {
     fun `listRooms omits a reserved topic`() {
         val service = topicServiceUnderTest(
             existing = listOf(
-                MessageTopic.create(Key.funKey(1L), "general"),
-                MessageTopic.create(Key.funKey(2L), jobName),
+                MessageTopic.create(TestKeys.key(1L), "general"),
+                MessageTopic.create(TestKeys.key(2L), jobName),
             )
         )
 
@@ -87,7 +91,7 @@ class TopicServiceReservedNameTests {
         var nextId = 100L
 
         val topicPersistence = object : TopicPersistence<Long> {
-            override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { Key.funKey(nextId++) }
+            override fun key(): Mono<out Key<Long>> = Mono.fromSupplier { TestKeys.key(nextId++) }
             override fun add(ent: MessageTopic<Long>): Mono<Void> = Mono.fromRunnable { stored.add(ent) }
             override fun rem(key: Key<Long>): Mono<Void> = Mono.fromRunnable { stored.removeIf { it.key == key } }
             override fun get(key: Key<Long>): Mono<out MessageTopic<Long>> =
@@ -136,6 +140,9 @@ class TopicServiceReservedNameTests {
             topicNameToQuery = Function { req -> IndexSearchRequest("name", req.name, 100) },
             memberOfIdToQuery = Function { IndexSearchRequest("memberOf", "", 100) },
             memberWithTopicToQuery = Function { IndexSearchRequest("member", "", 100) },
+            messagePersistence = FakeMessagePersistence(),
+            verifier = TestVerifiers.resolvingNothing(),
+            rootKeys = FAKE_ROOTS,
         )
     }
 }

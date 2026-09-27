@@ -1,5 +1,8 @@
 package com.demo.chat.persistence.memory.impl
 
+import com.demo.chat.domain.knownkey.RootKeys
+
+import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.service.core.IKeyService
@@ -8,6 +11,7 @@ import java.util.function.Function
 
 class TopicPersistenceInMemory<T>(
     keyService: IKeyService<T>,
+    rootKeys: RootKeys<T>,
     keyFromEntity: Function<MessageTopic<T>, Key<T>>,
-) : InMemoryPersistence<T, MessageTopic<T>>(keyService, MessageTopic::class.java, keyFromEntity),
+) : InMemoryPersistence<T, MessageTopic<T>>(keyService, ChatDomain.MESSAGE_TOPIC, rootKeys, keyFromEntity),
     TopicPersistence<T>

@@ -39,4 +39,11 @@ class IndexSearchRequestConverters : RequestToQueryConverters<IndexSearchRequest
                 "${req.uid.toString()} AND ${MembershipIndexService.MEMBEROF}:${req.roomId.toString()}",
                 100
             )
+
+    /**
+     * The value is a phrase. An analyzed uuid splits at each hyphen, and an
+     * unquoted query would match every document that shares one segment.
+     */
+    override fun keyValueFieldToQuery(field: String, value: String) =
+            IndexSearchRequest(field, "\"$value\"", 100)
 }

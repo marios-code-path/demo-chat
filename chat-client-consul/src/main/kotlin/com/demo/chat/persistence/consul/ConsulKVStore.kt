@@ -1,42 +1,35 @@
 package com.demo.chat.persistence.consul
 
-import com.demo.chat.domain.Key
-import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.service.core.InitializingKVStore
 import com.ecwid.consul.v1.ConsulClient
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.nio.charset.Charset
-import java.util.*
 
-class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: String) :
-    InitializingKVStore {
+/**
+ * A string keyed store over the Consul KV API. Every name is placed under
+ * [pathPrefix]. It holds no domain key, because a Consul name has no domain.
+ * See `CHAT-avduuqwp`.
+ */
+class ConsulKVStore(private val client: ConsulClient, private val pathPrefix: String) : InitializingKVStore {
 
-    private fun prefixedId(key: Key<String>): String = "$pathPrefix/${key.id}"
+    private fun path(name: String): String = "$pathPrefix/$name"
 
-    override fun key(): Mono<out Key<String>> = Mono.empty()
-
-    override fun all(): Flux<out KeyValuePair<String, String>> = Flux.defer {
-        Optional.ofNullable(client.getKVKeysOnly(pathPrefix).value)
-            .orElseGet { emptyList() }
-            .map { key -> KeyValuePair.create(Key.funKey(key), "") }
-            .let { Flux.fromIterable(it) }
+    override fun read(name: String): Mono<String> = Mono.defer {
+        Mono.justOrEmpty(client.getKVValue(path(name)).value?.getDecodedValue(Charset.defaultCharset()))
     }
 
-    override fun get(key: Key<String>): Mono<out KeyValuePair<String, String>> = Mono.defer {
-        client.getKVValue(prefixedId(key)).value.getDecodedValue(Charset.defaultCharset())
-            .let {
-                Mono.just(KeyValuePair.create(key, it))
-            }
-    }
-
-    override fun rem(key: Key<String>): Mono<Void> = Mono.defer {
-        client.deleteKVValue(prefixedId(key))
+    override fun write(name: String, value: String): Mono<Void> = Mono.defer {
+        client.setKVValue(path(name), value)
         Mono.empty<Void>()
     }
 
-    override fun add(ent: KeyValuePair<String, String>): Mono<Void> = Mono.defer {
-        client.setKVValue(prefixedId(ent.key), ent.data)
+    override fun remove(name: String): Mono<Void> = Mono.defer {
+        client.deleteKVValue(path(name))
         Mono.empty<Void>()
+    }
+
+    override fun names(): Flux<String> = Flux.defer {
+        Flux.fromIterable(client.getKVKeysOnly(pathPrefix).value ?: emptyList())
     }
 }

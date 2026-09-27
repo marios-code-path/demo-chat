@@ -1,5 +1,7 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.StringUtil
@@ -42,7 +44,7 @@ class KafkaSenderContractTests {
     private val destination = "TEST-TOPIC"
 
     private val message: Message<String, String> =
-        Message.create(MessageKey.create("MSG", "FROM", destination), "body", true)
+        Message.create(TestKeys.message("MSG", "FROM", destination), "body", true)
 
     private fun senderReturning(
         results: Flux<SenderResult<String>>,

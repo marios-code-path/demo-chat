@@ -1,5 +1,7 @@
 package com.demo.chat.config.service.composite
 
+import com.demo.chat.domain.knownkey.RootKeys
+
 import com.demo.chat.config.CoreRecallBeans
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.composite.impl.MessageRecallServiceImpl
@@ -33,9 +35,10 @@ class VectorRecallBeansConfiguration<T>(
     private val typeUtil: TypeUtil<T>,
     private val state: VectorIndexState<T>,
     @Value("\${app.key.type}") private val keyType: String,
+    private val rootKeys: RootKeys<T>,
 ) : CoreRecallBeans<T> {
 
     @Bean
     override fun recallService(): MessageRecallService<T> =
-        MessageRecallServiceImpl(vectorStore, typeUtil, keyType, state)
+        MessageRecallServiceImpl(vectorStore, typeUtil, keyType, state, rootKeys)
 }

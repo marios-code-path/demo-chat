@@ -23,7 +23,7 @@ class RedisUserPersistenceTests(
     @Autowired stringTemplate: ReactiveStringRedisTemplate,
 ) : RedisKeyAwarePersistenceTestBase<UUID, User<UUID>>(
     stringTemplate,
-    TestUUIDUserSupplier,
+    TestUUIDUserSupplier(userPersistence),
     userPersistence,
     { t -> t.key },
 ) {

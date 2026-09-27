@@ -1,9 +1,7 @@
 package com.demo.chat.persistence.cassandra.repository
 
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
 import com.demo.chat.persistence.cassandra.domain.ChatUser
-import com.demo.chat.persistence.cassandra.domain.ChatUserKey
 import org.springframework.data.cassandra.core.ReactiveCassandraTemplate
 import org.springframework.data.cassandra.core.query.Query
 import org.springframework.data.cassandra.core.query.Update
@@ -11,7 +9,6 @@ import org.springframework.data.cassandra.core.query.where
 import org.springframework.data.cassandra.repository.ReactiveCassandraRepository
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
-import java.time.Instant
 
 interface ChatUserRepository<T : Any> : ReactiveCassandraRepository<ChatUser<T>, T>,
     ChatUserRepositoryCustom<T> {
@@ -21,7 +18,7 @@ interface ChatUserRepository<T : Any> : ReactiveCassandraRepository<ChatUser<T>,
 }
 
 interface ChatUserRepositoryCustom<T> {
-    fun add(u: User<T>): Mono<Void>
+    fun add(u: ChatUser<T>): Mono<Void>
     fun rem(key: Key<T>): Mono<Void>
 }
 
@@ -35,16 +32,8 @@ class ChatUserRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate) 
             )
             .then()
 
-    override fun add(u: User<T>): Mono<Void> =
+    override fun add(u: ChatUser<T>): Mono<Void> =
         cassandra
-            .insert(
-                ChatUser(
-                    ChatUserKey(u.key.id),
-                    u.name,
-                    u.handle,
-                    u.imageUri,
-                    Instant.now()
-                )
-            )
+            .insert(u)
             .then()
 }

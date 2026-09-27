@@ -51,7 +51,7 @@ ${vector.api.module.flag}
 -Dmanagement.endpoints.web.exposure.include=shutdown,health,rootkeys
 -Dapp.server.proto=rsocket -Dapp.users.create=true
 -Dspring.config.additional-location=classpath:/config/userinit.yml
--Dapp.rootkeys.create=true -Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
+-Dmanagement.server.port=6791 -Dspring.rsocket.server.port=6790
 -Dapp.primary=core -Dspring.shell.interactive.enabled=false -Dapp.key.type=long
 -Dapp.service.core.key=memory -Dapp.service.core.pubsub=memory -Dapp.service.core.index=lucene
 <!-- PR #51 (2026-08-28) made app.nodeid required. The memory key generators

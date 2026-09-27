@@ -1,5 +1,9 @@
 package com.demo.chat.service.composite.impl
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.core.MessageIndexService
@@ -17,35 +21,43 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     private val messagePersistence: MessagePersistence<T, V>,
     private val pubsub: TopicPubSubService<T, V>,
     private val topicIdToQuery: Function<ByIdRequest<T>, Q>,
+    private val verifier: KeyVerifier<T>,
     private val messageVectorIndexer: MessageVectorIndexer<T>? = null,
 ) : ChatMessageService<T, V> {
 
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
+    /** The topic resolves in MESSAGE_TOPIC before the index read and the listener. D7. */
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
-        Flux.concat(
-            messageIndex
-                .findBy(topicIdToQuery.apply(req))
-                .collectList()
-                .flatMapMany { messageKeys ->
-                    messagePersistence.byIds(messageKeys)
-                },
-            pubsub.listenTo(req.id)
-        )
-
-    override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
-        messagePersistence
-            .get(Key.funKey(req.id))
-
-    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> {
-        val sending: (T) -> Message<T, V> = {
-            Message.create(MessageKey.create(it, req.from, req.dest), req.msg, true)
+        verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC).flatMapMany {
+            Flux.concat(
+                messageIndex
+                    .findBy(topicIdToQuery.apply(req))
+                    .collectList()
+                    .flatMapMany { messageKeys ->
+                        messagePersistence.byIds(messageKeys)
+                    },
+                pubsub.listenTo(req.id)
+            )
         }
 
-        return messagePersistence
-            .key()
+    override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
+        verifier.resolve(req.id, ChatDomain.MESSAGE)
+            .flatMap { messagePersistence.get(it.key) }
+
+    override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>> {
+        // The message key keeps the id and root that the message store minted.
+        val sending: (Key<T>) -> Message<T, V> = {
+            Message.create(MessageKey.of(it.id, it.root, req.from, req.dest), req.msg, true)
+        }
+
+        // The sender resolves in USER and the destination in MESSAGE_TOPIC
+        // before the mint, so a refused request mints nothing. D7.
+        return verifier.resolve(req.from, ChatDomain.USER)
+            .then(verifier.resolve(req.dest, ChatDomain.MESSAGE_TOPIC))
+            .then(Mono.defer { messagePersistence.key() })
             .flatMap { messageKey ->
-                val message = sending(messageKey.id)
+                val message = sending(messageKey)
                 // Each write is deferred. A step starts only after the step
                 // before it completes, so a failed write stops the steps
                 // that follow it.

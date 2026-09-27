@@ -1,6 +1,9 @@
 package com.demo.chat.service.init
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
 import com.demo.chat.config.deploy.init.UserInitializationProperties
+import com.demo.chat.domain.knownkey.ChatIdentity
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatUserService
@@ -21,7 +24,9 @@ class InitialUsersService<T>(
 ) {
 
     fun initializeUsers(rootKeys: RootKeys<T>): Map<String, Key<T>> {
-        val emptyKey = Key.emptyKey(typeUtil.assignFrom(Any()))
+        // The grant placeholder only. A grant key is minted when the grant is
+        // stored. A user never takes this key. See CHAT-avduuqwp, C16.
+        val grantPlaceholder = Key.empty(typeUtil.assignFrom(Any()), rootKeys.of(ChatDomain.AUTH_METADATA).id)
         val identityKeys = mutableMapOf<String, Key<T>>()
 
         // add users
@@ -40,10 +45,11 @@ class InitialUsersService<T>(
                     userService
                         .findByUsername(ByStringRequest(thisUser.handle))
                         .map { u -> u.key }
-                        .switchIfEmpty(Mono.error(ChatException("Cannot Initialize User ${thisUser.handle}")))
+                        .switchIfEmpty(Mono.error(ChatException("Cannot initialize user ${thisUser.handle}")))
                         .single()
                 }
-                .defaultIfEmpty(emptyKey)
+                // No fallback key exists. A user that is neither created nor found fails the initialization.
+                .switchIfEmpty(Mono.error(ChatException("Cannot initialize user ${thisUser.handle}")))
                 .block()!!
 
             identityKeys[identity] = thisUserKey
@@ -56,18 +62,20 @@ class InitialUsersService<T>(
                 .block()
         }
 
-        rootKeys.merge(identityKeys)
+        loadIdentities(rootKeys, identityKeys)
 
         val initialRoles: MutableSet<AuthMetadata<T>> = mutableSetOf()
 
         // get role definitions
         initializationProperties.initialRoles.roles.forEach { permission ->
-            if (rootKeys.hasKey(permission.target) && rootKeys.hasKey(permission.user)) {
+            val user = rootKeys.byName(permission.user)
+            val target = rootKeys.byName(permission.target)
+            if (user != null && target != null) {
                 initialRoles.add(
                     StringRoleAuthorizationMetadata(
-                        emptyKey,
-                        rootKeys.getRootKey(permission.user)!!,
-                        rootKeys.getRootKey(permission.target)!!,
+                        grantPlaceholder,
+                        user,
+                        target,
                         permission.role,
                     )
                 )
@@ -84,5 +92,20 @@ class InitialUsersService<T>(
             }.blockLast()
 
         return identityKeys
+    }
+
+    /**
+     * This method loads the two identities from the initial users. Each
+     * initial user name must parse to a [ChatIdentity]. Both identities must be
+     * present. See `CHAT-avduuqwp`.
+     */
+    private fun loadIdentities(rootKeys: RootKeys<T>, identityKeys: Map<String, Key<T>>) {
+        val unknown = identityKeys.keys.filter { ChatIdentity.parse(it) == null }
+        if (unknown.isNotEmpty()) throw ChatException("An initial user names an unknown identity: $unknown")
+        val admin = identityKeys[ChatIdentity.ADMIN.wireName]
+            ?: throw ChatException("The initial users do not name the ${ChatIdentity.ADMIN.wireName} identity.")
+        val anon = identityKeys[ChatIdentity.ANON.wireName]
+            ?: throw ChatException("The initial users do not name the ${ChatIdentity.ANON.wireName} identity.")
+        rootKeys.loadIdentities(admin, anon)
     }
 }

@@ -1,5 +1,9 @@
 package com.demo.chat.test.messaging
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.ChatException
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
@@ -18,10 +22,11 @@ abstract class PubSubTests<T : Any, V>(
     val valueSupply: Supplier<V>,
 ) {
 
+    /** The keys of a user, a room and a message, in that order. */
     fun keyFlux() = Flux.merge(
-        keySvc.key(String::class.java),
-        keySvc.key(String::class.java),
-        keySvc.key(String::class.java)
+        keySvc.key(ChatDomain.USER),
+        keySvc.key(ChatDomain.MESSAGE_TOPIC),
+        keySvc.key(ChatDomain.MESSAGE)
     )
 
     @Test
@@ -99,7 +104,7 @@ abstract class PubSubTests<T : Any, V>(
 
                 messaging.sendMessage(
                     Message.create(
-                        MessageKey.create(msgId, userId, testRoom),
+                        TestKeys.message(msgId, userId, testRoom),
                         valueSupply.get(),
                         true
                     )
@@ -125,7 +130,7 @@ abstract class PubSubTests<T : Any, V>(
                         messaging
                             .sendMessage(
                                 Message.create(
-                                    MessageKey.create(msgId, userId, testRoom),
+                                    TestKeys.message(msgId, userId, testRoom),
                                     valueSupply.get(),
                                     true
                                 )
@@ -192,7 +197,7 @@ abstract class PubSubTests<T : Any, V>(
             .block(Duration.ofSeconds(10))
 
         val message = Message.create(
-            MessageKey.create(msgId, userId, testRoom),
+            TestKeys.message(msgId, userId, testRoom),
             valueSupply.get(),
             true
         )
@@ -210,6 +215,48 @@ abstract class PubSubTests<T : Any, V>(
                     .assertThat(received.key.dest)
                     .`as`("the message arrives on the topic it was sent to")
                     .isEqualTo(testRoom)
+            }
+            .thenCancel()
+            .verify(Duration.ofSeconds(10))
+    }
+
+    /**
+     * The root of a message key survives the codec of the provider. See
+     * `CHAT-avduuqwp`, B7.
+     *
+     * The key takes the MESSAGE root that the key service minted. That root
+     * differs from the message id and from the fixed test root, so a codec
+     * that drops or defaults the root cannot pass.
+     */
+    @Test
+    fun `a published message key keeps its root`() {
+        val keys = requireNotNull(keyFlux().collectList().block(Duration.ofSeconds(10)))
+        val userId = keys[0].id
+        val testRoom = keys[1].id
+        val minted = keys[2]
+
+        messaging
+            .open(testRoom)
+            .then(messaging.subscribe(userId, testRoom))
+            .block(Duration.ofSeconds(10))
+
+        val message = Message.create(
+            MessageKey.of(minted.id, minted.root, userId, testRoom),
+            valueSupply.get(),
+            true
+        )
+
+        StepVerifier
+            .create(messaging.listenTo(testRoom))
+            .then { messaging.sendMessage(message).subscribe() }
+            .assertNext { received ->
+                Assertions.assertThat(received.key.id).isEqualTo(minted.id)
+                Assertions.assertThat(received.key.root)
+                    .`as`("the root arrives as it was sent")
+                    .isEqualTo(minted.root)
+                    .isNotEqualTo(minted.id)
+                Assertions.assertThat(received.key.from).isEqualTo(userId)
+                Assertions.assertThat(received.key.dest).isEqualTo(testRoom)
             }
             .thenCancel()
             .verify(Duration.ofSeconds(10))

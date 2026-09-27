@@ -165,15 +165,45 @@ CODE=$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$APP_PORT/actua
 echo "   ok, 401"
 
 echo "6. Seed three messages through persistence, with no credentials."
-# MessageSendRequest carries msg, from, and dest. RequestResponse declares
-# @JsonTypeInfo as a property named type, and MessageSendRequest declares
-# @JsonTypeName, so the body must carry that discriminator. The route declares
-# @ResponseStatus(HttpStatus.CREATED), so it answers 201.
+# The message route resolves the sender in USER and the destination in
+# MESSAGE_TOPIC, and it refuses an unregistered id with 404. So the gate
+# creates one user and one topic first, and it sends their ids. See
+# CHAT-avduuqwp, E8.
+# RequestResponse declares @JsonTypeInfo as a property named type, so each body
+# carries the @JsonTypeName of its class. Each add route answers 201.
+# This function prints the id of the key in an add answer. It reads the first
+# object that holds an id, so it does not depend on the key wrapper.
+key_id() {
+    "$PYTHON" -c "
+import json, sys
+def find(n):
+    if isinstance(n, dict):
+        if 'id' in n: return n['id']
+        for v in n.values():
+            r = find(v)
+            if r is not None: return r
+    return None
+r = find(json.load(open(sys.argv[1])))
+if r is None: sys.exit(1)
+print(r)" "$1"
+}
+CODE=$(curl -sS -o "$WORK/user.json" -w '%{http_code}' \
+    -X PUT "http://127.0.0.1:$APP_PORT/persist/user/add" \
+    -H 'Content-Type: application/json' \
+    -d '{"type":"UserCreateRequest","name":"gate","handle":"gateuser","imgUri":"http://u"}')
+[ "$CODE" = "201" ] || fail "the user add answered $CODE, expected 201"
+SENDER=$(key_id "$WORK/user.json") || fail "the user add answer holds no key id"
+CODE=$(curl -sS -o "$WORK/topic.json" -w '%{http_code}' \
+    -X PUT "http://127.0.0.1:$APP_PORT/persist/topic/add" \
+    -H 'Content-Type: application/json' \
+    -d '{"type":"ByNameRequest","name":"gateroom"}')
+[ "$CODE" = "201" ] || fail "the topic add answered $CODE, expected 201"
+ROOM=$(key_id "$WORK/topic.json") || fail "the topic add answer holds no key id"
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
     CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
         -X PUT "http://127.0.0.1:$APP_PORT/persist/message/add" \
         -H 'Content-Type: application/json' \
-        -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":10,\"dest\":20}")
+        -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}")
     [ "$CODE" = "201" ] || fail "the seed answered $CODE for '$text', expected 201"
 done
 echo "   ok, three messages persisted"
@@ -279,7 +309,7 @@ echo "   ok, the job carries $IDENTITY"
 echo "10. Run one recall, with no credentials."
 curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
     -H 'Content-Type: application/json' \
-    -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":10}' \
+    -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":10}" \
     > "$WORK/recall.json" || fail "the recall did not answer"
 
 "$PYTHON" -c "
@@ -304,7 +334,7 @@ print('   ok,', len(hits), 'hits and indexComplete true')
 echo "11. Run one recall that states every field."
 curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
     -H 'Content-Type: application/json' \
-    -d '{"type":"TopicRecallRequest","topicId":20,"query":"recipe","limit":5,"threshold":0.0}' \
+    -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":5,\"threshold\":0.0}" \
     > "$WORK/recall-full.json" || fail "the explicit recall did not answer"
 
 "$PYTHON" -c "

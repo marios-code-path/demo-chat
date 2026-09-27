@@ -1,5 +1,7 @@
 package com.demo.chat.test.integration
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
@@ -102,7 +104,7 @@ import reactor.test.StepVerifier
 //
 //        StepVerifier
 //            .create(
-//                userPersistence.byIds(listOf(keyGenerator.nextKey()))
+//                userPersistence.byIds(listOf(TestKeys.key(keyGenerator.nextId())))
 //            )
 //            .verifyComplete()
 //    }
@@ -126,7 +128,7 @@ import reactor.test.StepVerifier
 //
 //        StepVerifier
 //            .create(
-//                userPersistence.add(User.create(keyGenerator.nextKey(), "test", "test", "test"))
+//                userPersistence.add(User.create(TestKeys.key(keyGenerator.nextId()), "test", "test", "test"))
 //            )
 //            .verifyComplete()
 //    }
@@ -137,7 +139,7 @@ import reactor.test.StepVerifier
 //        val kindClass = String::class.java
 //        val serviceImpl: IKeyService<T> = keyServiceBeans.keyService()
 //
-//        val nextKey = keyGenerator.nextKey()
+//        val nextKey = TestKeys.key(keyGenerator.nextId())
 //
 //        BDDMockito
 //            .given(access.hasAccessToDomainByKind<Any>(anyObject(), anyObject()))

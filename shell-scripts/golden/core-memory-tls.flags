@@ -13,7 +13,6 @@
 -Dapp.key.type=long
 -Dapp.nodeid=0
 -Dapp.primary=core-service
--Dapp.rootkeys.create=true
 -Dapp.server.proto=rsocket
 -Dapp.service.composite
 -Dapp.service.composite.auth

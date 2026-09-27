@@ -1,5 +1,7 @@
 package com.demo.chat.test.service.composite
 
+import com.demo.chat.test.key.TestKeys
+
 import com.demo.chat.domain.IndexJob
 import com.demo.chat.domain.JobOutcome
 import com.demo.chat.domain.Key
@@ -26,11 +28,11 @@ import java.time.ZoneOffset
  */
 class VectorStoreMessageVectorIndexerTests {
     private val now = Instant.parse("2026-09-11T12:00:00Z")
-    private val coveringKey = Key.funKey(500L)
+    private val coveringKey = TestKeys.key(500L)
     private val vectorStore = MockVectorStore()
     private val jobStore = FakeVectorIndexJobStore()
     private val state = InMemoryVectorIndexState<Long>()
-    private val message = Message.create(MessageKey.create(1L, 10L, 100L), "apple", true)
+    private val message = Message.create(TestKeys.message(1L, 10L, 100L), "apple", true)
 
     private fun indexer(writeMode: VectorWriteMode = VectorWriteMode.DELETE_THEN_ADD) =
         VectorStoreMessageVectorIndexer(
@@ -72,10 +74,11 @@ class VectorStoreMessageVectorIndexerTests {
 
     private fun coveringJob(): IndexJob<Long> = IndexJob(
         key = coveringKey,
+        topicKey = TestKeys.key((coveringKey).id + 1_000_000L),
         nodeId = 7,
         keyType = "long",
         incarnationId = "incarnation-a",
-        startedBy = Key.funKey(1000L),
+        startedBy = TestKeys.key(1000L),
         startedAt = now,
         outcome = JobOutcome.SUCCEEDED,
     )
@@ -173,7 +176,7 @@ class VectorStoreMessageVectorIndexerTests {
         state.adoptCoveringJob(coveringKey)
 
         indexer().add(message).block()
-        indexer().add(Message.create(MessageKey.create(1L, 10L, 100L), "pear", true)).block()
+        indexer().add(Message.create(TestKeys.message(1L, 10L, 100L), "pear", true)).block()
 
         Assertions.assertThat(vectorStore.ids).containsExactly("message:long:1")
         Assertions.assertThat(state.coveringJob()).isEqualTo(coveringKey)
@@ -184,7 +187,7 @@ class VectorStoreMessageVectorIndexerTests {
         vectorStore.rejectDuplicateId = true
 
         indexer().add(message).block()
-        indexer().add(Message.create(MessageKey.create(1L, 10L, 100L), "pear", true)).block()
+        indexer().add(Message.create(TestKeys.message(1L, 10L, 100L), "pear", true)).block()
 
         val hits = vectorStore.similaritySearch(
             SearchRequest.builder().query("pear").topK(1).similarityThresholdAll().build()
@@ -262,7 +265,7 @@ class VectorStoreMessageVectorIndexerTests {
     fun `the upsert mode overwrites a repeated id`() {
         indexer(VectorWriteMode.UPSERT).add(message).block()
         indexer(VectorWriteMode.UPSERT)
-            .add(Message.create(MessageKey.create(1L, 10L, 100L), "pear", true))
+            .add(Message.create(TestKeys.message(1L, 10L, 100L), "pear", true))
             .block()
 
         Assertions.assertThat(vectorStore.calls).containsExactly("add", "add")
