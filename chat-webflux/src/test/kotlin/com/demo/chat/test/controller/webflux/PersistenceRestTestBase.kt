@@ -1,5 +1,6 @@
 package com.demo.chat.test.controller.webflux
 
+import com.demo.chat.domain.knownkey.ChatDomain
 import org.junit.jupiter.api.BeforeEach
 
 import com.demo.chat.test.controller.webflux.config.WebFluxTestDomains
@@ -51,6 +52,9 @@ open class PersistenceRestTestBase<T, E : Any>(
     @BeforeEach
     fun `register the path id`() {
         registry.register(1001L, WebFluxTestDomains.of(entityPath))
+        // The add requests name a user 1002 and a room 1003. See CHAT-avduuqwp, E8.
+        registry.register(1002L, ChatDomain.USER)
+        registry.register(1003L, ChatDomain.MESSAGE_TOPIC)
     }
 
     @Test

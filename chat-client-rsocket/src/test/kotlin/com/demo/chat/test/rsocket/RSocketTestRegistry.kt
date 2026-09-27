@@ -23,3 +23,12 @@ object RSocketTestRegistry {
 
     fun register(id: UUID, domain: ChatDomain): Key<UUID> = keys.register(id, domain)
 }
+
+/** The Long twin of [RSocketTestRegistry], for the tests that send Long keys. */
+object LongRSocketTestRegistry {
+    val roots = FakeKeyServices.longRoots()
+    val keys = FakeKeyServices.long(roots)
+    val verifier = KeyVerifier(keys, roots)
+
+    fun register(id: Long, domain: ChatDomain): Key<Long> = keys.register(id, domain)
+}

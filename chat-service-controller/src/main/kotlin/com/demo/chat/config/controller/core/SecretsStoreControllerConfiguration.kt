@@ -1,5 +1,7 @@
 package com.demo.chat.config.controller.core
 
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.service.security.SecretsStore
@@ -11,5 +13,7 @@ import org.springframework.stereotype.Controller
 @Controller
 @ConditionalOnProperty(prefix = "app.controller", name = ["secrets"])
 @MessageMapping("secrets")
-class SecretsStoreControllerConfiguration<T>(beans: SecretsStoreBeans<T>) : SecretsStoreMapping<T>,
-    SecretsStore<T> by beans.secretsStore()
+class SecretsStoreControllerConfiguration<T>(beans: SecretsStoreBeans<T>, private val verifier: KeyVerifier<T>) : SecretsStoreMapping<T>,
+    SecretsStore<T> by beans.secretsStore() {
+    override fun verifier(): KeyVerifier<T> = verifier
+}

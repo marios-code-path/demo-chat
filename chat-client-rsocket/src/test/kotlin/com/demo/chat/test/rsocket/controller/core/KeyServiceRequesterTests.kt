@@ -1,5 +1,11 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import org.springframework.context.annotation.Bean
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
 import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.test.key.TestKeys
@@ -62,7 +68,7 @@ class KeyServiceRequesterTests : RSocketTestBase() {
             .create(
                 requester
                     .route("key.rem")
-                    .data(TestKeys.key(0))
+                    .data(RSocketTestRegistry.registered(ChatDomain.MESSAGE))
                     .retrieveMono(Void::class.java)
             )
             .verifyComplete()
@@ -94,6 +100,9 @@ class KeyServiceRequesterTests : RSocketTestBase() {
 
     @TestConfiguration
     class KeyControllerTestConfiguration {
+        @Bean
+        fun testKeyVerifier(): KeyVerifier<UUID> = RSocketTestRegistry.verifier
+
         @Controller
         @MessageMapping("key")
         class TestKeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)

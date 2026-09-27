@@ -1,5 +1,9 @@
 package com.demo.chat.config.controller.core
 
+import com.demo.chat.domain.TypeUtil
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.PubSubServiceBeans
 import com.demo.chat.controller.core.TopicPubSubServiceController
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -10,5 +14,5 @@ import org.springframework.stereotype.Controller
 @Controller
 @MessageMapping("pubsub")
 @ConditionalOnProperty(prefix = "app.controller", name = ["pubsub"])
-class TopicPubSubController<T : Any, V>(pubsubBeans: PubSubServiceBeans<T, V>) :
-    TopicPubSubServiceController<T, V>(pubsubBeans.pubSubService())
+class TopicPubSubController<T : Any, V>(pubsubBeans: PubSubServiceBeans<T, V>, verifier: KeyVerifier<T>, typeUtil: TypeUtil<T>) :
+    TopicPubSubServiceController<T, V>(pubsubBeans.pubSubService(), verifier, typeUtil)

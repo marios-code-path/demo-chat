@@ -1,5 +1,17 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.domain.MessageKey
+
+import com.demo.chat.test.rsocket.RSocketTestRegistry
+
+import org.springframework.context.annotation.Bean
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.controller.resolve.KeyDomain
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
@@ -33,7 +45,9 @@ open class MessageIndexRequesterTests : RSocketTestBase() {
     private lateinit var indexService: MessageIndexService<UUID, String, IndexSearchRequest>
 
     private val message =
-        Message.create(TestKeys.message(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+        RSocketTestRegistry.registered(ChatDomain.MESSAGE).let { minted ->
+            Message.create(MessageKey.of(minted.id, minted.root, UUID.randomUUID(), UUID.randomUUID()), "TEST", true)
+        }
 
     @Test
     fun `should query for entities`() {
@@ -93,8 +107,12 @@ open class MessageIndexRequesterTests : RSocketTestBase() {
 
     @TestConfiguration
     class MessageIndexTestConfiguration {
+        @Bean
+        fun testKeyVerifier(): KeyVerifier<UUID> = RSocketTestRegistry.verifier
+
         @Controller
-        class TestMessageIndexController<T, E>(that: MessageIndexService<T, E, IndexSearchRequest>) :
-            IndexSearchRequestIndexServiceController<T, Message<T, E>>(that)
+        @KeyDomain(ChatDomain.MESSAGE)
+        class TestMessageIndexController<T, E>(that: MessageIndexService<T, E, IndexSearchRequest>, v: KeyVerifier<T>) :
+            IndexSearchRequestIndexServiceController<T, Message<T, E>>(that, v)
     }
 }

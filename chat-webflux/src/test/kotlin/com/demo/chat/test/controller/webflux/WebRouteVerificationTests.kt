@@ -4,6 +4,8 @@ import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.controller.webflux.UserIndexRestController
 import com.demo.chat.controller.webflux.UserPersistenceRestController
+import com.demo.chat.controller.webflux.MessagePersistenceRestController
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
@@ -116,6 +118,51 @@ class PersistenceGetVerificationTests(@Autowired beans: PersistenceServiceBeans<
         registry.register(4303L, ChatDomain.MESSAGE)
 
         client.get().uri("/persist/user/get/4303").exchange().expectStatus().isNotFound
+        Mockito.verifyNoInteractions(store)
+    }
+}
+
+/**
+ * A message add resolves its sender in USER and its destination in
+ * MESSAGE_TOPIC before the mint. A refused request neither mints nor writes.
+ * See `CHAT-avduuqwp`, E8.
+ */
+@WebFluxTest
+@ExtendWith(SpringExtension::class)
+@TestPropertySource(properties = ["app.controller.persistence"])
+@ContextConfiguration(
+    classes = [TestLongPersistenceBeans::class, LongTypeUtilConfiguration::class, MessagePersistenceRestController::class, WebFluxTestConfiguration::class]
+)
+class MessageAddVerificationTests(@Autowired beans: PersistenceServiceBeans<Long, String>) {
+    private val store = beans.messagePersistence()
+
+    @Autowired
+    private lateinit var registry: TestGeneratorKeyService<Long>
+
+    @Autowired
+    private lateinit var client: WebTestClient
+
+    @BeforeEach
+    fun `reset the store`() {
+        Mockito.reset(store)
+    }
+
+    private fun add(from: Long, dest: Long) = client.put().uri("/persist/message/add")
+        .contentType(MediaType.APPLICATION_JSON).bodyValue(MessageSendRequest("m", from, dest)).exchange()
+
+    @Test
+    fun `an unknown sender neither mints nor writes`() {
+        val room = registry.register(4601L, ChatDomain.MESSAGE_TOPIC)
+
+        add(424252L, room.id).expectStatus().isNotFound
+        Mockito.verifyNoInteractions(store)
+    }
+
+    @Test
+    fun `a destination outside MESSAGE_TOPIC neither mints nor writes`() {
+        val user = registry.register(4602L, ChatDomain.USER)
+
+        add(user.id, user.id).expectStatus().isNotFound
         Mockito.verifyNoInteractions(store)
     }
 }

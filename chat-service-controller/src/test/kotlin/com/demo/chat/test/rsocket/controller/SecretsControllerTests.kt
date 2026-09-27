@@ -1,5 +1,21 @@
 package com.demo.chat.test.rsocket.controller
 
+import com.demo.chat.test.access.ChatAccessTestConfiguration
+import org.springframework.context.annotation.Bean
+
+import org.springframework.boot.test.context.TestConfiguration
+
+
+import com.demo.chat.test.key.TestRoots
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import org.springframework.security.access.prepost.PreAuthorize
+
+import com.demo.chat.service.core.VerifiedKey
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.security.access.core.SecretsStoreAccess
@@ -26,7 +42,7 @@ import reactor.test.StepVerifier
     classes = [
         TestSecretStoreController::class,
         RSocketSecurityTestConfiguration::class,
-        SpringSecurityAccessBrokerService::class
+        ChatAccessTestConfiguration::class,
     ]
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -52,6 +68,11 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
             .given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
             .willReturn(Mono.just(false))
 
+        // The key must verify, so only the access check can refuse the call.
+        BDDMockito
+            .given(rootKeys.of(ChatDomain.USER))
+            .willReturn(Key.root(TestRoots.of(0L)))
+
         StepVerifier.create(
             requester
                 .route("get")
@@ -59,12 +80,21 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
                 .data(Mono.just(TestKeys.key(1L)), Key::class.java)
 
                 .retrieveMono(String::class.java)
-        ).expectError()
+        ).expectErrorMatches { it.message!!.contains("Access Denied") }
             .verify()
     }
 }
 
+/**
+ * The route calls the store on this object, so a check on the store method
+ * never runs through the proxy. The check sits on the route. See
+ * CHAT-avduuqwp, T4.
+ */
 @Controller
-class TestSecretStoreController<T>(private val that: SecretsStore<T>) : SecretsStoreMapping<T>, SecretsStoreAccess<T>,
-    SecretsStore<T> by that {
+class TestSecretStoreController<T>(private val that: SecretsStore<T>, private val verifier: KeyVerifier<T>) :
+    SecretsStoreMapping<T>, SecretsStoreAccess<T>, SecretsStore<T> by that {
+    override fun verifier(): KeyVerifier<T> = verifier
+
+    @PreAuthorize("@chatAccess.hasAccessTo(#key.key, 'READ')")
+    override fun getRoute(key: VerifiedKey<T>): Mono<String> = super.getRoute(key)
 }

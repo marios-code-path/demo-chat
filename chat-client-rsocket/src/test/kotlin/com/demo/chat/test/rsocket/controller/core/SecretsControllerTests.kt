@@ -1,5 +1,15 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.rsocket.LongRSocketTestRegistry
+
+import org.springframework.context.annotation.Bean
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.controller.resolve.KeyDomain
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
@@ -26,11 +36,15 @@ import reactor.test.StepVerifier
 @Import(
     TestSecretStoreController::class,
     RSocketSecurityTestConfiguration::class,
+    SecretsVerifierConfiguration::class,
 )
 class SecretsControllerTests : RSocketTestBase() {
 
     @MockitoBean
     private lateinit var secretStore: SecretsStore<Long>
+
+    /** A credential owner is a user, so the key is registered in USER. */
+    private val owner = LongRSocketTestRegistry.register(1L, ChatDomain.USER)
 
     @Test
     fun `test should add secret`() {
@@ -38,7 +52,7 @@ class SecretsControllerTests : RSocketTestBase() {
 
         StepVerifier.create(
             metadataRequester.route("add")
-                .data(Mono.just(KeyCredential(TestKeys.key(1L), "PASSWORDISTEST")), KeyCredential::class.java)
+                .data(Mono.just(KeyCredential(owner, "PASSWORDISTEST")), KeyCredential::class.java)
                 .retrieveMono(Void::class.java)
         ).verifyComplete()
     }
@@ -48,12 +62,20 @@ class SecretsControllerTests : RSocketTestBase() {
         BDDMockito.given(secretStore.getStoredCredentials(anyObject())).willReturn(Mono.just("PASSWORDISTEST"))
 
         StepVerifier.create(
-            metadataRequester.route("get").data(Mono.just(TestKeys.key(1L)), Key::class.java).retrieveMono(String::class.java)
+            metadataRequester.route("get").data(Mono.just(owner), Key::class.java).retrieveMono(String::class.java)
         ).assertNext { credential ->
             Assertions.assertThat(credential).isNotNull.isEqualTo("PASSWORDISTEST")
         }.verifyComplete()
     }
 }
 @Controller
-class TestSecretStoreController<T>(private val that: SecretsStore<T>) : SecretsStoreMapping<T>,
-    SecretsStore<T> by that
+class TestSecretStoreController<T>(private val that: SecretsStore<T>, private val verifier: KeyVerifier<T>) : SecretsStoreMapping<T>,
+    SecretsStore<T> by that {
+    override fun verifier(): KeyVerifier<T> = verifier
+}
+
+@TestConfiguration
+class SecretsVerifierConfiguration {
+    @Bean
+    fun testKeyVerifier(): KeyVerifier<Long> = LongRSocketTestRegistry.verifier
+}

@@ -1,5 +1,15 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.test.rsocket.LongRSocketTestRegistry
+
+import org.springframework.context.annotation.Bean
+
+import com.demo.chat.service.core.KeyVerifier
+
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.controller.resolve.KeyDomain
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.client.rsocket.clients.core.KeyValueStoreClient
@@ -49,7 +59,7 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
     @Autowired
     private lateinit var mapper: ObjectMapper
 
-    private val key = TestKeys.key(1000L)
+    private val key = LongRSocketTestRegistry.register(1000L, ChatDomain.KEY_VALUE_PAIR)
 
     private val job = IndexJob(
         key = key,
@@ -86,9 +96,14 @@ class KeyValueJobDecodeRequesterTests : RSocketTestBase() {
     // nested controller discovered, so the routes would never register.
     @TestConfiguration
     class KeyValueStoreTestConfiguration {
+        @Bean
+        fun testKeyVerifier(): KeyVerifier<Long> = LongRSocketTestRegistry.verifier
+
         @Controller
+        @KeyDomain(ChatDomain.KEY_VALUE_PAIR)
         class TestKeyValueController<T>(
             store: KeyValueStore<T, Any>,
-        ) : PersistenceServiceController<T, KeyValuePair<T, Any>>(store)
+            v: KeyVerifier<T>,
+        ) : PersistenceServiceController<T, KeyValuePair<T, Any>>(store, v)
     }
 }

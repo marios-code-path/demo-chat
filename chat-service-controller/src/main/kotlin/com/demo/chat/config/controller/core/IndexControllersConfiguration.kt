@@ -1,5 +1,11 @@
 package com.demo.chat.config.controller.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.controller.resolve.KeyDomain
+
+import com.demo.chat.service.core.KeyVerifier
+
 import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.controller.core.IndexSearchRequestIndexServiceController
 import com.demo.chat.controller.core.MapIndexServiceController
@@ -16,69 +22,79 @@ class IndexControllersConfiguration {
     @MessageMapping("index.kv")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
-    class KeyValueIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>):
-        IndexSearchRequestIndexServiceController<T, KeyValuePair<T, Any>>(s.KVPairIndex())
+    @KeyDomain(ChatDomain.KEY_VALUE_PAIR)
+    class KeyValueIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>, v: KeyVerifier<T>):
+        IndexSearchRequestIndexServiceController<T, KeyValuePair<T, Any>>(s.KVPairIndex(), v)
 
     @Controller
     @MessageMapping("index.user")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
-    class UserIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>) :
-        IndexSearchRequestIndexServiceController<T, User<T>>(s.userIndex())
+    @KeyDomain(ChatDomain.USER)
+    class UserIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>, v: KeyVerifier<T>) :
+        IndexSearchRequestIndexServiceController<T, User<T>>(s.userIndex(), v)
 
     @Controller
     @MessageMapping("index.message")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
-    class MessageIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>) :
-        IndexSearchRequestIndexServiceController<T, Message<T, V>>(s.messageIndex())
+    @KeyDomain(ChatDomain.MESSAGE)
+    class MessageIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>, v: KeyVerifier<T>) :
+        IndexSearchRequestIndexServiceController<T, Message<T, V>>(s.messageIndex(), v)
 
     @Controller
     @MessageMapping("index.topic")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
-    class TopicIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>) :
-        IndexSearchRequestIndexServiceController<T, MessageTopic<T>>(s.topicIndex())
+    @KeyDomain(ChatDomain.MESSAGE_TOPIC)
+    class TopicIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>, v: KeyVerifier<T>) :
+        IndexSearchRequestIndexServiceController<T, MessageTopic<T>>(s.topicIndex(), v)
 
     @Controller
     @MessageMapping("index.authmetadata")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "lucene")
-    class AuthMetaIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>) :
-        IndexSearchRequestIndexServiceController<T, AuthMetadata<T>>(s.authMetadataIndex())
+    @KeyDomain(ChatDomain.AUTH_METADATA)
+    class AuthMetaIndexController<T, V>(s: IndexServiceBeans<T, V, IndexSearchRequest>, v: KeyVerifier<T>) :
+        IndexSearchRequestIndexServiceController<T, AuthMetadata<T>>(s.authMetadataIndex(), v)
 
     @Controller
     @MessageMapping("index.kv")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
-    class CassandraKeyValueIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>):
-        MapIndexServiceController<T, KeyValuePair<T, Any>>(s.KVPairIndex())
+    @KeyDomain(ChatDomain.KEY_VALUE_PAIR)
+    class CassandraKeyValueIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>, v: KeyVerifier<T>):
+        MapIndexServiceController<T, KeyValuePair<T, Any>>(s.KVPairIndex(), v)
 
     @Controller
     @MessageMapping("index.user")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
-    class CassandraUserIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>) :
-        MapIndexServiceController<T, User<T>>(s.userIndex())
+    @KeyDomain(ChatDomain.USER)
+    class CassandraUserIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>, v: KeyVerifier<T>) :
+        MapIndexServiceController<T, User<T>>(s.userIndex(), v)
 
     @Controller
     @MessageMapping("index.message")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
-    class CassandraMessageIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>) :
-        MapIndexServiceController<T, Message<T, V>>(s.messageIndex())
+    @KeyDomain(ChatDomain.MESSAGE)
+    class CassandraMessageIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>, v: KeyVerifier<T>) :
+        MapIndexServiceController<T, Message<T, V>>(s.messageIndex(), v)
 
     @Controller
     @MessageMapping("index.topic")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
-    class CassandraTopicIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>) :
-        MapIndexServiceController<T, MessageTopic<T>>(s.topicIndex())
+    @KeyDomain(ChatDomain.MESSAGE_TOPIC)
+    class CassandraTopicIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>, v: KeyVerifier<T>) :
+        MapIndexServiceController<T, MessageTopic<T>>(s.topicIndex(), v)
 
     @Controller
     @MessageMapping("index.authmetadata")
     @ConditionalOnProperty(prefix = "app.controller", name = ["index"])
     @ConditionalOnProperty(prefix = "app.service.core", name = ["index"], havingValue = "cassandra")
-    class CassandraAuthMetaIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>) :
-        MapIndexServiceController<T, AuthMetadata<T>>(s.authMetadataIndex())
+    @KeyDomain(ChatDomain.AUTH_METADATA)
+    class CassandraAuthMetaIndexController<T, V>(s: IndexServiceBeans<T, V, Map<String, String>>, v: KeyVerifier<T>) :
+        MapIndexServiceController<T, AuthMetadata<T>>(s.authMetadataIndex(), v)
 }

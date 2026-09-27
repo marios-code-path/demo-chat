@@ -53,11 +53,21 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, t
 
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addMessage(@RequestBody req: MessageSendRequest<T, V>) = key()
-        .flatMap { key ->
-            add(Message.create(MessageKey.of(key.id, key.root, req.from, req.dest), req.msg, true))
-                .thenReturn(key)
-        }
+    /**
+     * The sender resolves in USER and the destination in MESSAGE_TOPIC before
+     * the mint. A refused request mints no key. See `CHAT-avduuqwp`, E8.
+     */
+    fun addMessage(@RequestBody req: MessageSendRequest<T, V>) =
+        Mono.zip(
+            verifier().resolve(typeUtil().assignFrom(req.from as Any), ChatDomain.USER),
+            verifier().resolve(typeUtil().assignFrom(req.dest as Any), ChatDomain.MESSAGE_TOPIC),
+        )
+            .flatMap { ids ->
+                key().flatMap { key ->
+                    add(Message.create(MessageKey.of(key.id, key.root, ids.t1.key.id, ids.t2.key.id), req.msg, true))
+                        .thenReturn(key)
+                }
+            }
 }
 
 @RestController
@@ -81,9 +91,19 @@ class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>
     PersistenceRestController<T, TopicMembership<T>>(s.membershipPersistence(), typeUtil, verifier, ChatDomain.TOPIC_MEMBERSHIP) {
     @PutMapping("/add", consumes = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.CREATED)
-    fun addMembership(@RequestBody req: MembershipRequest<T>) = key()
-        .flatMap { key ->
-            add(TopicMembership.create(key.id, req.uid, req.roomId))
-                .thenReturn(key)
-        }
+    /**
+     * The member resolves in USER and the room in MESSAGE_TOPIC before the
+     * mint. A refused request mints no key. See `CHAT-avduuqwp`, E8.
+     */
+    fun addMembership(@RequestBody req: MembershipRequest<T>) =
+        Mono.zip(
+            verifier().resolve(typeUtil().assignFrom(req.uid as Any), ChatDomain.USER),
+            verifier().resolve(typeUtil().assignFrom(req.roomId as Any), ChatDomain.MESSAGE_TOPIC),
+        )
+            .flatMap { ids ->
+                key().flatMap { key ->
+                    add(TopicMembership.create(key.id, ids.t1.key.id, ids.t2.key.id))
+                        .thenReturn(key)
+                }
+            }
     }

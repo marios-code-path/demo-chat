@@ -1,5 +1,11 @@
 package com.demo.chat.test.rsocket.client.core
 
+import com.demo.chat.domain.knownkey.ChatDomain
+
+import com.demo.chat.test.rsocket.controller.core.SecretsVerifierConfiguration
+
+import com.demo.chat.test.rsocket.LongRSocketTestRegistry
+
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.client.rsocket.clients.core.SecretStoreClient
@@ -22,12 +28,16 @@ import reactor.test.StepVerifier
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringJUnitConfig(
     classes = [
-        TestSecretStoreController::class
+        TestSecretStoreController::class,
+        SecretsVerifierConfiguration::class,
     ]
 )
 class SecretsTests : RSocketTestBase() {
     @MockitoBean
     private lateinit var secretStore: SecretsStore<Long>
+
+    /** A credential owner is a user, so the key is registered in USER. */
+    private val owner = LongRSocketTestRegistry.register(1L, ChatDomain.USER)
     private val svcPrefix = ""
 
     @Test
@@ -39,7 +49,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.addCredential(KeyCredential(TestKeys.key(1L), "ABCDEFG")))
+            .create(client.addCredential(KeyCredential(owner, "ABCDEFG")))
             .verifyComplete()
     }
 
@@ -52,7 +62,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.getStoredCredentials(TestKeys.key(1L)))
+            .create(client.getStoredCredentials(owner))
             .assertNext { cred ->
                 Assertions
                     .assertThat(cred)
@@ -71,7 +81,7 @@ class SecretsTests : RSocketTestBase() {
         val client = SecretStoreClient<Long>(svcPrefix, requester)
 
         StepVerifier
-            .create(client.compareSecret(KeyCredential(TestKeys.key(1L), "ABCDEFG")))
+            .create(client.compareSecret(KeyCredential(owner, "ABCDEFG")))
             .assertNext { cred ->
                 Assertions
                     .assertThat(cred)
