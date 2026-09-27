@@ -73,6 +73,8 @@ class UUIDUtil : TypeUtil<UUID> {
 
     override fun assignFrom(t: Any): UUID {
         return when (t) {
+            // A UUID arrives unchanged. The else branch below turned it into the zero UUID.
+            is UUID -> t
             is String -> fromString(t)
             is Number -> UUID(t.toLong(), 0)
             else -> UUID(0, 0)

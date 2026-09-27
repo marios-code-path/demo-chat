@@ -91,4 +91,8 @@ class KeyTests : RSocketTestBase() {
 
 @Controller
 @MessageMapping("key")
-class TestKeyController<T>(keyServices: KeyServiceBeans<T>) : KeyServiceController<T>(keyServices.keyService())
+// Every test here sends UUID keys. The type util is built here, so this scanned
+// controller asks no new bean of any other context.
+@Suppress("UNCHECKED_CAST")
+class TestKeyController<T>(keyServices: KeyServiceBeans<T>) :
+    KeyServiceController<T>(keyServices.keyService(), UUIDUtil() as com.demo.chat.domain.TypeUtil<T>)

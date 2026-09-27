@@ -1,5 +1,9 @@
 package com.demo.chat.test.rsocket.controller.core
 
+import com.demo.chat.domain.UUIDUtil
+
+import com.demo.chat.domain.TypeUtil
+
 import org.springframework.context.annotation.Bean
 
 import com.demo.chat.service.core.KeyVerifier
@@ -103,8 +107,12 @@ class KeyServiceRequesterTests : RSocketTestBase() {
         @Bean
         fun testKeyVerifier(): KeyVerifier<UUID> = RSocketTestRegistry.verifier
 
+        @Bean
+        fun testTypeUtil(): TypeUtil<UUID> = UUIDUtil()
+
         @Controller
         @MessageMapping("key")
-        class TestKeyController<T>(keyService: IKeyService<T>) : KeyServiceController<T>(keyService)
+        class TestKeyController<T>(keyService: IKeyService<T>, typeUtil: TypeUtil<T>) :
+            KeyServiceController<T>(keyService, typeUtil)
     }
 }

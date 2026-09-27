@@ -2,6 +2,7 @@ package com.demo.chat.controller.core.mapping
 
 import com.demo.chat.controller.resolve.Verified
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.TypeUtil
 import com.demo.chat.service.core.VerifiedKey
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.service.core.IKeyService
@@ -19,9 +20,21 @@ interface IKeyServiceMapping<T> : IKeyService<T> {
     @MessageMapping("rem")
     fun remRoute(@Verified(anyDomain = true) key: VerifiedKey<T>): Mono<Void> = rem(key.key)
 
+    fun typeUtil(): TypeUtil<T>
+
     // The two reads below ask the registry itself, so no verification runs first.
     @MessageMapping("exists")
     override fun exists(key: Key<T>): Mono<Boolean>
+
+    /**
+     * The registry root of a raw id. The payload decodes by its JSON shape, so a
+     * small Long arrives as an Integer and a UUID as a String. Either misses a
+     * registry that holds the key type. [typeUtil] converts the id first. An
+     * id that does not convert names no key, so the answer is empty.
+     */
     @MessageMapping("rootOf")
-    override fun rootOf(id: T): Mono<T & Any>
+    fun rootOfRoute(id: Any): Mono<T & Any> =
+        Mono.fromCallable { typeUtil().assignFrom(id) }
+            .onErrorResume(IllegalArgumentException::class.java) { Mono.empty() }
+            .flatMap { rootOf(it) }
 }
