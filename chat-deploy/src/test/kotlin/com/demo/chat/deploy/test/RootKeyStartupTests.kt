@@ -1,5 +1,7 @@
 package com.demo.chat.deploy.test
 
+import com.demo.chat.service.core.StoreShapeCheck
+
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.config.deploy.init.HttpRootKeyConsumeOnStart
 import com.demo.chat.config.deploy.init.RootKeyInitializationListeners
@@ -50,6 +52,33 @@ class RootKeyStartupTests {
                 .rootCause().hasMessageContaining("no RootKeyStore")
             assertThat(roots(ctx).domains()).isEmpty()
         }
+    }
+
+    // T7. The shape check runs before any root is read.
+    @Test
+    fun `a store of the wrong shape fails the start before any root is read`() {
+        val reads = java.util.concurrent.atomic.AtomicInteger()
+        val recording = object : RootKeyStore<Long> {
+            override fun read(): Mono<Map<ChatDomain, Long>> = Mono.fromCallable { reads.incrementAndGet(); emptyMap() }
+            override fun createIfAbsent(domain: ChatDomain, id: Long): Mono<Long> = Mono.fromCallable { reads.incrementAndGet(); id }
+        }
+        base.withBean(RootKeyStore::class.java, { recording }).withBean(IKeyGenerator::class.java, { ids() })
+            .withBean(StoreShapeCheck::class.java, { StoreShapeCheck { throw ChatException("Missing: keys.root. Recreate the store.") } })
+            .run { ctx ->
+                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
+                assertThat(reads.get()).isZero()
+                assertThat(roots(ctx).domains()).isEmpty()
+            }
+    }
+
+    @Test
+    fun `a store of the right shape loads every root`() {
+        base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
+            .withBean(StoreShapeCheck::class.java, { StoreShapeCheck { } })
+            .run { ctx ->
+                start(ctx)
+                assertThat(roots(ctx).domains().keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
+            }
     }
 
     @Test

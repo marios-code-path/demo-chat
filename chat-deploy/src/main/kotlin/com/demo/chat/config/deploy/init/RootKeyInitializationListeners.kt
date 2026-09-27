@@ -1,5 +1,7 @@
 package com.demo.chat.config.deploy.init
 
+import com.demo.chat.service.core.StoreShapeCheck
+
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import org.slf4j.LoggerFactory
 import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
@@ -76,6 +78,7 @@ class RootKeyInitializationListeners<T : Any>(
         rootKeys: RootKeys<T>,
         store: ObjectProvider<RootKeyStore<T>>,
         ids: ObjectProvider<IKeyGenerator<T>>,
+        shapeChecks: ObjectProvider<StoreShapeCheck>,
     ): ApplicationListener<ApplicationStartedEvent> =
         ApplicationListener { _ ->
             if (source == RootKeySource.NONE) {
@@ -89,6 +92,9 @@ class RootKeyInitializationListeners<T : Any>(
             val generator = ids.ifAvailable ?: throw ChatException(
                 "This node has a root key store but no IKeyGenerator. It cannot create a missing root."
             )
+            // The store shape is checked before any root is read. A store from an
+            // earlier release fails here and names the recreation. See CHAT-avduuqwp, T7.
+            shapeChecks.orderedStream().forEach { it.check() }
             val roots = RootKeyLoader(rootKeyStore, generator).load().block()
                 ?: throw ChatException("The root key load returned no roots.")
             rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })

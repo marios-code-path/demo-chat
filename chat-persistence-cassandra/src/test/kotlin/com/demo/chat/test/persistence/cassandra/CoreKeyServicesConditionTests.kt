@@ -38,6 +38,10 @@ class CoreKeyServicesConditionTests {
 
         @Bean
         fun cassandraTemplate(): ReactiveCassandraTemplate = mock(ReactiveCassandraTemplate::class.java)
+
+        // The store shape check reads the session. A deployment always has one. See CHAT-avduuqwp, T7.
+        @Bean
+        fun cqlSession(): com.datastax.oss.driver.api.core.CqlSession = mock(com.datastax.oss.driver.api.core.CqlSession::class.java)
     }
 
     /**

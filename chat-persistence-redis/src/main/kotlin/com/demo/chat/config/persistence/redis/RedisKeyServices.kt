@@ -1,5 +1,9 @@
 package com.demo.chat.config.persistence.redis
 
+import com.demo.chat.persistence.redis.impl.RedisStoreShapeCheck
+
+import com.demo.chat.service.core.StoreShapeCheck
+
 import com.demo.chat.config.KeyServiceBeans
 import org.springframework.beans.factory.annotation.Value
 import com.demo.chat.domain.TypeUtil
@@ -29,6 +33,10 @@ class RedisKeyServices<T : Any>(
 
     @Bean
     override fun keyService(): IKeyService<T> = KeyServiceRedis(stringTemplate, keyGen, rootKeys, typeUtil, keyType)
+
+    /** The start check of the Redis store shape. It runs before the root keys load. See `CHAT-avduuqwp`, T7. */
+    @Bean
+    fun storeShapeCheck(): StoreShapeCheck = RedisStoreShapeCheck(stringTemplate)
 
     @Bean
     fun rootKeyStore(): RootKeyStore<T> =
