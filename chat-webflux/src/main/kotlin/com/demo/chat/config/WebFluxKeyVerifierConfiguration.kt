@@ -1,6 +1,7 @@
 package com.demo.chat.config
 
 import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
+import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.KeyVerificationException
 import com.demo.chat.domain.TypeUtil
 import org.springframework.beans.factory.ObjectProvider
@@ -40,10 +41,15 @@ class WebFluxKeyVerifierConfiguration(
 
 /**
  * The status of a refused key. An id that does not resolve in its domain is
- * not found. A mint that no key service supports is not implemented.
+ * not found. An id that does not convert exactly to the key type is a bad
+ * request. A mint that no key service supports is not implemented.
  */
 @RestControllerAdvice
 class KeyRefusalAdvice {
+    @ExceptionHandler(KeyInputException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun badRequest(error: KeyInputException): String = error.message ?: "The key id is not valid."
+
     @ExceptionHandler(KeyVerificationException::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun notFound(error: KeyVerificationException): String = error.message ?: "The key does not resolve."

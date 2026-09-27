@@ -43,7 +43,8 @@ interface KeyValueStoreRestMapping<T> :
     fun addKv(@RequestBody req: KVRequest): Mono<Key<T>> =
         // The caller mints first, so the key must resolve in KEY_VALUE_PAIR.
         // An unknown id is refused. C68.
-        verifier().resolve(typeUtil().assignFrom(req.key), ChatDomain.KEY_VALUE_PAIR)
+        Mono.fromCallable { typeUtil().exactFrom(req.key) }
+            .flatMap { verifier().resolve(it, ChatDomain.KEY_VALUE_PAIR) }
             .flatMap { add(KeyValuePair.create(it.key, req.data)).thenReturn(it.key) }
 }
 

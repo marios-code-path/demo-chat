@@ -29,12 +29,14 @@ interface IKeyServiceMapping<T> : IKeyService<T> {
     /**
      * The registry root of a raw id. The payload decodes by its JSON shape, so a
      * small Long arrives as an Integer and a UUID as a String. Either misses a
-     * registry that holds the key type. [typeUtil] converts the id first. An
-     * id that does not convert names no key, so the answer is empty.
+     * registry that holds the key type, so [typeUtil] converts the id first.
+     *
+     * The conversion is exact. A fraction, a value outside the key type, and an
+     * unsupported shape fail with `KeyInputException`, and no registry read
+     * runs. An exact id that the registry does not hold answers empty.
      */
     @MessageMapping("rootOf")
     fun rootOfRoute(id: Any): Mono<T & Any> =
-        Mono.fromCallable { typeUtil().assignFrom(id) }
-            .onErrorResume(IllegalArgumentException::class.java) { Mono.empty() }
+        Mono.fromCallable { typeUtil().exactFrom(id) }
             .flatMap { rootOf(it) }
 }

@@ -59,8 +59,8 @@ class MessagePersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>, t
      */
     fun addMessage(@RequestBody req: MessageSendRequest<T, V>) =
         Mono.zip(
-            verifier().resolve(typeUtil().assignFrom(req.from as Any), ChatDomain.USER),
-            verifier().resolve(typeUtil().assignFrom(req.dest as Any), ChatDomain.MESSAGE_TOPIC),
+            Mono.fromCallable { typeUtil().exactFrom(req.from as Any) }.flatMap { verifier().resolve(it, ChatDomain.USER) },
+            Mono.fromCallable { typeUtil().exactFrom(req.dest as Any) }.flatMap { verifier().resolve(it, ChatDomain.MESSAGE_TOPIC) },
         )
             .flatMap { ids ->
                 key().flatMap { key ->
@@ -97,8 +97,8 @@ class MembershipPersistenceRestController<T, V>(s: PersistenceServiceBeans<T, V>
      */
     fun addMembership(@RequestBody req: MembershipRequest<T>) =
         Mono.zip(
-            verifier().resolve(typeUtil().assignFrom(req.uid as Any), ChatDomain.USER),
-            verifier().resolve(typeUtil().assignFrom(req.roomId as Any), ChatDomain.MESSAGE_TOPIC),
+            Mono.fromCallable { typeUtil().exactFrom(req.uid as Any) }.flatMap { verifier().resolve(it, ChatDomain.USER) },
+            Mono.fromCallable { typeUtil().exactFrom(req.roomId as Any) }.flatMap { verifier().resolve(it, ChatDomain.MESSAGE_TOPIC) },
         )
             .flatMap { ids ->
                 key().flatMap { key ->

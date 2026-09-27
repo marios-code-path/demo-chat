@@ -17,8 +17,9 @@ import reactor.core.publisher.Mono
  * each topic id resolves in MESSAGE_TOPIC, before the service sees it. See
  * `CHAT-avduuqwp`, D10 and D11.
  *
- * A raw id of the generic type T decodes as a JSON number, so [typeUtil]
- * converts it to the key type first. The routes call the service methods,
+ * A raw id of the generic type T decodes by its JSON shape, so [typeUtil]
+ * converts it exactly to the key type first. A value that does not convert
+ * exactly fails with `KeyInputException` before any registry read. The routes call the service methods,
  * and the service methods carry no mapping.
  */
 interface TopicPubSubServiceMapping<T : Any, V> : TopicPubSubService<T, V> {
@@ -26,9 +27,9 @@ interface TopicPubSubServiceMapping<T : Any, V> : TopicPubSubService<T, V> {
 
     fun typeUtil(): TypeUtil<T>
 
-    private fun user(id: Any): Mono<T> = verifier().resolve(typeUtil().assignFrom(id), ChatDomain.USER).map { it.key.id!! }
+    private fun user(id: Any): Mono<T> = Mono.fromCallable { typeUtil().exactFrom(id) }.flatMap { verifier().resolve(it, ChatDomain.USER) }.map { it.key.id!! }
 
-    private fun topic(id: Any): Mono<T> = verifier().resolve(typeUtil().assignFrom(id), ChatDomain.MESSAGE_TOPIC).map { it.key.id!! }
+    private fun topic(id: Any): Mono<T> = Mono.fromCallable { typeUtil().exactFrom(id) }.flatMap { verifier().resolve(it, ChatDomain.MESSAGE_TOPIC) }.map { it.key.id!! }
 
     @MessageMapping("subscribe")
     fun subscribeOne(req: MemberTopicRequest<T>): Mono<Void> =

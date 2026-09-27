@@ -114,6 +114,16 @@ class PersistenceGetVerificationTests(@Autowired beans: PersistenceServiceBeans<
         Mockito.verifyNoInteractions(store)
     }
 
+    // An id that does not convert exactly is a bad request, and no registry read runs.
+    @Test
+    fun `a fractional or overflowing id is a bad request and never reaches the store`() {
+        registry.register(42L, ChatDomain.USER)
+
+        client.get().uri("/persist/user/get/42.9").exchange().expectStatus().isBadRequest
+        client.get().uri("/persist/user/get/18446744073709551658").exchange().expectStatus().isBadRequest
+        Mockito.verifyNoInteractions(store)
+    }
+
     @Test
     fun `an id of another domain never reaches the store`() {
         registry.register(4303L, ChatDomain.MESSAGE)

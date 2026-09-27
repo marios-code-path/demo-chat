@@ -22,6 +22,8 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.stereotype.Controller
 import reactor.test.StepVerifier
 import java.util.UUID
+import reactor.core.publisher.Mono
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The rootOf route over a real RSocket connection, for a small Long id. See
@@ -38,7 +40,53 @@ class LongRootOfTransportTests : RSocketTestBase() {
     @Autowired
     private lateinit var registry: TestGeneratorKeyService<Long>
 
+    @Autowired
+    private lateinit var counting: CountingKeys<Long>
+
     private fun client() = KeyClient<Long>("key.", requester, LongUtil())
+
+    /** The JSON text goes out as written, so the number keeps its exact form. */
+    private fun raw(json: String) = requester.route("key.rootOf")
+        .data(json)
+        .retrieveMono(Long::class.java)
+
+    private fun refusedWithoutRegistryRead(json: String, message: String) {
+        registry.register(42L, ChatDomain.MESSAGE)
+        val before = counting.rootReads.get()
+
+        StepVerifier.create(raw(json))
+            .expectErrorSatisfies { assertThat(it.message).contains(message) }
+            .verify()
+        assertThat(counting.rootReads.get()).isEqualTo(before)
+    }
+
+    // The review probe resolved these two to id 42. They are input errors now.
+    @Test
+    fun `a fractional id is an input error and reads no registry`() {
+        // No quotes in the message: the server decoded a JSON number, not text.
+        refusedWithoutRegistryRead("42.9", "The key id 42.9 is not an integer")
+    }
+
+    @Test
+    fun `an id outside the Long range is an input error and reads no registry`() {
+        refusedWithoutRegistryRead("18446744073709551658", "The key id 18446744073709551658 is outside the Long range")
+    }
+
+    @Test
+    fun `an unsupported shape is an input error and reads no registry`() {
+        refusedWithoutRegistryRead("true", "cannot be a Boolean")
+        refusedWithoutRegistryRead("{\"id\":42}", "cannot be a LinkedHashMap")
+        refusedWithoutRegistryRead("[42]", "cannot be a ArrayList")
+    }
+
+    @Test
+    fun `an exact id reads the registry once`() {
+        val key = registry.register(42L, ChatDomain.MESSAGE)
+        val before = counting.rootReads.get()
+
+        StepVerifier.create(raw("42")).expectNext(key.root).verifyComplete()
+        assertThat(counting.rootReads.get()).isEqualTo(before + 1)
+    }
 
     @Test
     fun `a minted key resolves to its root`() {
@@ -79,10 +127,13 @@ class LongRootOfTransportTests : RSocketTestBase() {
         @Bean
         fun testTypeUtil(): TypeUtil<Long> = LongUtil()
 
+        @Bean
+        fun counting(registry: TestGeneratorKeyService<Long>): CountingKeys<Long> = CountingKeys(registry)
+
         @Controller
         @MessageMapping("key")
-        class LongKeyController(registry: TestGeneratorKeyService<Long>, typeUtil: TypeUtil<Long>) :
-            KeyServiceController<Long>(registry as IKeyService<Long>, typeUtil)
+        class LongKeyController(counting: CountingKeys<Long>, typeUtil: TypeUtil<Long>) :
+            KeyServiceController<Long>(counting, typeUtil)
     }
 }
 
@@ -95,6 +146,28 @@ class UUIDRootOfTransportTests : RSocketTestBase() {
     private lateinit var registry: TestGeneratorKeyService<UUID>
 
     private fun client() = KeyClient<UUID>("key.", requester, UUIDUtil())
+
+    @Autowired
+    private lateinit var counting: CountingKeys<UUID>
+
+    private fun refusedWithoutRegistryRead(json: String, message: String) {
+        val before = counting.rootReads.get()
+
+        StepVerifier.create(requester.route("key.rootOf").data(json).retrieveMono(UUID::class.java))
+            .expectErrorSatisfies { assertThat(it.message).contains(message) }
+            .verify()
+        assertThat(counting.rootReads.get()).isEqualTo(before)
+    }
+
+    @Test
+    fun `a number is an input error and reads no registry`() {
+        refusedWithoutRegistryRead("42", "cannot be a Integer")
+    }
+
+    @Test
+    fun `text that is not a canonical UUID is an input error and reads no registry`() {
+        refusedWithoutRegistryRead("\"1-1-1-1-1\"", "is not a canonical UUID")
+    }
 
     @Test
     fun `a minted key resolves to its root`() {
@@ -129,9 +202,22 @@ class UUIDRootOfTransportTests : RSocketTestBase() {
         @Bean
         fun testTypeUtil(): TypeUtil<UUID> = UUIDUtil()
 
+        @Bean
+        fun counting(registry: TestGeneratorKeyService<UUID>): CountingKeys<UUID> = CountingKeys(registry)
+
         @Controller
         @MessageMapping("key")
-        class UUIDKeyController(registry: TestGeneratorKeyService<UUID>, typeUtil: TypeUtil<UUID>) :
-            KeyServiceController<UUID>(registry as IKeyService<UUID>, typeUtil)
+        class UUIDKeyController(counting: CountingKeys<UUID>, typeUtil: TypeUtil<UUID>) :
+            KeyServiceController<UUID>(counting, typeUtil)
+    }
+}
+
+/** A registry that counts its root reads, so a test can prove that none ran. */
+class CountingKeys<T>(private val delegate: IKeyService<T>) : IKeyService<T> by delegate {
+    val rootReads = AtomicInteger()
+
+    override fun rootOf(id: T): Mono<T & Any> = Mono.defer {
+        rootReads.incrementAndGet()
+        delegate.rootOf(id)
     }
 }

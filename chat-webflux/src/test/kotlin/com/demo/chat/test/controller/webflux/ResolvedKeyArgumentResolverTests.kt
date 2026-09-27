@@ -3,6 +3,7 @@ package com.demo.chat.test.controller.webflux
 import com.demo.chat.controller.webflux.resolve.DomainScoped
 import com.demo.chat.controller.webflux.resolve.Resolved
 import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
+import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.KeyVerificationException
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
@@ -83,9 +84,12 @@ class ResolvedKeyArgumentResolverTests {
         StepVerifier.create(resolve("user", "4202")).verifyError(KeyVerificationException::class.java)
     }
 
+    // An id that does not convert exactly is an input error, not an unknown id.
     @Test
-    fun `a malformed id is refused`() {
-        StepVerifier.create(resolve("user", "not-a-number")).verifyError(KeyVerificationException::class.java)
+    fun `a malformed, fractional, or overflowing id is an input error`() {
+        StepVerifier.create(resolve("user", "not-a-number")).verifyError(KeyInputException::class.java)
+        StepVerifier.create(resolve("user", "42.9")).verifyError(KeyInputException::class.java)
+        StepVerifier.create(resolve("user", "18446744073709551658")).verifyError(KeyInputException::class.java)
     }
 
     @Test

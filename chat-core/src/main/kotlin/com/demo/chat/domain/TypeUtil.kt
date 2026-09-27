@@ -10,6 +10,13 @@ interface TypeUtil<T> {
     fun toString(t: T): String
     fun fromString(t: String): T
     fun assignFrom(t: Any): T
+
+    /**
+     * The exact conversion of an id that a caller sent. It never rounds,
+     * truncates, or wraps. A value it cannot convert exactly raises
+     * `KeyInputException`. See `ExactIds`.
+     */
+    fun exactFrom(t: Any): T
     fun parameterizedType(): ParameterizedTypeReference<T>
     fun empty(): T
 
@@ -31,6 +38,8 @@ interface TypeUtil<T> {
                 else -> 0L
             }
         }
+
+        override fun exactFrom(t: Any): Long = ExactIds.long(t)
 
         override fun parameterizedType(): ParameterizedTypeReference<Long> =
             ParameterizedTypeReference.forType(Long::class.java)
@@ -58,6 +67,8 @@ class LongUtil : TypeUtil<Long> {
         }
     }
 
+    override fun exactFrom(t: Any): Long = ExactIds.long(t)
+
     override fun parameterizedType(): ParameterizedTypeReference<Long> =
         ParameterizedTypeReference.forType(Long::class.java)
 
@@ -81,6 +92,8 @@ class UUIDUtil : TypeUtil<UUID> {
         }
     }
 
+    override fun exactFrom(t: Any): UUID = ExactIds.uuid(t)
+
     override fun parameterizedType(): ParameterizedTypeReference<UUID> =
         ParameterizedTypeReference.forType(UUID::class.java)
 
@@ -98,6 +111,8 @@ class StringUtil: TypeUtil<String> {
         is String -> fromString(t)
         else -> t.toString()
     }
+
+    override fun exactFrom(t: Any): String = ExactIds.string(t)
 
     override fun parameterizedType(): ParameterizedTypeReference<String> =
         ParameterizedTypeReference.forType(String::class.java)

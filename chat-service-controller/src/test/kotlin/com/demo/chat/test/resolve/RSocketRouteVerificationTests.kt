@@ -223,6 +223,20 @@ class RSocketRouteVerificationTests {
         verify(pubsub).open(4513L)
     }
 
+    // An id that does not convert exactly is an input error, and no registry read runs.
+    @Test
+    fun `a fractional topic id never reaches the registry or pub sub`() {
+        val pubsub = mockOf<TopicPubSubService<Long, String>>()
+        registry.register(42L, ChatDomain.MESSAGE_TOPIC)
+        val before = reads.get()
+
+        @Suppress("UNCHECKED_CAST")
+        val route = TopicPubSubServiceController(pubsub, verifier, LongUtil()) as TopicPubSubServiceController<Any, String>
+        StepVerifier.create(route.openRoute(42.9)).verifyError(com.demo.chat.domain.KeyInputException::class.java)
+        Mockito.verifyNoInteractions(pubsub)
+        org.assertj.core.api.Assertions.assertThat(reads.get()).isEqualTo(before)
+    }
+
     // D12
     @Test
     fun `an index add with an unknown key never reaches the index`() {

@@ -1,5 +1,6 @@
 package com.demo.chat.controller.webflux.resolve
 
+import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.KeyVerificationException
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -18,9 +19,9 @@ import reactor.core.publisher.Mono
  * Builds the `VerifiedKey` of a [Resolved] path id. See `CHAT-avduuqwp`, D2.
  *
  * The resolver reads the path segment, converts it to the key type through
- * `TypeUtil`, and resolves it through `KeyVerifier`. A malformed id, an
- * unknown id, and an id outside the domain each fail with
- * `KeyVerificationException`. The handler does not run.
+ * `TypeUtil`, and resolves it through `KeyVerifier`. A malformed id fails
+ * with `KeyInputException`. An unknown id and an id outside the domain fail
+ * with `KeyVerificationException`. The handler does not run.
  *
  * The beans are read at the first request, because a `WebFluxConfigurer`
  * runs before the key registry beans exist.
@@ -48,11 +49,13 @@ class ResolvedKeyArgumentResolver(
         @Suppress("UNCHECKED_CAST")
         val verifier = verifiers.getObject() as KeyVerifier<Any?>
         // A missing bean is a configuration fault, so it stays outside the catch.
+        // The conversion is exact. A malformed id fails with KeyInputException,
+        // an input error, and no registry read runs.
         val typeUtil = typeUtils.getObject()
         val id = try {
-            typeUtil.fromString(segment)
-        } catch (error: RuntimeException) {
-            return@defer Mono.error(KeyVerificationException("The path id '$segment' is not a key id."))
+            typeUtil.exactFrom(segment)
+        } catch (error: KeyInputException) {
+            return@defer Mono.error(error)
         }
 
         verifier.resolve(id, domainOf(annotation, exchange)).map { it as Any }
