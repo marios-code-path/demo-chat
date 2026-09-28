@@ -2335,8 +2335,24 @@ running composition behaves differently today.
 `docs/ANONYMOUS-AUTHORIZATION.md` carries the new matrix.
 
 Evidence limits: `CHAT-axuvmlgu` records that `--ci` tested a stale shell image.
-`CHAT-rmxxtwtu` holds Cassandra authorization index retention and deletion defects.
-This design remains unmeasured against Cassandra.
+
+**`CHAT-rmxxtwtu` is complete.** PR #144 merged on 2026-09-28 as merge
+commit `5517c774`.
+
+- **Cassandra auth index retention and selective removal are verified.** The
+  principal table and the target table each carry a clustering column, so two
+  grants can share one principal or one target. A third table keyed by the
+  grant id names the rows to remove.
+- **The Cassandra authorization matrix is measured.**
+  `CassandraAuthorizationMatrixTests` answers all six rows of
+  `docs/ANONYMOUS-AUTHORIZATION.md` against a real Cassandra store and a real
+  Cassandra index.
+
+One defect stays open beside it. **`CHAT-xcmpudyb` remains open**, because
+Cassandra message sending still fails on timestamp mapping.
+`chat_message_id.msg_id` and `chat_message_topic.msg_id` are `TIMESTAMP`, and
+the entities map a `T` id there. So the matrix test mints a message key and
+sends no message.
 
 ## Self authority, and the target key (2026-09-24)
 
@@ -2506,10 +2522,10 @@ The branch is `chat-bafkgkko-root-restart`.
 - **A grant read needs the `Anon` identity.** The actor set holds it, and it
   loads with the initial users. With `app.users.create=false`, every grant read
   fails, and `hasAccessByKeyId` answers false with no error.
-- **The restart tests use the `KEY_VALUE_PAIR` root.** The Cassandra auth index
-  keeps one row per target (`CHAT-rmxxtwtu`), and the shipped grants name the
-  `MessageTopic` root. Grant continuity on a root that shipped grants name is
-  not proved on Cassandra.
+- **The Redis restart test uses the `KEY_VALUE_PAIR` root.** The Cassandra
+  restart test moved to `MESSAGE_TOPIC`, a root that shipped grants name, and
+  it passes. `CHAT-rmxxtwtu` measured that on 2026-09-28. So the old caution
+  here is closed, and the Redis test reads a different root.
 - **A Redis close does not release the node id claim.**
   `LettuceConnectionFactory` stops before the claim guard releases.
   `CHAT-ocpojbyy` holds it. The Redis restart test uses two node ids.
