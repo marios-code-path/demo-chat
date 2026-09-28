@@ -137,6 +137,7 @@ failure.
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
+| `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
 
 `chat-deploy-kafka` claims nothing, and it still reads `app.nodeid` for its

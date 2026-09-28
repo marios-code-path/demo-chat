@@ -87,7 +87,19 @@ The test uses `SpringApplicationBuilder(ChatApp)` with command line arguments,
 as `CassandraClaimBootTests` does. The settings are
 `app.service.core.key=cassandra`, `app.service.core.persistence=cassandra`,
 `app.service.core.index=cassandra`, `app.service.composite.auth`,
-`app.users.create=false` and `app.nodeid=23`.
+`app.users.create=true` and `app.nodeid=23`.
+
+**Two measured changes, 2026-09-27.**
+
+- `app.users.create` is `true`. A grant read puts the `Anon` identity in its
+  actor set, and that identity loads with the initial users. With `false`,
+  every read failed with "The Anon identity is not loaded", and
+  `hasAccessByKeyId` answered false.
+- The target is the `KEY_VALUE_PAIR` root, not the `MESSAGE_TOPIC` root. The
+  shipped grants name the `Admin`, `User`, `Message` and `MessageTopic` roots.
+  The Cassandra auth index keeps one row per target, so a shipped row and the
+  runtime grant on one root replace each other. `CHAT-rmxxtwtu` holds that
+  defect. The steps below read `MESSAGE_TOPIC` as `KEY_VALUE_PAIR`.
 
 1. Start context A against the test container keyspace.
 2. In A, create a user through the user service.
