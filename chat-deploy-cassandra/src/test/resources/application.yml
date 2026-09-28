@@ -20,6 +20,10 @@ spring:
     port: 9042
     local-datacenter: datacenter1
     base-packages: com.demo.chat.persistence.cassandra
+    request:
+      # The schema setup runs through this session. The 2 second driver
+      # default timed out a slow runner. `CHAT-sgyaaivp`.
+      timeout: 10s
   main:
     web-application-type: reactive
   application:

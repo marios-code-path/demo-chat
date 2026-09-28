@@ -11,11 +11,34 @@ document states what that identity may then do.** They are separate questions,
 and a green identity test proves nothing here.
 
 **This matrix describes a store that keeps every grant row.** The test
-replaces the store and the index with maps. Measured on 2026-09-24, the
-cassandra authorization index keeps one row per target and one row per
-principal, so it cannot hold the four `User` root rows that `userinit.yml`
-writes. **Do not read this matrix as the answer for a cassandra deployment.**
-`CHAT-rmxxtwtu` holds that defect.
+replaces the store and the index with maps.
+
+**The cassandra authorization index now keeps every grant row.** Measured on
+2026-09-27, the grant id is a clustering column of both index tables, so one
+target and one principal each hold many grants. A removal reads the
+`auth_metadata_by_id` row, because `rem` receives the grant key alone.
+`CHAT-rmxxtwtu` held both defects.
+
+Two tests carry that. `AuthMetadataIndexRepositoryTests` writes two grants on
+one target and on one principal, reads both, removes one and proves the other
+stands. `CassandraGrantRestartTests` proves the same shape through the
+production `AccessBroker` on the `MESSAGE_TOPIC` root, which four shipped rows
+share, and proves both grants survive a context restart.
+
+**The matrix below is now measured on both.** `AnonymousAuthorizationMatrixTests`
+replaces the store and the index with maps.
+`CassandraAuthorizationMatrixTests` runs the production stack against a
+cassandra store and a cassandra index, over the launch surface that loads
+`userinit.yml`. Measured on 2026-09-27: **all six rows answer the same on
+cassandra as on the map store**, for all five caller states.
+
+That test mints the message key instead of sending a message, because
+`send` fails on a cassandra deployment. See `CHAT-xcmpudyb`. The
+`messageById` expression checks one message key, and the broker reads that key
+alone, so the row is unaffected.
+
+Only the six rows below are measured this way. The self authority, many target
+and expiry cases in this document are still measured on a map store alone.
 
 **`*` means ownership, and not "all permissions".** It is singular per target,
 and it is a sentinel, so a `*` row stops the read and its expiry decides.

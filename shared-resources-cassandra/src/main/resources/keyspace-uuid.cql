@@ -176,7 +176,7 @@ CREATE TABLE chat_uuid.auth_metadata_principal
     permission  varchar,
     mute        Boolean,
     expires bigint,
-    PRIMARY KEY (principal)
+    PRIMARY KEY ((principal), id)
 );
 
 CREATE TABLE chat_uuid.auth_metadata_target
@@ -189,5 +189,18 @@ CREATE TABLE chat_uuid.auth_metadata_target
     permission  varchar,
     mute        Boolean,
     expires bigint,
-    PRIMARY KEY (target)
+    PRIMARY KEY ((target), id)
+);
+
+-- The same rows keyed by the grant id. rem() receives only the grant key, so
+-- it needs this table to name the target and principal partitions it must
+-- delete. See CHAT-rmxxtwtu.
+CREATE TABLE chat_uuid.auth_metadata_by_id
+(
+    id             UUID,
+    target         UUID,
+    principal      UUID,
+    target_root    UUID,
+    principal_root UUID,
+    PRIMARY KEY (id)
 );

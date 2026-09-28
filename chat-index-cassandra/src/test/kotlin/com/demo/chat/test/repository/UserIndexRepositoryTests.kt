@@ -1,5 +1,7 @@
 package com.demo.chat.test.repository
 
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import com.datastax.oss.driver.api.core.uuid.Uuids
 import com.demo.chat.index.cassandra.domain.ChatUserHandle
 import com.demo.chat.index.cassandra.domain.ChatUserHandleKey
@@ -41,9 +43,19 @@ class UserIndexRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator(
     @Autowired
     lateinit var cassandraProperties: CassandraProperties
 
+    @Autowired
+    lateinit var session: CqlSession
+
     @Test
     fun `cassandra request timeout allows index schema setup`() {
+        // The driver reads its own configuration, not the property. A property
+        // assertion passes even when the session ignores it, which is how the
+        // 2 second default survived. `CHAT-sgyaaivp`.
+        val effective = session.context.config.defaultProfile
+            .getDuration(DefaultDriverOption.REQUEST_TIMEOUT)
+
         Assertions.assertEquals(Duration.ofSeconds(10), cassandraProperties.request.timeout)
+        Assertions.assertEquals(Duration.ofSeconds(10), effective)
     }
 
     @Test

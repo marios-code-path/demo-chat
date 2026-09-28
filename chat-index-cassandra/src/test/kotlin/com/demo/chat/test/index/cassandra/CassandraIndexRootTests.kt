@@ -3,6 +3,7 @@ package com.demo.chat.test.index.cassandra
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.index.cassandra.domain.AuthMetadataByPrincipal
+import com.demo.chat.index.cassandra.domain.AuthMetadataByPrincipalKey
 import com.demo.chat.index.cassandra.domain.ChatKeyValueIndex
 import com.demo.chat.index.cassandra.domain.ChatKeyValueIndexKey
 import com.demo.chat.index.cassandra.domain.ChatMessageByTopic
@@ -90,10 +91,13 @@ class CassandraIndexRootTests {
     fun `the grant index answers the AUTH_METADATA root`() {
         val byTarget = mock(AuthMetadataByTargetRepository::class.java) as AuthMetadataByTargetRepository<Long>
         val byPrincipal = mock(AuthMetadataByPrincipalRepository::class.java) as AuthMetadataByPrincipalRepository<Long>
+        val byId = mock(AuthMetadataByIdRepository::class.java) as AuthMetadataByIdRepository<Long>
         val user = root(ChatDomain.USER)
-        given(byPrincipal.findByPrincipalId(5L)).willReturn(Flux.just(AuthMetadataByPrincipal(15L, 6L, 5L, user, user, "GET", false, Long.MAX_VALUE)))
+        given(byPrincipal.findByKeyPrincipalId(5L)).willReturn(
+            Flux.just(AuthMetadataByPrincipal(AuthMetadataByPrincipalKey(5L, 15L), 6L, user, user, "GET", false, Long.MAX_VALUE))
+        )
 
-        val key = AuthMetadataIndex(LongUtil(), byTarget, byPrincipal, roots).findBy(mapOf(AuthMetaIndex.PRINCIPAL to "5")).blockFirst()!!
+        val key = AuthMetadataIndex(LongUtil(), byTarget, byPrincipal, byId, roots).findBy(mapOf(AuthMetaIndex.PRINCIPAL to "5")).blockFirst()!!
         assertThat(key.root).isEqualTo(root(ChatDomain.AUTH_METADATA))
     }
 

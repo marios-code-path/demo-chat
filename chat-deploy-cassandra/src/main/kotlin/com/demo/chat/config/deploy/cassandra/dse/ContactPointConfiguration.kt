@@ -1,10 +1,12 @@
 package com.demo.chat.config.deploy.cassandra.dse
 
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import com.demo.chat.config.persistence.cassandra.NodeIdClaimConfiguration
 import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
+import org.springframework.data.cassandra.config.DriverConfigLoaderBuilderConfigurer
 import org.springframework.data.cassandra.config.SessionBuilderConfigurer
 import java.net.InetSocketAddress
 
@@ -47,6 +49,23 @@ class ContactPointConfiguration(private val props: CassandraProperties) : Abstra
                 sessionBuilder.withAuthCredentials(username, password)
             }
             sessionBuilder.addContactPoint(InetSocketAddress(contactPoint, props.port))
+        }
+    }
+
+    override fun getDriverConfigLoaderBuilderConfigurer(): DriverConfigLoaderBuilderConfigurer? {
+        // The base class applies no driver configuration, so a session that
+        // leaves the timeout unset ran at the 2 second driver default. The
+        // restart test applies the keyspace schema through that session, and
+        // a slow runner times out before the schema settles.
+        // `CHAT-sgyaaivp`.
+        val timeout = props.request.timeout
+
+        return if (timeout != null) {
+            DriverConfigLoaderBuilderConfigurer { builder ->
+                builder.withDuration(DefaultDriverOption.REQUEST_TIMEOUT, timeout)
+            }
+        } else {
+            super.getDriverConfigLoaderBuilderConfigurer()
         }
     }
 }
