@@ -81,6 +81,13 @@ With the defaults that is 25 seconds.
 A clean shutdown releases the lease, so a restart is immediate. A crash
 leaves the lease to expire.
 
+**Correction, 2026-09-27: on Redis a clean shutdown does not release the
+lease.** `LettuceConnectionFactory` is a `SmartLifecycle`, so it stops before
+the claim guard releases the claim. The release fails with "LettuceConnectionFactory
+has been STOPPED", and the guard logs it at debug level only. A restart with the
+same `app.nodeid` then fails as already claimed until the lease expires.
+`CHAT-ocpojbyy` holds the defect. Cassandra releases the lease on a clean close.
+
 ## Cassandra upgrade
 
 A fresh keyspace gets `node_claim` from `keyspace-long.cql` or
@@ -135,6 +142,7 @@ failure.
 | `chat-persistence-cassandra` claim store tests | 200 to 209 |
 | `chat-deploy-redis` `RedisDeployBootTests` | 1 |
 | `chat-deploy-redis` `RedisClaimBootTests` | 11 and 12 |
+| `chat-deploy-redis` `RedisGrantRestartTests` | 13, 14 and 15 |
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |

@@ -144,7 +144,7 @@ Two distinct key/value paths, easy to confuse:
 
 ## 3. Startup and Root-Key Bootstrap
 
-A service cannot serve requests until it holds the root key of each `ChatDomain`. The exception is a service with the `NONE` source. It loads no roots, and its supported operations read no root. The authorization server is that role. `Admin` and `Anon` are user identities, and their keys carry the `USER` root. `chat-deploy` loads the roots in an `ApplicationStartedEvent` listener, before any request. See `CHAT-avduuqwp` and `docs/KEY-ROOT-IDENTITY.md`.
+A service cannot serve requests until it holds the root key of each `ChatDomain`. The exception is a service with the `NONE` source. It loads no roots, and its supported operations read no root. The authorization server is that role. `Admin` and `Anon` are user identities, and their keys carry the `USER` root. `RootKeyStartup` in `chat-deploy` loads the roots before either server starts. It is a `SmartLifecycle` at phase `Integer.MAX_VALUE - 4096`, below the reactive web server at `Integer.MAX_VALUE - 2048` and the RSocket server at `Integer.MAX_VALUE`. A failed step fails the context refresh, so the process does not start. See `CHAT-avduuqwp`, `CHAT-bafkgkko` and `docs/KEY-ROOT-IDENTITY.md`.
 
 `RootKeySource` reads the settings and selects one source. It refuses any other combination at start.
 
@@ -158,11 +158,13 @@ A service cannot serve requests until it holds the root key of each `ChatDomain`
 ```mermaid
 sequenceDiagram
     autonumber
-    participant App as ChatApp (chat-deploy)
+    participant App as RootKeyStartup (chat-deploy)
     participant Chk as StoreShapeCheck beans
     participant RS as RootKeyStore
     participant Snap as Consul KV / HTTP peer
+    participant Idx as StartupIndexLoad beans
     participant Init as UserInitializationListener
+    participant Srv as Web and RSocket servers
 
     App->>Chk: check() on every registered check
     Note over Chk: A store with the old schema<br/>fails the start here
@@ -173,6 +175,8 @@ sequenceDiagram
         App->>Snap: read the snapshot
         Snap-->>App: ChatDomain to root id
     end
+    App->>Idx: load() on every index load
+    Note over Idx: The Lucene auth index<br/>fills from the auth store
     App-->>App: RootKeyInitializationReadyEvent
     App->>Init: app.users.create=true
     Init->>Init: store the initial users
@@ -180,7 +184,10 @@ sequenceDiagram
     opt app.rootkeys.publish.scheme=kv
         App->>Snap: publish the snapshot
     end
+    App->>Srv: the next lifecycle phases start the servers
 ```
+
+**The Lucene auth index loads before readiness.** The Lucene index lives in process memory, so it is empty after a restart. A grant read queries the auth index first, so without the load a stored grant is not found. Any load error fails the start. The process does not start with a partial index. Only the auth index loads. `CHAT-uxgdzpag` holds the other Lucene indexes. A `NONE` process runs no index load.
 
 **The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. This release has no migration.
 

@@ -6,7 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper
 
 import com.demo.chat.service.core.InitializingKVStore
 
+import com.demo.chat.service.core.StartupIndexLoad
 import com.demo.chat.service.core.StoreShapeCheck
+import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
+import org.springframework.context.ApplicationListener
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.config.deploy.init.HttpRootKeyConsumeOnStart
@@ -20,13 +23,9 @@ import com.demo.chat.service.core.RootKeyStore
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.springframework.boot.SpringApplication
-import org.springframework.boot.context.event.ApplicationStartedEvent
-import org.springframework.boot.test.context.assertj.AssertableApplicationContext
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.core.env.MapPropertySource
 import reactor.core.publisher.Mono
-import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -37,26 +36,29 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class RootKeyStartupTests {
 
+    /** One instance per test. A failed context cannot answer a bean, so the tests read this one. */
+    private val rootKeys = RootKeys<Long>()
+
     private val base = ApplicationContextRunner()
         .withBean(TypeUtil::class.java, { TypeUtil.LongUtil })
-        .withBean(RootKeys::class.java, { RootKeys<Long>() })
+        .withBean(RootKeys::class.java, { rootKeys })
         .withUserConfiguration(DeploymentEventPublisher::class.java, RootKeyInitializationListeners::class.java)
 
     @Test
     fun `a store and a generator load every root`() {
         base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
             .run { ctx ->
-                start(ctx)
-                assertThat(roots(ctx).domains().keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
+                assertThat(ctx).hasNotFailed()
+                assertThat(rootKeys.domains().keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
             }
     }
 
     @Test
     fun `a process with no store and no scheme fails the start`() {
         base.run { ctx ->
-            assertThatThrownBy { start(ctx) }.hasRootCauseInstanceOf(ChatException::class.java)
+            assertThat(ctx.startupFailure).hasRootCauseInstanceOf(ChatException::class.java)
                 .rootCause().hasMessageContaining("no RootKeyStore")
-            assertThat(roots(ctx).domains()).isEmpty()
+            assertThat(rootKeys.domains()).isEmpty()
         }
     }
 
@@ -71,9 +73,9 @@ class RootKeyStartupTests {
         base.withBean(RootKeyStore::class.java, { recording }).withBean(IKeyGenerator::class.java, { ids() })
             .withBean(StoreShapeCheck::class.java, { StoreShapeCheck { throw ChatException("Missing: keys.root. Recreate the store.") } })
             .run { ctx ->
-                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
+                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("Recreate the store")
                 assertThat(reads.get()).isZero()
-                assertThat(roots(ctx).domains()).isEmpty()
+                assertThat(rootKeys.domains()).isEmpty()
             }
     }
 
@@ -82,15 +84,15 @@ class RootKeyStartupTests {
         base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
             .withBean(StoreShapeCheck::class.java, { StoreShapeCheck { } })
             .run { ctx ->
-                start(ctx)
-                assertThat(roots(ctx).domains().keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
+                assertThat(ctx).hasNotFailed()
+                assertThat(rootKeys.domains().keys).containsExactlyInAnyOrderElementsOf(ChatDomain.entries)
             }
     }
 
     @Test
     fun `a store without a generator fails the start`() {
         base.withBean(RootKeyStore::class.java, { MapStore() }).run { ctx ->
-            assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("no IKeyGenerator")
+            assertThat(ctx.startupFailure).rootCause().hasMessageContaining("no IKeyGenerator")
         }
     }
 
@@ -101,8 +103,8 @@ class RootKeyStartupTests {
             override fun createIfAbsent(domain: ChatDomain, id: Long): Mono<Long> = Mono.error(IllegalStateException("store unavailable"))
         }
         base.withBean(RootKeyStore::class.java, { failing }).withBean(IKeyGenerator::class.java, { ids() }).run { ctx ->
-            assertThatThrownBy { start(ctx) }.hasMessageContaining("store unavailable")
-            assertThat(roots(ctx).domains()).isEmpty()
+            assertThat(ctx.startupFailure).rootCause().hasMessageContaining("store unavailable")
+            assertThat(rootKeys.domains()).isEmpty()
         }
     }
 
@@ -114,8 +116,8 @@ class RootKeyStartupTests {
                 if (domain == ChatDomain.FRANKING_TAG) Mono.empty() else Mono.just(id)
         }
         base.withBean(RootKeyStore::class.java, { incomplete }).withBean(IKeyGenerator::class.java, { ids() }).run { ctx ->
-            assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("incomplete")
-            assertThat(roots(ctx).domains()).isEmpty()
+            assertThat(ctx.startupFailure).rootCause().hasMessageContaining("incomplete")
+            assertThat(rootKeys.domains()).isEmpty()
         }
     }
 
@@ -179,9 +181,9 @@ class RootKeyStartupTests {
             .withBean(InitializingKVStore::class.java, { kv })
             .withBean(StoreShapeCheck::class.java, { wrongShape })
             .run { ctx ->
-                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
+                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("Recreate the store")
                 assertThat(reads.get()).isZero()
-                assertThat(roots(ctx).domains()).isEmpty()
+                assertThat(rootKeys.domains()).isEmpty()
             }
     }
 
@@ -193,8 +195,8 @@ class RootKeyStartupTests {
             .withBean(JACKSON_2_OBJECT_MAPPER, ObjectMapper::class.java, { ObjectMapper() })
             .withBean(StoreShapeCheck::class.java, { wrongShape })
             .run { ctx ->
-                assertThatThrownBy { start(ctx) }.rootCause().hasMessageContaining("Recreate the store")
-                assertThat(roots(ctx).domains()).isEmpty()
+                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("Recreate the store")
+                assertThat(rootKeys.domains()).isEmpty()
             }
     }
 
@@ -211,10 +213,10 @@ class RootKeyStartupTests {
     @Test
     fun `the no roots role starts and loads nothing`() {
         base.withPropertyValues("app.rootkeys.required=false").run { ctx ->
-            start(ctx)
             assertThat(ctx).hasNotFailed()
-            assertThat(roots(ctx).domains()).isEmpty()
-            assertThatThrownBy { roots(ctx).of(ChatDomain.USER) }.hasMessageContaining("not loaded")
+            assertThat(ctx).hasNotFailed()
+            assertThat(rootKeys.domains()).isEmpty()
+            assertThatThrownBy { rootKeys.of(ChatDomain.USER) }.hasMessageContaining("not loaded")
         }
     }
 
@@ -226,15 +228,70 @@ class RootKeyStartupTests {
         }
     }
 
+    // CHAT-bafkgkko, D2. The start sequence runs the roots, then every index load, then readiness.
+    @Test
+    fun `the index load runs after the roots and before readiness`() {
+        val events = java.util.Collections.synchronizedList(mutableListOf<String>())
+        base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
+            .withBean(StartupIndexLoad::class.java, {
+                StartupIndexLoad { Mono.fromRunnable { events += "index roots=${rootKeys.domains().size}" } }
+            })
+            .withBean("readiness", ApplicationListener::class.java, { readiness(events) })
+            .run { ctx ->
+                assertThat(ctx).hasNotFailed()
+                assertThat(events).containsExactly("index roots=${ChatDomain.entries.size}", "ready")
+            }
+    }
+
+    // CHAT-bafkgkko. A load that adds one entry and then fails is a partial index. The start fails, and no readiness follows.
+    @Test
+    fun `a partial index load fails the start and publishes no readiness`() {
+        val events = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val partial = StartupIndexLoad {
+            reactor.core.publisher.Flux.just("grant-1", "grant-2")
+                .concatMap { entry ->
+                    if (entry == "grant-2") Mono.error(IllegalStateException("the auth store failed at grant-2"))
+                    else Mono.fromRunnable<Void> { events += "added $entry" }
+                }
+                .then()
+        }
+        base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
+            .withBean(StartupIndexLoad::class.java, { partial })
+            .withBean("readiness", ApplicationListener::class.java, { readiness(events) })
+            .run { ctx ->
+                assertThat(ctx).hasFailed()
+                assertThat(ctx.startupFailure).rootCause().hasMessageContaining("the auth store failed at grant-2")
+                assertThat(generateSequence(ctx.startupFailure) { it.cause }.mapNotNull { it.message }.joinToString(" | "))
+                    .contains("does not start with a partial index")
+                assertThat(events).containsExactly("added grant-1")
+            }
+    }
+
+    // A failed shape check runs no root load and no index load.
+    @Test
+    fun `a failed shape check runs no index load`() {
+        val events = java.util.Collections.synchronizedList(mutableListOf<String>())
+        base.withBean(RootKeyStore::class.java, { MapStore() }).withBean(IKeyGenerator::class.java, { ids() })
+            .withBean(StoreShapeCheck::class.java, { wrongShape })
+            .withBean(StartupIndexLoad::class.java, { StartupIndexLoad { Mono.fromRunnable { events += "index" } } })
+            .withBean("readiness", ApplicationListener::class.java, { readiness(events) })
+            .run { ctx ->
+                assertThat(ctx).hasFailed()
+                assertThat(events).isEmpty()
+                assertThat(rootKeys.domains()).isEmpty()
+            }
+    }
+
     /** `withPropertyValues` trims a value. This helper keeps the raw text, spaces included. */
     private fun ApplicationContextRunner.withRaw(vararg values: Pair<String, String>): ApplicationContextRunner =
         withInitializer { it.environment.propertySources.addFirst(MapPropertySource("raw", mapOf(*values))) }
 
-    private fun start(ctx: AssertableApplicationContext) =
-        ctx.publishEvent(ApplicationStartedEvent(SpringApplication(), arrayOf(), ctx.sourceApplicationContext, Duration.ZERO))
-
-    @Suppress("UNCHECKED_CAST")
-    private fun roots(ctx: AssertableApplicationContext): RootKeys<Long> = ctx.getBean(RootKeys::class.java) as RootKeys<Long>
+    /** An anonymous object keeps its generic type, so Spring delivers only the readiness event. */
+    private fun readiness(events: MutableList<String>) = object : ApplicationListener<RootKeyInitializationReadyEvent<*>> {
+        override fun onApplicationEvent(event: RootKeyInitializationReadyEvent<*>) {
+            events += "ready"
+        }
+    }
 
     private fun ids(): IKeyGenerator<Long> =
         AtomicLong(100).let { n -> object : IKeyGenerator<Long> { override fun nextId() = n.incrementAndGet() } }

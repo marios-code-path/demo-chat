@@ -1,10 +1,9 @@
 package com.demo.chat.config.deploy.init
 
+import com.demo.chat.service.core.StartupIndexLoad
 import com.demo.chat.service.core.StoreShapeCheck
 
 import com.demo.chat.config.deploy.event.DeploymentEventPublisher
-import org.slf4j.LoggerFactory
-import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
 import com.demo.chat.deploy.event.RootKeyUpdatedEvent
 import com.demo.chat.deploy.event.StartupAnnouncementEvent
 import com.demo.chat.domain.ChatException
@@ -20,7 +19,6 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.event.ApplicationStartedEvent
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -41,14 +39,15 @@ import org.springframework.core.env.Environment
  * `app.rootkeys.create` is removed. Conditional creation makes it unnecessary.
  * [RootKeySource] validates the choice, and it names the one role that holds
  * no root keys.
+ *
+ * Each contract is a [RootKeyLoadStep]. [RootKeyStartup] runs the step inside
+ * the start sequence, before any server starts. See `CHAT-bafkgkko`, D2.
  */
 @Configuration
 class RootKeyInitializationListeners<T : Any>(
     val publisher: DeploymentEventPublisher,
     val typeUtil: TypeUtil<T>
 ) {
-
-    private val logger = LoggerFactory.getLogger(javaClass)
 
     @Bean
     fun listenForRootKeyInitialized(): ApplicationListener<RootKeyUpdatedEvent<T>> =
@@ -64,8 +63,22 @@ class RootKeyInitializationListeners<T : Any>(
     fun rootKeySource(env: Environment): RootKeySource = RootKeySource.of(env)
 
     /**
-     * This listener loads the roots from the store of this node, before the
-     * node serves a request. A failure stops the start.
+     * The start sequence. It checks the stores, loads the roots, fills the
+     * in-process indexes, and publishes readiness, before any server starts.
+     * See [RootKeyStartup].
+     */
+    @Bean
+    fun rootKeyStartup(
+        source: RootKeySource,
+        rootKeys: RootKeys<T>,
+        shapeChecks: ObjectProvider<StoreShapeCheck>,
+        step: ObjectProvider<RootKeyLoadStep>,
+        indexLoads: ObjectProvider<StartupIndexLoad>,
+    ): RootKeyStartup<T> = RootKeyStartup(source, shapeChecks, step, indexLoads, rootKeys, publisher)
+
+    /**
+     * This step loads the roots from the store of this node. A failure stops
+     * the start.
      *
      * A [RootKeySource.STORE] process must hold a `RootKeyStore` and an
      * `IKeyGenerator`. A [RootKeySource.NONE] process loads nothing, and a
@@ -78,29 +91,20 @@ class RootKeyInitializationListeners<T : Any>(
         rootKeys: RootKeys<T>,
         store: ObjectProvider<RootKeyStore<T>>,
         ids: ObjectProvider<IKeyGenerator<T>>,
-        shapeChecks: ObjectProvider<StoreShapeCheck>,
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-            // Every registered store is checked before any root source loads, and
-            // in a process that loads no roots. See CHAT-avduuqwp, T7.
-            shapeChecks.orderedStream().forEach { it.check() }
-            if (source == RootKeySource.NONE) {
-                logger.info("${RootKeySource.REQUIRED}=false. This process loads no root keys.")
-                return@ApplicationListener
-            }
-            val rootKeyStore = store.ifAvailable ?: throw ChatException(
-                "This process needs root keys but has no RootKeyStore. Set ${RootKeySource.SCHEME} to 'kv' or 'http', " +
-                    "or set ${RootKeySource.REQUIRED}=false for a role that reads no root."
-            )
-            val generator = ids.ifAvailable ?: throw ChatException(
-                "This node has a root key store but no IKeyGenerator. It cannot create a missing root."
-            )
-            val roots = RootKeyLoader(rootKeyStore, generator).load().block()
-                ?: throw ChatException("The root key load returned no roots.")
-            rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })
-            publisher.publishEvent(StartupAnnouncementEvent("Root Keys Loaded"))
-            publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
-        }
+    ): RootKeyLoadStep = RootKeyLoadStep {
+        if (source == RootKeySource.NONE) return@RootKeyLoadStep false
+        val rootKeyStore = store.ifAvailable ?: throw ChatException(
+            "This process needs root keys but has no RootKeyStore. Set ${RootKeySource.SCHEME} to 'kv' or 'http', " +
+                "or set ${RootKeySource.REQUIRED}=false for a role that reads no root."
+        )
+        val generator = ids.ifAvailable ?: throw ChatException(
+            "This node has a root key store but no IKeyGenerator. It cannot create a missing root."
+        )
+        val roots = RootKeyLoader(rootKeyStore, generator).load().block()
+            ?: throw ChatException("The root key load returned no roots.")
+        rootKeys.loadDomains(roots.mapValues { (_, id) -> Key.root(id) })
+        true
+    }
 
     @Bean
     @ConditionalOnProperty("app.rootkeys.publish.scheme", havingValue = "kv")
@@ -125,13 +129,8 @@ class RootKeyInitializationListeners<T : Any>(
     fun mergeRootKeysOnStart(
         rootKeys: RootKeys<T>,
         rootKeyService: RootKeyService<T>,
-        shapeChecks: ObjectProvider<StoreShapeCheck>,
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-            // A snapshot consumer still writes to its own stores. They are checked first. See CHAT-avduuqwp, T7.
-            shapeChecks.orderedStream().forEach { it.check() }
-            rootKeyService.consumeRootKeys(rootKeys)
-            publisher.publishEvent(RootKeyUpdatedEvent(rootKeys))
-            publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
-        }
+    ): RootKeyLoadStep = RootKeyLoadStep {
+        rootKeyService.consumeRootKeys(rootKeys)
+        true
+    }
 }
