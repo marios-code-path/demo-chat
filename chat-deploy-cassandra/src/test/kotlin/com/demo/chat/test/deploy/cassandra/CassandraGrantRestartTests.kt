@@ -18,8 +18,15 @@ import org.springframework.context.ConfigurableApplicationContext
 import java.time.Duration
 
 /**
- * A grant written at run time on a domain root still applies after the
- * context restarts against the same Cassandra keyspace. See `CHAT-bafkgkko`.
+ * The Cassandra grant index keeps every grant of one target.
+ *
+ * `userinit.yml` names the `MESSAGE_TOPIC` root as the target of four rows, so
+ * a runtime grant on that root shares its partition with shipped rows. The
+ * grant id is a clustering column, and a removal reads the by-id row.
+ * `CHAT-rmxxtwtu` holds both defects.
+ *
+ * The tests run through the production `AccessBroker`, so they prove the
+ * deployment path and not a mock.
  *
  * Node id 23 belongs to this class. See docs/NODEID-CLAIM.md. A clean close
  * releases the claim, so the second context takes the same id.
@@ -79,48 +86,79 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
     @Suppress("UNCHECKED_CAST")
     private fun ConfigurableApplicationContext.roots() = getBean(RootKeys::class.java) as RootKeys<Long>
 
+    @Suppress("UNCHECKED_CAST")
+    private fun ConfigurableApplicationContext.grants() =
+        getBean(AuthorizationService::class.java) as AuthorizationService<Long, AuthMetadata<Long>>
+
     /** The broker resolves both ids through the key registry of this process, then checks the grant. */
     private fun ConfigurableApplicationContext.allows(user: Key<Long>, target: Key<Long>, perm: String): Boolean =
         broker().hasAccessByKeyId(user.id, target.id, perm).block(timeout)!!
 
     /**
-     * The target is the `KEY_VALUE_PAIR` root, because no shipped grant names
-     * it. The Cassandra auth index keeps one row per target, so a shipped row
-     * and this grant on one root would replace each other. `CHAT-rmxxtwtu`
-     * holds that defect.
+     * A runtime grant beside the four shipped grants of the `MESSAGE_TOPIC`
+     * root. The control is `ALL`, which a shipped row carries. A backend that
+     * kept one row per target would answer one of the two and not both.
+     *
+     * The removal runs in the second context, after the restart, because the
+     * by-id row must reach the process that did not write the grant.
+     *
+     * **A denied permission here does not prove that the index row is gone.**
+     * A grant read joins the index to the domain store, so the removal of the
+     * domain row alone denies the permission. Measured on 2026-09-27: a
+     * mutation that deleted the by-id row alone left this test green.
+     * `AuthMetadataIndexRepositoryTests` reads the index tables directly, and
+     * it fails on that mutation.
      */
     @Test
-    fun `a runtime grant on a domain root still applies after a restart`() {
+    fun `a runtime grant beside the shipped grants survives a restart, and one removal leaves the other`() {
         val user: Key<Long>
         val target: Key<Long>
 
         start().use { first ->
             @Suppress("UNCHECKED_CAST")
             val composite = first.getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
-            @Suppress("UNCHECKED_CAST")
-            val grants = first.getBean(AuthorizationService::class.java) as AuthorizationService<Long, AuthMetadata<Long>>
 
             user = composite.userService().addUser(UserCreateRequest("restart", "restartuser", "http://u")).block(timeout)!!
-            target = first.roots().of(ChatDomain.KEY_VALUE_PAIR)
+            target = first.roots().of(ChatDomain.MESSAGE_TOPIC)
 
-            // Before the grant, both permissions deny. DEL is the control.
+            // A shipped row names this target. NEW is the control.
+            Assertions.assertTrue(first.allows(user, target, "ALL"), "the shipped grant must allow ALL")
             Assertions.assertFalse(first.allows(user, target, "NEW"), "NEW must deny before the grant")
-            Assertions.assertFalse(first.allows(user, target, "DEL"), "DEL must deny before the grant")
 
             val placeholder = Key.empty(0L, first.roots().of(ChatDomain.AUTH_METADATA).id)
-            grants.authorize(AuthMetadata.create(placeholder, user, target, "NEW", false, Long.MAX_VALUE), true).block(timeout)
+            first.grants()
+                .authorize(AuthMetadata.create(placeholder, user, target, "NEW", false, Long.MAX_VALUE), true)
+                .block(timeout)
 
             Assertions.assertTrue(first.allows(user, target, "NEW"), "NEW must allow after the grant")
+            Assertions.assertTrue(
+                first.allows(user, target, "ALL"),
+                "the shipped grant must survive beside the runtime grant on one target"
+            )
         }
 
         start().use { second ->
             // The checks read the root that this process holds, not the value
             // kept from the first context. A process that minted fresh roots
-            // would fail both the equality and the grant check.
-            val current = second.roots().of(ChatDomain.KEY_VALUE_PAIR)
+            // would fail both the equality and the grant checks.
+            val current = second.roots().of(ChatDomain.MESSAGE_TOPIC)
             Assertions.assertEquals(target, current, "the restart must read the stored root")
-            Assertions.assertTrue(second.allows(user, current, "NEW"), "the grant must apply after the restart")
-            Assertions.assertFalse(second.allows(user, current, "DEL"), "a permission with no grant must still deny")
+            Assertions.assertTrue(second.allows(user, current, "NEW"), "the runtime grant must apply after the restart")
+            Assertions.assertTrue(second.allows(user, current, "ALL"), "the shipped grant must apply after the restart")
+
+            val runtime = second.grants()
+                .getAuthorizationsForPrincipal(user)
+                .filter { it.permission == "NEW" }
+                .blockFirst(timeout)
+            Assertions.assertNotNull(runtime, "the runtime grant must be readable after the restart")
+
+            second.grants().authorize(runtime!!, false).block(timeout)
+
+            Assertions.assertFalse(second.allows(user, current, "NEW"), "the removed grant must deny")
+            Assertions.assertTrue(
+                second.allows(user, current, "ALL"),
+                "the shipped grant must survive the removal of the runtime grant"
+            )
         }
     }
 }

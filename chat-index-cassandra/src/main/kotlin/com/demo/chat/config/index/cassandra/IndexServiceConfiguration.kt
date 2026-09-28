@@ -44,8 +44,9 @@ class IndexServiceConfiguration {
 
     companion object {
         val INDEX_TABLES: Map<String, Set<String>> = mapOf(
-            "auth_metadata_principal" to setOf("principal_root", "target_root"),
-            "auth_metadata_target" to setOf("principal_root", "target_root"),
+            "auth_metadata_principal" to setOf("id", "principal_root", "target_root"),
+            "auth_metadata_target" to setOf("id", "principal_root", "target_root"),
+            "auth_metadata_by_id" to setOf("target", "principal", "target_root", "principal_root"),
         )
     }
 
@@ -60,6 +61,7 @@ class IndexServiceConfiguration {
         byTopicRepo: ChatMessageByTopicRepository<T>,
         principalRepo: AuthMetadataByPrincipalRepository<T>,
         targetRepo: AuthMetadataByTargetRepository<T>,
+        authByIdRepo: AuthMetadataByIdRepository<T>,
         kvIndexRepo: KeyValueIndexRepository<T>,
         kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
         keyValueFieldEntries: ObjectProvider<KeyValueIndexFieldsEntry>,
@@ -75,6 +77,7 @@ class IndexServiceConfiguration {
         byTopicRepo,
         principalRepo,
         targetRepo,
+        authByIdRepo,
         kvIndexRepo,
         kvIndexByIdRepo,
         TypedKeyValueIndexFields(keyValueFieldEntries.orderedStream().toList()),

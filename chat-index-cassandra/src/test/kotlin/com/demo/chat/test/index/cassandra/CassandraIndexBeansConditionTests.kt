@@ -10,6 +10,7 @@ import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.index.cassandra.IndexServiceConfiguration
 import com.demo.chat.domain.LongUtil
 import com.demo.chat.domain.TypeUtil
+import com.demo.chat.index.cassandra.repository.AuthMetadataByIdRepository
 import com.demo.chat.index.cassandra.repository.AuthMetadataByPrincipalRepository
 import com.demo.chat.index.cassandra.repository.AuthMetadataByTargetRepository
 import com.demo.chat.index.cassandra.repository.ChatMessageByTopicRepository
@@ -76,6 +77,9 @@ class CassandraIndexBeansConditionTests {
 
         @Bean
         fun targetRepo(): AuthMetadataByTargetRepository<Long> = mock(AuthMetadataByTargetRepository::class.java) as AuthMetadataByTargetRepository<Long>
+
+        @Bean
+        fun authByIdRepo(): AuthMetadataByIdRepository<Long> = mock(AuthMetadataByIdRepository::class.java) as AuthMetadataByIdRepository<Long>
 
         @Bean
         fun kvIndexRepo(): KeyValueIndexRepository<Long> = mock(KeyValueIndexRepository::class.java) as KeyValueIndexRepository<Long>

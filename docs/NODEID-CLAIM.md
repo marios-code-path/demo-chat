@@ -146,6 +146,7 @@ failure.
 | `chat-deploy-cassandra` `CassandraDeployTest` | 1 |
 | `chat-deploy-cassandra` `CassandraClaimBootTests` | 21 and 22 |
 | `chat-deploy-cassandra` `CassandraGrantRestartTests` | 23 |
+| `chat-deploy-cassandra` `CassandraAuthorizationMatrixTests` | 24 |
 | `chat-deploy-memory`, `chat-deploy-kafka` | 1, and they claim nothing |
 
 `chat-deploy-kafka` claims nothing, and it still reads `app.nodeid` for its

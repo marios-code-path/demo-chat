@@ -32,8 +32,9 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
 
         /** Every table that a backend requires. The index tables belong to chat-index-cassandra. */
         val ALL = CassandraStoreShapeCheck.KEY_TABLES + CassandraStoreShapeCheck.PERSISTENCE_TABLES + mapOf(
-            "auth_metadata_principal" to setOf("principal_root", "target_root"),
-            "auth_metadata_target" to setOf("principal_root", "target_root"),
+            "auth_metadata_principal" to setOf("id", "principal_root", "target_root"),
+            "auth_metadata_target" to setOf("id", "principal_root", "target_root"),
+            "auth_metadata_by_id" to setOf("target", "principal", "target_root", "principal_root"),
         )
     }
 
@@ -70,6 +71,7 @@ class CassandraStoreShapeCheckTests @Autowired constructor(private val session: 
             "keys.root", "root_keys", "auth_metadata.principal_root", "auth_metadata.target_root",
             "auth_metadata_principal.principal_root", "auth_metadata_principal.target_root",
             "auth_metadata_target.principal_root", "auth_metadata_target.target_root",
+            "auth_metadata_by_id",
         ]
     )
     fun `a store without a required element fails at start`(element: String) {

@@ -1,9 +1,11 @@
 package com.demo.chat.test
 
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import org.springframework.boot.cassandra.autoconfigure.CassandraProperties
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
 import org.springframework.data.cassandra.config.AbstractReactiveCassandraConfiguration
+import org.springframework.data.cassandra.config.DriverConfigLoaderBuilderConfigurer
 import org.springframework.data.cassandra.config.SchemaAction
 
 
@@ -30,6 +32,21 @@ class TestReactiveCassandraConfiguration(private val props: CassandraProperties)
 
     override fun getPort(): Int {
         return props.port
+    }
+
+    override fun getDriverConfigLoaderBuilderConfigurer(): DriverConfigLoaderBuilderConfigurer? {
+        // The base class applies no driver configuration, so the session ran
+        // at the driver default of 2 seconds. That default timed out the
+        // schema setup in a slow CI run. `CHAT-sgyaaivp`.
+        val timeout = props.request.timeout
+
+        return if (timeout != null) {
+            DriverConfigLoaderBuilderConfigurer { builder ->
+                builder.withDuration(DefaultDriverOption.REQUEST_TIMEOUT, timeout)
+            }
+        } else {
+            super.getDriverConfigLoaderBuilderConfigurer()
+        }
     }
 
     override fun getSchemaAction(): SchemaAction {

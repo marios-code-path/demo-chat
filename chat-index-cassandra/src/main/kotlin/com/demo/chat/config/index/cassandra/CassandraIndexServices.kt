@@ -21,6 +21,7 @@ open class CassandraIndexServices<T : Any>(
     private val byTopicRepo: ChatMessageByTopicRepository<T>,
     private val principalRepo: AuthMetadataByPrincipalRepository<T>,
     private val targetRepo: AuthMetadataByTargetRepository<T>,
+    private val authByIdRepo: AuthMetadataByIdRepository<T>,
     private val kvIndexRepo: KeyValueIndexRepository<T>,
     private val kvIndexByIdRepo: KeyValueIndexByIdRepository<T>,
     private val keyValueFields: KeyValueIndexFields,
@@ -35,7 +36,7 @@ open class CassandraIndexServices<T : Any>(
 
     override fun messageIndex() = MessageIndex(typeUtil::fromString, byUserRepo, byTopicRepo, rootKeys)
 
-    override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo, rootKeys)
+    override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo, authByIdRepo, rootKeys)
 
     override fun KVPairIndex(): KeyValueIndexService<T, Map<String, String>> =
         KeyValueIndex(keyValueFields, kvIndexRepo, kvIndexByIdRepo, rootKeys)

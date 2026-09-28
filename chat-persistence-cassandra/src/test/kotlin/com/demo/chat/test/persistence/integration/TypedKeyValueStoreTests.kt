@@ -1,5 +1,7 @@
 package com.demo.chat.test.persistence.integration
 
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption
 import com.demo.chat.domain.knownkey.ChatDomain
 
 import com.demo.chat.test.key.FakeKeyServices
@@ -72,6 +74,9 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
     lateinit var cassandraProperties: CassandraProperties
 
     @Autowired
+    lateinit var session: CqlSession
+
+    @Autowired
     private lateinit var context: ConfigurableApplicationContext
 
     @Autowired
@@ -85,7 +90,15 @@ class TypedKeyValueStoreTests : KeyValueStoreTestBase<Long, Any> {
 
     @Test
     fun `cassandra request timeout allows container startup and schema setup`() {
+        // The driver reads its own configuration, not the property. A property
+        // assertion passes even when the session ignores it, which is how the
+        // 2 second default survived. `CHAT-sgyaaivp`.
+        val effective = session.context.config.defaultProfile
+            .getDuration(DefaultDriverOption.REQUEST_TIMEOUT)
+
         Assertions.assertThat(cassandraProperties.request.timeout)
+            .isEqualTo(Duration.ofSeconds(10))
+        Assertions.assertThat(effective)
             .isEqualTo(Duration.ofSeconds(10))
     }
 
