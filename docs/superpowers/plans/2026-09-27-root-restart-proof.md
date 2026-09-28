@@ -29,8 +29,10 @@ and root deletion protection on both persistent backends.
    Redis, but no read finds it, even when the roots are stable.
 5. **All three key services refuse root deletion.** See
    `KeyServiceCassandra:35`, `KeyServiceRedis:42` and `KeyServiceInMemory:28`.
-   Only the Cassandra `KeyServiceTests` tests it. That test does not check that
-   the root stays readable after the refusal.
+   **Correction, 2026-09-27:** all three have a test. `TestKeyServiceBase`
+   holds `rem refuses a root key`, and the Redis and memory key tests extend
+   it. The first search matched only files named `*Tests.kt`. No test checked
+   that the root stays readable after the refusal.
 6. **Key-type isolation has a Redis test only.** `RootKeyStoreRedisTests` has
    "two key types on one redis keep separate roots". Cassandra separates key
    types by keyspace, and no test proves it.
@@ -159,9 +161,9 @@ separate issue. This task changes no other index.
    loader on `chat_uuid` on one cluster keep separate roots. A second load of
    each reads its own roots.
 2. **Redis key-type isolation.** The test exists. No change.
-3. **Redis root deletion.** Add a test for `KeyServiceRedis`. `rem` of a
-   domain root fails with `RootKeyDeletionException`. After the failure,
-   `rootOf` of that root still returns the root.
+3. **Redis and memory root deletion.** Extend `rem refuses a root key` in
+   `TestKeyServiceBase`. After the failure, `rootOf` of that root still
+   returns the root.
 4. **Cassandra root deletion.** Extend `rem refuses a root key` with the same
    check after the refusal.
 

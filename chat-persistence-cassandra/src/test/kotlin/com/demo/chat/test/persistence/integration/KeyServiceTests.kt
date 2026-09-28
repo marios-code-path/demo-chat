@@ -51,7 +51,10 @@ class KeyServiceTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator()) {
 
     @Test
     fun `rem refuses a root key`() {
-        StepVerifier.create(svc.rem(rootKeys.of(ChatDomain.USER))).verifyError(RootKeyDeletionException::class.java)
+        val root = rootKeys.of(ChatDomain.USER)
+        StepVerifier.create(svc.rem(root)).verifyError(RootKeyDeletionException::class.java)
+        // The refusal removes nothing. The root still answers as its own root. See CHAT-bafkgkko, task 3.
+        Assertions.assertThat(svc.rootOf(root.id).block()).isEqualTo(root.id)
     }
 
     @Test

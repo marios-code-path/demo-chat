@@ -29,7 +29,10 @@ open class TestKeyServiceBase<T>(private val keyService: IKeyService<T>, private
 
     @Test
     fun `rem refuses a root key`() {
-        StepVerifier.create(keyService.rem(rootKeys.of(ChatDomain.USER))).verifyError(RootKeyDeletionException::class.java)
+        val root = rootKeys.of(ChatDomain.USER)
+        StepVerifier.create(keyService.rem(root)).verifyError(RootKeyDeletionException::class.java)
+        // The refusal removes nothing. The root still answers as its own root. See CHAT-bafkgkko, task 3.
+        assertThat(keyService.rootOf(root.id).block()).isEqualTo(root.id)
     }
 
     @Test
