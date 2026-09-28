@@ -1,13 +1,9 @@
 package com.demo.chat.config.deploy.init
 
-import org.springframework.beans.factory.ObjectProvider
 
-import com.demo.chat.service.core.StoreShapeCheck
 
-import com.demo.chat.config.deploy.event.DeploymentEventPublisher
 import com.demo.chat.domain.knownkey.RootKeySnapshot
 import com.demo.chat.domain.ChatException
-import com.demo.chat.deploy.event.RootKeyInitializationReadyEvent
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
@@ -15,8 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
-import org.springframework.boot.context.event.ApplicationStartedEvent
-import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.DependsOn
@@ -29,7 +23,7 @@ import java.net.URI
 
 @Configuration
 @ConditionalOnProperty(name = ["app.rootkeys.consume.scheme"], havingValue = "http")
-class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
+class HttpRootKeyConsumeOnStart {
 
     /** `@DependsOn` lets the source check report a missing source before this bean reads it. */
     @Bean
@@ -40,11 +34,9 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
         @Value("\${app.key.type}") keyType: String,
         @Qualifier(JACKSON_2_OBJECT_MAPPER) mapper: ObjectMapper,
         rootKeys: RootKeys<T>,
-        shapeChecks: ObjectProvider<StoreShapeCheck>,
-    ): ApplicationListener<ApplicationStartedEvent> =
-        ApplicationListener { _ ->
-            // A snapshot consumer still writes to its own stores. They are checked first. See CHAT-avduuqwp, T7.
-            shapeChecks.orderedStream().forEach { it.check() }
+    ): RootKeyLoadStep =
+        RootKeyLoadStep {
+            // RootKeyStartup runs the store shape checks before this step. See CHAT-avduuqwp, T7.
             val exchangeStrategies = ExchangeStrategies.builder()
                 .codecs { configurer ->
                     configurer.defaultCodecs().jackson2JsonEncoder(Jackson2JsonEncoder(mapper))
@@ -69,7 +61,6 @@ class HttpRootKeyConsumeOnStart(val publisher: DeploymentEventPublisher) {
                 .block()
                 ?: throw ChatException("The root key source $hostURI returned no snapshot.")
             result.load(rootKeys, keyType, typeUtil)
-
-            publisher.publishEvent(RootKeyInitializationReadyEvent(rootKeys))
+            true
         }
 }

@@ -1,5 +1,11 @@
 package com.demo.chat.config
 
+import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.service.core.PersistedIndexLoad
+import com.demo.chat.service.core.PersistenceStore
+import com.demo.chat.service.core.StartupIndexLoad
+import reactor.core.publisher.Mono
+
 import com.demo.chat.domain.knownkey.RootKeys
 
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -57,6 +63,24 @@ open class LuceneIndexBeans<T>(
     @Bean
     override fun authMetadataIndex(): AuthMetaIndex<T, IndexSearchRequest> =
         AuthMetaIndexLucene(typeUtil, rootKeys)
+
+    /**
+     * The Lucene auth index lives in process memory, so it is empty after a
+     * restart. A grant read queries it first. The start sequence runs this
+     * load after the roots load and before readiness, so a stored grant is
+     * found after a restart. The bean exists only where this in-process index
+     * exists. A composition with no local auth store has nothing to load. See
+     * `CHAT-bafkgkko`. `CHAT-uxgdzpag` holds the other Lucene indexes.
+     */
+    @Bean
+    open fun luceneAuthIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad {
+        val stores = persistence.ifAvailable ?: return StartupIndexLoad { Mono.empty() }
+        @Suppress("UNCHECKED_CAST")
+        return PersistedIndexLoad(
+            stores.authMetaPersistence() as PersistenceStore<T, AuthMetadata<T>>,
+            authMetadataIndex(),
+        )
+    }
 
     @Bean
     override fun KVPairIndex(): KeyValueIndexService<T, IndexSearchRequest> =
