@@ -2416,6 +2416,9 @@ calls it now.
 owner approved T0 to T7 in batches. T8 holds the documents and the final gates.
 Merge approval is open.
 
+**Correction, 2026-09-27.** PR #142 merged the work as `dbd6b019`, a merge
+commit with two parents. The owner approved T0 to T8.
+
 ### What exists
 
 - A key holds `id`, `root` and `empty`. The root is the id of the domain root
@@ -2468,8 +2471,54 @@ Merge approval is open.
 
 ### Open
 
-- Merge approval.
-- The runtime grant restart proof.
+- Merge approval. **Done: PR #142, `dbd6b019`.**
+- The runtime grant restart proof. **See the section below.**
 - The parent scope decisions on `CHAT-avduuqwp`.
 - `CHAT-hajmhslp`, `CHAT-jwayirni` and `CHAT-qcmnxaoz`. The owner filed them
   and required no work on them in this batch.
+
+## Stable roots across a restart (2026-09-27)
+
+`CHAT-bafkgkko`. Plan: `docs/superpowers/plans/2026-09-27-root-restart-proof.md`.
+The branch is `chat-bafkgkko-root-restart`.
+
+### What exists
+
+- `RootKeyStartup` is a `SmartLifecycle` at phase `Integer.MAX_VALUE - 4096`,
+  below both servers. It runs the store shape checks, the root key source
+  step, every `StartupIndexLoad`, and then the readiness events. A failed step
+  fails the context refresh. The `ApplicationStartedEvent` listeners are gone.
+- `LuceneIndexBeans.luceneAuthIndexLoad` fills the Lucene auth index from the
+  auth store. A partial load fails the start. Only the auth index loads.
+  `CHAT-uxgdzpag` holds the other Lucene indexes.
+- `CassandraGrantRestartTests` and `RedisGrantRestartTests` write a runtime
+  grant, close the context, open a second one against the same store, and
+  check the grant through the production `AccessBroker`.
+- `StartupOrderTests` proves with the real servers that readiness comes before
+  both server events.
+
+### Facts that cost a measurement
+
+- **Both servers started before the roots loaded.** The web server and the
+  RSocket server are `SmartLifecycle` beans that start inside the refresh.
+  `ApplicationStartedEvent` comes after the refresh. So the old listeners left
+  a window in which a request met no roots.
+- **A grant read needs the `Anon` identity.** The actor set holds it, and it
+  loads with the initial users. With `app.users.create=false`, every grant read
+  fails, and `hasAccessByKeyId` answers false with no error.
+- **The restart tests use the `KEY_VALUE_PAIR` root.** The Cassandra auth index
+  keeps one row per target (`CHAT-rmxxtwtu`), and the shipped grants name the
+  `MessageTopic` root. Grant continuity on a root that shipped grants name is
+  not proved on Cassandra.
+- **A Redis close does not release the node id claim.**
+  `LettuceConnectionFactory` stops before the claim guard releases.
+  `CHAT-ocpojbyy` holds it. The Redis restart test uses two node ids.
+- **The load bean belongs to the Lucene module.** Its first version sat in
+  `chat-deploy` behind `app.service.core.index=lucene` with `matchIfMissing`.
+  The shell sets no index selector, so the load started there and read a
+  remote store through RSocket. `--ci` found it in `ContextTest`. Only the
+  memory, Redis and Kafka deployments hold `chat-index-lucene`, so the bean
+  now exists exactly where an in-process Lucene index exists.
+- **A mutation that does not compile proves nothing.** The first M2 run failed
+  to compile, and the stale surefire report showed an old failure. Read the
+  compile errors before a mutation result.

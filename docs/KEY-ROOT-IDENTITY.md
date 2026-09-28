@@ -77,7 +77,8 @@ At start, each registered `StoreShapeCheck` runs before any root source loads.
 A store with the schema of an earlier release fails the start.
 The error names the missing table or column.
 This release has no migration. The operator recreates the store.
-`docs/ARCHITECTURE.md` section 3 describes the four root sources.
+`docs/ARCHITECTURE.md` section 3 describes the four root sources, and the
+start sequence that loads the roots before either server starts.
 
 `Admin` and `Anon` remain user identities.
 Their keys carry the `USER` root.
