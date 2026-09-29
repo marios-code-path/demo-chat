@@ -64,14 +64,24 @@ when stdin reaches end of file.
 
 `stdout` carries protocol frames alone. Every line is one JSON-RPC 2.0 message.
 
-`stderr` carries diagnostics. Each line starts with `chat-mcp: `. The adapter
-writes one diagnostic line for each tool call. It writes no topic name, no
-argument value, no token and no payload.
+`stderr` carries adapter diagnostics. Every adapter diagnostic line starts with
+`chat-mcp: `. The adapter writes one diagnostic line for each tool call. It
+writes no topic name, no argument value, no token and no payload.
 
-The logging library `kotlin-logging` prints one startup line to stdout. That
-line is not a protocol frame. The adapter sets the library property
-`kotlin-logging.logStartupMessage` to `false` before it loads any other class.
-The property is set in code, so every launch path gets it.
+**Two libraries write lines of their own, and the adapter suppresses both.**
+`kotlin-logging` prints one startup line to stdout, which is not a protocol
+frame. `slf4j-api` prints three provider warnings to stderr, which carry no
+`chat-mcp: ` prefix.
+
+The adapter sets two system properties before it loads any other class:
+`kotlin-logging.logStartupMessage` to `false`, and `slf4j.internal.verbosity` to
+`ERROR`. Both are set in code, so every launch path gets them. Measured on
+2026-09-29: without the second property, stderr carries
+`SLF4J(W): No SLF4J providers were found.` and two more lines.
+
+The Task 5 harness purity test asserts that every stderr line carries the
+prefix. So a library line that returns fails that test rather than reaching a
+client in silence.
 
 ## The two tools
 

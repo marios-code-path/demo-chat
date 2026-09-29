@@ -34,19 +34,34 @@ const val SHUTDOWN_BOUND_MILLIS: Long = 5000
 const val KOTLIN_LOGGING_STARTUP_MESSAGE_PROPERTY: String = "kotlin-logging.logStartupMessage"
 
 /**
- * Stop the logging library from writing to stdout.
+ * The verbosity property of the SLF4J reporter.
  *
- * The library arrives through the MCP SDK, and the adapter never logs through
- * it. Its one startup line reaches stdout, which carries protocol frames
- * alone. Measured on 2026-09-29: the line is
+ * `slf4j-api` reaches the classpath through the MCP SDK, and no provider binds
+ * to it. The reporter then writes three warning lines to stderr. Measured on
+ * 2026-09-29: `SLF4J(W): No SLF4J providers were found.`, `SLF4J(W): Defaulting
+ * to no-operation (NOP) logger implementation` and the link line that follows.
+ */
+const val SLF4J_VERBOSITY_PROPERTY: String = "slf4j.internal.verbosity"
+
+/** The level that hides the three provider warnings. The adapter logs no error through SLF4J. */
+const val SLF4J_VERBOSITY_ERROR: String = "ERROR"
+
+/**
+ * Stop the libraries from writing their own lines to the two streams.
+ *
+ * Two libraries write on their own. `kotlin-logging` writes one line to stdout,
+ * which carries protocol frames alone. That line is
  * `kotlin-logging: initializing... active logger factory: Slf4jLoggerFactory`.
+ * `slf4j-api` writes three warning lines to stderr, where the adapter writes
+ * its diagnostics.
  *
- * The property must be set before the library initializes, so `main` calls this
- * first. The Task 5 purity test is the guard. A late call leaves the line on
- * stdout and the test fails.
+ * Both properties must be set before their library initializes, so `main` calls
+ * this first. The Task 5 purity tests are the guard. A late call leaves the
+ * lines in place and a test fails.
  */
 internal fun silenceLibraryStartupMessage() {
     System.setProperty(KOTLIN_LOGGING_STARTUP_MESSAGE_PROPERTY, "false")
+    System.setProperty(SLF4J_VERBOSITY_PROPERTY, SLF4J_VERBOSITY_ERROR)
 }
 
 /** Write one diagnostic line to stderr. Stdout carries protocol frames alone. */
@@ -106,8 +121,8 @@ internal fun loadConfigForStartup(
 }
 
 fun main(args: Array<String>) {
-    // This runs before every other statement, because the logging library reads
-    // the property once, when it initializes.
+    // This runs before every other statement, because each library reads its
+    // property once, when it initializes. A reader must not move it down.
     silenceLibraryStartupMessage()
     val config =
         try {

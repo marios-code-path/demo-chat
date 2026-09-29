@@ -86,8 +86,9 @@ answered 200 for the topic:
 
 ## The unserved id
 
-The run needs one id the deployment does not hold. Id `1` serves. It passes the
-adapter allowlist, so it reaches the deployment. The deployment answers:
+The run needs one id the deployment does not hold. Id `1` is absent from the
+deployment. It passes the adapter allowlist, so it reaches the deployment. The
+deployment answers:
 
 ```
 HTTP/1.1 404 Not Found
@@ -138,15 +139,12 @@ call chat_get_topic {"topicId":"1554429686883287040"} isError=false
 call chat_get_topic {"topicId":"1"} isError=true => "the backend answered 404"
 stdout lines 5 | parse failures 0
 stderr ["chat-mcp: configured for http://127.0.0.1:6791, 2 topic ids, key type LONG",
-        "SLF4J(W): No SLF4J providers were found.",
-        "SLF4J(W): Defaulting to no-operation (NOP) logger implementation",
-        "SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.",
         "chat-mcp: ready, protocol revision is chosen by the SDK",
         "chat-mcp: chat_list_topics answered",
         "chat-mcp: chat_get_topic answered",
         "chat-mcp: chat_get_topic refused: the backend answered 404",
         "chat-mcp: stdin closed, exiting"]
-exit {"withinBound":true,"millis":326,"code":0,"signal":null} | connectError null
+exit {"withinBound":true,"millis":331,"code":0,"signal":null} | connectError null
 ```
 
 ## The criteria, one by one
@@ -159,8 +157,9 @@ exit {"withinBound":true,"millis":326,"code":0,"signal":null} | connectError nul
 | The refusal carries no backend text | The string `is not in the registry` appears in neither stream |
 | The refusal carries no name | The refused call returns no name and no count |
 | stdout carries protocol frames alone | Five lines, all JSON-RPC 2.0, zero parse failures |
+| stderr carries adapter diagnostics alone | Six lines, and every one starts with `chat-mcp: ` |
 | One diagnostic line per call | Three call lines in stderr, one per call |
-| The process exits within the bound | `withinBound=true`, 326 ms, code 0 |
+| The process exits within the bound | `withinBound=true`, 331 ms, code 0 |
 
 ## Two further readings
 
@@ -171,6 +170,21 @@ exit {"withinBound":true,"millis":326,"code":0,"signal":null} | connectError nul
    `chat_list_topics` answered one topic although `topicIds` held two. The
    unserved id appears with no name and no count. That is the documented
    behaviour for a topic the deployment does not serve.
+
+## One correction this run forced
+
+The first run carried three `SLF4J(W):` warning lines in stderr. The operator
+document said every stderr line starts with `chat-mcp: `. That sentence was
+false, and the transcript showed it.
+
+`slf4j-api` 2.0.18 reaches the classpath through the MCP SDK and no provider
+binds to it. The adapter now sets `slf4j.internal.verbosity` to `ERROR`, beside
+the `kotlin-logging` suppression it already set. Both run before any other
+class loads.
+
+**The harness test guards the claim.** It asserts that every stderr line
+carries the `chat-mcp: ` prefix. That assertion failed before the repair and
+named all three lines. See mutation M5c in the plan.
 
 ## What a reader must not conclude
 

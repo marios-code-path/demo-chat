@@ -242,9 +242,18 @@ class McpAdapterHarnessTests {
                 assertFalse(line.contains("test-credential"), "stdout carried the credential: $line")
             }
 
+            // Rule 7. stderr carries adapter diagnostics alone. A library line
+            // that carries no prefix fails here. Measured on 2026-09-29: without
+            // the two start-up suppressions, `kotlin-logging` writes to stdout
+            // and the SLF4J reporter writes three warning lines to stderr.
+            val stderr = transcript.array("stderrLines").map { it.text() }
+            assertTrue(
+                stderr.all { it.startsWith("chat-mcp: ") },
+                "stderr carried a line that is not an adapter diagnostic: $stderr",
+            )
+
             // Rule 7. One diagnostic line for each call.
-            val diagnostics =
-                transcript.array("stderrLines").map { it.text() }.filter { it.contains("chat-mcp: ") }
+            val diagnostics = stderr.filter { it.contains("chat-mcp: ") }
             val callLines =
                 diagnostics.filter {
                     it.contains("chat_list_topics") || it.contains("chat_get_topic")

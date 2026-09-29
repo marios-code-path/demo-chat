@@ -884,9 +884,16 @@ carries id `1554429686883287040` and root `1554361143634427905`.
 | 5. Discovery | `chat_list_topics`, `chat_get_topic` |
 | 6. Served topic | id, root and name all match the deployment |
 | 7. Unserved id | `isError=true`, `the backend answered 404`. The backend sentence `Key 1 is not in the registry.` appears in no stream |
-| 8. Streams | Five stdout frames, all JSON-RPC 2.0, zero parse failures. Three stderr call diagnostics, one per call |
-| 9. Bounded exit | `withinBound=true`, 326 ms, code 0 |
+| 8. Streams | Five stdout frames, all JSON-RPC 2.0, zero parse failures. Six stderr lines, all prefixed `chat-mcp: `. Three of them are the call diagnostics, one per call |
+| 9. Bounded exit | `withinBound=true`, 331 ms, code 0 |
 | 10. Transcript | Recorded with the deployment, the revision and the date |
+
+**Two documentation defects were found after the first run, and both are
+repaired.** The unserved-id section said id `1` serves, where it is absent. The
+operator document said every stderr line carries a `chat-mcp: ` prefix, and the
+first transcript carried three `SLF4J(W):` lines. The adapter now suppresses
+those lines, and the harness test asserts the prefix on every stderr line.
+Mutation M5c proves that assertion.
 
 **One reading worth keeping.** Both ids sat in `topicIds`. An allowlist
 refusal never reaches a backend, so it would have proved nothing about the
@@ -916,11 +923,16 @@ proves each restore.
 | M7 | Remove the `keyValue` wrapper from the captured fixture | The Task 3 contract test |
 | M8 | Omit a top-level `required` list from an output schema | The Task 4 schema tests |
 | M5b | Remove the logging banner suppression from `main` | Task 5 purity test |
+| M5c | Remove the SLF4J verbosity suppression from `main` | Task 5 stderr purity test |
 
 M5b was added during Task 5. It was not in the original table, because nobody
 knew the logging library wrote to stdout. See the Task 5 section.
 
-M5 and M5b were measured on 2026-09-29. Both restored, and `shasum -a 256`
+M5c was added during Task 8, after the real run showed three `SLF4J(W):` lines
+on stderr. The test names all three lines. See the correction section in
+`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`.
+
+M5, M5b and M5c were measured on 2026-09-29. All restored, and `shasum -a 256`
 proved each restore.
 
 ## Documents
