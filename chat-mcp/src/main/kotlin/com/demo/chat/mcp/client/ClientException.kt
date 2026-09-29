@@ -40,8 +40,13 @@ enum class FailureReason {
  *
  * The reason is required. A default would let a new throw site name no class,
  * and the wrong class is silent at the list boundary.
+ *
+ * The status is the backend HTTP status, when a response carried one. It is
+ * null for a connection that never opened. The diagnostic line reports it, so
+ * an operator reads the status without reading the message.
  */
 class ClientException(
     message: String,
     val reason: FailureReason,
+    val status: Int? = null,
 ) : RuntimeException(message)

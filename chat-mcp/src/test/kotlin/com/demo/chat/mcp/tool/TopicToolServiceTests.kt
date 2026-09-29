@@ -2,7 +2,10 @@ package com.demo.chat.mcp.tool
 
 import com.demo.chat.mcp.client.ClientException
 import com.demo.chat.mcp.client.FailureReason
+import com.demo.chat.mcp.client.JdkBackendHttp
+import com.demo.chat.mcp.client.TopicClient
 import com.demo.chat.mcp.config.LongId
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -18,7 +21,26 @@ class TopicToolServiceTests {
     private fun service(
         backend: FakeTopicBackend,
         ids: List<LongId>,
-    ): TopicToolService = TopicToolService(testConfig(origin = backend.origin, topicIds = ids))
+    ): TopicToolService {
+        val config = testConfig(origin = backend.origin, topicIds = ids)
+        val http = JdkBackendHttp(config.backendBaseUrl).also { transports.add(it) }
+        return TopicToolService(config, TopicClient(config, http))
+    }
+
+    /**
+     * One transport for this test class, closed after each case.
+     *
+     * The production adapter owns one transport for its process. This class
+     * follows that rule, so the watchdog executor of each transport is
+     * released.
+     */
+    private val transports: MutableList<JdkBackendHttp> = mutableListOf()
+
+    @AfterEach
+    fun closeTransports() {
+        transports.forEach { it.close() }
+        transports.clear()
+    }
 
     @Test
     fun `the list reads every configured topic`() {

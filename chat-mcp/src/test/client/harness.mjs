@@ -241,6 +241,9 @@ async function main() {
         arguments: step.arguments,
         isError: answer.isError === true,
         structuredContent: answer.structuredContent ?? null,
+        // The application error data of a failed call. The MCP wire name is
+        // `_meta`, and a client reads it there.
+        meta: answer._meta ?? null,
         text: (answer.content ?? [])
           .filter((part) => part.type === "text")
           .map((part) => part.text)

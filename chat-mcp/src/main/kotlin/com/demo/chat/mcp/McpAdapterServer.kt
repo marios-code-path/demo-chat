@@ -1,5 +1,7 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.client.BackendHttp
+import com.demo.chat.mcp.client.TopicClient
 import com.demo.chat.mcp.config.AdapterConfig
 import com.demo.chat.mcp.tool.TopicToolService
 import com.demo.chat.mcp.tool.registerTopicTools
@@ -22,8 +24,12 @@ const val MCP_SERVER_VERSION: String = "0.0.1"
  * `docs/superpowers/specs/2026-09-27-demo-chat-mcp-design.md` section 4.
  *
  * The two topic tools are registered here. A later task adds no other surface.
+ *
+ * The transport is required. **The adapter owns one transport for the whole
+ * process**, and the caller closes it. A transport built here would belong to
+ * this function, and no caller could close it.
  */
-fun createMcpServer(config: AdapterConfig): Server {
+fun createMcpServer(config: AdapterConfig, http: BackendHttp): Server {
     val server =
         Server(
             Implementation(name = MCP_SERVER_NAME, version = MCP_SERVER_VERSION),
@@ -33,6 +39,6 @@ fun createMcpServer(config: AdapterConfig): Server {
                 ),
             ),
         )
-    registerTopicTools(server, TopicToolService(config))
+    registerTopicTools(server, TopicToolService(config, TopicClient(config, http)))
     return server
 }

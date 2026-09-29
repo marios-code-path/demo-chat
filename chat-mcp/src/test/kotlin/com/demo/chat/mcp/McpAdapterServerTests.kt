@@ -1,5 +1,6 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.client.JdkBackendHttp
 import com.demo.chat.mcp.config.AdapterConfig
 import com.demo.chat.mcp.config.AdapterId
 import com.demo.chat.mcp.tool.GET_TOPIC_TOOL_NAME
@@ -11,6 +12,7 @@ import java.net.URI
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -21,7 +23,21 @@ class McpAdapterServerTests {
     private fun config(): AdapterConfig =
         testConfig(origin = URI("http://127.0.0.1:1"), topicIds = emptyList<AdapterId>())
 
-    private fun server(): Server = createMcpServer(config())
+    /**
+     * One transport for this test class.
+     *
+     * These cases read the tool registry alone, so the transport reaches no
+     * backend. The production adapter owns one transport for its process, and
+     * this class follows that rule.
+     */
+    private val http = JdkBackendHttp(config().backendBaseUrl)
+
+    private fun server(): Server = createMcpServer(config(), http)
+
+    @AfterEach
+    fun closeTransport() {
+        http.close()
+    }
 
     @Test
     fun `the factory builds a server`() {

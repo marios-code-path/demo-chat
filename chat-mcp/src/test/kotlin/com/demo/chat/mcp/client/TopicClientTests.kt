@@ -21,12 +21,17 @@ class TopicClientTests {
         var lastTarget: URI? = null
         var lastCredential: String? = null
         var calls: Int = 0
+        var closed: Boolean = false
 
         override fun get(target: URI, credential: String): String {
             lastTarget = target
             lastCredential = credential
             calls += 1
             return body
+        }
+
+        override fun close() {
+            closed = true
         }
     }
 

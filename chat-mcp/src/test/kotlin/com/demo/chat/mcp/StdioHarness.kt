@@ -1,5 +1,6 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.client.JdkBackendHttp
 import com.demo.chat.mcp.config.AdapterConfig
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import java.io.BufferedReader
@@ -45,6 +46,15 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
     val rawFrames: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * The one transport that this adapter owns.
+     *
+     * The production adapter owns one transport for its process and closes it
+     * at shutdown. The harness follows that rule, so a case exercises the real
+     * transport over a real loopback backend.
+     */
+    private val http = JdkBackendHttp(config.backendBaseUrl)
+
     init {
         val reader =
             Thread {
@@ -61,7 +71,7 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
         reader.isDaemon = true
         reader.start()
 
-        val server = createMcpServer(config)
+        val server = createMcpServer(config, http)
         val transport = StdioServerTransport(serverInput.asSource().buffered(), fromServer.asSink().buffered())
         scope.launch { server.createSession(transport) }
     }
@@ -100,7 +110,12 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
     }
 
     /** Wait for the answer that carries one id. */
-    fun awaitResult(id: Int, timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS): JsonObject {
+    fun awaitResult(id: Int, timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS): JsonObject =
+        awaitFrame(id, timeoutMillis)["result"]?.jsonObject
+            ?: error("the answer for id $id carries no result")
+
+    /** Wait for the whole frame that carries one id. */
+    private fun awaitFrame(id: Int, timeoutMillis: Long): JsonObject {
         val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
         while (true) {
             val remaining = deadline - System.nanoTime()
@@ -114,11 +129,19 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
             val message = Json.parseToJsonElement(line).jsonObject
             val answered = (message["id"] as? JsonPrimitive)?.content
             if (answered == id.toString()) {
-                return message["result"]?.jsonObject
-                    ?: error("the answer for id $id carries no result: $line")
+                return message
             }
         }
     }
+
+    /**
+     * Wait for the whole message that carries one id.
+     *
+     * A protocol error carries no result, so this reader returns the frame
+     * itself. A caller that expects an error reads it here.
+     */
+    fun awaitMessage(id: Int, timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS): JsonObject =
+        awaitFrame(id, timeoutMillis)
 
     /** Read the text of one tool result. */
     fun textOf(result: JsonObject): String = result["content"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitiveText()
@@ -129,10 +152,23 @@ class StdioHarness(config: AdapterConfig) : AutoCloseable {
     /** Read the error flag of one tool result. */
     fun isError(result: JsonObject): Boolean = (result["isError"] as? JsonPrimitive)?.content == "true"
 
+    /**
+     * Read the application error data of one tool result.
+     *
+     * The MCP wire name of this field is `_meta`.
+     */
+    fun metaOf(result: JsonObject): JsonObject =
+        result["_meta"]?.jsonObject
+            ?: error("the tool result carries no application error data: $result")
+
+    /** Report whether a tool result carries application error data. */
+    fun hasMeta(result: JsonObject): Boolean = result["_meta"] != null
+
     override fun close() {
         scope.cancel()
         runCatching { toServer.close() }
         runCatching { fromServer.close() }
+        http.close()
     }
 }
 

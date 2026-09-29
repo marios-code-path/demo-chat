@@ -34,8 +34,18 @@ object BackendLimits {
     const val MAX_REDIRECTS: Int = 4
 }
 
-/** One backend transport. A test replaces it with a fake. */
-interface BackendHttp {
+/**
+ * One backend transport. A test replaces it with a fake.
+ *
+ * **The adapter owns one transport for the whole process, and it closes that
+ * transport at shutdown.** The close is part of the contract and not an extra
+ * of one implementation. A transport that holds a thread must release it, and
+ * only the owner knows when the process ends.
+ *
+ * The design sets the concurrency limit per adapter process. One transport for
+ * each client would make that limit belong to one client.
+ */
+interface BackendHttp : AutoCloseable {
     /**
      * Read one resource.
      *
@@ -44,6 +54,10 @@ interface BackendHttp {
      *
      * The call obeys [BackendLimits]. It follows a redirect on the configured
      * origin alone.
+     *
+     * **A return means the backend answered 200.** Every other status becomes a
+     * [ClientException] that carries that status. So a caller may report 200 for
+     * a call that returned.
      */
     fun get(target: URI, credential: String): String
 }
@@ -63,8 +77,7 @@ class JdkBackendHttp(
     private val maxConcurrentRequests: Int = BackendLimits.MAX_CONCURRENT_REQUESTS,
     private val maxResponseBytes: Int = BackendLimits.MAX_RESPONSE_BYTES,
     private val maxRedirects: Int = BackendLimits.MAX_REDIRECTS,
-) : BackendHttp,
-    AutoCloseable {
+) : BackendHttp {
     private val client: HttpClient =
         HttpClient.newBuilder()
             .connectTimeout(connectTimeout)
@@ -95,6 +108,7 @@ class JdkBackendHttp(
                             ?: throw ClientException(
                                 "the backend answered $status with no location",
                                 FailureReason.PROTOCOL,
+                                status,
                             )
                     response.body().close()
                     hops += 1
@@ -102,6 +116,7 @@ class JdkBackendHttp(
                         throw ClientException(
                             "the backend redirects more than $maxRedirects times",
                             FailureReason.PROTOCOL,
+                            status,
                         )
                     }
                     current = resolveRedirect(current, location)
@@ -111,16 +126,21 @@ class JdkBackendHttp(
                     return readBody(response.body(), deadline)
                 }
                 response.body().close()
-                throw ClientException("the backend answered $status", reasonFor(status))
+                throw ClientException("the backend answered $status", reasonFor(status), status)
             }
         } finally {
             permits.release()
         }
     }
 
+    /**
+     * Release the watchdog executor.
+     *
+     * The JDK client holds no resource that a close must release. The watchdog
+     * holds one thread, and a long lived process would keep it for its whole
+     * life without this call.
+     */
     override fun close() {
-        // The JDK client holds no resource that a close must release. The
-        // watchdog does.
         watchdog.shutdownNow()
     }
 

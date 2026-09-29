@@ -825,6 +825,67 @@ The integration gate ran last, on the final source.
 4. `git diff --check`.
 5. `drift check` for each bound document.
 
+### Task 7, complete
+
+Run on 2026-09-29 on branch `chat-mcp-impl`. Issue `CHAT-oqrifndu`.
+
+`chat-mcp/src/main/kotlin/com/demo/chat/mcp/error/ToolError.kt` holds the code
+set and the classifier. `TopicToolRegistration.answer` holds the one dispatcher
+that every tool answers through.
+
+| Rule | What carries it |
+|---|---|
+| 1. Protocol error for a malformed envelope | The SDK. `McpAdapterToolStdioTests` reads the JSON-RPC `error` and asserts no `result` |
+| 2. A tool error result carries three fields | `ToolError.toMeta` writes `code`, `message` and `retryable` flat |
+| 3. The six codes | `ToolErrorCode` is closed. `ToolErrorTests` proves the table covers `FailureReason.entries` |
+| 4. No raw backend text, and no hidden object | `NOT_AVAILABLE_MESSAGE` is one fixed sentence. A 403 and a 404 answer it alike |
+| 5. Five fields on stderr | `TopicToolRegistration.report` writes tool, correlation id, duration, code and status |
+| 6. No token and no message text | `McpAdapterHarnessTests` asserts no topic name and no credential on either stream |
+
+**Two codes have no producer, and that is recorded.** `FEATURE_UNAVAILABLE` and
+`OUTCOME_UNKNOWN` wait for the recall and send tools. No path invents one.
+
+**`retryable` is true for a transport failure alone.** A failed send must always
+answer false, because the adapter holds no deduplication contract. No send tool
+exists yet, so that rule binds the tool that adds one.
+
+**A cancellation is rethrown and not answered.** `CancellationException` is a
+kind of `Exception`, so the last branch would otherwise answer a cancelled call
+as a backend failure. Mutation M7a proves the guard.
+
+### The transport ownership decision
+
+The owner comment on `CHAT-oqrifndu` asked whether the adapter owns one
+transport for the process, or one for each client.
+
+**The adapter owns one transport for the process.** The design sets
+`MAX_CONCURRENT_REQUESTS` to 4 per adapter process. A transport for each client
+would make that limit belong to one client, so four clients would hold sixteen
+requests and the bound would mean nothing.
+
+`BackendHttp` extends `AutoCloseable`. `serveStdio` closes the transport in a
+`finally` block, so the watchdog executor and its thread are released on every
+path. `runStdioAdapter` is the process wrapper, and it is the only caller that
+exits.
+
+**The close sits in `serveStdio` and not in `runStdioAdapter`**, because a test
+must drive the serve path without ending the JVM. Mutation M7f proves the
+close.
+
+### Two defects the tests found
+
+1. **The adapter separated a hidden object from an absent one.** The first
+   `ToolError.of` passed the backend message through, so a 404 answered
+   `the backend answered 404` and a 403 answered `the backend answered 403`.
+   Task 7 rule 4 forbids that difference. The planned test
+   `the backend status stays out of the application data` failed before it was
+   ever green, and it earned its place. `NOT_AVAILABLE_MESSAGE` repairs it.
+   Mutation M7b proves the guard.
+2. **`_meta` is the wire name.** The SDK field is `meta` in Kotlin and `_meta`
+   on the wire. `javap -v` on the SDK class shows the constant pool entry
+   `value="_meta"`. The harness reads `result["_meta"]`, so the name is measured
+   against a real client rather than assumed.
+
 ## Task 8: real-deployment acceptance
 
 Task 5 proves the protocol against a fake backend. This task proves the adapter
@@ -883,10 +944,15 @@ carries id `1554429686883287040` and root `1554361143634427905`.
 | 4. Harness run over stdio | Exit 0, `connectError` null |
 | 5. Discovery | `chat_list_topics`, `chat_get_topic` |
 | 6. Served topic | id, root and name all match the deployment |
-| 7. Unserved id | `isError=true`, `the backend answered 404`. The backend sentence `Key 1 is not in the registry.` appears in no stream |
+| 7. Unserved id | `isError=true`, code `NOT_AVAILABLE`. The backend sentence `Key 1 is not in the registry.` appears in no stream |
 | 8. Streams | Five stdout frames, all JSON-RPC 2.0, zero parse failures. Six stderr lines, all prefixed `chat-mcp: `. Three of them are the call diagnostics, one per call |
-| 9. Bounded exit | `withinBound=true`, 331 ms, code 0 |
+| 9. Bounded exit | `withinBound=true`, 335 ms, code 0 |
 | 10. Transcript | Recorded with the deployment, the revision and the date |
+
+**The run was repeated after Task 7**, because Task 7 changed the refusal
+sentence and the diagnostic line. The table above carries the second run. The
+first transcript is superseded, and `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`
+records both side by side.
 
 **Two documentation defects were found after the first run, and both are
 repaired.** The unserved-id section said id `1` serves, where it is absent. The
@@ -924,6 +990,12 @@ proves each restore.
 | M8 | Omit a top-level `required` list from an output schema | The Task 4 schema tests |
 | M5b | Remove the logging banner suppression from `main` | Task 5 purity test |
 | M5c | Remove the SLF4J verbosity suppression from `main` | Task 5 stderr purity test |
+| M7a | Remove the `CancellationException` rethrow from the dispatcher | `ToolAnswerContractTests.a cancellation propagates and is not answered` |
+| M7b | Keep the raw backend message for `NOT_AVAILABLE` | `ToolErrorTests.the not available sentence names no backend status` and `ToolErrorTests.a denied object and an absent object answer the same error` |
+| M7c | Report `retryable = true` for every failure | `ToolErrorTests.only a transport failure is retryable` |
+| M7d | Drop the final catch-all branch | `ToolAnswerContractTests.an unplanned failure exposes no exception text` |
+| M7e | Drop the `status` field from the diagnostic line | `McpAdapterHarnessTests.stdout is pure, stderr is one line per call, and the exit is bounded` |
+| M7f | Drop the transport close from `serveStdio` | `McpAdapterStdioTests.the stdio path closes the transport it owns` |
 
 M5b was added during Task 5. It was not in the original table, because nobody
 knew the logging library wrote to stdout. See the Task 5 section.
@@ -934,6 +1006,22 @@ on stderr. The test names all three lines. See the correction section in
 
 M5, M5b and M5c were measured on 2026-09-29. All restored, and `shasum -a 256`
 proved each restore.
+
+M7a to M7f were measured on 2026-09-29 during Task 7. Each mutation was
+applied, its named test was run, and the file was restored by absolute path.
+`shasum -a 256` proved every restore against the value recorded before it.
+
+| File | SHA-256 |
+|---|---|
+| `chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/TopicToolRegistration.kt` | `2695e41b22f12858afaed8055c8b841290278467268434e605235aa7dd777de3` |
+| `chat-mcp/src/main/kotlin/com/demo/chat/mcp/error/ToolError.kt` | `ac7d30a8d9ada2db9de0834069ce9239eaf51288a149f22b56dcc2da55ab6d03` |
+| `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterMain.kt` | `6a0d0416c2ab1f8f1be39e046cd156b63ac162be2c91ad240955b9f83914324a` |
+
+**One mutation taught a lesson about the mutation itself.** The first M7e
+attempt changed nothing. A `perl` pattern did not match, maven exited 0 on
+unchanged source, and a clean run read as a proven mutation. The second attempt
+read the changed line back before it ran the test. **A mutation proof must show
+the mutated source**, or it proves only that the test passes on the original.
 
 ## Documents
 

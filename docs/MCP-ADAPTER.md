@@ -68,6 +68,24 @@ when stdin reaches end of file.
 `chat-mcp: `. The adapter writes one diagnostic line for each tool call. It
 writes no topic name, no argument value, no token and no payload.
 
+One call line carries five fields, in this order:
+
+```
+chat-mcp: <tool> <verdict> call=<n> duration=<ms>ms code=<CODE> status=<s|->
+```
+
+| Field | Meaning |
+|---|---|
+| `<tool>` | The tool name, `chat_list_topics` or `chat_get_topic`. |
+| `<verdict>` | `answered`, or `refused: <sentence>` for a failure. |
+| `call=<n>` | The correlation id. It counts from one inside one process. |
+| `duration=<ms>ms` | The wall time of the call, in milliseconds. |
+| `code=<CODE>` | `OK`, or one of the six failure codes in the next section. |
+| `status=<s\|->` | The backend HTTP status. `-` means the call reached no backend answer. |
+
+**The status reaches this line alone.** It never reaches the client. See the
+next section.
+
 **Two libraries write lines of their own, and the adapter suppresses both.**
 `kotlin-logging` prints one startup line to stdout, which is not a protocol
 frame. `slf4j-api` prints three provider warnings to stderr, which carry no
@@ -101,6 +119,72 @@ serve is left out of the answer. The answer carries no name and no count for it.
 happens before any backend call.
 
 Both tools declare themselves read only and idempotent.
+
+## Failures
+
+A tool failure is an MCP tool error result. It carries `isError` true and the
+three application fields. A malformed MCP envelope is not a tool failure. The
+SDK answers that one with a JSON-RPC protocol error.
+
+### The three application fields
+
+A failed tool result carries `_meta` with exactly three flat fields:
+
+| Field | Meaning |
+|---|---|
+| `code` | One of the six codes below. |
+| `message` | A sentence this adapter built. |
+| `retryable` | `true` when a repeat of the same call may succeed. |
+
+A good result carries no `_meta` at all. The SDK omits an absent field.
+
+### The six codes
+
+| Code | Meaning | Producer today |
+|---|---|---|
+| `AUTHENTICATION_REQUIRED` | The backend refused the credential, or the credential file is unusable. | Yes |
+| `NOT_AVAILABLE` | The object is absent, denied, or outside the configured scope. | Yes |
+| `FEATURE_UNAVAILABLE` | A required backend feature is unavailable. | **None** |
+| `BACKEND_UNAVAILABLE` | A backend transport or service failure occurred. | Yes |
+| `LIMIT_EXCEEDED` | A response or the configured work limit was exceeded. | Yes |
+| `OUTCOME_UNKNOWN` | A send may have executed, and no reliable result arrived. | **None** |
+
+`FEATURE_UNAVAILABLE` and `OUTCOME_UNKNOWN` have no producer in this phase.
+They are declared so the vocabulary is complete. No path invents one.
+
+### `retryable` is true for a transport failure alone
+
+A transport failure is a connection that did not open, or a deadline that
+passed. A repeat of a read may then succeed. Every other class is decided by
+the request or by the stored data, so a repeat gives the same answer.
+
+**A failed send must always answer `false`.** The adapter holds no durable
+deduplication contract, so a repeat may send twice. No send tool exists yet.
+That rule binds the tool that adds one.
+
+### No raw backend text, and no hidden object
+
+The message is a sentence this adapter built. It carries no backend exception
+text, no topic name, no argument value and no payload. An unplanned failure
+answers one fixed sentence, so a class name and a message cannot escape.
+
+**A denied object and an absent object answer the same sentence.** A 403 and a
+404 both become `NOT_AVAILABLE` with the message
+`the backend does not serve this object, or it refuses this caller`. A reader
+that could tell them apart would learn that a hidden object exists.
+
+The backend status is not lost. It reaches the stderr diagnostic line, which
+carries operator data alone.
+
+### The adapter owns one transport
+
+The adapter builds one transport for the whole process and closes it at
+shutdown. The concurrency limit is per adapter process, so a transport for each
+client would make that limit belong to one client.
+
+The transport holds a watchdog executor and one thread. `serveStdio` closes the
+transport on every path, so the thread is released whether the run ended well
+or badly.
 
 ## Bounds
 

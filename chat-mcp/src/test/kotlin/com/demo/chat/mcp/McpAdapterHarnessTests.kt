@@ -142,6 +142,12 @@ class McpAdapterHarnessTests {
     /** Read the error flag. The SDK omits it when it is false. */
     private fun JsonObject.isError(): Boolean = (this["isError"] as? JsonPrimitive)?.content == "true"
 
+    /** Read the result code field of one diagnostic line. */
+    private fun codeOf(line: String): String = Regex("code=(\\S+)").find(line)!!.groupValues[1]
+
+    /** Read the backend status field of one diagnostic line. */
+    private fun statusOf(line: String): String = Regex("status=(\\S+)").find(line)!!.groupValues[1]
+
     private fun JsonObject.string(name: String): String =
         (getValue(name) as? JsonPrimitive)?.takeIf { it.isString }?.content
             ?: throw AssertionError("the transcript field $name is not a string: $this")
@@ -214,6 +220,24 @@ class McpAdapterHarnessTests {
             assertEquals("chat_get_topic", refused.string("name"))
             assertTrue(refused.isError())
             assertFalse(refused.string("text").contains(hiddenName))
+
+            // Task 7 rule 1 to 4. A good answer carries no application error
+            // data. A failure carries the three fields, and it carries no
+            // backend body text.
+            assertEquals("null", list["meta"].toString())
+            assertEquals("null", read["meta"].toString())
+            val meta = refused.getValue("meta").jsonObject
+            assertEquals(
+                setOf("code", "message", "retryable"),
+                meta.keys,
+                "the failed answer does not carry the three application fields: $meta",
+            )
+            assertEquals("NOT_AVAILABLE", meta.string("code"))
+            assertEquals("false", meta.getValue("retryable").toString())
+            assertFalse(
+                meta.string("message").contains(hiddenName),
+                "the application message carried the backend body: $meta",
+            )
         }
     }
 
@@ -269,6 +293,30 @@ class McpAdapterHarnessTests {
                 diagnostics.none { it.contains("test-credential") },
                 "stderr carried the credential: $diagnostics",
             )
+
+            // Task 7 rule 5. Each call line carries the tool name, a
+            // correlation id, the duration, the result code and the backend
+            // status. Rule 6. No line carries a token or a message text.
+            callLines.forEach { line ->
+                listOf("call=", "duration=", "code=", "status=").forEach { field ->
+                    assertTrue(line.contains(field), "the diagnostic line has no $field field: $line")
+                }
+                assertTrue(
+                    Regex("duration=\\d+ms").containsMatchIn(line),
+                    "the diagnostic duration is not a millisecond count: $line",
+                )
+            }
+            assertEquals(
+                listOf("1", "2", "3"),
+                callLines.map { Regex("call=(\\d+)").find(it)!!.groupValues[1] },
+                "the correlation ids are not one per call in order: $callLines",
+            )
+            assertEquals("OK", codeOf(callLines[0]))
+            assertEquals("OK", codeOf(callLines[1]))
+            assertEquals("NOT_AVAILABLE", codeOf(callLines[2]))
+            assertEquals("200", statusOf(callLines[0]))
+            assertEquals("200", statusOf(callLines[1]))
+            assertEquals("403", statusOf(callLines[2]))
 
             // Rule 8. Stdin closed, and the process exited within the bound.
             val exit = transcript.getValue("exit").jsonObject

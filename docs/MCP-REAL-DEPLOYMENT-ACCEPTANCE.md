@@ -96,7 +96,14 @@ Key 1 is not in the registry.
 ```
 
 That sentence is the backend text the adapter must not repeat. The adapter's
-own refusal is `the backend answered 404`.
+own refusal is `the backend does not serve this object, or it refuses this
+caller`, and its code is `NOT_AVAILABLE`.
+
+**The adapter gives a denied object the same answer.** A 403 from this
+deployment would carry that same sentence and that same code. A reader that
+could tell the two apart would learn that a hidden object exists. The backend
+status is not lost, because the stderr diagnostic line carries it. Task 7 rule
+4 requires this, and mutation M7b proves the guard.
 
 ## The configuration
 
@@ -132,19 +139,20 @@ Measured on 2026-09-29. Node v26.7.0. Client `@modelcontextprotocol/sdk`
 node v26.7.0 | sdk 1.31.0 | declared 2025-11-25 | negotiated 2025-11-25
 server {"name":"demo-chat-mcp","version":"0.0.1"} | caps {"tools":{"listChanged":true}}
 tools: chat_list_topics, chat_get_topic
-call chat_list_topics {} isError=false
+call chat_list_topics {} isError=false _meta=null
   => {"topics":[{"id":"1554429686883287040","root":"1554361143634427905","name":"mcprealacceptance"}]}
-call chat_get_topic {"topicId":"1554429686883287040"} isError=false
+call chat_get_topic {"topicId":"1554429686883287040"} isError=false _meta=null
   => {"topic":{"id":"1554429686883287040","root":"1554361143634427905","name":"mcprealacceptance"}}
-call chat_get_topic {"topicId":"1"} isError=true => "the backend answered 404"
+call chat_get_topic {"topicId":"1"} isError=true
+  _meta {"code":"NOT_AVAILABLE","message":"the backend does not serve this object, or it refuses this caller","retryable":false}
 stdout lines 5 | parse failures 0
 stderr ["chat-mcp: configured for http://127.0.0.1:6791, 2 topic ids, key type LONG",
         "chat-mcp: ready, protocol revision is chosen by the SDK",
-        "chat-mcp: chat_list_topics answered",
-        "chat-mcp: chat_get_topic answered",
-        "chat-mcp: chat_get_topic refused: the backend answered 404",
+        "chat-mcp: chat_list_topics answered call=1 duration=51ms code=OK status=200",
+        "chat-mcp: chat_get_topic answered call=2 duration=5ms code=OK status=200",
+        "chat-mcp: chat_get_topic refused: the backend does not serve this object, or it refuses this caller call=3 duration=5ms code=NOT_AVAILABLE status=404",
         "chat-mcp: stdin closed, exiting"]
-exit {"withinBound":true,"millis":331,"code":0,"signal":null} | connectError null
+exit {"withinBound":true,"millis":335,"code":0,"signal":null} | connectError null
 ```
 
 ## The criteria, one by one
@@ -153,13 +161,13 @@ exit {"withinBound":true,"millis":331,"code":0,"signal":null} | connectError nul
 |---|---|
 | Discovery lists both tools | `tools: chat_list_topics, chat_get_topic` |
 | The served topic carries the real id, root and name | All three match the deployment's answer |
-| The unserved id answers a refusal | `isError=true`, `the backend answered 404` |
+| The unserved id answers a refusal | `isError=true`, code `NOT_AVAILABLE` |
 | The refusal carries no backend text | The string `is not in the registry` appears in neither stream |
 | The refusal carries no name | The refused call returns no name and no count |
 | stdout carries protocol frames alone | Five lines, all JSON-RPC 2.0, zero parse failures |
 | stderr carries adapter diagnostics alone | Six lines, and every one starts with `chat-mcp: ` |
 | One diagnostic line per call | Three call lines in stderr, one per call |
-| The process exits within the bound | `withinBound=true`, 331 ms, code 0 |
+| The process exits within the bound | `withinBound=true`, 335 ms, code 0 |
 
 ## Two further readings
 
@@ -170,6 +178,26 @@ exit {"withinBound":true,"millis":331,"code":0,"signal":null} | connectError nul
    `chat_list_topics` answered one topic although `topicIds` held two. The
    unserved id appears with no name and no count. That is the documented
    behaviour for a topic the deployment does not serve.
+
+## The Task 7 rerun
+
+Task 7 changed the failure contract and the diagnostic line. The transcript
+above is the rerun against the same deployment, the same topic and the same
+configuration, on the same day.
+
+| Field | First run | This run |
+|---|---|---|
+| Refusal sentence | `the backend answered 404` | `the backend does not serve this object, or it refuses this caller` |
+| Refusal code | none. No code existed | `NOT_AVAILABLE` on the wire, under `_meta` |
+| `retryable` | none | `false` |
+| A good answer | no error data | no `_meta` at all |
+| Diagnostic line | `chat-mcp: chat_get_topic answered` | `chat-mcp: chat_get_topic answered call=2 duration=5ms code=OK status=200` |
+
+**The status reaches stderr alone.** The refused call answered `status=404` on
+its diagnostic line, and no backend status appears in the client answer.
+
+**The first run is superseded.** A reader must not quote its refusal sentence.
+The diagnostic shape in the first transcript is stale in the same way.
 
 ## One correction this run forced
 

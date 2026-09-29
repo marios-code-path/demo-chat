@@ -17,7 +17,7 @@ import com.demo.chat.mcp.config.parseIdText
  */
 class TopicToolService(
     private val config: AdapterConfig,
-    private val topics: TopicClient = TopicClient(config),
+    private val topics: TopicClient,
 ) {
     /**
      * Read every configured topic.

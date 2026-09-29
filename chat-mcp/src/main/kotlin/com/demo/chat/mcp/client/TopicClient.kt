@@ -10,10 +10,15 @@ import java.net.URI
  *
  * One adapter reaches one deployment with one credential. The credential is
  * read from its file at each request. This type never holds one.
+ *
+ * The transport is required and it has no default. **The adapter owns one
+ * transport for the whole process.** A default would build one transport for
+ * each client, and the concurrency limit would then belong to one client
+ * rather than to the process. See the ownership rule in `McpAdapterMain`.
  */
 class TopicClient(
     private val config: AdapterConfig,
-    private val http: BackendHttp = JdkBackendHttp(config.backendBaseUrl),
+    private val http: BackendHttp,
 ) {
     /**
      * Read one topic.

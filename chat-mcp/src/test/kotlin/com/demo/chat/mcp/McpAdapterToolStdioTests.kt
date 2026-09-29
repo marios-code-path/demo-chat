@@ -7,11 +7,15 @@ import com.demo.chat.mcp.tool.testConfig
 import com.demo.chat.mcp.tool.topicBody
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -261,6 +265,124 @@ class McpAdapterToolStdioTests {
 
                 assertTrue(client.isError(list))
                 assertTrue(client.textOf(list).contains("the backend answered 500"))
+            }
+        }
+    }
+
+    /**
+     * Task 7 rules 2 and 3. A failure carries `code`, `message` and
+     * `retryable` on the wire, under the name the MCP wire uses.
+     */
+    @Test
+    fun `a failed call carries the three application fields`() {
+        FakeTopicBackend().use { backend ->
+            backend.answer("11", 500, """{"error":"broken"}""")
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                val list = client.callTool(2, "chat_list_topics", "{}")
+
+                val meta = client.metaOf(list)
+                assertEquals(setOf("code", "message", "retryable"), meta.keys)
+                assertEquals("BACKEND_UNAVAILABLE", meta["code"]!!.jsonPrimitiveText())
+                assertEquals("false", meta["retryable"]!!.jsonPrimitiveText())
+            }
+        }
+    }
+
+    /** A good answer carries no application error data. The SDK omits the field. */
+    @Test
+    fun `a good call carries no application error data`() {
+        FakeTopicBackend().use { backend ->
+            backend.answer("11", 200, topicBody(11, 7, "alpha"))
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                val list = client.callTool(2, "chat_list_topics", "{}")
+
+                assertFalse(client.hasMeta(list), "a successful answer carried application error data")
+            }
+        }
+    }
+
+    /**
+     * Task 7 rule 4. A denied object and an absent object answer one sentence.
+     *
+     * The two backend statuses differ, and the answer must not separate them.
+     */
+    @Test
+    fun `a denied topic and an absent topic answer the same sentence`() {
+        FakeTopicBackend().use { backend ->
+            backend.answer("11", 403, topicBody(11, 7, "refused"))
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                val denied = client.callTool(2, "chat_get_topic", """{"topicId":"11"}""")
+
+                assertEquals("NOT_AVAILABLE", client.metaOf(denied)["code"]!!.jsonPrimitiveText())
+                assertFalse(client.textOf(denied).contains("403"), "the answer named the backend status")
+            }
+        }
+    }
+
+    @Test
+    fun `an absent topic answers the same sentence as a denied one`() {
+        FakeTopicBackend().use { backend ->
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                val absent = client.callTool(2, "chat_get_topic", """{"topicId":"11"}""")
+
+                assertEquals("NOT_AVAILABLE", client.metaOf(absent)["code"]!!.jsonPrimitiveText())
+                assertFalse(client.textOf(absent).contains("404"), "the answer named the backend status")
+                assertTrue(client.textOf(absent).contains("does not serve this object"))
+            }
+        }
+    }
+
+    /**
+     * Task 7 rule 1. A malformed envelope answers an SDK protocol error.
+     *
+     * The error is a JSON-RPC error and not a tool result. Stdout still carries
+     * protocol frames alone, because every frame parses as JSON.
+     */
+    @Test
+    fun `a malformed envelope answers a protocol error`() {
+        FakeTopicBackend().use { backend ->
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                client.send("""{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"arguments":{}}}""")
+
+                val message = client.awaitMessage(9)
+                assertNotNull(message["error"], "the malformed envelope answered no protocol error: $message")
+                assertNull(message["result"], "the malformed envelope answered a result: $message")
+                assertTrue(backend.requestedIds.isEmpty(), "the adapter called the backend for a malformed request")
+            }
+        }
+    }
+
+    /** No stdout line is a non frame, whatever the request. */
+    @Test
+    fun `stdout carries protocol frames alone after a malformed envelope`() {
+        FakeTopicBackend().use { backend ->
+            val config = config(backend, listOf(LongId(11)))
+
+            StdioHarness(config).use { client ->
+                client.initialize()
+                client.send("""{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"arguments":{}}}""")
+                client.awaitMessage(9)
+
+                assertTrue(client.rawFrames.isNotEmpty(), "the adapter wrote no frame")
+                client.rawFrames.forEach { line ->
+                    val frame = Json.parseToJsonElement(line).jsonObject
+                    assertEquals("2.0", frame["jsonrpc"]!!.jsonPrimitiveText(), "a stdout line is not a frame: $line")
+                }
             }
         }
     }

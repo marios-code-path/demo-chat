@@ -1,5 +1,7 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.client.BackendHttp
+import com.demo.chat.mcp.client.JdkBackendHttp
 import com.demo.chat.mcp.config.AdapterConfig
 import com.demo.chat.mcp.config.ConfigException
 import com.demo.chat.mcp.config.configPathFrom
@@ -10,6 +12,8 @@ import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.io.Sink
+import kotlinx.io.Source
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.buffered
@@ -69,37 +73,63 @@ internal fun diagnostic(message: String) {
     System.err.println("chat-mcp: $message")
 }
 
-/** Run the adapter on stdio until stdin reaches end of file. */
-fun runStdioAdapter(config: AdapterConfig) {
-    val server = createMcpServer(config)
-    val transport =
-        StdioServerTransport(
-            System.`in`.asSource().buffered(),
-            System.out.asSink().buffered(),
-        )
+/**
+ * Serve stdio until the input reaches end of file, and close the transport.
+ *
+ * **The adapter owns one transport for the whole process**, and this function
+ * closes it. The design sets the concurrency limit per adapter process. One
+ * transport for each client would make that limit belong to one client, so
+ * four clients would hold sixteen requests.
+ *
+ * The transport holds a watchdog executor. A process that never closes the
+ * transport keeps that executor and its thread for its whole life. This
+ * function closes it on every path, so a caller reads the same state whether
+ * the run ended well or badly.
+ *
+ * The exit is not here. `runStdioAdapter` calls it, so a test can drive this
+ * function without ending the JVM.
+ */
+internal fun serveStdio(
+    config: AdapterConfig,
+    http: BackendHttp,
+    input: Source,
+    output: Sink,
+) {
+    try {
+        val server = createMcpServer(config, http)
+        val transport = StdioServerTransport(input, output)
 
-    // The close callback sits on the transport and not on the server. A
-    // Server.onClose callback runs from Server.close() alone. An end of file
-    // on stdin closes the transport, and the server callback never runs. The
-    // transport callback is the one that fires on that path.
-    val closed = CompletableDeferred<Unit>()
-    transport.onClose { closed.complete(Unit) }
+        // The close callback sits on the transport and not on the server. A
+        // Server.onClose callback runs from Server.close() alone. An end of
+        // file on stdin closes the transport, and the server callback never
+        // runs. The transport callback is the one that fires on that path.
+        val closed = CompletableDeferred<Unit>()
+        transport.onClose { closed.complete(Unit) }
 
-    runBlocking {
-        server.createSession(transport)
-        diagnostic("ready, protocol revision is chosen by the SDK")
-        closed.await()
-    }
-
-    // The close runs under a bound, so a stuck final write cannot hang the
-    // process. exitProcess then ends it, because a leftover thread must not
-    // extend the shutdown.
-    runBlocking {
-        val finished = withTimeoutOrNull(SHUTDOWN_BOUND_MILLIS) { server.close() }
-        if (finished == null) {
-            diagnostic("close did not finish within $SHUTDOWN_BOUND_MILLIS ms")
+        runBlocking {
+            server.createSession(transport)
+            diagnostic("ready, protocol revision is chosen by the SDK")
+            closed.await()
         }
+
+        // The close runs under a bound, so a stuck final write cannot hang the
+        // process. The caller then ends it, because a leftover thread must not
+        // extend the shutdown.
+        runBlocking {
+            val finished = withTimeoutOrNull(SHUTDOWN_BOUND_MILLIS) { server.close() }
+            if (finished == null) {
+                diagnostic("close did not finish within $SHUTDOWN_BOUND_MILLIS ms")
+            }
+        }
+    } finally {
+        http.close()
     }
+}
+
+/** Run the adapter on the process streams, and end the process when they close. */
+fun runStdioAdapter(config: AdapterConfig) {
+    val http = JdkBackendHttp(config.backendBaseUrl)
+    serveStdio(config, http, System.`in`.asSource().buffered(), System.out.asSink().buffered())
     diagnostic("stdin closed, exiting")
     exitProcess(0)
 }
