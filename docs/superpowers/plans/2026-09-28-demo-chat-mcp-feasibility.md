@@ -629,7 +629,8 @@ The task does not prove these three things.
    construction. No grant and no access broker took part.
 
 **A reader must not read this task as end-to-end MCP support.** Task 8 carries
-the real-deployment acceptance step.
+the real-deployment acceptance step. Authorization closes later, under
+`CHAT-pgpmsgvr`.
 
 ### Decision 12: the harness needs a custom transport
 
@@ -862,7 +863,9 @@ authentication, and `RSocketServerConfiguration` carries `TODO: lock down!`.
 Both are recorded in `forward-register.md`. So this task proves the adapter
 against real routes, a real key type and a real index. **It does not prove
 production REST authentication**, because no deployment asks for one yet. Do
-not claim it. That proof waits for the deployment to enforce a token.
+not claim it. That proof waits for `CHAT-pgpmsgvr`, which enforces the
+authentication boundary for every route the adapter uses. It depends on
+`CHAT-znprrzhn`, which wires the authorization checks to a real bean.
 
 ## Mutation proofs
 
@@ -907,7 +910,8 @@ fake backend. Task 8 proves it against a deployment. A closure comment that
 claims end-to-end MCP support without a Task 8 transcript is wrong.
 
 The authentication boundary stays open after this phase, because no deployment
-enforces a credential. See Task 8.
+enforces a credential. `CHAT-pgpmsgvr` closes it, and `CHAT-ylvoiixm` cannot
+claim end-to-end MCP authorization until that issue passes. See Task 8.
 
 Do not push, open a pull request or merge without owner approval.
 

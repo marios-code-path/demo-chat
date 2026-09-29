@@ -168,7 +168,7 @@ the full step list. The shape is:
 `RSocketServerConfiguration` carries `TODO: lock down!`. So a real-deployment
 run proves the adapter against real routes, a real key type and a real index.
 **It does not prove production REST authentication**, because no deployment
-asks for one yet. Do not claim it.
+asks for one yet. Do not claim it. `CHAT-pgpmsgvr` closes that boundary.
 
 ## What the adapter does not do
 
