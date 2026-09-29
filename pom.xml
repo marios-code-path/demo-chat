@@ -31,6 +31,23 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <java.version>25</java.version>
         <kotlin.version>2.4.20</kotlin.version>
+        <!-- The Kotlin MCP SDK 0.15.0 needs kotlinx-serialization 1.11.0 and
+             kotlinx-coroutines 1.11.0. Boot 4.0.8 imports both BOMs at 1.9.0
+             and 1.10.2. Maven applies dependency management to a transitive
+             dependency, so the SDK requirement would be forced down.
+             requireUpperBoundDeps would then fail. The two BOM imports are
+             raised here, because one artifact pin would mix two versions of
+             one library. See CHAT-dduyriqf. -->
+        <kotlin-serialization.version>1.11.0</kotlin-serialization.version>
+        <kotlin-coroutines.version>1.11.0</kotlin-coroutines.version>
+        <!-- No BOM manages the Kotlin MCP SDK. It is named once in
+             dependencyManagement below. See CHAT-dduyriqf. -->
+        <kotlin-sdk.version>0.15.0</kotlin-sdk.version>
+        <!-- The MCP SDK wants kotlinx-io 0.9.1 and ktor 3.5.1 wants 0.9.0.
+             Two versions of one artifact fail dependencyConvergence. Pin the
+             higher value here, because the SDK is the direct consumer. See
+             CHAT-dduyriqf. -->
+        <kotlinx-io.version>0.9.1</kotlinx-io.version>
         <!-- Boot 4.0.8 manages tomcat 11.0.24, and the daily audit reports
              four findings against it at 9.1 and 9.8. Tomcat reaches this
              reactor through chat-authorization-server alone, which uses
@@ -89,6 +106,7 @@
 
     <modules>
         <module>chat-core</module>
+        <module>chat-mcp</module>
         <module>chat-security</module>
         <module>chat-service-composite</module>
 
@@ -375,10 +393,49 @@
                 <artifactId>asm</artifactId>
                 <version>${asm.version}</version>
             </dependency>
+            <!-- The Kotlin MCP SDK. No BOM manages it, so it is named here.
+                 A module declares the JVM variant, because maven reads a POM
+                 and not the Gradle module metadata. See CHAT-dduyriqf. -->
+            <dependency>
+                <groupId>io.modelcontextprotocol</groupId>
+                <artifactId>kotlin-sdk-core-jvm</artifactId>
+                <version>${kotlin-sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.modelcontextprotocol</groupId>
+                <artifactId>kotlin-sdk-server-jvm</artifactId>
+                <version>${kotlin-sdk.version}</version>
+            </dependency>
+            <!-- Three paths request kotlinx-io-core-jvm. The MCP SDK wants
+                 0.9.1, ktor 3.5.1 wants 0.9.0 and kotlinx-serialization-json-io
+                 wants 0.6.0. The jvm artifact takes its own entry, because a
+                 dependencyManagement entry matches one artifactId alone. -->
+            <dependency>
+                <groupId>org.jetbrains.kotlinx</groupId>
+                <artifactId>kotlinx-io-core</artifactId>
+                <version>${kotlinx-io.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains.kotlinx</groupId>
+                <artifactId>kotlinx-io-core-jvm</artifactId>
+                <version>${kotlinx-io.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- No BOM manages this plugin, so the parent pins it and a
+                     module declares the execution alone. chat-mcp installs its
+                     pinned Node client through it. See CHAT-vkqdeoct. -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.4</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>

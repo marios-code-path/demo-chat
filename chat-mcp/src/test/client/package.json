@@ -1,0 +1,11 @@
+{
+  "name": "chat-mcp-harness",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "The pinned MCP client harness for the chat-mcp adapter.",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0"
+  }
+}
