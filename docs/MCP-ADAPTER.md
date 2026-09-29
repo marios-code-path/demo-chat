@@ -282,12 +282,25 @@ Task 8 of the plan holds the full step list. The shape is:
    carry the id, the root and the name the deployment holds. The unserved id
    must refuse with no backend text. stdout must carry frames alone.
 
-**One boundary holds for that run.** No deployment enforces a credential today.
+**Two boundaries hold for that run.**
+
+The first boundary is enforcement. No deployment enforces a credential today.
 `WebFluxSecurity` permits every exchange and adds no authentication, and
 `RSocketServerConfiguration` carries `TODO: lock down!`. So a real-deployment
 run proves the adapter against real routes, a real key type and a real index.
 **It does not prove production REST authentication**, because no deployment
 asks for one yet. Do not claim it. `CHAT-pgpmsgvr` closes that boundary.
+
+The second boundary is the credential itself. **No procedure produced the token
+that the acceptance run used.** `credentialFile` names a file. This document
+states how the adapter reads that file and never how the file gets its value.
+`WebFluxSecurity` permits every exchange, so no route read the bearer header.
+The token in that file was therefore unconstrained, and any text would have
+passed. `CHAT-rvcrzxvw` covers the missing procedure. That procedure creates the
+account, grants the topic scope, obtains a token, and writes the token to the
+file. It does not block `CHAT-ylvoiixm`, because the adapter already reads the
+file and sends the token. Read both boundaries before you claim a working
+credential.
 
 ## What the adapter does not do
 

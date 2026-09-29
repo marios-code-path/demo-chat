@@ -241,7 +241,11 @@ configuration cannot half-apply.
 1. **This document does not add a component.** It describes the code at commit
    `3295f7c3` and nothing else.
 2. **The adapter is still not authenticated against a deployment.** No
-   deployment enforces a credential. `CHAT-pgpmsgvr` closes that boundary.
+   deployment enforces a credential, so no route reads the bearer header.
+   `CHAT-pgpmsgvr` closes that boundary. `CHAT-rvcrzxvw` closes the other half:
+   no procedure creates the account, grants the scope and obtains the token that
+   `credentialFile` names. The adapter already reads that file and sends the
+   token, so that issue adds no code.
 3. **The absence of a Spring context is a decision and not an oversight.** A
    later task that adds one changes the stdout contract, the startup time and
    the classpath. Read the design before it does.

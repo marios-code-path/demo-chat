@@ -1001,6 +1001,15 @@ not claim it. That proof waits for `CHAT-pgpmsgvr`, which enforces the
 authentication boundary for every route the adapter uses. It depends on
 `CHAT-znprrzhn`, which wires the authorization checks to a real bean.
 
+**A second boundary holds for the same run.** No procedure produced the token
+that the file holds. `credentialFile` names a file, and no document states how
+the file gets its value. `WebFluxSecurity` permits every exchange, so no route
+read the bearer header. The token was therefore unconstrained, and any text
+would have passed. `CHAT-rvcrzxvw` covers the missing procedure: create the
+account, grant the topic scope, obtain a token, write it to the file. That issue
+does not block this phase, because the adapter already reads the file and sends
+the token.
+
 ### Task 8, complete
 
 Run on 2026-09-29. Recorded in `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`.
@@ -1045,6 +1054,10 @@ adapter replaced its text.
 2. **A real denial.** The deployment holds no grant that denies, so no 403
    from a real store appears in this run. Task 4's stdio test is the only
    coverage of the denial path.
+3. **The credential origin.** No procedure produced the token this run used.
+   So the run did not prove that the adapter reads a real token, and it did not
+   prove that a real token reaches a route. `CHAT-rvcrzxvw` covers the
+   procedure.
 
 ## Mutation proofs
 
@@ -1129,6 +1142,10 @@ claims end-to-end MCP support without a Task 8 transcript is wrong.
 The authentication boundary stays open after this phase, because no deployment
 enforces a credential. `CHAT-pgpmsgvr` closes it, and `CHAT-ylvoiixm` cannot
 claim end-to-end MCP authorization until that issue passes. See Task 8.
+
+The credential origin stays open beside it. No procedure produced the token that
+the acceptance run used, so the run never read a real token. `CHAT-rvcrzxvw`
+covers the procedure, and it does not block `CHAT-ylvoiixm`.
 
 Do not push, open a pull request or merge without owner approval.
 

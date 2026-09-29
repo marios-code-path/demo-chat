@@ -26,6 +26,13 @@ credential today. `WebFluxSecurity` permits every exchange and adds no
 authentication. `RSocketServerConfiguration` carries `TODO: lock down!`. Both
 are recorded in `forward-register.md`. `CHAT-pgpmsgvr` closes that boundary.
 
+**The token in `credential.txt` was unconstrained.** No procedure produced it.
+`WebFluxSecurity` permits every exchange, so no route read the bearer header, and
+any text in that file would have passed. `CHAT-rvcrzxvw` covers the missing
+procedure: create the account, grant the topic scope, obtain a token, write it to
+the file that `credentialFile` names. The adapter already reads that file and
+sends the token, so that issue does not block this phase.
+
 The run also does not prove deployed authorization. The deployment holds no
 denial to observe, because no route enforces one. So every call in this run was
 permitted.
@@ -109,7 +116,7 @@ status is not lost, because the stderr diagnostic line carries it. Task 7 rule
 
 ```properties
 backendBaseUrl=http://127.0.0.1:6791
-credentialFile=credential.txt
+credentialFile=credential.txt   (any text passed; no route read the header)
 keyType=long
 topicIds=1554429686883287040,1
 ```
@@ -223,7 +230,7 @@ named all three lines. See mutation M5c in the plan.
 
 ## What a reader must not conclude
 
-This run does not close `CHAT-ylvoiixm`. Two things stay open.
+This run does not close `CHAT-ylvoiixm`. Three things stay open.
 
 1. **Authentication.** `CHAT-pgpmsgvr` enforces the credential boundary for
    every route the adapter uses. Until it passes, no end-to-end authorization
@@ -231,6 +238,10 @@ This run does not close `CHAT-ylvoiixm`. Two things stay open.
 2. **The denial path.** The deployment holds no denial to observe. So this run
    never exercised a 403 from a real grant. Task 4's stdio test covers a 403
    against the fake backend. That test is the only coverage of the denial path.
+3. **The credential origin.** No procedure produced the token this run used. So
+   this run does not prove that the adapter reads a real token, and it does not
+   prove that a real token reaches a route. `CHAT-rvcrzxvw` covers the
+   procedure.
 
 ## Reproduce it
 
