@@ -1,5 +1,8 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.tool.TopicToolService
+import com.demo.chat.mcp.tool.registerTopicTools
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.types.Implementation
@@ -18,14 +21,18 @@ const val MCP_SERVER_VERSION: String = "0.0.1"
  * resource and no subscription. See
  * `docs/superpowers/specs/2026-09-27-demo-chat-mcp-design.md` section 4.
  *
- * No tool is registered here. A later task registers the first two tools.
+ * The two topic tools are registered here. A later task adds no other surface.
  */
-fun createMcpServer(): Server =
-    Server(
-        Implementation(name = MCP_SERVER_NAME, version = MCP_SERVER_VERSION),
-        ServerOptions(
-            capabilities = ServerCapabilities(
-                tools = ServerCapabilities.Tools(listChanged = true),
+fun createMcpServer(config: AdapterConfig): Server {
+    val server =
+        Server(
+            Implementation(name = MCP_SERVER_NAME, version = MCP_SERVER_VERSION),
+            ServerOptions(
+                capabilities = ServerCapabilities(
+                    tools = ServerCapabilities.Tools(listChanged = true),
+                ),
             ),
-        ),
-    )
+        )
+    registerTopicTools(server, TopicToolService(config))
+    return server
+}

@@ -21,6 +21,9 @@ private const val ID_FIELD: String = "id"
 private const val ROOT_FIELD: String = "root"
 private const val EMPTY_FIELD: String = "empty"
 
+/** Every refusal in this file is a broken envelope contract. */
+private fun refused(message: String): Nothing = throw ClientException(message, FailureReason.PROTOCOL)
+
 /**
  * Decode one topic response.
  *
@@ -42,7 +45,7 @@ fun decodeTopic(body: String, keyType: KeyType): Topic {
         try {
             Json.parseToJsonElement(body)
         } catch (failure: SerializationException) {
-            throw ClientException("the response is not JSON")
+            refused("the response is not JSON")
         }
     val wrapped = field(document, VALUE_WRAPPER)
     val topic = objectOf(wrapped, "the '$VALUE_WRAPPER' field")
@@ -50,7 +53,7 @@ fun decodeTopic(body: String, keyType: KeyType): Topic {
     val key = objectOf(field(keyWrapper, KEY_WRAPPER), "the inner '$KEY_WRAPPER' field")
 
     if (readEmpty(field(key, EMPTY_FIELD))) {
-        throw ClientException("the returned key is empty")
+        refused("the returned key is empty")
     }
     return Topic(
         id = canonicalId(field(key, ID_FIELD), ID_FIELD, keyType),
@@ -61,19 +64,19 @@ fun decodeTopic(body: String, keyType: KeyType): Topic {
 
 /** Read one field, or refuse the response. */
 private fun field(container: JsonElement, name: String): JsonElement {
-    val object0 = container as? JsonObject ?: throw ClientException("the response holds no '$name' field")
-    return object0[name] ?: throw ClientException("the response holds no '$name' field")
+    val object0 = container as? JsonObject ?: refused("the response holds no '$name' field")
+    return object0[name] ?: refused("the response holds no '$name' field")
 }
 
 /** Require a JSON object. */
 private fun objectOf(element: JsonElement, what: String): JsonObject =
-    element as? JsonObject ?: throw ClientException("$what is not a JSON object")
+    element as? JsonObject ?: refused("$what is not a JSON object")
 
 /** Require a JSON string. */
 private fun text(element: JsonElement, name: String): String {
     val primitive = primitiveOf(element, name)
     if (!primitive.isString) {
-        throw ClientException("the '$name' field is not a JSON string")
+        refused("the '$name' field is not a JSON string")
     }
     return primitive.content
 }
@@ -92,18 +95,18 @@ private fun canonicalId(element: JsonElement, name: String, keyType: KeyType): S
     when (keyType) {
         KeyType.LONG ->
             if (primitive.isString) {
-                throw ClientException("the '$name' field is a JSON string, not a JSON number")
+                refused("the '$name' field is a JSON string, not a JSON number")
             }
         KeyType.UUID ->
             if (!primitive.isString) {
-                throw ClientException("the '$name' field is not a JSON string")
+                refused("the '$name' field is not a JSON string")
             }
     }
     val text = primitive.content
     return try {
         parseIdText(text, keyType).text
     } catch (failure: ConfigException) {
-        throw ClientException("the returned '$name' is refused: ${failure.message}")
+        refused("the returned '$name' is refused: ${failure.message}")
     }
 }
 
@@ -115,21 +118,20 @@ private fun canonicalId(element: JsonElement, name: String, keyType: KeyType): S
  */
 private fun primitiveOf(element: JsonElement, name: String): JsonPrimitive {
     if (element is JsonNull) {
-        throw ClientException("the '$name' field is null")
+        refused("the '$name' field is null")
     }
-    return element as? JsonPrimitive
-        ?: throw ClientException("the '$name' field is not a JSON value")
+    return element as? JsonPrimitive ?: refused("the '$name' field is not a JSON value")
 }
 
 /** Read the `empty` flag. */
 private fun readEmpty(element: JsonElement): Boolean {
     val primitive = primitiveOf(element, EMPTY_FIELD)
     if (primitive.isString) {
-        throw ClientException("the '$EMPTY_FIELD' field is not a JSON boolean")
+        refused("the '$EMPTY_FIELD' field is not a JSON boolean")
     }
     return when (primitive.content) {
         "true" -> true
         "false" -> false
-        else -> throw ClientException("the '$EMPTY_FIELD' field is not a JSON boolean")
+        else -> refused("the '$EMPTY_FIELD' field is not a JSON boolean")
     }
 }

@@ -1,8 +1,12 @@
 package com.demo.chat.mcp
 
+import com.demo.chat.mcp.config.AdapterConfig
+import com.demo.chat.mcp.config.AdapterId
+import com.demo.chat.mcp.tool.testConfig
 import io.modelcontextprotocol.kotlin.sdk.server.StdioServerTransport
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.net.URI
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
@@ -15,6 +19,15 @@ import org.junit.jupiter.api.Test
 
 class McpAdapterStdioTests {
     /**
+     * A configuration that reaches no backend.
+     *
+     * These cases read the transport alone, so the adapter never opens a
+     * socket.
+     */
+    private fun config(): AdapterConfig =
+        testConfig(origin = URI("http://127.0.0.1:1"), topicIds = emptyList<AdapterId>())
+
+    /**
      * An end of file on the input closes the transport. This is the path that
      * ends the process when a client closes stdin.
      *
@@ -26,7 +39,7 @@ class McpAdapterStdioTests {
         runBlocking {
             val input = ByteArrayInputStream(ByteArray(0)).asSource().buffered()
             val output = ByteArrayOutputStream().asSink().buffered()
-            val server = createMcpServer()
+            val server = createMcpServer(config())
             val transport = StdioServerTransport(input, output)
             val closed = CompletableDeferred<Unit>()
             transport.onClose { closed.complete(Unit) }
@@ -48,7 +61,7 @@ class McpAdapterStdioTests {
         runBlocking {
             val input = ByteArrayInputStream(ByteArray(0)).asSource().buffered()
             val output = ByteArrayOutputStream().asSink().buffered()
-            val server = createMcpServer()
+            val server = createMcpServer(config())
             val transport = StdioServerTransport(input, output)
             val serverClosed = CompletableDeferred<Unit>()
             server.onClose { serverClosed.complete(Unit) }

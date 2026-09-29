@@ -421,6 +421,101 @@ were then measured again, and the gate ran once on the tree that is committed.
 - A denied topic is absent from the list.
 - Its name appears in no response and in no stderr line.
 
+### Decisions taken during Task 4
+
+1. **The rules live in `TopicToolService`, and it holds no MCP type.** The
+   allowlist rule, the omit rule and the fail rule sit in one class with no
+   server and no transport. `TopicToolRegistration` supplies the schema, the
+   annotations and the argument checks. A test drives each layer alone.
+2. **The list reads each configured id through its id endpoint.** Rule 2 holds
+   by construction. `TopicToolService.listTopics` maps over `config.topicIds`
+   and calls `readTopic` once per id. A test asserts that the backend sees each
+   configured id exactly once.
+3. **`NOT_AVAILABLE` covers a denial and an absence.** The Task 3 client maps
+   403 and 404 to one reason, so the omit rule has one branch. A 401, a 5xx and
+   a transport failure each keep their own reason and fail the whole list.
+4. **Rule 1 cannot be declared through the schema, so the adapter enforces it
+   in code.** See decision 11 below. `refuseUnknownArguments` runs before any
+   backend call, so no unknown argument reaches a read.
+5. **The allowlist check runs after the id rules.** A malformed value fails as
+   an id and names the id rule. A well formed id outside the list fails as a
+   topic. The order decides which sentence the caller reads.
+6. **The blocking backend call runs on the IO dispatcher.** A call on the
+   session dispatcher would stall every other frame.
+7. **A refusal carries one sentence and no payload.** `ToolException`,
+   `ClientException` and `ConfigException` each become an error result whose
+   text is the adapter's own sentence. No backend text and no payload reaches
+   the client.
+
+### Decision 11: `additionalProperties` at a tool schema root
+
+Rule 1 asks for `additionalProperties: false` on the list tool input. **SDK
+0.15.0 cannot declare it there.**
+
+`ToolSchema` is a serializable data class. Its serializer element list is
+exactly `$schema`, `properties`, `required`, `$defs`, `type`, read from the
+`ToolSchema$$serializer` descriptor. There is no slot for
+`additionalProperties`, and `Server.addTool` offers no raw `JsonObject`
+overload.
+
+Measured on 2026-09-28 over stdio. The wire declaration of the list tool input
+is exactly:
+
+```json
+{"properties":{},"required":[],"type":"object"}
+```
+
+Four routes were considered and three were refused.
+
+- **A raw JSON schema object.** No SDK entry point takes one.
+- **A `properties` entry that names `additionalProperties`.** It would declare
+  a property of that name and would not set the keyword.
+- **A custom serializer for `ToolSchema`.** It would replace a type the SDK
+  owns and would break on the next SDK revision.
+
+The chosen route declares what the SDK can express and enforces the rule in
+code. **This is consistent with the owner's Task 2 note that unknown arguments
+and properties fail.** The nested per-topic schema **can** carry the keyword,
+and the wire test pins it there.
+
+**This limit outlives the phase.** The closure comment of `CHAT-ylvoiixm` must
+record it.
+
+### Measured during Task 4
+
+- **The SDK handler is a receiver lambda with one parameter.**
+  `suspend ClientConnection.(CallToolRequest) -> CallToolResult`. A two
+  parameter form fails to compile.
+- **`ToolSchema.properties` and `.required` are nullable in Kotlin.** A test
+  that reads them needs `!!`.
+- **The wire schema of each tool is exact.** A stdio test pins both input
+  schemas and both output schemas as literal JSON text.
+- **A denied topic leaves no trace.** The backend answers the denial with a
+  body that carries the topic name. The test reads every response frame, the
+  structured content, the text content, and stderr. The name appears in none.
+  It also asserts that the credential does not reach stderr.
+
+### Task 4 gate results
+
+Measured on 2026-09-28 on branch `chat-mcp-impl`.
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am test` | exit 0. 154 tests, 0 failures, 0 errors, 0 skipped. |
+| M4, a denied topic emitted in `chat_list_topics` | `McpAdapterToolStdioTests` fails 1 of 10 and `TopicToolServiceTests` fails 3 of 12. The stdio case reads `expected: <1> but was: <2>`. |
+| M6, a topic argument outside the allowlist accepted | `McpAdapterToolStdioTests` fails 1 of 10 and `TopicToolServiceTests` fails 1 of 12. Both name the allowlist case. |
+| `shell-scripts/check-dependency-versions.sh` | exit 0. No module declares a third-party version. |
+| `git diff --check` | exit 0. |
+| `drift check` | exit 0. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1670 tests, 0 failures, 0 errors, 59 skipped. The run reports that reality matches `docs/BUILD-HEALTH.md`. |
+
+M4 and M6 were applied and restored by absolute path. The service file is
+untracked, so `git status` cannot tell a mutated file from a restored one. Each
+restore is proved by a `shasum -a 256` match against the value recorded before
+the mutation: `76f59e484c0161c3443b29c6b34d132b6be32ac17411188f72282b87f01adcc5`.
+
+The integration gate ran last, on the final source.
+
 ## Task 5: a pinned MCP client and stdout purity
 
 **Files.** New test sources under `chat-mcp/src/test/kotlin/`. A pinned client

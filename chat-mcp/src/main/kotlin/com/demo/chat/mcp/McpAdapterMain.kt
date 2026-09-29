@@ -29,8 +29,8 @@ internal fun diagnostic(message: String) {
 }
 
 /** Run the adapter on stdio until stdin reaches end of file. */
-fun runStdioAdapter() {
-    val server = createMcpServer()
+fun runStdioAdapter(config: AdapterConfig) {
+    val server = createMcpServer(config)
     val transport =
         StdioServerTransport(
             System.`in`.asSource().buffered(),
@@ -91,5 +91,5 @@ fun main(args: Array<String>) {
         "configured for ${originOf(config.backendBaseUrl)}, " +
             "${config.topicIds.size} topic ids, key type ${config.keyType}",
     )
-    runStdioAdapter()
+    runStdioAdapter(config)
 }

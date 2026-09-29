@@ -43,7 +43,10 @@ internal fun topicUri(origin: URI, id: AdapterId): URI = origin.resolve("/topic/
  */
 internal fun usableCredential(text: String): String {
     if (text.any { it < ' ' || it == '\u007f' }) {
-        throw ClientException("the credential file holds a control character")
+        throw ClientException(
+            "the credential file holds a control character",
+            FailureReason.AUTHENTICATION,
+        )
     }
     return text
 }

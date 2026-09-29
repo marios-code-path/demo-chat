@@ -92,11 +92,17 @@ class JdkBackendHttp(
                 if (status in 300..399) {
                     val location =
                         response.headers().firstValue("location").orElse(null)
-                            ?: throw ClientException("the backend answered $status with no location")
+                            ?: throw ClientException(
+                                "the backend answered $status with no location",
+                                FailureReason.PROTOCOL,
+                            )
                     response.body().close()
                     hops += 1
                     if (hops > maxRedirects) {
-                        throw ClientException("the backend redirects more than $maxRedirects times")
+                        throw ClientException(
+                            "the backend redirects more than $maxRedirects times",
+                            FailureReason.PROTOCOL,
+                        )
                     }
                     current = resolveRedirect(current, location)
                     continue
@@ -105,7 +111,7 @@ class JdkBackendHttp(
                     return readBody(response.body(), deadline)
                 }
                 response.body().close()
-                throw ClientException("the backend answered $status")
+                throw ClientException("the backend answered $status", reasonFor(status))
             }
         } finally {
             permits.release()
@@ -122,17 +128,20 @@ class JdkBackendHttp(
     private fun waitForAPermit(deadline: Long) {
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0) {
-            throw ClientException("the backend call passed its deadline")
+            throw ClientException("the backend call passed its deadline", FailureReason.TRANSPORT)
         }
         val waited =
             try {
                 permits.tryAcquire(remaining, TimeUnit.NANOSECONDS)
             } catch (failure: InterruptedException) {
                 Thread.currentThread().interrupt()
-                throw ClientException("the backend call was interrupted")
+                throw ClientException("the backend call was interrupted", FailureReason.TRANSPORT)
             }
         if (!waited) {
-            throw ClientException("the adapter holds $maxConcurrentRequests backend requests already")
+            throw ClientException(
+                "the adapter holds $maxConcurrentRequests backend requests already",
+                FailureReason.LIMIT,
+            )
         }
     }
 
@@ -141,7 +150,7 @@ class JdkBackendHttp(
         try {
             requireSameOrigin(configuredOrigin, target)
         } catch (failure: ConfigException) {
-            throw ClientException("a response named another origin")
+            throw ClientException("a response named another origin", FailureReason.PROTOCOL)
         }
     }
 
@@ -149,7 +158,7 @@ class JdkBackendHttp(
     private fun send(target: URI, credential: String, deadline: Long): HttpResponse<InputStream> {
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0) {
-            throw ClientException("the backend call passed its deadline")
+            throw ClientException("the backend call passed its deadline", FailureReason.TRANSPORT)
         }
         val request =
             HttpRequest.newBuilder(target)
@@ -161,10 +170,13 @@ class JdkBackendHttp(
         return try {
             client.send(request, HttpResponse.BodyHandlers.ofInputStream())
         } catch (failure: IOException) {
-            throw ClientException("the backend call failed: ${failure.javaClass.simpleName}")
+            throw ClientException(
+                "the backend call failed: ${failure.javaClass.simpleName}",
+                FailureReason.TRANSPORT,
+            )
         } catch (failure: InterruptedException) {
             Thread.currentThread().interrupt()
-            throw ClientException("the backend call was interrupted")
+            throw ClientException("the backend call was interrupted", FailureReason.TRANSPORT)
         }
     }
 
@@ -180,7 +192,7 @@ class JdkBackendHttp(
         val remaining = deadline - System.nanoTime()
         if (remaining <= 0) {
             body.close()
-            throw ClientException("the backend call passed its deadline")
+            throw ClientException("the backend call passed its deadline", FailureReason.TRANSPORT)
         }
         val watchdogTask = watchdog.schedule({ body.close() }, remaining, TimeUnit.NANOSECONDS)
         try {
@@ -193,7 +205,10 @@ class JdkBackendHttp(
                         break
                     }
                     if (out.size() + read > maxResponseBytes) {
-                        throw ClientException("the backend response is above $maxResponseBytes bytes")
+                        throw ClientException(
+                            "the backend response is above $maxResponseBytes bytes",
+                            FailureReason.LIMIT,
+                        )
                     }
                     out.write(buffer, 0, read)
                 }
@@ -201,14 +216,33 @@ class JdkBackendHttp(
             }
         } catch (failure: IOException) {
             if (System.nanoTime() >= deadline) {
-                throw ClientException("the backend call passed its deadline")
+                throw ClientException("the backend call passed its deadline", FailureReason.TRANSPORT)
             }
-            throw ClientException("the backend response could not be read: ${failure.javaClass.simpleName}")
+            throw ClientException(
+                "the backend response could not be read: ${failure.javaClass.simpleName}",
+                FailureReason.TRANSPORT,
+            )
         } finally {
             watchdogTask.cancel(false)
         }
     }
 }
+
+/**
+ * Classify one backend status.
+ *
+ * A 401 and a 403 are separate on purpose. A refused credential fails the
+ * whole list, and a refused object is omitted from it.
+ *
+ * A 403 and a 404 both answer [FailureReason.NOT_AVAILABLE]. Task 7 rule 4
+ * forbids telling a hidden object from an absent one.
+ */
+internal fun reasonFor(status: Int): FailureReason =
+    when (status) {
+        401 -> FailureReason.AUTHENTICATION
+        403, 404 -> FailureReason.NOT_AVAILABLE
+        else -> FailureReason.BACKEND
+    }
 
 /**
  * Resolve one location header against the request that named it.
@@ -220,9 +254,15 @@ internal fun resolveRedirect(current: URI, location: String): URI =
     try {
         val resolved = current.resolve(location)
         if (!resolved.isAbsolute) {
-            throw ClientException("the backend named a redirect with no origin")
+            throw ClientException(
+                "the backend named a redirect with no origin",
+                FailureReason.PROTOCOL,
+            )
         }
         resolved
     } catch (failure: IllegalArgumentException) {
-        throw ClientException("the backend named a redirect the adapter cannot read")
+        throw ClientException(
+            "the backend named a redirect the adapter cannot read",
+            FailureReason.PROTOCOL,
+        )
     }
