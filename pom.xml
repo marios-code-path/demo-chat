@@ -424,6 +424,18 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- No BOM manages this plugin, so the parent pins it and a
+                     module declares the execution alone. chat-mcp installs its
+                     pinned Node client through it. See CHAT-vkqdeoct. -->
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.4</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>io.github.git-commit-id</groupId>

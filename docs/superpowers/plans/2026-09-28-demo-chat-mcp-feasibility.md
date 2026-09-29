@@ -741,8 +741,12 @@ required proof.
 
 - **Node on the PATH.** The test fails with a sentence that names Node when it
   is absent. It does not skip.
-- **`npm ci` once.** The lock file is committed and `node_modules/` is ignored.
-  A cold machine needs the network for that step.
+- **The client install, which the build performs.** `node_modules/` is ignored
+  by git, so a cold checkout has no client. The `install-pinned-mcp-client`
+  profile runs `npm ci` at `generate-test-resources` when that directory is
+  absent and skips it when the directory is present. A cold machine needs the
+  network for that step. `CHAT-vkqdeoct` closed the manual step this line
+  recorded.
 
 ### Task 5 gate results
 
@@ -768,11 +772,15 @@ The integration gate ran last, on the final source.
 
 ### Two limits of this task, recorded
 
-1. **A cold machine needs one manual step.** It runs `npm ci` in
-   `chat-mcp/src/test/client/` before the test can pass. The lock file is
-   committed, so the step is reproducible. It is still a step. The test names
-   the missing package when `node_modules` is absent, because it prints the
-   harness error text.
+1. **A cold machine needed one manual step, and that was a defect.**
+   `CHAT-vkqdeoct` closed it. The limit was written as an operator note, and no
+   workflow ran the step, so **both CI jobs failed on every pull request that
+   holds `chat-mcp`** and every local result rested on a `node_modules`
+   directory the machine already held. CI run `36635977431` reported 184 tests
+   with 2 failures against a local claim of 184 tests with 0. This is the rule
+   the register records twice for `check-production-classpath.sh`: a gate that
+   depends on state its own run does not produce is not a gate. The build now
+   installs the client through the `install-pinned-mcp-client` profile.
 2. **The acceptance test is not the native test.** Every call in this task ran
    on the JVM build. Task 6 runs the same harness against the native
    executable, and that run is the native proof.

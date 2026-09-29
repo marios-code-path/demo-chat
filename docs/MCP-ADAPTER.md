@@ -232,12 +232,13 @@ serves.
 
 The harness needs Node on the PATH. It was measured with Node v26.7.0.
 
-Install the pinned client once:
+The pinned client installs itself. The `chat-mcp` build runs `npm ci` in
+`chat-mcp/src/test/client/` when that directory holds no `node_modules`, and it
+skips the step when one is present. So a cold checkout needs no manual step, and
+an ordinary build makes no network call. **A missing npm fails the build.** See
+`CHAT-vkqdeoct`.
 
-```sh
-cd chat-mcp/src/test/client
-npm ci
-```
+To install the client alone, run `npm ci` in `chat-mcp/src/test/client/` by hand.
 
 Run the harness:
 
@@ -264,8 +265,11 @@ discovery, tool calls over stdio, protocol framing, stream separation and JVM
 shutdown. It proves no production REST authentication, no production route
 behaviour and no deployed authorization.
 
-`npm ci` is a manual step on a cold machine. The lock file is committed, so the
-step is reproducible.
+The build installs the pinned client itself, so the test runs on a cold
+checkout with one command. The `install-pinned-mcp-client` profile activates
+when `chat-mcp/src/test/client/node_modules` is absent. It runs `npm ci` in that
+directory at `generate-test-resources`, and it uses the committed lock file. A
+warm tree activates no profile and makes no network call.
 
 ## Acceptance against a real deployment
 

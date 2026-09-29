@@ -70,4 +70,47 @@
             </plugin>
         </plugins>
     </build>
+
+    <!-- `McpAdapterHarnessTests` drives the pinned Node client, and that client
+         is a package under `node_modules/`, which git ignores. A cold checkout
+         therefore has no client, and CI run 36635977431 failed both jobs on a
+         missing `@modelcontextprotocol/sdk`. This profile installs the client
+         exactly when that directory is absent, so an ordinary build makes no
+         network call and stays safe offline. `npm ci` keeps the committed lock
+         file authoritative. A missing npm fails the build, because a silent
+         skip would hide the loss of the stdout purity gate. CHAT-vkqdeoct. -->
+    <profiles>
+        <profile>
+            <id>install-pinned-mcp-client</id>
+            <activation>
+                <file>
+                    <missing>src/test/client/node_modules</missing>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>npm-ci</id>
+                                <phase>generate-test-resources</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <workingDirectory>${project.basedir}/src/test/client</workingDirectory>
+                                    <executable>npm</executable>
+                                    <arguments>
+                                        <argument>ci</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
