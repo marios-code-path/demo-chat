@@ -11,16 +11,22 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `7abe0af8`, clean, in sync with `origin`. |
-| Register state | Updated 2026-09-21, after the Spring Boot 4 merge and the seven pull requests that followed it. |
-| Last merged PR | #110, merge commit `7abe0af8`. Before it: #109 `0bdb0c4f`, #108 `d1dda1bc`, #107 `d09a2daf`, #106 `6aae087d`, #105 `8d7d9707`, #104 `ecfea4a1`, #103 `c4b63bfc`. |
+| Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
+| Register state | Updated 2026-09-29, after the MCP adapter merge. |
+| Last merged PR | #146, merge commit `8fa9c962`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Four local branches remain, none with a remote, and none with a worktree. **Three hold no commit that master lacks**: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, and `chat-chsvdqbi-springai` at `aeb579dc`. Their content reached master through #103 and the pull requests after it. The fourth, `chat-urhjrwbt-indexelastic`, holds one commit that master lacks, `d8d797b3`, and that commit repairs `chat-index-elastic`, which #106 removed from the reactor. So it is dead work. |
-| Worktrees | The main checkout only. The owner removed `.worktrees/boot4`, `.worktrees/ctl` and `.worktrees/springai` on 2026-09-21, because each held a branch that master already contains. **The branch refs are kept.** |
-| Open PRs | The owner dropped Dependabot #8 and #11 on 2026-09-21 as no longer relevant. Nothing else was open when this refresh was written, and #112 carries the refresh itself. |
+| Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
+| Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. |
+| Open PRs | None. Nothing was open on 2026-09-29. |
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
+
+**Two branches are in flight, and neither is this register's work.** The
+`chat-hazcatpc-review-fix` branch at `606d251a` holds one commit that master
+lacks, and it carries no remote. The `chat-sgyaaivp-cassandra-timeout` branch at
+`a812cd0c` holds no commit that master lacks, and it carries a remote. Both
+belong to other work. Do not read the rows above as covering them.
 
 ## Landed
 
@@ -2542,6 +2548,16 @@ The branch is `chat-bafkgkko-root-restart`.
 ## The MCP adapter, and a gate that did not exist (2026-09-29)
 
 `CHAT-vkqdeoct`. PR #146, branch `chat-mcp-impl`, commit `bead5a8f`.
+
+**This section is closed. PR #146 merged on 2026-09-29 as
+`8fa9c9628bb7dde920975ef65c5b14636498985d`.** The merge has two parents, so it is
+a real merge commit. Master held the branch tip tree exactly, because
+`git diff 773ba27a origin/master` was empty. The local branch and its worktree
+are removed, and the remote branch is deleted.
+
+`CHAT-vkqdeoct` is done. `CHAT-ylvoiixm` is done, and three of its children stay
+open: `CHAT-pgpmsgvr`, `CHAT-rvcrzxvw` and `CHAT-qtfmwfsu`. **A closed parent
+does not close its children.** The parent comment carries the ledger.
 
 **The failure.** CI run `36635977431` failed both jobs. `chat-mcp` reported 184
 tests with 2 failures, against a local claim of 184 with 0. The number matched
