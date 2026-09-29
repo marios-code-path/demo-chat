@@ -593,6 +593,139 @@ harness under `chat-mcp/src/test/client/`. The operator procedure goes in
 - A stdout capture holds no diagnostic text.
 - The harness runs with no manual step. A second machine reproduces it.
 
+### Task 5, complete
+
+**What exists.**
+
+| Path | What |
+|---|---|
+| `chat-mcp/src/test/client/package.json` | The pin. `@modelcontextprotocol/sdk` 1.31.0. |
+| `chat-mcp/src/test/client/package-lock.json` | The committed lock file. A test fails when it is absent. |
+| `chat-mcp/src/test/client/harness.mjs` | The harness. A Node program with a teeing transport. |
+| `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterHarnessTests.kt` | Three tests. Every assertion of rules 1 to 9. |
+| `docs/MCP-ADAPTER.md` | The operator procedure. |
+
+### Decision 12: the harness needs a custom transport
+
+The shipped `StdioClientTransport` exposes the child stderr and no raw stdout.
+Rule 6 needs the exact bytes the adapter wrote. So the harness implements the
+`Transport` interface itself. It spawns the child with `child_process.spawn`,
+records every stdout line before the protocol reads it, and records the stderr
+text.
+
+**A custom transport is the only way to read raw stdout.** The shipped one
+consumes the stream.
+
+### Decision 13: the harness asserts nothing
+
+The harness prints one JSON transcript and makes no assertion. The Kotlin test
+reads the transcript and decides. So a reader can keep a transcript as evidence
+without running the JVM test.
+
+### A production defect that rule 6 found
+
+**`kotlin-logging` 8.0.4 wrote its startup banner to stdout.** The line is
+`kotlin-logging: initializing... active logger factory: Slf4jLoggerFactory`. It
+is not a protocol frame, so it broke the stdio contract of the adapter.
+
+The library arrives through the MCP SDK, at runtime scope. The adapter never
+logs through it. It prints that one line when its configuration class
+initializes.
+
+The adapter now sets the library property `kotlin-logging.logStartupMessage` to
+`false`. `main` calls that before every other statement, because the library
+reads the property once, at class initialization.
+
+**The property is set in code, not in a launch script.** Every launch path
+inherits it. This repository has met the other shape before, under
+`CHAT-gkwqnnxn`, where one launch path defaulted a value and the other did not.
+
+The mutation M5b proves the guard. Removing the call puts the line back on
+stdout and the purity test names it.
+
+### The recorded transcript
+
+Measured on 2026-09-29 against the memory deployment of the prerequisite
+section, at `http://127.0.0.1:6791`. The topic is `mcpcontracttopic`.
+
+```
+node v26.7.0 | sdk 1.31.0 | declared 2025-11-25 | negotiated 2025-11-25
+server {"name":"demo-chat-mcp","version":"0.0.1"} | caps {"tools":{"listChanged":true}}
+tools: chat_list_topics, chat_get_topic
+call chat_list_topics {} isError=false
+  => {"topics":[{"id":"1554361326074068992","root":"1554361143634427905","name":"mcpcontracttopic"}]}
+call chat_get_topic {"topicId":"1554361326074068992"} isError=false
+  => {"topic":{"id":"1554361326074068992","root":"1554361143634427905","name":"mcpcontracttopic"}}
+call chat_get_topic {"topicId":"1"} isError=true => "the backend answered 404"
+stdout lines 5 | parse failures 0
+stderr ["chat-mcp: configured for http://127.0.0.1:6791, 2 topic ids, key type LONG",
+        "SLF4J(W): No SLF4J providers were found.",
+        "SLF4J(W): Defaulting to no-operation (NOP) logger implementation",
+        "SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.",
+        "chat-mcp: ready, protocol revision is chosen by the SDK",
+        "chat-mcp: chat_list_topics answered",
+        "chat-mcp: chat_get_topic answered",
+        "chat-mcp: chat_get_topic refused: the backend answered 404",
+        "chat-mcp: stdin closed, exiting"]
+exit {"withinBound":true,"millis":325,"code":0,"signal":null} | connectError null
+```
+
+Three readings.
+
+1. **The pinned client negotiates the served revision.** The client declares
+   `2025-11-25` and the adapter answered the same value. Decision D1 holds on a
+   real client.
+2. **Five stdout lines carry the whole session, and nothing else.** One is the
+   initialize answer, one is the discovery answer, and three are the call
+   answers. The test pins the count, so a stray line fails it.
+3. **The adapter ships no SLF4J provider.** The SDK logging is a no-op, and the
+   three `SLF4J(W)` lines reach stderr alone.
+
+### Rule 10
+
+Optional confirmation by a Claude Code session was not recorded. It is not the
+required proof.
+
+### What the harness needs from the machine
+
+- **Node on the PATH.** The test fails with a sentence that names Node when it
+  is absent. It does not skip.
+- **`npm ci` once.** The lock file is committed and `node_modules/` is ignored.
+  A cold machine needs the network for that step.
+
+### Task 5 gate results
+
+Measured on 2026-09-29 on branch `chat-mcp-impl`.
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am test` | exit 0. 157 tests, 0 failures, 0 errors, 0 skipped. |
+| M5, a diagnostic line routed to stdout | `McpAdapterHarnessTests` fails 1 of 3. The purity test names five offending lines. |
+| M5b, the logging banner suppression removed | `McpAdapterHarnessTests` fails 1 of 3. The purity test names `kotlin-logging: initializing... active logger factory: Slf4jLoggerFactory`. |
+| `shell-scripts/check-dependency-versions.sh` | exit 0. No module declares a third-party version. |
+| `git diff --check` | exit 0. |
+| `drift check` | exit 0. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1673 tests, 0 failures, 0 errors, 59 skipped. Reality matches `docs/BUILD-HEALTH.md`. |
+
+The test count moved from 1670 to 1673, which is the three tests this task adds.
+
+M5 and M5b were applied and restored by absolute path. Each restore is proved
+by a `shasum -a 256` match against the value recorded before the mutation. All
+four frozen files match.
+
+The integration gate ran last, on the final source.
+
+### Two limits of this task, recorded
+
+1. **A cold machine needs one manual step.** It runs `npm ci` in
+   `chat-mcp/src/test/client/` before the test can pass. The lock file is
+   committed, so the step is reproducible. It is still a step. The test names
+   the missing package when `node_modules` is absent, because it prints the
+   harness error text.
+2. **The acceptance test is not the native test.** Every call in this task ran
+   on the JVM build. Task 6 runs the same harness against the native
+   executable, and that run is the native proof.
+
 ## Task 6: GraalVM Native Image
 
 **Files.** `chat-mcp/pom.xml`. Reachability metadata under
@@ -655,6 +788,14 @@ proves each restore.
 | M5 | Route a diagnostic line to stdout | Task 5 purity test |
 | M6 | Accept a topic argument outside the allowlist | Task 4 |
 | M7 | Remove the `keyValue` wrapper from the captured fixture | The Task 3 contract test |
+| M8 | Omit a top-level `required` list from an output schema | The Task 4 schema tests |
+| M5b | Remove the logging banner suppression from `main` | Task 5 purity test |
+
+M5b was added during Task 5. It was not in the original table, because nobody
+knew the logging library wrote to stdout. See the Task 5 section.
+
+M5 and M5b were measured on 2026-09-29. Both restored, and `shasum -a 256`
+proved each restore.
 
 ## Documents
 

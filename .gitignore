@@ -43,6 +43,9 @@ env.lsp
 env.custom
 .mcp.json
 
+### Node ###
+node_modules/
+
 # Fiberplane local issue tracking
 .fp/*
 !.fp/remote.toml

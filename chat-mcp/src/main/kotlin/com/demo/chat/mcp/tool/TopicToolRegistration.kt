@@ -2,6 +2,7 @@ package com.demo.chat.mcp.tool
 
 import com.demo.chat.mcp.client.ClientException
 import com.demo.chat.mcp.config.ConfigException
+import com.demo.chat.mcp.diagnostic
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
 import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
@@ -145,7 +146,7 @@ fun registerTopicTools(server: Server, service: TopicToolService) {
             annotations = TOPIC_ANNOTATIONS,
         ),
     ) { request ->
-        answer(request, emptySet()) {
+        answer(LIST_TOPICS_TOOL_NAME, request, emptySet()) {
             val topics = service.listTopics()
             buildJsonObject {
                 put(
@@ -168,7 +169,7 @@ fun registerTopicTools(server: Server, service: TopicToolService) {
             annotations = TOPIC_ANNOTATIONS,
         ),
     ) { request ->
-        answer(request, setOf(TOPIC_ID_ARGUMENT)) {
+        answer(GET_TOPIC_TOOL_NAME, request, setOf(TOPIC_ID_ARGUMENT)) {
             buildJsonObject { put(TOPIC_FIELD, service.getTopic(readIdArgument(request)).toJson()) }
         }
     }
@@ -179,8 +180,14 @@ fun registerTopicTools(server: Server, service: TopicToolService) {
  *
  * A refusal of our own becomes an error result with our sentence. No backend
  * exception text and no payload reaches the client.
+ *
+ * One diagnostic line reaches stderr for each call. It names the tool and the
+ * outcome. It carries no argument value, no topic name and no payload. Every
+ * refusal message is the sentence this adapter built, so none of them can
+ * carry backend text.
  */
 private suspend fun answer(
+    toolName: String,
     request: CallToolRequest,
     allowed: Set<String>,
     body: () -> JsonObject,
@@ -188,18 +195,25 @@ private suspend fun answer(
     try {
         refuseUnknownArguments(request, allowed)
         val structured = withContext(Dispatchers.IO) { body() }
+        diagnostic("$toolName answered")
         CallToolResult(
             content = listOf(TextContent(structured.toString())),
             structuredContent = structured,
             isError = false,
         )
     } catch (failure: ToolException) {
-        refusal(failure.message ?: "the tool refused the request")
+        refused(toolName, failure.message ?: "the tool refused the request")
     } catch (failure: ClientException) {
-        refusal(failure.message ?: "the backend call failed")
+        refused(toolName, failure.message ?: "the backend call failed")
     } catch (failure: ConfigException) {
-        refusal("the adapter refused the request: ${failure.message}")
+        refused(toolName, "the adapter refused the request: ${failure.message}")
     }
+
+/** Report one refusal on stderr and answer it to the client. */
+private fun refused(toolName: String, message: String): CallToolResult {
+    diagnostic("$toolName refused: $message")
+    return refusal(message)
+}
 
 /** One error result. It carries one sentence and no payload. */
 private fun refusal(message: String): CallToolResult =

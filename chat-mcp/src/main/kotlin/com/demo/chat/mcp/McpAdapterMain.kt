@@ -23,6 +23,32 @@ import kotlin.system.exitProcess
  */
 const val SHUTDOWN_BOUND_MILLIS: Long = 5000
 
+/**
+ * The system property that silences the logging library startup message.
+ *
+ * `kotlin-logging` prints one line to stdout when it initializes. That line is
+ * not a protocol frame, so it breaks the stdio contract of this adapter. The
+ * library reads this property once, at class initialization, so the adapter
+ * sets it before it touches any other class.
+ */
+const val KOTLIN_LOGGING_STARTUP_MESSAGE_PROPERTY: String = "kotlin-logging.logStartupMessage"
+
+/**
+ * Stop the logging library from writing to stdout.
+ *
+ * The library arrives through the MCP SDK, and the adapter never logs through
+ * it. Its one startup line reaches stdout, which carries protocol frames
+ * alone. Measured on 2026-09-29: the line is
+ * `kotlin-logging: initializing... active logger factory: Slf4jLoggerFactory`.
+ *
+ * The property must be set before the library initializes, so `main` calls this
+ * first. The Task 5 purity test is the guard. A late call leaves the line on
+ * stdout and the test fails.
+ */
+internal fun silenceLibraryStartupMessage() {
+    System.setProperty(KOTLIN_LOGGING_STARTUP_MESSAGE_PROPERTY, "false")
+}
+
 /** Write one diagnostic line to stderr. Stdout carries protocol frames alone. */
 internal fun diagnostic(message: String) {
     System.err.println("chat-mcp: $message")
@@ -80,6 +106,9 @@ internal fun loadConfigForStartup(
 }
 
 fun main(args: Array<String>) {
+    // This runs before every other statement, because the logging library reads
+    // the property once, when it initializes.
+    silenceLibraryStartupMessage()
     val config =
         try {
             loadConfigForStartup(args.toList(), System.getenv())
