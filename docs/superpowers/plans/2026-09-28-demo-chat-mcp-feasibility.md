@@ -192,6 +192,69 @@ ran inside the gate, so the third result covers the new module.
 - A Long above `2^53` round-trips without loss.
 - A fractional or numeric JSON id is refused before any backend call.
 
+### Decisions taken during Task 2
+
+The task named six keys and nine rules. It did not name where the keys come
+from. Six decisions were needed, and the owner may overrule any of them.
+
+1. **The configuration is a Java `Properties` file.** Its path arrives as
+   `--config <path>` or as `CHAT_MCP_CONFIG`. An unknown argument is refused,
+   so a misplaced argument cannot change behaviour in silence. This was a gap
+   in the plan, not a reading of it.
+2. **A relative `credentialFile` resolves against the configuration file
+   directory.** The process working directory belongs to the client, so it
+   must not decide which file holds the credential.
+3. **A negative Long id is accepted.** Rule 7 lists the values it rejects and
+   the list is closed. It names zero, a fraction, exponent notation,
+   whitespace, a leading plus sign, a leading zero and overflow. It does not
+   name a negative value. So `-7` is canonical text and it is accepted. **The
+   owner decides whether that is correct.**
+4. **The separator whitespace of `topicIds` is removed.** `1, 2` and `1,2`
+   load the same list. Whitespace inside one id is still refused, so `1 2` is
+   not an id.
+5. **An unknown key in the file fails the start.** This mirrors
+   `UserInitConfigBindingTests`, which reads the shipped `userinit.yml` for the
+   same reason. Spring ignores an unknown key, and a typo would then have no
+   effect and no error.
+6. **The six keys stay six.** The HTTP loopback rule is a value rule on
+   `backendBaseUrl`, not a seventh opt-in flag.
+
+**The credential is read at startup and discarded.** `main` reads it so that a
+missing or empty file fails the start, before any client connects. Only the
+client reads it again, at the moment of use. `AdapterConfig` never holds it, so
+no log line and no `toString` can carry it.
+
+**The JSON boundary rejects every non-string primitive.** `parseIdElement`
+refuses a JSON number, a boolean and a non-primitive. So no `Double` or `Float`
+ever holds an id, and rule 8 of Task 3 is already satisfied at the boundary.
+
+### Measured during Task 2
+
+1. **`java.net.URI.getHost()` returns an IPv6 literal with its brackets.** The
+   v6 loopback test failed first with `expected: <::1> but was: <[::1]>`. Both
+   sides of an origin comparison pass through `originOf`, so both carry the
+   brackets and the comparison holds. `isLoopbackHost` strips them before it
+   looks at the name. **A reader who compares a bare `::1` to a parsed host
+   will not match.**
+
+### Task 2 gate results
+
+Measured on 2026-09-28 on branch `chat-mcp-impl`.
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am test` | exit 0. 85 tests, 0 failures, 0 errors, 0 skipped. That is the 5 Task 1 tests and 80 new ones. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1601 tests, 0 failures, 0 errors, 59 skipped. The run reports that reality matches `docs/BUILD-HEALTH.md`. |
+| `git diff --check` | exit 0. No whitespace error. |
+
+The integration count moved from 1521 to 1601, which is the 80 new tests. The
+run is offline. **The offline prerequisite is unchanged and it still applies.**
+A local repository that predates Task 1 holds no raised kotlinx version, so an
+offline run stops in `chat-core` with
+`kotlinx-coroutines-reactive:jar:1.11.0 (absent)`. Prime once with an online
+`mvn -B -DskipTests package`. The Task 1 run primed this machine, so no second
+prime was needed.
+
 ## Task 3: the REST client and the envelope proof
 
 **Files.** New `chat-mcp/src/main/kotlin/com/demo/chat/mcp/client/`.
