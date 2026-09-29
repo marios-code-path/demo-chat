@@ -2538,3 +2538,64 @@ The branch is `chat-bafkgkko-root-restart`.
 - **A mutation that does not compile proves nothing.** The first M2 run failed
   to compile, and the stale surefire report showed an old failure. Read the
   compile errors before a mutation result.
+
+## The MCP adapter, and a gate that did not exist (2026-09-29)
+
+`CHAT-vkqdeoct`. PR #146, branch `chat-mcp-impl`, commit `bead5a8f`.
+
+**The failure.** CI run `36635977431` failed both jobs. `chat-mcp` reported 184
+tests with 2 failures, against a local claim of 184 with 0. The number matched
+and the result did not. Both failures were `McpAdapterHarnessTests`, and both
+named one missing package:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@modelcontextprotocol/sdk'
+  imported from .../chat-mcp/src/test/client/harness.mjs
+```
+
+**Why every local result was wrong.** `node_modules/` is ignored at
+`.gitignore:47`. No workflow ran `npm`, and `grep -rn "npm\|setup-node"
+.github/workflows/` returned zero hits. The `chat-mcp` pom declared one plugin,
+`kotlin-maven-plugin`, so the module installed nothing itself. Node was present
+on the runner, and the log shows `Node.js v22.23.2`. Only the package was
+absent.
+
+So the harness test depended on a directory that its own run did not produce.
+**Every local green was measured against a `node_modules` the development
+machine already held.** CI was red on every run of the branch: `3295f7c3`,
+`d7dc162e` and `9c7adfd9` all failed. The branch never had a green run.
+
+**This is the third occurrence of one rule.** The register already records it
+twice for `check-production-classpath.sh`: a gate that depends on state its own
+run does not produce is not a gate. Here the missing state was a Node package
+rather than a Maven artifact, and Task 5 of the plan recorded the install as an
+operator note instead of a build step. A limit written into a plan is not a
+build.
+
+**The fix.** `chat-mcp` declares an `install-pinned-mcp-client` profile,
+activated when `src/test/client/node_modules` is absent. It runs `npm ci` at
+`generate-test-resources` through `exec-maven-plugin`. The parent
+`pluginManagement` pins 3.6.4, so no module declares a version.
+**A missing npm fails the build.** A silent skip would hide the loss of the
+stdout purity gate, which is the `RedisDeployBootTests` lesson.
+
+**Measured, on two paths.**
+
+- Cold, with `node_modules` removed: the build installed the client, `added 94
+  packages`, and ran 184 tests with 0 failures. The harness ran 3 of 3.
+- Warm offline, `mvn -o`: 0 npm executions and 0 downloads, 184 tests with 0
+  failures. The profile stays inactive, so the build stays offline-safe.
+- CI run `36637932684` on `bead5a8f`: both jobs succeed. The `npm-ci` execution
+  appears in each job, the harness reports **3 tests with 0 skipped**, and
+  `chat-mcp` reports 184 tests with 0 failures.
+
+**Two things worth not relearning.**
+
+- **A test that shells out to another package manager is not covered by any
+  rule this repository holds.** `check-dependency-versions.sh` reads Maven poms.
+  Both enforcer rules read the Maven tree. The CVSS 9 audit reads Maven
+  artifacts. None of them sees a Node package, so nothing but a CI run would
+  have found this.
+- **`Skipped: 0` is the line to read on a green run.** A test that guards a
+  missing dependency by skipping looks green and proves nothing. Read the
+  skipped count, not the exit code.
