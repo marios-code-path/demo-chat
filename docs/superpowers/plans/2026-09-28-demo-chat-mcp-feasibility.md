@@ -98,6 +98,35 @@ The first phase needs one route only, `GET /topic/id/{id}`, because the two
 tools in scope read topics. The operator starts a webflux deployment with
 `app.controller.topic`. The message routes are a later-phase prerequisite.
 
+### The launch recipe, measured on 2026-09-28
+
+The profile list `-Pdeploy,expose-webflux` alone does not start. The context
+fails with:
+
+```
+Parameter 0 of constructor in com.demo.chat.controller.webflux.ChatTopicServiceController
+required a bean of type 'com.demo.chat.config.CompositeServiceBeans' that could not be found.
+```
+
+The cause is `@ConditionalOnProperty("app.service.composite")` on
+`CompositeServiceBeansConfiguration` in `chat-service-composite`. That module
+is on the runtime classpath. The property is what selects the bean.
+
+So the launch carries the golden `core-memory-init` flag set and adds the
+webflux profile. The load-bearing flags are:
+
+- `-Dapp.service.composite` and `-Dapp.service.composite.auth`
+- `-Dapp.service.core.key=memory`, `persistence=memory`, `pubsub=memory`,
+  `secrets=memory` and `index=lucene`
+- `-Dapp.key.type=long`, `-Dapp.nodeid=0`, `-Dapp.primary=core-service`
+- `-Dspring.config.additional-location=...` for `userinit.yml`, which supplies
+  the initial users and the shipped grants
+- `-Dserver.port=6791`, so the actuator port and the application port agree
+
+The memory module declares `chat-persistence-memory`, `chat-messaging-memory`,
+`chat-index-lucene` and `chat-service-composite` at compile scope, so no
+profile supplies them.
+
 `CHAT-znprrzhn` stays open. No route enforces authorization in a deployment
 today. The adapter narrows scope. It does not add enforcement.
 
@@ -275,6 +304,101 @@ prime was needed.
 - A contract test decodes a real topic response from a running deployment.
 - The test fails when the wrapper is removed from the fixture.
 
+### The captured envelope, measured on 2026-09-28
+
+The deployment answers `GET /topic/id/1554361326074068992` with 122 bytes and
+no trailing newline:
+
+```
+{"keyValue":{"data":"mcpcontracttopic","key":{"key":{"id":1554361326074068992,"root":1554361143634427905,"empty":false}}}}
+```
+
+The bytes are the fixture at
+`chat-mcp/src/test/resources/topic-response.json`. The fixture is byte-identical
+to the response, proven with `cmp`.
+
+Two wrappers are present. The outer `keyValue` wrapper comes from
+`KeyValuePair`. The inner `key` wrapper comes from `Key`. `MessageTopic` carries
+no annotation of its own and inherits the outer one. Field order is not part of
+the contract.
+
+Both ids are JSON numbers above 2^53. **This is the load-bearing measurement of
+Task 3.** `1554361143634427905` sits one below a value that a `Double` can
+represent, so a Double read answers `1554361143634427904`. The root is the id
+of the domain root key. It comes from the response, and the adapter never
+derives one.
+
+### Decisions taken during Task 3
+
+1. **The JSON shape of an id follows the key type.** A `long` deployment sends
+   a JSON number. A `uuid` deployment sends a JSON string. The other shape is
+   refused. So a backend shape change fails at the boundary rather than later.
+2. **The exact literal text is read from the document.** `JsonPrimitive.content`
+   returns the text as the lexer read it. No `Double` and no `Float` holds an
+   id. A fractional or exponent form is refused by the Task 2 canonical rule, so
+   a loss of precision cannot pass in silence.
+3. **A JSON `null` is refused before its text is read.** `JsonNull` is a
+   `JsonPrimitive` whose `content` is the four character text `null`. This is
+   the defect class of `CHAT-auglbxrm`. The adapter refuses the value at the
+   primitive step.
+4. **The returned root is checked against the id rules.** An absent, blank, or
+   non-canonical root is refused. The adapter does not synthesize one and does
+   not accept a placeholder.
+5. **The credential is read from its file at each request.** `TopicClient`
+   reads it per call, so a rotated file takes effect without a restart. The
+   types hold no token.
+6. **The transport never follows a redirect itself.** `followRedirects(NEVER)`
+   is set. Each hop is checked against the configured origin before a request
+   goes out, so no credential reaches another origin.
+7. **One call deadline covers every hop, and the body too.** The 30 second
+   deadline is measured from the start of the call. Each hop receives the
+   remaining time, so a chain of redirects cannot extend it.
+8. **A watchdog closes a stalled response body.** The HTTP request timeout
+   covers the connect step and the response headers. It does not cover a body
+   that arrives slowly. One daemon thread closes the stream when the deadline
+   passes. Measured: with the watchdog the call fails at 400 ms against a
+   server that stalls for five seconds. Without it the same call runs 5013 ms.
+9. **The limits are constructor parameters with the agreed defaults.** A test
+   sets a small deadline or a small response limit, so the rule is exercised
+   without a slow test.
+10. **The body of a redirect response is closed before the target is resolved.**
+    A refused redirect therefore leaks no connection. A close that ran after
+    the resolution would not run at all on the refusal path.
+
+### Measured during Task 3
+
+- `java.net.URI.getHost()` returns an IPv6 literal with its brackets. Both
+  sides of an origin comparison pass through `originOf`, so the brackets agree.
+  Recorded under Task 2.
+- `com.sun.net.httpserver.HttpServer` is available to this module's tests. The
+  transport tests use it, so the transport rules run through the JDK client and
+  not through a stub.
+- A `Location` header that names another scheme, such as `mailto:`, resolves to
+  an absolute URI with no host. `originOf` answers an empty origin and the
+  transport refuses it.
+
+### Task 3 gate results
+
+Measured on 2026-09-28 on branch `chat-mcp-impl`.
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am -Dtest=TopicEnvelopeTests,BackendHttpTests,TopicClientTests -Dsurefire.failIfNoSpecifiedTests=false test` | exit 0. 42 tests, 0 failures, 0 errors, 0 skipped. |
+| `mvn -o -B -pl chat-mcp test` | exit 0. 127 tests, 0 failures, 0 errors, 0 skipped. |
+| M7, wrapper removed from the fixture | `TopicEnvelopeTests` fails. 2 errors, both `ClientException: the response holds no 'keyValue' field`. |
+| M3, the id read through a `Double` | `TopicEnvelopeTests` fails 3 of 20. The root reads `1554361143634427904` where `1554361143634427905` is the captured value. Both form refusals stop firing. |
+| The body watchdog disabled | `BackendHttpTests` fails. `the call ran for 5013 ms`, against a server that stalls for five seconds and a 400 ms deadline. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1643 tests, 0 failures, 0 errors, 59 skipped. The run reports that reality matches `docs/BUILD-HEALTH.md`. |
+
+M3 and M7 were applied and restored by absolute path. `cmp` proves each
+restore, and `git status` shows the file as a new untracked file and not as a
+modification.
+
+The integration gate ran last, on the final source. An earlier gate run began
+before the redirect body close of decision 10. That run was stopped, because
+its reading would have described a superseded tree. The two module rows above
+were then measured again, and the gate ran once on the tree that is committed.
+
 ## Task 4: the first two tools
 
 **Files.** New `chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/`.
@@ -385,6 +509,7 @@ proves each restore.
 | M4 | Emit a denied topic in `chat_list_topics` | Task 4 |
 | M5 | Route a diagnostic line to stdout | Task 5 purity test |
 | M6 | Accept a topic argument outside the allowlist | Task 4 |
+| M7 | Remove the `keyValue` wrapper from the captured fixture | The Task 3 contract test |
 
 ## Documents
 
