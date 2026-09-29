@@ -124,6 +124,52 @@ today. The adapter narrows scope. It does not add enforcement.
 - `shell-scripts/build-health.sh --integration` exits 0. A focused module test
   is not sufficient here, because the root `pom.xml` changes.
 
+### Measured during Task 1
+
+Four facts. Each one was measured and none was read.
+
+1. **The SDK needs a higher kotlinx line than Boot manages.**
+   `kotlin-sdk-core-jvm` 0.15.0 requires `kotlinx-serialization-json-jvm`
+   1.11.0 and `kotlinx-coroutines-core-jvm` 1.11.0. Boot 4.0.8 imports both
+   BOMs at 1.9.0 and 1.10.2. Maven applies dependency management to a
+   transitive dependency, so the SDK requirement is forced down and
+   `requireUpperBoundDeps` fails. **The parent raises the two Boot
+   properties.** One artifact pin would mix two versions of one library.
+
+2. **Three paths request `kotlinx-io-core-jvm`.** The SDK wants 0.9.1, ktor
+   3.5.1 wants 0.9.0 and `kotlinx-serialization-json-io-jvm` wants 0.6.0.
+   `dependencyConvergence` fails on the three. One parent entry settles them.
+   **The `-jvm` artifact needs its own entry**, because a dependencyManagement
+   entry matches one artifactId alone. The first attempt managed the
+   multiplatform name and the enforcer named the miss.
+
+3. **`Server.onClose` runs from `Server.close()` alone.** An end of file on
+   stdin does not reach it. The transport callback fires instead.
+   `Server.createSession` registers a session close handler that removes the
+   session from the registry. It does not call the server callback. The
+   shutdown path hooks `transport.onClose` for that reason.
+   `McpAdapterStdioTests` pins both readings.
+
+4. **An offline `--integration` run needs a primed local repository.** The
+   raised kotlinx versions are absent from a cache built before this change.
+   Without priming, the reactor stops in `chat-core` with
+   `kotlinx-coroutines-reactive:jar:1.11.0 (absent)`, and every later module
+   reports as skipped. **The message names an absent artifact and not a code
+   defect.** Prime once with an online `mvn -B -DskipTests package`.
+
+### Task 1 gate results
+
+Measured on 2026-09-28 on branch `chat-mcp-impl`.
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am test` | exit 0. 5 tests, 0 failures, 0 errors, 0 skipped. |
+| `mvn -o -B -pl chat-mcp package -DskipTests` | exit 0. One 16 KB jar and no image. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1521 tests, 0 failures, 0 errors, 59 skipped. The run reports that reality matches `docs/BUILD-HEALTH.md`. |
+
+The reactor holds 37 modules while `chat-mcp` is in it. The five module tests
+ran inside the gate, so the third result covers the new module.
+
 ## Task 2: configuration and identity rules
 
 **Files.** New `chat-mcp/src/main/kotlin/com/demo/chat/mcp/config/`.
