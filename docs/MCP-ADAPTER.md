@@ -140,6 +140,36 @@ The harness asserts nothing. The reader decides.
 `McpAdapterHarnessTests` runs the harness against the JVM build. That test is
 not the native acceptance test. See Task 6 of the plan.
 
+**The backend of that test is `FakeTopicBackend`.** It is a local HTTP server
+inside the test JVM. It is not a deployed Demo Chat server. So the test proves
+discovery, tool calls over stdio, protocol framing, stream separation and JVM
+shutdown. It proves no production REST authentication, no production route
+behaviour and no deployed authorization.
+
+`npm ci` is a manual step on a cold machine. The lock file is committed, so the
+step is reproducible.
+
+## Acceptance against a real deployment
+
+The harness test runs against a fake backend. A reader who needs end-to-end
+evidence runs the same harness against a deployment. Task 8 of the plan holds
+the full step list. The shape is:
+
+1. Start a deployment. Create a topic through it. Record the id, the root and
+   the name.
+2. Name that id in `topicIds`, and name one id the deployment does not serve.
+3. Run the harness with the deployment behind the adapter.
+4. Read the transcript. Discovery must list both tools. The served topic must
+   carry the id, the root and the name the deployment holds. The unserved id
+   must refuse with no backend text. stdout must carry frames alone.
+
+**One boundary holds for that run.** No deployment enforces a credential today.
+`WebFluxSecurity` permits every exchange and adds no authentication, and
+`RSocketServerConfiguration` carries `TODO: lock down!`. So a real-deployment
+run proves the adapter against real routes, a real key type and a real index.
+**It does not prove production REST authentication**, because no deployment
+asks for one yet. Do not claim it.
+
 ## What the adapter does not do
 
 - It exposes no MCP prompt, resource, sampling or subscription.

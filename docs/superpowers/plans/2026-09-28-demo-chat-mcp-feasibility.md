@@ -605,6 +605,32 @@ harness under `chat-mcp/src/test/client/`. The operator procedure goes in
 | `chat-mcp/src/test/kotlin/com/demo/chat/mcp/McpAdapterHarnessTests.kt` | Three tests. Every assertion of rules 1 to 9. |
 | `docs/MCP-ADAPTER.md` | The operator procedure. |
 
+### What this task proves, and what it does not
+
+**The backend of the automated test is `FakeTopicBackend`.** That is a local
+`com.sun.net.httpserver.HttpServer` inside the test JVM. It is not a deployed
+Demo Chat server. The adapter process runs over real pipes, so the stdio
+behaviour is real. The deployment behind it is not.
+
+The task proves these five things.
+
+1. MCP discovery. The pinned client completes the handshake and lists the tools.
+2. Tool calls over stdio. Each call travels the real pipe pair.
+3. Protocol framing. Every stdout line is a JSON-RPC 2.0 message.
+4. Stream separation. Diagnostics reach stderr, and stdout carries frames alone.
+5. JVM process shutdown. The process exits within the bound after stdin closes.
+
+The task does not prove these three things.
+
+1. Production REST authentication. The fake backend checks no credential.
+2. Production route behaviour. The fake backend serves two fixed bodies. A real
+   deployment maps a route, a key type and an index.
+3. Deployed authorization. The fake backend answers 403 for one id by
+   construction. No grant and no access broker took part.
+
+**A reader must not read this task as end-to-end MCP support.** Task 8 carries
+the real-deployment acceptance step.
+
 ### Decision 12: the harness needs a custom transport
 
 The shipped `StdioClientTransport` exposes the child stderr and no raw stdout.
@@ -680,6 +706,30 @@ Three readings.
    answers. The test pins the count, so a stray line fails it.
 3. **The adapter ships no SLF4J provider.** The SDK logging is a no-op, and the
    three `SLF4J(W)` lines reach stderr alone.
+
+**Four limits of this transcript.** It was run by hand. It is not a gate, and
+no test repeats it.
+
+1. **It is one manual run.** A gate repeats. This ran once.
+2. **It reads one route.** The transcript reads a topic by id. It does not
+   exercise a write, a search or a denial from a real grant.
+3. **The deployment checks no credential.** `WebFluxSecurity` permits every
+   exchange and adds no authentication, as `forward-register.md` records. So
+   the transcript does not prove REST authentication. It proves that an
+   unauthenticated read reaches a topic.
+4. **It proves one real backend answer, and it is a 404.** The configuration
+   named two ids, `1554361326074068992` and `1`. Both passed the allowlist, so
+   both reached the deployment. The deployment served the first and answered
+   `404` for the second. So the refusal text on the third line is the
+   deployment's own answer, mapped by the adapter. That is the strongest part
+   of the evidence here, and it is also its whole extent.
+
+One observation follows from the same run. `chat_list_topics` answered one
+topic although the allowlist held two. The second id was left out with no name
+and no count, which is the documented behaviour for a topic the deployment does
+not serve.
+
+The transcript is useful confirmation. It is not end-to-end acceptance.
 
 ### Rule 10
 
@@ -774,6 +824,46 @@ The integration gate ran last, on the final source.
 4. `git diff --check`.
 5. `drift check` for each bound document.
 
+## Task 8: real-deployment acceptance
+
+Task 5 proves the protocol against a fake backend. This task proves the adapter
+against a deployment that actually runs. **No end-to-end claim is valid until
+this task passes.**
+
+**Files.** A recorded transcript under `docs/`. An operator procedure in
+`docs/MCP-ADAPTER.md`.
+
+1. Start a real deployment. Use the recipe in the prerequisite section.
+2. Create a topic through the deployment. Record its id, its root and its name.
+3. Write an operator configuration that names that id, and one id the
+   deployment does not serve.
+4. Run the pinned Task 5 harness against the adapter, over stdio, with the
+   deployment behind it.
+5. Confirm discovery lists both tools.
+6. Confirm the served topic comes back with the id, the root and the name the
+   deployment holds.
+7. Confirm the unserved id answers a refusal. Confirm the refusal carries no
+   backend exception text and no name.
+8. Confirm stdout carries protocol frames alone and stderr carries one
+   diagnostic line per call.
+9. Confirm the process exits within the bound after stdin closes.
+10. Record the transcript. State the deployment, the revision and the date.
+
+**Acceptance criteria.**
+
+- The transcript names a real deployment and a real topic.
+- Discovery and both tool calls complete against that deployment.
+- The unserved id refuses with no backend text.
+- stdout purity holds on the real path.
+
+**One boundary this task cannot cross.** No deployment enforces a credential
+today. `WebFluxSecurity` permits every exchange and states that it adds no
+authentication, and `RSocketServerConfiguration` carries `TODO: lock down!`.
+Both are recorded in `forward-register.md`. So this task proves the adapter
+against real routes, a real key type and a real index. **It does not prove
+production REST authentication**, because no deployment asks for one yet. Do
+not claim it. That proof waits for the deployment to enforce a token.
+
 ## Mutation proofs
 
 Each mutation is applied, measured and restored by absolute path. `git status`
@@ -808,9 +898,16 @@ proved each restore.
 
 ## Closure
 
-`CHAT-ylvoiixm` closes when tasks 1 to 7 pass. Its closing comment names each
+`CHAT-ylvoiixm` closes when tasks 1 to 8 pass. Its closing comment names each
 test, each mutation result and each gate result. It also records the SDK
 revision limit, because that limit outlives this phase.
+
+**Task 8 is the end-to-end gate.** Tasks 1 to 7 prove the adapter against a
+fake backend. Task 8 proves it against a deployment. A closure comment that
+claims end-to-end MCP support without a Task 8 transcript is wrong.
+
+The authentication boundary stays open after this phase, because no deployment
+enforces a credential. See Task 8.
 
 Do not push, open a pull request or merge without owner approval.
 
