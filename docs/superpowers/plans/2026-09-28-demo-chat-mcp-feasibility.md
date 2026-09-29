@@ -1108,6 +1108,9 @@ the mutated source**, or it proves only that the test passes on the original.
   revision, and the pinned client harness.
 - `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`: the Task 8 run, its transcript,
   and the boundary that stays open.
+- `docs/MCP-CLIENT-COMPONENTS.md`: the client block diagram, the type
+  boundaries, and the reason for each library the adapter did not add. It was
+  written for the pull request #146 review.
 - `forward-register.md`: the D1 decision, the SDK revision measurement, and the
   Embabel boundary.
 - `docs/BUILD.md`: the `chat-mcp` build and native commands, if the module
