@@ -6,8 +6,8 @@ Branch: `chat-mcp-impl`.
 Base: master `4e1955bc`.
 Design: `docs/superpowers/specs/2026-09-27-demo-chat-mcp-design.md`.
 
-**Goal.** Build a standalone stdio MCP adapter for Demo Chat. Prove that a real
-MCP client can discover the adapter and call two read tools against a running
+**Goal.** Build a standalone stdio MCP adapter for Demo Chat. Prove that an MCP
+client can discover the adapter and call two read tools against a running
 backend. Prove that the distributable compiles with GraalVM Native Image.
 
 **Scope limits.**
@@ -19,6 +19,15 @@ backend. Prove that the distributable compiles with GraalVM Native Image.
   separate. The adapter must not claim permission enforcement.
 - No deployment change lands in this phase. The backend prerequisite below
   names what an operator must run.
+- This phase does not depend on Embabel. A later `chat-agent` module may
+  consume these MCP tools through Embabel.
+
+The Embabel boundary is deliberate. Embabel supports MCP clients and servers.
+Its documented server integration is Spring Boot based, and it commonly uses
+SSE or Streamable HTTP. That differs from this phase's standalone stdio and
+Native Image boundary. Sources:
+[Embabel MCP client support](https://github.com/embabel/embabel-agent#consuming-mcp-servers)
+and [Embabel server integration](https://hub.embabel.com/reference/integrations).
 
 ## Decision D1: the protocol revision
 
@@ -108,7 +117,12 @@ today. The adapter narrows scope. It does not add enforcement.
 6. Route every diagnostic to stderr. Keep stdout for protocol frames alone.
 7. Stop when stdin closes. Bound the shutdown.
 
-**Done.** `mvn -o -B -pl chat-mcp -am test` passes. The module builds no image.
+**Acceptance criteria.**
+
+- `mvn -o -B -pl chat-mcp -am test` passes.
+- The module builds no image.
+- `shell-scripts/build-health.sh --integration` exits 0. A focused module test
+  is not sufficient here, because the root `pom.xml` changes.
 
 ## Task 2: configuration and identity rules
 
@@ -126,9 +140,11 @@ today. The adapter narrows scope. It does not add enforcement.
 8. Parse a uuid id as canonical lowercase text. Reject the zero uuid.
 9. Refuse a redirect to another origin. Never send a credential across one.
 
-**Done.** One test per rejection rule, and one per accept rule. A Long above
-`2^53` round-trips without loss. A fractional or numeric JSON id is refused
-before any backend call.
+**Acceptance criteria.**
+
+- One test per rejection rule, and one per accept rule.
+- A Long above `2^53` round-trips without loss.
+- A fractional or numeric JSON id is refused before any backend call.
 
 ## Task 3: the REST client and the envelope proof
 
@@ -145,8 +161,10 @@ before any backend call.
 7. Allow at most four concurrent backend requests.
 8. Limit each response to one MiB of UTF-8 JSON. Fail above the limit.
 
-**Done.** A contract test decodes a real topic response from a running
-deployment. The test fails when the wrapper is removed from the fixture.
+**Acceptance criteria.**
+
+- A contract test decodes a real topic response from a running deployment.
+- The test fails when the wrapper is removed from the fixture.
 
 ## Task 4: the first two tools
 
@@ -164,26 +182,38 @@ deployment. The test fails when the wrapper is removed from the fixture.
 8. Declare `readOnlyHint=true` and `idempotentHint=true` on both tools.
 9. Declare a JSON Schema for the input and the output of each tool.
 
-**Done.** The two tools answer over stdio. A denied topic is absent from the
-list, and its name never appears in the response or in stderr.
+**Acceptance criteria.**
 
-## Task 5: a real MCP client and stdout purity
+- The two tools answer over stdio.
+- A denied topic is absent from the list.
+- Its name appears in no response and in no stderr line.
 
-**Files.** New test sources under `chat-mcp/src/test/kotlin/`. The operator
-procedure goes in `docs/MCP-ADAPTER.md`.
+## Task 5: a pinned MCP client and stdout purity
 
-1. Connect a real MCP client to the adapter over stdio. Claude Code is one
-   such client.
-2. Complete discovery. List the tools.
-3. Call each tool. Compare each answer against the deployed backend.
-4. Assert that stdout carries valid protocol frames and nothing else.
-5. Assert that one diagnostic line reaches stderr for each call.
-6. Close stdin. Assert that the process exits within the bound.
-7. Run the same calls on the JVM build. Record that this is not the native
+**Files.** New test sources under `chat-mcp/src/test/kotlin/`. A pinned client
+harness under `chat-mcp/src/test/client/`. The operator procedure goes in
+`docs/MCP-ADAPTER.md`.
+
+1. Pin the client harness to `@modelcontextprotocol/sdk` 1.31.0. That release
+   declares `2025-11-25`, which is the revision this adapter serves.
+2. Run the harness with Node. Record the Node version in the test output.
+3. Connect the harness to the adapter over stdio.
+4. Complete discovery. List the tools.
+5. Call each tool. Compare each answer against the deployed backend.
+6. Assert that stdout carries valid protocol frames and nothing else.
+7. Assert that one diagnostic line reaches stderr for each call.
+8. Close stdin. Assert that the process exits within the bound.
+9. Run the same calls on the JVM build. Record that this is not the native
    acceptance test.
+10. Record a Claude Code session as optional confirmation. It is not the
+    required proof.
 
-**Done.** A recorded transcript shows discovery and two tool calls. A stdout
-capture holds no diagnostic text.
+**Acceptance criteria.**
+
+- A recorded harness transcript shows discovery and two tool calls on the
+  pinned client version.
+- A stdout capture holds no diagnostic text.
+- The harness runs with no manual step. A second machine reproduces it.
 
 ## Task 6: GraalVM Native Image
 
@@ -197,12 +227,15 @@ capture holds no diagnostic text.
 4. Build the image. Record every reachability error.
 5. Add reachability metadata for Ktor and for kotlinx-serialization where the
    agent cannot infer it.
-6. Run the Task 5 transcript against the native executable.
+6. Run the Task 5 harness transcript against the native executable.
 7. Report a failure as a feasibility finding. Do not hide it behind the JVM
    path.
 
-**Done.** The native executable completes discovery and both tool calls. Its
-startup time is recorded.
+**Acceptance criteria.**
+
+- The native executable completes discovery and both tool calls.
+- Its startup time is recorded.
+- A reachability failure is reported, not suppressed.
 
 ## Task 7: errors, and focused gates
 
@@ -224,9 +257,11 @@ startup time is recorded.
 **Gates.**
 
 1. `mvn -o -B -pl chat-mcp -am test`.
-2. `shell-scripts/check-dependency-versions.sh`.
-3. `git diff --check`.
-4. `drift check` for each bound document.
+2. `shell-scripts/build-health.sh --integration`. The root reactor changed, so
+   this gate is required and not optional.
+3. `shell-scripts/check-dependency-versions.sh`.
+4. `git diff --check`.
+5. `drift check` for each bound document.
 
 ## Mutation proofs
 
@@ -244,9 +279,10 @@ proves each restore.
 
 ## Documents
 
-- `docs/MCP-ADAPTER.md`: operator configuration, launch, and the accepted
-  protocol revision.
-- `forward-register.md`: the D1 decision, and the SDK revision measurement.
+- `docs/MCP-ADAPTER.md`: operator configuration, launch, the accepted protocol
+  revision, and the pinned client harness.
+- `forward-register.md`: the D1 decision, the SDK revision measurement, and the
+  Embabel boundary.
 - `docs/BUILD.md`: the `chat-mcp` build and native commands, if the module
   needs one.
 
@@ -272,3 +308,6 @@ Search and send follow this phase. Each carries a prerequisite.
    with no retry.
 4. **The revision move.** When the Kotlin SDK releases `2026-07-28` support,
    raise the declared revision and re-run the client transcript.
+5. **The Embabel consumer.** A `chat-agent` module may consume these tools.
+   That work needs its own design, because Embabel server integration is Spring
+   Boot based and uses SSE or Streamable HTTP.
