@@ -867,6 +867,39 @@ not claim it. That proof waits for `CHAT-pgpmsgvr`, which enforces the
 authentication boundary for every route the adapter uses. It depends on
 `CHAT-znprrzhn`, which wires the authorization checks to a real bean.
 
+### Task 8, complete
+
+Run on 2026-09-29. Recorded in `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`.
+
+The deployment was `chat-deploy-memory`, started 2026-09-28 22:16:12 on port
+6791. The topic `mcprealacceptance` was created through the deployment and
+carries id `1554429686883287040` and root `1554361143634427905`.
+
+| Step | Result |
+|---|---|
+| 1. Real deployment | Memory deployment, port 6791, OpenJDK 25 |
+| 2. Topic created through it | id `1554429686883287040`, root `1554361143634427905`, name `mcprealacceptance` |
+| 3. Configuration | `topicIds=1554429686883287040,1`, `backendBaseUrl=http://127.0.0.1:6791` |
+| 4. Harness run over stdio | Exit 0, `connectError` null |
+| 5. Discovery | `chat_list_topics`, `chat_get_topic` |
+| 6. Served topic | id, root and name all match the deployment |
+| 7. Unserved id | `isError=true`, `the backend answered 404`. The backend sentence `Key 1 is not in the registry.` appears in no stream |
+| 8. Streams | Five stdout frames, all JSON-RPC 2.0, zero parse failures. Three stderr call diagnostics, one per call |
+| 9. Bounded exit | `withinBound=true`, 326 ms, code 0 |
+| 10. Transcript | Recorded with the deployment, the revision and the date |
+
+**One reading worth keeping.** Both ids sat in `topicIds`. An allowlist
+refusal never reaches a backend, so it would have proved nothing about the
+deployment. The refusal in this run is the deployment's own 404, and the
+adapter replaced its text.
+
+**Two things this task did not prove, and both stay open.**
+
+1. **Production REST authentication.** No deployment enforces a credential.
+2. **A real denial.** The deployment holds no grant that denies, so no 403
+   from a real store appears in this run. Task 4's stdio test is the only
+   coverage of the denial path.
+
 ## Mutation proofs
 
 Each mutation is applied, measured and restored by absolute path. `git status`
@@ -894,6 +927,8 @@ proved each restore.
 
 - `docs/MCP-ADAPTER.md`: operator configuration, launch, the accepted protocol
   revision, and the pinned client harness.
+- `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`: the Task 8 run, its transcript,
+  and the boundary that stays open.
 - `forward-register.md`: the D1 decision, the SDK revision measurement, and the
   Embabel boundary.
 - `docs/BUILD.md`: the `chat-mcp` build and native commands, if the module

@@ -152,8 +152,9 @@ step is reproducible.
 ## Acceptance against a real deployment
 
 The harness test runs against a fake backend. A reader who needs end-to-end
-evidence runs the same harness against a deployment. Task 8 of the plan holds
-the full step list. The shape is:
+evidence runs the same harness against a deployment.
+`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records one such run, on 2026-09-29.
+Task 8 of the plan holds the full step list. The shape is:
 
 1. Start a deployment. Create a topic through it. Record the id, the root and
    the name.
