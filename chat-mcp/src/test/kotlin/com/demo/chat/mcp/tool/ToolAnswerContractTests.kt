@@ -56,6 +56,33 @@ class ToolAnswerContractTests {
             assertNull(result.structuredContent, "a failed answer carries structured content")
         }
 
+    /**
+     * A backend exception with sensitive text reaches the client in no form.
+     *
+     * A transport builds the message of a `ClientException` from the material it
+     * handled, so it can hold a URL, a header, a stored value or a credential
+     * fragment. The content and `_meta.message` are shaped here, so the guard
+     * belongs here. Task 7 rule 4 requires it.
+     */
+    @Test
+    fun `a backend failure exposes no backend exception text`() =
+        runBlocking {
+            val secret = "sensitive-credential-and-body"
+            val result =
+                answer("chat_get_topic", request(), emptySet()) {
+                    throw ClientException("the backend said $secret", FailureReason.BACKEND, 500)
+                }
+
+            assertEquals("BACKEND_UNAVAILABLE", codeOf(result))
+            val text = textOf(result)
+            assertFalse(text.contains(secret), "the content carries the exception text: $text")
+            assertFalse(
+                result.meta.toString().contains(secret),
+                "the application data carries the exception text: ${result.meta}",
+            )
+            assertFalse(text.contains("500"), "the content names the backend status: $text")
+        }
+
     /** A refused credential is its own code. */
     @Test
     fun `a refused credential carries the authentication code`() =

@@ -199,6 +199,13 @@ its diagnostic line, and no backend status appears in the client answer.
 **The first run is superseded.** A reader must not quote its refusal sentence.
 The diagnostic shape in the first transcript is stale in the same way.
 
+**The Task 7 repair changed no answer in this run, so the transcript stands.**
+The repair gave every failure code a fixed sentence. The refusal here is
+`NOT_AVAILABLE`, which already carried a fixed sentence before the repair. So
+every line above still holds, and no rerun is needed. The transcript exercises
+no other failure code. The repair is proved by `ToolErrorTests` and
+`ToolAnswerContractTests`, and by mutation M7g in the plan.
+
 ## One correction this run forced
 
 The first run carried three `SLF4J(W):` warning lines in stderr. The operator

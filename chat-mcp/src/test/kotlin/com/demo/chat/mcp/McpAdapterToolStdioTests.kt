@@ -253,6 +253,14 @@ class McpAdapterToolStdioTests {
         }
     }
 
+    /**
+     * A backend failure answers an error, and the answer carries no backend text.
+     *
+     * The backend answers 500 with a body. Neither the status, the body, nor the
+     * sentence of the transport exception may reach the client. Task 7 rule 4
+     * requires this. The status and the body are the two strings a pass-through
+     * would publish, so this test names both.
+     */
     @Test
     fun `a backend failure answers an error`() {
         FakeTopicBackend().use { backend ->
@@ -264,7 +272,13 @@ class McpAdapterToolStdioTests {
                 val list = client.callTool(2, "chat_list_topics", "{}")
 
                 assertTrue(client.isError(list))
-                assertTrue(client.textOf(list).contains("the backend answered 500"))
+                assertEquals("the backend did not answer the call", client.textOf(list))
+                assertFalse(client.textOf(list).contains("500"), "the answer names the backend status")
+                assertFalse(client.textOf(list).contains("broken"), "the answer repeats the backend body")
+                assertFalse(
+                    client.metaOf(list).toString().contains("500"),
+                    "the application data names the backend status",
+                )
             }
         }
     }

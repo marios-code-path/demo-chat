@@ -97,32 +97,64 @@ data class ToolError(
          * durable deduplication contract, so a repeat may send twice. No send
          * tool exists yet. That rule binds the tool that adds one.
          *
-         * The sentence of a not-available failure is fixed here, so a 403 and a
-         * 404 answer the same message. **The status still reaches the diagnostic
-         * line**, and that line carries operator data alone.
+         * **This function reads the reason of the failure and nothing else.**
+         * The message of a `ClientException` can hold a URL, a header, a stored
+         * value or a credential fragment, because a transport builds it from the
+         * material it handled. The sentence comes from [messageOf] alone, so no
+         * such text can reach the client.
          */
         fun of(failure: ClientException): ToolError {
             val code = codeOf(failure.reason)
             return ToolError(
                 code = code,
-                message = messageFor(code, failure),
+                message = messageOf(code),
                 retryable = failure.reason == FailureReason.TRANSPORT,
             )
         }
 
-        /** The sentence a client reads for one failure class. */
-        private fun messageFor(code: ToolErrorCode, failure: ClientException): String =
-            if (code == ToolErrorCode.NOT_AVAILABLE) {
-                NOT_AVAILABLE_MESSAGE
-            } else {
-                failure.message ?: "the backend call failed"
+        /**
+         * The one fixed sentence a client reads for one failure code.
+         *
+         * The `when` has no `else`, so a new code fails the compile until a
+         * sentence is written for it. A map would answer a missing key with an
+         * exception at run time, or with no sentence at all.
+         *
+         * No sentence names a backend status. A 403 and a 404 answer the same
+         * not-available sentence, so a reader cannot tell a hidden object from
+         * an absent one. No sentence carries a class name, a count or a value
+         * from the request.
+         */
+        internal fun messageOf(code: ToolErrorCode): String =
+            when (code) {
+                ToolErrorCode.AUTHENTICATION_REQUIRED -> "the backend refused the credential of this adapter"
+                ToolErrorCode.NOT_AVAILABLE -> NOT_AVAILABLE_MESSAGE
+                ToolErrorCode.FEATURE_UNAVAILABLE -> "the backend does not offer a feature this call requires"
+                ToolErrorCode.BACKEND_UNAVAILABLE -> "the backend did not answer the call"
+                ToolErrorCode.LIMIT_EXCEEDED -> "the call passed a limit of this adapter"
+                ToolErrorCode.OUTCOME_UNKNOWN -> "the adapter cannot tell whether the call completed"
             }
 
-        /** The code of a failure that the adapter raised without a backend answer. */
+        /**
+         * The code of a failure that the adapter raised without a backend answer.
+         *
+         * The caller supplies the sentence, because the adapter wrote it. A
+         * `ToolException` and a `ConfigException` name the argument to correct,
+         * and that name is the whole value of the sentence.
+         *
+         * **A caller must never pass a message from a backend exception.** The
+         * sentence is adapter prose, and [of] is the path for a backend failure.
+         */
         fun refused(message: String): ToolError =
             ToolError(code = ToolErrorCode.NOT_AVAILABLE, message = message, retryable = false)
 
-        /** The code of a failure inside the adapter that no other branch claims. */
+        /**
+         * The code of a failure inside the adapter that no other branch claims.
+         *
+         * This failure never held a backend answer, so no backend class name and
+         * no backend message exists to leak. The sentence is the adapter's own,
+         * and it is not the fixed sentence of `BACKEND_UNAVAILABLE`. That
+         * sentence says the backend did not answer, which would be false here.
+         */
         fun internalFailure(): ToolError =
             ToolError(
                 code = ToolErrorCode.BACKEND_UNAVAILABLE,

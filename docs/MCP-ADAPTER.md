@@ -165,13 +165,37 @@ That rule binds the tool that adds one.
 ### No raw backend text, and no hidden object
 
 The message is a sentence this adapter built. It carries no backend exception
-text, no topic name, no argument value and no payload. An unplanned failure
-answers one fixed sentence, so a class name and a message cannot escape.
+text, no topic name, no argument value and no payload.
+
+**Every code has one fixed sentence, and the code alone selects it.**
+
+| Code | Sentence |
+|---|---|
+| `AUTHENTICATION_REQUIRED` | `the backend refused the credential of this adapter` |
+| `NOT_AVAILABLE` | `the backend does not serve this object, or it refuses this caller` |
+| `FEATURE_UNAVAILABLE` | `the backend does not offer a feature this call requires` |
+| `BACKEND_UNAVAILABLE` | `the backend did not answer the call` |
+| `LIMIT_EXCEEDED` | `the call passed a limit of this adapter` |
+| `OUTCOME_UNKNOWN` | `the adapter cannot tell whether the call completed` |
+
+**The message of a `ClientException` never reaches a client.** A transport
+builds that message from the material it handled, so it can hold a URL, a
+header, a stored value or a credential fragment. The classifier reads the
+reason of the failure and nothing else. The message serves a debugger and a
+stack trace alone.
+
+Two failures carry adapter prose instead, and each says so.
+
+- A refusal of the adapter's own, such as a missing argument, names the value
+  to correct. The adapter wrote that sentence.
+- An unplanned failure answers `the adapter could not complete the call`. That
+  failure held no backend answer, so no class name and no message exists to
+  escape.
 
 **A denied object and an absent object answer the same sentence.** A 403 and a
-404 both become `NOT_AVAILABLE` with the message
-`the backend does not serve this object, or it refuses this caller`. A reader
-that could tell them apart would learn that a hidden object exists.
+404 both become `NOT_AVAILABLE` with the sentence above. A reader that could
+tell them apart would learn that a hidden object exists. No sentence names a
+status, a count or a value from the request.
 
 The backend status is not lost. It reaches the stderr diagnostic line, which
 carries operator data alone.

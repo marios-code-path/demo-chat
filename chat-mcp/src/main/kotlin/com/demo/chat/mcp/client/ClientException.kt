@@ -38,6 +38,13 @@ enum class FailureReason {
  * The message names the rule and the failing field. It carries no credential
  * and no message text.
  *
+ * **The message is for a debugger and a stack trace alone.** It never reaches a
+ * client and it never reaches a log line. `ToolError.of` reads the reason of
+ * this exception and nothing else, so the client answer carries the fixed
+ * sentence of the failure code. A transport builds the message from the
+ * material it handled, so it can hold a URL, a header or a stored value. Task 7
+ * rule 4 forbids publishing that material.
+ *
  * The reason is required. A default would let a new throw site name no class,
  * and the wrong class is silent at the list boundary.
  *

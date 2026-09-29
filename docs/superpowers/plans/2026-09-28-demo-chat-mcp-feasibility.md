@@ -838,7 +838,7 @@ that every tool answers through.
 | 1. Protocol error for a malformed envelope | The SDK. `McpAdapterToolStdioTests` reads the JSON-RPC `error` and asserts no `result` |
 | 2. A tool error result carries three fields | `ToolError.toMeta` writes `code`, `message` and `retryable` flat |
 | 3. The six codes | `ToolErrorCode` is closed. `ToolErrorTests` proves the table covers `FailureReason.entries` |
-| 4. No raw backend text, and no hidden object | `NOT_AVAILABLE_MESSAGE` is one fixed sentence. A 403 and a 404 answer it alike |
+| 4. No raw backend text, and no hidden object | `ToolError.messageOf` gives every code one fixed sentence, and it takes the code alone. `ToolError.of` reads `failure.reason` alone. The caller `TopicToolRegistration.answer` reads `failure.status` separately for the stderr line. No path reads `failure.message`. A 403 and a 404 answer one sentence alike |
 | 5. Five fields on stderr | `TopicToolRegistration.report` writes tool, correlation id, duration, code and status |
 | 6. No token and no message text | `McpAdapterHarnessTests` asserts no topic name and no credential on either stream |
 
@@ -880,11 +880,84 @@ close.
    Task 7 rule 4 forbids that difference. The planned test
    `the backend status stays out of the application data` failed before it was
    ever green, and it earned its place. `NOT_AVAILABLE_MESSAGE` repairs it.
-   Mutation M7b proves the guard.
+   Mutation M7b proves the guard. **The first repair covered `NOT_AVAILABLE`
+   alone**, and the pass-through survived on the other five codes. See the
+   repair section below.
 2. **`_meta` is the wire name.** The SDK field is `meta` in Kotlin and `_meta`
    on the wire. `javap -v` on the SDK class shows the constant pool entry
    `value="_meta"`. The harness reads `result["_meta"]`, so the name is measured
    against a real client rather than assumed.
+
+### The Task 7 repair, after the owner review
+
+**Task 7 was rejected on 2026-09-29, and the reason was correct.**
+`ToolError.messageFor` answered `failure.message` for every code except
+`NOT_AVAILABLE`. A `ClientException` carries the message its throw site built.
+A transport builds that message from the material it handled, so it can hold a
+URL, a header, a stored value or a credential fragment. **That text reached
+`_meta.message` and the tool content.** Rule 4 forbids it.
+
+**The repair removes the path and not the sentences alone.** `messageOf(code)`
+holds one fixed sentence for each code. It takes the code alone, so no failure
+value is in scope. **`of` reads `failure.reason` alone**, because the reason is
+what selects the code. A `when` with no `else` is the carrier, so a new code
+fails the compile until a sentence exists for it. A map would answer a missing
+key at run time.
+
+**The two other fields of a `ClientException` are read elsewhere, and each
+keeps its own purpose.**
+
+| Field | Reader | Purpose |
+|---|---|---|
+| `reason` | `ToolError.of` | Selects the code, and decides `retryable` |
+| `status` | `TopicToolRegistration.answer`, which passes it to `refused` | The `status=<s\|->` field of the stderr diagnostic line |
+| `message` | **No production path** | A debugger and a stack trace alone |
+
+**`of` does not read `status`.** The status must not reach a client, because a
+403 and a 404 have to answer alike. It reaches stderr alone, and the caller
+carries it there. An earlier version of this document said `of` read both
+fields, which was false about the implementation and wrong about the design.
+
+The five sentences that were not `NOT_AVAILABLE`:
+
+| Code | Sentence |
+|---|---|
+| `AUTHENTICATION_REQUIRED` | `the backend refused the credential of this adapter` |
+| `FEATURE_UNAVAILABLE` | `the backend does not offer a feature this call requires` |
+| `BACKEND_UNAVAILABLE` | `the backend did not answer the call` |
+| `LIMIT_EXCEEDED` | `the call passed a limit of this adapter` |
+| `OUTCOME_UNKNOWN` | `the adapter cannot tell whether the call completed` |
+
+**Two messages stay outside `messageOf`, and each is correct.** `refused`
+carries the sentence of a `ToolException` or a `ConfigException`. The adapter
+wrote that sentence, and it names the argument to correct. `internalFailure`
+carries the sentence of an unplanned failure, which held no backend answer at
+all. **The rule is one sentence, and its source is stated.** A message is the
+fixed sentence of its code, or adapter prose for a failure the adapter raised.
+No message is copied from a backend exception.
+
+**`ClientException` now states where its message goes.** The KDoc reads that
+the message is for a debugger and a stack trace alone, and that it reaches no
+client and no log line.
+
+Two regression tests carry the guard.
+
+- `ToolErrorTests.no failure class repeats the backend exception text` runs
+  every `FailureReason` with a distinguishing token in the message, and asserts
+  the token reaches neither the message nor `toMeta()`.
+- `ToolAnswerContractTests.a backend failure exposes no backend exception text`
+  drives the handler, and asserts the token reaches neither the content nor the
+  application data. That is the layer where both fields are shaped.
+
+Two further tests hold the shape. `every failure code answers its own fixed
+sentence` asserts six distinct non-blank sentences.
+`the sentence of a failure does not depend on the exception text` asserts two
+exceptions with different text and one reason answer one value.
+
+**The stdio test changed with the repair.** `a backend failure answers an error`
+asserted `contains("the backend answered 500")`, which was the leak. It now
+asserts the fixed sentence and asserts that neither `500` nor the backend body
+reaches the answer.
 
 ## Task 8: real-deployment acceptance
 
@@ -996,6 +1069,12 @@ proves each restore.
 | M7d | Drop the final catch-all branch | `ToolAnswerContractTests.an unplanned failure exposes no exception text` |
 | M7e | Drop the `status` field from the diagnostic line | `McpAdapterHarnessTests.stdout is pure, stderr is one line per call, and the exit is bounded` |
 | M7f | Drop the transport close from `serveStdio` | `McpAdapterStdioTests.the stdio path closes the transport it owns` |
+| M7g | Return `failure.message` from `ToolError.of` again | `ToolErrorTests.no failure class repeats the backend exception text`, `ToolErrorTests.the sentence of a failure does not depend on the exception text` and `ToolAnswerContractTests.a backend failure exposes no backend exception text` |
+
+M7g was added on 2026-09-29, after the owner review of Task 7. It is the
+mutation that proves the repair above. Measured: 8 failures over three classes,
+and every named test is among them. The source line was read back before the
+run, which is the M7e lesson applied.
 
 M5b was added during Task 5. It was not in the original table, because nobody
 knew the logging library wrote to stdout. See the Task 5 section.
@@ -1014,7 +1093,7 @@ applied, its named test was run, and the file was restored by absolute path.
 | File | SHA-256 |
 |---|---|
 | `chat-mcp/src/main/kotlin/com/demo/chat/mcp/tool/TopicToolRegistration.kt` | `2695e41b22f12858afaed8055c8b841290278467268434e605235aa7dd777de3` |
-| `chat-mcp/src/main/kotlin/com/demo/chat/mcp/error/ToolError.kt` | `ac7d30a8d9ada2db9de0834069ce9239eaf51288a149f22b56dcc2da55ab6d03` |
+| `chat-mcp/src/main/kotlin/com/demo/chat/mcp/error/ToolError.kt` | `ac7d30a8d9ada2db9de0834069ce9239eaf51288a149f22b56dcc2da55ab6d03`, before the repair. After the repair and the M7g restore: `adbc94bc4047e8a5ce87df16aa747f0a5ccd31df8442d55ec578104578ff605d` |
 | `chat-mcp/src/main/kotlin/com/demo/chat/mcp/McpAdapterMain.kt` | `6a0d0416c2ab1f8f1be39e046cd156b63ac162be2c91ad240955b9f83914324a` |
 
 **One mutation taught a lesson about the mutation itself.** The first M7e

@@ -107,4 +107,73 @@ class ToolErrorTests {
         assertEquals(ToolError.NOT_AVAILABLE_MESSAGE, error.message)
         assertFalse(error.message.contains("404"), "the sentence names the backend status")
     }
+
+    /**
+     * Every code answers one fixed sentence, and the six sentences differ.
+     *
+     * Two codes with one sentence would tell a client nothing. A blank sentence
+     * would tell it less. The `when` in `messageOf` has no `else`, so a new code
+     * fails the compile before it reaches this test.
+     */
+    @Test
+    fun `every failure code answers its own fixed sentence`() {
+        val sentences = ToolErrorCode.entries.map { ToolError.messageOf(it) }
+
+        sentences.forEachIndexed { index, sentence ->
+            assertTrue(sentence.isNotBlank(), "the code ${ToolErrorCode.entries[index]} has no sentence")
+        }
+        assertEquals(
+            ToolErrorCode.entries.size,
+            sentences.toSet().size,
+            "two codes share one sentence, so a client cannot tell them apart",
+        )
+    }
+
+    /**
+     * No failure class repeats the text of the backend exception.
+     *
+     * A `ClientException` message is built by a transport from the material it
+     * handled. It can hold a URL, a header, a stored value or a credential
+     * fragment. **This is the regression guard for task 7 rule 4**, and the
+     * token below stands in for that text. Every failure class is exercised, so
+     * a new class cannot take a different path.
+     */
+    @Test
+    fun `no failure class repeats the backend exception text`() {
+        FailureReason.entries.forEach { reason ->
+            val secret = "sensitive-$reason-token"
+            val error = ToolError.of(ClientException("the backend said $secret", reason, 500))
+
+            assertFalse(
+                error.message.contains(secret),
+                "the class $reason repeats the backend exception text in its message",
+            )
+            assertFalse(
+                error.toMeta().toString().contains(secret),
+                "the class $reason repeats the backend exception text in its application data",
+            )
+            assertFalse(
+                error.message.contains("ClientException"),
+                "the class $reason names the exception type",
+            )
+        }
+    }
+
+    /**
+     * The sentence of a failure does not depend on the failure.
+     *
+     * Two exceptions with different text, one reason and one status answer one
+     * value. A reader of `of` sees no path from the exception text to the
+     * answer, and this pins that.
+     */
+    @Test
+    fun `the sentence of a failure does not depend on the exception text`() {
+        FailureReason.entries.forEach { reason ->
+            val first = ToolError.of(ClientException("the first sentence", reason, 500))
+            val second = ToolError.of(ClientException("the second sentence", reason, 500))
+
+            assertEquals(first, second, "the class $reason answers different values for one failure class")
+            assertEquals(ToolError.messageOf(first.code), first.message)
+        }
+    }
 }
