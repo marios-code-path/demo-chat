@@ -446,6 +446,11 @@ were then measured again, and the gate ran once on the tree that is committed.
    `ClientException` and `ConfigException` each become an error result whose
    text is the adapter's own sentence. No backend text and no payload reaches
    the client.
+8. **The output schema of each tool requires its one field.** The list requires
+   `topics`. The single read requires `topic`. An output schema that declares a
+   property and does not require it states a weaker contract than the tool
+   keeps. The two field names live in `TOPICS_FIELD` and `TOPIC_FIELD`, and the
+   tool body and the schema both read them, so the two cannot drift.
 
 ### Decision 11: `additionalProperties` at a tool schema root
 
@@ -515,6 +520,51 @@ restore is proved by a `shasum -a 256` match against the value recorded before
 the mutation: `76f59e484c0161c3443b29c6b34d132b6be32ac17411188f72282b87f01adcc5`.
 
 The integration gate ran last, on the final source.
+
+### Owner review of Task 4, and the one defect it found
+
+The owner reviewed commit `7ae1cea6` on 2026-09-28. The tool behaviour and the
+failure mapping passed. The 403 and 404 omission rule passed.
+
+**One defect blocked. Both output schemas omitted their top-level required
+field.** The list tool declared `topics` and did not require it. The single
+read declared `topic` and did not require it. The SDK can express both through
+`ToolSchema.required`. Decision 8 above is the repair.
+
+The defect was invisible to the earlier tests, because they read
+`outputSchema.properties` and never read `outputSchema.required`. The Task 3
+decisions did not name the output `required` list either, so nothing at any
+layer asked for it. **A schema test that reads one field of a schema proves
+nothing about the other fields.**
+
+Measured on 2026-09-29, after the repair:
+
+| Gate | Result |
+|---|---|
+| `mvn -o -B -pl chat-mcp -am test` | exit 0. 154 tests, 0 failures, 0 errors, 0 skipped. |
+| M8, the list output `required` list emptied | `McpAdapterServerTests` fails 1 of 8 and `McpAdapterToolStdioTests` fails 1 of 10. The wire pin and the Kotlin check each catch it. |
+| `shell-scripts/check-dependency-versions.sh` | exit 0. |
+| `git diff --check` | exit 0. |
+| `drift check` | exit 0. |
+| `shell-scripts/build-health.sh --integration` | exit 0. 29 modules ran 1670 tests, 0 failures, 0 errors, 59 skipped. The run reports that reality matches `docs/BUILD-HEALTH.md`. |
+
+M8 was applied and restored by absolute path. The service file is tracked, so
+the restore is proved by a `shasum -a 256` match against
+`0de2f0c40af28eb211608b6607a8e93461251161c3f9a2b5a058f007e3dd9975`, the value
+recorded before the mutation and read again after it.
+
+**The integration gate ran on the frozen tree.** An earlier gate run began
+before the last two edits to `TopicToolRegistration.kt`, which moved the
+`topics` literal to `TOPICS_FIELD` beside it. That run was stopped, because its
+reading would have described a superseded tree. The module row, the three fast
+gates and the integration gate were then measured on the tree that is
+committed, and M8 was proved on that same content.
+
+### Carried forward from the same review
+
+**The watchdog executor of `JdkBackendHttp` has no shutdown path.**
+`TopicClient` owns the executor through its transport, and it exposes no close
+lifecycle. Task 7 owns it. The item is recorded on `CHAT-oqrifndu`.
 
 ## Task 5: a pinned MCP client and stdout purity
 

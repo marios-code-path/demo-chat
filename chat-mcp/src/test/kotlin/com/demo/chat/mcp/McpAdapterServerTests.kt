@@ -61,6 +61,7 @@ class McpAdapterServerTests {
         assertTrue(tool.inputSchema.properties!!.isEmpty())
         assertTrue(tool.inputSchema.required!!.isEmpty())
         assertTrue(tool.outputSchema!!.properties!!.containsKey("topics"))
+        assertEquals(listOf("topics"), tool.outputSchema!!.required)
     }
 
     @Test
@@ -70,6 +71,7 @@ class McpAdapterServerTests {
         assertEquals(listOf(TOPIC_ID_ARGUMENT), tool.inputSchema.required)
         assertEquals("string", tool.inputSchema.properties!!.getValue(TOPIC_ID_ARGUMENT).at("type"))
         assertTrue(tool.outputSchema!!.properties!!.containsKey("topic"))
+        assertEquals(listOf("topic"), tool.outputSchema!!.required)
     }
 
     /** Every id is a JSON string, so a Long id keeps every digit. */

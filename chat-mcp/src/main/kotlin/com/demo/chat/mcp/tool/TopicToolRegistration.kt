@@ -26,6 +26,12 @@ const val GET_TOPIC_TOOL_NAME: String = "chat_get_topic"
 /** The one argument of the single topic read. */
 const val TOPIC_ID_ARGUMENT: String = "topicId"
 
+/** The one field of the list output. */
+const val TOPICS_FIELD: String = "topics"
+
+/** The one field of the single read output. */
+const val TOPIC_FIELD: String = "topic"
+
 /**
  * What both tools declare about themselves.
  *
@@ -52,19 +58,25 @@ private val TOPIC_ANNOTATIONS =
  */
 private val LIST_INPUT_SCHEMA = ToolSchema(properties = JsonObject(emptyMap()), required = emptyList())
 
-/** The output schema of the list tool. */
+/**
+ * The output schema of the list tool.
+ *
+ * The answer requires its one field. An output schema that declared a property
+ * and did not require it would state a weaker contract than the tool keeps.
+ */
 private val LIST_OUTPUT_SCHEMA =
     ToolSchema(
         properties =
             buildJsonObject {
                 put(
-                    "topics",
+                    TOPICS_FIELD,
                     buildJsonObject {
                         put("type", "array")
                         put("items", topicSchema())
                     },
                 )
             },
+        required = listOf(TOPICS_FIELD),
     )
 
 /** The input schema of the single read. */
@@ -77,13 +89,14 @@ private val GET_INPUT_SCHEMA =
         required = listOf(TOPIC_ID_ARGUMENT),
     )
 
-/** The output schema of the single read. */
+/** The output schema of the single read. Its answer requires its one field. */
 private val GET_OUTPUT_SCHEMA =
     ToolSchema(
         properties =
             buildJsonObject {
-                put("topic", topicSchema())
+                put(TOPIC_FIELD, topicSchema())
             },
+        required = listOf(TOPIC_FIELD),
     )
 
 /**
@@ -136,7 +149,7 @@ fun registerTopicTools(server: Server, service: TopicToolService) {
             val topics = service.listTopics()
             buildJsonObject {
                 put(
-                    "topics",
+                    TOPICS_FIELD,
                     buildJsonArray { topics.forEach { add(it.toJson()) } },
                 )
             }
@@ -156,7 +169,7 @@ fun registerTopicTools(server: Server, service: TopicToolService) {
         ),
     ) { request ->
         answer(request, setOf(TOPIC_ID_ARGUMENT)) {
-            buildJsonObject { put("topic", service.getTopic(readIdArgument(request)).toJson()) }
+            buildJsonObject { put(TOPIC_FIELD, service.getTopic(readIdArgument(request)).toJson()) }
         }
     }
 }

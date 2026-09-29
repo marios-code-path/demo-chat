@@ -121,8 +121,12 @@ class McpAdapterToolStdioTests {
                     {"type":"object","properties":{"id":{"type":"string"},"root":{"type":"string"},"name":{"type":"string"}},"required":["id","root","name"],"additionalProperties":false}
                 """.trimIndent()
                 assertEquals(
-                    """{"properties":{"topics":{"type":"array","items":$topic}},"type":"object"}""",
+                    """{"properties":{"topics":{"type":"array","items":$topic}},"required":["topics"],"type":"object"}""",
                     tools.getValue("chat_list_topics").jsonObject["outputSchema"].toString(),
+                )
+                assertEquals(
+                    """{"properties":{"topic":$topic},"required":["topic"],"type":"object"}""",
+                    tools.getValue("chat_get_topic").jsonObject["outputSchema"].toString(),
                 )
 
                 val annotations = tools.getValue("chat_list_topics").jsonObject["annotations"]!!.jsonObject
