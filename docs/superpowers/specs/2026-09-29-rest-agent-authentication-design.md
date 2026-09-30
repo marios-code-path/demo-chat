@@ -36,11 +36,12 @@ issue passes.
 
 ## Measured state
 
-Read from source at master `7b1a3e2e` on 2026-09-29. Nothing below was run.
+Read from source at master `7b1a3e2e` on 2026-09-29. Implementation evidence is
+recorded in the task commits below.
 
-1. **`WebFluxSecurity.filterChain` permits every exchange.** It adds no
-   authentication. It calls `anonymous`, which supplies an identity to a
-   credential-less request.
+1. **`WebFluxSecurity.filterChain` requires an agent token.** The application
+   chain validates the token and requires the configured scope. Anonymous
+   authentication is not enabled on this chain.
 2. **`RSocketServerConfiguration.rsocketSecurityAuthentication` permits every
    payload.** It carries the comment `TODO: lock down!`.
 3. **`ContextIdentity.identityOf` is a closed list.** A `JwtAuthenticationToken`
@@ -93,8 +94,14 @@ place.
 
 ### Startup
 
-`RootKeyStartup` is a `SmartLifecycle` that runs below both servers. The agent
-resolves at that point, and a failure fails the context refresh.
+The agent resolves in a `SmartLifecycle` of `chat-webflux`, at phase
+`Integer.MAX_VALUE - 3072`.
+
+**`RootKeyStartup` is not the carrier.** It lives in `chat-deploy`, and
+`chat-webflux` cannot add a step to it. The phase of this lifecycle sits above
+`RootKeyStartup` at `Integer.MAX_VALUE - 4096` and below the reactive web server
+at `Integer.MAX_VALUE - 2048`. So the roots are loaded, the agent is resolved,
+and no server is listening.
 
 Three failures stop the start and name the cause. A missing property. An agent
 username that the user store does not hold. A JWK file that is absent,
@@ -210,15 +217,16 @@ authorization stays with the resolved agent identity and the existing grants.
 
 ## The audience question
 
-This issue measures the `aud` claim before it decides. One test in
-`chat-authorization-server` encodes a `client_credentials` access token and
-asserts the claim.
+The `AccessTokenClaimsTests` test in `chat-authorization-server` encodes a
+`client_credentials` access token. It measured `aud` as
+`[31649af5-0154-4be5-8695-fda9d18b7981]`, which equals the client id.
 
 - If `aud` equals the client id, the two checks hold the same value with
   different meanings. The `client_id` check binds the agent client. The
   audience binds a token to one resource. **The current token shape makes the
-  values equal. A future resource token can separate them.** File audience
-  validation as its own issue, and keep that sentence in the issue.
+  values equal. A future resource token can separate them. File audience
+  validation as its own issue, and keep that sentence in the issue. This action
+  created `CHAT-okpgpxkj`.
 - If `aud` is absent or different, add a validator to the decoder now.
 
 The `client_id` check stays either way.
@@ -233,7 +241,7 @@ The `client_id` check stays either way.
 | `docs/IDENTITY-POLICY.md` | The WebFlux row loses anonymous. Anonymous becomes an RSocket decision alone. |
 | `docs/VECTOR-RECALL-API.md`, `docs/EMBEDDING-PROVIDERS.md` | Every procedure that calls a REST route carries a token. |
 | `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` | The note that no route read the bearer header becomes false. The document records the new reading. |
-| `shell-scripts/build.sh` and `test-flags.sh` | The core launch passes the four new values. The 15 golden cases move with the flag set. |
+| `shell-scripts/build.sh` and `test-flags.sh` | The `rest` launch passes the four new values, because only `rest` declares `expose-webflux`. A core launch does not mount the application chain and needs none of them. |
 
 **How a gate obtains a token.** The gate runs a standalone deployment with no
 authorization server, so it cannot request one. The gate mints a short-lived
@@ -279,12 +287,6 @@ gate and the MCP acceptance procedure each carry a token after this change.
 
 ## Not measured
 
-- **The `client_id` claim shape.** This design adds the claim. No token was
-  decoded to confirm the current absence.
-- **The `aud` claim.** The measurement is a task, not a result.
-- **Whether `JwtEncodingContext.registeredClient` is the accessor that answers
-  the client id.** Read from the class name and not from the bytecode.
 - **Which deployables an operator starts with `-Pexpose-webflux` today.** The
-  pom declares the profile in five modules. No launch was observed.
-- **The behavior of a public-only JWK file** against `NimbusReactiveJwtDecoder`.
-  The design prefers that input, and no such file exists yet.
+  pom declares the profile in five modules. The blast-radius tests cover the
+  REST deployment path.

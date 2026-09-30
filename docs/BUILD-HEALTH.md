@@ -24,9 +24,11 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 903 tests, 0 failures, 0
-errors and 30 skipped. The count moved from 844 when `CHAT-hazcatpc` added
+`mvn -o -B clean test` — **BUILD SUCCESS** on `chat-pgpmsgvr-rest-agent-auth`.
+No module fails. The reactor holds 37 modules and reports 1448 tests, 0
+failures, 0 errors and 35 skipped. The count moved from 1401 in the baseline
+before `CHAT-pgpmsgvr` implementation. The historical count moved from 844 when
+`CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
 `chat-deploy-kafka`. It moved to 849 when `CHAT-cophllrg` added two password
 tests to `chat-authorization-server`, and to 856 when `CHAT-ltvfmcvh`
