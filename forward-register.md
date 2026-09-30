@@ -19,6 +19,18 @@ in this file is authoritative on its own — each row points at the artifact tha
 | Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. |
 | Open PRs | None. Nothing was open on 2026-09-29. |
 
+**The `Checkout` row records the last substantive merge before this refresh.**
+A register refresh is a narrow documentation update, so it does not move the
+row. The row therefore lags the true tip by one merge on purpose. **That lag is
+not drift, and a reader must not correct it.** A row that chased the true tip
+would go stale the moment it merged, and it would spawn a refresh on every
+refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
+too: the row for #112 read the same way.
+
+**The merge commit of the current refresh is on the issue, not here.** This
+refresh merged as PR #147. `CHAT-ylvoiixm` carries the commit in the comment
+that reports the merge.
+
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 
