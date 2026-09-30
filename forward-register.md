@@ -2634,9 +2634,11 @@ stdout purity gate, which is the `RedisDeployBootTests` lesson.
 `docs/superpowers/specs/2026-09-29-rest-agent-authentication-design.md`. Plan:
 `docs/superpowers/plans/2026-09-29-rest-agent-authentication.md`.
 
-**Not landed.** PR #149 is open on branch `chat-pgpmsgvr-rest-agent-auth`.
-The issue remains in progress. This section records the proposed branch state.
-It is not on `master` until the owner merges PR #149.
+**This section is closed.** PR #149 merged on 2026-09-30 as
+`24ab74b0f6be4dfccfe07a875e5ac3030f6e21c`. The merge has two parents, so it is
+a real merge commit. The local and remote feature branch are removed.
+
+`CHAT-pgpmsgvr` is done. The issue remains separate from credential issuance.
 
 Every route of the application chain requires a valid agent token.
 
