@@ -29,7 +29,7 @@ otherwise.
 | Key | Meaning |
 |---|---|
 | `backendBaseUrl` | The origin of the deployment. It carries a scheme, a host and an optional port. It carries no path, query, fragment or user info. |
-| `credentialFile` | The file that holds the token. A relative path resolves against the directory of the configuration file. |
+| `credentialFile` | The file that holds the token. A relative path resolves against the directory of the configuration file. See `docs/MCP-CREDENTIAL-ISSUANCE.md`. |
 | `keyType` | `long` or `uuid`. It must agree with the deployment. |
 | `topicIds` | The topic ids this adapter may read. Comma separated. One to 100 ids. |
 | `enableSend` | Optional. `true` or `false`. The default is `false`. |
@@ -278,33 +278,38 @@ evidence runs the same harness against a deployment.
 `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records one such run, on 2026-09-29.
 Task 8 of the plan holds the full step list. The shape is:
 
-1. Start a deployment. Create a topic through it. Record the id, the root and
-   the name.
-2. Name that id in `topicIds`, and name one id the deployment does not serve.
-3. Run the harness with the deployment behind the adapter.
-4. Read the transcript. Discovery must list both tools. The served topic must
+1. Obtain a credential by the procedure in `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+   Write it to `credentialFile`.
+2. Start a deployment with the four `app.security` values that the procedure
+   names. Create a topic through it. Record the id, the root and the name.
+3. Name that id in `topicIds`, and name one id the deployment does not serve.
+4. Run the harness with the deployment behind the adapter.
+5. Read the transcript. Discovery must list both tools. The served topic must
    carry the id, the root and the name the deployment holds. The unserved id
    must refuse with no backend text. stdout must carry frames alone.
+6. Repeat with a junk credential in the file. Every call must answer 401.
 
-**Two boundaries hold for that run.**
+**One boundary held for the 2026-09-29 run, and one no longer holds.**
 
-The first boundary is enforcement. No deployment enforces a credential today.
-`WebFluxSecurity` permits every exchange and adds no authentication, and
-`RSocketServerConfiguration` carries `TODO: lock down!`. So a real-deployment
-run proves the adapter against real routes, a real key type and a real index.
-**It does not prove production REST authentication**, because no deployment
-asks for one yet. Do not claim it. `CHAT-pgpmsgvr` closes that boundary.
+The enforcement boundary is closed. `CHAT-pgpmsgvr` merged on 2026-09-30, and
+the application chain now requires a valid agent token on every route it owns.
+So a real-deployment run proves production REST authentication.
+`RSocketServerConfiguration` stays outside that issue and keeps its
+`TODO: lock down!` note.
 
-The second boundary is the credential itself. **No procedure produced the token
-that the acceptance run used.** `credentialFile` names a file. This document
-states how the adapter reads that file and never how the file gets its value.
-`WebFluxSecurity` permits every exchange, so no route read the bearer header.
-The token in that file was therefore unconstrained, and any text would have
-passed. `CHAT-rvcrzxvw` covers the missing procedure. That procedure creates the
-account, grants the topic scope, obtains a token, and writes the token to the
-file. It does not block `CHAT-ylvoiixm`, because the adapter already reads the
-file and sends the token. Read both boundaries before you claim a working
-credential.
+The credential boundary is closed too.
+`docs/MCP-CREDENTIAL-ISSUANCE.md` states the procedure that gives
+`credentialFile` its value. It starts an authorization server, requests a token
+with the `client_credentials` grant, and writes that token to the file. It also
+records a control run, in which a junk credential made every call answer 401.
+
+**The 2026-09-29 token came from a local mint, and the document says so.** That
+run predates both fixes, so its token was unconstrained. Read
+`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` for what that run does and does not
+prove.
+
+A reader who needs a credential runs the issuance procedure. A reader who needs
+end-to-end evidence runs the acceptance recipe with that credential.
 
 ## What the adapter does not do
 

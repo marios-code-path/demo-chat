@@ -12,8 +12,8 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-09-29, after the MCP adapter merge. |
-| Last merged PR | #146, merge commit `8fa9c962`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Register state | Updated 2026-09-30, after the REST agent authentication merge. |
+| Last merged PR | #149, merge commit `24ab74b0`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
 | Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. |
@@ -2664,3 +2664,96 @@ Every route of the application chain requires a valid agent token.
   `deploy,expose-rsocket`, so it never mounts the application chain.
 - **The measured access-token audience equals the client ID.** Audience
   validation is deferred to `CHAT-okpgpxkj`.
+
+## MCP adapter credential issuance (2026-09-30)
+
+`CHAT-rvcrzxvw`, under the closed parent `CHAT-ylvoiixm`. **This work is not
+merged.** The branch is `chat-rvcrzxvw-mcp-credential`, in
+`.worktrees/mcp-credential`, cut from `master` at `9eea6f15`. Merge approval is
+open.
+
+The issue asked for one thing: a documented procedure that produces the adapter
+credential. **No adapter code changed.** The adapter already reads
+`credentialFile` at each request and sends the bearer header.
+
+### What exists
+
+- `docs/MCP-CREDENTIAL-ISSUANCE.md` is the procedure. It starts the
+  authorization server, requests a token with the `client_credentials` grant,
+  writes the token to the file, and launches the deployment with the four
+  `app.security` values.
+- `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records a second acceptance run, on
+  2026-09-30, with an issued credential against a deployment that enforces.
+- `docs/MCP-ADAPTER.md` names the procedure and drops its stale boundary text.
+- `docs/BUILD.md` gains the token request beside the REST launch section.
+
+### The evidence
+
+The 2026-09-30 run answered every criterion of the 2026-09-29 run, and it adds
+two readings.
+
+1. **The credential was judged, and not ignored.** A control run replaced the
+   token with junk text. All three calls then answered
+   `AUTHENTICATION_REQUIRED` with `status=401`.
+2. **The refusal matrix is measured.** Each row is one request to
+   `GET /topic/id/<id>`.
+
+| Credential | Status |
+|---|---|
+| None | 401 |
+| Junk text | 401 |
+| Right scope, other `client_id` | 401 |
+| Right `client_id`, no scope | 403 |
+| Right `client_id`, `openid` only | 403 |
+| Right `client_id`, `chat.mcp` | 200 |
+
+401 refuses the credential. 403 refuses the scope. The adapter maps both to
+`AUTHENTICATION_REQUIRED`.
+
+The token itself: `ES256`, `scope` = `["chat.mcp"]`, `client_id` and `aud` equal
+the client id, and the lifetime is 300 seconds.
+
+### Facts that cost a measurement
+
+- **The `jdbc` Maven profile does not select the JDBC client repository.**
+  `authserv` always emits `-P...,jdbc`, and that is a build profile. The Spring
+  profile alone selects the repository. So `--profile memory` gives the
+  in-memory repository even though the build names jdbc.
+- **One client id appears three times.** It names the OAuth client in the token
+  request, the token's `client_id` claim, and `app.security.agent.client-id`. A
+  token from another client is refused with 401 even when its scope is right.
+- **The `client-init` path registers no `chat.mcp` client.** Its `chatClient`
+  carries `auth, message, topic, user, openId`. A token request with
+  `scope=chat.mcp` fails there. Not filed. The fix is a scope list in one file.
+- **The adapter reads the credential file at each request.** `TopicClient`
+  reads it per call and holds no copy. So an expired token needs a new file and
+  no restart. The startup check proves only that the file exists and holds text.
+- **The 300 second lifetime is the library default.** No `TokenSettings` exists
+  in this repository, so nothing configures it.
+- **`subject` and `aud` are the client id, not the agent user.** The agent
+  identity comes from `app.security.agent.username`, resolved once at startup.
+
+### Two limits, both accepted by the owner on 2026-09-30
+
+1. **The agent account is a bootstrap account.** The procedure names `Admin`,
+   because startup creates it. `ChatIdentity` in `chat-core` is a closed set of
+   `ADMIN` and `ANON`, and `RootKeys.byName` resolves only a root or an
+   identity. So `userinit.yml` cannot name a third identity, and no path creates
+   a dedicated agent user. The agent token carries administrator rights.
+   `CHAT-werokcbb` holds the gap.
+2. **No deployed grant was exercised.** No route enforces a grant, so every
+   accepted call was permitted by the credential alone. Limits of the
+   authorization surface are in `docs/ANONYMOUS-AUTHORIZATION.md`.
+
+### Open
+
+- Merge approval.
+- `CHAT-werokcbb`, the dedicated agent identity, filed on 2026-09-30.
+- `CHAT-qtfmwfsu`, a child of `CHAT-ylvoiixm`, is untouched by this work.
+
+### One cleanup item, not done
+
+**An orphan deployment holds ports 6790 and 6791.** PID 16436 came from the
+removed `.worktrees/mcp-impl` worktree, and nothing owns it now. This work used
+ports 6892 and 6893 to avoid it. A reader who needs those ports should confirm
+the process is dead before killing it.

@@ -153,6 +153,31 @@ Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather
 than against you.
 
+### Get the token from the authorization server
+
+A client obtains its token from the authorization server. It does not mint one.
+Minting needs the private signing key, which belongs to the server alone.
+
+    ./chat-build authserv --run --notls --node-id 8 --profile memory \
+      --jwk "$PWD/encrypt-keys/server_keycert.jwk"
+
+    curl -sS -u '<client-id>:<client-secret>' \
+      -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
+      http://127.0.0.1:9000/oauth2/token
+
+`--profile memory` selects the in-memory client repository. It reads
+`app.oauth2.client` from `oauth2-client.yml`, which carries the `chat.mcp`
+scope.
+
+**The `jdbc` Maven profile does not select that repository.** It is a build
+profile and it is always active for this service. The Spring profile alone
+selects the repository.
+
+The token lives 300 seconds. The audience equals the client id.
+
+`docs/MCP-CREDENTIAL-ISSUANCE.md` carries the full procedure for the MCP
+adapter, with the refusal matrix and the limits.
+
 ### Make the key with gen-dckeys.sh
 
 ```bash
