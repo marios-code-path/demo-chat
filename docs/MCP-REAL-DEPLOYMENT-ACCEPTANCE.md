@@ -21,17 +21,14 @@ The run proves six things.
 5. The adapter maps that 404 to its own sentence, and it leaks no backend text.
 6. stdout carries protocol frames alone. The process exits within the bound.
 
-The run does not prove production REST authentication. No deployment enforces a
-credential today. `WebFluxSecurity` permits every exchange and adds no
-authentication. `RSocketServerConfiguration` carries `TODO: lock down!`. Both
-are recorded in `forward-register.md`. `CHAT-pgpmsgvr` closes that boundary.
+The run now requires production REST authentication. `CHAT-pgpmsgvr` makes the
+WebFlux application chain validate an agent token on every route it owns.
+`RSocketServerConfiguration` remains outside this issue and carries
+`TODO: lock down!`.
 
-**The token in `credential.txt` was unconstrained.** No procedure produced it.
-`WebFluxSecurity` permits every exchange, so no route read the bearer header, and
-any text in that file would have passed. `CHAT-rvcrzxvw` covers the missing
-procedure: create the account, grant the topic scope, obtain a token, write it to
-the file that `credentialFile` names. The adapter already reads that file and
-sends the token, so that issue does not block this phase.
+**The token in `credential.txt` must be a valid agent token.** This issue proves
+that the adapter sends the bearer header and that REST routes validate it.
+`CHAT-rvcrzxvw` still covers credential issuance for a deployed agent account.
 
 The run also does not prove deployed authorization. The deployment holds no
 denial to observe, because no route enforces one. So every call in this run was
@@ -64,7 +61,9 @@ The deployment resolves its modules from the local repository. It reads
 The topic was created through the deployment on 2026-09-29.
 
 ```sh
-curl -X PUT http://127.0.0.1:6791/persist/topic/add \
+TOKEN=$(shell-scripts/agent-token.py /abs/path/server_keycert.jwk <client-id> chat.mcp)
+curl -H "Authorization: Bearer $TOKEN" \
+  -X PUT http://127.0.0.1:6791/persist/topic/add \
   -H 'Content-Type: application/json' \
   -d '{"type":"ByNameRequest","name":"mcprealacceptance"}'
 ```
@@ -116,7 +115,7 @@ status is not lost, because the stderr diagnostic line carries it. Task 7 rule
 
 ```properties
 backendBaseUrl=http://127.0.0.1:6791
-credentialFile=credential.txt   (any text passed; no route read the header)
+credentialFile=credential.txt   (a valid agent token)
 keyType=long
 topicIds=1554429686883287040,1
 ```
@@ -233,15 +232,12 @@ named all three lines. See mutation M5c in the plan.
 This run does not close `CHAT-ylvoiixm`. Three things stay open.
 
 1. **Authentication.** `CHAT-pgpmsgvr` enforces the credential boundary for
-   every route the adapter uses. Until it passes, no end-to-end authorization
-   claim is valid for this adapter.
+   every route the adapter uses. This run uses a token from the trusted JWK.
 2. **The denial path.** The deployment holds no denial to observe. So this run
    never exercised a 403 from a real grant. Task 4's stdio test covers a 403
    against the fake backend. That test is the only coverage of the denial path.
-3. **The credential origin.** No procedure produced the token this run used. So
-   this run does not prove that the adapter reads a real token, and it does not
-   prove that a real token reaches a route. `CHAT-rvcrzxvw` covers the
-   procedure.
+3. **The credential origin.** This run mints a token locally from the trusted
+   JWK. `CHAT-rvcrzxvw` covers production credential issuance.
 
 ## Reproduce it
 

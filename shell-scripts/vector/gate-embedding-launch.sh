@@ -28,6 +28,9 @@ STUB_PORT=9099
 APP_PORT=8080
 ACTUATOR_USER="actuator"
 ACTUATOR_PASS="actuator"
+AGENT_CLIENT_ID="gate-agent"
+AGENT_USERNAME="Admin"
+AGENT_SCOPE="chat.mcp"
 WORK=$(mktemp -d)
 STUB_PID=""
 APP_PID=""
@@ -77,6 +80,30 @@ esac
 
 echo "0. Python runs under miniforge."
 "$PYTHON" -c "import sys; print('   ' + sys.executable)"
+
+AGENT_JWK="$WORK/agent.jwk"
+"$PYTHON" - "$AGENT_JWK" <<'PY'
+import base64
+import json
+import sys
+from cryptography.hazmat.primitives.asymmetric import ec
+
+key = ec.generate_private_key(ec.SECP256R1())
+numbers = key.private_numbers()
+public = numbers.public_numbers
+encode = lambda value: base64.urlsafe_b64encode(value.to_bytes(32, 'big')).rstrip(b'=').decode()
+data = {
+    'kty': 'EC',
+    'crv': 'P-256',
+    'kid': 'gate-agent',
+    'x': encode(public.x),
+    'y': encode(public.y),
+    'd': encode(numbers.private_value),
+}
+with open(sys.argv[1], 'w') as output:
+    json.dump(data, output)
+PY
+AGENT_TOKEN="$ROOT/shell-scripts/agent-token.py"
 
 # One command builds the module and every module it needs. -am is safe here,
 # because the deploy profile repackages under the exec classifier. The
@@ -129,6 +156,12 @@ java --enable-native-access=ALL-UNNAMED -jar "$JAR" \
     --app.service.composite=true \
     --app.service.composite.auth=true \
     --app.service.security.userdetails=true \
+    --app.users.create=true \
+    --spring.config.additional-location=classpath:/config/userinit.yml \
+    --app.security.agent.client-id="$AGENT_CLIENT_ID" \
+    --app.security.agent.username="$AGENT_USERNAME" \
+    --app.security.agent.required-scope="$AGENT_SCOPE" \
+    --app.security.jwt.jwk-path="$AGENT_JWK" \
     --app.service.core.vector=simple \
     --app.service.core.embedding=openai \
     --app.service.core.embedding.identity="$IDENTITY" \
@@ -159,12 +192,15 @@ curl -sf "http://127.0.0.1:$APP_PORT/actuator/health" > /dev/null \
     || { tail -40 "$WORK/app.log"; fail "the deployment did not answer health"; }
 echo "   ok, the deployment is up"
 
+AGENT_TOKEN_VALUE="$($PYTHON "$AGENT_TOKEN" "$AGENT_JWK" "$AGENT_CLIENT_ID" "$AGENT_SCOPE")"
+AUTH_HEADER=(-H "Authorization: Bearer $AGENT_TOKEN_VALUE")
+
 echo "5. Assert that an actuator call without credentials answers 401."
 CODE=$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$APP_PORT/actuator/vectorindex")
 [ "$CODE" = "401" ] || fail "an actuator call without credentials answered $CODE, expected 401"
 echo "   ok, 401"
 
-echo "6. Seed three messages through persistence, with no credentials."
+echo "6. Seed three messages through persistence, with the agent token."
 # The message route resolves the sender in USER and the destination in
 # MESSAGE_TOPIC, and it refuses an unregistered id with 404. So the gate
 # creates one user and one topic first, and it sends their ids. See
@@ -189,12 +225,14 @@ print(r)" "$1"
 }
 CODE=$(curl -sS -o "$WORK/user.json" -w '%{http_code}' \
     -X PUT "http://127.0.0.1:$APP_PORT/persist/user/add" \
+    "${AUTH_HEADER[@]}" \
     -H 'Content-Type: application/json' \
     -d '{"type":"UserCreateRequest","name":"gate","handle":"gateuser","imgUri":"http://u"}')
 [ "$CODE" = "201" ] || fail "the user add answered $CODE, expected 201"
 SENDER=$(key_id "$WORK/user.json") || fail "the user add answer holds no key id"
 CODE=$(curl -sS -o "$WORK/topic.json" -w '%{http_code}' \
     -X PUT "http://127.0.0.1:$APP_PORT/persist/topic/add" \
+    "${AUTH_HEADER[@]}" \
     -H 'Content-Type: application/json' \
     -d '{"type":"ByNameRequest","name":"gateroom"}')
 [ "$CODE" = "201" ] || fail "the topic add answered $CODE, expected 201"
@@ -202,6 +240,7 @@ ROOM=$(key_id "$WORK/topic.json") || fail "the topic add answer holds no key id"
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
     CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
         -X PUT "http://127.0.0.1:$APP_PORT/persist/message/add" \
+        "${AUTH_HEADER[@]}" \
         -H 'Content-Type: application/json' \
         -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}")
     [ "$CODE" = "201" ] || fail "the seed answered $CODE for '$text', expected 201"
@@ -306,8 +345,9 @@ print(jobs[0].get('embeddingIdentity'))
     || fail "the newest job carries identity '$JOB_IDENTITY', expected '$IDENTITY'"
 echo "   ok, the job carries $IDENTITY"
 
-echo "10. Run one recall, with no credentials."
+echo "10. Run one recall, with the agent token."
 curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
+    "${AUTH_HEADER[@]}" \
     -H 'Content-Type: application/json' \
     -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":10}" \
     > "$WORK/recall.json" || fail "the recall did not answer"
@@ -333,6 +373,7 @@ print('   ok,', len(hits), 'hits and indexComplete true')
 # See CHAT-micujksn.
 echo "11. Run one recall that states every field."
 curl -sS -X POST "http://127.0.0.1:$APP_PORT/message/recall/topic" \
+    "${AUTH_HEADER[@]}" \
     -H 'Content-Type: application/json' \
     -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":5,\"threshold\":0.0}" \
     > "$WORK/recall-full.json" || fail "the explicit recall did not answer"

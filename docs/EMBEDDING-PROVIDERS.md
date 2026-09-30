@@ -185,9 +185,13 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --management.endpoints.web.exposure.include=vectorindex,health
 ```
 
-Then follow `docs/VECTOR-RECALL-API.md`: seed through `PUT
-/persist/message/add`, trigger a rebuild through `POST /actuator/vectorindex`,
-poll until `running` is false, and search.
+Then follow `docs/VECTOR-RECALL-API.md`: mint an agent token from the trusted
+JWK, seed through `PUT /persist/message/add`, trigger a rebuild through `POST
+/actuator/vectorindex`, poll until `running` is false, and search. The token is
+required on every application route.
+
+    TOKEN=$(shell-scripts/agent-token.py /abs/path/server_keycert.jwk <client-id> chat.mcp)
+    curl -H "Authorization: Bearer $TOKEN" ...
 
 **Put the dimension in the identity.** One service can serve several widths of
 one model, and two corpora of different widths must not share one name.

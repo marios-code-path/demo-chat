@@ -5,6 +5,12 @@ How to send messages, index them, and search them.
 Every claim here names the test that proves it. A claim with no test beside it
 is marked as unproven.
 
+The application chain requires a valid agent token on every route it owns. See
+`CHAT-pgpmsgvr`. Mint one from the key the deployment trusts:
+
+    TOKEN=$(shell-scripts/agent-token.py /abs/path/server_keycert.jwk <client-id> chat.mcp)
+    curl -H "Authorization: Bearer $TOKEN" ...
+
 ## Read this first
 
 **No deployment sets the vector selectors.** The feature is off in every
@@ -98,13 +104,11 @@ echo "the rebuild succeeded"
 expired outer bound says the run did not finish. An expired inner bound says
 the run ended with no durable record. See `CHAT-cxduiwjj`.
 
-**The REST application routes carry no authentication today.** The application
-filter chain permits every route it owns, and it wires no HTTP Basic and no
-authentication manager. So no `Authentication` reaches a chat route, and the
-commands below send no credentials. The actuator routes are the exception. They
-sit behind their own chain, and each one needs the actuator user. The health
-route is the one actuator route that stays open, and it needs no credentials.
-See `CHAT-jdsamcia`.
+**The REST application routes require an agent token.** The commands below use
+the `TOKEN` value from the first section. The actuator routes are the exception.
+They sit behind their own chain, and each one needs the actuator user. The
+health route is the one actuator route that stays open, and it needs no
+credentials. See `CHAT-pgpmsgvr` and `CHAT-jdsamcia`.
 
 ## Turn it on
 
@@ -167,9 +171,11 @@ These commands read the id at `key.id` into `SENDER` and `ROOM`.
 ```bash
 key_id() { jq -er '.key.id'; }
 SENDER=$(curl -sS -X PUT http://localhost:8080/persist/user/add \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}' | key_id)
 ROOM=$(curl -sS -X PUT http://localhost:8080/persist/topic/add \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"type":"ByNameRequest","name":"recipes"}' | key_id)
 echo "SENDER=$SENDER ROOM=$ROOM"
@@ -190,6 +196,7 @@ status. A later request with such an id fails.
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
   curl -sS \
     -X PUT http://localhost:8080/persist/message/add \
+    -H "Authorization: Bearer $TOKEN" \
     -H 'Content-Type: application/json' \
     -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}"
 done
@@ -225,6 +232,7 @@ alone does not prove that the durable record is written.
 ```bash
 curl -sS \
   -X POST http://localhost:8080/message/recall/topic \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d "{\"type\":\"TopicRecallRequest\",\"topicId\":$ROOM,\"query\":\"recipe\",\"limit\":10}"
 ```
@@ -254,11 +262,13 @@ through `GET /message/id/{id}`.
 ```bash
 # One sender, across every topic.
 curl -sS -X POST http://localhost:8080/message/recall/user \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d "{\"type\":\"UserRecallRequest\",\"userId\":$SENDER,\"query\":\"recipe\"}"
 
 # Every message this node indexed.
 curl -sS -X POST http://localhost:8080/message/recall/global \
+  -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"type":"GlobalRecallRequest","query":"recipe","limit":5,"threshold":0.4}'
 ```

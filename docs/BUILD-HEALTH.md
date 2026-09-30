@@ -4,7 +4,13 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-22** at master `67762d51`, against Docker Engine 29.7.2. It exits 0 and reports no drift. 27 modules run 1136 tests, with 0 failures, 0 errors and 54 skipped. The same mode reported 1080 at master `c6c21f12` and 1082 at master `67762d51`. The count was 1075 on 2026-09-20. `CHAT-hazcatpc` added three tests, and the default count records those three. `CHAT-sgyaaivp` added two tests that carry the `integration` tag, so only `--ci` runs them. `CHAT-cophllrg` added two tests. `CHAT-ltvfmcvh` replaced its eight diagnosis tests with seven policy tests, `CHAT-gtebuipo` added one, `CHAT-qucgqaye` added six, `CHAT-vehpbvzn` added seven, `CHAT-zhjltbky` added three, and the grant order clock added thirty. `--ci` resolves artifacts online, so the measured command is what `just check-ci` runs.
+**The `--ci` mode was measured on 2026-09-30** with an empty temporary
+`DOCKER_CONFIG`, against Docker Engine 29.7.2. It exits 0 and reports no
+drift. 29 modules ran 1747 tests, with 0 failures, 0 errors and 59 skipped.
+This run built the current chat-shell test image before the integration tests.
+An earlier run on 2026-09-22 at master `67762d51` reported 27 modules, 1136
+tests and 54 skipped. `--ci` resolves artifacts online, so the measured
+command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -24,9 +30,11 @@ It runs the build, diffs the failing modules against the list below, and exits n
 
 ## Current state
 
-`mvn clean test -fae` — **BUILD SUCCESS**. No module fails and nothing is
-skipped. The reactor holds 36 modules and reports 903 tests, 0 failures, 0
-errors and 30 skipped. The count moved from 844 when `CHAT-hazcatpc` added
+`mvn -o -B clean test` — **BUILD SUCCESS**. No module fails. The reactor holds
+37 modules and reports 1448 tests, 0
+failures, 0 errors and 35 skipped. The count moved from 1401 in the baseline
+before `CHAT-pgpmsgvr` implementation. The historical count moved from 844 when
+`CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
 `chat-deploy-kafka`. It moved to 849 when `CHAT-cophllrg` added two password
 tests to `chat-authorization-server`, and to 856 when `CHAT-ltvfmcvh`
@@ -77,8 +85,8 @@ The earlier `--install` mode reported the same counts as default mode.
 `build-health.sh` prints these counts on every run, so a later reader measures
 them rather than trusts this paragraph.
 
-The reactor holds 36 modules and 27 of them run tests. It held 37 until
-`chat-index-elastic` was removed. See B11. `chat-embedding-openai`
+At the earlier measurement, the reactor held 36 modules and 27 of them ran
+tests. It held 37 until `chat-index-elastic` was removed. See B11. `chat-embedding-openai`
 and `chat-embedding-local` are the two newest. Each supplies one
 `EmbeddingModel` behind one value of `app.service.core.embedding`. See
 `docs/EMBEDDING-PROVIDERS.md`.

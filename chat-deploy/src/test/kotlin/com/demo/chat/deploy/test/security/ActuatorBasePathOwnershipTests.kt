@@ -3,6 +3,8 @@ package com.demo.chat.deploy.test.security
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 
 /**
@@ -73,17 +75,23 @@ class ActuatorBasePathOwnershipTests {
 
     @Test
     fun `the default prefix carries no actuator route`() {
-        // The routes moved. So this path is an application route now, and the
-        // application chain owns it. The answer is 404 and not 401.
+        // The routes moved. This path is an application route now, so the
+        // application chain owns it and requires an agent token.
         client.get().uri("/actuator/info")
             .exchange()
-            .expectStatus().isNotFound
+            .expectStatus().isUnauthorized
     }
 
     @Test
     fun `an application route still answers a request with no credentials`() {
         client.get().uri("/test/open")
             .exchange()
-            .expectStatus().isOk
+            .expectStatus().isUnauthorized
+    }
+
+    companion object {
+        @JvmStatic
+        @DynamicPropertySource
+        fun properties(registry: DynamicPropertyRegistry) = DeployTestSigningKey.register(registry)
     }
 }

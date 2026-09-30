@@ -2627,3 +2627,38 @@ stdout purity gate, which is the `RedisDeployBootTests` lesson.
 - **`Skipped: 0` is the line to read on a green run.** A test that guards a
   missing dependency by skipping looks green and proves nothing. Read the
   skipped count, not the exit code.
+
+## REST agent authentication (2026-09-29)
+
+`CHAT-pgpmsgvr`. Spec:
+`docs/superpowers/specs/2026-09-29-rest-agent-authentication-design.md`. Plan:
+`docs/superpowers/plans/2026-09-29-rest-agent-authentication.md`.
+
+**Not landed.** PR #149 is open on branch `chat-pgpmsgvr-rest-agent-auth`.
+The issue remains in progress. This section records the proposed branch state.
+It is not on `master` until the owner merges PR #149.
+
+Every route of the application chain requires a valid agent token.
+
+### What exists
+
+- Four required properties under `app.security`. None has a default.
+- The agent identity resolves once at startup through `ChatUserService`.
+- `AgentAuthenticationToken` carries the startup-resolved `ChatUserDetails`.
+  `ContextIdentity` did not change.
+- The decoder trusts the public half of a JWK file.
+- The authorization server adds a `client_id` claim to an access token.
+
+### Facts that are expensive to relearn
+
+- **`AuthenticationWebFilter` translates converter failures.** It catches
+  `AuthenticationException` and answers through the bearer entry point.
+  `SecurityWebFiltersOrder` puts `EXCEPTION_TRANSLATION` after
+  `AUTHENTICATION`, so `ExceptionTranslationWebFilter` never sees it.
+- **`JwtEncodingContext` has no `getRegisteredClient` of its own.** Both that
+  accessor and `getTokenType` are default methods on `OAuth2TokenContext`, which
+  it implements.
+- **Only the `rest` feature declares `expose-webflux`.** A core launch emits
+  `deploy,expose-rsocket`, so it never mounts the application chain.
+- **The measured access-token audience equals the client ID.** Audience
+  validation is deferred to `CHAT-okpgpxkj`.

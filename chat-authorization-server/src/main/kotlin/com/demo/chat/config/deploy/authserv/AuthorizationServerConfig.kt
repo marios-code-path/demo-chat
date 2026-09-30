@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.jwt.JwtDecoder
 import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.InMemoryOAuth2AuthorizationService
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService
@@ -41,6 +42,9 @@ class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: 
     fun jwtCustomizer(): OAuth2TokenCustomizer<JwtEncodingContext> {
         return OAuth2TokenCustomizer { context ->
             context.jwsHeader.algorithm(SignatureAlgorithm.ES256)
+            if (OAuth2TokenType.ACCESS_TOKEN == context.tokenType) {
+                context.claims.claim("client_id", context.registeredClient.clientId)
+            }
         }
     }
 
