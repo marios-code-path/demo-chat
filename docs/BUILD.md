@@ -134,6 +134,21 @@ See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 `AuthorizationServerConfig` reads an ES256 key in JWK form from that path. The
 context does not start without it.
 
+## The agent token on a REST launch
+
+A `rest` launch mounts the application chain. That chain requires a valid agent
+token on every route it owns.
+
+Pass the four application values on the command line. The application
+properties have no defaults.
+
+    ./chat-build rest --run --jwk /abs/path/server_keycert.jwk \
+        --agent-client-id <client-id> --agent-username <handle>
+
+`--agent-scope` defaults to `chat.mcp`.
+
+A core launch does not mount that chain, so a core launch needs none of these.
+
 Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather
 than against you.

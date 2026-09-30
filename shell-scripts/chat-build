@@ -511,6 +511,9 @@ class BuildContext:
         self.init_phases = [p.strip() for p in (args.init or "").split(",") if p.strip()]
         self.tls_dir: str | None = args.tls
         self.jwk_path: str | None = getattr(args, "jwk", None)
+        self.agent_client_id: str | None = getattr(args, "agent_client_id", None)
+        self.agent_username: str | None = getattr(args, "agent_username", None)
+        self.agent_scope: str = getattr(args, "agent_scope", "chat.mcp")
         self.image_name = service.image_name_for(self.backend)
 
     # -- resolution ------------------------------------------------------
@@ -635,7 +638,7 @@ class BuildContext:
             f"-Dspring.application.name={self.service.deployment_name}",
             "-Djava.security.egd=file:/dev/./urandom",
         ]
-        if self.jwk_path:
+        if self.jwk_path and self.service.name == "authserv":
             # Emitted as given, after ~ expansion, and never resolved.
             # resolve() rewrites /tmp to /private/tmp on macOS and leaves it
             # alone on Linux, which would make the golden flags differ by
@@ -651,6 +654,19 @@ class BuildContext:
                     continue  # emitted in service_flags, which owns the defaults
                 flags.append(f"-D{key}={value}")
         return flags
+
+    def agent_flags(self) -> list[str]:
+        """The REST agent security properties. See CHAT-pgpmsgvr."""
+        if not self.agent_client_id:
+            return []
+        if not self.jwk_path:
+            raise SystemExit("chat-build: --agent-client-id requires --jwk")
+        return [
+            f"-Dapp.security.agent.client-id={self.agent_client_id}",
+            f"-Dapp.security.agent.username={self.agent_username or self.agent_client_id}",
+            f"-Dapp.security.agent.required-scope={self.agent_scope}",
+            f"-Dapp.security.jwt.jwk-path={self.jwk_path}",
+        ]
 
     def tls_flags(self) -> list[str]:
         """Server TLS for services, client TLS for client-shaped services.
@@ -842,6 +858,7 @@ class BuildContext:
             self.discovery_flags(),
             self.client_flags(),
             self.service_flags(),
+            self.agent_flags(),
             self.opt_flags(),
             self.run_args(),
         ]
@@ -961,6 +978,14 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
                         help="GraalVM native build (not supported)")
     parser.add_argument("--dry-run", action="store_true",
                         help="print the resolved command and options, run nothing")
+    parser.add_argument("--jwk", metavar="PATH",
+                        help="path to the JWK file trusted by the deployment")
+    parser.add_argument("--agent-client-id", default=None,
+                        help="OAuth client id required by the REST agent token")
+    parser.add_argument("--agent-username", default=None,
+                        help="chat user handle used by the REST agent")
+    parser.add_argument("--agent-scope", default="chat.mcp",
+                        help="scope required by every REST application route")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -974,17 +999,6 @@ def build_parser() -> argparse.ArgumentParser:
     for service in SERVICES.values():
         sub = subparsers.add_parser(service.name, help=service.description)
         add_common_args(sub)
-        if service.name == "authserv":
-            # The signing key of the authorization server. There is no default
-            # and the repository commits no key, for the same reason that
-            # --node-id has no default: a committed value would make every
-            # deployment identical in silence. AuthorizationServerConfig reads
-            # it from app.oauth2.jwk.path, and the context does not refresh
-            # without it. See CHAT-cadftbow and docs/BUILD.md.
-            sub.add_argument("--jwk", metavar="PATH",
-                             help="path to the ES256 signing key in JWK form. "
-                                  "Required to run the authorization server. "
-                                  "See docs/BUILD.md for how to make one.")
         group = sub.add_argument_group("features")
         for name in service.available_features:
             feat = FEATURES[name]
@@ -1043,6 +1057,25 @@ def main() -> int:
                 print(f"chat-build: --jwk names no file: {args.jwk}",
                       file=sys.stderr)
                 return 1
+
+    if args.agent_client_id:
+        if args.service != "rest":
+            print("chat-build: agent authentication flags require the rest service",
+                  file=sys.stderr)
+            return 1
+        if not args.jwk:
+            print("chat-build: --agent-client-id requires --jwk PATH",
+                  file=sys.stderr)
+            return 1
+        jwk = Path(args.jwk).expanduser()
+        if not jwk.is_absolute():
+            print(f"chat-build: --jwk must be an absolute path: {args.jwk}",
+                  file=sys.stderr)
+            return 1
+        if not jwk.is_file():
+            print(f"chat-build: --jwk names no file: {args.jwk}",
+                  file=sys.stderr)
+            return 1
 
     ctx = BuildContext(SERVICES[args.service], args)
 

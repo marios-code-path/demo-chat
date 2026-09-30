@@ -68,6 +68,7 @@ CASES=(
   "core-build-image|core --memory --build --notls --long --node-id 0"
   # other services
   "rest-client|rest --run --notls --long --node-id 0"
+  "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 --agent-username agent-svc"
   "gateway-client|gateway --run --notls --long --node-id 0"
   "authserv-client|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK"
   "shell-client|shell --run --notls --long --node-id 0"                                            # [parity]
