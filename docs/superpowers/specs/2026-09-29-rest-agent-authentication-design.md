@@ -20,14 +20,17 @@ issue passes.
    `ContextIdentity` does not change. Its rule 5 answers the agent user key.
 5. **No key travels in the token.** `KeyVerifier` keeps validating every route
    key.
-6. **Every application route requires a valid token.** The RSocket seam does not
-   change in this issue.
+6. **Every route handled by the application chain requires a valid token.**
+   The actuator chain remains separate. The RSocket seam does not change in
+   this issue.
 7. **The deployment trusts the public key alone.** The core process parses
    `server_keycert.jwk`, discards the private material, and builds the decoder
    from the public key. A public-only JWK file is the preferred input.
-8. **Every enforced request carries the scope `chat.mcp`.** The scope maps to
-   the authority `SCOPE_chat.mcp`.
-9. **"Without permission" means "without `SCOPE_chat.mcp`" in this issue.**
+8. **Every enforced request carries the scope that
+   `app.security.agent.required-scope` names.** The selected deployment value is
+   `chat.mcp`, which maps to the authority `SCOPE_chat.mcp`. The scope name is a
+   deployment value and not a fixed contract.
+9. **"Without permission" means "without the configured scope" in this issue.**
    Object-level denial stays with the grant and authorization work. See the
    boundary section.
 
@@ -78,7 +81,7 @@ Four properties, under a new `app.security` prefix. The shape follows
 |---|---|---|
 | `app.security.agent.client-id` | The client id that the agent token must carry. | none, required |
 | `app.security.agent.username` | The chat user handle that names the agent identity. | none, required |
-| `app.security.agent.required-scope` | The scope that every enforced request must carry. | none, required |
+| `app.security.agent.required-scope` | The scope that every enforced request must carry. The selected value is `chat.mcp`. | none, required |
 | `app.security.jwt.jwk-path` | The JWK file that holds the trusted public key. | none, required |
 
 **No property has a default, and an absent value fails the start.** This follows
@@ -112,14 +115,16 @@ audience validator. See the boundary section.
 ### The chain
 
 The actuator chain keeps basic authentication and keeps its order. **The
-`chat.mcp` requirement does not reach an actuator route.** The actuator chain
-matches first, so an actuator request never meets the application chain.
+configured-scope requirement does not reach an actuator route.** The actuator
+chain matches first, so an actuator request never meets the application chain.
 
 The application chain gains three things.
 
 1. `oauth2ResourceServer { jwt { ... } }` with the decoder above.
-2. One authority requirement: `anyExchange().hasAuthority("SCOPE_chat.mcp")`.
-   The old `permitAll` goes away.
+2. One authority requirement. The chain builds the authority from
+   `app.security.agent.required-scope` and requires it on every exchange. With
+   the selected value the authority is `SCOPE_chat.mcp`. The old `permitAll`
+   goes away.
 3. A `Converter<Jwt, Mono<AbstractAuthenticationToken>>` that checks the
    `client_id` claim against the configured client id.
 
@@ -148,7 +153,7 @@ authentication and asserts the agent key.
 | No `Authorization` header | 401 plus `WWW-Authenticate` | No |
 | Malformed, expired, or bad signature | 401 | No |
 | Valid token, wrong `client_id` | 401 | No |
-| Valid token, no `chat.mcp` scope | 403 | No |
+| Valid token, without the configured scope | 403 | No |
 | Valid agent token | The route runs | Yes |
 
 **A wrong `client_id` raises a controlled authentication failure.** A
@@ -173,16 +178,22 @@ This claim is required, because a Spring Authorization Server JWT carries no
 ### The scope authority
 
 `JwtGrantedAuthoritiesConverter` maps a `scope` claim to the authority
-`SCOPE_<name>` by default. So `chat.mcp` becomes `SCOPE_chat.mcp` with no
-custom converter. One test asserts the mapping.
+`SCOPE_<name>` by default. So the configured scope becomes the required
+authority with no custom converter. One test asserts the mapping for the
+configured value.
+
+`chat.mcp` is the value this deployment selects. It is not a fixed contract of
+the code. An operator that changes `app.security.agent.required-scope` changes
+the required authority, and the authorization server must grant the matching
+scope.
 
 The scope is one coarse route gate. It does not name a domain operation. Object
 authorization stays with the resolved agent identity and the existing grants.
 
 ## What this issue does not do
 
-- **It does not authorize an object.** "Without permission" means "without
-  `SCOPE_chat.mcp`". Object-level denial stays owned by the grant work in
+- **It does not authorize an object.** "Without permission" means "without the
+  configured scope". Object-level denial stays owned by the grant work in
   `CHAT-zhjltbky` and the wiring work in `CHAT-znprrzhn`.
 - **It does not distinguish an expired token from an invalid one.** Both answer
   401. `CHAT-jkordfef` owns that decision.
@@ -203,12 +214,14 @@ This issue measures the `aud` claim before it decides. One test in
 `chat-authorization-server` encodes a `client_credentials` access token and
 asserts the claim.
 
-- If `aud` equals the client id, the audience check duplicates the `client_id`
-  check. File audience validation as its own issue.
+- If `aud` equals the client id, the two checks hold the same value with
+  different meanings. The `client_id` check binds the agent client. The
+  audience binds a token to one resource. **The current token shape makes the
+  values equal. A future resource token can separate them.** File audience
+  validation as its own issue, and keep that sentence in the issue.
 - If `aud` is absent or different, add a validator to the decoder now.
 
-The `client_id` check stays either way. It binds the agent client. The audience
-binds a token to one resource.
+The `client_id` check stays either way.
 
 ## Readers that change
 
@@ -238,7 +251,8 @@ gate and the MCP acceptance procedure each carry a token after this change.
    claim raises the controlled failure.
 2. **Identity.** `ContextIdentity.identityOf(authentication)` answers the agent
    user key. The principal is a `ChatUserDetails`.
-3. **Authority.** The agent token carries `SCOPE_chat.mcp`.
+3. **Authority.** The agent token carries the authority built from the
+   configured scope. The selected value answers `SCOPE_chat.mcp`.
 4. **The denial matrix.** Five cases at the production chain over a real
    intercepted route. Each denied case asserts zero service calls.
 5. **A composed context.** A test in `chat-deploy` boots the real chain with one
