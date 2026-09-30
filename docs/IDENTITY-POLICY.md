@@ -44,17 +44,14 @@ A seam must establish the identity. The read never invents one.
 | Transport | What establishes the identity |
 |---|---|
 | RSocket | `RSocketSecurity.simpleAuthentication` for a credential, and `RSocketSecurity.anonymous` for a caller without one |
-| WebFlux | `ServerHttpSecurity.anonymous`, called by `WebFluxSecurity.filterChain` |
+| WebFlux | A validated agent JWT with the configured client ID and scope |
 
-**Reactive Spring Security does not enable anonymous authentication by
-default.** `ServerHttpSecurity.build` reads `if (this.anonymous != null)`, and
-that field stays null until `anonymous` is called. The servlet side defaults it
-on. This side does not.
+**The WebFlux application chain does not enable anonymous authentication.**
+Since `CHAT-pgpmsgvr` the chain requires a valid agent token on every route it
+owns, so a credential-less request answers 401 before any identity read. The
+`Anon` root key is an RSocket decision alone.
 
-An earlier version of this document said the opposite, and
-`WebFluxSecurity.filterChain` did not call `anonymous`. Every HTTP request
-without a credential was denied for that period.
-`WebFluxAnonymousIdentityTests` pins the repair.
+`AgentDenialMatrixTests` in `chat-deploy` pins the 401 over a real socket.
 
 **`app.service.composite.auth` turns the access checks on.** `chat-build`
 passes it on every core launch.
@@ -71,8 +68,8 @@ Before this date the rule lived in four places and two of them disagreed.
 - **`isAuthenticated=false` answered the key of the user.** It denies now.
 - **A `User` principal raised `ClassCastException`.** It answers its own key
   now.
-- **`WebFluxSecurity.filterChain` calls `anonymous`.** It did not on
-  2026-09-23, and an HTTP request with no credential reached no identity.
+- **`WebFluxSecurity.filterChain` requires an agent token.** An HTTP request
+  without a credential answers 401 before it reaches an identity read.
 - **`DefaultingAnonymousPayloadInterceptor` is removed**, with
   `ChatAnonymousAuthenticationToken`. The interceptor installed a token that
   the read could not use, and a measurement on 2026-09-23 showed the token
@@ -110,9 +107,9 @@ unknown principal would gain access in silence.
 
 ## What this policy does not do
 
-- **It does not validate a token.** No deployed seam validates one today.
-  `WebFluxSecurity` permits every exchange. `RSocketServerConfiguration`
-  permits every payload and carries `TODO: lock down!`.
+- **It validates REST tokens only.** `WebFluxSecurity` validates the local
+  signature, client ID, and required scope. `RSocketServerConfiguration`
+  remains outside this issue and still permits its current payloads.
 - **It does not separate an expired session from a rejected one.** Both deny.
   A distinct identity for an expired session needs a seam that can tell them
   apart, and no seam can today.
