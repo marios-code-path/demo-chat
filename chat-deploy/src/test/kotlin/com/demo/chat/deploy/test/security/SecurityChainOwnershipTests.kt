@@ -3,6 +3,8 @@ package com.demo.chat.deploy.test.security
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.web.reactive.server.WebTestClient
 
 /**
@@ -71,23 +73,33 @@ class SecurityChainOwnershipTests {
     }
 
     @Test
-    fun `an application route answers a request with no credentials`() {
-        // This is the regression. The actuator chain answered anyExchange, so
-        // it demanded the ACTUATOR role on every application route.
+    fun `an application route refuses a request with no credentials`() {
         client.get().uri("/test/open")
+            .exchange()
+            .expectStatus().isUnauthorized
+            .expectHeader().exists("WWW-Authenticate")
+    }
+
+    @Test
+    fun `an application route refuses the actuator user`() {
+        client.get().uri("/test/open")
+            .headers { it.setBasicAuth("actuator", "actuator") }
+            .exchange()
+            .expectStatus().isUnauthorized
+    }
+
+    @Test
+    fun `an application route answers the agent token`() {
+        client.get().uri("/test/open")
+            .headers { it.setBearerAuth(DeployTestSigningKey.agentToken()) }
             .exchange()
             .expectStatus().isOk
             .expectBody(String::class.java).isEqualTo("open")
     }
 
-    @Test
-    fun `an application route refuses no one`() {
-        // The application chain permits every route it owns. This project adds
-        // no application authentication here. CHAT-jdsamcia says that a
-        // separate issue owns that decision.
-        client.get().uri("/test/open")
-            .headers { it.setBasicAuth("actuator", "actuator") }
-            .exchange()
-            .expectStatus().isOk
+    companion object {
+        @JvmStatic
+        @DynamicPropertySource
+        fun properties(registry: DynamicPropertyRegistry) = DeployTestSigningKey.register(registry)
     }
 }
