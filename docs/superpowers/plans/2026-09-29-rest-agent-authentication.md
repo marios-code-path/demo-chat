@@ -4,6 +4,9 @@
 >
 > **Do not use subagent-driven development.** `AGENTS.md` forbids it for this repository.
 
+Execution status: Tasks 0 to 11 are complete. The checkboxes remain as
+authored. Issue comments and commits are the execution evidence.
+
 **Goal:** Make every route of the application chain require a valid agent bearer token, and prove that a denied caller reaches no service.
 
 **Architecture:** `chat-webflux` gains a resource-server chain. The chain reads four required properties, decodes a JWT with a public key from a JWK file, converts the JWT into a custom `AbstractAuthenticationToken` whose principal is the startup-resolved `ChatUserDetails`, and requires one scope authority on every exchange. `ContextIdentity` does not change. The agent resolves once at startup through `ChatUserService`.
