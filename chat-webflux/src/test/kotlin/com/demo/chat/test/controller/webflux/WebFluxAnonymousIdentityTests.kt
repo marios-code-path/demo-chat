@@ -3,6 +3,10 @@ package com.demo.chat.test.controller.webflux
 import com.demo.chat.test.key.TestKeys
 
 import com.demo.chat.config.WebFluxSecurity
+import com.demo.chat.config.agent.AgentAuthenticationConverter
+import com.demo.chat.config.agent.AgentIdentity
+import com.demo.chat.config.agent.AgentResourceServerChain
+import com.demo.chat.config.agent.AgentSecurityProperties
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.Anon
@@ -13,6 +17,8 @@ import org.junit.jupiter.api.Test
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.security.config.web.server.ServerHttpSecurity
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder
 import org.springframework.security.web.server.WebFilterChainProxy
 import org.springframework.web.server.WebFilterChain
 import reactor.core.publisher.Mono
@@ -44,9 +50,18 @@ class WebFluxAnonymousIdentityTests {
     }
 
     private fun identityOfOneRequest(): Key<Long>? {
-        val chain = requireNotNull(WebFluxSecurity().filterChain(ServerHttpSecurity.http())) {
-            "WebFluxSecurity.filterChain answered no chain"
+        val properties = AgentSecurityProperties().apply {
+            agent = AgentSecurityProperties.Agent().apply {
+                clientId = "client-under-test"
+                username = "agent-svc"
+                requiredScope = "chat.mcp"
+            }
+            jwt = AgentSecurityProperties.Jwt().apply { jwkPath = "/tmp/test.jwk" }
         }
+        val decoder = ReactiveJwtDecoder { Mono.error(IllegalStateException("not reached")) }
+        val converter = AgentAuthenticationConverter(AgentIdentity(), "client-under-test")
+        val chain = WebFluxSecurity(AgentResourceServerChain(properties, decoder, converter))
+            .filterChain(ServerHttpSecurity.http())
         val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/any/route"))
         val reached = AtomicReference<Key<Long>?>()
 
