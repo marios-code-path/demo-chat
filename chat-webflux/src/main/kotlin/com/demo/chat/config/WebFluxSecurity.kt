@@ -1,9 +1,11 @@
 package com.demo.chat.config
 
 import com.demo.chat.config.agent.AgentResourceServerChain
+import com.demo.chat.config.agent.AgentSecurityConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Import
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity
@@ -13,6 +15,7 @@ import org.springframework.web.reactive.config.EnableWebFlux
 
 /** The application route chain, after the actuator chain. */
 @Configuration
+@Import(AgentSecurityConfiguration::class)
 @ComponentScan("com.demo.chat.controller.webflux")
 @EnableWebFlux
 @EnableWebFluxSecurity

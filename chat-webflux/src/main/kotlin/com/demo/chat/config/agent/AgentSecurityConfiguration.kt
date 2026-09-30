@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.oauth2.jwt.Jwt
@@ -31,11 +32,19 @@ class AgentSecurityConfiguration {
         AgentAuthenticationConverter(identity, properties.agent.clientId)
 
     @Bean
+    fun agentResourceServerChain(
+        properties: AgentSecurityProperties,
+        decoder: ReactiveJwtDecoder,
+        converter: Converter<Jwt, Mono<AbstractAuthenticationToken>>,
+    ): AgentResourceServerChain = AgentResourceServerChain(properties, decoder, converter)
+
+    @Bean
     fun agentIdentity(): AgentIdentity = AgentIdentity()
 
     @Bean
     @ConditionalOnBean(ChatUserService::class)
     fun <T> agentIdentityLifecycle(
+        @Qualifier("userService")
         users: ChatUserService<T>,
         identity: AgentIdentity,
         properties: AgentSecurityProperties,
