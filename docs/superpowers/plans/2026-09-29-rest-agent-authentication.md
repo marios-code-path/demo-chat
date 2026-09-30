@@ -20,7 +20,10 @@
 - Two enforcer rules run in `validate` in all modules: `requireUpperBoundDeps` and `dependencyConvergence`. A failure is a real tree change. Fix it with a parent entry, never a module pin.
 - `chat-core` does **not** enable the Kotlin all-open compiler plugin. An `open` keyword is required there. `chat-webflux`, `chat-deploy` and `chat-service-composite` do enable it.
 - Run `mvn -o -pl chat-core,<module> test`, never `-pl <module>` alone. A single-module run resolves `chat-core` from `~/.m2`.
-- One Maven build per worktree. A concurrent `clean` in another worktree deletes this build's `target` and fakes a classpath failure.
+- One Maven build per worktree. A concurrent `clean` in another worktree deletes this build's `target` and fakes a classpath failure. **Task 0 gates this.**
+- **Never pipe a Maven command into `tail` or `head`.** A pipe reports the exit code of the pipe, and not the build. Write the output to a file under `logs/`. Read the exit code first. Then read the summary lines from the file.
+- `logs/` is ignored by `.gitignore` line 12 (`*.log`). A build log never enters a commit.
+- Run no Maven command before Task 0 reports that the baseline build finished.
 - Every property in `app.security` has **no default**. An absent value fails the context refresh.
 - Write all new prose in strict ASD-STE100 style. Use short sentences. Use active voice. Do not use semicolons.
 - Every commit message ends with the two attribution lines in this plan's commit steps.
@@ -35,6 +38,140 @@ The spec is a vision document. Each line below names an input or condition the s
 3. **A `client_id` claim that is present but is not a string** (a JSON number or an array). A reasonable person expects the same controlled refusal as a wrong client id, and not a `ClassCastException`. Task 4 pins it.
 4. **A `scope` claim delivered as a JSON array rather than a space-delimited string.** A reasonable person expects the same authority either way. Task 4 pins it.
 5. **An agent username that the user store answers more than once.** A `Flux` can carry two rows. A reasonable person expects a startup failure, and not a silent first-row pick. Task 2 pins it.
+
+---
+
+### Task 0: Preflight — confirm the baseline, and claim the worktree
+
+**Files:** none. **This task produces no commit.** It is a gate, and every later
+task depends on it.
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: a reported baseline result, and a clear worktree. No artifact.
+
+- [ ] **Step 1: Wait for the baseline build to finish**
+
+The baseline build runs in the background and writes
+`logs/baseline-default.log`. Wait for its `EXIT=` marker before any Maven work.
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+for i in $(seq 1 120); do
+  grep -qE "^EXIT=" logs/baseline-default.log && break
+  sleep 10
+done
+grep -E "BUILD (SUCCESS|FAILURE)|^EXIT=" logs/baseline-default.log | tail -3
+```
+
+Expected: `BUILD SUCCESS` and `EXIT=0`. **Report the module count, the test
+count and the skipped count to the owner before Step 4.**
+
+**If the log shows `BUILD FAILURE` or a non-zero `EXIT=`**, stop and report it.
+Do not start Task 1. A red baseline makes every later failure ambiguous.
+
+**If the loop expires with no `EXIT=` marker**, the build is still running. Wait
+longer. Do not start Maven work in the same worktree.
+
+- [ ] **Step 2: Confirm the baseline numbers**
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+grep -E "^\[INFO\] Reactor Summary|SUCCESS \[|FAILURE \[" logs/baseline-default.log | tail -42
+grep -E "Tests run:.*Failures.*Errors.*Skipped" logs/baseline-default.log | tail -3
+```
+
+Expected: 36 modules, and a `Tests run:` line that reports 0 failures and 0
+errors. Record the four numbers. Task 11 compares against them.
+
+- [ ] **Step 3: Confirm that no other build holds this worktree**
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+pgrep -fl "classworlds.launcher.Launcher" > logs/t0-maven.log 2>&1
+grep -F "/.worktrees/pgpmsgvr" logs/t0-maven.log && echo "STOP: a build already runs in this worktree" || echo "clear: no build runs in this worktree"
+```
+
+Expected: `clear: no build runs in this worktree`.
+
+**A process in another worktree may still run.** It does not touch this
+`target`, so it is not a blocker. It does share `~/.m2`. If it holds an install
+lock, this build waits rather than fails. Read the log before you call a stall a
+defect.
+
+- [ ] **Step 4: Confirm that the log directory cannot enter a commit**
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+git check-ignore -v logs/baseline-default.log
+git status --short
+```
+
+Expected: a `.gitignore` rule names `*.log`, and `git status` lists no file
+under `logs/`.
+
+- [ ] **Step 5: Narrow the issue to REST, in the issue record**
+
+The spec lists this act under "Issue updates before implementation", so it runs
+before any code. **A comment does not narrow an issue. Update the title and the
+description.**
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+fp issue update CHAT-pgpmsgvr \
+  --title 'Enforce REST agent authentication on every application chain route' \
+  --description 'The MCP adapter reaches real Demo Chat routes, and no deployment enforced a credential. This issue adds the enforcement.
+
+Every route of the application chain requires a valid agent bearer token. The
+chain owns the REST topic reads, the message reads, recall, send, and every
+other route it handles. The actuator chain stays separate.
+
+**RSocket is out of scope.** The owner narrowed this issue to REST on
+2026-09-29. The adapter opens no RSocket connection. CHAT-jkordfef and
+CHAT-ileqgajf own the RSocket gap. RSocketServerConfiguration.
+rsocketSecurityAuthentication still permits every payload.
+
+**"Without permission" means "without the configured scope" in this issue.**
+The scope comes from app.security.agent.required-scope. Object-level denial
+stays with the grant and authorization work in CHAT-zhjltbky and CHAT-znprrzhn.
+
+Required proof, and the answer for each:
+- A valid credential resolves to one Demo Chat identity. The agent resolves once
+  at startup through the user store.
+- Missing, expired and invalid credentials fail before the service runs. The
+  answer is 401.
+- A caller without the configured scope receives a safe error. The answer is 403.
+- A denied read exposes no object name, count, key or content. Measured.
+- A denied send causes no persistence, index or pub/sub effect. Measured against
+  a mock service.
+- Tests use the real intercepted route or a separately proxied service. No
+  internal service call counts as route proof.
+
+Recorded consequence: the boundary denies every interactive chat-web user of
+this API deployment, because a user token does not match the configured agent
+client. Narrowing the route set is a later design decision.
+
+This issue is separate from MCP protocol work. CHAT-ylvoiixm remains unable to
+claim end-to-end MCP authorization until this issue passes. Preserve the adapter
+evidence boundary until then.'
+```
+
+Verify that the update landed in the issue record:
+
+```bash
+cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
+fp issue show CHAT-pgpmsgvr > logs/t0-issue.log 2>&1
+head -20 logs/t0-issue.log
+```
+
+Expected: the title names the REST application chain, and the body carries the
+two out-of-scope statements. **The old title and the old scope would stay in
+place behind a comment alone.**
+
+- [ ] **Step 6: Report, and start Task 1**
+
+Report to the owner: the baseline result, the four numbers, the worktree state,
+and the issue update. **No code starts before this report.** Then run Task 1.
 
 ---
 
@@ -114,6 +251,26 @@ class AgentSecurityPropertiesTests {
         }
     }
 
+    @Test
+    fun `an absent agent username fails the context and names the property`() {
+        val withoutUsername = complete.filterNot { it.startsWith("app.security.agent.username") }
+        runner.withPropertyValues(*withoutUsername.toTypedArray()).run { context ->
+            assertThat(context.startupFailure).isNotNull
+            assertThat(rootMessages(context.startupFailure!!))
+                .anyMatch { it.contains("app.security.agent.username") }
+        }
+    }
+
+    @Test
+    fun `an absent required scope fails the context and names the property`() {
+        val withoutScope = complete.filterNot { it.startsWith("app.security.agent.required-scope") }
+        runner.withPropertyValues(*withoutScope.toTypedArray()).run { context ->
+            assertThat(context.startupFailure).isNotNull
+            assertThat(rootMessages(context.startupFailure!!))
+                .anyMatch { it.contains("app.security.agent.required-scope") }
+        }
+    }
+
     /** Every message in the cause chain. A bind failure nests the useful text. */
     private fun rootMessages(failure: Throwable): List<String> {
         val messages = mutableListOf<String>()
@@ -131,7 +288,10 @@ class AgentSecurityPropertiesTests {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentSecurityPropertiesTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentSecurityPropertiesTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t1-properties-first.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t1-properties-first.log | tail -10
 ```
 
 Expected: FAIL to compile. `AgentSecurityProperties` does not exist.
@@ -210,22 +370,34 @@ Declare no version. The Boot BOM manages it.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentSecurityPropertiesTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentSecurityPropertiesTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t1-properties.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t1-properties.log | tail -10
 ```
 
-Expected: PASS, 3 tests.
+Expected: PASS, 5 tests. One test binds the four values, and four tests refuse an
+absent value. **Each of the four properties owns its own absence test**, so a
+default added to any one of them fails here.
 
-If the absent-value case reports no failure, the Kotlin constructor binding has supplied an empty string. Convert `Agent`, `Jwt` and the outer class to plain classes with `var` fields and a `@PostConstruct` that throws a `ChatException` naming each absent key. Do not weaken the assertion.
+If an absent-value case reports no failure, the Kotlin constructor binding has supplied an empty string. Convert `Agent`, `Jwt` and the outer class to plain classes with `var` fields and a `@PostConstruct` that throws a `ChatException` naming each absent key. Do not weaken the assertion.
 
 - [ ] **Step 7: Prove the pom is clean**
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -B validate 2>&1 | tail -20
-shell-scripts/check-dependency-versions.sh
+mvn -o -B validate > logs/t1-validate.log 2>&1
+rc=$?
+echo "mvn exit=$rc"
+grep -E "BUILD (SUCCESS|FAILURE)|ERROR" logs/t1-validate.log | tail -10
+shell-scripts/check-dependency-versions.sh > logs/t1-deps.log 2>&1
+rc=$?
+echo "deps exit=$rc"
+cat logs/t1-deps.log
 ```
 
-Expected: both exit 0.
+Expected: `mvn exit=0`, and `deps exit=0` with no violation line. The guard prints
+nothing when every module pom is clean.
 
 - [ ] **Step 8: Commit**
 
@@ -355,7 +527,10 @@ class AgentIdentityLifecycleTests {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentIdentityLifecycleTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentIdentityLifecycleTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t2-identity-first.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t2-identity-first.log | tail -10
 ```
 
 Expected: FAIL to compile. `AgentIdentity` does not exist.
@@ -508,7 +683,10 @@ Add the imports for `Bean`, `ConditionalOnBean` and `ChatUserService`. Change th
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentIdentityLifecycleTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentIdentityLifecycleTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t2-identity.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t2-identity.log | tail -10
 ```
 
 Expected: PASS, 5 tests.
@@ -709,7 +887,10 @@ class AgentJwtDecoderFactoryTests {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentJwtDecoderFactoryTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentJwtDecoderFactoryTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t3-decoder-first.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t3-decoder-first.log | tail -10
 ```
 
 Expected: FAIL to compile. `AgentJwtDecoderFactory` does not exist.
@@ -829,7 +1010,10 @@ Add the import `org.springframework.security.oauth2.jwt.ReactiveJwtDecoder`.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentJwtDecoderFactoryTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentJwtDecoderFactoryTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t3-decoder.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t3-decoder.log | tail -10
 ```
 
 Expected: PASS, 8 tests.
@@ -977,7 +1161,10 @@ class AgentAuthenticationConverterTests {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentAuthenticationConverterTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentAuthenticationConverterTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t4-converter-first.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t4-converter-first.log | tail -10
 ```
 
 Expected: FAIL to compile. The two classes do not exist.
@@ -1171,7 +1358,10 @@ classes in this package already import them, so the dependency is present.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest='AgentAuthenticationConverterTests,AgentIdentityResolutionTests' -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest='AgentAuthenticationConverterTests,AgentIdentityResolutionTests' -Dsurefire.failIfNoSpecifiedTests=false test > logs/t4-converter.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t4-converter.log | tail -10
 ```
 
 Expected: PASS, 8 tests.
@@ -1253,7 +1443,10 @@ class AgentResourceServerChainTests {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentResourceServerChainTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -20
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentResourceServerChainTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t5-chain-first.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t5-chain-first.log | tail -10
 ```
 
 Expected: FAIL to compile.
@@ -1387,7 +1580,10 @@ class WebFluxSecurity(private val chain: AgentResourceServerChain) {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=AgentResourceServerChainTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -20
+mvn -o -pl chat-core,chat-webflux -Dtest=AgentResourceServerChainTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t5-chain.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t5-chain.log | tail -10
 ```
 
 Expected: PASS, 2 tests.
@@ -1825,7 +2021,10 @@ internal object SigningKeys {
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-deploy -Dtest='AgentDenialMatrixTests,SecurityChainOwnershipTests,SecurityChainOrderTests,ActuatorBasePathOwnershipTests' -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -40
+mvn -o -pl chat-core,chat-deploy -Dtest='AgentDenialMatrixTests,SecurityChainOwnershipTests,SecurityChainOrderTests,ActuatorBasePathOwnershipTests' -Dsurefire.failIfNoSpecifiedTests=false test > logs/t6-matrix.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t6-matrix.log | tail -10
 ```
 
 Expected: PASS. If a class name above does not exist, list the package and
@@ -2085,7 +2284,10 @@ the whole module, so a test in another package of the same module reaches them.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-deploy -Dtest=DeniedCallerEffectsTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -40
+mvn -o -pl chat-core,chat-deploy -Dtest=DeniedCallerEffectsTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t7-effects.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t7-effects.log | tail -10
 ```
 
 Expected: PASS, 4 tests.
@@ -2269,7 +2471,10 @@ Every name above is real, read from source on 2026-09-29.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-authorization-server -Dtest=AccessTokenClaimsTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -40
+mvn -o -pl chat-core,chat-authorization-server -Dtest=AccessTokenClaimsTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t8-claims.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t8-claims.log | tail -10
 ```
 
 Expected: FAIL. `client_id` is absent. The token request may also fail with
@@ -2324,11 +2529,15 @@ existing file first and keep its algorithm call exactly as it is.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-authorization-server -Dtest=AccessTokenClaimsTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tee /tmp/aud-measurement.log | tail -40
-grep "MEASURED" /tmp/aud-measurement.log
+mvn -o -pl chat-core,chat-authorization-server -Dtest=AccessTokenClaimsTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t8-aud.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR|MEASURED" logs/t8-aud.log | tail -10
 ```
 
-Expected: PASS, 3 tests, and three `MEASURED` lines.
+Expected: `exit=0`, PASS, 3 tests, and three `MEASURED` lines. The `MEASURED`
+lines carry the `aud` value and the `client_id` value. Write both down. **Do not
+read them from a terminal pipe that a later run overwrites.** The log holds them.
 
 **Record the three values.** Task 11 needs them.
 
@@ -2584,7 +2793,10 @@ two assertions.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -pl chat-core,chat-webflux -Dtest=WebFluxAnonymousIdentityTests -Dsurefire.failIfNoSpecifiedTests=false test 2>&1 | tail -30
+mvn -o -pl chat-core,chat-webflux -Dtest=WebFluxAnonymousIdentityTests -Dsurefire.failIfNoSpecifiedTests=false test > logs/t10-anonymous.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "Tests run:|BUILD (SUCCESS|FAILURE)|ERROR" logs/t10-anonymous.log | tail -10
 ```
 
 Expected: PASS, 2 tests.
@@ -2706,12 +2918,18 @@ Run:
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-shell-scripts/test-flags.sh rest-client-agent --update
-shell-scripts/test-flags.sh
+shell-scripts/test-flags.sh rest-client-agent --update > logs/t9-flags-update.log 2>&1
+echo "update exit=$?"
+cat logs/t9-flags-update.log
+shell-scripts/test-flags.sh > logs/t9-flags.log 2>&1
+rc=$?
+echo "flags exit=$rc"
+cat logs/t9-flags.log
 ```
 
-Expected: the first writes the new golden. The second reports one or more
-failures, because `rest-client` changed or because the new case is unverified.
+Expected: `update exit=0` writes the new golden. `flags exit=1`, because
+`rest-client` changed or because the new case is unverified. Read every diff
+line from `logs/t9-flags.log`.
 Read every diff line. A diff means either a deliberate contract change, in which
 case commit the golden, or a bug.
 
@@ -2918,8 +3136,10 @@ already resolves its other inputs. Read it first and follow its shape.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-shell-scripts/vector/gate-embedding-launch.sh > /tmp/gate.log 2>&1; echo "exit=$?"
-tail -30 /tmp/gate.log
+shell-scripts/vector/gate-embedding-launch.sh > logs/t10-gate.log 2>&1
+rc=$?
+echo "exit=$rc"
+grep -E "hits|indexComplete|401|BUILD (SUCCESS|FAILURE)" logs/t10-gate.log | tail -10
 ```
 
 Expected: `exit=0` and the three hits. A 401 in the log means one `curl` still
@@ -3007,9 +3227,9 @@ and no server is listening.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-mvn -o -B clean test > /tmp/default.log 2>&1; echo "exit=$?"
-grep -E "Tests run:.*Failures|BUILD SUCCESS|BUILD FAILURE" /tmp/default.log | tail -5
-grep -E "^\[INFO\] Reactor Summary|SUCCESS \[|FAILURE \[" /tmp/default.log | tail -45
+mvn -o -B clean test > logs/final-default.log 2>&1; echo "exit=$?"
+grep -E "Tests run:.*Failures|BUILD SUCCESS|BUILD FAILURE" logs/final-default.log | tail -5
+grep -E "^\[INFO\] Reactor Summary|SUCCESS \[|FAILURE \[" logs/final-default.log | tail -45
 ```
 
 Expected: `exit=0`. Record the module count, the test count, the skipped count
@@ -3019,8 +3239,8 @@ and the failure count.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-shell-scripts/build-health.sh --ci > /tmp/ci.log 2>&1; echo "exit=$?"
-tail -40 /tmp/ci.log
+shell-scripts/build-health.sh --ci > logs/final-ci.log 2>&1; echo "exit=$?"
+grep -E "Tests run:|Skipped|drift|matches|BUILD (SUCCESS|FAILURE)" logs/final-ci.log | tail -20
 ```
 
 Expected: `exit=0`, and the report says reality matches `docs/BUILD-HEALTH.md`.
@@ -3035,14 +3255,16 @@ this change.
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-just check-production-classpath > /tmp/cpc.log 2>&1; echo "cpc=$?"
-shell-scripts/test-flags.sh > /tmp/flags.log 2>&1; echo "flags=$?"
-shell-scripts/test-flags.sh | tail -3
-drift check > /tmp/drift.log 2>&1; echo "drift=$?"
-git diff --check; echo "whitespace=$?"
+just check-production-classpath > logs/t11-cpc.log 2>&1; echo "cpc=$?"
+shell-scripts/test-flags.sh > logs/t11-flags.log 2>&1; echo "flags=$?"
+tail -4 logs/t11-flags.log
+drift check > logs/t11-drift.log 2>&1; echo "drift=$?"
+git diff --check > logs/t11-ws.log 2>&1; echo "whitespace=$?"
 ```
 
-Expected: every command exits 0.
+Expected: every command exits 0. `flags` prints `flags: all <n> case(s) match`.
+`drift` prints `ok`. `whitespace=0` prints nothing, because `git diff --check`
+reports only a whitespace error.
 
 - [ ] **Step 5: Update `docs/BUILD-HEALTH.md`**
 
@@ -3183,14 +3405,25 @@ EOF
 
 Push every commit before the owner merges. Do not leave a local follow-up.
 
-- [ ] **Step 11: Mark the issue done**
+- [ ] **Step 11: Leave the issue in progress, and stop here**
 
 ```bash
 cd /Users/darkbit1001/workspace/demo-chat/.worktrees/pgpmsgvr
-fp issue update --status done CHAT-pgpmsgvr
+fp issue update --status in-progress CHAT-pgpmsgvr
+fp comment CHAT-pgpmsgvr "Pushed for review. The issue stays in progress until the owner merges."
 ```
 
-Wait for the owner's merge before you remove the worktree.
+**Do not mark the issue done in this step.** `CHAT-pgpmsgvr` stays `in-progress`
+until the branch merges. A `done` status reports work as landed while the tree
+can still change under review.
+
+Run the post-merge protocol after the owner merges:
+
+1. Sync `master`, and read the merge commit.
+2. Verify that the merged tree holds this branch's content.
+3. Remove this worktree, and the local branch with it.
+4. `fp issue update --status done CHAT-pgpmsgvr`.
+5. Comment the merge commit on the issue.
 
 ---
 
@@ -3218,6 +3451,25 @@ Wait for the owner's merge before you remove the worktree.
 they write code, and each names the question and the file. No step says "handle
 edge cases", "add validation" or "similar to Task N". Every code step carries
 the code.
+
+**Owner amendments of 2026-09-29, all five applied.**
+
+| Amendment | Where |
+|---|---|
+| No Maven command pipes into `tail`. Capture the exit code, then read the log. | Every build and gate step in Tasks 0 to 11, plus a Global Constraint. 21 steps capture `rc=$?`. |
+| An absence test for `agent.username` and for `agent.required-scope`. | Task 1. The class runs 5 tests, one bind and four refusals. |
+| An issue-description update that narrows the issue to REST. | **Task 0 Step 5**, with `--title` and `--description`. The spec lists it as a pre-implementation act, so it runs before any code. A comment is not enough. |
+| `CHAT-pgpmsgvr` stays `in-progress` until the branch merges. | Task 11 Step 11. The `done` status moves into the post-merge protocol. |
+| A gate that waits for the baseline build before Maven work. | Task 0, six steps, and no commit. It is the first gate. |
+
+**Task 0 is a gate and not a deliverable.** It produces no commit and no file.
+It reports the baseline, claims the worktree, and narrows the issue. Every other
+task depends on it.
+
+**Build-log discipline.** Every build writes to a file under `logs/`, which
+`.gitignore` line 12 ignores through `*.log`. The step reads `rc=$?` first and
+the summary lines second. **A pipe would report the exit code of the pipe.** The
+register records that trap.
 
 **Type consistency.** `AgentSecurityProperties.Agent.requiredScope` is the name
 in Tasks 1, 5 and 9. `AgentResourceServerChain.authorityFor` is the name in
