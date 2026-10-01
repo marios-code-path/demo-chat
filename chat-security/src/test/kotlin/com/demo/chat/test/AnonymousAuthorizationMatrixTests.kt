@@ -83,8 +83,9 @@ class AnonymousAuthorizationMatrixTests {
      * one.** `CoreAuthorizationService` puts the `Anon` key in the actor set
      * of every query, so an anonymous grant is a floor for every caller.
      *
-     * The `user: User` rows of `userinit.yml` name the `User` root key as the
-     * principal. No caller holds that key, so those four rows reach nobody.
+     * The five `user: User` rows of `userinit.yml` name the `User` root key as
+     * the principal. `CHAT-mahevldm` puts that key in the actor set of every
+     * query, because every caller is a user. So all five reach every caller.
      */
     @Test
     fun `an authenticated caller reaches the same answers`() {
@@ -417,13 +418,29 @@ class AnonymousAuthorizationMatrixTests {
 
     private companion object {
         val nextKey = AtomicLong(100L)
-        val ANON_KEY: Key<Long> = TestKeys.key(1L)
-        val ADMIN_KEY: Key<Long> = TestKeys.key(2L)
-        val USER_ROOT: Key<Long> = TestKeys.key(3L)
-        val MESSAGE_ROOT: Key<Long> = TestKeys.key(4L)
-        val TOPIC_ROOT: Key<Long> = TestKeys.key(5L)
-        val CALLER_KEY: Key<Long> = TestKeys.key(6L)
-        val ROOM_KEY: Key<Long> = TestKeys.key(7L)
-        val MESSAGE_KEY: Key<Long> = TestKeys.key(8L)
+
+        /** The `User` domain root. A root key is its own root. */
+        val USER_ROOT: Key<Long> = Key.root(3L)
+
+        /** The `Message` domain root. */
+        val MESSAGE_ROOT: Key<Long> = Key.root(4L)
+
+        /** The `MessageTopic` domain root. */
+        val TOPIC_ROOT: Key<Long> = Key.root(5L)
+
+        /** The `Admin` identity. An identity is an object of the `User` domain. */
+        val ADMIN_KEY: Key<Long> = Key.of(2L, 3L)
+
+        /** The `Anon` identity. It is an object of the `User` domain too. */
+        val ANON_KEY: Key<Long> = Key.of(1L, 3L)
+
+        /** An ordinary user, and the caller of most contexts of this test. */
+        val CALLER_KEY: Key<Long> = Key.of(6L, 3L)
+
+        /** A room. Its root is the `MessageTopic` root. */
+        val ROOM_KEY: Key<Long> = Key.of(7L, 5L)
+
+        /** A message. Its root is the `Message` root. */
+        val MESSAGE_KEY: Key<Long> = Key.of(8L, 4L)
     }
 }
