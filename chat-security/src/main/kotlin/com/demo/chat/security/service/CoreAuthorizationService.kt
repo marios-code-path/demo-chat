@@ -144,7 +144,7 @@ class CoreAuthorizationService<T, Q>(
 
     override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
-            Flux.concat(uidB.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
+            Flux.concat(uidB.flatMap { targets(it) }.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
             actors(uidA),
             permission
         )

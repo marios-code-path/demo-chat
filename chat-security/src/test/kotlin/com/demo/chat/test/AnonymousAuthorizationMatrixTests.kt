@@ -418,6 +418,59 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(rows).isEmpty()
     }
 
+    /**
+     * **A many target request mixes one object and one domain root.** The
+     * request holds a room and the `MessageTopic` root. Each entry is expanded
+     * on its own, so the room reads two targets and the root reads one.
+     */
+    @Test
+    fun `a mixed many target request expands each entry alone`() {
+        val auth = recordingAuth(listOf(grant(CALLER_KEY, TOPIC_ROOT, "GET")))
+
+        auth.service.getAuthorizationsAgainstMany(CALLER_KEY, listOf(ROOM_KEY, TOPIC_ROOT), "GET")
+            .collectList().block()!!
+
+        assertThat(auth.index.asked).containsExactly(ROOM_KEY, TOPIC_ROOT, TOPIC_ROOT)
+    }
+
+    /** The same request, through the broker, permits both targets. */
+    @Test
+    fun `a mixed many target request permits the object and the root`() {
+        val broker = broker(listOf(grant(CALLER_KEY, TOPIC_ROOT, "GET")))
+
+        assertThat(permitted(broker, listOf(ROOM_KEY, TOPIC_ROOT), "GET"))
+            .containsExactly(ROOM_KEY, TOPIC_ROOT)
+    }
+
+    /**
+     * **A repeated target is read once per occurrence.** The many path expands
+     * each entry alone, and it de-duplicates nothing across entries.
+     */
+    @Test
+    fun `a repeated target is read once per occurrence`() {
+        val auth = recordingAuth(shippedGrants())
+
+        auth.service.getAuthorizationsAgainstMany(CALLER_KEY, listOf(ROOM_KEY, ROOM_KEY), "GET")
+            .collectList().block()!!
+
+        assertThat(auth.index.asked).containsExactly(ROOM_KEY, TOPIC_ROOT, ROOM_KEY, TOPIC_ROOT)
+    }
+
+    /**
+     * **An empty many target list reads no target.** It answers nothing, and it
+     * does not read the store.
+     */
+    @Test
+    fun `an empty many target list reads no target`() {
+        val auth = recordingAuth(shippedGrants())
+
+        val rows = auth.service.getAuthorizationsAgainstMany(CALLER_KEY, listOf(), "GET")
+            .collectList().block()!!
+
+        assertThat(auth.index.asked).isEmpty()
+        assertThat(rows).isEmpty()
+    }
+
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
         broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
