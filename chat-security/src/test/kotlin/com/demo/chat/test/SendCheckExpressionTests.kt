@@ -163,6 +163,35 @@ class SendCheckExpressionTests {
         ).describedAs("the listen topic expression").isTrue()
     }
 
+    /**
+     * **A Kotlin data class property has no same named method.** The property
+     * `uid` compiles to `getUid()`, so `#req.uid` resolves and `#req.uid()`
+     * does not.
+     */
+    @Test
+    fun `the join expression binds both properties of a membership request`() {
+        val access = access(listOf(grant(CALLER, ROOM, "JOIN")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "joinRoom"),
+                "req", MembershipRequest(CALLER.id, ROOM.id), access
+            )
+        ).describedAs("the join expression").isTrue()
+    }
+
+    @Test
+    fun `the leave expression binds both properties of a membership request`() {
+        val access = access(listOf(grant(CALLER, ROOM, "JOIN")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "leaveRoom"),
+                "req", MembershipRequest(CALLER.id, ROOM.id), access
+            )
+        ).describedAs("the leave expression").isTrue()
+    }
+
     /** The annotation text of a method of an access interface. */
     private fun expressionOf(type: Class<*>, name: String, arity: Int = 1): String =
         type.methods

@@ -23,10 +23,10 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
     override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.uid(), 'JOIN')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.roomId(), 'JOIN')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.roomId, 'JOIN')")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'MEMBERS')")
