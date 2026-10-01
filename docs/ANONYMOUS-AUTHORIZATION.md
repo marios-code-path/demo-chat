@@ -82,6 +82,26 @@ three `Anon` rows alone.
 "Reaches an operation" is the target side, which `CHAT-rfzsnbco` closed. A
 check on one object now reads the domain root of that object beside it.
 
+## The room owner
+
+**The server writes one `*` row for a new room, for the caller that created it.**
+`ContextRoomOwnerGrant` is the only writer, and `CHAT-zhjltbky` decided that.
+
+**An anonymous caller owns no room.** The RSocket server seam calls `anonymous`,
+so a caller with no credential reaches the `Anon` root key rather than no
+identity. `ContextIdentity` rule 4 is what answers it. The writer drops that
+key, so the room is created with no owner row.
+
+**A row for the `Anon` key would reach every caller.** The actor set of every
+query holds the `Anon` key, so every caller would be an owner of the room. A
+close could not reach the row either, because an identity is an `ENTITY` and a
+close names a `DOMAIN_ROOT`. Level 2 of the rank keeps the owner row.
+
+**An ownerless room is a state this application accepts.** A caller holds every
+right over its own key, so an owner may delete its own room. A room with no
+owner row is deleted by an operator, who writes the missing row or removes the
+room.
+
 ## Self authority
 
 **A key holds every right over itself.** The owner decided this on

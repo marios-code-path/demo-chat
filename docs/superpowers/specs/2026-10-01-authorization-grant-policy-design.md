@@ -348,8 +348,20 @@ The policy says a send is checked against the room. So the expression becomes
    effect table of the target domain scan spec does not list it.
 3. **The room owner is a new matrix row.** After this change, the owner of a
    room allows `send` and every other room permission. Anonymous never owns a
-   room, because `addRoom` denies it. So the anonymous column does not move,
+   room, and the writer is what says so. So the anonymous column does not move,
    and the document needs a row for the owner.
+
+   **A first draft of this finding gave the wrong reason.** It said that
+   `addRoom` denies an anonymous caller. It does not, because no production
+   type implements an annotated interface. `CHAT-znprrzhn` holds that wiring.
+
+   **The real mechanism was measured on 2026-10-01.** The RSocket server seam
+   calls `anonymous`, so an unauthenticated caller reaches the `Anon` root key
+   rather than no identity. `ContextRoomOwnerGrant` wrote a `*` row for that
+   key, and the actor set of every query holds it. So every caller owned the
+   room, and a close could not reach the row, because an identity is an
+   `ENTITY` and a close names a `DOMAIN_ROOT`. The writer now drops the `Anon`
+   key, and `RoomOwnerGrantTests` pins it.
 
 ## What this issue does not do
 

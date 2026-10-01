@@ -15,6 +15,11 @@ import reactor.core.publisher.Mono
  * identity of the caller that created the room. A caller with no identity owns
  * no room, and that is not an error.
  *
+ * **The `Anon` root key owns no room either.** An unauthenticated caller
+ * reaches that key rather than no identity, and the actor set of every query
+ * holds it. A row for it would make every caller an owner. See
+ * `ContextRoomOwnerGrant` and `docs/ANONYMOUS-AUTHORIZATION.md`.
+ *
  * **One writer holds this port.** `*` is singular per target, so two writers
  * would give one room two owners and the rank would then answer by time alone.
  */

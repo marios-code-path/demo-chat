@@ -19,7 +19,9 @@ import com.demo.chat.test.key.TestKeys
 import com.demo.chat.test.key.TestVerifiers
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.ReactiveSecurityContextHolder
 import org.springframework.security.core.context.SecurityContext
 import org.springframework.security.core.context.SecurityContextImpl
@@ -76,6 +78,29 @@ class RoomOwnerGrantTests {
     }
 
     /**
+     * **An anonymous caller owns no room, and that is not an error.**
+     *
+     * `ContextIdentity` rule 4 answers the `Anon` root key for an
+     * `AnonymousAuthenticationToken`, and the RSocket server seam establishes
+     * that token. So a caller with no credential reaches an identity rather
+     * than an empty one. See `RSocketServerConfiguration.rsocketSecurityAuthentication`.
+     *
+     * **The `Anon` key is in the actor set of every query.** So an ownership
+     * row for `Anon` would make every caller the owner of the room, and a close
+     * could not reach it, because an identity is an `ENTITY` and the close is a
+     * `DOMAIN_ROOT`.
+     */
+    @Test
+    fun `an anonymous caller owns no room`() {
+        val store = MapAuthStore()
+        val grant = writer(store)
+
+        grant.grantOwner(ROOM).contextWrite(context(anonymous())).block()
+
+        assertThat(store.rows).isEmpty()
+    }
+
+    /**
      * **A second writer would give one room two owners.** `*` is singular per
      * target, and no code refuses a second row. This test is the evidence for
      * the deferred uniqueness work. Replace it when that work lands.
@@ -117,6 +142,11 @@ class RoomOwnerGrantTests {
         UsernamePasswordAuthenticationToken(
             ChatUserDetails(User.create(CALLER, "u", "handle", "http://u"), listOf()), "secret", listOf()
         )
+    )
+
+    /** The token that the RSocket server seam installs for a caller with no credential. */
+    private fun anonymous() = SecurityContextImpl(
+        AnonymousAuthenticationToken("key", "anonymousUser", listOf(SimpleGrantedAuthority("ROLE_ANONYMOUS")))
     )
 
     private fun context(that: SecurityContext) = ReactiveSecurityContextHolder.withSecurityContext(Mono.just(that))
