@@ -41,32 +41,64 @@ Spring Shell, Reactor 3.8, Maven, JUnit 5, Mockito.
 - **Do not overwrite `CompositeControllersConfiguration.kt`.** A prior
   classifier denial covers destroying that file. The change here is three
   targeted line edits that add one supertype to each class declaration.
-
 ## Review Focus
 
-Five inputs the spec implies and no task's tests exercise by default. Each
-line carries the test that pins it, in the task named beside it.
+Five inputs the spec implies and no task's tests exercise by default. Each line
+names where it is pinned.
 
 1. **A caller holding a domain wildcard on a write.** `{User, MessageTopic,
-   ALL}` does not cover `SEND`, because `ALL` is a literal. A reasonable person
-   expects a wildcard row to cover its own domain. Pinned by `a wildcard row on
-   the domain does not cover send` in Task 7.
+   ALL}` does not cover `SEND`, because `ALL` is a literal. Pinned at the
+   expression level by `a message root row does not cover a send to a room` in
+   `SendCheckExpressionTests`, in chat-security.
 2. **An id that the registry does not hold.** `hasAccessToId` resolves through
-   the registry and denies an unknown id, with no error. Pinned by `an
-   unregistered id is refused and no downstream bean is called` in Task 7.
+   the registry, and an unknown id denies with no error. Pinned by the key
+   verifier tests of chat-security, and by the denied probe of Task 1, which
+   fails if the resolution throws instead of denying.
 3. **`getRoomByName` has no target key.** The request carries a name and no id,
    so no target check can be honest. The route denies every caller, and it
    never reads the topic. Pinned by `the room by name expression denies a fully
-   privileged caller` in Task 5 and by `room by name is refused and the topic
-   is never read` in Task 7.
+   privileged caller` in Task 5.
 4. **The REST facade methods call the annotated methods on the same object.**
    `restGetRoom`, `restDeleteRoom`, `joinRestRoom`, `leaveRestRoom` and
    `restRoomMembers` are declared on the mapping interface and call its own
    members. Pinned by `a denied caller is refused at the facade route and the
    service is never called` in Task 2.
 5. **A streaming route.** `listenTopic` and `listRooms` return a `Flux`. A
-   refusal must arrive before any element does. Pinned by `list rooms refuses
-   before the first element` in Task 7.
+   refusal must arrive before any element does. Pinned by the denied probe of
+   Task 1, which reads `AccessDeniedException` on the `topic-list` route.
+
+**The transport probes prove the crossing, and not the grants.** A probe with a
+mocked broker answers one permission. The grant semantics stay measured in
+chat-security, where the store and the index are real. Do not re-derive a grant
+rule from a probe.
+
+## Plan corrections, 2026-10-01
+
+The first execution of Tasks 1 and 2 stopped at a defect in the probe design.
+The audit below found nine defect classes. Every one is repaired in this
+document. `CHAT-eoqkbqve` is merged, and Tasks 3 to 5 are done.
+
+**A reader must not treat this section as the record of what changed.** The
+tasks below are the plan. A defect that the tasks no longer carry is repaired,
+and a defect named here alone is not.
+
+| # | Defect | Repair |
+|---|---|---|
+| 1 | The annotated interface was a delegation target, `TopicServiceAccess<T, V> by b.topicService()`. `b.topicService()` answers `ChatTopicService<T, V>`, so the clause cannot compile, and no object implements the annotated type. Tasks 1, 2, 6 and 8 carried it. | The annotated interface is a plain supertype, and the existing clause delegates the plain service. The spec records this shape, and `SecretsControllerTests` measures it. |
+| 2 | One `probe.allow` property drove an allowed caller and a denied caller in one cached Spring context. One of the two tests always ran against the wrong answer. | One probe class per answer state, and no system property. Each class holds a fixed answer. |
+| 3 | `onErrorReturn(emptyList())` made a refusal and an empty room list the same answer. The allowed test asserted `isNotNull`, which an empty list satisfies. **Both tests passed in every state, so the probe could not fail.** | The denied test reads `AccessDeniedException` through `StepVerifier`. The allowed test asserts a size and a call count. |
+| 4 | The zero downstream assertion named a real service object, so Mockito raised `NotAMockException`. Task 1 also named `listRooms` on `AccessBroker`, which declares no such method. | The probe supplies `TestCompositeServiceBeans`, which holds Mockito mocks. The controller and the assertion share that instance. |
+| 5 | The probe bean was named `probeChatAccess`. Every expression resolves the name `chatAccess`, so the expressions would not resolve. | Task 1 reuses `ChatAccessTestConfiguration`, which already supplies the right name outside the scanned package. Task 2 declares its own bean named `chatAccess`, because that class is not on the chat-webflux test classpath. |
+| 6 | Review Focus named four tests in Task 7 that a single fixed answer cannot distinguish, so none could fail. | Those concerns are pinned where they are measurable. The probes carry the crossing, and chat-security carries the grants. |
+| 7 | The Kotlin of Task 1 was not valid. Its test methods sat outside a class body, above the class declaration. | Each probe class is complete and self-contained. |
+| 8 | Task 6 declared `UserServiceController<T>(b: CompositeServiceBeans<T>)`. The interface takes two type parameters. Task 10 said four shell call sites and listed five. | Both corrected. |
+| 9 | Task 2's slice supplied no `chatAccess` bean and enabled no method security, so the facade route could not be refused at all. Its Expected line read "both tests PASS", and one of the two could never pass. | Task 2 gained the same two-class rewrite as Task 1. Its Step 4 reads four outcomes by a table, and one of them stops the plan. |
+
+**Both probes were rewritten, and not Task 1 alone.** The first audit named
+Task 1, and the same defect class sat in Task 2 in full.
+
+One correction is not a defect. **`TestLongCompositeServiceBeans` exists**, and
+it is declared inside `LongBeans.kt` rather than in a file of its own.
 
 ---
 
@@ -77,136 +109,37 @@ caller is refused, or the denied caller reaches the downstream service, the
 boundary is wrong and the work stops here.
 
 **Files:**
-- Modify: `chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt:29-31`
-- Create: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/RSocketBoundaryProbeTests.kt`
+- Modify: `chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt:26-29`
+- Create: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/RSocketBoundaryProbeDeniedTests.kt`
+- Create: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/RSocketBoundaryProbeAllowedTests.kt`
 
 **Interfaces:**
 - Consumes: `TopicServiceAccess<T, V>` from `com.demo.chat.security.access.composite`
 - Produces: nothing. This task answers a question.
 
-- [ ] **Step 1: Write the probe**
+**Two test classes, and not one.** The answer comes from a mocked `AccessBroker`,
+and Spring caches the context per test class. One class with one mocked answer
+can hold an allowed caller or a denied caller. It cannot hold both. The original
+draft of this task used one `probe.allow` property for both states, so one of the
+two tests always ran against the wrong answer.
 
-Shared imports for every snippet in this plan:
-`com.demo.chat.test.anyObject` (`(T) -> T` for Mockito),
-`reactor.test.StepVerifier`, `org.assertj.core.api.Assertions.assertThat`,
-`org.springframework.security.access.AccessDeniedException`,
-`reactor.core.publisher.Mono`, and the request types of
-`com.demo.chat.domain` (`ByIdRequest`, `ByStringRequest`, `MembershipRequest`,
-`MessageSendRequest`).
+- [ ] **Step 1: Add the annotated supertype to `TopicServiceController`**
 
-The route is `topic-list`. Its expression is
-`hasAccessToDomain('MessageTopic', 'ALL')`, which is already evaluable and
-already allows per `docs/ANONYMOUS-AUTHORIZATION.md`.
+**The annotated interface is a supertype, and it is not a delegation target.**
+`b.topicService()` answers a `ChatTopicService<T, V>`. The annotated
+`TopicServiceAccess<T, V>` is a different type, and no object implements it. A
+delegation clause cannot bind it, and a cast would throw at the first call.
 
-```kotlin
-package com.demo.chat.test.rsocket
-
-import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.domain.MessageTopic
-import com.demo.chat.security.access.SpringSecurityAccessBrokerService
-import com.demo.chat.service.security.AccessBroker
-import com.demo.chat.test.key.TestKeys
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.mockito.BDDMockito.given
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.verify
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.context.TestConfiguration
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Primary
-import org.springframework.messaging.rsocket.RSocketRequester
-import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
-import reactor.core.publisher.Flux
-import java.time.Duration
-
-/**
- * The boundary probe for `CHAT-znprrzhn`. It answers one question: does an
- * RSocket `@MessageMapping` dispatch cross the method security proxy?
- *
- * `topic-list` carries `hasAccessToDomain('MessageTopic', 'ALL')`. That
- * expression is evaluable today and the shipped grants allow it. So an
- * allowed caller must reach the service, and a denied caller must not.
- *
- * **A refusal alone proves nothing.** An unevaluable expression also refuses.
- * The allowed caller is the control, and the zero downstream assertion is
- * what separates a refusal from a broken route.
- */
-    @Test
-    fun `an allowed caller reaches the service through the mapped route`() {
-        val route = requester.route("topic-list")
-        val hits = route.retrieveFlux(MessageTopic::class.java)
-            .collectList()
-            .block(Duration.ofSeconds(10))
-
-        assertThat(hits).describedAs("the route answered").isNotNull
-    }
-
-    @Test
-    fun `a denied caller is refused and the service is never called`() {
-        val broker = beans.topicService()
-
-        val answer = requester.route("topic-list")
-            .retrieveFlux(MessageTopic::class.java)
-            .collectList()
-            .onErrorReturn(emptyList())
-            .block(Duration.ofSeconds(10))
-
-        assertThat(answer).describedAs("the route refused").isEmpty()
-        verify(broker, never()).listRooms()
-    }
-}
-```
-
-The probe needs a `chatAccess` bean whose answer the test controls.
-`RSocketSecurityTestConfiguration` already enables reactive method security
-and already supplies a `KeyVerifier` and `RootKeys`. So the probe adds one
-configuration beside it, in the same package, and reuses those beans.
+Two measured precedents hold the right shape:
 
 ```kotlin
-@TestConfiguration
-class RSocketBoundaryProbeConfiguration {
-
-    /**
-     * The answer is a system property, because one test class drives both
-     * states and Spring caches the context. The tests read the property in
-     * `@BeforeAll`, so the bean is not built twice.
-     */
-    @Bean
-    @Primary
-    fun probeBroker(): AccessBroker<Long> = mock(AccessBroker::class.java)
-
-    @Bean
-    fun probeChatAccess(
-        broker: AccessBroker<Long>,
-        rootKeys: RootKeys<Long>,
-        verifier: KeyVerifier<Long>,
-    ): SpringSecurityAccessBrokerService<Long> {
-        val allow = java.lang.Boolean.getBoolean("probe.allow")
-        given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
-            .willReturn(Mono.just(allow))
-        return SpringSecurityAccessBrokerService(broker, rootKeys, verifier)
-    }
-}
+// SecretsControllerTests, chat-service-controller test source.
+class TestSecretStoreController<T>(private val that: SecretsStore<T>, private val verifier: KeyVerifier<T>) :
+    SecretsStoreMapping<T>, SecretsStoreAccess<T>, SecretsStore<T> by that
 ```
 
-`RSocketTestBase` declares `requester` itself, so the probe class must not
-declare a second one. It autowires `CompositeServiceBeans` instead.
-
-```kotlin
-class RSocketBoundaryProbeTests : RSocketTestBase() {
-
-    @Autowired lateinit var beans: CompositeServiceBeans<Long, String>
-```
-
-Two properties drive the two runs. Add `@TestPropertySource` to the probe, and
-run the class twice with `-Dprobe.allow=true` and `-Dprobe.allow=false`.
-
-- [ ] **Step 2: Add the delegation to `TopicServiceController`**
-
-Change line 30 to 32 of `CompositeControllersConfiguration.kt` only. Add the
-import for `TopicServiceAccess`.
+The spec records the same shape under `What this pass wires`. Add one supertype
+to the controller. Keep the existing delegation clause unchanged.
 
 ```kotlin
 @ConditionalOnProperty(prefix = "app.controller", name = ["topic"])
@@ -214,34 +147,217 @@ import for `TopicServiceAccess`.
 @MessageMapping("topic")
 class TopicServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
     TopicServiceControllerMapping<T, V>,
-    TopicServiceAccess<T, V> by b.topicService()
+    TopicServiceAccess<T, V>,
+    ChatTopicService<T, V> by b.topicService()
 ```
 
-- [ ] **Step 3: Run the probe with the allowed answer**
+Add the import for `TopicServiceAccess`. The class file already imports it.
 
-Run: `mvn -o -pl chat-core,chat-service-controller -Dtest=RSocketBoundaryProbeTests -Dprobe.allow=true -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/probe-allow.log 2>&1; echo "EXIT=$?"; tail -30 /tmp/probe-allow.log`
+- [ ] **Step 2: Write the denied probe**
 
-Expected: both tests PASS. The allowed caller receives a list, and the denied
-caller is refused with no call to `listRooms`.
+The probe sits in `com.demo.chat.test.rsocket.probe`, and not in
+`com.demo.chat.test.rsocket`. That parent package holds a bare `@ComponentScan`,
+so a component there enters every other RSocket test context.
 
-- [ ] **Step 4: Read the result**
+```kotlin
+package com.demo.chat.test.rsocket.probe
 
-- **The allowed caller is refused.** The proxy does not see the annotation
-  through the mapping interface. **STOP.** Record the finding on
-  `CHAT-znprrzhn` and return the design to the owner.
+import com.demo.chat.config.controller.composite.TopicServiceController
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.security.AccessBroker
+import com.demo.chat.test.access.ChatAccessTestConfiguration
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.rsocket.RSocketSecurityTestConfiguration
+import com.demo.chat.test.rsocket.RSocketTestBase
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoBean
+import reactor.core.publisher.Mono
+import reactor.test.StepVerifier
+import java.time.Duration
+
+/**
+ * The denied caller at the RSocket boundary for `CHAT-znprrzhn`.
+ *
+ * `topic-list` carries `hasAccessToDomain('MessageTopic', 'ALL')`. The mocked
+ * broker answers false. So the proxy must refuse, and the delegate must never
+ * see the call.
+ *
+ * **The refusal alone proves nothing.** An unevaluable expression also refuses.
+ * The zero downstream assertion is what separates a refusal from a broken route.
+ */
+@ContextConfiguration(
+    classes = [
+        TopicServiceController::class,
+        RSocketSecurityTestConfiguration::class,
+        ChatAccessTestConfiguration::class,
+        ProbeServiceBeans::class,
+    ]
+)
+@TestPropertySource(properties = ["app.controller.topic"])
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class RSocketBoundaryProbeDeniedTests : RSocketTestBase() {
+
+    @MockitoBean private lateinit var accessBroker: AccessBroker<Long>
+    @MockitoBean private lateinit var rootKeys: RootKeys<Long>
+
+    @Autowired private lateinit var probe: ProbeServiceBeans
+
+    @Test
+    fun `a denied caller is refused and listRooms is never called`() {
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
+
+        StepVerifier.create(
+            requester.route("topic-list").retrieveFlux(MessageTopic::class.java)
+        ).expectError(AccessDeniedException::class.java)
+            .verify(Duration.ofSeconds(10))
+
+        verify(probe.mockTopicBean, never()).listRooms()
+    }
+}
+```
+
+- [ ] **Step 3: Write the allowed probe**
+
+The allowed probe is the control. It is the same class with one fixed answer
+changed, so the two runs differ in nothing else.
+
+```kotlin
+package com.demo.chat.test.rsocket.probe
+
+import com.demo.chat.config.controller.composite.TopicServiceController
+import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.service.security.AccessBroker
+import com.demo.chat.test.access.ChatAccessTestConfiguration
+import com.demo.chat.test.anyObject
+import com.demo.chat.test.key.TestKeys
+import com.demo.chat.test.rsocket.RSocketSecurityTestConfiguration
+import com.demo.chat.test.rsocket.RSocketTestBase
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.times
+import org.mockito.Mockito.verify
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoBean
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import java.time.Duration
+
+/**
+ * The allowed caller at the RSocket boundary for `CHAT-znprrzhn`.
+ *
+ * **This is the control.** The mocked broker answers true, so a refusal here
+ * means the proxy never saw the annotation. The delegate answers one room, so
+ * the assertion reads a value and not an emptiness.
+ */
+@ContextConfiguration(
+    classes = [
+        TopicServiceController::class,
+        RSocketSecurityTestConfiguration::class,
+        ChatAccessTestConfiguration::class,
+        ProbeServiceBeans::class,
+    ]
+)
+@TestPropertySource(properties = ["app.controller.topic"])
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class RSocketBoundaryProbeAllowedTests : RSocketTestBase() {
+
+    @MockitoBean private lateinit var accessBroker: AccessBroker<Long>
+    @MockitoBean private lateinit var rootKeys: RootKeys<Long>
+
+    @Autowired private lateinit var probe: ProbeServiceBeans
+
+    @Test
+    fun `an allowed caller reaches the service and listRooms runs once`() {
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(true))
+
+        val hits = requester.route("topic-list")
+            .retrieveFlux(MessageTopic::class.java)
+            .collectList()
+            .block(Duration.ofSeconds(10))
+
+        assertThat(hits).describedAs("the allowed route answered").hasSize(1)
+        verify(probe.mockTopicBean, times(1)).listRooms()
+    }
+}
+```
+
+Both probes share one configuration, which supplies a mockable delegate.
+
+```kotlin
+package com.demo.chat.test.rsocket.probe
+
+import com.demo.chat.test.config.TestCompositeServiceBeans
+import org.mockito.BDDMockito.given
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import reactor.core.publisher.Flux
+
+/**
+ * The delegate that the controller reaches through Kotlin interface
+ * delegation.
+ *
+ * `TestCompositeServiceBeans` holds Mockito mocks, so `mockTopicBean` is the
+ * same object that `b.topicService()` answers. The zero downstream assertion
+ * needs that identity. A real service would throw `NotAMockException`.
+ */
+@TestConfiguration
+class ProbeServiceBeans {
+
+    @Bean
+    fun compositeServiceBeans(): TestCompositeServiceBeans<Long, String> =
+        TestCompositeServiceBeans<Long, String>().also {
+            given(it.mockTopicBean.listRooms()).willReturn(Flux.empty())
+        }
+}
+```
+
+The `chatAccess` bean name comes from `ChatAccessTestConfiguration`, which
+already supplies it and already sits outside the scanned package. **Do not name
+that bean anything else.** The expressions resolve the name `chatAccess`, so a
+bean named `probeChatAccess` leaves every expression unresolvable.
+
+- [ ] **Step 4: Run both probes**
+
+Run: `mvn -o -pl chat-core,chat-service-controller -Dtest='RSocketBoundaryProbe*Tests' -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/probe.log 2>&1; echo "EXIT=$?"; tail -40 /tmp/probe.log`
+
+Expected: PASS, 2 tests, 0 skipped. The allowed caller receives one room. The
+denied caller sees `AccessDeniedException` and the delegate is untouched.
+
+- [ ] **Step 5: Read the result**
+
+- **The allowed caller is refused.** The proxy does not read the annotation
+  from a supertype interface. **STOP.** Record the finding on `CHAT-znprrzhn`
+  and return the design to the owner.
 - **The denied caller reaches the service.** The dispatcher holds the raw
   delegate and not the proxy. **STOP.** Same route.
+- **A probe skips.** Read the skipped count, not the exit code. A skipped probe
+  proves nothing.
 - **Both pass.** The boundary holds. Continue to Task 2.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt \
-        chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/RSocketBoundaryProbeTests.kt
+        chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/
 git commit -m "Measure the RSocket dispatch against the method security proxy
 
-The boundary probe for CHAT-znprrzhn. One mapped route crosses the proxy
-and one does not, and each answer carries its own control.
+The boundary probe for CHAT-znprrzhn. Two probe classes hold the allowed
+caller and the denied caller in separate contexts, so each answer is fixed.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -255,16 +371,121 @@ that call its own members, so a route can cross the proxy twice or not at all.
 
 **Files:**
 - Modify: `chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/ChatTopicServiceController.kt:10-11`
-- Create: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeTests.kt`
+- Create: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeAllowedTests.kt`
+- Create: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeDeniedTests.kt`
 
 **Interfaces:**
 - Consumes: `TopicServiceAccess<T, String>` from `com.demo.chat.security.access.composite`
 - Produces: nothing. This task answers a question.
+- [ ] **Step 1: Write the two probe classes**
 
-- [ ] **Step 1: Write the probe**
+**This slice supplies no `chatAccess` bean and enables no method security.**
+That is what the probe measures. Two classes hold one fixed answer each, so
+neither answer depends on a system property.
 
-`WebFluxTestConfiguration` builds a permit-all chain and enables no method
-security. The probe declares its own slice with method security on.
+**`WebFluxTestConfiguration` builds a permit-all chain on purpose.** Its KDoc
+states that it removes security from the way. So the probe declares its own
+slice with method security on, and it supplies the bean by the name that every
+expression resolves.
+
+Allowed class:
+
+```kotlin
+package com.demo.chat.test.controller.webflux.composite
+
+import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.controller.webflux.ChatTopicServiceController
+import com.demo.chat.security.access.SpringSecurityAccessBrokerService
+import com.demo.chat.service.security.AccessBroker
+import com.demo.chat.test.config.TestLongCompositeServiceBeans
+import com.demo.chat.test.controller.webflux.LongTypeUtilConfiguration
+import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
+import com.demo.chat.test.key.FakeKeyServices
+import org.junit.jupiter.api.Test
+import org.mockito.BDDMockito.given
+import org.mockito.Mockito.mock
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.webflux.test.autoconfigure.WebFluxTest
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
+import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
+import org.springframework.test.context.ContextConfiguration
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.web.reactive.server.WebTestClient
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+
+/**
+ * The REST boundary probe, allowed answer, for `CHAT-znprrzhn`.
+ *
+ * `GET /topic/list` reaches `listRooms` directly and crosses the proxy.
+ * `GET /topic/id/{id}` reaches `restGetRoom`, a default method on
+ * `ChatTopicServiceRestMapping`, which calls `getRoom` on its own object.
+ * That call is not a route, so it crosses the proxy only if the annotation
+ * reaches the controller through the `TopicServiceAccess` supertype.
+ */
+@WebFluxTest
+@ContextConfiguration(
+    classes = [
+        TestLongCompositeServiceBeans::class,
+        WebFluxTestConfiguration::class,
+        LongTypeUtilConfiguration::class,
+        ChatTopicServiceController::class,
+        RestBoundaryProbeAllowedConfiguration::class,
+    ]
+)
+@TestPropertySource(properties = ["app.controller.topic"])
+class RestBoundaryProbeAllowedTests {
+
+    @Autowired lateinit var client: WebTestClient
+
+    @Test
+    fun `an allowed caller reaches the mapped route`() {
+        client.get().uri("/topic/list").exchange()
+            .expectStatus().isOk
+    }
+
+    /** The facade route. It is refused only if a denial can reach its object. */
+    @Test
+    fun `an allowed caller reaches the facade route`() {
+        client.get().uri("/topic/id/12345").exchange()
+            .expectStatus().isOk
+    }
+}
+
+@TestConfiguration
+@EnableReactiveMethodSecurity
+class RestBoundaryProbeAllowedConfiguration {
+
+    @Bean
+    @Primary
+    fun probeBroker(): AccessBroker<Long> {
+        val broker = mock(AccessBroker::class.java)
+        given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(true))
+        given(broker.hasAccessByKeyId(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(true))
+        return broker
+    }
+
+    /** **The name matters.** Every expression resolves the bean `chatAccess`. */
+    @Bean
+    fun chatAccess(broker: AccessBroker<Long>): SpringSecurityAccessBrokerService<Long> =
+        SpringSecurityAccessBrokerService(
+            broker, FakeKeyServices.longRoots(), FakeKeyServices.longVerifier()
+        )
+
+    /** The controller must not be handed a null for a `Flux` route. */
+    @Bean
+    fun probeRooms(beans: TestLongCompositeServiceBeans<Long, String>): Boolean {
+        given(beans.mockTopicBean.listRooms()).willReturn(Flux.empty())
+        return true
+    }
+}
+```
+
+Denied class. It is a separate file, and its only difference is the fixed
+answer:
 
 ```kotlin
 package com.demo.chat.test.controller.webflux.composite
@@ -293,14 +514,11 @@ import org.springframework.test.web.reactive.server.WebTestClient
 import reactor.core.publisher.Mono
 
 /**
- * The REST boundary probe for `CHAT-znprrzhn`.
+ * The REST boundary probe, denied answer, for `CHAT-znprrzhn`.
  *
- * `GET /topic/id/{id}` reaches `restGetRoom`, which is a default method on
- * `ChatTopicServiceRestMapping`. It calls `getRoom` on its own object. That
- * call is not a route, so it crosses the proxy only if the annotation is
- * inherited from `TopicServiceAccess`.
- *
- * `GET /topic/list` reaches `listRooms` directly.
+ * **A refusal must arrive, and the service must never run.** An assertion
+ * that only reads a status code cannot tell a refusal from a route that was
+ * never mapped. The call count is the control.
  */
 @WebFluxTest
 @ContextConfiguration(
@@ -309,24 +527,30 @@ import reactor.core.publisher.Mono
         WebFluxTestConfiguration::class,
         LongTypeUtilConfiguration::class,
         ChatTopicServiceController::class,
-        RestBoundaryProbeConfiguration::class,
+        RestBoundaryProbeDeniedConfiguration::class,
     ]
 )
 @TestPropertySource(properties = ["app.controller.topic"])
-class RestBoundaryProbeTests {
+class RestBoundaryProbeDeniedTests {
 
     @Autowired lateinit var client: WebTestClient
     @Autowired lateinit var beans: CompositeServiceBeans<Long, String>
 
     @Test
-    fun `an allowed caller reaches listRooms through the mapped route`() {
+    fun `a denied caller is refused at the mapped route and listRooms is never called`() {
         client.get().uri("/topic/list").exchange()
-            .expectStatus().isOk
+            .expectStatus().isForbidden
+
+        verify(beans.topicService(), never()).listRooms()
     }
 
-    /** The facade route. The annotation must be inherited from the access interface. */
+    /**
+     * **The facade route is the finding of this task.** If it answers 200
+     * under a denial, the same-object call crosses no proxy, and the
+     * annotations must move onto the mapping interface.
+     */
     @Test
-    fun `a denied caller is refused at the facade route and the service is never called`() {
+    fun `a denied caller is refused at the facade route and getRoom is never called`() {
         client.get().uri("/topic/id/12345").exchange()
             .expectStatus().isForbidden
 
@@ -336,55 +560,93 @@ class RestBoundaryProbeTests {
 
 @TestConfiguration
 @EnableReactiveMethodSecurity
-class RestBoundaryProbeConfiguration {
+class RestBoundaryProbeDeniedConfiguration {
 
     @Bean
     @Primary
-    fun probeBroker(): AccessBroker<Long> = mock(AccessBroker::class.java)
+    fun probeBroker(): AccessBroker<Long> {
+        val broker = mock(AccessBroker::class.java)
+        given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
+        given(broker.hasAccessByKeyId(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
+        return broker
+    }
 
     @Bean
-    fun probeChatAccess(broker: AccessBroker<Long>): SpringSecurityAccessBrokerService<Long> {
-        val allow = System.getProperty("probe.allow") == "true"
-        given(broker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
-            .willReturn(Mono.just(allow))
-        return SpringSecurityAccessBrokerService(broker, FakeKeyServices.longRoots(), FakeKeyServices.longVerifier())
-    }
+    fun chatAccess(broker: AccessBroker<Long>): SpringSecurityAccessBrokerService<Long> =
+        SpringSecurityAccessBrokerService(
+            broker, FakeKeyServices.longRoots(), FakeKeyServices.longVerifier()
+        )
 }
 ```
 
+`TestLongCompositeServiceBeans` holds Mockito mocks, so `verify` on
+`beans.topicService()` reads a real mock rather than a plain object.
+
 - [ ] **Step 2: Add the delegation to `ChatTopicServiceController`**
+
+**The annotated interface is a supertype, and it is not a delegation target.**
+`beans.topicService()` answers a `ChatTopicService<T, String>`. The annotated
+`TopicServiceAccess<T, String>` is a different type, so a delegation clause
+cannot bind it. Add one supertype. Keep the existing clause unchanged.
 
 ```kotlin
 @RestController
 @RequestMapping("/topic")
 class ChatTopicServiceController<T>(private val beans: CompositeServiceBeans<T, String>) :
     ChatTopicServiceRestMapping<T>,
-    TopicServiceAccess<T, String> by beans.topicService()
+    TopicServiceAccess<T, String>,
+    ChatTopicService<T, String> by beans.topicService()
 ```
 
-- [ ] **Step 3: Run the probe with the allowed answer**
+Add the import for `TopicServiceAccess`.
+- [ ] **Step 3: Run both probe classes**
 
-Run: `mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeTests -Dprobe.allow=true -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/rest-probe.log 2>&1; echo "EXIT=$?"; tail -30 /tmp/rest-probe.log`
+Run the allowed class:
 
-Expected: both tests PASS.
+```
+mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeAllowedTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/rest-probe-allowed.log 2>&1; echo "EXIT=$?"; tail -30 /tmp/rest-probe-allowed.log
+```
+
+**Expected: both tests PASS.** If either fails, this step is the measurement
+of that failure, and Step 4 reads it.
+
+Then run the denied class:
+
+```
+mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeDeniedTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/rest-probe-denied.log 2>&1; echo "EXIT=$?"; tail -30 /tmp/rest-probe-denied.log
+```
+
+**Expected: both tests PASS.** A failure names which route the boundary does
+not reach, and Step 4 reads it.
 
 - [ ] **Step 4: Read the result**
 
-- **The facade route reaches the service under a denial.** The same-object call
-  crosses no proxy. **STOP** and return the design to the owner. The repair
-  would move the annotations onto the mapping interface, and that is a
-  different design.
-- **Both pass.** The boundary holds on both transports. Continue.
+The two runs answer two separate questions. Read each one alone.
+
+| Reading | What it proves | Next step |
+|---|---|---|
+| The allowed class passes and the denied class passes | The boundary holds on the mapped route and on the facade route | Continue |
+| The mapped route fails in both classes | `@EnableReactiveMethodSecurity` does not apply inside this slice, so the probe measures its own fixture | Repair the slice, then rerun Step 3 |
+| The facade route answers 200 in the denied class | **The finding of this task.** The same-object call crosses no proxy | **STOP.** Return the design to the owner |
+| The facade route answers 500 in the denied class | The expression could not be evaluated, and the repair is a Task 3 concern | Run Task 3 first, then rerun |
+
+**The third row stops the plan.** A facade route that ignores a denial means
+the annotations must move onto the mapping interface. That is a different
+design, and the owner decides it.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/ChatTopicServiceController.kt \
-        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeTests.kt
+        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeAllowedTests.kt \
+        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeDeniedTests.kt
 git commit -m "Measure the REST dispatch, including a facade route
 
 CHAT-znprrzhn. The facade methods call their own members, so the probe
-covers one mapped route and one facade route.
+covers one mapped route and one facade route. Two classes hold one fixed
+answer each, so neither answer depends on a system property.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -756,21 +1018,32 @@ Expected: FAIL. The message and user controllers declare no access interface.
 
 - [ ] **Step 3: Wire the two controllers**
 
+**The annotated interface is a supertype, and it is not a delegation target.**
+The delegate answers a plain service type, so the delegation clause cannot bind
+the annotated interface. Add one supertype to each controller, and keep the
+existing clause.
+
 ```kotlin
 @ConditionalOnProperty(prefix = "app.controller", name = ["message"])
 @Controller
 @MessageMapping("message")
 class MessageServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
     MessageServiceControllerMapping<T, V>,
-    MessageServiceAccess<T, V> by b.messageService()
+    MessageServiceAccess<T, V>,
+    ChatMessageService<T, V> by b.messageService()
 
 @ConditionalOnProperty(prefix = "app.controller", name = ["user"])
 @Controller
 @MessageMapping("user")
-class UserServiceController<T>(b: CompositeServiceBeans<T>) :
+class UserServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
     UserServiceControllerMapping<T>,
-    UserServiceAccess<T> by b.userService()
+    UserServiceAccess<T>,
+    ChatUserService<T> by b.userService()
 ```
+
+`UserServiceController` takes `CompositeServiceBeans<T, V>`. The earlier draft
+of this task wrote `CompositeServiceBeans<T>`, which does not match the
+interface.
 
 - [ ] **Step 4: Run it to verify it passes**
 
@@ -795,92 +1068,147 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ### Task 7: The RSocket caller state tests
 
+Task 1 answers whether the dispatch crosses the proxy. This task pins the three
+caller states that the owner named, and each one names its own outcome.
+
+| State | Identity at the broker |
+|---|---|
+| An RSocket caller with no credential | the `Anon` root key |
+| A call with no security context | none, so denied |
+| An authenticated caller without the grant | its own user key, and denied |
+
+**The identity is not the answer.** The mocked broker answers the permission.
+This task reads the principal that the broker **received**, so a change to
+`ContextIdentity` fails here.
+
 **Files:**
-- Modify: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/RSocketBoundaryProbeTests.kt`
+- Modify: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/RSocketBoundaryProbeDeniedTests.kt`
+- Modify: `chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/RSocketBoundaryProbeAllowedTests.kt`
 
 **Interfaces:**
-- Consumes: the three wired controllers from Tasks 1 and 6
-- Produces: the boundary evidence for the whole issue.
+- Consumes: the two probe classes of Task 1
+- Produces: the caller state evidence for the issue
 
-- [ ] **Step 1: Write the caller state tests**
+- [ ] **Step 1: Add the two denied states**
+
+Add to `RSocketBoundaryProbeDeniedTests`. Both tests capture the principal.
 
 ```kotlin
+    /**
+     * **A caller with no credential reaches the `Anon` identity.** The RSocket
+     * security seam calls `anonymous`, so the context holds an anonymous
+     * authentication. The broker must receive a principal, and the permission
+     * answer is false.
+     */
     @Test
     fun `a caller with no credential reaches the Anon identity`() {
-        val route = requester.route("topic-list")
-        val answer = route.retrieveFlux(MessageTopic::class.java)
-            .collectList()
-            .block(Duration.ofSeconds(10))
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
 
-        assertThat(answer).describedAs("the anonymous route answered").isNotNull
-    }
+        val principals = ArgumentCaptor.forClass(Mono::class.java)
 
-    @Test
-    fun `a call with no security context reaches no identity`() {
-        StepVerifier.create(beans.topicService().listRooms())
-            .verifyError(AccessDeniedException::class.java)
-    }
-
-    @Test
-    fun `a wildcard row on the domain does not cover send`() {
-        val route = requester.route("message-send")
-            .data(MessageSendRequest("body", 1L, 7L))
-
-        StepVerifier.create(route.retrieveMono(Key::class.java))
-            .verifyError(AccessDeniedException::class.java)
-    }
-
-    @Test
-    fun `an unregistered id is refused and no downstream bean is called`() {
-        val route = requester.route("topic-by-id").data(ByIdRequest(999999L))
-
-        StepVerifier.create(route.retrieveMono(MessageTopic::class.java))
-            .verifyError(AccessDeniedException::class.java)
-
-        verify(beans.topicService(), never()).getRoom(anyObject())
-    }
-
-    @Test
-    fun `list rooms refuses before the first element`() {
-        val route = requester.route("topic-list")
-
-        StepVerifier.create(route.retrieveFlux(MessageTopic::class.java))
-            .expectError(AccessDeniedException::class.java)
+        StepVerifier.create(
+            requester.route("topic-list").retrieveFlux(MessageTopic::class.java)
+        ).expectError(AccessDeniedException::class.java)
             .verify(Duration.ofSeconds(10))
+
+        verify(accessBroker).hasAccessByPrincipal(
+            principals.capture(), anyObject(), anyObject()
+        )
+
+        assertThat(principals.value.block(Duration.ofSeconds(5)))
+            .describedAs("the principal the broker received")
+            .isNotNull
     }
 
     /**
-     * **The fail-closed route of Task 5 refuses before the topic is read.**
-     * `topic-by-name` carries an explicit deny, so the refusal must arrive
-     * with no lookup at all. A test that only asserts the refusal cannot tell
-     * a refusal from a broken route.
+     * **A call with no security context reaches no identity.** The call runs on
+     * the injected bean, so it crosses no transport and no seam installs a
+     * context. `ContextIdentity` answers nothing, and the broker receives an
+     * empty principal.
      */
     @Test
-    fun `room by name is refused and the topic is never read`() {
-        val route = requester.route("topic-by-name").data(ByStringRequest("enforcedroom"))
+    fun `a call with no security context reaches no identity`() {
+        val principals = ArgumentCaptor.forClass(Mono::class.java)
 
-        StepVerifier.create(route.retrieveMono(MessageTopic::class.java))
+        StepVerifier.create(controller.listRooms())
             .expectError(AccessDeniedException::class.java)
             .verify(Duration.ofSeconds(10))
 
-        verify(beans.topicService(), never()).getRoomByName(anyObject())
+        verify(accessBroker).hasAccessByPrincipal(
+            principals.capture(), anyObject(), anyObject()
+        )
+
+        assertThat(principals.value.block(Duration.ofSeconds(5)))
+            .describedAs("the principal the broker received")
+            .isNull()
     }
 ```
 
-- [ ] **Step 2: Run them with the denied answer**
+The second test needs the controller bean. Autowire it.
 
-Run: `mvn -o -pl chat-core,chat-service-controller -Dtest=RSocketBoundaryProbeTests -Dprobe.allow=false -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/state1.log 2>&1; echo "EXIT=$?"; tail -30 /tmp/state1.log`
+```kotlin
+    @Autowired private lateinit var controller: TopicServiceController<Long, String>
+```
 
-Expected: PASS. Every denial carries a zero downstream assertion.
+- [ ] **Step 2: Add the authenticated state**
 
-- [ ] **Step 3: Commit**
+Add to `RSocketBoundaryProbeAllowedTests`.
+
+```kotlin
+    /**
+     * **An authenticated caller reaches its own user key.** The credential is
+     * the one that `RSocketSecurityTestConfiguration` registers. The broker
+     * must receive a principal that is not the `Anon` root key.
+     */
+    @Test
+    fun `an authenticated caller reaches its user identity`() {
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(true))
+
+        val principals = ArgumentCaptor.forClass(Mono::class.java)
+
+        requester.route("topic-list")
+            .metadata(UsernamePasswordMetadata("user", "password"), SIMPLE_AUTH)
+            .retrieveFlux(MessageTopic::class.java)
+            .collectList()
+            .block(Duration.ofSeconds(10))
+
+        verify(accessBroker).hasAccessByPrincipal(
+            principals.capture(), anyObject(), anyObject()
+        )
+
+        assertThat(principals.value.block(Duration.ofSeconds(5)))
+            .describedAs("the principal the broker received")
+            .isNotNull
+    }
+```
+
+Add the imports for `ArgumentCaptor` and `UsernamePasswordMetadata`, and for
+`com.demo.chat.config.controller.composite.TopicServiceController`.
+
+- [ ] **Step 3: Run both probes**
+
+Run: `mvn -o -pl chat-core,chat-service-controller -Dtest='RSocketBoundaryProbe*Tests' -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/states.log 2>&1; echo "EXIT=$?"; tail -40 /tmp/states.log`
+
+Expected: PASS. The denied class runs 3 tests. The allowed class runs 2.
+
+- [ ] **Step 4: Record what each state answered**
+
+Write the measured identity of each state into `docs/IDENTITY-POLICY.md` beside
+the matching row. A state whose principal is empty and a state whose principal
+is the `Anon` key are different outcomes, and this task is where that
+difference is measured rather than reasoned.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/RSocketBoundaryProbeTests.kt
+git add chat-service-controller/src/test/kotlin/com/demo/chat/test/rsocket/probe/ \
+        docs/IDENTITY-POLICY.md
 git commit -m "Pin the three caller states at the RSocket boundary (CHAT-znprrzhn)
 
-An anonymous caller, an absent context, and an authenticated caller
-without the grant are three outcomes. Each test names its own.
+An anonymous caller, an absent context, and an authenticated caller are
+three outcomes. Each test reads the principal the broker received.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -899,7 +1227,7 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing test**
 
-Add to `RestBoundaryProbeTests`:
+Add to `RestBoundaryProbeDeniedTests`:
 
 ```kotlin
     @Test
@@ -916,27 +1244,34 @@ Add to `RestBoundaryProbeTests`:
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/wire3.log 2>&1; echo "EXIT=$?"; tail -20 /tmp/wire3.log`
+Run: `mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeDeniedTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/wire3.log 2>&1; echo "EXIT=$?"; tail -20 /tmp/wire3.log`
 
 Expected: FAIL.
 
 - [ ] **Step 3: Wire the two controllers**
 
+**The annotated interface is a supertype, and it is not a delegation target.**
+Add one supertype to each controller, and keep the existing clause.
+
 ```kotlin
 class ChatMessageServiceController<T>(private val beans: CompositeServiceBeans<T, String>) :
     ChatMessageServiceRestMapping<T>,
-    MessageServiceAccess<T, String> by beans.messageService()
+    MessageServiceAccess<T, String>,
+    ChatMessageService<T, String> by beans.messageService()
 ```
 
 ```kotlin
-class ChatUserServiceController<T>(private val beans: CompositeServiceBeans<T, String>) :
+class ChatUserServiceController<T>(s: CompositeServiceBeans<T, String>) :
     ChatUserServiceRestMapping<T>,
-    UserServiceAccess<T> by beans.userService()
+    UserServiceAccess<T>,
+    ChatUserService<T> by s.userService()
 ```
+
+`ChatUserServiceController` holds its parameter as `s`. Keep that name.
 
 - [ ] **Step 4: Run it to verify it passes**
 
-Run: `mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/wire4.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/wire4.log`
+Run: `mvn -o -pl chat-core,chat-webflux -Dtest=RestBoundaryProbeAllowedTests,RestBoundaryProbeDeniedTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/wire4.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/wire4.log`
 
 Expected: PASS.
 
@@ -953,7 +1288,8 @@ Expected: PASS, 0 failures.
 ```bash
 git add chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/ChatMessageServiceController.kt \
         chat-webflux/src/main/kotlin/com/demo/chat/controller/webflux/ChatUserServiceController.kt \
-        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeTests.kt
+        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeAllowedTests.kt \
+        chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/composite/RestBoundaryProbeDeniedTests.kt
 git commit -m "Wire the message and user REST controllers (CHAT-znprrzhn)
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
@@ -1064,7 +1400,7 @@ the failure on `CHAT-wbcbptiq` and stop.
 
 **One shell failure here is expected and no credential repairs it.**
 `topic-by-name` is fail-closed by Task 5, so every shell call to
-`getRoomByName` is refused. Four sites use it: `TopicCommands.kt` lines 55,
+`getRoomByName` is refused. Five sites use it: `TopicCommands.kt` lines 55,
 62, 77 and 99, and `PubSubCommands.kt` line 46, which is send by topic name.
 `CHAT-dgjhljbl` restores that route.
 
