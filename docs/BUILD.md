@@ -142,10 +142,21 @@ token on every route it owns.
 Pass the four application values on the command line. The application
 properties have no defaults.
 
-    ./chat-build rest --run --jwk /abs/path/server_keycert.jwk \
+    ./chat-build rest --run --notls --node-id 1 \
+        --jwk /abs/path/server_keycert.jwk \
         --agent-client-id <client-id> --agent-username <handle>
 
+Both `--notls` and `--node-id` are required. The command above exits 2 without
+either one.
+
 `--agent-scope` defaults to `chat.mcp`.
+
+`chat-build` accepts these flags on the `rest` service alone. That service is a
+REST facade over a core service, so a core must run first. It reads its root
+keys over HTTP and holds no store.
+
+`docs/MCP-CREDENTIAL-ISSUANCE.md` states that topology, and it names the
+single-process form that the acceptance run used.
 
 A core launch does not mount that chain, so a core launch needs none of these.
 

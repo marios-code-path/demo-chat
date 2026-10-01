@@ -115,12 +115,45 @@ default, so the context refuses to start without them.
 | `app.security.agent.required-scope` | `chat.mcp` |
 | `app.security.jwt.jwk-path` | The JWK file that holds the trusted public key |
 
+`docs/BUILD.md` states the launch in full.
+
+#### The supported route: chat-build rest
+
 ```sh
-./shell-scripts/chat-build rest --run --jwk /abs/path/server_keycert.jwk \
-  --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 --agent-username Admin
+./shell-scripts/chat-build rest --run --notls --node-id 1 \
+  --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
+  --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 \
+  --agent-username Admin
 ```
 
-`docs/BUILD.md` states that launch in full. Give `--jwk` an absolute path.
+Both `--notls` and `--node-id` are required. `chat-build` refuses a start
+without either one. Measured on 2026-09-30: the command without them exits 2
+with `the following arguments are required: --node-id`.
+
+Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
+the working directory, so a relative path would resolve against that rather
+than against you.
+
+**This command starts a different shape from the measured run.** Its dry run on
+2026-09-30 reads as follows.
+
+| Property | `chat-build rest` | The measured run |
+|---|---|---|
+| Module | `chat-deploy` | `chat-deploy-memory` |
+| Backend | `client`, over RSocket | `memory`, in process |
+| Application port | 6792 | 6892 |
+| Root keys | Read over HTTP from a core on 6791 | Loaded in process |
+
+So this route needs a core service to run first. It is a REST facade, and it
+holds no store of its own.
+
+#### The measured route: the memory jar
+
+Use this route to reproduce the acceptance run. The appendix carries the full
+flag list, and its ports are 6892 and 6893.
+
+`chat-build` gives no command for this shape. It accepts the agent flags on the
+`rest` service alone, and that service always takes the `client` backend.
 
 The deployment resolves the agent identity once at startup. It looks the
 username up through `ChatUserService` and requires exactly one match. Any other

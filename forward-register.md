@@ -2745,6 +2745,32 @@ the client id, and the lifetime is 300 seconds.
    accepted call was permitted by the credential alone. Limits of the
    authorization surface are in `docs/ANONYMOUS-AUTHORIZATION.md`.
 
+### One review blocker, and a larger defect beside it
+
+The review of PR #150 measured that the step 4 launch command omitted
+`--notls` and `--node-id`, so it exited 2 before startup. Both arguments are
+required. `docs/BUILD.md` carried the same command, and the same omission.
+
+**The deeper defect is the shape, not the arguments.** `chat-build` accepts the
+agent flags on the `rest` service alone, and that service takes the `client`
+backend. Its dry run on 2026-09-30 reads module `chat-deploy`, ports 6792 and
+6793, and a root key source of `http://127.0.0.1:6791`. So it is a REST facade
+over a core service, and it holds no store.
+
+The measured run used one process: the `chat-deploy-memory` executable jar with
+the memory selectors and `app.server.proto=rest`. **No `chat-build` command
+produces that shape.** A repair that added the two arguments alone would have
+documented a facade as though it were the measured deployment.
+
+Both documents now separate the two routes and state each topology. The
+appendix keeps the measured flag list.
+
+**The origin is the plan.** `docs/superpowers/plans/2026-09-29-rest-agent-authentication.md`
+proposes the `docs/BUILD.md` prose at line 2961, and that draft holds the
+defect. The plan's own executable step at line 2974 carries `--notls --long
+--node-id 0` and is correct. The plan is left alone, because it records what
+that session planned.
+
 ### Open
 
 - Merge approval.
