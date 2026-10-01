@@ -134,8 +134,13 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
             val keys = context.getBean(KeyServiceBeans::class.java) as KeyServiceBeans<Long>
             val message = keys.keyService().key(ChatDomain.MESSAGE).block(timeout)!!
 
+            // `addRoom` allows since 2026-10-01. The owner decided on that date
+            // that every user may add a room, and the shipped
+            // `{User, MessageTopic, NEW}` row reaches every caller that holds
+            // an identity. `addUser` still denies, because creating a user is
+            // the work of an `Admin`.
             val expected = linkedMapOf(
-                "addRoom MessageTopic NEW" to false,
+                "addRoom MessageTopic NEW" to true,
                 "send room SEND" to false,
                 "getRoom GET" to true,
                 "whoami User FIND" to true,
