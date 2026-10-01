@@ -1,7 +1,10 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
@@ -13,6 +16,7 @@ import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.security.access.composite.MessageServiceAccess
+import com.demo.chat.security.access.composite.TopicServiceAccess
 import com.demo.chat.security.access.core.PubSubAccess
 import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthorizationService
@@ -95,6 +99,133 @@ class SendCheckExpressionTests {
             .getAnnotation(PreAuthorize::class.java).value
 
     /**
+     * **A raw id must bind.** The two argument `hasAccessTo` compiles to
+     * `hasAccessTo(Key, String)`, and SpEL resolves a method by name, then by
+     * argument count, then by assignability. A `Long` is not a `Key`, so the
+     * call raises `EL1004E` and every caller is refused with no cause.
+     */
+    @Test
+    fun `the room members expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "MEMBERS")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "roomMembers"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the room members expression").isTrue()
+    }
+
+    @Test
+    fun `the get room expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "GET")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "getRoom"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the get room expression").isTrue()
+    }
+
+    @Test
+    fun `the message by id expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "GET")))
+
+        assertThat(
+            evaluate(
+                expressionOf(MessageServiceAccess::class.java, "messageById"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the message by id expression").isTrue()
+    }
+
+    @Test
+    fun `the delete room expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "REM")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "deleteRoom"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the delete room expression").isTrue()
+    }
+
+    @Test
+    fun `the listen topic expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "SUBSCRIBE")))
+
+        assertThat(
+            evaluate(
+                expressionOf(MessageServiceAccess::class.java, "listenTopic"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the listen topic expression").isTrue()
+    }
+
+    /**
+     * **A Kotlin data class property has no same named method.** The property
+     * `uid` compiles to `getUid()`, so `#req.uid` resolves and `#req.uid()`
+     * does not.
+     */
+    @Test
+    fun `the join expression binds both properties of a membership request`() {
+        val access = access(listOf(grant(CALLER, ROOM, "JOIN")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "joinRoom"),
+                "req", MembershipRequest(CALLER.id, ROOM.id), access
+            )
+        ).describedAs("the join expression").isTrue()
+    }
+
+    @Test
+    fun `the leave expression binds both properties of a membership request`() {
+        val access = access(listOf(grant(CALLER, ROOM, "JOIN")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "leaveRoom"),
+                "req", MembershipRequest(CALLER.id, ROOM.id), access
+            )
+        ).describedAs("the leave expression").isTrue()
+    }
+
+    /**
+     * **`topic-by-name` denies every caller, and the most privileged caller
+     * is the control.** `ByStringRequest` holds a name and no id, so there is
+     * no target key to check. A wildcard row on every domain must still be
+     * refused, or the test cannot tell a denial from a missing grant.
+     *
+     * The route is unusable until `CHAT-dgjhljbl` resolves a name to a key.
+     */
+    @Test
+    fun `the room by name expression denies a fully privileged caller`() {
+        val access = access(
+            listOf(
+                grant(CALLER, TOPIC_ROOT, "*"),
+                grant(CALLER, MESSAGE_ROOT, "*"),
+                grant(CALLER, USER_ROOT, "*"),
+            )
+        )
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "getRoomByName"),
+                "req", ByStringRequest("any-room"), access
+            )
+        ).describedAs("the room by name expression").isFalse()
+    }
+
+    /** The annotation text of a method of an access interface. */
+    private fun expressionOf(type: Class<*>, name: String, arity: Int = 1): String =
+        type.methods
+            .first { it.name == name && it.parameterCount == arity }
+            .getAnnotation(PreAuthorize::class.java).value
+
+    /**
      * Evaluate one expression against the bean, as Spring does for `@chatAccess`.
      */
     private fun evaluate(
@@ -111,10 +242,18 @@ class SendCheckExpressionTests {
         })
         context.setVariable(variable, value)
 
-        @Suppress("UNCHECKED_CAST")
-        val answer = SpelExpressionParser().parseExpression(expression).getValue(context) as Mono<Boolean>
+        val answer = SpelExpressionParser().parseExpression(expression).getValue(context)
 
-        return answer
+        // Spring accepts both shapes. `ReactiveExpressionUtils.evaluateAsBoolean`
+        // tests for `Boolean` first and for `Mono` second, so a literal such as
+        // `false` and a publisher such as `hasAccessToId` both resolve.
+        @Suppress("UNCHECKED_CAST")
+        val publisher: Mono<Boolean> = when (answer) {
+            is Mono<*> -> answer as Mono<Boolean>
+            else -> Mono.just(answer == true)
+        }
+
+        return publisher
             .contextWrite(
                 ReactiveSecurityContextHolder.withSecurityContext(
                     Mono.just(SecurityContextImpl(UsernamePasswordAuthenticationToken(details(), "secret", listOf())))

@@ -11,24 +11,34 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'NEW')")
     override fun addRoom(req: ByStringRequest): Mono<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'REM')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'REM')")
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'ALL')")
     override fun listRooms(): Flux<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
+    /**
+     * **This route denies every caller, and it cannot do otherwise.**
+     * `ByStringRequest` holds a name and no id, so there is no target key at
+     * the check. The owner decided on 2026-10-01 that the route stays
+     * fail-closed. An unguarded route would expose room reads, and no grant
+     * could protect it.
+     *
+     * **It is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
+     * name to a room key and restores a target check.
+     */
+    @PreAuthorize("false")
     override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.uid(), 'JOIN')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.roomId(), 'JOIN')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.roomId, 'JOIN')")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'MEMBERS')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'MEMBERS')")
     override fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships>
 }

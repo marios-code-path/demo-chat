@@ -8,6 +8,10 @@ What a caller may do, and what the `Anon` root key may do.
 under `CHAT-mahevldm`, and `messageById` went from deny to allow under
 `CHAT-rfzsnbco`.
 
+**One row was added on 2026-10-01 by `CHAT-eoqkbqve`.** `getRoomByName` denies
+every caller, by construction and not by a missing grant. The section under
+the matrix states why, and which issue restores the route.
+
 `docs/IDENTITY-POLICY.md` states which identity a caller reaches. **This
 document states what that identity may then do.** They are separate questions,
 and a green identity test proves nothing here.
@@ -74,7 +78,7 @@ three `Anon` rows alone.
 | `Anon` | `Message` | GET | yes, and it reaches `messageById` since `CHAT-rfzsnbco` |
 | `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
 | `User` | `MessageTopic` | ALL | yes |
-| `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` and `getRoomByName` since `CHAT-rfzsnbco` |
+| `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **It reaches `getRoomByName` nowhere, because that route denies by construction.** |
 | `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
 | `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
 
@@ -159,6 +163,25 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `messageById`, GET | **allow** | **allow** | deny | deny | deny |
 | `listRooms`, MessageTopic ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
+| `getRoomByName`, MessageTopic GET | deny | deny | deny | deny | deny |
+
+### `getRoomByName` denies every caller on purpose
+
+**The row is a refusal by construction, and not a missing grant.**
+`ByStringRequest` holds a name and no id, so no target key exists at the
+check. The expression is the literal `false`, which resolves no method and
+looks up no bean.
+
+The owner decided on 2026-10-01 that the route stays fail-closed. An
+unguarded route would expose room reads once `CHAT-znprrzhn` wires the
+controller, and no grant could protect it.
+
+**So the route is unusable. `CHAT-dgjhljbl` restores it**, by resolving a
+name to a room key so that a target check becomes honest.
+
+Five shell call sites depend on the route: `TopicCommands.kt` lines 55, 62,
+77 and 99, and `PubSubCommands.kt` line 46. **A shell credential repairs none
+of them**, because this route refuses every identity.
 
 ## Three results that are easy to miss
 
@@ -199,10 +222,11 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
    five the scan adds nothing, because a root key is its own root.
 
    **Three `MessageTopic` permissions now reach an operation.** `GET` reaches
-   `getRoom` and `getRoomByName`, `JOIN` reaches `leaveRoom`, and `MEMBERS`
-   reaches `roomMembers`. Each of those checks names one room, and the scan
+   `getRoom`, `JOIN` reaches `leaveRoom`, and `MEMBERS` reaches
+   `roomMembers`. Each of those checks names one room, and the scan
    reads the `MessageTopic` root of that room. `joinRoom` is not one of them,
-   because it names a user key. See the wider-effect table of
+   because it names a user key. `getRoomByName` is not one either, because
+   `CHAT-eoqkbqve` made that route a refusal. See the wider-effect table of
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
@@ -213,18 +237,18 @@ still deny for every caller.**
 `addRoom` and `addUser` deny although both sides match, because no shipped row
 grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
 
-**Eleven checks move in total, and only one of them is a matrix row.**
-`messageById` is that row. The other ten were denied before and allow now.
-Four are composite checks over one room: `getRoom`, `getRoomByName`,
-`leaveRoom` and `roomMembers`. Six are `core` checks: `PersistenceAccess.add`
+**Ten checks move in total, and only one of them is a matrix row.**
+`messageById` is that row. The other nine were denied before and allow now.
+Three are composite checks over one room: `getRoom`, `leaveRoom` and
+`roomMembers`. Six are `core` checks: `PersistenceAccess.add`
 and `IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity,
 `PersistenceAccess.get` and `byIds` reach `{Anon, Message, GET}` for a
 `Message` entity, `PubSubAccess.sendMessage` reaches `{User, Message, SEND}`,
 and `TopicInventoryAccess.getUsersBy` reaches `{User, MessageTopic, GET}`.
 
-**Two of the eleven are conditional.** `PersistenceAccess.add` and
+**Two of the ten are conditional.** `PersistenceAccess.add` and
 `IndexAccess.add` move through the `{Anon, User, PUT}` row alone. Every one of
-the eleven is latent. See the wider-effect table of the spec.
+the ten is latent. See the wider-effect table of the spec.
 
 ## Expiry
 
@@ -257,7 +281,7 @@ defect in the programmatic wrappers.
 This also explains why `chat-shell` can create a room and send a message with
 no credential. The matrix denies both.
 
-## Two expression shapes cannot be evaluated
+## Two expression shapes that could not be evaluated
 
 Measured on 2026-10-01 at `09d4c9a6`, with `javap` on the compiled
 `SpringSecurityAccessBrokerService` and a probe on spring-expression 7.0.9.
@@ -273,9 +297,18 @@ never generates.** A Kotlin `data class` property `dest` compiles to
 `getDest()`. The property form `#req.dest` resolves.
 
 Both send expressions were repaired under `CHAT-zhjltbky`, by
-`hasAccessToId` and by the property form. **The remaining sites are open.**
-Every `@PreAuthorize` of the access interfaces is latent, because no
-production type implements one, so this changes no running answer.
+`hasAccessToId` and by the property form.
+
+**`CHAT-eoqkbqve` repaired every remaining site**, measured on 2026-10-01.
+Five checks moved to `hasAccessToId`: `deleteRoom`, `getRoom`, `roomMembers`,
+`listenTopic` and `messageById`. Two moved to the property form: `joinRoom`
+and `leaveRoom`. One was replaced by the literal `false`: `getRoomByName`,
+for the reason in the section above.
+
+`SendCheckExpressionTests` reads each annotation from the compiled interface
+and evaluates it through SpEL, so a regression in any of the eight fails
+there. **Without that repair a wired check refuses every caller**, and it
+does so with `EL1004E` and no stated cause.
 
 ## Before turning the checks on
 
