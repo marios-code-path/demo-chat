@@ -2262,6 +2262,100 @@ One alternative is recorded and not chosen. A hybrid logical clock answers a
 total order from one value and is cheaper to store. It cannot report that two
 writes were concurrent, because it orders them.
 
+## The authorization grant policy (2026-10-01)
+
+`CHAT-zhjltbky`. Spec:
+`docs/superpowers/specs/2026-10-01-authorization-grant-policy-design.md`. Plan:
+`docs/superpowers/plans/2026-10-01-authorization-grant-policy.md`.
+
+**This work is not merged.** The branch is `chat-zhjltbky-grant-policy`, cut
+from `09d4c9a6`, which is the merge commit of `CHAT-rfzsnbco`. The merge commit
+is unknown at this writing. The owner merges by pull request.
+
+### The six owner decisions
+
+1. **One writer holds the room owner row.** The server writes it, at room
+   creation.
+2. **The port is optional.** A composition with no authorization still creates
+   a room.
+3. **The shell writes no grant.** A shell that cannot present an identity owns
+   no room.
+4. **A failed grant write fails the request, and the room stays.** No step of
+   the chain compensates another.
+5. **An owner may delete a room, open or closed.** The rank carries it.
+6. **Wildcard uniqueness is deferred.** `CHAT-esengqpv` holds it.
+
+### The delete decision, and the rank levels
+
+`TopicServiceAccess.deleteRoom` checks the room key with `REM`. **`ALL` is a
+literal**, so the shipped `{User, MessageTopic, ALL}` row does not cover
+`REM`. An anonymous caller and a non-owner both deny.
+
+**An owner allows, and a close does not reach that.** Both rows are
+wildcards, so level 1 of the rank ties. The owner row names the user key,
+which is an `ENTITY`. The close names a domain root, which is a
+`DOMAIN_ROOT`. **Level 2 places `ENTITY` above `DOMAIN_ROOT`.** A closed room
+still yields to its owner.
+
+Five rows are pinned in `AnonymousAuthorizationMatrixTests` and in
+`CassandraAuthorizationMatrixTests`. Both were measured on 2026-10-01, the
+Cassandra one against Docker Engine 29.7.2.
+
+### The port, and its condition
+
+`RoomOwnerGrant<T>` sits in `chat-core`, so the composite never reads a
+security context. `ContextRoomOwnerGrant` sits in `chat-security`, and it is
+the only implementation. `RoomOwnerGrantConfiguration` registers it under
+`app.service.composite.auth`, which is the condition of the
+`authorizationService` bean it needs.
+
+The composite takes the port as an `ObjectProvider`, which is the pattern that
+configuration already uses for `vectorIndexers`. So a composition without
+`chat-security` still builds a topic service.
+
+### The failure contract
+
+A failed grant write raises `RoomOwnerGrantException`. It carries the room key
+as a field and the cause, and its message names the room id. `ChatException`
+gained an optional cause for this.
+
+**The residual is an ownerless room.** The store row, the index row and the
+open topic all stay. An operator reads the key from the message and writes the
+missing row by hand. No step of the chain compensates another.
+
+**The key type is open**, `Key<*>`. Kotlin refuses a type parameter on a
+subclass of `Throwable` at the declaration.
+
+### Two facts that cost a measurement
+
+1. **A raw id cannot bind to `hasAccessTo(Key, String)`.** SpEL resolves a
+   method by name, by argument count, and then by assignability. A `Long` is
+   not a `Key`, so the call fails with `EL1004E`. Both send expressions were
+   in that state. They are repaired by `hasAccessToId`. The remaining sites
+   are latent and filed as `CHAT-eoqkbqve`.
+2. **A Kotlin data class property has no same-named accessor.** A property
+   `dest` compiles to `getDest()`. SpEL resolves `#req.dest` and not
+   `#req.dest()`.
+
+`SendCheckExpressionTests` reads the real annotation text and evaluates it
+through SpEL. A mutation of either expression made all three of its tests
+error with the measured `EL1004E` message.
+
+### The two new issues
+
+Both are children of `CHAT-znprrzhn`, and no launch script, yml or test enables
+a check yet, so every row above is latent.
+
+| Issue | What |
+|-------|------|
+| `CHAT-eoqkbqve` | Repair the access expressions that cannot be evaluated. This must land before any check is wired, because a check that cannot run refuses every caller. |
+| `CHAT-esengqpv` | Refuse a second wildcard row for one target. The guard belongs where the row is written. |
+
+**The `Checkout` row of this file still reads `8fa9c962`.** That lag is
+deliberate and this section does not move it. The row records the last
+substantive merge before the register refresh. See the rule under `Where
+things stand`.
+
 ## The work queue, ordered on 2026-09-21
 
 26 issues are `todo` and 2 are `in-progress`. The order below is a

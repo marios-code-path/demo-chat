@@ -237,6 +237,26 @@ defect in the programmatic wrappers.
 This also explains why `chat-shell` can create a room and send a message with
 no credential. The matrix denies both.
 
+## Two expression shapes cannot be evaluated
+
+Measured on 2026-10-01 at `09d4c9a6`, with `javap` on the compiled
+`SpringSecurityAccessBrokerService` and a probe on spring-expression 7.0.9.
+
+**A raw id cannot bind to the two argument `hasAccessTo`.** The compiled
+signature is `hasAccessTo(com.demo.chat.domain.Key, java.lang.String)`. SpEL
+resolves a method by name and argument count, and then by assignability. A
+`Long` is not a `Key`, so the call fails with `EL1004E`. The three argument
+form erases to `(Object, Object, String)`, so a raw pair of ids binds there.
+
+**`#req.dest()`, `#req.uid()` and `#req.roomId()` name methods that Kotlin
+never generates.** A Kotlin `data class` property `dest` compiles to
+`getDest()`. The property form `#req.dest` resolves.
+
+Both send expressions were repaired under `CHAT-zhjltbky`, by
+`hasAccessToId` and by the property form. **The remaining sites are open.**
+Every `@PreAuthorize` of the access interfaces is latent, because no
+production type implements one, so this changes no running answer.
+
 ## Before turning the checks on
 
 Read this table first. **Enabling the checks against the shipped grants would

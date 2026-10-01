@@ -310,6 +310,17 @@ already holds.
 The order of the rows and the specificity of the principal give that result.
 The policy needs no ownership exception.
 
+**A denial is the absence of a grant.** Nothing subtracts, and no row carries
+a deny value. An operation is refused when no row reaches the caller. The
+close works because an expired wildcard row wins its group and then removes
+the permission that earlier rows granted.
+
+Two pieces of work follow from this decision. `CHAT-esengqpv` makes the write
+path refuse a second wildcard row for one target, because one `*` per target
+is what makes the close the last word. `CHAT-eoqkbqve` repairs the access
+expressions that cannot be evaluated, because a check that cannot run refuses
+every caller. Both are children of `CHAT-znprrzhn`.
+
 ### The evaluation model is replacement
 
 An earlier note in this draft said that an expired row takes no part in
