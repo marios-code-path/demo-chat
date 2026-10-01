@@ -1,6 +1,6 @@
 package com.demo.chat.domain
 
-open class ChatException(msg: String) : Exception(msg)
+open class ChatException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
 object AccessDeniedException : ChatException("Access Denied")
 object DuplicateException : ChatException("Object already exists")
 object NotFoundException : ChatException("Object not Found")

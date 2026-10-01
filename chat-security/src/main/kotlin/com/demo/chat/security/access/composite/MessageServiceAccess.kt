@@ -17,6 +17,6 @@ interface MessageServiceAccess<T, V> : ChatMessageService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.dest(), 'SEND')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.dest, 'SEND')")
     override fun send(req: MessageSendRequest<T, V>): Mono<out Key<T>>
 }

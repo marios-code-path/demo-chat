@@ -82,6 +82,26 @@ three `Anon` rows alone.
 "Reaches an operation" is the target side, which `CHAT-rfzsnbco` closed. A
 check on one object now reads the domain root of that object beside it.
 
+## The room owner
+
+**The server writes one `*` row for a new room, for the caller that created it.**
+`ContextRoomOwnerGrant` is the only writer, and `CHAT-zhjltbky` decided that.
+
+**An anonymous caller owns no room.** The RSocket server seam calls `anonymous`,
+so a caller with no credential reaches the `Anon` root key rather than no
+identity. `ContextIdentity` rule 4 is what answers it. The writer drops that
+key, so the room is created with no owner row.
+
+**A row for the `Anon` key would reach every caller.** The actor set of every
+query holds the `Anon` key, so every caller would be an owner of the room. A
+close could not reach the row either, because an identity is an `ENTITY` and a
+close names a `DOMAIN_ROOT`. Level 2 of the rank keeps the owner row.
+
+**An ownerless room is a state this application accepts.** A caller holds every
+right over its own key, so an owner may delete its own room. A room with no
+owner row is deleted by an operator, who writes the missing row or removes the
+room.
+
 ## Self authority
 
 **A key holds every right over itself.** The owner decided this on
@@ -236,6 +256,26 @@ defect in the programmatic wrappers.
 
 This also explains why `chat-shell` can create a room and send a message with
 no credential. The matrix denies both.
+
+## Two expression shapes cannot be evaluated
+
+Measured on 2026-10-01 at `09d4c9a6`, with `javap` on the compiled
+`SpringSecurityAccessBrokerService` and a probe on spring-expression 7.0.9.
+
+**A raw id cannot bind to the two argument `hasAccessTo`.** The compiled
+signature is `hasAccessTo(com.demo.chat.domain.Key, java.lang.String)`. SpEL
+resolves a method by name and argument count, and then by assignability. A
+`Long` is not a `Key`, so the call fails with `EL1004E`. The three argument
+form erases to `(Object, Object, String)`, so a raw pair of ids binds there.
+
+**`#req.dest()`, `#req.uid()` and `#req.roomId()` name methods that Kotlin
+never generates.** A Kotlin `data class` property `dest` compiles to
+`getDest()`. The property form `#req.dest` resolves.
+
+Both send expressions were repaired under `CHAT-zhjltbky`, by
+`hasAccessToId` and by the property form. **The remaining sites are open.**
+Every `@PreAuthorize` of the access interfaces is latent, because no
+production type implements one, so this changes no running answer.
 
 ## Before turning the checks on
 

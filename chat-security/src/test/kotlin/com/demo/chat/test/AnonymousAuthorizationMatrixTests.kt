@@ -73,7 +73,8 @@ class AnonymousAuthorizationMatrixTests {
                 "whoami User FIND" to true,
                 "messageById GET" to true,
                 "listRooms MessageTopic ALL" to true,
-                "addUser User NEW" to false
+                "addUser User NEW" to false,
+                "deleteRoom MessageTopic REM" to false
             )
         )
     }
@@ -523,6 +524,69 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(answer).describedAs("a room read after a close").isFalse()
     }
 
+    /**
+     * **An owner may delete a room, and a close does not reach that.**
+     *
+     * Both rows are wildcards, so level 1 of the rank ties. The owner row names
+     * the caller key, which is an `ENTITY`. The close names a domain root,
+     * which is a `DOMAIN_ROOT`. Level 2 places `ENTITY` above `DOMAIN_ROOT`.
+     */
+    @Test
+    fun `an owner may delete a closed room`() {
+        val rows = listOf(
+            grant(CALLER_KEY, ROOM_KEY, "*"),
+            grant(USER_ROOT, ROOM_KEY, "*", expires = 1L)
+        )
+
+        assertThat(deleteAnswer(rows, authenticatedContext()))
+            .describedAs("the owner of a closed room")
+            .isTrue()
+    }
+
+    /** An owner deletes an open room. Nothing removes the row. */
+    @Test
+    fun `an owner may delete an open room`() {
+        assertThat(deleteAnswer(listOf(grant(CALLER_KEY, ROOM_KEY, "*")), authenticatedContext())).isTrue()
+    }
+
+    /**
+     * **A close denies a caller who holds no row.** The close wins its group,
+     * and its expiry then drops it.
+     */
+    @Test
+    fun `a close denies a caller who holds no row`() {
+        assertThat(deleteAnswer(listOf(grant(USER_ROOT, ROOM_KEY, "*", expires = 1L)), authenticatedContext()))
+            .describedAs("a closed room")
+            .isFalse()
+    }
+
+    /** An anonymous caller holds no row on this room, so it may not delete it. */
+    @Test
+    fun `an anonymous caller may not delete a room`() {
+        assertThat(deleteAnswer(listOf(grant(CALLER_KEY, ROOM_KEY, "*")), anonymousContext()))
+            .describedAs("an anonymous caller")
+            .isFalse()
+    }
+
+    /**
+     * **An authenticated caller who is not the owner may not delete a room.**
+     * `ALL` is a literal, so the `{User, MessageTopic, ALL}` row does not
+     * cover `REM`.
+     */
+    @Test
+    fun `an authenticated caller who holds no row may not delete a room`() {
+        assertThat(deleteAnswer(shippedGrants(), authenticatedContext()))
+            .describedAs("a caller with no row on the room")
+            .isFalse()
+    }
+
+    /** The delete check, which reads one room key with `REM`. */
+    private fun deleteAnswer(rows: List<AuthMetadata<Long>>, context: SecurityContext): Boolean =
+        SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
+            .hasAccessTo(ROOM_KEY, "REM")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(context)))
+            .block() ?: false
+
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
         broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
@@ -546,7 +610,8 @@ class AnonymousAuthorizationMatrixTests {
             "whoami User FIND" to { s -> s.hasAccessToDomain("User", "FIND") },
             "messageById GET" to { s -> s.hasAccessTo(MESSAGE_KEY, "GET") },
             "listRooms MessageTopic ALL" to { s -> s.hasAccessToDomain("MessageTopic", "ALL") },
-            "addUser User NEW" to { s -> s.hasAccessToDomain("User", "NEW") }
+            "addUser User NEW" to { s -> s.hasAccessToDomain("User", "NEW") },
+            "deleteRoom MessageTopic REM" to { s -> s.hasAccessTo(ROOM_KEY, "REM") }
         )
 
     private fun allowed(
