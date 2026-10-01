@@ -2800,3 +2800,28 @@ that session planned.
 removed `.worktrees/mcp-impl` worktree, and nothing owns it now. This work used
 ports 6892 and 6893 to avoid it. A reader who needs those ports should confirm
 the process is dead before killing it.
+
+## The target domain scan (2026-09-30)
+
+`CHAT-rfzsnbco`. Spec:
+`docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`. Plan:
+`docs/superpowers/plans/2026-09-30-target-domain-scan.md`.
+
+A permission check reads the given target and the domain root of that target.
+The owner selection reads the exact target alone.
+
+Two facts that are expensive to relearn:
+
+1. **The matrix fixture carried no domain root.** `TestKeys.key(id)` gives
+   every key the fixed root `-9L`. So no test key carried the root of its own
+   domain, and the scan could not be measured. A room key must carry the
+   `MessageTopic` root. The fixture builds a root as `Key.root(id)`, an object
+   as `Key.of(id, domainRootId)`, and an identity as `Key.of(id, userRootId)`.
+2. **One matrix row moves.** `messageById` reads allow, because
+   `{Anon, Message, GET}` names the `Message` root and a message read asks
+   about one message. `send` stays denied, because the `Message` root is not
+   the root of a room.
+
+Every moved check is latent. No production bean implements an annotated
+interface, so this change moves what the configuration means and no running
+answer.

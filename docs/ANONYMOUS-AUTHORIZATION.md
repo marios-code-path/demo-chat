@@ -2,9 +2,11 @@
 
 What a caller may do, and what the `Anon` root key may do.
 
-**Measured on 2026-09-24 at `58163b7c`.** The first measurement was taken on
-2026-09-23 at master `4fcae69c`, and one row has moved since. `listRooms` went
-from deny to allow under `CHAT-mahevldm`.
+**Measured on 2026-09-24 at `58163b7c`, and re-measured on 2026-09-30 for
+`CHAT-rfzsnbco`.** The first measurement was taken on 2026-09-23 at master
+`4fcae69c`. Two rows have moved since. `listRooms` went from deny to allow
+under `CHAT-mahevldm`, and `messageById` went from deny to allow under
+`CHAT-rfzsnbco`.
 
 `docs/IDENTITY-POLICY.md` states which identity a caller reaches. **This
 document states what that identity may then do.** They are separate questions,
@@ -29,16 +31,19 @@ share, and proves both grants survive a context restart.
 replaces the store and the index with maps.
 `CassandraAuthorizationMatrixTests` runs the production stack against a
 cassandra store and a cassandra index, over the launch surface that loads
-`userinit.yml`. Measured on 2026-09-27: **all six rows answer the same on
-cassandra as on the map store**, for all five caller states.
+`userinit.yml`. Measured on 2026-09-27: **all rows answer the same on cassandra
+as on the map store**, for all five caller states. It carries one further row
+than the matrix below, a room read, and it was re-measured on 2026-09-30 for
+`CHAT-rfzsnbco`.
 
 That test mints the message key instead of sending a message, because
 `send` fails on a cassandra deployment. See `CHAT-xcmpudyb`. The
-`messageById` expression checks one message key, and the broker reads that key
-alone, so the row is unaffected.
+`messageById` expression checks one message key, and no message is sent, so
+the minted key measures the same expression.
 
-Only the six rows below are measured this way. The self authority, many target
-and expiry cases in this document are still measured on a map store alone.
+Only the operations of that test are measured this way. The self authority,
+many target and expiry cases in this document are still measured on a map
+store alone.
 
 **`*` means ownership, and not "all permissions".** It is singular per target,
 and it is a sentinel, so a `*` row stops the read and its expiry decides.
@@ -57,7 +62,7 @@ replaces only the store and the index.
 
 Every deployment loads
 `shared-deploy-configuration/src/main/config/userinit.yml`. It holds nine
-roles. **All nine are listed here, because since `CHAT-mahevldm` the four that
+roles. **All nine are listed here, because since `CHAT-mahevldm` the five that
 name `User` reach a caller.** An earlier version of this section listed the
 three `Anon` rows alone.
 
@@ -66,16 +71,16 @@ three `Anon` rows alone.
 | `Admin` | `Admin` | `*` | the `Admin` key alone, and the self rule already covers it |
 | `Anon` | `User` | FIND | yes |
 | `Anon` | `User` | PUT | yes |
-| `Anon` | `Message` | GET | yes, and no operation matches its target |
-| `User` | `Message` | SEND | yes, and no operation matches its target |
+| `Anon` | `Message` | GET | yes, and it reaches `messageById` since `CHAT-rfzsnbco` |
+| `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
 | `User` | `MessageTopic` | ALL | yes |
-| `User` | `MessageTopic` | GET | yes, and no operation matches its target |
-| `User` | `MessageTopic` | JOIN | yes, and no operation matches its target |
-| `User` | `MessageTopic` | MEMBERS | yes, and no operation matches its target |
+| `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` and `getRoomByName` since `CHAT-rfzsnbco` |
+| `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
+| `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
 
-"Reaches a caller" is the principal side. "No operation matches its target"
-means the row names a domain root while every operation that asks for that
-permission names one object. Result 3 below carries that.
+"Reaches a caller" is the principal side, which `CHAT-mahevldm` closed.
+"Reaches an operation" is the target side, which `CHAT-rfzsnbco` closed. A
+check on one object now reads the domain root of that object beside it.
 
 ## Self authority
 
@@ -131,7 +136,7 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `addRoom`, MessageTopic NEW | deny | deny | deny | deny | deny |
 | `send`, room SEND | deny | deny | deny | deny | deny |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
-| `messageById`, GET | deny | deny | deny | deny | deny |
+| `messageById`, GET | **allow** | **allow** | deny | deny | deny |
 | `listRooms`, MessageTopic ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 
@@ -149,34 +154,57 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
    `User` root beside the anonymous key, because every caller is a user.
 
    **`listRooms` moved from deny to allow** for an anonymous caller and for an
-   authenticated one. That is the only row of this matrix that moved, and the
-   shipped configuration is what says so: `{user: User, target: MessageTopic,
-   role: ALL}`.
+   authenticated one. The shipped configuration is what says so:
+   `{user: User, target: MessageTopic, role: ALL}`.
 
-   `GET`, `JOIN` and `MEMBERS` still reach no operation, because each names the
-   `MessageTopic` root as its target and every operation that asks for them
-   names one room. Result 3 explains that.
-3. **A grant on a domain root does not cover one object.** This is the target
-   side, and it is still open. `CHAT-rfzsnbco` carries it. It applies to
-   the nine checks that name an object key. `Anon` holds `Message:GET`, and
-   `messageById` checks `hasAccessTo(<one message key>, 'GET')`. The grant
-   names the Message root key, so it never applies. `send` is the same shape
-   against a room key.
+   At that point it was the only row of this matrix that had moved.
+   **`messageById` moved later, under `CHAT-rfzsnbco`.** Result 3 carries that.
 
-   **Five checks already name a root as the target.** `hasAccessToDomain`
-   passes `rootKeys.getRootKey(domain)`, so `addRoom`, `listRooms`, `addUser`,
-   `findByUsername` and `findByUserId` compare against the domain root
-   directly. At those five the target side already matches a `target:
-   <Domain>` row. **The principal side matched too, since `CHAT-mahevldm`.**
-   That is why `Anon:User:FIND` allows `whoami`, and why
-   `User:MessageTopic:ALL` now allows `listRooms`.
+   The `GET`, `JOIN` and `MEMBERS` rows named the `MessageTopic` root as their
+   target while every operation that asked for them named one room. So they
+   reached no operation, and `CHAT-rfzsnbco` is what changed that. Result 3
+   carries it.
+3. **A grant on a domain root covers an object of that domain, since
+   `CHAT-rfzsnbco`.** A permission check reads the given target and the domain
+   root of that target. The owner selection does not, because a domain root
+   read there would give one target two owners.
 
-So the shipped configuration allows three permissions to every caller that
-reaches an identity: `User:FIND`, `User:PUT` and `MessageTopic:ALL`. **Every
-write operation denies for every caller.**
+   `Anon` holds `Message:GET`, and `messageById` checks one message key. The
+   check now reads the `Message` root beside that key, so the row applies.
+   `send` stays denied, because the `Message` root is not the root of a room.
 
-`addRoom` and `addUser` deny although both sides now match, because no shipped
-row grants `NEW` on either domain.
+   **Five checks name a root as the target already.** `hasAccessToDomain`
+   passes the domain root, so `addRoom`, `listRooms`, `addUser`,
+   `findByUsername` and `findByUserId` compare against it directly. At those
+   five the scan adds nothing, because a root key is its own root.
+
+   **Three `MessageTopic` permissions now reach an operation.** `GET` reaches
+   `getRoom` and `getRoomByName`, `JOIN` reaches `leaveRoom`, and `MEMBERS`
+   reaches `roomMembers`. Each of those checks names one room, and the scan
+   reads the `MessageTopic` root of that room. `joinRoom` is not one of them,
+   because it names a user key. See the wider-effect table of
+   `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
+
+So the shipped configuration allows `User:FIND`, `User:PUT`,
+`MessageTopic:ALL`, `Message:GET` and three named `MessageTopic` permissions
+to every caller that reaches an identity. **The six matrix write operations
+still deny for every caller.**
+
+`addRoom` and `addUser` deny although both sides match, because no shipped row
+grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
+
+**Eleven checks move in total, and only one of them is a matrix row.**
+`messageById` is that row. The other ten were denied before and allow now.
+Four are composite checks over one room: `getRoom`, `getRoomByName`,
+`leaveRoom` and `roomMembers`. Six are `core` checks: `PersistenceAccess.add`
+and `IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity,
+`PersistenceAccess.get` and `byIds` reach `{Anon, Message, GET}` for a
+`Message` entity, `PubSubAccess.sendMessage` reaches `{User, Message, SEND}`,
+and `TopicInventoryAccess.getUsersBy` reaches `{User, MessageTopic, GET}`.
+
+**Two of the eleven are conditional.** `PersistenceAccess.add` and
+`IndexAccess.add` move through the `{Anon, User, PUT}` row alone. Every one of
+the eleven is latent. See the wider-effect table of the spec.
 
 ## Expiry
 
@@ -189,10 +217,13 @@ validates a token.** See `docs/IDENTITY-POLICY.md`.
 
 **No production type implements the annotated interfaces.**
 `TopicServiceAccess`, `UserServiceAccess` and `MessageServiceAccess` in
-`com.demo.chat.security.access.composite` carry every `@PreAuthorize` in this
-repository. `CompositeControllersConfiguration` imports all three and
-implements none. The controllers delegate to `CompositeServiceBeans`, which
-supplies the plain services.
+`com.demo.chat.security.access.composite` carry the checks that name a domain
+as text. The `core` package carries more, over `PersistenceAccess`,
+`IndexAccess`, `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
+`SecretsStoreAccess`. Every one of them is
+latent. `CompositeControllersConfiguration` imports the three composite
+interfaces and implements none of them. The controllers delegate to
+`CompositeServiceBeans`, which supplies the plain services.
 
 The other path, the programmatic wrappers in `chat-service-composite`, needs
 `app.service.composite.security`. No launch script, no yml and no test sets
