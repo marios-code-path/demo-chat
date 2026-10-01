@@ -260,10 +260,16 @@ expired rows. There is no order across permissions, and nothing subtracts.
 
 ## The scan must read two targets
 
-A permission scan must query **the given target and the domain of that
-target**. `CoreAuthorizationService` performs one lookup today, at lines 50,
-62, 75 and 81, each `findBy(queryForTarget.apply(...))`. Each needs the
-domain lookup beside it.
+A permission scan must query **the given target and the domain root of that
+target**. `CoreAuthorizationService` performs one lookup at
+`getAuthorizationsAgainst`, which is the permission check path. It reads both
+targets since `CHAT-rfzsnbco`.
+
+**Two of the four reads stay exact.** `getAuthorizationsForTarget` and
+`getAuthorizationsForMultipleTarget` select the owner of a target. The owner
+decided on 2026-09-24 that one caller holds `*` per target. A domain root read
+there would answer two holders of `*` for one room, so the selection reads the
+exact target alone.
 
 ## The proposal: a root id on the key
 
