@@ -57,22 +57,27 @@ import java.util.concurrent.atomic.AtomicLong
 class AnonymousAuthorizationMatrixTests {
 
     /**
-     * **An anonymous caller may read a user and a message.**
+     * **An anonymous caller may read a user, read a message and add a room.**
      *
      * `userinit.yml` grants the `Anon` key `User:FIND`, `User:PUT` and
      * `Message:GET`. The two `User` grants reach `whoami`. `Message:GET` names
      * the `Message` root, and `messageById` checks one message key. Since
      * `CHAT-rfzsnbco` the check reads that root, so the row applies.
+     *
+     * **The `MessageTopic:NEW` row names the `User` root**, so it reaches every
+     * caller. The owner decided on 2026-10-01 that every user may add a room,
+     * because a room is an unbounded resource. A caller with no identity still
+     * denies, because that caller reaches no actor set at all.
      */
     @Test
-    fun `an anonymous caller may find a user and nothing else`() {
+    fun `an anonymous caller may read a user, read a message and add a room`() {
         assertThat(matrixFor(anonymousContext())).isEqualTo(
             mapOf(
-                "addRoom MessageTopic NEW" to false,
+                "addRoom MessageTopic NEW" to true,
                 "send room SEND" to false,
                 "whoami User FIND" to true,
                 "messageById GET" to true,
-                "listRooms MessageTopic ALL" to true,
+                "listRooms MessageTopic GET_ALL" to true,
                 "addUser User NEW" to false,
                 "deleteRoom MessageTopic REM" to false
             )
@@ -159,10 +164,10 @@ class AnonymousAuthorizationMatrixTests {
      */
     @Test
     fun `a row naming the User root reaches a caller through one target`() {
-        val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
+        val row = grant(USER_ROOT, TOPIC_ROOT, "GET_ALL")
         val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys(), registry())
 
-        val answer = service.hasAccessToDomain("MessageTopic", "ALL")
+        val answer = service.hasAccessToDomain("MessageTopic", "GET_ALL")
             .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
             .block() ?: false
 
@@ -175,9 +180,9 @@ class AnonymousAuthorizationMatrixTests {
      */
     @Test
     fun `a row naming the User root reaches a caller through many targets`() {
-        val row = grant(USER_ROOT, TOPIC_ROOT, "ALL")
+        val row = grant(USER_ROOT, TOPIC_ROOT, "GET_ALL")
 
-        assertThat(permitted(broker(listOf(row)), listOf(TOPIC_ROOT), "ALL")).containsExactly(TOPIC_ROOT)
+        assertThat(permitted(broker(listOf(row)), listOf(TOPIC_ROOT), "GET_ALL")).containsExactly(TOPIC_ROOT)
     }
 
     /**
@@ -319,7 +324,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a send stays denied because the row names another domain`() {
         val rows = listOf(
             grant(USER_ROOT, MESSAGE_ROOT, "SEND"),
-            grant(USER_ROOT, TOPIC_ROOT, "ALL")
+            grant(USER_ROOT, TOPIC_ROOT, "GET_ALL")
         )
         val service = SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
 
@@ -339,7 +344,7 @@ class AnonymousAuthorizationMatrixTests {
     fun `a domain root check reads one target`() {
         val auth = recordingAuth(shippedGrants())
 
-        auth.broker.hasAccessByKey(CALLER_KEY, TOPIC_ROOT.verified(), "ALL").block()
+        auth.broker.hasAccessByKey(CALLER_KEY, TOPIC_ROOT.verified(), "GET_ALL").block()
 
         assertThat(auth.index.asked).containsExactly(TOPIC_ROOT)
     }
@@ -570,7 +575,7 @@ class AnonymousAuthorizationMatrixTests {
 
     /**
      * **An authenticated caller who is not the owner may not delete a room.**
-     * `ALL` is a literal, so the `{User, MessageTopic, ALL}` row does not
+     * `GET_ALL` is a literal, so the `{User, MessageTopic, GET_ALL}` row does not
      * cover `REM`.
      */
     @Test
@@ -609,7 +614,7 @@ class AnonymousAuthorizationMatrixTests {
             "send room SEND" to { s -> s.hasAccessTo(ROOM_KEY, "SEND") },
             "whoami User FIND" to { s -> s.hasAccessToDomain("User", "FIND") },
             "messageById GET" to { s -> s.hasAccessTo(MESSAGE_KEY, "GET") },
-            "listRooms MessageTopic ALL" to { s -> s.hasAccessToDomain("MessageTopic", "ALL") },
+            "listRooms MessageTopic GET_ALL" to { s -> s.hasAccessToDomain("MessageTopic", "GET_ALL") },
             "addUser User NEW" to { s -> s.hasAccessToDomain("User", "NEW") },
             "deleteRoom MessageTopic REM" to { s -> s.hasAccessTo(ROOM_KEY, "REM") }
         )
@@ -635,7 +640,8 @@ class AnonymousAuthorizationMatrixTests {
         grant(ANON_KEY, USER_ROOT, "PUT"),
         grant(ANON_KEY, MESSAGE_ROOT, "GET"),
         grant(USER_ROOT, MESSAGE_ROOT, "SEND"),
-        grant(USER_ROOT, TOPIC_ROOT, "ALL"),
+        grant(USER_ROOT, TOPIC_ROOT, "NEW"),
+        grant(USER_ROOT, TOPIC_ROOT, "GET_ALL"),
         grant(USER_ROOT, TOPIC_ROOT, "GET"),
         grant(USER_ROOT, TOPIC_ROOT, "JOIN"),
         grant(USER_ROOT, TOPIC_ROOT, "MEMBERS")

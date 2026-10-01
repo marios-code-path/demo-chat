@@ -32,7 +32,7 @@ import java.time.Duration
 /**
  * The denied caller at the RSocket boundary for `CHAT-znprrzhn`.
  *
- * `topic-list` carries `hasAccessToDomain('MessageTopic', 'ALL')`. The mocked
+ * `topic-list` carries `hasAccessToDomain('MessageTopic', 'GET_ALL')`. The mocked
  * broker answers false. So the proxy must refuse, and the delegate must never
  * see the call.
  *

@@ -41,26 +41,26 @@ interface PersistenceAccess<T, E : Any> : PersistenceStore<T, E> {
 }
 
 interface UserPersistenceAccess<T> : PersistenceStore<T, User<T>> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain('User', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('User', 'GET_ALL')")
     override fun all(): Flux<out User<T>>
 }
 
 interface MessageUserPersistenceAccess<T> : PersistenceStore<T, Message<T, *>> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('Message', 'GET_ALL')")
     override fun all(): Flux<out Message<T, *>>
 }
 
 interface MessageTopicPersistenceAccess<T> : PersistenceStore<T, MessageTopic<T>> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'GET_ALL')")
     override fun all(): Flux<out MessageTopic<T>>
 }
 
 interface KeyValuePairPersistenceAccess<T> : PersistenceStore<T, KeyValuePair<T, *>> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain('KeyValuePair', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('KeyValuePair', 'GET_ALL')")
     override fun all(): Flux<out KeyValuePair<T, *>>
 }
 
 interface AuthMetadataUserPersistenceAccess<T> : PersistenceStore<T, AuthMetadata<T>> {
-    @PreAuthorize("@chatAccess.hasAccessToDomain('AuthMetadata', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('AuthMetadata', 'GET_ALL')")
     override fun all(): Flux<out AuthMetadata<T>>
 }

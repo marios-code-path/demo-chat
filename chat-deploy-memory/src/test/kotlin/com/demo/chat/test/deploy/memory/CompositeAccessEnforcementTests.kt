@@ -2,12 +2,10 @@ package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
 import com.demo.chat.config.ChatJackson3Modules
-import com.demo.chat.config.IndexServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.IndexSearchRequest
-import com.demo.chat.service.core.TopicIndexService
 import com.demo.chat.security.access.composite.TopicServiceAccess
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions.assertThat
@@ -52,7 +50,6 @@ class CompositeAccessEnforcementTests {
 
     @Autowired lateinit var applicationContext: ApplicationContext
     @Autowired lateinit var stores: PersistenceServiceBeans<Long, String>
-    @Autowired lateinit var indexes: IndexServiceBeans<Long, String, IndexSearchRequest>
 
     lateinit var requester: RSocketRequester
 
@@ -82,12 +79,34 @@ class CompositeAccessEnforcementTests {
             .isTrue()
     }
 
+    /**
+     * **This test names a removal, and it named an add until 2026-10-01.**
+     * The owner decided on that date that every user may add a room, because a
+     * room is an unbounded resource. The shipped
+     * `{user: User, target: MessageTopic, role: NEW}` row reaches every caller
+     * that holds an identity, so an add no longer refuses.
+     *
+     * A removal carries `REM`. No shipped row names it, and only the owner row
+     * of that one room does. So the route refuses the caller below.
+     *
+     * **A refusal alone proves nothing.** An unevaluable expression also
+     * refuses. `SendCheckExpressionTests` proves that this expression evaluates
+     * and that an owner row allows it. This test proves the route on top.
+     */
     @Test
-    fun `a caller holding no room grant is refused at the route and writes nothing`() {
+    fun `a caller holding no room grant is refused at the route and removes nothing`() {
+        // `retrieveMono(Key::class.java)` answers a captured `Key<*>`, and the
+        // room id is a `Long`. The cast names the type this deployment uses.
+        @Suppress("UNCHECKED_CAST")
+        val room = requester.route("topic.topic-add")
+            .data(ByStringRequest(roomName))
+            .retrieveMono(Key::class.java)
+            .block(timeout)!! as Key<Long>
+
         StepVerifier.create(
-            requester.route("topic.topic-add")
-                .data(ByStringRequest(roomName))
-                .retrieveMono(Key::class.java)
+            requester.route("topic.topic-rem")
+                .data(ByIdRequest(room.id))
+                .retrieveMono(Void::class.java)
         ).expectErrorSatisfies { error ->
             assertThat(error)
                 .describedAs("the wire form of the refusal")
@@ -95,15 +114,8 @@ class CompositeAccessEnforcementTests {
                 .hasMessageContaining("Access Denied")
         }.verify(timeout)
 
-        assertThat(
-            indexes.topicIndex().findBy(IndexSearchRequest(TopicIndexService.NAME, roomName, 100))
-                .collectList().block(timeout)
-        ).describedAs("the index rows for the refused room").isEmpty()
-
-        assertThat(
-            stores.topicPersistence().all()
-                .filter { it.data == roomName }
-                .collectList().block(timeout)
-        ).describedAs("the stored rooms that the refused call names").isEmpty()
+        assertThat(stores.topicPersistence().get(room).block(timeout))
+            .describedAs("the room that the refused removal names")
+            .isNotNull
     }
 }

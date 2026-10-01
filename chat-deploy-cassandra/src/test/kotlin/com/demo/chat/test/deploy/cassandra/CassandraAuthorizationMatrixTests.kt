@@ -140,7 +140,7 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
                 "getRoom GET" to true,
                 "whoami User FIND" to true,
                 "messageById GET" to true,
-                "listRooms MessageTopic ALL" to true,
+                "listRooms MessageTopic GET_ALL" to true,
                 "addUser User NEW" to false,
                 "deleteRoom MessageTopic REM" to false
             )
@@ -181,7 +181,7 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
         "getRoom GET" to answer({ it.hasAccessTo(room, "GET") }, access, context),
         "whoami User FIND" to answer({ it.hasAccessToDomain("User", "FIND") }, access, context),
         "messageById GET" to answer({ it.hasAccessTo(message, "GET") }, access, context),
-        "listRooms MessageTopic ALL" to answer({ it.hasAccessToDomain("MessageTopic", "ALL") }, access, context),
+        "listRooms MessageTopic GET_ALL" to answer({ it.hasAccessToDomain("MessageTopic", "GET_ALL") }, access, context),
         "addUser User NEW" to answer({ it.hasAccessToDomain("User", "NEW") }, access, context),
         "deleteRoom MessageTopic REM" to answer({ it.hasAccessTo(room, "REM") }, access, context)
     )

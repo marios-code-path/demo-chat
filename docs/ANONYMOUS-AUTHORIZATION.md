@@ -12,6 +12,12 @@ under `CHAT-mahevldm`, and `messageById` went from deny to allow under
 every caller, by construction and not by a missing grant. The section under
 the matrix states why, and which issue restores the route.
 
+**One row moved on the same day, and one grant was renamed.** The owner
+decided that every user may add a room, so `addRoom` went from deny to allow.
+The owner also renamed the `ALL` grant to `GET_ALL`, because the old name read
+as "every permission" rather than "get every row". Both changes are stated
+under the grants table and under the matrix.
+
 `docs/IDENTITY-POLICY.md` states which identity a caller reaches. **This
 document states what that identity may then do.** They are separate questions,
 and a green identity test proves nothing here.
@@ -52,8 +58,9 @@ store alone.
 **`*` means ownership, and not "all permissions".** It is singular per target,
 and it is a sentinel, so a `*` row stops the read and its expiry decides.
 `docs/superpowers/specs/2026-09-23-operation-policy-draft.md` states the three
-properties under `What \* means`. **No shipped row names `*` on a target that
-an operation below checks**, so the rank does not move this matrix. The one
+properties under `What \* means`. **No `*` row reaches an operation below,
+because the `Admin` identity is the only principal of one**, and the actor set
+of every other caller excludes it. So the rank does not move this matrix. The
 shipped `*` row names the `Admin` key as its target, and no operation here
 names that target.
 
@@ -65,8 +72,8 @@ replaces only the store and the index.
 ## The grants
 
 Every deployment loads
-`shared-deploy-configuration/src/main/config/userinit.yml`. It holds nine
-roles. **All nine are listed here, because since `CHAT-mahevldm` the five that
+`shared-deploy-configuration/src/main/config/userinit.yml`. It holds ten
+roles. **All ten are listed here, because since `CHAT-mahevldm` the six that
 name `User` reach a caller.** An earlier version of this section listed the
 three `Anon` rows alone.
 
@@ -77,7 +84,8 @@ three `Anon` rows alone.
 | `Anon` | `User` | PUT | yes |
 | `Anon` | `Message` | GET | yes, and it reaches `messageById` since `CHAT-rfzsnbco` |
 | `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
-| `User` | `MessageTopic` | ALL | yes |
+| `User` | `MessageTopic` | NEW | yes, and it reaches `addRoom` since 2026-10-01 |
+| `User` | `MessageTopic` | GET_ALL | yes |
 | `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **It reaches `getRoomByName` nowhere, because that route denies by construction.** |
 | `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
 | `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
@@ -85,6 +93,31 @@ three `Anon` rows alone.
 "Reaches a caller" is the principal side, which `CHAT-mahevldm` closed.
 "Reaches an operation" is the target side, which `CHAT-rfzsnbco` closed. A
 check on one object now reads the domain root of that object beside it.
+
+**`GET_ALL` carries the permission that `ALL` carried on 2026-09-30.** The
+owner renamed it on 2026-10-01, because the value reads as "get every row of a
+dataset" and not as "every permission". A `*` row is what carries every
+permission, and the section below states that rule.
+
+## The Admin wildcard on every root
+
+**The Admin identity holds `*` on every domain root.** The owner decided this
+rule on 2026-10-01. `InitialUsersService` writes one row per loaded domain, so
+a domain that a later release adds takes its row with no second edit.
+
+**`userinit.yml` cannot express the rule.** A role definition names one user
+and one target, so the file carries `{Admin, Admin, '*'}` alone. The per-root
+rows are generated at user initialization, after the identities load and after
+the roots load.
+
+**The Admin rows do not move this matrix.** The actor set of a query is the
+`Anon` key, the `User` root and the caller. The `Admin` key is in no other
+caller's actor set, so a `*` row for Admin reaches the Admin identity alone.
+
+`AdminRootGrantWiringTests` holds that measurement against a memory
+deployment. It reads the store through `PersistenceServiceBeans` and asserts
+one row per domain root, plus the shipped row that names the `Admin` key.
+`CHAT-znprrzhn` holds the wiring.
 
 ## The room owner
 
@@ -157,13 +190,24 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 
 | Operation | anonymous | authenticated | unauthenticated | unsupported | no context |
 |---|---|---|---|---|---|
-| `addRoom`, MessageTopic NEW | deny | deny | deny | deny | deny |
+| `addRoom`, MessageTopic NEW | **allow** | **allow** | deny | deny | deny |
 | `send`, room SEND | deny | deny | deny | deny | deny |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
 | `messageById`, GET | **allow** | **allow** | deny | deny | deny |
-| `listRooms`, MessageTopic ALL | **allow** | **allow** | deny | deny | deny |
+| `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 | `getRoomByName`, MessageTopic GET | deny | deny | deny | deny | deny |
+
+**`addRoom` moved from deny to allow on 2026-10-01.** The owner decided that
+every user may add a room, because a room is an unbounded resource and no
+counter bounds it. The `{User, MessageTopic, NEW}` row now reaches every
+caller that holds an identity. A caller with no context, or with no
+authentication, still denies, because that caller reaches no actor set at
+all.
+
+**`addUser` still denies, and that is the same decision.** Creating a user is
+the work of an `Admin`, so no row grants `NEW` on the `User` domain to a
+regular caller.
 
 ### `getRoomByName` denies every caller on purpose
 
@@ -230,12 +274,14 @@ of them**, because this route refuses every identity.
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
-`MessageTopic:ALL`, `Message:GET` and three named `MessageTopic` permissions
-to every caller that reaches an identity. **The six matrix write operations
-still deny for every caller.**
+`MessageTopic:NEW`, `MessageTopic:GET_ALL`, `Message:GET` and three named
+`MessageTopic` permissions to every caller that reaches an identity.
 
-`addRoom` and `addUser` deny although both sides match, because no shipped row
-grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
+**Four matrix operations still deny for every caller**: `send`, `addUser`,
+`getRoomByName` and `deleteRoom`. `send` and `deleteRoom` deny because a room
+is an object of another domain, and only an owner row holds its rights.
+`addUser` denies because creating a user is the work of an `Admin`.
+`getRoomByName` denies by construction. See the sections above.
 
 **Ten checks move in total, and only one of them is a matrix row.**
 `messageById` is that row. The other nine were denied before and allow now.
@@ -312,10 +358,11 @@ does so with `EL1004E` and no stated cause.
 
 ## Before turning the checks on
 
-Read this table first. **Enabling the checks against the shipped grants would
-deny `addRoom` and `send` to every caller**, including an authenticated one.
-The grants need a decision before the wiring does.
+Read this table first. **Enabling the checks against the shipped grants refuses
+`send` and `deleteRoom` to every caller**, including an authenticated one,
+where a room has no owner row. The grants need a decision before the wiring
+does.
 
-`listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. An earlier
-version of this line named it beside `addRoom` and `send`, and that was true
-while the four `user: User` rows reached nobody.
+`listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. `addRoom`
+allows since 2026-10-01. An earlier version of this line named `addRoom` and
+`send` together, and that was true while no row granted `NEW` on a topic.
