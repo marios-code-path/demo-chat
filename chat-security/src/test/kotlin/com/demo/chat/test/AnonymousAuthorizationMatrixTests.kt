@@ -471,6 +471,58 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(rows).isEmpty()
     }
 
+    /**
+     * **An administrator acts on a closed target.**
+     *
+     * The close is an expired wildcard row on the `User` root, which is a
+     * domain root principal. The administrator row is a live wildcard on the
+     * `Admin` key, which is an object principal. Level 1 places both at the
+     * wildcard, and level 2 places `ENTITY` above `DOMAIN_ROOT`. So the
+     * administrator row is last and it decides.
+     *
+     * **The context must carry the `Admin` key.** The actor set is the `Anon`
+     * key, the `User` root and the caller. An anonymous caller does not hold
+     * the `Admin` key, so it must fail.
+     */
+    @Test
+    fun `an administrator acts on a closed target`() {
+        val rows = listOf(
+            grant(ADMIN_KEY, TOPIC_ROOT, "*"),
+            grant(USER_ROOT, ROOM_KEY, "*", expires = 1L)
+        )
+        val service = SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
+
+        val admin = service.hasAccessTo(ROOM_KEY, "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(adminContext())))
+            .block()
+        val anonymous = service.hasAccessTo(ROOM_KEY, "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(anonymousContext())))
+            .block()
+
+        assertThat(admin).describedAs("the administrator").isTrue()
+        assertThat(anonymous).describedAs("an anonymous caller").isFalse()
+    }
+
+    /**
+     * **A close still beats a domain root grant.** Both rows name the
+     * `MessageTopic` root as their target. The close is a wildcard, so level 1
+     * places it last, and its expiry decides.
+     */
+    @Test
+    fun `a close beats a live named row on a domain root`() {
+        val rows = listOf(
+            grant(USER_ROOT, TOPIC_ROOT, "GET"),
+            grant(USER_ROOT, TOPIC_ROOT, "*", expires = 1L)
+        )
+        val service = SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
+
+        val answer = service.hasAccessTo(ROOM_KEY, "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block() ?: false
+
+        assertThat(answer).describedAs("a room read after a close").isFalse()
+    }
+
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
         broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
@@ -585,6 +637,14 @@ class AnonymousAuthorizationMatrixTests {
     private fun authenticatedContext() = SecurityContextImpl(
         UsernamePasswordAuthenticationToken(chatUserDetails(), "secret", listOf())
     )
+
+    /** A context whose caller is the `Admin` key. */
+    private fun adminContext() = SecurityContextImpl(
+        UsernamePasswordAuthenticationToken(adminDetails(), "secret", listOf())
+    )
+
+    private fun adminDetails() =
+        ChatUserDetails(User.create(ADMIN_KEY, "a", "admin", "http://a"), listOf())
 
     private fun unauthenticatedContext() = SecurityContextImpl(
         UsernamePasswordAuthenticationToken.unauthenticated(chatUserDetails(), "secret")
