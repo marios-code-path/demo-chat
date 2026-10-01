@@ -90,16 +90,17 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
             .run(*launchArguments())
 
     /**
-     * **The six operations answer the same on Cassandra as on a map store.**
+     * **The operations answer the same on Cassandra as on a map store.**
      *
-     * `whoami` and `listRooms` allow, because `userinit.yml` grants the `Anon`
-     * key `User:FIND` and the `User` root `MessageTopic:ALL`. The other four
-     * deny, because no shipped row names their permission.
+     * `getRoom`, `whoami`, `messageById` and `listRooms` allow. `getRoom` and
+     * `messageById` read one object, and since `CHAT-rfzsnbco` the check reads
+     * the domain root of that object beside it. `userinit.yml` names both roots:
+     * `{User, MessageTopic, GET}` and `{Anon, Message, GET}`. `whoami` and
+     * `listRooms` name a domain root already.
      *
-     * A denial of an object key denies for two possible reasons: no grant
-     * names that target, or no shipped row names that permission. The
-     * `Anon:Message:GET` row is the second case, and `messageById` asks about
-     * one message key, so the row never applies. See result 3 of the document.
+     * `addRoom`, `send` and `addUser` deny. No shipped row grants `NEW` on
+     * `MessageTopic` or on `User`, and the `{User, Message, SEND}` row names
+     * the `Message` root, which is not the root of a room.
      */
     @Test
     fun `the shipped grants answer the same matrix on cassandra`() {
@@ -136,8 +137,9 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
             val expected = linkedMapOf(
                 "addRoom MessageTopic NEW" to false,
                 "send room SEND" to false,
+                "getRoom GET" to true,
                 "whoami User FIND" to true,
-                "messageById GET" to false,
+                "messageById GET" to true,
                 "listRooms MessageTopic ALL" to true,
                 "addUser User NEW" to false
             )
@@ -175,6 +177,7 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
     ): Map<String, Boolean> = linkedMapOf(
         "addRoom MessageTopic NEW" to answer({ it.hasAccessToDomain("MessageTopic", "NEW") }, access, context),
         "send room SEND" to answer({ it.hasAccessTo(room, "SEND") }, access, context),
+        "getRoom GET" to answer({ it.hasAccessTo(room, "GET") }, access, context),
         "whoami User FIND" to answer({ it.hasAccessToDomain("User", "FIND") }, access, context),
         "messageById GET" to answer({ it.hasAccessTo(message, "GET") }, access, context),
         "listRooms MessageTopic ALL" to answer({ it.hasAccessToDomain("MessageTopic", "ALL") }, access, context),
