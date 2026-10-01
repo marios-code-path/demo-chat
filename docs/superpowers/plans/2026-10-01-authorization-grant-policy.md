@@ -374,7 +374,15 @@ test pins that for the deferred uniqueness work."
 **Files:**
 - Create: `chat-core/src/main/kotlin/com/demo/chat/service/security/RoomOwnerGrantException.kt`
 - Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/Exception.kt:3`
-- Create: `chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt`
+- Create: `chat-security/src/main/kotlin/com/demo/chat/config/auth/RoomOwnerGrantConfiguration.kt`
+
+> **Correction, 2026-10-01.** A first draft of this plan put that class in
+> `com.demo.chat.security.service`. `ChatApp` scans `com.demo.chat.config`
+> alone, so a deployment never discovered the bean and no owner row was ever
+> written. `RoomOwnerGrantWiringTests` read zero rows. The class sits in
+> `com.demo.chat.config.auth` now, beside `AuthBeansConfiguration`. This plan
+> carries the corrected path and package.
+
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/TopicServiceImpl.kt`
 - Test: `chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/TopicServiceOwnerGrantTests.kt`
@@ -687,15 +695,16 @@ Expected: PASS. Four tests run, zero failures.
 
 - [ ] **Step 6: Declare the bean**
 
-Create `chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt`:
+Create `chat-security/src/main/kotlin/com/demo/chat/config/auth/RoomOwnerGrantConfiguration.kt`:
 
 ```kotlin
-package com.demo.chat.security.service
+package com.demo.chat.config.auth
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.ContextIdentity
+import com.demo.chat.security.service.ContextRoomOwnerGrant
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.RoomOwnerGrant
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -709,6 +718,10 @@ import org.springframework.context.annotation.Configuration
  * `authorizationService`, and `AuthBeansConfiguration` registers that bean
  * under the same condition. So the writer exists exactly where the service it
  * needs exists.
+ *
+ * **The package is load bearing.** `ChatApp` scans `com.demo.chat.config`
+ * alone, so a configuration outside that root is never discovered. See the
+ * correction note below.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
@@ -759,7 +772,7 @@ Expected: BUILD SUCCESS. The deployment holds `chat-security` through
 ```bash
 git add chat-core/src/main/kotlin/com/demo/chat/service/security/RoomOwnerGrantException.kt \
         chat-core/src/main/kotlin/com/demo/chat/domain/Exception.kt \
-        chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt \
+        chat-security/src/main/kotlin/com/demo/chat/config/auth/RoomOwnerGrantConfiguration.kt \
         chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt \
         chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/TopicServiceImpl.kt \
         chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/TopicServiceOwnerGrantTests.kt

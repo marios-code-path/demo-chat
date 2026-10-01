@@ -178,6 +178,26 @@ depends on `authorizationService`, and `AuthBeansConfiguration` registers that
 bean under the same condition. So the writer exists exactly where the service
 it needs exists.
 
+**The package of that class is load bearing, and a first draft put it in the
+wrong one.** `ChatApp` scans `com.demo.chat.config` alone:
+
+```kotlin
+@SpringBootApplication(scanBasePackages = ["com.demo.chat.config"])
+```
+
+So a configuration outside that root is never discovered. The bean is never
+registered, and no room owner row is ever written.
+
+Measured on 2026-10-01: with `RoomOwnerGrantConfiguration` in
+`com.demo.chat.security.service`, `RoomOwnerGrantWiringTests` read **zero**
+owner rows from a running deployment, and `addRoom` still answered a room key.
+No hand-built test could see this, because a hand-built test registers the bean
+itself. Only a deployment test observes the scan.
+
+The class now sits in `com.demo.chat.config.auth`, beside
+`AuthBeansConfiguration` and the three other discovered configurations of that
+module. **A new configuration belongs there, and not in a `service` package.**
+
 ```kotlin
 @Configuration
 @ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
