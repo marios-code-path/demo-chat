@@ -250,6 +250,12 @@ an operator can write the missing row. Two paths repair it: the
 `{User, MessageTopic, ALL}` row reaches the room for a list, and an operator
 writes a `*` row for the intended owner.
 
+**The failure takes its own type**, `RoomOwnerGrantException` in `chat-core`
+beside the port. It carries the room key as a field and the cause, so a caller
+can act on the room and an operator can read the reason. A plain
+`ChatException` would carry no room. `ChatException` gains an optional cause
+for this, because `Exception` already carries one.
+
 **A failure is reported, and not silent.** A silent skip would hide the loss
 of ownership, which is the `RedisDeployBootTests` lesson.
 
@@ -362,7 +368,7 @@ Each test names the decision it holds.
 | `RoomOwnerGrantTests` | The writer names the owner, the room key and `*`, and the row never expires |
 | `RoomOwnerGrantNoIdentityTests` | No identity writes no grant, and raises no error |
 | `TopicServiceImpl` owner grant test | `addRoom` writes exactly one `*` row for the creating caller |
-| `TopicServiceImpl` grant failure test | A failed grant write fails `addRoom`, and the room stays |
+| `TopicServiceImpl` grant failure test | A failed grant write fails `addRoom`, the room stays, and the failure names the room key |
 | `TopicServiceImpl` no-port test | An absent port writes no grant, and creates the room |
 | A delete decision test | The five rows of the delete table |
 | A new expression test | Both send sites check the room, not the message |

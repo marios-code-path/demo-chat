@@ -144,9 +144,11 @@ class RoomOwnerGrantTests {
     /**
      * **The writer names the owner, the room, and the wildcard.**
      *
-     * The grant key is minted by `CoreAuthorizationService`, because the key
-     * that the writer passes is empty. The expiry is 0, which the summarizer
-     * reads as never expiring.
+     * `CoreAuthorizationService.write` replaces an empty key with the key that
+     * the store mints, so the root of the empty key is inert. Read `write`,
+     * `CoreAuthorizationService.kt:79`. Only the `empty` flag is read.
+     *
+     * The expiry is 0, which the summarizer reads as never expiring.
      */
     @Test
     fun `the writer grants the wildcard to the creating caller`() {
@@ -161,9 +163,7 @@ class RoomOwnerGrantTests {
         assertThat(row.target).describedAs("the room").isEqualTo(ROOM)
         assertThat(row.permission).describedAs("the permission").isEqualTo(AuthSummarizer.WILDCARD)
         assertThat(row.expires).describedAs("the expiry").isEqualTo(0L)
-        assertThat(row.key.root)
-            .describedAs("the grant key root")
-            .isEqualTo(rootKeys().of(ChatDomain.AUTH_METADATA).id)
+        assertThat(row.key.empty).describedAs("the minted grant key").isFalse()
     }
 
     /**
@@ -372,6 +372,8 @@ test pins that for the deferred uniqueness work."
 ### Task 2: The bean and the topic service wiring
 
 **Files:**
+- Create: `chat-core/src/main/kotlin/com/demo/chat/service/security/RoomOwnerGrantException.kt`
+- Modify: `chat-core/src/main/kotlin/com/demo/chat/domain/Exception.kt:3`
 - Create: `chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt`
 - Modify: `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/TopicServiceImpl.kt`
@@ -382,6 +384,8 @@ test pins that for the deferred uniqueness work."
   the same configuration already uses for `vectorIndexers`.
 - Produces: `TopicServiceImpl` takes `roomOwnerGrant: RoomOwnerGrant<T>? = null`.
   `addRoom` calls it once after `pubsub.open`, and before it answers the room key.
+  A failed call raises `RoomOwnerGrantException(roomKey, cause)`, whose message
+  names the room key.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -409,6 +413,7 @@ import com.demo.chat.service.core.UserPersistence
 import com.demo.chat.service.dummy.DummyIndexService
 import com.demo.chat.service.dummy.DummyPersistenceStore
 import com.demo.chat.service.security.RoomOwnerGrant
+import com.demo.chat.service.security.RoomOwnerGrantException
 import com.demo.chat.test.key.TestKeys
 import com.demo.chat.test.key.TestVerifiers
 import org.assertj.core.api.Assertions.assertThat
@@ -456,21 +461,41 @@ class TopicServiceOwnerGrantTests {
     }
 
     /**
-     * **A failed grant write fails the request, and the room stays.** The
-     * message names the room key, so an operator can write the missing row.
+     * **A failed grant write fails the request, and the room stays.**
+     *
+     * **The failure names the room key**, so an operator can write the missing
+     * row by hand. The message is exact here, because a message that named
+     * another key would pass a `contains` check.
+     *
+     * The cause is preserved, because the reason for the refusal is what an
+     * operator acts on.
      */
     @Test
-    fun `a failed grant write fails addRoom and keeps the room`() {
+    fun `a failed grant write fails addRoom and names the room`() {
         val fixture = Fixture()
-        val service = fixture.service(RecordingGrant(failure = ChatException("no owner")))
+        val service = fixture.service(RecordingGrant(failure = ChatException("the store refused the write")))
 
         StepVerifier.create(service.addRoom(ByStringRequest("general")))
             .verifyErrorSatisfies { error ->
-                assertThat(error).hasMessage("no owner")
+                assertThat(error).describedAs("the failure").isInstanceOf(RoomOwnerGrantException::class.java)
+                val room = fixture.stored.single().key
+                @Suppress("UNCHECKED_CAST")
+                val grantFailure = error as RoomOwnerGrantException<Long>
+                assertThat(grantFailure.roomKey).describedAs("the room key field").isEqualTo(room)
+                assertThat(grantFailure.message)
+                    .describedAs("the message")
+                    .isEqualTo(
+                        "The room owner grant failed for room ${room.id}. " +
+                            "The room exists and it has no owner."
+                    )
+                assertThat(grantFailure.cause)
+                    .describedAs("the cause")
+                    .hasMessage("the store refused the write")
             }
 
         assertThat(fixture.stored).describedAs("the store row").hasSize(1)
         assertThat(fixture.indexed).describedAs("the index row").hasSize(1)
+        assertThat(fixture.opened).describedAs("the open topic").hasSize(1)
     }
 
     /**
@@ -492,8 +517,6 @@ class TopicServiceOwnerGrantTests {
         assertThat(grant.calls).hasSize(1)
     }
 
-    private fun noGrant() = object : RoomOwnerGrant<Long> {}
-
     /** Records every call, and fails on demand. */
     private class RecordingGrant(private val failure: Throwable? = null) : RoomOwnerGrant<Long> {
         val calls: MutableList<Key<Long>> = mutableListOf()
@@ -508,6 +531,7 @@ class TopicServiceOwnerGrantTests {
     private class Fixture {
         val stored: MutableList<MessageTopic<Long>> = mutableListOf()
         val indexed: MutableList<MessageTopic<Long>> = mutableListOf()
+        val opened: MutableList<Long> = mutableListOf()
         lateinit var grant: RecordingGrant
         private var nextId = 100L
 
@@ -529,7 +553,7 @@ class TopicServiceOwnerGrantTests {
         }
 
         val pubsub = object : TopicPubSubService<Long, String> {
-            override fun open(topicId: Long): Mono<Void> = Mono.empty()
+            override fun open(topicId: Long): Mono<Void> = Mono.fromRunnable { opened.add(topicId) }
             override fun close(topicId: Long): Mono<Void> = Mono.empty()
             override fun getByUser(uid: Long): Flux<Long> = Flux.empty()
             override fun getUsersBy(topicId: Long): Flux<Long> = Flux.empty()
@@ -569,15 +593,48 @@ class TopicServiceOwnerGrantTests {
 }
 ```
 
-Delete the unused `noGrant()` helper in Step 4 if the compiler warns. Do not
-leave a dead function.
-
 - [ ] **Step 2: Run the test and confirm it fails**
 
 Run: `mvn -o -pl chat-core,chat-service-composite test -Dtest=TopicServiceOwnerGrantTests -Dsurefire.failIfNoSpecifiedTests=false`
-Expected: FAIL. The compile error names an unresolved reference `roomOwnerGrant`.
+Expected: FAIL. The compile errors name two unresolved references,
+`roomOwnerGrant` and `RoomOwnerGrantException`. The test class does not compile,
+which is the intended failure. A test class that compiles and passes here is a
+finding about the test.
 
-- [ ] **Step 3: Change the topic service**
+- [ ] **Step 3: Add the failure type**
+
+In `chat-core/src/main/kotlin/com/demo/chat/domain/Exception.kt`, give the base
+exception an optional cause. `Exception` already carries one, and this class
+declines to expose it. All thirty call sites pass one argument, so each one
+still compiles.
+
+```kotlin
+open class ChatException(msg: String, cause: Throwable? = null) : Exception(msg, cause)
+```
+
+Create `chat-core/src/main/kotlin/com/demo/chat/service/security/RoomOwnerGrantException.kt`:
+
+```kotlin
+package com.demo.chat.service.security
+
+import com.demo.chat.domain.ChatException
+import com.demo.chat.domain.Key
+
+/**
+ * A room exists, and its ownership row was not written.
+ *
+ * **The message names the room key**, so an operator can write the missing row
+ * by hand. `Key.toString` answers the id.
+ *
+ * The room keeps its store row, its index row and its open topic. No step of
+ * the `addRoom` chain compensates another, so the residual is an ownerless
+ * room. See `CHAT-zhjltbky`.
+ */
+class RoomOwnerGrantException<T>(val roomKey: Key<T>, cause: Throwable) :
+    ChatException("The room owner grant failed for room $roomKey. The room exists and it has no owner.", cause)
+```
+
+- [ ] **Step 4: Change the topic service**
 
 In `chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/TopicServiceImpl.kt`:
 
@@ -588,19 +645,15 @@ Add the parameter after `rootKeys`:
     private val roomOwnerGrant: RoomOwnerGrant<T>? = null,
 ```
 
-Add the import `com.demo.chat.service.security.RoomOwnerGrant`.
+Add two imports, `com.demo.chat.service.security.RoomOwnerGrant` and
+`com.demo.chat.service.security.RoomOwnerGrantException`.
 
-Replace the `flatMap { room -> ... }` body of `addRoom` with:
+Insert one line into the `addRoom` chain, after the `pubsub.open` line:
 
 ```kotlin
-                    .flatMap { room ->
-                        topicPersistence
-                            .add(room)
-                            .then(topicIndex.add(room))
-                            .then(pubsub.open(room.key.id))
-                            .then(grantOwner(room.key))
-                            .then(Mono.just(room.key))
-                    }
+                                    .then(pubsub.open(room.key.id))
+                                    .then(grantOwner(room.key))
+                                    .then(Mono.just(room.key))
 ```
 
 Add the private helper beside `addRoom`:
@@ -612,17 +665,25 @@ Add the private helper beside `addRoom`:
      * **An absent port writes no grant and raises no error.** The port is
      * absent exactly when the composition carries no authorization, and then
      * no owner check can run.
+     *
+     * **A failed write names the room.** An operator reads the message and
+     * writes the missing row by hand, because no step of this chain
+     * compensates another. The cause travels with it, because the reason for
+     * the refusal is what the operator acts on. See `CHAT-zhjltbky`.
      */
     private fun grantOwner(roomKey: Key<T>): Mono<Void> =
-        roomOwnerGrant?.grantOwner(roomKey) ?: Mono.empty()
+        roomOwnerGrant
+            ?.grantOwner(roomKey)
+            ?.onErrorMap { error -> RoomOwnerGrantException(roomKey, error) }
+            ?: Mono.empty()
 ```
 
-- [ ] **Step 4: Run the test and confirm it passes**
+- [ ] **Step 5: Run the test and confirm it passes**
 
 Run: `mvn -o -pl chat-core,chat-service-composite test -Dtest=TopicServiceOwnerGrantTests -Dsurefire.failIfNoSpecifiedTests=false`
 Expected: PASS. Four tests run, zero failures.
 
-- [ ] **Step 5: Declare the bean**
+- [ ] **Step 6: Declare the bean**
 
 Create `chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt`:
 
@@ -661,7 +722,7 @@ open class RoomOwnerGrantConfiguration<T>(
 }
 ```
 
-- [ ] **Step 6: Inject the port at the composition root**
+- [ ] **Step 7: Inject the port at the composition root**
 
 In `chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt`:
 
@@ -680,21 +741,23 @@ Add the argument to the `topicService()` bean method:
             roomOwnerGrant = roomOwnerGrants.ifAvailable,
 ```
 
-- [ ] **Step 7: Run the whole module and confirm it passes**
+- [ ] **Step 8: Run the whole module and confirm it passes**
 
 Run: `mvn -o -pl chat-core,chat-service-composite test`
 Expected: PASS. Every test of the module runs, with zero failures.
 
-- [ ] **Step 8: Confirm the deployment builds a topic service with the port**
+- [ ] **Step 9: Confirm the deployment builds a topic service with the port**
 
 Run: `mvn -o -pl chat-core,chat-deploy-memory -am -DskipTests package`
 Expected: BUILD SUCCESS. The deployment holds `chat-security` through
 `chat-service-controller`, which declares it at compile scope.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt \
+git add chat-core/src/main/kotlin/com/demo/chat/service/security/RoomOwnerGrantException.kt \
+        chat-core/src/main/kotlin/com/demo/chat/domain/Exception.kt \
+        chat-security/src/main/kotlin/com/demo/chat/security/service/RoomOwnerGrantConfiguration.kt \
         chat-service-composite/src/main/kotlin/com/demo/chat/config/service/composite/CompositeServiceBeansConfiguration.kt \
         chat-service-composite/src/main/kotlin/com/demo/chat/service/composite/impl/TopicServiceImpl.kt \
         chat-service-composite/src/test/kotlin/com/demo/chat/test/service/composite/TopicServiceOwnerGrantTests.kt
@@ -703,6 +766,13 @@ git commit -m "Write the room owner grant at room creation (CHAT-zhjltbky)
 The grant write is the last step of the addRoom chain. No step of that chain
 compensates any other, so a failed grant write fails the request and leaves
 the store row, the index row and the open topic in place.
+
+A failed write raises RoomOwnerGrantException, which names the room key and
+carries the cause. An operator reads the message and writes the missing row.
+The residual is an ownerless room, and the failure reports its key.
+
+ChatException gains an optional cause. Exception already carries one, and
+the class declined to expose it. All thirty call sites pass one argument.
 
 The port arrives as an ObjectProvider, which is the pattern this
 configuration already uses for vectorIndexers. So a composition without
@@ -1434,6 +1504,12 @@ maps to Tasks 1, 2, 4 and 5.
 **Two evidence-plan rows have no owning task.** `UserInitConfigBindingTests`
 needs no change, because this issue edits no line of that file. Its existing
 run in Task 6 Step 7 holds it.
+
+**Two corrections from the owner review are in.** Task 2 carries no helper that
+does not implement its own interface, and the grant-failure test asserts the
+room key by field, by message and by cause. The failure type,
+`RoomOwnerGrantException`, is new, and the spec names it. Task 2 Step 4 adds it
+and gives `ChatException` an optional cause.
 
 **Owner boundary coverage.** One writer: Task 3 removes the shell writer, and
 Task 2 Step 3 keeps one call site. Source-level wildcard uniqueness is deferred
