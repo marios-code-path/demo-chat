@@ -9,7 +9,6 @@ import com.demo.chat.config.CoreServices
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatTopicService
-import com.demo.chat.service.security.AuthorizationService
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Flux
@@ -19,7 +18,6 @@ import reactor.core.publisher.Flux
 class TopicCommands<T : Any>(
     private val coreServices: CoreServices<T, String, IndexSearchRequest>,
     private val compositeServices: CompositeServiceBeans<T, String>,
-    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val typeUtil: TypeUtil<T>,
     private val rootKeys: RootKeys<T>
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
@@ -43,24 +41,11 @@ class TopicCommands<T : Any>(
         // The creator resolves in USER through the server registry before the
         // room exists. An unknown creator creates no room. No call blocks
         // inside the chain, because a remote answer runs it on a Netty thread.
+        // The server writes the ownership row, and it writes it at room
+        // creation. The shell writes none, because `*` is singular per target
+        // and one writer is required. See CHAT-zhjltbky.
         verifier.resolve(identity, ChatDomain.USER)
-            .flatMap { creator ->
-                topicService
-                    .addRoom(ByStringRequest(name))
-                    .flatMap { topicKey ->
-                        authorizationService
-                            .authorize(
-                                // The grant key is a placeholder under the AUTH_METADATA root. C61, C62.
-                                AuthMetadata.create(
-                                    Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
-                                    creator.key,
-                                    topicKey,
-                                    "*",
-                                    Long.MAX_VALUE
-                                ), true
-                            )
-                    }
-            }
+            .flatMap { topicService.addRoom(ByStringRequest(name)) }
             .block()
     }
     fun topicByName(
