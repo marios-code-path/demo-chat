@@ -57,12 +57,12 @@ import java.util.concurrent.atomic.AtomicLong
 class AnonymousAuthorizationMatrixTests {
 
     /**
-     * **An anonymous caller may read a user, and nothing else.**
+     * **An anonymous caller may read a user and a message.**
      *
      * `userinit.yml` grants the `Anon` key `User:FIND`, `User:PUT` and
-     * `Message:GET`. Only the two `User` grants reach an operation. The
-     * `Message:GET` grant names the Message root key, and `messageById`
-     * checks a single message key, so that grant never applies.
+     * `Message:GET`. The two `User` grants reach `whoami`. `Message:GET` names
+     * the `Message` root, and `messageById` checks one message key. Since
+     * `CHAT-rfzsnbco` the check reads that root, so the row applies.
      */
     @Test
     fun `an anonymous caller may find a user and nothing else`() {
@@ -71,7 +71,7 @@ class AnonymousAuthorizationMatrixTests {
                 "addRoom MessageTopic NEW" to false,
                 "send room SEND" to false,
                 "whoami User FIND" to true,
-                "messageById GET" to false,
+                "messageById GET" to true,
                 "listRooms MessageTopic ALL" to true,
                 "addUser User NEW" to false
             )
@@ -272,6 +272,61 @@ class AnonymousAuthorizationMatrixTests {
             .block()
 
         assertThat(answer).isFalse()
+    }
+
+    /**
+     * **A grant on a domain root covers an object of that domain.**
+     * `messageById` checks one message key with `GET`. The domain root of a
+     * message key is the `Message` root, and `{Anon, Message, GET}` names that
+     * root. `CHAT-rfzsnbco` makes the check read the root.
+     */
+    @Test
+    fun `a message read allows through a domain root row`() {
+        val row = grant(ANON_KEY, MESSAGE_ROOT, "GET")
+        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys(), registry())
+
+        val answer = service.hasAccessTo(MESSAGE_KEY, "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(anonymousContext())))
+            .block() ?: false
+
+        assertThat(answer).describedAs("a message read").isTrue()
+    }
+
+    /**
+     * **A room read allows through a domain root row.** The domain root of a
+     * room key is the `MessageTopic` root, and `{User, MessageTopic, GET}`
+     * names that root.
+     */
+    @Test
+    fun `a room read allows through a domain root row`() {
+        val row = grant(USER_ROOT, TOPIC_ROOT, "GET")
+        val service = SpringSecurityAccessBrokerService(broker(listOf(row)), rootKeys(), registry())
+
+        val answer = service.hasAccessTo(ROOM_KEY, "GET")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block() ?: false
+
+        assertThat(answer).describedAs("a room read").isTrue()
+    }
+
+    /**
+     * **The scan does not widen across domains.** The domain root of a room key
+     * is the `MessageTopic` root. The shipped `{User, Message, SEND}` row names
+     * the `Message` root, which is a different domain. So `send` stays denied.
+     */
+    @Test
+    fun `a send stays denied because the row names another domain`() {
+        val rows = listOf(
+            grant(USER_ROOT, MESSAGE_ROOT, "SEND"),
+            grant(USER_ROOT, TOPIC_ROOT, "ALL")
+        )
+        val service = SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
+
+        val answer = service.hasAccessTo(ROOM_KEY, "SEND")
+            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
+            .block() ?: false
+
+        assertThat(answer).describedAs("a send to a room").isFalse()
     }
 
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =

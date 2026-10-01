@@ -94,6 +94,22 @@ class CoreAuthorizationService<T, Q>(
             }
         }
 
+    /**
+     * The targets that a permission check reads: the given target, and the
+     * domain root of that target.
+     *
+     * A root key is its own root, so a check that already names a domain root
+     * reads one target. The list is distinct for that reason. See
+     * `CHAT-rfzsnbco`.
+     *
+     * **The owner selection does not use this method.** A domain root read
+     * there would give one target two owners.
+     */
+    private fun targets(uidB: Key<T>): List<Key<T>> {
+        val root = Key.root(uidB.root)
+        return if (root == uidB) listOf(uidB) else listOf(uidB, root)
+    }
+
     private fun getAuthorizationsForMultipleTarget(uids: List<Key<T>>): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             Flux.concat(uids.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
@@ -121,7 +137,7 @@ class CoreAuthorizationService<T, Q>(
 
     override fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
-            authIndex.findBy(queryForTarget.apply(uidB)).flatMap(authPersist::get),
+            Flux.concat(targets(uidB).map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
             actors(uidA),
             permission
         )
