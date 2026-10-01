@@ -2,9 +2,13 @@ package com.demo.chat.test.controller.webflux.composite
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.controller.webflux.ChatTopicServiceController
+import com.demo.chat.controller.webflux.ChatMessageServiceController
+import com.demo.chat.controller.webflux.ChatUserServiceController
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.access.composite.MessageServiceAccess
+import com.demo.chat.security.access.composite.UserServiceAccess
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.service.security.AccessBroker
@@ -16,6 +20,7 @@ import com.demo.chat.test.controller.webflux.config.WebFluxTestConfiguration
 import com.demo.chat.test.key.TestKeys
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.assertj.core.api.Assertions.assertThat
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.times
@@ -79,6 +84,17 @@ class RestBoundaryProbeAllowedTests {
     @Autowired lateinit var client: WebTestClient
     @Autowired lateinit var beans: CompositeServiceBeans<Long, String>
     @Autowired lateinit var registry: TestGeneratorKeyService<Long>
+
+    @Test
+    fun `every REST composite controller carries its access interface`() {
+        assertThat(ChatMessageServiceController::class.java.interfaces)
+            .describedAs("the message controller")
+            .anyMatch { MessageServiceAccess::class.java.isAssignableFrom(it) }
+
+        assertThat(ChatUserServiceController::class.java.interfaces)
+            .describedAs("the user controller")
+            .anyMatch { UserServiceAccess::class.java.isAssignableFrom(it) }
+    }
 
     /** The path id resolves in its domain, as a minted id does. */
     @BeforeEach
