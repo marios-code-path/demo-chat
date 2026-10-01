@@ -479,8 +479,7 @@ class TopicServiceOwnerGrantTests {
             .verifyErrorSatisfies { error ->
                 assertThat(error).describedAs("the failure").isInstanceOf(RoomOwnerGrantException::class.java)
                 val room = fixture.stored.single().key
-                @Suppress("UNCHECKED_CAST")
-                val grantFailure = error as RoomOwnerGrantException<Long>
+                val grantFailure = error as RoomOwnerGrantException
                 assertThat(grantFailure.roomKey).describedAs("the room key field").isEqualTo(room)
                 assertThat(grantFailure.message)
                     .describedAs("the message")
@@ -629,8 +628,11 @@ import com.demo.chat.domain.Key
  * The room keeps its store row, its index row and its open topic. No step of
  * the `addRoom` chain compensates another, so the residual is an ownerless
  * room. See `CHAT-zhjltbky`.
+ *
+ * **The key type is open**, because a subclass of `Throwable` cannot carry a
+ * type parameter. Kotlin refuses it at the declaration.
  */
-class RoomOwnerGrantException<T>(val roomKey: Key<T>, cause: Throwable) :
+class RoomOwnerGrantException(val roomKey: Key<*>, cause: Throwable) :
     ChatException("The room owner grant failed for room $roomKey. The room exists and it has no owner.", cause)
 ```
 
@@ -1198,7 +1200,7 @@ class SendCheckExpressionTests {
 
     private fun grant(principal: Key<Long>, target: Key<Long>, permission: String, expires: Long = 0L) =
         com.demo.chat.domain.StringRoleAuthorizationMetadata(
-            TestKeys.key(nextKey++), principal, target, permission, false, expires
+            TestKeys.key(nextKey.getAndIncrement()), principal, target, permission, false, expires
         )
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
@@ -1214,7 +1216,7 @@ class SendCheckExpressionTests {
     private class MapAuthStore : PersistenceStore<Long, AuthMetadata<Long>> {
         val rows: MutableMap<Key<Long>, AuthMetadata<Long>> = linkedMapOf()
 
-        override fun key(): Mono<out Key<Long>> = Mono.just(TestKeys.key(nextKey++))
+        override fun key(): Mono<out Key<Long>> = Mono.just(TestKeys.key(nextKey.getAndIncrement()))
         override fun add(ent: AuthMetadata<Long>): Mono<Void> {
             rows[ent.key] = ent
             return Mono.empty()
@@ -1241,7 +1243,7 @@ class SendCheckExpressionTests {
     }
 
     private companion object {
-        var nextKey = java.util.concurrent.atomic.AtomicLong(500L)
+        val nextKey = java.util.concurrent.atomic.AtomicLong(500L)
 
         val USER_ROOT: Key<Long> = Key.root(3L)
         val MESSAGE_ROOT: Key<Long> = Key.root(4L)

@@ -11,6 +11,8 @@ import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.core.*
+import com.demo.chat.service.security.RoomOwnerGrant
+import com.demo.chat.service.security.RoomOwnerGrantException
 import com.demo.chat.service.vector.JobTopicNames
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -34,6 +36,7 @@ open class TopicServiceImpl<T : Any, V, Q>(
     private val messagePersistence: MessagePersistence<T, V>,
     private val verifier: KeyVerifier<T>,
     private val rootKeys: RootKeys<T>,
+    private val roomOwnerGrant: RoomOwnerGrant<T>? = null,
 ) : ChatTopicService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -64,11 +67,30 @@ open class TopicServiceImpl<T : Any, V, Q>(
                                     .add(room)
                                     .then(topicIndex.add(room))
                                     .then(pubsub.open(room.key.id))
+                                    .then(grantOwner(room.key))
                                     .then(Mono.just(room.key))
                             }
                     }
                 }
         }
+
+    /**
+     * The ownership row of a new room.
+     *
+     * **An absent port writes no grant and raises no error.** The port is
+     * absent exactly when the composition carries no authorization, and then
+     * no owner check can run.
+     *
+     * **A failed write names the room.** An operator reads the message and
+     * writes the missing row by hand, because no step of this chain
+     * compensates another. The cause travels with it, because the reason for
+     * the refusal is what the operator acts on. See `CHAT-zhjltbky`.
+     */
+    private fun grantOwner(roomKey: Key<T>): Mono<Void> =
+        roomOwnerGrant
+            ?.grantOwner(roomKey)
+            ?.onErrorMap { error -> RoomOwnerGrantException(roomKey, error) }
+            ?: Mono.empty()
 
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void> =
         verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC)

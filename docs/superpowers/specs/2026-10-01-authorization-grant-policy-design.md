@@ -256,6 +256,10 @@ can act on the room and an operator can read the reason. A plain
 `ChatException` would carry no room. `ChatException` gains an optional cause
 for this, because `Exception` already carries one.
 
+**The room key field is `Key<*>`**, because a subclass of `Throwable` cannot
+carry a type parameter. Kotlin refuses a generic exception at the declaration.
+The caller has the room key already, so the open type costs nothing.
+
 **A failure is reported, and not silent.** A silent skip would hide the loss
 of ownership, which is the `RedisDeployBootTests` lesson.
 
