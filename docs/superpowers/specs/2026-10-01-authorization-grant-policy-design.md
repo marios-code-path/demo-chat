@@ -9,7 +9,7 @@ Measured on 2026-10-01 at master `09d4c9a6`.
 
 ## The stipulation
 
-The owner took four decisions on 2026-10-01. Each one answers a question that
+The owner took six decisions on 2026-10-01. Each one answers a question that
 `CHAT-zhjltbky` recorded, and each one was measured first.
 
 1. **The `Anon` floor stays.** The actor set holds the `Anon` key and the
@@ -20,6 +20,11 @@ The owner took four decisions on 2026-10-01. Each one answers a question that
    client stops writing it.
 4. **This issue delivers the configuration policy and its tests.** The typed
    schema stays with `CHAT-zcxgrtqc`.
+5. **A room owner may delete a room.** The rank already answers this. See the
+   delete decision below.
+6. **This issue edits no line of `userinit.yml`.** The file carries an
+   uncommitted change from another line of work. It also carries two inert
+   keys. Both belong to `CHAT-zcxgrtqc`.
 
 ## The measured state
 
@@ -64,62 +69,239 @@ Three keys read as grants and hold no meaning. Measured at `09d4c9a6`:
 - `wildcard` binds and nothing reads it.
 - `role: '-'` has no denial meaning. Nothing subtracts.
 
+Blocker 1 named the binding risk. `InitalRoles` declares `rolesAllowed` and
+`wildcard` as required, so removing either key from the file fails the
+binding. Decision 6 answers it. **This issue removes no key.** The removal and
+its binding measurement move to `CHAT-zcxgrtqc`, which owns the shape of that
+file. The cost is one more issue in which the file reads as policy it does not
+carry. The alternative costs a Kotlin-default measurement under
+`@ConstructorBinding`, and that measurement is not about grants.
+
+## The delete decision
+
+Blocker 2 asked whether a room owner may delete a room. **The answer is yes,
+and no new code carries it.** The rank of `CHAT-lbhmzccn` already answers, and
+its KDoc states the intent.
+
+`TopicServiceAccess.deleteRoom` checks the room key with `REM`. Four rows
+decide, and each reads the rank in `AuthSummarizer`:
+
+| Caller | Room | Answer | Why |
+|---|---|---|---|
+| anonymous | open | deny | No shipped row grants `REM`. `ALL` is a literal, so it does not cover `REM` |
+| authenticated, not the owner | open | deny | Same. The caller holds no row on this room |
+| the owner | open | **allow** | The `*` row names the asked permission |
+| the owner | closed | **allow** | Both rows are wildcards, so level 1 ties. The owner names an `ENTITY` principal, and the close names a `DOMAIN_ROOT` principal |
+| not the owner | closed | deny | The close wins its group, and its expiry then drops it |
+
+**Level 2 is what keeps the owner above the close.** `PrincipalRank` reads a
+domain root as `DOMAIN_ROOT` and every other principal as `ENTITY`. The owner
+row names the user key, so it is an `ENTITY`. The close names a domain root.
+So an `ENTITY` wildcard outranks a `DOMAIN_ROOT` wildcard, and the close does
+not reach the owner.
+
+**This is the owner-authored intent.** The `PrincipalRank` KDoc states that
+level 2 exists so that the owner and the administrator survive a close. A rule
+that denied the owner would contradict it, and it would need a special case.
+The cost if this is wrong: an owner can remove a room and its grants. Nothing
+enforces the check in a deployment yet, so the effect is latent until
+`CHAT-znprrzhn`.
+
+## The owner grant port
+
+Blocker 3 asked for the exact seam and the failure behaviour. This section
+answers both.
+
+### The port
+
+The port lives in `chat-core`, beside `AuthorizationService` and `AccessBroker`
+in `com.demo.chat.service.security`. Both `chat-service-composite` and
+`chat-security` depend on `chat-core`, and neither depends on the other.
+
+```kotlin
+interface RoomOwnerGrant<T> {
+    fun grantOwner(roomKey: Key<T>): Mono<Void>
+}
+```
+
+### The implementation
+
+`ContextRoomOwnerGrant` lives in `chat-security`, at
+`com.demo.chat.security.service`. `ContextIdentity` is the one live reader of
+the security context, and `chat-security` is its home.
+
+```kotlin
+class ContextRoomOwnerGrant<T>(
+    private val identity: ContextIdentity<T>,
+    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
+    private val rootKeys: RootKeys<T>,
+    private val typeUtil: TypeUtil<T>,
+) : RoomOwnerGrant<T> {
+
+    override fun grantOwner(roomKey: Key<T>): Mono<Void> =
+        identity.identity()
+            .flatMap { owner ->
+                authorizationService.authorize(
+                    AuthMetadata.create(
+                        Key.empty(typeUtil.empty(), rootKeys.of(ChatDomain.AUTH_METADATA).id),
+                        owner,
+                        roomKey,
+                        AuthSummarizer.WILDCARD,
+                        false,
+                        0L,
+                    ),
+                    true,
+                )
+            }
+            .then()
+}
+```
+
+Four properties of this body, each of which is a decision.
+
+1. **The empty identity answers an empty `Mono`.** `flatMap` never runs, and
+   `then()` completes. So no identity writes no grant, and it raises no error.
+   That is decision 5 of the register, and it holds today.
+2. **`expires` is `0L`.** The summarizer keeps a row when `expires` is `0L`.
+   The shell wrote `Long.MAX_VALUE`. A never-expiring grant needs no sentinel.
+3. **The permission is `AuthSummarizer.WILDCARD`.** One writer and one
+   spelling, so the constant is read and not retyped.
+4. **`exist` is `true`.** The key is `Key.empty`, so `CoreAuthorizationService`
+   mints the grant key and verifies both parties first. That is the same call
+   the shell makes today.
+
+### The bean
+
+`chat-security` declares one configuration. Its condition is
+`app.service.composite.auth`, and not `app.service.composite`. The writer
+depends on `authorizationService`, and `AuthBeansConfiguration` registers that
+bean under the same condition. So the writer exists exactly where the service
+it needs exists.
+
+```kotlin
+@Configuration
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+open class RoomOwnerGrantConfiguration<T>(
+    private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
+    private val rootKeys: RootKeys<T>,
+    private val typeUtil: TypeUtil<T>,
+) {
+    @Bean
+    open fun roomOwnerGrant(): RoomOwnerGrant<T> =
+        ContextRoomOwnerGrant(ContextIdentity(rootKeys), authorizationService, rootKeys, typeUtil)
+}
+```
+
+### The wiring
+
+`CompositeServiceBeansConfiguration` already takes `vectorIndexers` as an
+`ObjectProvider`. The port follows that pattern, so a composition without
+`chat-security` still builds a topic service.
+
+```kotlin
+private val roomOwnerGrants: ObjectProvider<RoomOwnerGrant<T>>,
+```
+
+```kotlin
+topicService = TopicServiceImpl(
+    ...
+    roomOwnerGrant = roomOwnerGrants.ifAvailable,
+)
+```
+
+`TopicServiceImpl` takes one parameter, `private val roomOwnerGrant:
+RoomOwnerGrant<T>? = null`. The default keeps every existing constructor call
+compiling, including the test ones.
+
+### The chain
+
+The grant write is the last step of `addRoom`.
+
+```kotlin
+.flatMap { room ->
+    topicPersistence.add(room)
+        .then(topicIndex.add(room))
+        .then(pubsub.open(room.key.id))
+        .then(grantOwner(room.key))
+        .then(Mono.just(room.key))
+}
+```
+
+```kotlin
+private fun grantOwner(roomKey: Key<T>): Mono<Void> =
+    roomOwnerGrant?.grantOwner(roomKey) ?: Mono.empty()
+```
+
+**An absent port writes no grant and raises no error.** The port is absent
+exactly when the composition carries no authorization, and then no owner check
+can run.
+
+### The failure behaviour
+
+**A failed grant write fails the request, and every earlier step stays.** No
+step of this chain compensates any other step. A failed index write already
+leaves the room in the store, and a failed open already leaves the store and
+the index rows. The grant write adds no compensation, because a rollback
+written for one step alone would remove a room whose topic another reader may
+already hold.
+
+The residual is an ownerless room. The failure message names the room key, so
+an operator can write the missing row. Two paths repair it: the
+`{User, MessageTopic, ALL}` row reaches the room for a list, and an operator
+writes a `*` row for the intended owner.
+
+**A failure is reported, and not silent.** A silent skip would hide the loss
+of ownership, which is the `RedisDeployBootTests` lesson.
+
+### The no-identity case
+
+The owner asked whether a direct service test covers this case. **It does, and
+it is the only test that can.**
+
+A wired route denies `addRoom` before `TopicServiceImpl` runs. So a route test
+can never reach the writer with no identity. The direct call is the only
+observation of that branch.
+
+It is also the live path today. No deployment wires a check, and `chat-shell`
+creates a room with no credential. So the direct test pins behaviour that a
+real launch produces now.
+
 ## What this issue changes
 
-### 1. `userinit.yml` keeps its nine rows, and loses two dead keys
+### 1. `userinit.yml` changes no line
 
-The nine rows state decision 2 correctly already. `Anon` holds `User: FIND`,
+Decision 6. The file keeps its nine committed rows and its two inert keys.
+This issue writes no line of it, so it cannot collide with the uncommitted
+change the main checkout holds.
+
+The nine rows already state decision 2. `Anon` holds `User: FIND`,
 `User: PUT` and `Message: GET`. The `User` root holds the `MessageTopic` and
 `Message` rows.
 
-Two edits follow.
+**The pending edit moves no matrix row.** It removes
+`{Anon, User, PUT}`. Two of the eleven moved checks read that row, and both
+are `core` checks over a `User` entity, `PersistenceAccess.add` and
+`IndexAccess.add`. Neither is a row of the matrix.
 
-- Remove `rolesAllowed` and `wildcard`. They read as policy and they are not.
-- Add a comment that names decision 2, so a reader cannot mistake the absence
-  of a `NEW` row for an oversight.
-
-**`UserInitConfigBindingTests` is the guard.** It reads the shipped file from
-disk. Rule two already refuses a key that nothing binds, so the removal needs
-its own check: the two keys must be absent.
-
-### 2. The `role: '-'` concept leaves the shipped surface
+### 2. The `role: '-'` concept leaves this issue
 
 No code subtracts a permission. The draft holds two spellings of one outcome
 for a denial. `docs/superpowers/specs/2026-09-23-operation-policy-draft.md`
 records both, and it states that neither has code behind it.
 
-**This issue removes the concept from the shipped surface.** A denial is the
-absence of a grant. That is the whole rule.
+A denial is the absence of a grant. That is the whole rule, and this issue
+adds no syntax that states it.
 
 ### 3. The room owner grant moves to the server
 
 `TopicCommands.addTopic` writes a grant today, in the shell client. It names
-the room key with `*` and it never expires.
+the room key with `*` and it never expires. The server takes that duty, through
+the port above.
 
-The server takes that duty. The room creation path writes one `*` row against
-the new room key, for the identity of the caller that created the room.
-
-**Two decisions inside this one.**
-
-**Where the identity comes from.** `chat-service-composite` does not depend on
-`chat-security`, and `ContextIdentity` is the only live reader of the security
-context. So the composite must not read the context itself. It takes a
-`Supplier<out Publisher<Key<T>>>`, and `chat-security` supplies the bean. That
-is the shape `TopicServiceAccess` already takes, so the pattern is not new.
-
-**Which class writes the row.** Not `TopicServiceAccess`. That wrapper is
-inert, because no deployment sets `app.service.composite.security`. It also
-carries the refusal defect of `CHAT-ruapxetl`. A grant written there would
-exist only in a composition that no launch script starts.
-
-So `TopicServiceImpl.addRoom` writes the row, after the persistence, the
-index, and the pubsub open all succeed.
-
-**The no-identity case is decided, and it is silent on purpose.** A caller
-with no identity owns no room. The server writes no grant, and the room has no
-owner. This matches the policy, because `addRoom` denies a caller with no
-identity once the checks are wired. It also keeps `chat-shell` working today,
-where the checks are not wired and no credential is sent.
+**Why not `TopicServiceAccess`.** That wrapper is inert, because no deployment
+sets `app.service.composite.security`. It also carries the refusal defect of
+`CHAT-ruapxetl`. A grant written there would exist only in a composition that
+no launch script starts.
 
 ### 4. The shell stops writing the grant
 
@@ -163,6 +345,8 @@ The policy says a send is checked against the room. So the expression becomes
 
 - **The typed `operationPolicy` schema.** `CHAT-zcxgrtqc` holds it. Until it
   lands, no row carries an expiry, and no row names an object.
+- **Two inert keys and one denial spelling in `userinit.yml`.**
+  `CHAT-zcxgrtqc` owns the file.
 - **Instance access checks.** `CHAT-znprrzhn` holds the wiring. It depends on
   this issue, because the checks must not be enabled before the grants are
   aligned.
@@ -175,26 +359,30 @@ Each test names the decision it holds.
 
 | Test | What it pins |
 |---|---|
-| `UserInitConfigBindingTests` | The shipped file parses, binds, and holds neither dead key |
-| `AnonymousAuthorizationMatrixTests` | The six matrix rows, and a seventh for the room owner |
-| A new owner grant test | The server writes one `*` row for the creating identity |
-| A new no-identity test | Room creation with no identity writes no grant, and no error |
+| `RoomOwnerGrantTests` | The writer names the owner, the room key and `*`, and the row never expires |
+| `RoomOwnerGrantNoIdentityTests` | No identity writes no grant, and raises no error |
+| `TopicServiceImpl` owner grant test | `addRoom` writes exactly one `*` row for the creating caller |
+| `TopicServiceImpl` grant failure test | A failed grant write fails `addRoom`, and the room stays |
+| `TopicServiceImpl` no-port test | An absent port writes no grant, and creates the room |
+| A delete decision test | The five rows of the delete table |
 | A new expression test | Both send sites check the room, not the message |
+| `AnonymousAuthorizationMatrixTests` | The six matrix rows, and a seventh for the room owner |
 | `CassandraAuthorizationMatrixTests` | The same rows against a real store and index |
+| `UserInitConfigBindingTests` | Unchanged. It holds the shape this issue leaves alone |
 
 **The owner row is the new measurement.** It is the first row that a shipped
 composition answers allow for a write, so it carries the most risk.
 
+**The delete rows are the second.** They are latent until `CHAT-znprrzhn`.
+
 ## Open, and for the owner
 
-1. **Does a room owner allow `deleteRoom`?** The `*` row covers every
-   permission of the room, so a literal reading allows it. Decision 2 denies
-   an anonymous caller, and it says nothing about an owner.
-2. **Does a second `*` writer ever exist again?** A future client that writes
+1. **Does a second `*` writer ever exist again?** A future client that writes
    `*` would create a second owner with no error. One writer answers this
    today. A check at the source would answer it in general, and it is not in
    this scope.
-3. **The pending edit to `userinit.yml`.** The main checkout holds an
+2. **The pending edit to `userinit.yml`.** The main checkout holds an
    uncommitted change that removes `{ user: Anon, target: User, role: PUT }`.
-   That row is the only path for two of the eleven moved checks. This spec
-   describes the committed nine-row file.
+   This spec describes the committed nine-row file, and it writes no line of
+   it. `CHAT-zcxgrtqc` must land the two inert keys, the pending edit and the
+   decision-2 comment together.
