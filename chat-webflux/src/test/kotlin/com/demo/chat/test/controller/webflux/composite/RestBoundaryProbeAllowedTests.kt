@@ -48,20 +48,20 @@ import reactor.core.publisher.Mono
  * each route asserts one call, so an empty 200 and a reached service cannot
  * be the same answer.
  *
- * **This class fails, and the failure is the finding of Task 2.**
- * `@EnableReactiveMethodSecurity` is in production.
- * `MethodSecurityConfiguration` declares it, and `app.service.composite.auth`
- * gates it. The proxy it builds is a JDK dynamic proxy, because the controller
- * implements interfaces. `@RestController` and `@RequestMapping("/topic")` sit
- * on the implementation class, and a JDK proxy does not carry them. So
- * `RequestMappingHandlerMapping` finds no handler and both routes answer 404.
+ * **This class passes, and it is the control of the routing repair.**
+ * `@EnableReactiveMethodSecurity` is in production. `MethodSecurityConfiguration`
+ * declares it, and `app.service.composite.auth` gates it. The proxy it builds is
+ * a JDK dynamic proxy, because the controller implements interfaces. So the
+ * routing annotations must sit on `ChatTopicServiceRestMapping`, and the JDK
+ * proxy carries them from there.
  *
- * Measured on 2026-10-01. Without `@EnableReactiveMethodSecurity` both routes
- * answer 200 and each asserts its own call. With it, both answer 404, and the
- * controller bean is not assignable to `ChatTopicServiceController<Long>`.
+ * Measured on 2026-10-01. Before the repair both routes answered 404, and the
+ * controller bean was not assignable to `ChatTopicServiceController<Long>`.
+ * Before that, without `@EnableReactiveMethodSecurity`, both routes answered 200
+ * and each asserted its own call.
  *
  * **`LongTopicRestTests` passes on the same controller**, because no method
- * security is active in its slice. The 404 is not a mapping defect.
+ * security is active in its slice. The old 404 was not a mapping defect.
  */
 @WebFluxTest
 @ContextConfiguration(

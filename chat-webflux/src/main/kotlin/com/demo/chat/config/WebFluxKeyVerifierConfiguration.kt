@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -43,6 +44,12 @@ class WebFluxKeyVerifierConfiguration(
  * The status of a refused key. An id that does not resolve in its domain is
  * not found. An id that does not convert exactly to the key type is a bad
  * request. A mint that no key service supports is not implemented.
+ *
+ * **A denied caller is refused here as well.** Method security throws
+ * `AuthorizationDeniedException` from the handler. That type is a subclass of
+ * `AccessDeniedException`, and no other type in this repository renders it, so
+ * a refusal answered 500. A 500 is not a refusal to any caller. See
+ * `CHAT-znprrzhn`.
  */
 @RestControllerAdvice
 class KeyRefusalAdvice {
@@ -57,4 +64,8 @@ class KeyRefusalAdvice {
     @ExceptionHandler(UnsupportedDomainException::class)
     @ResponseStatus(HttpStatus.NOT_IMPLEMENTED)
     fun notImplemented(error: UnsupportedDomainException): String = error.message ?: "The mint is not supported."
+
+    @ExceptionHandler(AccessDeniedException::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun forbidden(error: AccessDeniedException): String = error.message ?: "Access Denied"
 }

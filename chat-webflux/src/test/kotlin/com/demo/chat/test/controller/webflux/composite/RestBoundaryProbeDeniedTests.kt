@@ -1,6 +1,7 @@
 package com.demo.chat.test.controller.webflux.composite
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.KeyRefusalAdvice
 import com.demo.chat.controller.webflux.ChatTopicServiceController
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.knownkey.ChatDomain
@@ -44,12 +45,14 @@ import reactor.core.publisher.Mono
  * would answer 500 instead, and a refusal must not be confused with a broken
  * stub.
  *
- * **This class fails, and the failure is the finding of Task 2.** Both routes
- * answer 404, and neither 403 nor 200. The controller is a JDK dynamic proxy
- * under `@EnableReactiveMethodSecurity`, so it carries no class level
- * `@RequestMapping`. The reading is not "the denial is wrong". The reading is
- * that the route does not exist at all. See the allowed probe for the
- * measurement.
+ * **The class passes, and both assertions of the gate run.** Each route answers
+ * 403 and each call count reads zero.
+ *
+ * **`KeyRefusalAdvice` is the real production advice, and not a fixture.** It is
+ * in this slice on purpose. Method security throws `AuthorizationDeniedException`
+ * from the handler, and no other type in this repository renders it, so a refusal
+ * answered 500 before it gained that handler. A 500 would run the status
+ * assertion and stop before the call count assertion. See `CHAT-znprrzhn`.
  */
 @WebFluxTest
 @ContextConfiguration(
@@ -59,6 +62,7 @@ import reactor.core.publisher.Mono
         LongTypeUtilConfiguration::class,
         ChatTopicServiceController::class,
         RestBoundaryProbeDeniedConfiguration::class,
+        KeyRefusalAdvice::class,
     ]
 )
 @TestPropertySource(properties = ["app.controller.topic"])
@@ -83,9 +87,10 @@ class RestBoundaryProbeDeniedTests {
     }
 
     /**
-     * **The facade route is the finding of this task.** If it answers 200
-     * under a denial, the same-object call crosses no proxy, and the
-     * annotations must move onto the mapping interface.
+     * **The facade route is the finding of Task 2.** The method calls `getRoom`
+     * on its own object, so that call crosses no proxy and the member's check
+     * never ran. The facade method carries its own check for that reason. This
+     * test is what pins that repair.
      */
     @Test
     fun `a denied caller is refused at the facade route and getRoom is never called`() {
