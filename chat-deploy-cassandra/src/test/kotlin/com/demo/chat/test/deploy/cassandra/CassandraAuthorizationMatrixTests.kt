@@ -141,7 +141,8 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
                 "whoami User FIND" to true,
                 "messageById GET" to true,
                 "listRooms MessageTopic ALL" to true,
-                "addUser User NEW" to false
+                "addUser User NEW" to false,
+                "deleteRoom MessageTopic REM" to false
             )
 
             // The caller is a real user of this deployment, and the room and
@@ -181,7 +182,8 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
         "whoami User FIND" to answer({ it.hasAccessToDomain("User", "FIND") }, access, context),
         "messageById GET" to answer({ it.hasAccessTo(message, "GET") }, access, context),
         "listRooms MessageTopic ALL" to answer({ it.hasAccessToDomain("MessageTopic", "ALL") }, access, context),
-        "addUser User NEW" to answer({ it.hasAccessToDomain("User", "NEW") }, access, context)
+        "addUser User NEW" to answer({ it.hasAccessToDomain("User", "NEW") }, access, context),
+        "deleteRoom MessageTopic REM" to answer({ it.hasAccessTo(room, "REM") }, access, context)
     )
 
     private fun answer(
