@@ -219,7 +219,8 @@ validates a token.** See `docs/IDENTITY-POLICY.md`.
 `TopicServiceAccess`, `UserServiceAccess` and `MessageServiceAccess` in
 `com.demo.chat.security.access.composite` carry the checks that name a domain
 as text. The `core` package carries more, over `PersistenceAccess`,
-`IndexAccess`, `PubSubAccess` and `IKeyServiceAccess`. Every one of them is
+`IndexAccess`, `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
+`SecretsStoreAccess`. Every one of them is
 latent. `CompositeControllersConfiguration` imports the three composite
 interfaces and implements none of them. The controllers delegate to
 `CompositeServiceBeans`, which supplies the plain services.
