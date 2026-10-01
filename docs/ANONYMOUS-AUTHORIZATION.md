@@ -178,9 +178,11 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
    `findByUsername` and `findByUserId` compare against it directly. At those
    five the scan adds nothing, because a root key is its own root.
 
-   **`User:MessageTopic:GET`, `JOIN` and `MEMBERS` now reach an operation
-   each.** Those three checks name one room, and the scan reads the
-   `MessageTopic` root of that room. See the wider-effect table of
+   **Three `MessageTopic` permissions now reach an operation.** `GET` reaches
+   `getRoom` and `getRoomByName`, `JOIN` reaches `leaveRoom`, and `MEMBERS`
+   reaches `roomMembers`. Each of those checks names one room, and the scan
+   reads the `MessageTopic` root of that room. `joinRoom` is not one of them,
+   because it names a user key. See the wider-effect table of
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
@@ -191,11 +193,18 @@ still deny for every caller.**
 `addRoom` and `addUser` deny although both sides match, because no shipped row
 grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
 
-**Three checks outside the six now allow.** `PersistenceAccess.add` and
-`IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity, and
+**Eleven checks move in total, and only one of them is a matrix row.**
+`messageById` is that row. The other ten were denied before and allow now.
+Four are composite checks over one room: `getRoom`, `getRoomByName`,
+`leaveRoom` and `roomMembers`. Six are `core` checks: `PersistenceAccess.add`
+and `IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity,
 `PersistenceAccess.get` and `byIds` reach `{Anon, Message, GET}` for a
-`Message` entity. Every one of them is latent. See the wider-effect table of
-the spec.
+`Message` entity, `PubSubAccess.sendMessage` reaches `{User, Message, SEND}`,
+and `TopicInventoryAccess.getUsersBy` reaches `{User, MessageTopic, GET}`.
+
+**Two of the eleven are conditional.** `PersistenceAccess.add` and
+`IndexAccess.add` move through the `{Anon, User, PUT}` row alone. Every one of
+the eleven is latent. See the wider-effect table of the spec.
 
 ## Expiry
 
