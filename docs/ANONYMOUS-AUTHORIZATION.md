@@ -179,7 +179,7 @@ controller, and no grant could protect it.
 **So the route is unusable. `CHAT-dgjhljbl` restores it**, by resolving a
 name to a room key so that a target check becomes honest.
 
-Four shell call sites depend on the route: `TopicCommands.kt` lines 55, 62,
+Five shell call sites depend on the route: `TopicCommands.kt` lines 55, 62,
 77 and 99, and `PubSubCommands.kt` line 46. **A shell credential repairs none
 of them**, because this route refuses every identity.
 
