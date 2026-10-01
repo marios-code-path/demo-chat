@@ -555,27 +555,57 @@ Expected: `exit=0`, `Failures: 0`, `Errors: 0`.
 
 - [ ] **Step 5: Prove the tests by mutation, then restore**
 
-Revert the scan of Task 2 by hand, and confirm the tests fail.
+**Do not use `git checkout -- <file>`.** It discards any edit that is in the
+file when it runs, including an edit that another tool made. This procedure
+records the mutation and reverses exactly that recording.
 
-In `getAuthorizationsAgainst`, replace `targets(uidB)` with `listOf(uidB)`.
-Then run the Step 3 command of Task 2 again.
+First, assert that the file is clean, and record its hash. **Stop if the
+assertion prints anything.** An unclean file means another edit is present, and
+this task must not touch it.
 
-Expected: FAIL on `a domain root check reads one target`,
+```sh
+cd /Users/darkbit1001/workspace/demo-chat
+SERVICE=chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt
+git status --short -- "$SERVICE"
+shasum -a 256 "$SERVICE"
+```
+
+Expected: the `git status` line prints nothing. Record the hash.
+
+Next, mutate the file by hand. In `getAuthorizationsAgainst`, replace
+`targets(uidB)` with `listOf(uidB)`. Save the mutation diff, and run the Step 3
+command of Task 2 again.
+
+```sh
+cd /Users/darkbit1001/workspace/demo-chat
+SERVICE=chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt
+git diff -- "$SERVICE" > /tmp/t3-mutation.diff
+wc -l /tmp/t3-mutation.diff
+```
+
+Expected: the diff holds two changed lines, one removed and one added.
+
+Expected on the test run: FAIL on `a domain root check reads one target`,
 `an object check reads the object and its domain root`,
 `a check with no permission reads both targets` and
 `a target with an unregistered root reads it and matches nothing`. The owner
 selection test must still PASS, because that read did not change.
 
-Restore the file with git, and prove the restore.
+Reverse the recorded mutation, and prove the restore.
 
 ```sh
 cd /Users/darkbit1001/workspace/demo-chat
-git checkout -- chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt
-git status --short chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt
+SERVICE=chat-security/src/main/kotlin/com/demo/chat/security/service/CoreAuthorizationService.kt
+git apply -R /tmp/t3-mutation.diff
+git status --short -- "$SERVICE"
+shasum -a 256 "$SERVICE"
 ```
 
-Expected: no output from `git status --short`, which means the file matches
-HEAD.
+Expected: `git status --short` prints nothing, which means the file matches
+HEAD. The hash equals the hash recorded before the mutation.
+
+**Stop and report if either check differs.** Do not run `git checkout --`, and
+do not edit the file to make the hash match.
 
 - [ ] **Step 6: Run once more, and commit**
 
@@ -1018,11 +1048,17 @@ Replace the paragraph at lines 174 to 179.
 ```markdown
 So the shipped configuration allows `User:FIND`, `User:PUT`,
 `MessageTopic:ALL`, `Message:GET` and three named `MessageTopic` permissions
-to every caller that reaches an identity. **Every write operation still
-denies for every caller.**
+to every caller that reaches an identity. **The six matrix write operations
+still deny for every caller.**
 
 `addRoom` and `addUser` deny although both sides match, because no shipped row
 grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
+
+**Three checks outside the six now allow.** `PersistenceAccess.add` and
+`IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity, and
+`PersistenceAccess.get` and `byIds` reach `{Anon, Message, GET}` for a
+`Message` entity. Every one of them is latent. See the wider-effect table of
+the spec.
 ```
 
 - [ ] **Step 5: Correct "What is not wired"**
