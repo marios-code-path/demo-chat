@@ -1,7 +1,12 @@
 package com.demo.chat.test.rsocket.probe
 
+import com.demo.chat.config.controller.composite.MessageServiceController
 import com.demo.chat.config.controller.composite.TopicServiceController
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.access.ChatAccessTestConfiguration
@@ -53,12 +58,13 @@ import java.time.Duration
 @ContextConfiguration(
     classes = [
         TopicServiceController::class,
+        MessageServiceController::class,
         RSocketSecurityTestConfiguration::class,
         ChatAccessTestConfiguration::class,
         ProbeServiceBeans::class,
     ]
 )
-@TestPropertySource(properties = ["app.controller.topic", "probe.caller=denied"])
+@TestPropertySource(properties = ["app.controller.topic", "app.controller.message", "probe.caller=denied"])
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RSocketBoundaryProbeDeniedTests : RSocketTestBase() {
 
@@ -89,5 +95,53 @@ class RSocketBoundaryProbeDeniedTests : RSocketTestBase() {
         }.verify(Duration.ofSeconds(10))
 
         verify(probe.mockTopicBean, never()).listRooms()
+    }
+
+    @Test
+    fun `a denied caller is refused for an object route and getRoom is never called`() {
+        StepVerifier.create(
+            requester.route("topic.topic-by-id")
+                .data(ByIdRequest(999999L))
+                .retrieveMono(MessageTopic::class.java)
+        ).expectErrorSatisfies { error ->
+            assertThat(error)
+                .isInstanceOf(ApplicationErrorException::class.java)
+                .hasMessageContaining("Access Denied")
+        }.verify(Duration.ofSeconds(10))
+
+        verify(probe.mockTopicBean, never()).getRoom(anyObject())
+    }
+
+    @Test
+    fun `the room by name route is refused and getRoomByName is never called`() {
+        StepVerifier.create(
+            requester.route("topic.topic-by-name")
+                .data(ByStringRequest("enforcedroom"))
+                .retrieveMono(MessageTopic::class.java)
+        ).expectErrorSatisfies { error ->
+            assertThat(error)
+                .isInstanceOf(ApplicationErrorException::class.java)
+                .hasMessageContaining("Access Denied")
+        }.verify(Duration.ofSeconds(10))
+
+        verify(probe.mockTopicBean, never()).getRoomByName(anyObject())
+    }
+
+    @Test
+    fun `a denied caller is refused for message send and send is never called`() {
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
+
+        StepVerifier.create(
+            requester.route("message.message-send")
+                .data(MessageSendRequest("body", 1L, 7L))
+                .retrieveMono(Key::class.java)
+        ).expectErrorSatisfies { error ->
+            assertThat(error)
+                .isInstanceOf(ApplicationErrorException::class.java)
+                .hasMessageContaining("Access Denied")
+        }.verify(Duration.ofSeconds(10))
+
+        verify(probe.mockMessageBean, never()).send(anyObject())
     }
 }
