@@ -11,13 +11,13 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'NEW')")
     override fun addRoom(req: ByStringRequest): Mono<out Key<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'REM')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'REM')")
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'ALL')")
     override fun listRooms(): Flux<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
@@ -29,6 +29,6 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#req.roomId(), 'JOIN')")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'MEMBERS')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'MEMBERS')")
     override fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships>
 }

@@ -1,7 +1,9 @@
 package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
@@ -13,6 +15,7 @@ import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.security.access.composite.MessageServiceAccess
+import com.demo.chat.security.access.composite.TopicServiceAccess
 import com.demo.chat.security.access.core.PubSubAccess
 import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthorizationService
@@ -92,6 +95,78 @@ class SendCheckExpressionTests {
     private fun sendMessageExpression(): String =
         PubSubAccess::class.java.methods
             .first { it.name == "sendMessage" && it.parameterCount == 1 }
+            .getAnnotation(PreAuthorize::class.java).value
+
+    /**
+     * **A raw id must bind.** The two argument `hasAccessTo` compiles to
+     * `hasAccessTo(Key, String)`, and SpEL resolves a method by name, then by
+     * argument count, then by assignability. A `Long` is not a `Key`, so the
+     * call raises `EL1004E` and every caller is refused with no cause.
+     */
+    @Test
+    fun `the room members expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "MEMBERS")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "roomMembers"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the room members expression").isTrue()
+    }
+
+    @Test
+    fun `the get room expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "GET")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "getRoom"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the get room expression").isTrue()
+    }
+
+    @Test
+    fun `the message by id expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "GET")))
+
+        assertThat(
+            evaluate(
+                expressionOf(MessageServiceAccess::class.java, "messageById"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the message by id expression").isTrue()
+    }
+
+    @Test
+    fun `the delete room expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "REM")))
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "deleteRoom"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the delete room expression").isTrue()
+    }
+
+    @Test
+    fun `the listen topic expression binds a raw id`() {
+        val access = access(listOf(grant(CALLER, ROOM, "SUBSCRIBE")))
+
+        assertThat(
+            evaluate(
+                expressionOf(MessageServiceAccess::class.java, "listenTopic"),
+                "req", ByIdRequest(ROOM.id), access
+            )
+        ).describedAs("the listen topic expression").isTrue()
+    }
+
+    /** The annotation text of a method of an access interface. */
+    private fun expressionOf(type: Class<*>, name: String, arity: Int = 1): String =
+        type.methods
+            .first { it.name == name && it.parameterCount == arity }
             .getAnnotation(PreAuthorize::class.java).value
 
     /**

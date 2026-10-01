@@ -11,10 +11,10 @@ import reactor.core.publisher.Mono
 
 interface MessageServiceAccess<T, V> : ChatMessageService<T, V> {
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'SUBSCRIBE')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'SUBSCRIBE')")
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.dest, 'SEND')")
