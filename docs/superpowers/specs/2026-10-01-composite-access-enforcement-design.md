@@ -1,9 +1,9 @@
 # Composite access enforcement
 
-Issue `CHAT-znprrzhn`, under the parent `CHAT-ltvfmcvh`.
+Issue `CHAT-znprrzhn`. It has no parent.
 
-**Status: draft, and it waits for the owner review.** Nothing in this document
-is implemented.
+**Status: approved for planning.** The owner approved this specification on
+2026-10-01 and recorded two decisions. Nothing in this document is implemented.
 
 Measured on 2026-10-01 at master `87657e0c`.
 
@@ -177,9 +177,13 @@ After this change:
   `MessageTopic`.
 - `send` denies the shell, because the shell owns no room.
 
-Two consumers break, and both are expected. The shell needs an identity, or
-the grants need a decision. **That decision is the owner's and it is not in
-this scope.**
+Two consumers break, and both are expected. **The owner decided on 2026-10-01
+that the shell receives an authenticated identity, and that the grants do not
+widen.** See decision 1 of the second session below.
+
+**That repair is its own issue and it is not in this scope.** It lands before
+this issue, because this issue turns the checks on. See decision 1 of the
+second session below.
 
 ## Verification
 
@@ -218,10 +222,67 @@ that only asserts a refusal cannot tell a refusal from a broken route.
 4. **`@PostFilter` does not appear on the composite surface.** It appears on
    `PersistenceAccess.byIds`, which this pass does not wire.
 
-## Open, and for the owner
+## The decisions of the owner, 2026-10-01 (second session)
 
-1. **Does the shell get an identity, or do the grants change?** This issue
-   makes both `addRoom` and `send` deny for `chat-shell`. The repair is either
-   a shell credential or a changed grant set. Neither is in this scope.
-2. **Is the core surface one child issue or several?** It is 38 methods across
-   6 interfaces, and each needs a route that may not exist yet.
+The owner approved this specification for planning and took two decisions.
+
+### 1. `chat-shell` receives an authenticated identity
+
+**The grants do not widen.** A shell credential keeps `addRoom` and `send`
+aligned with the approved policy. Widening a grant to preserve an
+unauthenticated client would move the policy to fit the client, and the policy
+is the thing under decision.
+
+**The work sits outside this issue.** It owns the shell credential, the shell
+login, and the shell identity. It is a separate issue with its own acceptance
+test.
+
+**That issue lands before this one**, because this issue is what makes the
+checks live. So `CHAT-znprrzhn` depends on it, and on `CHAT-eoqkbqve`. Its
+other four dependencies are already done.
+
+**The three core children are children, and not dependencies.** They do not
+block this issue. Nothing about the composite boundary depends on a core
+boundary.
+
+**The shell tests are the acceptance gate for that child.** They fail when the
+check runs and no credential is present. So the child passes exactly when
+`--ci` is green with the checks wired.
+
+### 2. The core surface splits into three children
+
+The six core interfaces become three children, one per access boundary.
+`CHAT-ikjisqqd` is deleted, and its three replacements carry the work.
+
+| Child | Interfaces | Methods |
+|---|---|---|
+| Persistence and index access | `PersistenceAccess`, `IndexAccess` | 22 |
+| Pub/sub and topic inventory access | `PubSubAccess` (which carries `TopicInventoryAccess`) | 12 |
+| Key and secret access | `IKeyServiceAccess`, `SecretsStoreAccess` | 4 |
+
+**Each boundary gets its own child because each has a different route, a
+different downstream effect, and a different acceptance test.** One large child
+would weaken the review scope of every one of them.
+
+### 3. The transport tests are the boundary gate
+
+**The composite plan keeps its transport tests as the boundary gate.** If an
+RSocket dispatch or a REST dispatch does not cross the proxy, the work stops
+and the design returns to the owner. **A failure there is a finding about the
+boundary, and not a cue to widen the tests until they pass.**
+
+### 4. Every test names the caller state precisely
+
+Three caller states exist, and a test must name the one it drives. A test that
+does not is a test that cannot be read.
+
+- **RSocket with no credential reaches the `Anon` identity.** The RSocket
+  server seam calls `anonymous`, so the identity is the `Anon` root key.
+- **No security context reaches no identity.** A direct call with no
+  `contextWrite` reaches the empty identity, and the policy denies it.
+- **A denied authenticated caller reaches its user identity and lacks the
+  grant.** The identity resolves, and the grant read answers no.
+
+**These are three different outcomes and one refusal.** A test that asserts
+only "denied" cannot tell them apart, and `CHAT-zhjltbky` measured that the
+distinction is where the defects live.
