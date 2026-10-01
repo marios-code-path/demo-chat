@@ -22,7 +22,9 @@ import org.springframework.stereotype.Controller
 @Controller
 @MessageMapping("message")
 class MessageServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
-    MessageServiceControllerMapping<T, V>, ChatMessageService<T, V> by b.messageService()
+    MessageServiceControllerMapping<T, V>,
+    MessageServiceAccess<T, V>,
+    ChatMessageService<T, V> by b.messageService()
 
 @ConditionalOnProperty(prefix = "app.controller", name = ["topic"])
 @Controller
@@ -36,7 +38,9 @@ class TopicServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
 @Controller
 @MessageMapping("user")
 class UserServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
-    UserServiceControllerMapping<T>, ChatUserService<T> by b.userService()
+    UserServiceControllerMapping<T>,
+    UserServiceAccess<T>,
+    ChatUserService<T> by b.userService()
 
 // The recall routes are flat, so this controller declares no class-level
 // route. A composition that sets app.controller.recall must also set the

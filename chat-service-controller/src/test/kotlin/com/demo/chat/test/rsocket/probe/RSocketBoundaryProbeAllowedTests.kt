@@ -1,7 +1,11 @@
 package com.demo.chat.test.rsocket.probe
 
+import com.demo.chat.config.controller.composite.MessageServiceController
 import com.demo.chat.config.controller.composite.TopicServiceController
+import com.demo.chat.config.controller.composite.UserServiceController
 import com.demo.chat.domain.MessageTopic
+import com.demo.chat.security.access.composite.MessageServiceAccess
+import com.demo.chat.security.access.composite.UserServiceAccess
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.access.ChatAccessTestConfiguration
@@ -63,6 +67,17 @@ class RSocketBoundaryProbeAllowedTests : RSocketTestBase() {
 
     /** The same object that `b.topicService()` answers. */
     @Autowired private lateinit var probe: TestCompositeServiceBeans<Long, String>
+
+    @Test
+    fun `every RSocket composite controller carries its access interface`() {
+        assertThat(MessageServiceController::class.java.interfaces)
+            .describedAs("the message controller")
+            .anyMatch { MessageServiceAccess::class.java.isAssignableFrom(it) }
+
+        assertThat(UserServiceController::class.java.interfaces)
+            .describedAs("the user controller")
+            .anyMatch { UserServiceAccess::class.java.isAssignableFrom(it) }
+    }
 
     @Test
     fun `an allowed caller reaches the service and listRooms runs once`() {
