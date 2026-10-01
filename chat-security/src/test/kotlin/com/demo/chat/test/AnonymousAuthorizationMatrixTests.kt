@@ -329,6 +329,95 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(answer).describedAs("a send to a room").isFalse()
     }
 
+    /**
+     * **A check that already names a domain root reads one target.** A root key
+     * is its own root, so the scan adds nothing. The index records the key it
+     * was asked for, and not a count.
+     */
+    @Test
+    fun `a domain root check reads one target`() {
+        val auth = recordingAuth(shippedGrants())
+
+        auth.broker.hasAccessByKey(CALLER_KEY, TOPIC_ROOT.verified(), "ALL").block()
+
+        assertThat(auth.index.asked).containsExactly(TOPIC_ROOT)
+    }
+
+    /**
+     * **A check on one object reads the object and its domain root.** The room
+     * key carries the `MessageTopic` root, so the check reads both.
+     */
+    @Test
+    fun `an object check reads the object and its domain root`() {
+        val auth = recordingAuth(shippedGrants())
+
+        auth.broker.hasAccessByKey(CALLER_KEY, ROOM_KEY.verified(), "GET").block()
+
+        assertThat(auth.index.asked).containsExactly(ROOM_KEY, TOPIC_ROOT)
+    }
+
+    /**
+     * **Owner selection reads the exact target.** A wildcard row on the domain
+     * root must not enter the selection for one room. A domain root read there
+     * would give one target two owners, which is the rule the owner set on
+     * 2026-09-24.
+     */
+    @Test
+    fun `owner selection reads the exact target alone`() {
+        val named = grant(USER_ROOT, ROOM_KEY, "GET")
+        val ownerRow = grant(USER_ROOT, TOPIC_ROOT, "*")
+        val auth = recordingAuth(listOf(named, ownerRow))
+
+        val selected = auth.service.getAuthorizationsForTarget(ROOM_KEY).collectList().block()!!
+
+        assertThat(auth.index.asked).describedAs("the targets the selection read").containsExactly(ROOM_KEY)
+        assertThat(selected.map { it.target }).describedAs("the targets it selected").containsExactly(ROOM_KEY)
+    }
+
+    /**
+     * **Self authority answers before any read.** The rule is in the broker, so
+     * a check of a key against itself must leave the index unread.
+     */
+    @Test
+    fun `a check of a key against itself reads no target`() {
+        val auth = recordingAuth(shippedGrants())
+
+        val answer = auth.broker.hasAccessByKey(CALLER_KEY, CALLER_KEY.verified(), "GET").block()
+
+        assertThat(answer).isTrue()
+        assertThat(auth.index.asked).isEmpty()
+    }
+
+    /**
+     * **A check with no permission still reads both targets.** A null
+     * permission lists the rows as they are stored, and the scan is not part of
+     * that decision.
+     */
+    @Test
+    fun `a check with no permission reads both targets`() {
+        val auth = recordingAuth(shippedGrants())
+
+        auth.service.getAuthorizationsAgainst(CALLER_KEY, ROOM_KEY, null).collectList().block()
+
+        assertThat(auth.index.asked).containsExactly(ROOM_KEY, TOPIC_ROOT)
+    }
+
+    /**
+     * **A root that no domain holds is read as a target too.** The scan trusts
+     * the root of the key, which the boundary verified. A root outside the
+     * registry matches no row, and it does not throw.
+     */
+    @Test
+    fun `a target with an unregistered root reads it and matches nothing`() {
+        val alien = Key.of(9L, 404L)
+        val auth = recordingAuth(shippedGrants())
+
+        val rows = auth.service.getAuthorizationsAgainst(CALLER_KEY, alien, "GET").collectList().block()!!
+
+        assertThat(auth.index.asked).containsExactly(alien, Key.root(404L))
+        assertThat(rows).isEmpty()
+    }
+
     private fun permitted(broker: AuthMetadataAccessBroker<Long>, targets: List<Key<Long>>, perm: String) =
         broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
@@ -403,6 +492,21 @@ class AnonymousAuthorizationMatrixTests {
         )
     }
 
+    /** The same stack as [broker], with an index that records each target. */
+    private fun recordingAuth(grants: List<AuthMetadata<Long>>): RecordingAuth {
+        val store = MapAuthStore()
+        val index = RecordingAuthIndex(store)
+        grants.forEach { store.rows[it.key] = it }
+        val service = CoreAuthorizationService(
+            store, index, { it }, { it }, { ANON_KEY }, { USER_ROOT },
+            AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
+            registry(),
+        )
+        return RecordingAuth(
+            AuthMetadataAccessBroker(service, TestVerifiers.resolvingNothing()), service, index
+        )
+    }
+
     /** The registry of every key of this test, each under its own root. */
     private fun registry() = TestVerifiers.holding(
         rootKeys(),
@@ -460,7 +564,7 @@ class AnonymousAuthorizationMatrixTests {
     }
 
     /** The authorization index, which answers by target key. */
-    private class MapAuthIndex(private val store: MapAuthStore) :
+    private open class MapAuthIndex(private val store: MapAuthStore) :
         IndexService<Long, AuthMetadata<Long>, Key<Long>> {
 
         override fun add(entity: AuthMetadata<Long>): Mono<Void> = Mono.empty()
@@ -470,6 +574,23 @@ class AnonymousAuthorizationMatrixTests {
 
         override fun findUnique(query: Key<Long>): Mono<out Key<Long>> = findBy(query).next()
     }
+
+    /** An index that records every target it is asked for, in order. */
+    private class RecordingAuthIndex(store: MapAuthStore) : MapAuthIndex(store) {
+        val asked: MutableList<Key<Long>> = mutableListOf()
+
+        override fun findBy(query: Key<Long>): Flux<out Key<Long>> {
+            asked.add(query)
+            return super.findBy(query)
+        }
+    }
+
+    /** The broker, the service and the recording index of one grant set. */
+    private class RecordingAuth(
+        val broker: AuthMetadataAccessBroker<Long>,
+        val service: CoreAuthorizationService<Long, Key<Long>>,
+        val index: RecordingAuthIndex,
+    )
 
     private companion object {
         val nextKey = AtomicLong(100L)
