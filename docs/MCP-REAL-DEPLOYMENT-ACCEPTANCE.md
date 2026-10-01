@@ -21,17 +21,23 @@ The run proves six things.
 5. The adapter maps that 404 to its own sentence, and it leaks no backend text.
 6. stdout carries protocol frames alone. The process exits within the bound.
 
-The run now requires production REST authentication. `CHAT-pgpmsgvr` makes the
-WebFlux application chain validate an agent token on every route it owns.
-`RSocketServerConfiguration` remains outside this issue and carries
-`TODO: lock down!`.
+**The 2026-09-29 run predates enforcement, and a second run closes that gap.**
+`CHAT-pgpmsgvr` merged on 2026-09-30, and the chain now validates an agent token
+on every route it owns. `RSocketServerConfiguration` stays outside that issue
+and keeps `TODO: lock down!`.
 
-**The token in `credential.txt` must be a valid agent token.** This issue proves
-that the adapter sends the bearer header and that REST routes validate it.
-`CHAT-rvcrzxvw` still covers credential issuance for a deployed agent account.
+The 2026-09-29 deployment started on 2026-09-28, before that merge. Its
+`WebFluxSecurity` permitted every exchange. So its token came from a local mint
+and that token was unconstrained: **any text in `credential.txt` would have
+passed.** Read that run for its transport, route and mapping evidence, and not
+for authentication.
 
-The run also does not prove deployed authorization. The deployment holds no
-denial to observe, because no route enforces one. So every call in this run was
+**The 2026-09-30 run in this document closes both gaps.** It uses a token from
+the authorization server, and it runs against a deployment that enforces. The
+procedure that produces that token is in `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+
+Neither run proves deployed authorization. No deployment holds a denial to
+observe, because no route enforces a grant. So every call in both runs was
 permitted.
 
 ## The deployment
@@ -115,7 +121,7 @@ status is not lost, because the stderr diagnostic line carries it. Task 7 rule
 
 ```properties
 backendBaseUrl=http://127.0.0.1:6791
-credentialFile=credential.txt   (a valid agent token)
+credentialFile=credential.txt   (a locally minted token; the 2026-09-29 deployment read no header)
 keyType=long
 topicIds=1554429686883287040,1
 ```
@@ -231,19 +237,140 @@ named all three lines. See mutation M5c in the plan.
 
 This run does not close `CHAT-ylvoiixm`. Three things stay open.
 
-1. **Authentication.** `CHAT-pgpmsgvr` enforces the credential boundary for
-   every route the adapter uses. This run uses a token from the trusted JWK.
-2. **The denial path.** The deployment holds no denial to observe. So this run
-   never exercised a 403 from a real grant. Task 4's stdio test covers a 403
+1. **Authentication, for the 2026-09-29 run.** `CHAT-pgpmsgvr` enforces the
+   credential boundary for every route the adapter uses. That deployment
+   predates the merge, so it read no header. The 2026-09-30 run closes this.
+2. **The denial path.** The deployment holds no denial to observe. So neither
+   run exercised a 403 from a real grant. Task 4's stdio test covers a 403
    against the fake backend. That test is the only coverage of the denial path.
-3. **The credential origin.** This run mints a token locally from the trusted
-   JWK. `CHAT-rvcrzxvw` covers production credential issuance.
+3. **The credential origin, for the 2026-09-29 run.** That run minted a token
+   locally from the trusted JWK. `CHAT-rvcrzxvw` closed this on 2026-09-30, and
+   `docs/MCP-CREDENTIAL-ISSUANCE.md` holds the procedure.
+
+## The 2026-09-30 run, with an issued credential
+
+The first run used a local mint against a deployment that read no header. This
+run uses a token from the authorization server, against a deployment that
+enforces. Issue `CHAT-rvcrzxvw` carries the work.
+
+The credential procedure is `docs/MCP-CREDENTIAL-ISSUANCE.md`. That document
+carries the token request, the refusal matrix, the expiry rule and the limits.
+This section records the acceptance reading alone.
+
+### The deployment
+
+| Item | Value |
+|---|---|
+| Module | `chat-deploy-memory`, from its `-exec` jar |
+| Built | 2026-09-30, with the `expose-webflux` and `deploy` Maven profiles |
+| Application port | 6892, listening on `http://127.0.0.1:6892` |
+| Management port | 6893 |
+| Runtime | OpenJDK 25, GraalVM CE |
+| Key type | `long` |
+| Node id | 1 |
+| Spring profile | none. The default profile is active. |
+| Selectors | `key`, `persistence`, `pubsub` and `secrets` at `memory`. `index` at `lucene`. |
+| Agent account | `Admin`, resolved at startup through `ChatUserService` |
+| Enforced scope | `chat.mcp` |
+| Client id | `31649af5-0154-4be5-8695-fda9d18b7981` |
+
+Two facts about that jar were read from it, not assumed. Its `BOOT-INF/lib`
+holds `chat-webflux-0.0.1.jar`, so the `expose-webflux` profile was active. That
+directory holds `chat-deploy-0.0.1.jar` at 73 KiB, so the exec classifier kept
+the library small.
+
+The flag list is in the appendix of `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+
+### The credential
+
+The authorization server ran with the `memory` profile on port 9000, and it held
+the private half of the key the deployment trusts. The token came from one
+`client_credentials` request with `scope=chat.mcp`.
+
+Measured token claims: `scope` is `["chat.mcp"]`, `client_id` equals the client
+id above, `aud` equals it too, and the lifetime is 300 seconds. The header
+carries `alg` `ES256`.
+
+**The file was not the only variable.** A control run replaced the token with
+junk text and ran the same harness again. Every call then answered
+`AUTHENTICATION_REQUIRED` with `status=401`. So the 200 answers below came from
+the credential, and not from a deployment that ignores it.
+
+### The topic
+
+The topic was created through the deployment on 2026-09-30, with the issued
+token on the request.
+
+```sh
+curl -H "Authorization: Bearer $TOKEN" -X PUT \
+  http://127.0.0.1:6892/persist/topic/add \
+  -H 'Content-Type: application/json' -d '{"type":"ByNameRequest","name":"mcpcredential"}'
+```
+
+```
+HTTP/1.1 201 Created
+{"key":{"id":1555003941702340608,"root":1555003879521783809,"empty":false}}
+```
+
+| Field | Value |
+|---|---|
+| id | `1555003941702340608` |
+| root | `1555003879521783809` |
+| name | `mcpcredential` |
+
+The name is one token, for the Lucene reason above.
+
+### The transcript
+
+Measured on 2026-09-30. Node v26.7.0. Client `@modelcontextprotocol/sdk`
+1.31.0.
+
+```
+node v26.7.0 | sdk 1.31.0 | declared 2025-11-25 | negotiated 2025-11-25
+server {"name":"demo-chat-mcp","version":"0.0.1"} | caps {"tools":{"listChanged":true}}
+tools: chat_list_topics, chat_get_topic
+call chat_list_topics {} isError=false _meta=null
+  => {"topics":[{"id":"1555003941702340608","root":"1555003879521783809","name":"mcpcredential"}]}
+call chat_get_topic {"topicId":"1555003941702340608"} isError=false _meta=null
+  => {"topic":{"id":"1555003941702340608","root":"1555003879521783809","name":"mcpcredential"}}
+call chat_get_topic {"topicId":"1"} isError=true
+  _meta {"code":"NOT_AVAILABLE","message":"the backend does not serve this object, or it refuses this caller","retryable":false}
+stdout lines 5 | parse failures 0
+stderr ["chat-mcp: configured for http://127.0.0.1:6892, 2 topic ids, key type LONG",
+        "chat-mcp: ready, protocol revision is chosen by the SDK",
+        "chat-mcp: chat_list_topics answered call=1 duration=64ms code=OK status=200",
+        "chat-mcp: chat_get_topic answered call=2 duration=8ms code=OK status=200",
+        "chat-mcp: chat_get_topic refused: the backend does not serve this object, or it refuses this caller call=3 duration=7ms code=NOT_AVAILABLE status=404",
+        "chat-mcp: stdin closed, exiting"]
+exit {"withinBound":true,"millis":343,"code":0,"signal":null} | connectError null
+```
+
+**No call answered `AUTHENTICATION_REQUIRED`.** That code is absent from the
+transcript, from the stderr lines and from the exit record.
+
+The same criteria table applies, and every row reads the same way.
+
+| Task 8 criterion | Reading |
+|---|---|
+| Discovery lists both tools | `tools: chat_list_topics, chat_get_topic` |
+| The served topic carries the real id, root and name | All three match the deployment's answer |
+| The unserved id answers a refusal | `isError=true`, code `NOT_AVAILABLE` |
+| The refusal carries no backend text | The string `is not in the registry` appears in neither stream |
+| The refusal carries no name | The refused call returns no name and no count |
+| stdout carries protocol frames alone | Five lines, all JSON-RPC 2.0, zero parse failures |
+| stderr carries adapter diagnostics alone | Six lines, and every one starts with `chat-mcp: ` |
+| One diagnostic line per call | Three call lines in stderr, one per call |
+| The process exits within the bound | `withinBound=true`, 343 ms, code 0 |
+| The credential is judged, and not ignored | The control run answered 401 on all three calls |
 
 ## Reproduce it
 
-1. Start a memory deployment with the prerequisite recipe in the plan.
-2. Create a topic through the deployment. Record its id, root and name.
-3. Write the configuration above. Use the real id, and one id the deployment
+1. Obtain a credential by the procedure in `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+2. Start a deployment with the four `app.security` values that the procedure
+   names. Create a topic through it. Record its id, root and name.
+3. Write the configuration above with that real id, and one id the deployment
    does not hold.
 4. Run the harness with the adapter behind the deployment.
 5. Compare each answer against the deployment's own answer to the same route.
+6. Replace the credential file with junk text. Run the harness again. Every
+   call must answer `AUTHENTICATION_REQUIRED` with `status=401`.
