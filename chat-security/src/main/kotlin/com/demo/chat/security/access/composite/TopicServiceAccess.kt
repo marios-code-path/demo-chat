@@ -20,7 +20,17 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#req.component1(), 'GET')")
+    /**
+     * **This route denies every caller, and it cannot do otherwise.**
+     * `ByStringRequest` holds a name and no id, so there is no target key at
+     * the check. The owner decided on 2026-10-01 that the route stays
+     * fail-closed. An unguarded route would expose room reads, and no grant
+     * could protect it.
+     *
+     * **It is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
+     * name to a room key and restores a target check.
+     */
+    @PreAuthorize("false")
     override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")

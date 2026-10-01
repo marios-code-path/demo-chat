@@ -2,6 +2,7 @@ package com.demo.chat.test
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MembershipRequest
 import com.demo.chat.domain.Message
@@ -192,6 +193,32 @@ class SendCheckExpressionTests {
         ).describedAs("the leave expression").isTrue()
     }
 
+    /**
+     * **`topic-by-name` denies every caller, and the most privileged caller
+     * is the control.** `ByStringRequest` holds a name and no id, so there is
+     * no target key to check. A wildcard row on every domain must still be
+     * refused, or the test cannot tell a denial from a missing grant.
+     *
+     * The route is unusable until `CHAT-dgjhljbl` resolves a name to a key.
+     */
+    @Test
+    fun `the room by name expression denies a fully privileged caller`() {
+        val access = access(
+            listOf(
+                grant(CALLER, TOPIC_ROOT, "*"),
+                grant(CALLER, MESSAGE_ROOT, "*"),
+                grant(CALLER, USER_ROOT, "*"),
+            )
+        )
+
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "getRoomByName"),
+                "req", ByStringRequest("any-room"), access
+            )
+        ).describedAs("the room by name expression").isFalse()
+    }
+
     /** The annotation text of a method of an access interface. */
     private fun expressionOf(type: Class<*>, name: String, arity: Int = 1): String =
         type.methods
@@ -215,10 +242,18 @@ class SendCheckExpressionTests {
         })
         context.setVariable(variable, value)
 
-        @Suppress("UNCHECKED_CAST")
-        val answer = SpelExpressionParser().parseExpression(expression).getValue(context) as Mono<Boolean>
+        val answer = SpelExpressionParser().parseExpression(expression).getValue(context)
 
-        return answer
+        // Spring accepts both shapes. `ReactiveExpressionUtils.evaluateAsBoolean`
+        // tests for `Boolean` first and for `Mono` second, so a literal such as
+        // `false` and a publisher such as `hasAccessToId` both resolve.
+        @Suppress("UNCHECKED_CAST")
+        val publisher: Mono<Boolean> = when (answer) {
+            is Mono<*> -> answer as Mono<Boolean>
+            else -> Mono.just(answer == true)
+        }
+
+        return publisher
             .contextWrite(
                 ReactiveSecurityContextHolder.withSecurityContext(
                     Mono.just(SecurityContextImpl(UsernamePasswordAuthenticationToken(details(), "secret", listOf())))
