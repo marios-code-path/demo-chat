@@ -20,6 +20,8 @@ Spring Shell, Reactor 3.8, Maven, JUnit 5, Mockito.
 - **The boundary is the whole design.** If a transport dispatch does not cross
   the proxy, stop and return the design to the owner. Do not widen the tests
   until they pass.
+- **`topic-by-name` is fail-closed.** The owner decided this on 2026-10-01. It
+  denies every caller and no grant reaches it. `CHAT-dgjhljbl` restores it.
 - **No grant changes.** `shared-deploy-configuration/src/main/config/userinit.yml`
   changes no line. It carries an uncommitted edit from another line of work.
 - **`CHAT-eoqkbqve` lands first, on its own commit set.** Its commits name that
@@ -53,8 +55,10 @@ line carries the test that pins it, in the task named beside it.
    the registry and denies an unknown id, with no error. Pinned by `an
    unregistered id is refused and no downstream bean is called` in Task 7.
 3. **`getRoomByName` has no target key.** The request carries a name and no id,
-   so no target check can be honest. Pinned by `the room by name route carries
-   no access expression` in Task 5.
+   so no target check can be honest. The route denies every caller, and it
+   never reads the topic. Pinned by `the room by name expression denies a fully
+   privileged caller` in Task 5 and by `room by name is refused and the topic
+   is never read` in Task 7.
 4. **The REST facade methods call the annotated methods on the same object.**
    `restGetRoom`, `restDeleteRoom`, `joinRestRoom`, `leaveRestRoom` and
    `restRoomMembers` are declared on the mapping interface and call its own
@@ -85,8 +89,10 @@ boundary is wrong and the work stops here.
 Shared imports for every snippet in this plan:
 `com.demo.chat.test.anyObject` (`(T) -> T` for Mockito),
 `reactor.test.StepVerifier`, `org.assertj.core.api.Assertions.assertThat`,
-`org.springframework.security.access.AccessDeniedException`, and
-`reactor.core.publisher.Mono`.
+`org.springframework.security.access.AccessDeniedException`,
+`reactor.core.publisher.Mono`, and the request types of
+`com.demo.chat.domain` (`ByIdRequest`, `ByStringRequest`, `MembershipRequest`,
+`MessageSendRequest`).
 
 The route is `topic-list`. Its expression is
 `hasAccessToDomain('MessageTopic', 'ALL')`, which is already evaluable and
@@ -600,17 +606,22 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 
 ---
 
-### Task 5: Decide the room by name route
+### Task 5: Make the room by name route fail closed
 
-`CHAT-eoqkbqve`. **`topic-by-name` cannot be repaired mechanically.**
+`CHAT-eoqkbqve`. **`topic-by-name` cannot be repaired mechanically, so it is
+made to deny.**
 
 `TopicServiceAccess.getRoomByName` takes `ByStringRequest`, whose only field is
-`name: String`. The expressions read `#req.component1()`, so the target is a
-`String`. `hasAccessToId(target: T, perm: String)` erases to `(Object, String)`,
-so the call binds, and `verifier.resolve(target, null)` then fails on a type
-that is not the key type. The route denies every caller.
+`name: String`. So there is no room id at the point of the check, and no target
+check can be honest.
 
-**So this route cannot check a target key, because it holds no target key.**
+**The owner decided on 2026-10-01 that the route stays fail-closed.** An
+unguarded route would expose room reads once this issue wires the controller,
+and no grant could protect it. The route carries an explicit deny expression
+instead.
+
+**So the route is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
+name to a room key and restores a target check.
 
 **Files:**
 - Modify: `chat-security/src/main/kotlin/com/demo/chat/security/access/composite/TopicServiceAccess.kt`
@@ -618,79 +629,95 @@ that is not the key type. The route denies every caller.
 - Modify: `docs/ANONYMOUS-AUTHORIZATION.md`
 
 **Interfaces:**
-- Consumes: `ChatDomain.parse(name: String)` and `verifier.domainRoot(domain)`
-- Produces: the meaning of the `topic-by-name` route in the matrix.
+- Consumes: nothing. The expression is a SpEL literal.
+- Produces: a route that refuses every caller, and a matrix row that says so.
 
-**The owner must choose. This is the one decision this plan does not take.**
-
-| Option | Meaning | Cost |
-|---|---|---|
-| A. Domain check | `hasAccessToDomain('MessageTopic', 'GET')` | A domain grant covers every room. It widens, and it contradicts "a grant on a domain root does not cover one object" |
-| B. Deny | The route refuses every caller until the name resolves | The route is unusable. `chat-shell` `getRoomByName` breaks |
-| C. Drop the annotation | The route runs with no check | The route is unguarded, and the issue is not closed for this route |
-
-**Recommendation: C, with the gap filed.** The route holds no target, so no
-target check can be honest. An unguarded route that is named in the matrix is
-better than a route that denies every caller, and better than a widening that
-the rest of the policy contradicts.
-
-- [ ] **Step 1: Apply the owner's choice**
-
-For **C**, remove the annotation and record why in place. SpEL evaluates
-nothing, so the route is unguarded.
+- [ ] **Step 1: Write the failing test**
 
 ```kotlin
     /**
-     * **This route carries no access check, and it cannot carry one.**
-     * `ByStringRequest` holds a name and no id, so there is no target key to
-     * check. `CHAT-eoqkbqve` records the gap.
-     */
-    override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
-```
-
-- [ ] **Step 2: Write the test that pins the choice**
-
-For **C**:
-
-```kotlin
-    /**
-     * **`topic-by-name` carries no access check, and it cannot carry one.**
-     * `ByStringRequest` holds a name and no id, so there is no target key to
-     * check. A raw id expression denies every caller, and a domain expression
-     * would widen. `CHAT-eoqkbqve` records the gap.
+     * **`topic-by-name` denies every caller, and the most privileged caller
+     * is the control.** `ByStringRequest` holds a name and no id, so there is
+     * no target key to check. A wildcard row on every domain must still be
+     * refused, or the test cannot tell a denial from a missing grant.
+     *
+     * The route is unusable until `CHAT-dgjhljbl` resolves a name to a key.
      */
     @Test
-    fun `the room by name route carries no access expression`() {
-        val method = TopicServiceAccess::class.java
-            .getMethod("getRoomByName", ByStringRequest::class.java)
+    fun `the room by name expression denies a fully privileged caller`() {
+        val access = access(
+            listOf(
+                grant(CALLER, TOPIC_ROOT, "*"),
+                grant(CALLER, MESSAGE_ROOT, "*"),
+                grant(CALLER, USER_ROOT, "*"),
+            )
+        )
 
-        assertThat(method.getAnnotation(PreAuthorize::class.java))
-            .describedAs("the access expression of topic-by-name")
-            .isNull()
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "getRoomByName"),
+                "req", ByStringRequest("any-room"), access
+            )
+        ).describedAs("the room by name expression").isFalse()
     }
 ```
 
-- [ ] **Step 3: Run it**
+- [ ] **Step 2: Run it to verify it fails**
 
-Run: `mvn -o -pl chat-core,chat-security -Dtest=SendCheckExpressionTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/eoq5.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/eoq5.log`
+Run: `mvn -o -pl chat-core,chat-security -Dtest=SendCheckExpressionTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/eoq5.log 2>&1; echo "EXIT=$?"; grep -m3 "EL1004E\|SpelEvaluationException" /tmp/eoq5.log`
+
+Expected: FAIL. The expression calls `hasAccessTo` with a `String`, and no
+overload accepts one, so SpEL raises `EL1004E`.
+
+- [ ] **Step 3: Make the route deny**
+
+Replace the expression with a literal `false`. A literal carries no method
+resolution and no bean lookup, so it cannot fail open and it cannot fail on an
+evaluation error.
+
+```kotlin
+    /**
+     * **This route denies every caller, and it cannot do otherwise.**
+     * `ByStringRequest` holds a name and no id, so there is no target key at
+     * the check. The owner decided on 2026-10-01 that the route stays
+     * fail-closed: an unguarded route would expose room reads and no grant
+     * could protect it.
+     *
+     * **It is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
+     * name to a room key and restores a target check.
+     */
+    @PreAuthorize("false")
+    override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
+```
+
+- [ ] **Step 4: Run it to verify it passes**
+
+Run: `mvn -o -pl chat-core,chat-security -Dtest=SendCheckExpressionTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/eoq6.log 2>&1; echo "EXIT=$?"; tail -12 /tmp/eoq6.log`
 
 Expected: PASS, 9 tests, 0 skipped.
 
-- [ ] **Step 4: Update the matrix and file the gap**
+- [ ] **Step 5: Update the matrix**
 
-Add a row to `docs/ANONYMOUS-AUTHORIZATION.md` for `getRoomByName` with the
-chosen meaning, and record the choice on `CHAT-eoqkbqve`.
+Add this row to `docs/ANONYMOUS-AUTHORIZATION.md`, and mark it unusable.
 
-- [ ] **Step 5: Commit**
+| Operation | anonymous | authenticated | owner |
+|---|---|---|---|
+| `getRoomByName`, MessageTopic GET | deny | deny | deny |
+
+State the reason and the follow-up in the row. `CHAT-dgjhljbl` restores a
+target check.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add chat-security/src/main/kotlin/com/demo/chat/security/access/composite/TopicServiceAccess.kt \
         chat-security/src/test/kotlin/com/demo/chat/test/SendCheckExpressionTests.kt \
         docs/ANONYMOUS-AUTHORIZATION.md
-git commit -m "Decide the room by name route (CHAT-eoqkbqve)
+git commit -m "Make the room by name route fail closed (CHAT-eoqkbqve)
 
 topic-by-name holds a name and no id, so no target check can be honest.
-The route carries no annotation, and the matrix records the gap.
+The owner decided the route stays fail-closed rather than unguarded.
+CHAT-dgjhljbl resolves a name to a key and restores the check.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```
@@ -820,6 +847,23 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
         StepVerifier.create(route.retrieveFlux(MessageTopic::class.java))
             .expectError(AccessDeniedException::class.java)
             .verify(Duration.ofSeconds(10))
+    }
+
+    /**
+     * **The fail-closed route of Task 5 refuses before the topic is read.**
+     * `topic-by-name` carries an explicit deny, so the refusal must arrive
+     * with no lookup at all. A test that only asserts the refusal cannot tell
+     * a refusal from a broken route.
+     */
+    @Test
+    fun `room by name is refused and the topic is never read`() {
+        val route = requester.route("topic-by-name").data(ByStringRequest("enforcedroom"))
+
+        StepVerifier.create(route.retrieveMono(MessageTopic::class.java))
+            .expectError(AccessDeniedException::class.java)
+            .verify(Duration.ofSeconds(10))
+
+        verify(beans.topicService(), never()).getRoomByName(anyObject())
     }
 ```
 
@@ -1017,6 +1061,17 @@ Expected: exit 0.
 holds no credential, so `addRoom` and `send` deny. That work is
 `CHAT-wbcbptiq`, and it lands before this issue. If it has not landed, record
 the failure on `CHAT-wbcbptiq` and stop.
+
+**One shell failure here is expected and no credential repairs it.**
+`topic-by-name` is fail-closed by Task 5, so every shell call to
+`getRoomByName` is refused. Four sites use it: `TopicCommands.kt` lines 55,
+62, 77 and 99, and `PubSubCommands.kt` line 46, which is send by topic name.
+`CHAT-dgjhljbl` restores that route.
+
+**So the shell suite cannot be green when this issue lands.** Record every
+failure that names `getRoomByName` on `CHAT-dgjhljbl`, and separate it from
+the credential failures of `CHAT-wbcbptiq`. If those two sets cannot be told
+apart, this task is not complete.
 
 - [ ] **Step 3: Update the matrix**
 

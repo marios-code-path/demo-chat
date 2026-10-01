@@ -271,7 +271,26 @@ RSocket dispatch or a REST dispatch does not cross the proxy, the work stops
 and the design returns to the owner. **A failure there is a finding about the
 boundary, and not a cue to widen the tests until they pass.**
 
-### 4. Every test names the caller state precisely
+### 4. `topic-by-name` stays fail-closed
+
+**`getRoomByName` cannot carry an honest check.** `ByStringRequest` holds
+`name: String` and no id, so there is no target key at the point of the check.
+So the route carries an explicit deny expression and refuses every caller.
+
+**An unguarded route was rejected.** It would expose room reads once this issue
+wires the controller, and no grant could protect it. A widening to a domain
+check was rejected too, because "a grant on a domain root does not cover one
+object" is the rule the rest of the policy follows.
+
+**So the route is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
+name to a room key and restores a target check.
+
+Four shell call sites depend on the route: `TopicCommands.kt` lines 55, 62, 77
+and 99, and `PubSubCommands.kt` line 46, which is send by topic name. **A shell
+credential does not repair any of them**, because this route refuses every
+identity. `CHAT-dgjhljbl` records the cost.
+
+### 5. Every test names the caller state precisely
 
 Three caller states exist, and a test must name the one it drives. A test that
 does not is a test that cannot be read.
@@ -286,3 +305,7 @@ does not is a test that cannot be read.
 **These are three different outcomes and one refusal.** A test that asserts
 only "denied" cannot tell them apart, and `CHAT-zhjltbky` measured that the
 distinction is where the defects live.
+
+**The specification was approved with decisions 1, 2, 3 and 5, and decision 4
+was taken on 2026-10-01 after the plan review.** The plan states decision 4 as
+Task 5.
