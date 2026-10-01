@@ -28,7 +28,9 @@ class MessageServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
 @Controller
 @MessageMapping("topic")
 class TopicServiceController<T, V>(b: CompositeServiceBeans<T, V>) :
-    TopicServiceControllerMapping<T, V>, ChatTopicService<T, V> by b.topicService()
+    TopicServiceControllerMapping<T, V>,
+    TopicServiceAccess<T, V>,
+    ChatTopicService<T, V> by b.topicService()
 
 @ConditionalOnProperty(prefix = "app.controller", name = ["user"])
 @Controller
