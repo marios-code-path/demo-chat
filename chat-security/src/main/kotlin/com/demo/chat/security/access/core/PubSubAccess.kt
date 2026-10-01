@@ -21,7 +21,7 @@ interface PubSubAccess<T, V> : PubSubService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'UNSUBALLIN')")
     override fun unSubscribeAllIn(topic: T): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessTo(#message.key.id, 'SEND')")
+    @PreAuthorize("@chatAccess.hasAccessToId(#message.key.dest, 'SEND')")
     override fun sendMessage(message: Message<T, V>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessTo(#topic, 'SUBSCRIBE')")

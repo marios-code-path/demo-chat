@@ -80,6 +80,25 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
 
     /**
+     * The check of an access expression whose target is a raw id.
+     *
+     * **The two argument form takes a `Key`, and a raw id cannot bind to it.**
+     * SpEL resolves a method by name and by argument count, and then by
+     * assignability. A `Long` is not a `Key`, so that form fails with
+     * `EL1004E`. This method takes `T`, which erases to `Object`, so a raw id
+     * binds.
+     *
+     * A raw id carries no root, so it resolves in its stored domain first. An
+     * unknown id denies. The resolved key then follows the same path as
+     * [hasAccessTo].
+     */
+    fun hasAccessToId(target: T, perm: String): Mono<Boolean> =
+        verifier.resolve(target, null)
+            .flatMap { hasAccessTo(it.key, perm) }
+            .onErrorReturn(false)
+            .switchIfEmpty(Mono.just(false))
+
+    /**
      * The principal of the current security context.
      *
      * **`ContextIdentity` holds the rule.** This method used to carry its own
