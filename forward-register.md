@@ -12,12 +12,12 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-09-30, after the REST agent authentication merge. |
-| Last merged PR | #149, merge commit `24ab74b0`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Register state | Updated 2026-10-01, after the MCP adapter credential issuance merge. |
+| Last merged PR | #150, merge commit `8c181303`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
-| Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. |
-| Open PRs | None. Nothing was open on 2026-09-29. |
+| Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. The `.worktrees/mcp-credential` worktree was removed on 2026-10-01, and the local `chat-rvcrzxvw-mcp-credential` branch with it. |
+| Open PRs | None. Nothing was open on 2026-10-01. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,7 +28,7 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh merged as PR #147. `CHAT-ylvoiixm` carries the commit in the comment
+refresh merged as PR #150. `CHAT-rvcrzxvw` carries the commit in the comment
 that reports the merge.
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
@@ -2571,6 +2571,10 @@ are removed, and the remote branch is deleted.
 open: `CHAT-pgpmsgvr`, `CHAT-rvcrzxvw` and `CHAT-qtfmwfsu`. **A closed parent
 does not close its children.** The parent comment carries the ledger.
 
+**Read that paragraph as of 2026-09-29.** Two of the three are done now.
+`CHAT-pgpmsgvr` merged on 2026-09-30 as `24ab74b0`. `CHAT-rvcrzxvw` merged on
+2026-10-01 as `8c181303`. `CHAT-qtfmwfsu` is still open.
+
 **The failure.** CI run `36635977431` failed both jobs. `chat-mcp` reported 184
 tests with 2 failures, against a local claim of 184 with 0. The number matched
 and the result did not. Both failures were `McpAdapterHarnessTests`, and both
@@ -2667,10 +2671,15 @@ Every route of the application chain requires a valid agent token.
 
 ## MCP adapter credential issuance (2026-09-30)
 
-`CHAT-rvcrzxvw`, under the closed parent `CHAT-ylvoiixm`. **This work is not
-merged.** The branch is `chat-rvcrzxvw-mcp-credential`, in
-`.worktrees/mcp-credential`, cut from `master` at `9eea6f15`. Merge approval is
-open.
+`CHAT-rvcrzxvw`, under the closed parent `CHAT-ylvoiixm`. **This section is
+closed.** PR #150 merged on 2026-10-01 as
+`8c181303393b5127314441e52ea0bd6f89c07618`. The merge has two parents, so it is
+a real merge commit. The merge tree is byte-identical to the branch tip tree,
+because `git diff a0065fcb 8c181303` was empty. The local and remote branch are
+removed, and the worktree with them.
+
+`CHAT-rvcrzxvw` is done. `CHAT-werokcbb` stays open, and it holds the dedicated
+agent identity gap.
 
 The issue asked for one thing: a documented procedure that produces the adapter
 credential. **No adapter code changed.** The adapter already reads
@@ -2771,11 +2780,19 @@ defect. The plan's own executable step at line 2974 carries `--notls --long
 --node-id 0` and is correct. The plan is left alone, because it records what
 that session planned.
 
-### Open
+### Landed
 
-- Merge approval.
+| PR | Merge | What |
+|----|-------|------|
+| #150 | `8c181303` | The credential procedure, the acceptance correction, and the launch command repair |
+
+### Open after the merge
+
 - `CHAT-werokcbb`, the dedicated agent identity, filed on 2026-09-30.
 - `CHAT-qtfmwfsu`, a child of `CHAT-ylvoiixm`, is untouched by this work.
+- **The `client-init` Spring profile registers no `chat.mcp` client.** Not
+  filed. The fix is a scope list in one file.
+- **Audience validation is not enforced.** `CHAT-okpgpxkj` holds it.
 
 ### One cleanup item, not done
 
