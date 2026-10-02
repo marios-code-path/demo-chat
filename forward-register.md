@@ -3066,9 +3066,13 @@ which never reads `KNOWN_FAILING_INTEGRATION` and never reads
 `docs/superpowers/specs/2026-10-01-mcp-agent-identity-design.md`. Plan:
 `docs/superpowers/plans/2026-10-01-mcp-agent-identity.md`.
 
-**This work is not merged.** The branch is `chat-werokcbb-agent-identity`, cut
-from `c069c978`, which is the merge commit of PR #156. The merge commit is
-unknown at this writing. The owner merges by pull request.
+**This work is merged.** PR #158 merged on 2026-10-02 as
+`7930d953d1a24c50cc42bc1a2313b594c2727288`. The merge has two parents, so it is
+a real merge commit. The branch was cut from `c069c978`, the merge commit of
+PR #156, and master merged into it once before the merge, as `f937fca5`.
+
+**The owner merged while the integration job was red.** That is the documented
+B12 state, and the build job passed.
 
 **The `Checkout` row of this file still reads `8fa9c962`.** That lag is
 deliberate and this section does not move it. See the rule under
@@ -3175,12 +3179,23 @@ Measured on 2026-10-01 at the branch tip.
 
 - Default gate: exit 0. 29 modules ran 1521 tests, with 0 failures, 0 errors
   and 35 skipped. It reports that reality matches `docs/BUILD-HEALTH.md`.
-- CI gate: exit 0. 29 modules ran 1820 tests, with 2 failures, 5 errors and
-  59 skipped. `chat-shell` is the only failing module, and B12 records it.
-  **All 7 failures read `Access Denied`,** so this work added none of them.
-- The CI run rebuilt the test image. The deploy integration module wrote its
-  jar inside the run, at 19:26:29, and the gate finished at 19:27:17.
+- The `--ci` verifier mode: exit 0. 29 modules ran 1820 tests, with 2 failures,
+  5 errors and 59 skipped. `chat-shell` is the only failing module, and B12
+  records it. **All 7 failures read `Access Denied`,** so this work added none
+  of them.
+- The `--ci` run rebuilt the test image. The deploy integration module wrote
+  its jar inside the run, at 19:26:29, and the gate finished at 19:27:17.
 - `drift check` reports `ok`, and `git diff --check` exits 0.
+
+**A green `--ci` verifier mode does not mean green CI.** The verifier reads
+`KNOWN_FAILING_INTEGRATION`, so it tolerates `chat-shell`. The GitHub
+integration job runs plain maven, which reads neither that list nor
+`docs/BUILD-HEALTH.md`. **So PR #158 was red on the integration job.**
+
+Measured on the PR #158 run: `chat-shell` reports 57 tests with 2 failures,
+5 errors and 22 skipped. Every failure reads `Access Denied`, and the set
+matches B12 exactly. `CHAT-dgjhljbl` holds six and `CHAT-wbcbptiq` holds one.
+**No unexpected module fails, and the build job passes.**
 
 ### Open after this work
 
