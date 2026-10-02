@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `c3aa6546`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Register state | Updated 2026-10-02, after the room by name merge of PR #163. |
-| Last merged PR | #163, merge commit `c3aa6546`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `38ecb01d`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Register state | Updated 2026-10-02, after the shell Admin identity merge of PR #166. |
+| Last merged PR | #166, merge commit `38ecb01d`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Five more hold at least one commit that master lacks: `chat-dgjhljbl-unguarded-name-route` at `53887135`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
-| Worktrees | The main checkout, and `.worktrees/topic-by-name`, which holds `chat-dgjhljbl-unguarded-name-route`. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Open PRs | None. PR #164 merged on 2026-10-02 as `2969050f`, and it carried the measured shell reading and this refresh. **That row read "one" when this refresh was written.** |
+| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
+| Worktrees | The main checkout alone. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.worktrees` and `.claude/worktrees` directories are empty. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Open PRs | None. PR #166 merged on 2026-10-02 as `38ecb01d`. That merge carried the shell Admin identity and the new build health reading. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,22 +28,29 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh follows PR #161. The refresh before it merged as PR #160, after the
-grant policy merge and the MCP agent identity merge. The one before that merged
-as PR #159, and it carried the register correction for the MCP agent identity
-merge. The one before that merged as PR #157, after the composite access
-enforcement merge.
+refresh follows PR #166. The refresh before it merged as PR #164, and it
+carried the measured shell reading. The one before that merged as PR #160,
+after the grant policy merge and the MCP agent identity merge. The one before
+that merged as PR #159, and it carried the register correction for the MCP
+agent identity merge. The one before that merged as PR #157, after the
+composite access enforcement merge.
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 
-**Four branches belong to other work.** The `chat-hazcatpc-review-fix` branch at
+**Three branches belong to other work.** The `chat-hazcatpc-review-fix` branch at
 `606d251a` holds one commit that master lacks, and it carries no remote. The
-`chat-mcp-spec` branch at `d29bac4a`, the `chat-urhjrwbt-indexelastic` branch at
-`d8d797b3`, and the `chat-znprrzhn-composite-enforcement` branch at `91af1c96`
-each hold at least one commit that master lacks. Do not read the rows above as
-covering them. The `chat-sgyaaivp-cassandra-timeout` branch at `a812cd0c` holds
-no commit that master lacks, and its remote is gone.
+`chat-mcp-spec` branch at `d29bac4a` and the `chat-znprrzhn-composite-enforcement`
+branch at `91af1c96` each hold one commit that master lacks. The
+`chat-urhjrwbt-indexelastic` branch at `d8d797b3` holds one commit that master
+lacks, and that commit is the module repair that PR #106 superseded. Do not read
+the rows above as covering them. The `chat-sgyaaivp-cassandra-timeout` branch at
+`a812cd0c` holds no commit that master lacks, and its remote is gone.
+
+**The `topic-by-name` branch is gone, and its work is in master.** Measured on
+2026-10-02: `git merge-base --is-ancestor 53887135 master` exits 0, so master
+holds that commit. PR #163 merged the room by name change. The worktree and the
+branch ref are removed.
 
 **One branch exists on the remote alone.** `origin` holds
 `chat-eroapfub-vector-runtime-flags` at `3245d308`, and that commit is titled
@@ -190,9 +197,9 @@ built on top of them inherits the risk.
 - **`chat-shell` reporting 23 skipped under `-Pintegration` is not missing
   coverage.** `@Disabled` sits on the generic base classes, surefire counts them as
   test classes, and JUnit does not inherit `@Disabled`, so the concrete `Long*`
-  subclasses run. Measured on 2026-09-15: 48 tests with 23 skipped, so 25 run. The
-  count was 36 with 17 skipped until the vector work added tests. Documented in
-  `docs/BUILD-HEALTH.md`.
+  subclasses run. **Measured on 2026-10-02: 64 tests with 25 skipped, so 39 run.**
+  The count was 48 with 23 skipped on 2026-09-15, and 36 with 17 before the vector
+  work. Documented in `docs/BUILD-HEALTH.md`.
 - **A wire-format change makes the shell integration image stale.** The
   chat-shell tests run the client against the
   `chat-deploy-long-memory-integration-test` Docker image, not against the
@@ -1106,7 +1113,9 @@ issue.
    the owner's.**
 2. **A deployment that sets the selector.** No yml sets
    `app.service.core.vector`.
-3. **The rebuild path.** `CHAT-oghjsnad`.
+3. **The rebuild path.** `CHAT-oghjsnad`. **Done on 2026-09-14**, verified at
+   `6cf2d193`. The rebuild lives in `MessageReindexService`, and recall answers
+   with one `MessageRecallResult` that carries `indexComplete`.
 
 ### Are the embedding model and the reindex parallel
 
@@ -1130,8 +1139,10 @@ entries are done: `CHAT-pkolwuqm` Boot 4, `CHAT-gidbchkx` Netty,
 `CHAT-icgifzbv` audit triage, and `CHAT-ygllyglb` Spring AI 2.0.
 See the ordered list at the end of this file, written on 2026-09-21.
 
-`CHAT-sgyaaivp` Cassandra CI flake and `CHAT-cikgeefc` build health are still
-open.
+`CHAT-sgyaaivp` Cassandra CI flake **closed on 2026-09-28 in PR #144**, and it
+was never in the list above. The driver kept its own `PT2S` default, because
+neither session config read `spring.cassandra.request.timeout`. Only
+`CHAT-cikgeefc` build health stays open from this pair.
 
 Open and not yet started, from the 2026-09-11 work: `CHAT-aedloxwd` index field
 semantics, `CHAT-edzvpxil` message handling policy mask, `CHAT-tekzakdd` data stream
@@ -2374,10 +2385,9 @@ a check yet, so every row above is latent.
 | `CHAT-eoqkbqve` | Repair the access expressions that cannot be evaluated. This must land before any check is wired, because a check that cannot run refuses every caller. |
 | `CHAT-esengqpv` | Refuse a second wildcard row for one target. The guard belongs where the row is written. |
 
-**The `Checkout` row of this file still reads `8fa9c962`.** That lag is
-deliberate and this section does not move it. The row records the last
-substantive merge before the register refresh. See the rule under `Where
-things stand`.
+**The `Checkout` row of this file read `8fa9c962` when this section was
+written.** That lag is deliberate and this section did not move it. The row
+read `38ecb01d` on 2026-10-02. See the rule under `Where things stand`.
 
 ## The work queue, ordered on 2026-09-21
 
@@ -2388,39 +2398,48 @@ Three issues closed while this list was written, each because merged work had
 already satisfied it: `CHAT-aazmjsws`, `CHAT-cjqzmiiq` and `CHAT-ygllyglb`.
 `CHAT-cophllrg` was read the same way and it stays open, because its test is
 missing. **Read the tree before you start an issue.** A closed parent does not
-close its children.
+close its children. **That reading is also superseded.** `CHAT-cophllrg` closed
+on 2026-09-22, and the null password refusal carries its test now.
 
-### Tier 1: open risk sitting in merged code
+**Every tier 1 row below is closed, measured on 2026-10-02 with `fp`.** The
+rows stay for the ordering record, and the state column is corrected.
 
-| # | Issue | Why it is first |
-|---|-------|-----------------|
-| 1 | `CHAT-hazcatpc` | reactor-kafka 1.3.25 declares kafka-clients 3.9.1 and master runs 4.1.2. reactor-kafka is discontinued at its 1.3 line. Neither enforcer rule fires on the pair. Only the narrow protocol path is measured, and that measurement is deliberately scoped. This is unmeasured risk in shipped code. |
-| 2 | `CHAT-ombbesyh` | The Boot 4 evidence boundary. **Most of it is now satisfied**: the `--ci` run compiles the full reactor, builds the image, and passes every container test. What stays open is starting the five composition roots, `just check-production-classpath`, and the packaged launch gate. Cheap now, and it removes the caveat that no deployment claim about Boot 4 is valid. |
-| 3 | `CHAT-cophllrg` | One test. `CoreUserDetailsService.updatePassword` refuses a null password, and nothing pins that refusal. A credential contract with no regression guard. |
+### Tier 1: risk that sat in merged code
 
-**`CHAT-vgujmnol` duplicates `CHAT-ombbesyh`.** Both ask for the composition
-roots to start and the images to rebuild on Boot 4. Merge them or close one.
+| # | Issue | State on 2026-10-02 |
+|---|-------|---------------------|
+| 1 | `CHAT-hazcatpc` | **Done.** Merged as PR #115, merge commit `e24ba097`. reactor-kafka 1.3.25 still declares kafka-clients 3.9.1 beside the managed 4.1.2, and neither enforcer rule fires on the pair. The container tests are the evidence. |
+| 2 | `CHAT-ombbesyh` | **Done.** Merged as PR #119, merge commit `13a5c6f9`. |
+| 3 | `CHAT-cophllrg` | **Done.** Merged on 2026-09-22. The null password refusal carries a test, under `BlockingUserDetailsPasswordServiceTests`. |
+
+**`CHAT-vgujmnol` duplicated `CHAT-ombbesyh`.** Check its state before acting on
+this note. Both asked for the composition roots to start and the images to
+rebuild on Boot 4.
 
 ### Tier 2: trust in the signal
 
 | # | Issue | Why |
 |---|-------|-----|
-| 4 | `CHAT-sgyaaivp` | The Cassandra container flake. While the integration job alternates red on unchanged code, every review has to re-derive whether a failure is real. Do it before any Cassandra work. |
+| 4 | `CHAT-sgyaaivp` | **Done on 2026-09-28 in PR #144.** The Cassandra container flake was a driver timeout, and the driver kept its `PT2S` default. Row kept for the ordering record. |
 | 5 | `CHAT-cikgeefc` | The standing build-health tracker. It does not close. A cycle that finds no drift is a clean reading. |
 
 ### Tier 3: correctness and design debt with a known defect behind it
 
 | # | Issue | Why |
 |---|-------|-----|
-| 6 | `CHAT-ltvfmcvh` | The anonymous identity is decided in at least three places, and one of them cannot tell an expired token from a caller who never authenticated. Security relevant. |
+| 6 | `CHAT-ltvfmcvh` | The anonymous identity is decided in at least three places, and one of them cannot tell an expired token from a caller who never authenticated. Security relevant. **In progress on 2026-10-02.** |
 | 7 | `CHAT-cvdcfczj` | Define and verify the complete authorization surface. |
-| 8 | `CHAT-avduuqwp` | A stable root identity on keys, replacing string matching between `IKeyService.kind` and `RootKeys`. Large and structural. Read the scope before committing to it. |
+| 8 | `CHAT-avduuqwp` | **Done.** Merged as PR #142, merge commit `dbd6b019`. A key now carries `id`, `root` and `empty`, and `IKeyService.kind` string matching is gone. |
 | 9 | `CHAT-ruduojeu` | Backend fanout semantics for messaging. |
 
 **Correction, 2026-09-27.** Row 8 describes `CHAT-avduuqwp` before its work.
 The work is implemented on the branch `chat-avduuqwp-root-identity` and is not
 merged. `IKeyService.kind` string matching is gone. See the root identity
 section at the end of this file.
+
+**Correction, 2026-10-02.** That correction is itself superseded. PR #142
+merged the work as `dbd6b019` on 2026-09-27, and the root identity section
+below records the merge.
 
 ### Tier 4: native image
 
@@ -3107,9 +3126,9 @@ B12 state, and the build job passed.
 "not merged" claim and it separated the local `--ci` verifier mode from the
 GitHub integration job.
 
-**The `Checkout` row of this file still reads `8fa9c962`.** That lag is
-deliberate and this section does not move it. See the rule under
-`Where things stand`.
+**The `Checkout` row of this file read `8fa9c962` when this section was
+written.** That lag is deliberate and this section did not move it. The row
+read `38ecb01d` on 2026-10-02. See the rule under `Where things stand`.
 
 ### The gap this work closes
 
@@ -3369,12 +3388,24 @@ the framework owns the string. **A shared message text is not shared code.**
   so this work added no failure. `CHAT-dgjhljbl` holds six and `CHAT-wbcbptiq`
   holds one.
 
-### One item carried into `CHAT-wbcbptiq`
+### One item carried into `CHAT-wbcbptiq`, and the measurement refuted it
 
+**This item was wrong, and `CHAT-wbcbptiq` corrected it on 2026-10-02.** It read:
 `LoginCommands.login` resolves the user through the user store, and not through
 the credential. So a login stores metadata for a user the secrets store may not
 hold, and the refusal above then arrives on the first request rather than at the
-login. `CHAT-wbcbptiq` owns that reading.
+login.
+
+**Measurement refutes it.** `MetadataRSocketRequester` reads its metadata
+provider on every route call. `ShellStateConfiguration` builds that answer from
+the stored login. So the `user-by-handle` call carries the credential, and the
+RSocket server judges it before the handler runs. **A wrong password fails the
+login call.** `LongLoginCommandsTests` pins that refusal.
+
+**The reading came from source and not from a run.** `LoginCommands.login`
+carries no explicit credential check, so reading it alone suggests the store
+holds the whole decision. The metadata travels outside that method. See the
+shell Admin identity section at the end of this file.
 
 ### Open after this work
 
@@ -3385,7 +3416,7 @@ loads, the `client-init` scope gap, and the per-agent grant decision.
 **The `Checkout` row of this file read `ae227b09` at that refresh.** That was
 the last substantive merge before it, so the row followed the rule under
 `Where things stand`. **That refresh has been superseded**, and the row reads
-`c3aa6546` now. See the last section of this file.
+`38ecb01d` now. See the last section of this file.
 
 ## The room by name route (2026-10-02)
 
@@ -3475,18 +3506,137 @@ run answers it.**
 
 ### One reading the owner still holds
 
-**`CHAT-wbcbptiq` carries an unreachable acceptance criterion.** It reads that
+**`CHAT-wbcbptiq` carried an unreachable acceptance criterion.** It read that
 the shell tests are its acceptance gate. Six of the seven were never
 repairable by a credential, and four of those six are repaired now. The
-criterion reaches one failure, which is the `addUser` refusal. **The owner
-decides whether it moves.**
+criterion reached one failure, which is the `addUser` refusal. **The owner
+decided that it moves, and `CHAT-wbcbptiq` now owns `addUser` alone.**
 
 ### Open after this work
 
-- `CHAT-mfveaecc`, the send refusal, filed on 2026-10-02.
-- `CHAT-wbcbptiq`, the shell credential, and its acceptance criterion.
+- `CHAT-mfveaecc`, the send refusal, filed on 2026-10-02. **It holds the only
+  remaining shell failure.**
 - The after-fetch authorization. Named by the owner, and unfiled.
 
-**The `Checkout` row of this file reads `c3aa6546`.** That is the last
+**The `Checkout` row of this file reads `38ecb01d`.** That is the last
 substantive merge before this refresh, so the row follows the rule under
 `Where things stand`. The refresh itself lags that row by one merge on purpose.
+
+## The shell Admin identity (2026-10-02)
+
+`CHAT-wbcbptiq`. **This work is merged.** PR #166 merged on 2026-10-02 as
+`38ecb01d`. The merge has two parents, so it is a real merge commit. The merge
+tree is byte-identical to the branch tip `55576043`, because both trees are
+`cbbd1390`. **This refresh is `CHAT-kmvavolb`.**
+
+### The carried claim was wrong, and it was the whole first question
+
+The register recorded that `LoginCommands.login` resolves the user through the
+user store and not through the credential. **Measurement refuted it.**
+
+`MetadataRSocketRequester` reads its metadata provider on every route call, and
+`ShellStateConfiguration` builds that answer from the stored login. So the
+`user-by-handle` call carries a `UsernamePasswordMetadata`, and the RSocket
+server judges it before the handler runs. **A wrong password fails the login
+call.**
+
+**So no production seam was added.** The login already presented the credential.
+`LongLoginCommandsTests` pins the refusal, and `ShellRequesterTests` pins the
+provider that carries it.
+
+**The reading came from source.** The method holds no explicit credential check,
+so the store reads as the whole decision. The credential travels outside that
+method, in the requester.
+
+### The one production change
+
+`ShellStateConfiguration.clearLogin()` owns the no-login transition. It clears
+the credential and the identity in one step, because the two are one state.
+`LoginCommands.login` calls it in the catch branch. A caller that never logged
+in keeps the Anon floor.
+
+**The shell login lives in a companion object, so it outlives one test class.**
+`ShellIntegrationTestBase` clears it before every test. Without that, a login in
+one class would decide a test in another class, and the suite would pass or fail
+by order.
+
+### The tests
+
+`ShellDeploymentAccount` reads the shipped Admin password from
+`config/userinit.yml`, which is the same artifact the deployment image loads.
+**No credential sits in test source**, and a blank password is refused with a
+message that names the key.
+
+- `LongLoginCommandsTests` holds the Admin login, the `whoami` read, and the
+  wrong-password refusal. Six tests.
+- `LongUserCommandsTests` logs in as Admin before `addUser`. Nine tests.
+- Its companion control, `an anonymous caller cannot create a user`, asserts
+  that the same call still reads `Access Denied` with no credential.
+- `ShellRequesterTests` pins the metadata provider. Three tests.
+
+**The control is what makes the Admin test mean anything.** A grant that widened
+would satisfy the Admin test alone. Removing the Admin login makes that test
+fail with `Access Denied`, and removing `clearLogin()` fails two login tests.
+
+### The build reading
+
+`build-health.sh --ci` exits 0 and reports no drift, at master `96c88e96`.
+29 modules ran 1829 tests, with 2 failures, 0 errors and 62 skipped.
+
+**`chat-shell` reports 64 tests, 2 failures, 0 errors and 25 skipped.** Three
+failures became two, and the two are the `send` refusals that `CHAT-mfveaecc`
+owns. `LongUserCommandsTests` is green.
+
+The skip count moved from 22 to 25, because this work added one user test and
+two login tests to the disabled base classes. `docs/BUILD-HEALTH.md` records
+both counts.
+
+### The trap that made the first gate invalid
+
+**The first `--ci` run had no `DOCKER_CONFIG` override, and it was not a
+reading.** `build-image` failed with `'username' must not be null`, because a
+stale Docker Hub login sits in the default config.
+
+That run reported `chat-deploy-memory-integration-tests` as a **new unrecorded
+failing module** and exited 1 on drift that no source change caused. **The image
+was then not rebuilt, and `chat-shell` tested whatever image the machine already
+held.**
+
+**Check the image, and not the test result.** The buildpack image timestamps are
+sentinels, so a date proves nothing. The image id moved from `sha256:ca616a99`
+to `sha256:92c24224` on the valid run, and that change is the proof.
+
+### The CI reading
+
+Run `37057740837` at `55576043`. The `build` job passes. The `integration` job
+fails, and the red set matches B12 exactly.
+
+**One module fails, and it is `chat-shell`.** `chat-authorization-server`,
+`chat-crypto`, `chat-presence` and `chat-deploy-e2ee` are SKIPPED, because the
+workflow runs no `-fae` and maven stops after the first failure.
+
+`chat-shell` reports 64 tests, 2 failures, 0 errors and 25 skipped.
+
+**The CI result is the stronger evidence, because CI builds its own image.**
+`LongLoginCommandsTests` runs 6 with 0 failures there, so the Admin login is
+accepted by a deployment image that CI built. `LongUserCommandsTests` runs 9
+with 0. `LongShellTopicCommandsTests` runs 4 with 0, and `ShellRequesterTests`
+runs 3 with 0.
+
+### What this work did not deliver
+
+- **No grant in `userinit.yml` changed, and no access expression changed.** The
+  shell login carries the identity that the shipped Admin rows already answer.
+- **The two send refusals stay.** `CHAT-mfveaecc` holds them, and no credential
+  repairs them.
+- **No deployment sets a shell credential.** The credential is a test and
+  interactive-shell input.
+
+### Open after this work
+
+- `CHAT-mfveaecc`, the send refusal.
+- The after-fetch authorization. Named by the owner, and unfiled.
+
+**The `Checkout` row of this file reads `38ecb01d`.** That is the last
+substantive merge before this refresh, so the row follows the rule under
+`Where things stand`.
