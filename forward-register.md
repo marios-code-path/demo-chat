@@ -3056,3 +3056,134 @@ which never reads `KNOWN_FAILING_INTEGRATION` and never reads
   holds the programmatic wrappers.
 - **No deployment turns on the checks.** They are on wherever a composite
   controller mounts, and every deployment mounts one.
+
+## The MCP agent identity (2026-10-01)
+
+`CHAT-werokcbb`. Spec:
+`docs/superpowers/specs/2026-10-01-mcp-agent-identity-design.md`. Plan:
+`docs/superpowers/plans/2026-10-01-mcp-agent-identity.md`.
+
+**This work is not merged.** The branch is `chat-werokcbb-agent-identity`, cut
+from `c069c978`, which is the merge commit of PR #156. The merge commit is
+unknown at this writing. The owner merges by pull request.
+
+**The `Checkout` row of this file still reads `8fa9c962`.** That lag is
+deliberate and this section does not move it. See the rule under
+`Where things stand`.
+
+### The gap this work closes
+
+The MCP adapter had no account of its own. `docs/MCP-CREDENTIAL-ISSUANCE.md`
+issued its credential to `Admin`, because startup created no other account. So
+an adapter token carried every right of the deployment administrator.
+
+`ChatIdentity` was the cause. It is a closed set of `ADMIN` and `ANON`, and
+`InitialUsersService` refused any third initial user with
+`An initial user names an unknown identity: <name>`.
+
+### The shape the owner chose
+
+**The agent is a plain user, and `ChatIdentity` stays closed.** The identity set
+does not open. Instead, a third initial user that names no identity loads as an
+ordinary user. That is the whole of the mechanism.
+
+Three production files changed.
+
+| File | What |
+|---|---|
+| `chat-deploy/.../service/init/InitialUsersService.kt` | `loadIdentities` requires `Admin` and `Anon`, and admits every other initial user as a plain user. A blank password generates a credential and prints it. |
+| `chat-deploy/.../config/deploy/init/UserInitializationProperties.kt` | `UserDefinition.password` defaults to blank, so the entry may omit the key. |
+| `shared-deploy-configuration/src/main/config/userinit.yml` | Declares the `Agent` account. Handle `Agent`, name `MCP ADAPTER`, image `chatimg://agent.png`, and no `password` key. |
+
+**The grants the agent holds are the floor, and nothing else.** No grant row
+names the agent as its principal. `InitialUsersService` writes one `*` row per
+domain root for the `Admin` key, and the agent key is not that key. The agent is
+in no other caller's actor set, so those rows do not reach it.
+
+**The narrowing is a loss, not a gain.** The agent drops the administrator's `*`
+reach. It gains no row.
+
+### The measured refusal
+
+`AnonymousAuthorizationMatrixTests` pins the agent matrix against the
+administrator matrix. **The two differ at exactly three operations**, and the
+plan expected two.
+
+| Operation | Agent | Admin |
+|---|---|---|
+| `send` to a room the caller does not own | **deny** | allow |
+| `addUser`, `User NEW` | **deny** | allow |
+| `deleteRoom`, `MessageTopic REM` | **deny** | allow |
+
+Every other operation reads the same, because the shipped rows name the `User`
+root and the `Anon` key, and those reach every caller.
+
+**The `send` row is the plan's omission.** The `Admin` `*` row on the
+`MessageTopic` root reaches the room `SEND`, so the administrator allows it and
+the agent denies it. The spec's agent-versus-admin table names the same three
+denials, so the code follows the spec and the plan's count was wrong.
+
+The mutation proof withdraws the generated `Admin` rows. The difference set then
+collapses to empty, so the assertion bites.
+
+### The acceptance run
+
+Measured on 2026-10-01, on a `chat-deploy-memory` exec jar on ports 6892 and
+6893, with `app.security.agent.username=Agent`.
+
+- The deployment started, printed one `Generated password for account 'Agent':`
+  line, and logged zero agent-resolution failures.
+- A topic `mcpagent` was created through the deployment. It answered 201 with
+  id `1555400854075346944`.
+- The harness exited 0 with `connectError` null. The allowed id answered 200 and
+  the unserved id answered `NOT_AVAILABLE`, 404. No call answered
+  `AUTHENTICATION_REQUIRED`.
+- The control replaced the token with junk text. All three calls then answered
+  `AUTHENTICATION_REQUIRED` with 401. So the credential was judged.
+
+`docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md` records the run in full, and
+`docs/ANONYMOUS-AUTHORIZATION.md` carries the agent matrix.
+
+### Three traps, each of which cost a cycle
+
+1. **The appendix flag list omitted `spring.application.name`.** The golden
+   `core-memory-init` set carries it. A start without it fails with
+   `Could not resolve placeholder 'spring.application.name'`. The appendix now
+   names it as a fifth change.
+2. **The stored process id belongs to the launcher, not the JVM.** `chat-build`
+   runs maven, and maven forks the server. So `$!` names the wrapper, and
+   killing it leaves the server holding its port. Kill the process that owns the
+   port, or kill the process group.
+3. **The adapter classpath must be absolute.** The harness runs from
+   `chat-mcp/src/test/client`, so a relative `chat-mcp/target/classes` resolves
+   below that directory and the JVM reports
+   `Could not find or load main class com.demo.chat.mcp.McpAdapterMainKt`.
+
+### One finding about the verifier
+
+**`build-health.sh` compares the failing-module set, and it does not compare the
+test counts.** A count that moves passes in silence. Measured on 2026-10-01: the
+default run reports 1521 tests, and `docs/BUILD-HEALTH.md` recorded 1507, and
+the verifier reported that reality matched the document.
+
+### The gates
+
+Measured on 2026-10-01 at the branch tip.
+
+- Default gate: exit 0. 29 modules ran 1521 tests, with 0 failures, 0 errors
+  and 35 skipped. It reports that reality matches `docs/BUILD-HEALTH.md`.
+- CI gate: exit 0. 29 modules ran 1820 tests, with 2 failures, 5 errors and
+  59 skipped. `chat-shell` is the only failing module, and B12 records it.
+  **All 7 failures read `Access Denied`,** so this work added none of them.
+- The CI run rebuilt the test image. The deploy integration module wrote its
+  jar inside the run, at 19:26:29, and the gate finished at 19:27:17.
+- `drift check` reports `ok`, and `git diff --check` exits 0.
+
+### Open after this work
+
+- **`CHAT-okpgpxkj`**, audience validation. It is not enforced.
+- **`CHAT-uxgdzpag`**, the remaining Lucene index loads.
+- **The `client-init` profile registers no `chat.mcp` client.** Not filed. The
+  fix is a scope list in one file.
+- **No deployment sets a per-agent grant.** A second adapter is a separate
+  decision.

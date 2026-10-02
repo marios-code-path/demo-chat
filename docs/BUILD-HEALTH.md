@@ -4,12 +4,21 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-09-30** with an empty temporary
+**The `--ci` mode was measured on 2026-10-01** with an empty temporary
 `DOCKER_CONFIG`, against Docker Engine 29.7.2. It exits 0 and reports no
-drift. 29 modules ran 1747 tests, with 0 failures, 0 errors and 59 skipped.
-This run built the current chat-shell test image before the integration tests.
-An earlier run on 2026-09-22 at master `67762d51` reported 27 modules, 1136
-tests and 54 skipped. `--ci` resolves artifacts online, so the measured
+drift. 29 modules ran 1820 tests, with 2 failures, 5 errors and 59 skipped.
+`chat-shell` is the only failing module, and B12 records it. This run rebuilt
+the chat-shell test image before the container tests. The deploy integration
+module wrote its 286 MiB jar inside the run, at 19:26:29, and the gate
+finished at 19:27:17.
+
+**An exit code of 0 here does not mean every module passes.** It means the
+failing-module set matches this file. Every one of the 7 shell failures reads
+`Access Denied`, which is the signature B12 records.
+
+An earlier run on 2026-09-30 reported 1747 tests with 0 failures, before B12
+landed. An earlier run on 2026-09-22 at master `67762d51` reported 27 modules,
+1136 tests and 54 skipped. `--ci` resolves artifacts online, so the measured
 command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
@@ -28,11 +37,19 @@ Do not trust this file on its own — run the verifier:
 
 It runs the build, diffs the failing modules against the list below, and exits non-zero when the two disagree — reporting anything **NEW** (failing but undocumented), **RESOLVED** (documented but passing), or **SKIPPED** (never built, so unknown). When it complains, update this file; that is the maintenance loop.
 
+**The verifier compares the failing-module set, and it does not compare test
+counts.** A count that moves passes in silence. Measured on 2026-10-01: the
+default run reported 1521 tests, this file recorded 1507, and the verifier
+reported that reality matched the document. So an executor must update the count
+lines below by reading the run, and not by trusting the exit code.
+
 ## Current state
 
 `mvn -o -B clean test` — **BUILD SUCCESS**. No module fails. The reactor holds
-37 modules and reports 1507 tests, 0
-failures, 0 errors and 35 skipped. The count moved from 1448 when
+37 modules and reports 1521 tests, 0
+failures, 0 errors and 35 skipped. The count moved from 1507 when
+`CHAT-werokcbb` added the agent identity, credential, binding and matrix tests.
+It moved from 1448 when
 `CHAT-znprrzhn` added the boundary probes, the deployment route test and the
 Admin root grant test. The count moved from 1401 in the baseline
 before `CHAT-pgpmsgvr` implementation. The historical count moved from 844 when
