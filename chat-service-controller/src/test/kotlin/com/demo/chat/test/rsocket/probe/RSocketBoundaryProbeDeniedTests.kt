@@ -12,6 +12,7 @@ import com.demo.chat.service.security.SecretsStore
 import com.demo.chat.test.access.ChatAccessTestConfiguration
 import com.demo.chat.test.anyObject
 import com.demo.chat.test.config.TestCompositeServiceBeans
+import com.demo.chat.test.key.TestKeys
 import com.demo.chat.test.rsocket.RSocketSecurityTestConfiguration
 import com.demo.chat.test.rsocket.RSocketTestBase
 import io.rsocket.exceptions.ApplicationErrorException
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.never
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.test.context.ContextConfiguration
@@ -54,6 +56,13 @@ import java.time.Duration
  * one `listRooms()` call of the allowed probe stays on the delegate, and the
  * `never()` assertion below reads it. Measured on 2026-10-01: the pair fails
  * and this class alone passes.
+ *
+ * **One route in this class carries no check, and that is deliberate.** The
+ * owner decided on 2026-10-02 that `topic-by-name` answers every caller that
+ * matches a room. A name holds no target key, so no check can run at the
+ * route. The route answers the room key and the room name, and the access
+ * condition travels with the operation the caller runs next. The last test
+ * below pins that openness against this class's denying broker.
  */
 @ContextConfiguration(
     classes = [
@@ -112,19 +121,35 @@ class RSocketBoundaryProbeDeniedTests : RSocketTestBase() {
         verify(probe.mockTopicBean, never()).getRoom(anyObject())
     }
 
+    /**
+     * **The room by name route carries no access expression.** The owner
+     * decided on 2026-10-02 that it answers every caller that matches a room.
+     *
+     * The mocked broker denies everything here, so a refusal would mean a
+     * check still guards the route. The delegate call and the answered room
+     * are what prove the route is open.
+     *
+     * The answer holds the room key and the room name, and nothing else.
+     * `MessageTopic` carries exactly those two fields, so no new shape is
+     * needed to keep the answer minimal.
+     */
     @Test
-    fun `the room by name route is refused and getRoomByName is never called`() {
-        StepVerifier.create(
-            requester.route("topic.topic-by-name")
-                .data(ByStringRequest("enforcedroom"))
-                .retrieveMono(MessageTopic::class.java)
-        ).expectErrorSatisfies { error ->
-            assertThat(error)
-                .isInstanceOf(ApplicationErrorException::class.java)
-                .hasMessageContaining("Access Denied")
-        }.verify(Duration.ofSeconds(10))
+    fun `the room by name route carries no check and reaches the delegate`() {
+        given(accessBroker.hasAccessByPrincipal(anyObject(), anyObject(), anyObject()))
+            .willReturn(Mono.just(false))
 
-        verify(probe.mockTopicBean, never()).getRoomByName(anyObject())
+        val room: MessageTopic<Long> = MessageTopic.Factory.create(TestKeys.key(42L), "unguardedroom")
+        given(probe.mockTopicBean.getRoomByName(anyObject())).willReturn(Mono.just(room))
+
+        val answer = requester.route("topic.topic-by-name")
+            .data(ByStringRequest("unguardedroom"))
+            .retrieveMono(MessageTopic::class.java)
+            .block(Duration.ofSeconds(10))
+            ?: error("the unguarded route answered nothing")
+
+        assertThat(answer.data).describedAs("the room name").isEqualTo("unguardedroom")
+        assertThat(answer.key.id).describedAs("the room key id").isEqualTo(42L)
+        verify(probe.mockTopicBean, times(1)).getRoomByName(anyObject())
     }
 
     @Test

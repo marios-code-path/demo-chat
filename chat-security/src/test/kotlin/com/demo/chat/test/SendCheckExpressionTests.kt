@@ -194,36 +194,35 @@ class SendCheckExpressionTests {
     }
 
     /**
-     * **`topic-by-name` denies every caller, and the most privileged caller
-     * is the control.** `ByStringRequest` holds a name and no id, so there is
-     * no target key to check. A wildcard row on every domain must still be
-     * refused, or the test cannot tell a denial from a missing grant.
+     * **The room by name route carries no access expression.** The owner
+     * decided on 2026-10-02 that it answers every caller that matches a room.
+     * `ByStringRequest` holds a name and no id, so no target key exists at the
+     * check, and no honest expression can judge the route.
      *
-     * The route is unusable until `CHAT-dgjhljbl` resolves a name to a key.
+     * **The absence is the assertion.** A `@PreAuthorize` on this method
+     * refuses every caller, and it refuses the shell lookups by name. This
+     * test names the change that would do it.
+     *
+     * The RSocket boundary probe holds the other half. It proves the route
+     * reaches the delegate and answers the room, even when the broker denies
+     * everything.
      */
     @Test
-    fun `the room by name expression denies a fully privileged caller`() {
-        val access = access(
-            listOf(
-                grant(CALLER, TOPIC_ROOT, "*"),
-                grant(CALLER, MESSAGE_ROOT, "*"),
-                grant(CALLER, USER_ROOT, "*"),
-            )
-        )
-
-        assertThat(
-            evaluate(
-                expressionOf(TopicServiceAccess::class.java, "getRoomByName"),
-                "req", ByStringRequest("any-room"), access
-            )
-        ).describedAs("the room by name expression").isFalse()
+    fun `the room by name route carries no access expression`() {
+        assertThat(annotationOf(TopicServiceAccess::class.java, "getRoomByName"))
+            .describedAs("the room by name expression")
+            .isNull()
     }
 
     /** The annotation text of a method of an access interface. */
     private fun expressionOf(type: Class<*>, name: String, arity: Int = 1): String =
+        annotationOf(type, name, arity)!!.value
+
+    /** The access annotation of a method, and null when the method carries none. */
+    private fun annotationOf(type: Class<*>, name: String, arity: Int = 1): PreAuthorize? =
         type.methods
             .first { it.name == name && it.parameterCount == arity }
-            .getAnnotation(PreAuthorize::class.java).value
+            .getAnnotation(PreAuthorize::class.java)
 
     /**
      * Evaluate one expression against the bean, as Spring does for `@chatAccess`.
