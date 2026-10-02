@@ -3071,16 +3071,19 @@ Three steps of the post-merge protocol ran.
    `91af1c96`, and not on `master`.** A reader who expects master there is
    wrong. That branch is not this work.
 
-Two steps did not run, and both need an operator.
+One step did not run, and it needs an operator.
 
-1. **The remote branch is not deleted.** The classifier refuses
-   `git push origin --delete`. The remote `chat-znprrzhn-enforcement` still
-   carries a merged tip.
-2. **The worktree is not removed.** It is locked by the live session
-   (`lock reason: claude session znprrzhn-enforcement (pid 39065)`). Removal
-   needs `git worktree remove -f -f` after that session ends. The local branch
-   cannot be deleted before the worktree is gone, because the worktree holds it
-   checked out.
+**The worktree is not removed.** It is locked by the live session
+(`lock reason: claude session znprrzhn-enforcement (pid 39065)`). That process
+is the session that wrote this section, so the lock lifts when the session
+exits. Removal then needs `git worktree remove -f -f`. The local branch cannot
+be deleted before the worktree is gone, because the worktree holds it checked
+out.
+
+**The remote branch is deleted.** The owner removed
+`origin/chat-znprrzhn-enforcement` on 2026-10-02. `git ls-remote --heads`
+returns nothing for that name. An agent could not delete it, because the
+classifier refuses `git push origin --delete`.
 
 **One trap worth carrying.** The merge changes
 `shared-deploy-configuration/src/main/config/userinit.yml`, and the main
