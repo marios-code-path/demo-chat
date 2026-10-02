@@ -1,6 +1,5 @@
 package com.demo.chat.config.rsocket
 
-//import com.demo.chat.secure.service.CoreReactiveAuthenticationManager
 import com.demo.chat.controller.resolve.VerifiedKeyArgumentResolver
 import com.demo.chat.service.core.KeyVerifier
 import org.springframework.beans.factory.ObjectProvider
@@ -27,6 +26,14 @@ class RSocketServerConfiguration<T> {
 
     /**
      * The RSocket security chain.
+     *
+     * **`simpleAuthentication` judges a credential, and the manager behind it
+     * is the one Spring Security builds.** No composition declares a
+     * `ReactiveAuthenticationManager` bean, so Spring reads the
+     * `ReactiveUserDetailsService` bean instead. That bean is
+     * `CoreUserDetailsService`, and it reads the credential from the secrets
+     * store. `RSocketCredentialSeamTests` measures both halves against a
+     * running deployment. See CHAT-kcccoifk.
      *
      * **`anonymous` is what gives an unauthenticated caller an identity.**
      * Without it a payload that carries no credential reaches the service
