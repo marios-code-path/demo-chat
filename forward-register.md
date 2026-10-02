@@ -2927,9 +2927,11 @@ Every moved check was latent when that work merged. **Read that sentence as of
 `docs/superpowers/specs/2026-10-01-composite-access-enforcement-design.md` and
 `docs/superpowers/plans/2026-10-01-composite-access-enforcement.md`.
 
-**This work is not merged.** The branch is `chat-znprrzhn-enforcement`, cut
-from `ade87988`, which is the tip of `origin/master` and the merge commit of
-PR #155. The owner merges by pull request.
+**This work is merged.** PR #156 merged on 2026-10-02 as
+`c069c978365d50da48b4d769f37e94af32fd9793`. The merge has two parents, so it is
+a real merge commit. The merge tree is byte-identical to the branch tip
+`6970a89a`, because `git diff 6970a89a c069c978` was empty. The branch was cut
+from `ade87988`, the merge commit of PR #155.
 
 ### What exists
 
@@ -3056,3 +3058,32 @@ which never reads `KNOWN_FAILING_INTEGRATION` and never reads
   holds the programmatic wrappers.
 - **No deployment turns on the checks.** They are on wherever a composite
   controller mounts, and every deployment mounts one.
+
+### Cleanup, on 2026-10-02
+
+Three steps of the post-merge protocol ran.
+
+1. Local `master` moved to `c069c978` through `git fetch origin master:master`,
+   and it now matches `origin/master`.
+2. The issue closed. `CHAT-znprrzhn` is `done`, and the comment names the state
+   of every child.
+3. The main checkout is **on `chat-znprrzhn-composite-enforcement` at
+   `91af1c96`, and not on `master`.** A reader who expects master there is
+   wrong. That branch is not this work.
+
+Two steps did not run, and both need an operator.
+
+1. **The remote branch is not deleted.** The classifier refuses
+   `git push origin --delete`. The remote `chat-znprrzhn-enforcement` still
+   carries a merged tip.
+2. **The worktree is not removed.** It is locked by the live session
+   (`lock reason: claude session znprrzhn-enforcement (pid 39065)`). Removal
+   needs `git worktree remove -f -f` after that session ends. The local branch
+   cannot be deleted before the worktree is gone, because the worktree holds it
+   checked out.
+
+**One trap worth carrying.** The merge changes
+`shared-deploy-configuration/src/main/config/userinit.yml`, and the main
+checkout holds an uncommitted edit to that same file. A fast-forward of the
+main checkout would refuse or clobber it. The owner resolves that edit, and no
+branch of this work touches it.
