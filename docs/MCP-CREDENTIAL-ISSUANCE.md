@@ -296,8 +296,9 @@ gap.
 
 ### Limit 2: the read grant covers no single object
 
-Every write operation denies today, because no deployment mounts the annotated
-authorization interfaces. `CHAT-znprrzhn` holds that gap.
+The composite authorization interfaces are mounted since 2026-10-01. So a
+write is judged now, and it denies for a caller that owns no room. The `core`
+interfaces stay unmounted, and `CHAT-ruapxetl` holds that gap.
 
 The read side is narrower than a full grant. `Anon` holds `Message:GET`, and a
 grant on a domain root does not cover one object. The adapter reads single

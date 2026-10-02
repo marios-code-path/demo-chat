@@ -59,8 +59,19 @@ KNOWN_FAILING=""
 KNOWN_FAILING_INSTALL=""
 # Additionally expected to fail under -Pintegration, which runs the
 # container-backed tests excluded from a default build.
-# Empty since B2: the container-backed suites pass under -Pintegration.
-KNOWN_FAILING_INTEGRATION=""
+#
+# B2 is closed: the container-backed suites pass under -Pintegration.
+#
+# chat-shell is recorded since 2026-10-01. CHAT-znprrzhn wired the composite
+# access checks, so the shell is refused where it holds no credential and
+# where getRoomByName is fail closed. Seven tests fail, all with Access
+# Denied. CHAT-wbcbptiq and CHAT-dgjhljbl repair them.
+#
+# **This entry does not make CI green.** CI runs plain maven, which never
+# reads this list. Both CI jobs stay red until those two issues land. This
+# entry only stops the verifier from reporting a failure that is already
+# recorded. See B12 in docs/BUILD-HEALTH.md.
+KNOWN_FAILING_INTEGRATION="chat-shell"
 
 PHASE="test"
 OFFLINE="-o"

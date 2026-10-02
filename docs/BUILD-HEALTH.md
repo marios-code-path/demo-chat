@@ -31,8 +31,10 @@ It runs the build, diffs the failing modules against the list below, and exits n
 ## Current state
 
 `mvn -o -B clean test` — **BUILD SUCCESS**. No module fails. The reactor holds
-37 modules and reports 1448 tests, 0
-failures, 0 errors and 35 skipped. The count moved from 1401 in the baseline
+37 modules and reports 1507 tests, 0
+failures, 0 errors and 35 skipped. The count moved from 1448 when
+`CHAT-znprrzhn` added the boundary probes, the deployment route test and the
+Admin root grant test. The count moved from 1401 in the baseline
 before `CHAT-pgpmsgvr` implementation. The historical count moved from 844 when
 `CHAT-hazcatpc` added
 two consumer group tests to `chat-messaging-kafka` and one deployment test to
@@ -99,12 +101,12 @@ a row, and this is the deliberate departure from it.
 
 Note what the default run no longer covers. Since #32 the container-backed tests are tagged `integration` and excluded unless `-Pintegration` is passed. The measured baseline shows 207 more tests run in integration mode than in default mode. `chat-shell` passing by default means its tests did not run — not that B2 is fixed. Since #54 a local plain build still has that gap, but CI no longer does: the integration job runs `mvn -B clean verify -Ptest-build,integration` on every pull request and every master push, so the container half is checked per commit. The job is informational until 10 runs are recorded. See CHAT-uortzsbx for the baseline.
 
-The integration gate runs the container tests. It reports no failing module
-and no skipped module. Its exit status still means that the result matches
-this file, rather than that every module passes, and that distinction stays
-worth keeping even while every list is empty. `chat-shell` tests run and
-pass. All three failure lists, `KNOWN_FAILING`, `KNOWN_FAILING_INSTALL` and
-`KNOWN_FAILING_INTEGRATION`, are empty and measured.
+The integration gate runs the container tests. It reports no skipped module.
+Its exit status still means that the result matches this file, rather than
+that every module passes, and that distinction stays worth keeping.
+
+`KNOWN_FAILING` and `KNOWN_FAILING_INSTALL` are empty and measured. Since
+2026-10-01 `KNOWN_FAILING_INTEGRATION` names `chat-shell`, under B12.
 
 Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 56 tests with 22 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-21 at 56 with 22 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 4, `ShellLoginCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 34 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
 
@@ -114,6 +116,7 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
+| B12 | The wired access checks refuse the uncredentialed shell, so seven `chat-shell` tests fail | the integration gate's result for `chat-shell` | Two issues hold the repair. **CI stays red until they land** |
 
 ---
 
@@ -159,6 +162,51 @@ stale build output outside it.
 3. **Measure before classifying.** A failure that names a symbol the tree
    defines is a candidate for B10, and not a diagnosis. Repeat it in a clean
    full-reactor run. A failure that survives that run is real.
+
+---
+
+### B12 — the wired access checks refuse the uncredentialed shell
+
+**Recorded on 2026-10-01, on branch `chat-znprrzhn-enforcement` at commit
+`601ed380`.**
+
+**Symptom.** Under `-Ptest-build,integration` and under `--ci`, `chat-shell`
+reports 7 failed tests and every failure reads `Access Denied`. The module
+passes in a default build, because its tests carry the `integration` tag and a
+default build excludes them.
+
+**Cause.** `CHAT-znprrzhn` wired the composite access checks into six
+controllers, on RSocket and on REST. The shell presents no credential of its
+own, so its operations are now judged. The shell reaches the anonymous
+identity at the RSocket seam, so `addRoom` and `listRooms` allow, and those
+tests pass. Seven do not.
+
+| Test class | Failures | First refusal |
+|---|---|---|
+| `LongPubSubCommandsTests` | 4 | `getRoomByName` |
+| `LongShellTopicCommandsTests` | 2 | `getRoomByName`, through `join` |
+| `LongUserCommandsTests` | 1 | `addUser`, which is the work of an Admin |
+
+**Six failures come from `getRoomByName`, and one from a missing credential.**
+`getRoomByName` carries an explicit deny expression, because a
+`ByStringRequest` holds a name and no target key to check. The owner decided
+on 2026-10-01 that the route stays fail closed. **No credential repairs those
+six.**
+
+**Repair.** `CHAT-dgjhljbl` restores the six, by resolving a name to a room key
+before the check runs. `CHAT-wbcbptiq` gives the shell an identity and repairs
+the seventh, which needs an Admin identity because no other caller creates a
+user.
+
+**This entry does not make CI green.** Both CI jobs run plain maven, which
+never reads the `KNOWN_FAILING` lists and never reads this file. So both jobs
+stay red on this branch until those two issues land. The entry stops this
+verifier from reporting a failure that is already recorded, and nothing more.
+
+**This is the B11 shape.** B11 recorded that a tolerated module still held
+both CI jobs red, and its repair was removal rather than tolerance. Read this
+entry the same way. **A green `--ci` on this branch means the failure set
+matches this table. It does not mean the reactor is green.**
 
 ---
 
