@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `ae227b09`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Register state | Updated 2026-10-02, after the dead auth manager merge of PR #161. |
-| Last merged PR | #161, merge commit `ae227b09`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `c3aa6546`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Register state | Updated 2026-10-02, after the room by name merge of PR #163. |
+| Last merged PR | #163, merge commit `c3aa6546`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
-| Worktrees | The main checkout alone, because the `.worktrees/` directory is empty. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Open PRs | None. Nothing was open on 2026-10-02. |
+| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Five more hold at least one commit that master lacks: `chat-dgjhljbl-unguarded-name-route` at `53887135`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
+| Worktrees | The main checkout, and `.worktrees/topic-by-name`, which holds `chat-dgjhljbl-unguarded-name-route`. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Open PRs | One, on 2026-10-02. It carries the measured shell reading and this refresh, on `chat-dgjhljbl-unguarded-name-route`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -3047,6 +3047,11 @@ entry makes the verifier's reading honest.
 which never reads `KNOWN_FAILING_INTEGRATION` and never reads
 `docs/BUILD-HEALTH.md`. **This is the B11 shape**, and B12 states it.
 
+**That table was measured on 2026-10-01, and the room by name merge changed
+it.** `CHAT-dgjhljbl` removed the route check on 2026-10-02, so the six split.
+**Four repaired, and two moved to the send check.** See
+`The room by name route (2026-10-02)` at the end of this file.
+
 ### Two issues that need the owner
 
 - **`CHAT-wbcbptiq` carries an unreachable acceptance criterion.** It reads:
@@ -3059,7 +3064,8 @@ which never reads `KNOWN_FAILING_INTEGRATION` and never reads
   not been joined cannot receive messages. `joinRoom` writes no grant, and the
   only writer of a send right is the owner row at room creation. So the
   sentence describes ownership today. A rule that a join writes a send grant
-  is a separate decision, and nothing implements it.
+  is a separate decision, and nothing implements it. **`CHAT-mfveaecc` holds
+  it now, and the shell suite measures it.**
 
 ### Two facts that cost a measurement
 
@@ -3376,6 +3382,110 @@ Nothing new. The list at the end of the MCP agent identity section stands:
 `CHAT-okpgpxkj` audience validation, `CHAT-uxgdzpag` the remaining Lucene
 loads, the `client-init` scope gap, and the per-agent grant decision.
 
-**The `Checkout` row of this file reads `ae227b09`.** That is the last
+**The `Checkout` row of this file read `ae227b09` at that refresh.** That was
+the last substantive merge before it, so the row followed the rule under
+`Where things stand`. **That refresh has been superseded**, and the row reads
+`c3aa6546` now. See the last section of this file.
+
+## The room by name route (2026-10-02)
+
+`CHAT-dgjhljbl`. **This work is merged.** PR #163 merged on 2026-10-02 as
+`c3aa6546`. The merge has two parents, so it is a real merge commit. **This
+refresh is `CHAT-zuzboatu`**, and it carries the measured shell reading.
+
+### The owner reversed a decision
+
+**The owner decided on 2026-10-02 that `topic-by-name` answers every caller
+that matches a room.** That replaced the 2026-10-01 decision, which made the
+route fail closed.
+
+`getRoomByName` takes `ByStringRequest`, whose only field is a name. **So no
+target key exists at the check, and no honest expression can judge the route.**
+The route carried the literal `false`, and it refused every caller.
+
+**The answer stays minimal.** `MessageTopic` carries the room key and the full
+room name, and nothing else. So the route leaks no room content. **The access
+condition travels with the next operation**, and every operation on a resolved
+room holds its own check.
+
+**An unknown name still answers `NotFoundException`.** A miss is not a grant
+question.
+
+**The owner named an after-fetch authorization and deferred it.** It would
+filter after the fetch, for a target whose key was unknown at the fetch. The
+owner ranks that work below the first production release. **No issue tracks
+it.**
+
+### Four documents moved
+
+- The composite access enforcement spec states the new decision, and it keeps
+  the old text, so a reader sees what changed.
+- The plan marks Task 5 as superseded, and says not to run its steps. The
+  steps stay as the record of that session.
+- `docs/ANONYMOUS-AUTHORIZATION.md` moves the matrix row, the grant table row
+  and three prose passages.
+- `docs/BUILD-HEALTH.md` moves the shell failures out of the `getRoomByName`
+  set.
+
+### Two tests, and a mutation proof
+
+`RSocketBoundaryProbeDeniedTests` sends one call through a broker that denies
+everything. The delegate answers the room, and the test reads the key and the
+name back from the wire. **A refusal there would mean a check still guarded
+the route.**
+
+`SendCheckExpressionTests` replaces its deny test with one that pins the
+absence of an expression, beside the seven expressions it still evaluates.
+**Restoring the literal `false` fails it at `SendCheckExpressionTests.kt:214`.**
+
+### The measured shell reading
+
+`build-health.sh --ci` ran on 2026-10-02 at `6a62c227`, and it rebuilt the
+shell test image. It reports 1822 tests, 2 failures, 1 error and 59 skipped,
+and `chat-shell` is still the only failing module. **Seven failures became
+three.**
+
+| Set | Before | Now | The refusal now |
+|---|---|---|---|
+| `LongPubSubCommandsTests` | 4 | 2 | `send`, on the room the caller created |
+| `LongShellTopicCommandsTests` | 2 | 0 | repaired |
+| `LongUserCommandsTests` | 1 | 1 | `addUser`, which is the work of an Admin |
+
+**The two remaining send failures are the evidence.** Each one failed inside
+`getRoomByName` before, and each fails at `PubSubCommands.kt:54` now, which is
+the send call. **So the room read succeeded and the send check refused it.**
+That is the access condition arriving on the operation beside the route.
+
+### One trap, and it is the verifier's
+
+**`build-health.sh` compares the failing-module set, and it does not compare
+test counts.** The module failed before and it failed after, so the run
+reported that reality matched `docs/BUILD-HEALTH.md` while seven failures
+became three. **A count that moves passes in silence.** The register recorded
+this once before, on 2026-10-01.
+
+### One finding filed
+
+**`CHAT-mfveaecc`.** The shell cannot send to the room it creates. Two
+candidate causes exist and **neither is measured**, so do not quote one as the
+cause. The first is that the room holds no owner row for the shell caller. The
+second is that the row exists and the check reads another key. **A deployment
+run answers it.**
+
+### One reading the owner still holds
+
+**`CHAT-wbcbptiq` carries an unreachable acceptance criterion.** It reads that
+the shell tests are its acceptance gate. Six of the seven were never
+repairable by a credential, and four of those six are repaired now. The
+criterion reaches one failure, which is the `addUser` refusal. **The owner
+decides whether it moves.**
+
+### Open after this work
+
+- `CHAT-mfveaecc`, the send refusal, filed on 2026-10-02.
+- `CHAT-wbcbptiq`, the shell credential, and its acceptance criterion.
+- The after-fetch authorization. Named by the owner, and unfiled.
+
+**The `Checkout` row of this file reads `c3aa6546`.** That is the last
 substantive merge before this refresh, so the row follows the rule under
 `Where things stand`. The refresh itself lags that row by one merge on purpose.
