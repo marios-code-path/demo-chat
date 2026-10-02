@@ -22,6 +22,8 @@ Spring Shell, Reactor 3.8, Maven, JUnit 5, Mockito.
   until they pass.
 - **`topic-by-name` is fail-closed.** The owner decided this on 2026-10-01. It
   denies every caller and no grant reaches it. `CHAT-dgjhljbl` restores it.
+  **The owner reversed this on 2026-10-02.** Task 5 is superseded, and the
+  route carries no check. This line stays as the record of that session.
 - **No grant changes.** `shared-deploy-configuration/src/main/config/userinit.yml`
   changes no line. It carries an uncommitted edit from another line of work.
 - **`CHAT-eoqkbqve` lands first, on its own commit set.** Its commits name that
@@ -885,6 +887,10 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ---
 
 ### Task 5: Make the room by name route fail closed
+
+**Superseded on 2026-10-02.** The owner reversed the decision below, and the
+route carries no check. See `CHAT-dgjhljbl`. The steps are kept as the record
+of this session. **Do not run them.**
 
 `CHAT-eoqkbqve`. **`topic-by-name` cannot be repaired mechanically, so it is
 made to deny.**

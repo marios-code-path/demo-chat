@@ -21,16 +21,26 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     override fun getRoom(req: ByIdRequest<T>): Mono<out MessageTopic<T>>
 
     /**
-     * **This route denies every caller, and it cannot do otherwise.**
-     * `ByStringRequest` holds a name and no id, so there is no target key at
-     * the check. The owner decided on 2026-10-01 that the route stays
-     * fail-closed. An unguarded route would expose room reads, and no grant
-     * could protect it.
+     * **This route carries no access expression, and that is the owner's
+     * decision of 2026-10-02.**
      *
-     * **It is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
-     * name to a room key and restores a target check.
+     * `ByStringRequest` holds a name and no id. So no target key exists at the
+     * check, and no honest check can run here. The route answers every caller
+     * that matches a room.
+     *
+     * **The answer is minimal.** `MessageTopic` carries the room key and the
+     * full room name. It carries nothing else. The access condition travels
+     * with the operation the caller runs next, and every such operation holds
+     * its own check.
+     *
+     * The explicit deny is gone. It made the route unusable, and it refused
+     * the four shell call sites that look a room up by name.
+     *
+     * **A later filter is a separate decision.** The owner named an
+     * 'after-fetch' authorization as the alternative. It filters after the
+     * fetch, for a target whose key is not yet known. That work is not part of
+     * this route, and the owner ranks it below the first production release.
      */
-    @PreAuthorize("false")
     override fun getRoomByName(req: ByStringRequest): Mono<out MessageTopic<T>>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")

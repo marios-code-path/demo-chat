@@ -206,21 +206,23 @@ tests pass. Seven do not.
 | `LongShellTopicCommandsTests` | 2 | `getRoomByName`, through `join` |
 | `LongUserCommandsTests` | 1 | `addUser`, which is the work of an Admin |
 
-**Six failures come from `getRoomByName`, and one from a missing credential.**
-`getRoomByName` carries an explicit deny expression, because a
+**Six failures came from `getRoomByName`, and one from a missing credential.**
+`getRoomByName` carried an explicit deny expression, because a
 `ByStringRequest` holds a name and no target key to check. The owner decided
-on 2026-10-01 that the route stays fail closed. **No credential repairs those
-six.**
+on 2026-10-01 that the route stays fail closed.
 
-**Repair.** `CHAT-dgjhljbl` restores the six, by resolving a name to a room key
-before the check runs. `CHAT-wbcbptiq` gives the shell an identity and repairs
-the seventh, which needs an Admin identity because no other caller creates a
-user.
+**The owner reversed that decision on 2026-10-02.** The route carries no check
+now, so the six repair without a credential. `CHAT-dgjhljbl` holds the change.
+**The six are expected to pass after an image rebuild**, because the shell
+tests run against the `chat-deploy-memory-integration-test` image.
+
+**One failure stays.** `CHAT-wbcbptiq` gives the shell an identity, and its
+failure needs an Admin identity because no other caller creates a user.
 
 **This entry does not make CI green.** Both CI jobs run plain maven, which
 never reads the `KNOWN_FAILING` lists and never reads this file. So both jobs
-stay red on this branch until those two issues land. The entry stops this
-verifier from reporting a failure that is already recorded, and nothing more.
+stay red until `CHAT-wbcbptiq` lands. The entry stops this verifier from
+reporting a failure that is already recorded, and nothing more.
 
 **This is the B11 shape.** B11 recorded that a tolerated module still held
 both CI jobs red, and its repair was removal rather than tolerance. Read this

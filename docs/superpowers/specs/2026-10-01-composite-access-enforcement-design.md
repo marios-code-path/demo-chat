@@ -271,24 +271,37 @@ RSocket dispatch or a REST dispatch does not cross the proxy, the work stops
 and the design returns to the owner. **A failure there is a finding about the
 boundary, and not a cue to widen the tests until they pass.**
 
-### 4. `topic-by-name` stays fail-closed
+### 4. `topic-by-name` carries no check, and the owner reversed this decision
+
+**This decision replaced an earlier one on 2026-10-02.** The earlier text read
+"`topic-by-name` stays fail-closed". It is kept below, because a reader needs
+to see what changed.
 
 **`getRoomByName` cannot carry an honest check.** `ByStringRequest` holds
 `name: String` and no id, so there is no target key at the point of the check.
-So the route carries an explicit deny expression and refuses every caller.
 
-**An unguarded route was rejected.** It would expose room reads once this issue
-wires the controller, and no grant could protect it. A widening to a domain
-check was rejected too, because "a grant on a domain root does not cover one
-object" is the rule the rest of the policy follows.
+**The earlier decision answered that with an explicit deny.** It refused every
+caller, and no grant reached the route.
 
-**So the route is unusable until `CHAT-dgjhljbl` lands.** That issue resolves a
-name to a room key and restores a target check.
+**The owner reversed that on 2026-10-02.** The route answers every caller that
+matches a room. **The answer is minimal.** `MessageTopic` carries the room key
+and the full room name, and nothing else. So the route exposes no room content.
 
-Four shell call sites depend on the route: `TopicCommands.kt` lines 55, 62, 77
-and 99, and `PubSubCommands.kt` line 46, which is send by topic name. **A shell
-credential does not repair any of them**, because this route refuses every
-identity. `CHAT-dgjhljbl` records the cost.
+**The access condition travels with the next operation.** Every operation on a
+resolved room holds its own check. So a caller that reads a name still cannot
+send, join, or read the room without a grant.
+
+**The owner named an alternative and deferred it.** An after-fetch
+authorization would filter after the fetch, for a target whose key was unknown
+at the fetch. The owner ranks that work below the first production release. No
+issue tracks it.
+
+Four shell call sites use the route: `TopicCommands.kt` lines 55, 62, 77 and
+99, and `PubSubCommands.kt` line 46, which is send by topic name. **The earlier
+deny refused all four.** They reach the delegate now.
+
+**The route still answers `NotFoundException` for an unknown name.** A miss is
+not a grant question, and `CHAT-dgjhljbl` predicted that reading.
 
 ### 5. Every test names the caller state precisely
 
@@ -308,4 +321,5 @@ distinction is where the defects live.
 
 **The specification was approved with decisions 1, 2, 3 and 5, and decision 4
 was taken on 2026-10-01 after the plan review.** The plan states decision 4 as
-Task 5.
+Task 5. **The owner reversed decision 4 on 2026-10-02, so Task 5 of the plan is
+superseded.** The plan keeps its Task 5 text as the record of that session.
