@@ -211,18 +211,55 @@ tests pass. Seven do not.
 `ByStringRequest` holds a name and no target key to check. The owner decided
 on 2026-10-01 that the route stays fail closed.
 
-**The owner reversed that decision on 2026-10-02.** The route carries no check
-now, so the six repair without a credential. `CHAT-dgjhljbl` holds the change.
-**The six are expected to pass after an image rebuild**, because the shell
-tests run against the `chat-deploy-memory-integration-test` image.
+**The owner reversed that decision on 2026-10-02, and `CHAT-dgjhljbl` carries
+the change. The route holds no check now.**
+
+**Re-measured on 2026-10-02 at `6a62c227`, after the image rebuild.** The
+suite reports 1822 tests, 2 failures, 1 error and 59 skipped. `chat-shell` is
+still the only failing module. **Seven failures became three.**
+
+| Test class | Before | Now | The refusal now |
+|---|---|---|---|
+| `LongPubSubCommandsTests` | 4 | 2 | `send`, on the room the caller created |
+| `LongShellTopicCommandsTests` | 2 | 0 | repaired |
+| `LongUserCommandsTests` | 1 | 1 | `addUser`, which is the work of an Admin |
+
+**The four repaired failures read `getRoomByName` before.** Two of them were
+the `join` path of `LongShellTopicCommandsTests`. Two were `LongPubSubCommandsTests`
+lookups.
+
+**The two remaining send failures moved, and the move is the evidence.** Each
+one now fails at `PubSubCommands.kt:54`, which is the send call. It reached
+`pubsubA` through a room read that succeeded, and the send check refused it.
+**So the room lookup is open, and the refusal sits on the operation beside
+it.** That is the access condition the route hands to the next call.
+
+**The send refusal is an open owner question, and it is now measured.** The
+shell creates the room through `addTopic`, and `addRoom` allows, so the room
+exists before the send.
+
+**Two readings are candidates, and neither is measured.** The first is that
+the room holds no owner row for the shell caller, so `SEND` reaches nobody.
+The second is that the row exists and the check reads another key. **Do not
+quote either as a cause.** A deployment run answers it.
+
+**Nothing here decides the rule.** A rule that a join writes a send right is a
+separate owner decision, and no code implements it. `CHAT-mfveaecc` holds the
+measurement.
 
 **One failure stays.** `CHAT-wbcbptiq` gives the shell an identity, and its
 failure needs an Admin identity because no other caller creates a user.
 
 **This entry does not make CI green.** Both CI jobs run plain maven, which
 never reads the `KNOWN_FAILING` lists and never reads this file. So both jobs
-stay red until `CHAT-wbcbptiq` lands. The entry stops this verifier from
+stay red until the send question lands. The entry stops this verifier from
 reporting a failure that is already recorded, and nothing more.
+
+**A count that moves passes this verifier in silence.** `build-health.sh`
+compares the failing-module set, and it does not compare the test counts. The
+module failed before and it fails now, so the run reported that reality
+matched this document. The three remaining failures are the reading, and not
+the exit code.
 
 **This is the B11 shape.** B11 recorded that a tolerated module still held
 both CI jobs red, and its repair was removal rather than tolerance. Read this
