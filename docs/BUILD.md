@@ -151,6 +151,11 @@ either one.
 
 `--agent-scope` defaults to `chat.mcp`.
 
+Use `Agent` for `--agent-username`. `userinit.yml` declares that handle, and
+startup creates the account. The deployment refuses to start unless that handle
+answers exactly one user. The account is a plain user, so it holds no
+administrator reach. See `CHAT-werokcbb` and `docs/MCP-CREDENTIAL-ISSUANCE.md`.
+
 `chat-build` accepts these flags on the `rest` service alone. That service is a
 REST facade over a core service, so a core must run first. It reads its root
 keys over HTTP and holds no store.
