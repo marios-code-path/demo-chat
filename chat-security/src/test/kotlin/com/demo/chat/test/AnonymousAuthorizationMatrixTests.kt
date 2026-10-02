@@ -585,6 +585,59 @@ class AnonymousAuthorizationMatrixTests {
             .isFalse()
     }
 
+    /**
+     * **The agent holds no administrator reach.** The `Admin` identity holds a
+     * `*` row on every domain root, and `InitialUsersService` writes those rows.
+     * The agent is a plain user, so it reaches none of them.
+     *
+     * **The two matrices differ at exactly three operations.** The `Admin` `*`
+     * row on the `MessageTopic` root reaches the room `SEND`, so `send` allows
+     * for the administrator and denies for the agent. `addUser` and
+     * `deleteRoom` differ for the same reason, on the `User` and the
+     * `MessageTopic` root. Every other operation reads the same, because the
+     * shipped rows name the `Admin` key, and that key is in no other caller's
+     * actor set.
+     *
+     * The spec's agent-versus-admin table names these same three denies.
+     */
+    @Test
+    fun `the agent holds no administrator reach`() {
+        val grants = deployedGrants()
+        val agent = matrixFor(agentContext(), grants)
+        val admin = matrixFor(adminContext(), grants)
+
+        assertThat(admin.filter { it.value }.keys - agent.filter { it.value }.keys)
+            .describedAs("the operations that the administrator holds and the agent does not")
+            .containsExactlyInAnyOrder(
+                "send room SEND", "addUser User NEW", "deleteRoom MessageTopic REM"
+            )
+
+        assertThat(agent - admin.keys).describedAs("operations that only the agent holds").isEmpty()
+
+        assertThat(agent).describedAs("the agent matrix").isEqualTo(
+            mapOf(
+                "addRoom MessageTopic NEW" to true,
+                "send room SEND" to false,
+                "whoami User FIND" to true,
+                "messageById GET" to true,
+                "listRooms MessageTopic GET_ALL" to true,
+                "addUser User NEW" to false,
+                "deleteRoom MessageTopic REM" to false
+            )
+        )
+    }
+
+    /**
+     * **The Admin rows alone carry the difference.** Remove them and the two
+     * matrices are equal, so no shipped row names the agent.
+     */
+    @Test
+    fun `without the Admin rows the two matrices are equal`() {
+        assertThat(matrixFor(agentContext(), shippedGrants()))
+            .describedAs("the agent matrix under the shipped rows alone")
+            .isEqualTo(matrixFor(adminContext(), shippedGrants()))
+    }
+
     /** The delete check, which reads one room key with `REM`. */
     private fun deleteAnswer(rows: List<AuthMetadata<Long>>, context: SecurityContext): Boolean =
         SpringSecurityAccessBrokerService(broker(rows), rootKeys(), registry())
@@ -596,7 +649,10 @@ class AnonymousAuthorizationMatrixTests {
         broker.permittedTargets(CALLER_KEY, targets.map { it.verified() }, perm).collectList().block()!!
 
     private fun matrixFor(context: SecurityContext?): Map<String, Boolean> =
-        operations().associate { (operation, call) -> operation to allowed(call, context) }
+        matrixFor(context, shippedGrants())
+
+    private fun matrixFor(context: SecurityContext?, grants: List<AuthMetadata<Long>>): Map<String, Boolean> =
+        operations().associate { (operation, call) -> operation to allowed(call, context, grants) }
 
     /** Answers `User FIND` against one grant set, which the expiry tests use. */
     private fun allowedWith(grants: List<AuthMetadata<Long>>, context: SecurityContext?): Boolean {
@@ -621,9 +677,10 @@ class AnonymousAuthorizationMatrixTests {
 
     private fun allowed(
         call: (SpringSecurityAccessBrokerService<Long>) -> Mono<Boolean>,
-        context: SecurityContext?
+        context: SecurityContext?,
+        grants: List<AuthMetadata<Long>>
     ): Boolean {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
+        val service = SpringSecurityAccessBrokerService(broker(grants), rootKeys(), registry())
         var answer = call(service)
         if (context != null) {
             answer = answer.contextWrite(
@@ -646,6 +703,14 @@ class AnonymousAuthorizationMatrixTests {
         grant(USER_ROOT, TOPIC_ROOT, "JOIN"),
         grant(USER_ROOT, TOPIC_ROOT, "MEMBERS")
     )
+
+    /**
+     * The rows that a deployment writes. That is the shipped set plus one `*`
+     * row per domain root for the `Admin` identity, which
+     * `InitialUsersService` generates. See `CHAT-znprrzhn`.
+     */
+    private fun deployedGrants(): List<AuthMetadata<Long>> =
+        shippedGrants() + rootKeys().domains().values.map { grant(ADMIN_KEY, it, "*") }
 
     private fun grant(
         principal: Key<Long>, target: Key<Long>, permission: String, expires: Long = 0L
@@ -686,7 +751,10 @@ class AnonymousAuthorizationMatrixTests {
     /** The registry of every key of this test, each under its own root. */
     private fun registry() = TestVerifiers.holding(
         rootKeys(),
-        listOf(ANON_KEY, ADMIN_KEY, USER_ROOT, MESSAGE_ROOT, TOPIC_ROOT, CALLER_KEY, ROOM_KEY, MESSAGE_KEY),
+        listOf(
+            ANON_KEY, ADMIN_KEY, USER_ROOT, MESSAGE_ROOT, TOPIC_ROOT, CALLER_KEY, ROOM_KEY,
+            MESSAGE_KEY, AGENT_KEY
+        ),
     )
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
@@ -716,6 +784,14 @@ class AnonymousAuthorizationMatrixTests {
 
     private fun adminDetails() =
         ChatUserDetails(User.create(ADMIN_KEY, "a", "admin", "http://a"), listOf())
+
+    /** A context whose caller is the MCP adapter account. It is a plain user. */
+    private fun agentContext() = SecurityContextImpl(
+        UsernamePasswordAuthenticationToken(agentDetails(), "secret", listOf())
+    )
+
+    private fun agentDetails() =
+        ChatUserDetails(User.create(AGENT_KEY, "g", "Agent", "http://g"), listOf("ROLE_AGENT"))
 
     private fun unauthenticatedContext() = SecurityContextImpl(
         UsernamePasswordAuthenticationToken.unauthenticated(chatUserDetails(), "secret")
@@ -802,5 +878,8 @@ class AnonymousAuthorizationMatrixTests {
 
         /** A message. Its root is the `Message` root. */
         val MESSAGE_KEY: Key<Long> = Key.of(8L, 4L)
+
+        /** The MCP adapter account. It is an object of the `User` domain. */
+        val AGENT_KEY: Key<Long> = Key.of(9L, 3L)
     }
 }
