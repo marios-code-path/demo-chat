@@ -35,7 +35,9 @@ Maven multi-module reactor, JUnit 5, AssertJ, Mockito, Reactor.
   every milestone. Never use a markdown checklist for a task.
 - Write every agent-authored sentence in strict-mode Controlled English.
 - Keep the credential file and every private key outside the repository.
-  `encrypt-keys/` is ignored at `.gitignore:41`.
+  `encrypt-keys/` is ignored at `.gitignore:41`, and a private key must not
+  reach the working tree at all. Task 5 step 1 generates the signing key in a
+  temporary directory.
 - `app.security.agent.username` has no default. Every launch must set it.
 - Preserve the shipped authorization rows. Ten rows stand, and no row is added.
 
@@ -377,6 +379,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.parallel.ResourceLock
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -391,7 +394,13 @@ import java.io.PrintStream
  *
  * The encoder is a real `BCryptPasswordEncoder`, so a test proves that the
  * printed text is the text behind the stored hash.
+ *
+ * **`@ResourceLock` guards `System.out`.** This class replaces the process wide
+ * stream, so it must not run beside another class that does. The lock takes
+ * effect when parallel execution is on, and it states the requirement when it
+ * is off. See `CHAT-werokcbb`.
  */
+@ResourceLock("system.out")
 class InitialUsersCredentialTests {
 
     private val console = ByteArrayOutputStream()
@@ -408,7 +417,11 @@ class InitialUsersCredentialTests {
         System.setOut(original)
     }
 
-    /** The value of every `Generated password for account '<name>': <value>` line. */
+    /**
+     * The value of the **newest** `Generated password for account '<name>':
+     * <value>` line per account. `associate` keeps the last value for a
+     * repeated name, so a second start overwrites the first reading.
+     */
     private fun generated(): Map<String, String> = console.toString().lines()
         .filter { it.startsWith(GENERATED) }
         .associate { line ->
@@ -442,8 +455,9 @@ class InitialUsersCredentialTests {
     }
 
     /**
-     * **A second start replaces the stored credential.** `addCredential`
-     * overwrites, so only the newest console output holds the live password.
+     * **A second start replaces the stored credential, and the second printed
+     * value is the second stored value.** A test that only compared the two
+     * hashes would pass if the service printed a value it never stored.
      */
     @Test
     fun `a second start replaces the stored credential`() {
@@ -460,6 +474,12 @@ class InitialUsersCredentialTests {
         val second = fixture.secretsStore.stored(roots.admin())!!
 
         assertThat(second).isNotEqualTo(first)
+        assertThat(BCryptPasswordEncoder().matches(generated().getValue("Admin"), second))
+            .describedAs("the second printed password matches the second stored hash")
+            .isTrue()
+        assertThat(BCryptPasswordEncoder().matches(generated().getValue("Admin"), first))
+            .describedAs("the second printed password does not match the first hash")
+            .isFalse()
     }
 
     /** An explicit password prints no generated line, and it is the stored one. */
@@ -999,28 +1019,61 @@ stop both servers at the end.
 
 - [ ] **Step 1: Build the signing key and the executable jar**
 
+**The key material must stay outside the repository.** `gen-dckeys.sh` writes to
+`<dir>/../encrypt-keys`, where `<dir>` is the script directory. So run it from a
+copy of `shell-scripts/` in a temporary directory, and the key lands in that
+temporary directory. That leaves no window in which a private key sits inside
+the working tree.
+
 ```bash
-./shell-scripts/gen-dckeys.sh changeme > /tmp/t5-keys.log 2>&1; echo "keys exit=$?"
-ls -l encrypt-keys/server_keycert.jwk
+KEYS_DIR="$(mktemp -d /tmp/dchat-agent-keys.XXXXXX)"
+cp -R shell-scripts "$KEYS_DIR/shell-scripts"
+echo "$KEYS_DIR" > /tmp/t5-keys-dir.txt
+"$KEYS_DIR/shell-scripts/gen-dckeys.sh" changeme > /tmp/t5-keys.log 2>&1; echo "keys exit=$?"
+ls -l "$KEYS_DIR/encrypt-keys/server_keycert.jwk"
+git status --short
+```
+
+Expected: `keys exit=0`, the JWK is present, and `git status --short` reports no
+`encrypt-keys` path. The script runs under `set -x` and does not stop on an
+error, so read the file list rather than the exit code alone.
+
+```bash
 mvn -o -B -pl chat-deploy-memory -am -Pexpose-webflux,deploy -DskipTests package \
   > /tmp/t5-package.log 2>&1; echo "package exit=$?"
 ls -l chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar
 ```
 
-Expected: both exit codes are 0. The jar is about 180 MiB. **Use `-DskipTests`,
-not `-Dmaven.test.skip=true`**, because the skip-all flag also skips test jar
+Expected: exit 0. The jar is about 180 MiB. **Use `-DskipTests`, not
+`-Dmaven.test.skip=true`**, because the skip-all flag also skips test jar
 creation and a later image build then fails.
 
 - [ ] **Step 2: Start the authorization server**
 
 ```bash
+KEYS_DIR=$(cat /tmp/t5-keys-dir.txt)
+cat > /tmp/t5-stop.sh <<'EOF'
+#!/bin/bash
+for f in /tmp/t5-authserv.pid /tmp/t5-deploy.pid; do
+  if [ -f "$f" ]; then
+    pid=$(cat "$f")
+    kill "$pid" 2>/dev/null && echo "stopped $pid from $f"
+    rm -f "$f"
+  fi
+done
+EOF
+chmod +x /tmp/t5-stop.sh
+
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 \
-  --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory > /tmp/t5-authserv.log 2>&1 &
+  --jwk "$KEYS_DIR/encrypt-keys/server_keycert.jwk" --profile memory > /tmp/t5-authserv.log 2>&1 &
+echo $! > /tmp/t5-authserv.pid
 timeout 180 bash -c 'until grep -q "Started ChatApp" /tmp/t5-authserv.log; do sleep 2; done'; echo "ready exit=$?"
+cat /tmp/t5-authserv.pid
 ```
 
-Expected: the log prints `Started ChatApp`. The token endpoint answers 404
-before that line.
+Expected: the log prints `Started ChatApp`, and the PID file holds one number.
+The token endpoint answers 404 before that line. **If a later step aborts, run
+`bash /tmp/t5-stop.sh`.**
 
 - [ ] **Step 3: Request the token and write the credential file**
 
@@ -1029,17 +1082,18 @@ mkdir -p "$HOME/.chat-agent-acceptance"
 curl -sS -u '31649af5-0154-4be5-8695-fda9d18b7981:secret' \
   -d 'grant_type=client_credentials' -d 'scope=chat.mcp' \
   http://127.0.0.1:9000/oauth2/token \
-  | python3 -c 'import json,sys; print(json.load(sys.stdin)["access_token"])' \
-  > "$HOME/.chat-agent-acceptance/credential.txt"
+  | jq -r '.access_token' > "$HOME/.chat-agent-acceptance/credential.txt"
 chmod 600 "$HOME/.chat-agent-acceptance/credential.txt"
 wc -c "$HOME/.chat-agent-acceptance/credential.txt"
 ```
 
 Expected: a token of a few hundred bytes. The file lives outside the repository.
+`jq` reads the field, so the run needs no Python interpreter.
 
 - [ ] **Step 4: Start the deployment with the agent username**
 
 ```bash
+KEYS_DIR=$(cat /tmp/t5-keys-dir.txt)
 java --enable-native-access=ALL-UNNAMED \
   -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
   --app.nodeid=1 --app.key.type=long --app.server.proto=rest \
@@ -1056,8 +1110,9 @@ java --enable-native-access=ALL-UNNAMED \
   --app.security.agent.client-id=31649af5-0154-4be5-8695-fda9d18b7981 \
   --app.security.agent.username=Agent \
   --app.security.agent.required-scope=chat.mcp \
-  --app.security.jwt.jwk-path="$PWD/encrypt-keys/server_keycert.jwk" \
+  --app.security.jwt.jwk-path="$KEYS_DIR/encrypt-keys/server_keycert.jwk" \
   > /tmp/t5-deploy.log 2>&1 &
+echo $! > /tmp/t5-deploy.pid
 timeout 180 bash -c 'until grep -q "Started ChatApp" /tmp/t5-deploy.log; do sleep 2; done'; echo "ready exit=$?"
 grep "Generated password for account 'Agent'" /tmp/t5-deploy.log
 grep -c "The agent username" /tmp/t5-deploy.log
@@ -1130,9 +1185,20 @@ Update the three documents.
 - `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`: add a section for the 2026-10-01
   run, with the measured table from steps 4, 5 and 6.
 
+Stop both processes through their stored identifiers. **A job number such as
+`%1` is not stable across steps**, because each step runs in its own shell.
+
 ```bash
-kill %1 %2
+trap 'bash /tmp/t5-stop.sh' EXIT
+bash /tmp/t5-stop.sh
+sleep 3
+lsof -nP -iTCP:6892 -iTCP:6893 -iTCP:9000 -sTCP:LISTEN || echo "no listener remains"
+rm -rf "$(cat /tmp/t5-keys-dir.txt)" /tmp/t5-keys-dir.txt
 ```
+
+Expected: `stopped <pid> from /tmp/t5-authserv.pid` and
+`stopped <pid> from /tmp/t5-deploy.pid`, then `no listener remains`. The
+temporary key directory is removed with the private key inside it.
 
 - [ ] **Step 8: Commit**
 
