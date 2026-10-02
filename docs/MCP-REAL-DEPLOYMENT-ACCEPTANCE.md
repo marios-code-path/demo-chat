@@ -363,6 +363,148 @@ The same criteria table applies, and every row reads the same way.
 | The process exits within the bound | `withinBound=true`, 343 ms, code 0 |
 | The credential is judged, and not ignored | The control run answered 401 on all three calls |
 
+## The 2026-10-01 run, with the dedicated agent account
+
+The 2026-09-30 run named `Admin`. That account carries every right of the
+deployment administrator, so the run proved the credential path and it proved
+no narrowing. This run names `Agent`, a plain user that holds no administrator
+reach. Issue `CHAT-werokcbb` carries the work.
+
+Every criterion of the 2026-09-30 run was answered again. The appended readings
+are the agent account and the refusal matrix.
+
+### The deployment
+
+| Item | Value |
+|---|---|
+| Module | `chat-deploy-memory`, from its `-exec` jar |
+| Built | 2026-10-01, with the `expose-webflux` and `deploy` Maven profiles |
+| Jar size | 290,609,693 bytes |
+| Application port | 6892, listening on `http://127.0.0.1:6892` |
+| Management port | 6893 |
+| Runtime | OpenJDK 25, GraalVM CE |
+| Key type | `long` |
+| Node id | 1 |
+| Spring profile | none. The default profile is active. |
+| Selectors | `key`, `persistence`, `pubsub` and `secrets` at `memory`. `index` at `lucene`. |
+| Agent account | `Agent`, resolved at startup through `ChatUserService` |
+| Enforced scope | `chat.mcp` |
+| Client id | `31649af5-0154-4be5-8695-fda9d18b7981` |
+
+**The agent account carries a generated credential.** The list below reads the
+startup output. One line holds a password, and no line names a resolution
+failure.
+
+```
+Generated password for account 'Agent': <generated value>
+```
+
+**The count of `The agent username` in that log is 0.** The account resolved
+exactly once, which is the rule `AgentIdentityLifecycle` enforces.
+
+The flag list is in the appendix of `docs/MCP-CREDENTIAL-ISSUANCE.md`. It gained
+`--spring.application.name` on this day, because a start without it fails with
+`Could not resolve placeholder 'spring.application.name'`.
+
+### The credential
+
+The authorization server ran with the `memory` profile on port 9000. The token
+came from one `client_credentials` request with `scope=chat.mcp`, and `jq` read
+the field.
+
+Measured token claims: `scope` is `["chat.mcp"]`, `client_id`, `sub` and `aud`
+all equal the client id above, and the lifetime is 300 seconds. The header
+carries `alg` `ES256`.
+
+### The topic
+
+The topic was created through the deployment on 2026-10-01, with the issued
+token on the request. The agent holds `{User, MessageTopic, NEW}`, so the
+composite check permits it.
+
+```sh
+curl -H "Authorization: Bearer $TOKEN" -X PUT \
+  http://127.0.0.1:6892/persist/topic/add \
+  -H 'Content-Type: application/json' -d '{"type":"ByNameRequest","name":"mcpagent"}'
+```
+
+```
+HTTP/1.1 201 Created
+{"key":{"id":1555400854075346944,"root":1555400828490092545,"empty":false}}
+```
+
+| Field | Value |
+|---|---|
+| id | `1555400854075346944` |
+| root | `1555400828490092545` |
+| name | `mcpagent` |
+
+### The transcript
+
+Measured on 2026-10-01. Node v26.7.0. Client `@modelcontextprotocol/sdk`
+1.31.0.
+
+```
+node v26.7.0 | sdk 1.31.0 | declared 2025-11-25 | negotiated 2025-11-25
+server {"name":"demo-chat-mcp","version":"0.0.1"} | caps {"tools":{"listChanged":true}}
+tools: chat_list_topics, chat_get_topic
+call chat_list_topics {} isError=false _meta=null
+  => {"topics":[{"id":"1555400854075346944","root":"1555400828490092545","name":"mcpagent"}]}
+call chat_get_topic {"topicId":"1555400854075346944"} isError=false _meta=null
+  => {"topic":{"id":"1555400854075346944","root":"1555400828490092545","name":"mcpagent"}}
+call chat_get_topic {"topicId":"1"} isError=true
+  _meta {"code":"NOT_AVAILABLE","message":"the backend does not serve this object, or it refuses this caller","retryable":false}
+exit {"withinBound":true,"millis":0,"code":0,"signal":null} | connectError null
+stderr ["chat-mcp: configured for http://127.0.0.1:6892, 2 topic ids, key type LONG",
+        "chat-mcp: ready, protocol revision is chosen by the SDK",
+        "chat-mcp: chat_list_topics answered call=1 duration=108ms code=OK status=200",
+        "chat-mcp: chat_get_topic answered call=2 duration=13ms code=OK status=200",
+        "chat-mcp: chat_get_topic refused: the backend does not serve this object, or it refuses this caller call=3 duration=8ms code=NOT_AVAILABLE status=404",
+        "chat-mcp: stdin closed, exiting"]
+```
+
+**No call answered `AUTHENTICATION_REQUIRED`.** The code is absent from the
+transcript, from the stderr lines and from the exit record.
+
+Every row of the 2026-09-30 criteria table reads the same way. Three rows are
+restated here, because the agent account could have moved them.
+
+| Task 8 criterion | Reading |
+|---|---|
+| Discovery lists both tools | `tools: chat_list_topics, chat_get_topic` |
+| The served topic carries the real id, root and name | All three match the deployment's answer |
+| The unserved id answers a refusal | `isError=true`, code `NOT_AVAILABLE` |
+| stderr carries adapter diagnostics alone | Six lines, and every one starts with `chat-mcp: ` |
+| The process exits within the bound | `withinBound=true`, code 0 |
+| The credential is judged, and not ignored | The control run answered 401 on all three calls |
+
+### The control run, and the refusal matrix
+
+The control replaced the token with junk text and ran the same harness. All
+three calls then answered `AUTHENTICATION_REQUIRED` with `status=401`.
+
+Each row below is one measured request to `GET /topic/id/1555400854075346944`.
+
+| Credential | Status | Meaning |
+|---|---|---|
+| None | 401 | No token reached the chain |
+| Junk text | 401 | The decoder refused it |
+| Right `client_id`, no scope | 403 | The scope check refused it |
+| Right `client_id`, `openid` only | 403 | The scope check refused it |
+| Right `client_id`, `chat.mcp` | 200 | Accepted |
+
+**The agent account changed none of these rows.** The credential path does not
+read the account, and the agent holds `MessageTopic.GET` through the `User`
+root, so the last row allows.
+
+### What this run does not prove
+
+- **No grant was denied to the agent.** Every accepted call was permitted by a
+  row the agent holds through the `User` root. The three denies of the agent
+  matrix are measured in `AnonymousAuthorizationMatrixTests`, not here.
+- **The read did not need an owner row.** `getRoom` allows for the agent, and it
+  allows for `Anon` too. The adapter reads, and the read grant is the floor.
+
 ## Reproduce it
 
 1. Obtain a credential by the procedure in `docs/MCP-CREDENTIAL-ISSUANCE.md`.

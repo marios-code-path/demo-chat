@@ -22,11 +22,17 @@ data class InitalRoles @ConstructorBinding constructor(
     val roles: Array<RoleDefinition>
 )
 
+/**
+ * One initial user.
+ *
+ * [password] defaults to blank. A blank password generates a new credential at
+ * every start, and the service prints it. See `CHAT-werokcbb`.
+ */
 data class UserDefinition @ConstructorBinding constructor(
     val name: String,
     val handle: String,
     val imageUri: String,
-    val password: String
+    val password: String = ""
 )
 
 data class RoleDefinition @ConstructorBinding constructor(

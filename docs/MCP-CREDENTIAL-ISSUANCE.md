@@ -123,12 +123,15 @@ default, so the context refuses to start without them.
 ./shell-scripts/chat-build rest --run --notls --node-id 1 \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
   --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 \
-  --agent-username Admin
+  --agent-username Agent
 ```
 
 Both `--notls` and `--node-id` are required. `chat-build` refuses a start
 without either one. Measured on 2026-09-30: the command without them exits 2
 with `the following arguments are required: --node-id`.
+
+`Agent` is the handle that `userinit.yml` declares for the MCP adapter account.
+The deployment resolves it once at startup, and a wrong handle fails the start.
 
 Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather
@@ -177,6 +180,12 @@ v26.7.0. Client `@modelcontextprotocol/sdk` 1.31.0.
 The deployment ran `chat-deploy-memory` as a single process that mounts the
 application chain. Its flag list is in the appendix below. It read
 `app.security.agent.username=Admin`.
+
+**The 2026-10-01 run repeated every reading with
+`app.security.agent.username=Agent`.** That run is the one this document's
+procedure describes. The 2026-09-30 readings above stand, and the account they
+named is no longer the account the procedure uses. See "The agent account"
+below.
 
 The token came from the authorization server by the step 2 request. The harness
 then ran with that token in `credential.txt`.
@@ -270,29 +279,60 @@ Option 3 removes the authorization server from the path. Anyone who holds that
 key can mint a token for any client and any scope. A test gate may do that. A
 deployed agent should not.
 
+## The agent account
+
+The procedure names `Agent`. `userinit.yml` declares that account, and startup
+creates it. `CHAT-werokcbb` closed on 2026-10-01, and this section is its
+result.
+
+**The agent is a plain user.** It takes no `ChatIdentity`. `ChatIdentity` stays
+a closed set of `ADMIN` and `ANON`, and that is deliberate. So the agent holds
+no administrator reach.
+
+| Property | Value |
+|---|---|
+| Handle | `Agent` |
+| Name | `MCP ADAPTER` |
+| Image | `chatimg://agent.png` |
+| Password | None. The start generates one. |
+
+**The start generates the credential and prints it.** `InitialUsersService`
+writes `Generated password for account 'Agent': <value>` to the console. The
+value is written at every start, and the newer value replaces the stored one.
+**Only the newest output holds the live password.** Measured on 2026-10-01:
+the deployment log carried one such line and no other.
+
+**No grant row names the agent.** `InitialUsersService` writes one `*` row per
+domain root for the `Admin` key. The agent key is not that key, and it is in no
+other caller's actor set. So those rows do not reach the agent.
+
+### What the agent may do
+
+The agent holds the floor that every identity holds. The floor is the `Anon`
+key, the `User` root and the caller, plus the shipped rows those names reach.
+
+| Operation | Agent | Admin |
+|---|---|---|
+| `getRoom`, `GET` | allow | allow |
+| `listRooms`, `GET_ALL` | allow | allow |
+| `addRoom`, `NEW` | allow | allow |
+| `whoami`, `User FIND` | allow | allow |
+| `messageById`, `Message GET` | allow | allow |
+| `addUser`, `User NEW` | **deny** | allow |
+| `deleteRoom`, `REM` | **deny** | allow |
+| `send` to a room the caller does not own | **deny** | allow |
+
+**No grant change can narrow one caller below the floor.** The actor set
+carries the `Anon` key and the `User` root for every query. So the agent also
+holds `addRoom`, `listRooms` and `messageById`. Each is wider than the adapter
+needs. Narrowing them is a separate decision about the shipped grants.
+
+`AnonymousAuthorizationMatrixTests` pins the two matrices, and the difference
+between them is three operations.
+
 ## Limits
 
-Both limits come from the closed identity set, and the owner accepted both on
-2026-09-30.
-
-### Limit 1: the agent account is a bootstrap account
-
-The procedure names an account that startup already creates. `Admin` is such an
-account. It carries the rights of every caller, because it is the deployment
-administrator.
-
-**No path creates a dedicated agent user today.** `InitialUsersService` reads
-`initialUsers` from `userinit.yml`, and that list holds `Anon` and `Admin`. A
-third entry fails the start with
-`An initial user names an unknown identity: <name>`.
-
-The cause is `ChatIdentity` in `chat-core`. It is a closed set of two values:
-`ADMIN` and `ANON`. `RootKeys.byName` resolves a root or an identity, so a grant
-row can name those two and nothing else.
-
-So the agent identity and the administrator identity are one account. An agent
-token reaches everything the administrator reaches. `CHAT-werokcbb` holds the
-gap.
+Limit 2 and limit 3 are open. The owner accepted them on 2026-09-30.
 
 ### Limit 2: the read grant covers no single object
 
@@ -335,17 +375,21 @@ one file. A reader who hits it should file it.
 
 The deployment ran the executable jar of `chat-deploy-memory`, built with
 `-Pexpose-webflux,deploy`. It carried the golden `core-memory-init` flag set,
-with four changes.
+with five changes.
 
 1. `app.server.proto` is `rest`, not `rsocket`.
 2. The application ports are 6892 and 6893.
 3. The RSocket controller flags are replaced by the REST controller flags.
 4. The four `app.security.*` values are added.
+5. `spring.application.name` is named. **The golden set carries it, and this
+   list omitted it until 2026-10-01.** A start without it fails with
+   `Could not resolve placeholder 'spring.application.name'`.
 
 ```sh
 java --enable-native-access=ALL-UNNAMED \
   -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
   --app.nodeid=1 --app.key.type=long --app.server.proto=rest \
+  --spring.application.name=mcp-agent-acceptance \
   --server.port=6892 --management.server.port=6893 \
   --app.service.core.key=memory --app.service.core.persistence=memory \
   --app.service.core.index=lucene --app.service.core.pubsub=memory \
@@ -357,10 +401,24 @@ java --enable-native-access=ALL-UNNAMED \
   --app.controller.user=true --app.controller.message=true \
   --app.controller.key=true --app.controller.index=true \
   --app.security.agent.client-id=31649af5-0154-4be5-8695-fda9d18b7981 \
-  --app.security.agent.username=Admin \
+  --app.security.agent.username=Agent \
   --app.security.agent.required-scope=chat.mcp \
   --app.security.jwt.jwk-path=/abs/path/server_keycert.jwk
 ```
+
+### Three traps, each measured on 2026-10-01
+
+1. **The stored process id belongs to the launcher, not to the JVM.**
+   `chat-build` runs maven, and maven forks the server. So `$!` names the
+   wrapper. Killing it leaves the server listening. Kill the process that holds
+   the port, or kill the process group.
+2. **The adapter classpath must be absolute.** The harness runs from
+   `chat-mcp/src/test/client`, so a relative `chat-mcp/target/classes` resolves
+   below that directory and the JVM reports
+   `Could not find or load main class com.demo.chat.mcp.McpAdapterMainKt`.
+3. **The generated password is a live credential.** The console line and any
+   collected log hold it. Keep the log outside the repository, as the key and
+   the token file already are.
 
 The adapter configuration:
 

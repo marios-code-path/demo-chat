@@ -444,3 +444,42 @@ until `CHAT-dgjhljbl` lands.
 `listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. `addRoom`
 allows since 2026-10-01. An earlier version of this line named `addRoom` and
 `send` together, and that was true while no row granted `NEW` on a topic.
+
+## The MCP adapter account
+
+`CHAT-werokcbb` gave the MCP adapter a dedicated account, measured on
+2026-10-01. Three facts define it.
+
+1. **`Agent` is a plain user.** `userinit.yml` declares the handle, and startup
+   creates the account. It holds no `ChatIdentity`. That type stays a closed set
+   of `ADMIN` and `ANON`, and nothing here opens it.
+2. **Its reach equals the floor.** No grant row names the agent as its
+   principal. `InitialUsersService` writes one `*` row per domain root for the
+   `Admin` key, and the agent key is not that key. The agent is in no other
+   caller's actor set, so those rows do not reach it.
+3. **The adapter's read rests on a floor row, not on an agent row.** The read
+   is permitted by `{user: User, target: MessageTopic, role: GET}`. **A later
+   change to that row would remove the adapter's read, and no agent-scoped row
+   would exist to restore it.** The `send` rule is the same shape. This is
+   risk 4 of the design.
+
+### The agent against the administrator
+
+The two matrices differ at three operations. `AnonymousAuthorizationMatrixTests`
+pins the pair, and it pins the difference set.
+
+| Operation | Agent | Admin |
+|---|---|---|
+| `getRoom`, `GET` | allow | allow |
+| `listRooms`, `GET_ALL` | allow | allow |
+| `addRoom`, `NEW` | allow | allow |
+| `whoami`, `User FIND` | allow | allow |
+| `messageById`, `Message GET` | allow | allow |
+| `send` to a room the caller does not own | **deny** | allow |
+| `addUser`, `User NEW` | **deny** | allow |
+| `deleteRoom`, `REM` | **deny** | allow |
+
+**The last three rows are the agent's narrowing, and they are the whole of it.**
+The scope ceiling applies here as it does everywhere: the actor set carries the
+`Anon` key and the `User` root, so no grant change can narrow a caller below the
+floor. The agent therefore also holds `addRoom`, `listRooms` and `messageById`.

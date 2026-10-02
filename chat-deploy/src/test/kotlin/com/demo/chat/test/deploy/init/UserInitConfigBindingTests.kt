@@ -42,6 +42,26 @@ class UserInitConfigBindingTests {
     }
 
     /**
+     * **The shipped file declares the MCP adapter account.** The handle is the
+     * default that `docs/MCP-CREDENTIAL-ISSUANCE.md` names for
+     * `--agent-username`. The entry carries no password, so the start generates
+     * one. See `CHAT-werokcbb`.
+     */
+    @Test
+    fun `the shipped file declares an agent account with no password`() {
+        val bound = binder().bind("app.init", UserInitializationProperties::class.java).get()
+
+        val agent = bound.initialUsers["Agent"]
+
+        assertThat(agent).describedAs("the Agent initial user").isNotNull
+        assertThat(agent!!.handle).isEqualTo("Agent")
+        assertThat(agent.password)
+            .describedAs("the agent password, which the start generates")
+            .isEmpty()
+        assertThat(agent.imageUri).isEqualTo("chatimg://agent.png")
+    }
+
+    /**
      * **This is the guard that the draft policy needed.**
      *
      * Spring ignores a key that no constructor parameter names, so an

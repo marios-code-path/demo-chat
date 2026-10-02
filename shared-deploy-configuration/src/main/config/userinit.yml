@@ -37,3 +37,11 @@ app:
         name: "SUPER USER"
         imageUri: chatimg://plaid.png
         password: changeme
+      # The MCP adapter account. It is a plain user. It takes no ChatIdentity,
+      # so it holds no Admin reach and no grant row names it. It carries no
+      # password key, so the start generates a credential and prints it. Only
+      # the newest output holds the live password. See CHAT-werokcbb.
+      Agent:
+        handle: Agent
+        name: "MCP ADAPTER"
+        imageUri: chatimg://agent.png

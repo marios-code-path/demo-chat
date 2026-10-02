@@ -2,6 +2,7 @@ package com.demo.chat.service.init
 
 import com.demo.chat.domain.knownkey.ChatDomain
 
+import com.demo.chat.config.deploy.init.UserDefinition
 import com.demo.chat.config.deploy.init.UserInitializationProperties
 import com.demo.chat.domain.knownkey.ChatIdentity
 import com.demo.chat.domain.*
@@ -13,6 +14,8 @@ import com.demo.chat.service.security.SecretsStore
 import org.springframework.security.crypto.password.PasswordEncoder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.security.SecureRandom
+import java.util.Base64
 
 /**
  * The singular ownership sentinel, as `userinit.yml` spells it.
@@ -23,6 +26,12 @@ import reactor.core.publisher.Mono
  */
 private const val ADMIN_WILDCARD = "*"
 
+/**
+ * The random bytes behind a generated password. Twenty four bytes give thirty
+ * two Base64 characters. See `CHAT-werokcbb`.
+ */
+private const val PASSWORD_BYTES = 24
+
 class InitialUsersService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
@@ -31,6 +40,8 @@ class InitialUsersService<T>(
     private val passwordDecoder: PasswordEncoder,
     private val typeUtil: TypeUtil<T>,
 ) {
+
+    private val secureRandom: SecureRandom = SecureRandom()
 
     fun initializeUsers(rootKeys: RootKeys<T>): Map<String, Key<T>> {
         // The grant placeholder only. A grant key is minted when the grant is
@@ -63,8 +74,8 @@ class InitialUsersService<T>(
 
             identityKeys[identity] = thisUserKey
 
-            var encodedPassword = passwordDecoder.encode(thisUser.password)
-            val thisCredential = KeyCredential(thisUserKey, "${encodedPassword}")
+            val secret = credentialSecret(thisUser)
+            val thisCredential = KeyCredential(thisUserKey, "${passwordDecoder.encode(secret)}")
 
             secretsStore
                 .addCredential(thisCredential)
@@ -127,13 +138,40 @@ class InitialUsersService<T>(
     }
 
     /**
-     * This method loads the two identities from the initial users. Each
-     * initial user name must parse to a [ChatIdentity]. Both identities must be
-     * present. See `CHAT-avduuqwp`.
+     * This method answers the credential secret for one initial user.
+     *
+     * A blank password generates one, and the method writes it to the console.
+     * The account handle leads the line, so an operator reads the live
+     * credential of a generated account. **The value is written at every
+     * start**, and `addCredential` overwrites the stored credential. So only
+     * the newest output holds the live password. See `CHAT-werokcbb`.
+     */
+    private fun credentialSecret(user: UserDefinition): String {
+        if (user.password.isNotBlank()) return user.password
+        val generated = generatePassword()
+        println("Generated password for account '${user.handle}': $generated")
+        return generated
+    }
+
+    /**
+     * This method answers a random password. The value carries no padding, so
+     * the console line holds no `=` character.
+     */
+    private fun generatePassword(): String {
+        val bytes = ByteArray(PASSWORD_BYTES)
+        secureRandom.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    }
+
+    /**
+     * This method loads the two identities from the initial users.
+     *
+     * The `Admin` and `Anon` names must each be present. Any other initial user
+     * is a plain user. It takes no identity and no grant, so it holds no
+     * administrator reach. The MCP adapter account takes that route. See
+     * `CHAT-werokcbb`.
      */
     private fun loadIdentities(rootKeys: RootKeys<T>, identityKeys: Map<String, Key<T>>) {
-        val unknown = identityKeys.keys.filter { ChatIdentity.parse(it) == null }
-        if (unknown.isNotEmpty()) throw ChatException("An initial user names an unknown identity: $unknown")
         val admin = identityKeys[ChatIdentity.ADMIN.wireName]
             ?: throw ChatException("The initial users do not name the ${ChatIdentity.ADMIN.wireName} identity.")
         val anon = identityKeys[ChatIdentity.ANON.wireName]
