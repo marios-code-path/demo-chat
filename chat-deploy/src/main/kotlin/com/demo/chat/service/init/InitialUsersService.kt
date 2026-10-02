@@ -127,13 +127,14 @@ class InitialUsersService<T>(
     }
 
     /**
-     * This method loads the two identities from the initial users. Each
-     * initial user name must parse to a [ChatIdentity]. Both identities must be
-     * present. See `CHAT-avduuqwp`.
+     * This method loads the two identities from the initial users.
+     *
+     * The `Admin` and `Anon` names must each be present. Any other initial user
+     * is a plain user. It takes no identity and no grant, so it holds no
+     * administrator reach. The MCP adapter account takes that route. See
+     * `CHAT-werokcbb`.
      */
     private fun loadIdentities(rootKeys: RootKeys<T>, identityKeys: Map<String, Key<T>>) {
-        val unknown = identityKeys.keys.filter { ChatIdentity.parse(it) == null }
-        if (unknown.isNotEmpty()) throw ChatException("An initial user names an unknown identity: $unknown")
         val admin = identityKeys[ChatIdentity.ADMIN.wireName]
             ?: throw ChatException("The initial users do not name the ${ChatIdentity.ADMIN.wireName} identity.")
         val anon = identityKeys[ChatIdentity.ANON.wireName]
