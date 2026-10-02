@@ -1,6 +1,7 @@
 package com.demo.chat.shell.commands
 
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loggedInUser
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration.Companion.loginMetadata
 import com.demo.chat.domain.ByIdRequest
@@ -39,6 +40,15 @@ class LoginCommands<T>(
             .switchIfEmpty(Mono.error(NotFoundException))
             .block()
     }
+    /**
+     * Resolves the user through the deployed identity path.
+     *
+     * **The credential proves itself at the server.** The lookup below carries
+     * the metadata, because `MetadataRSocketRequester` reads the provider on
+     * every route call. The RSocket server judges that credential before the
+     * handler runs, so a wrong password fails this call. A failed login then
+     * leaves no credential and no identity behind. See `CHAT-wbcbptiq`.
+     */
     fun login(
         username: String,
         password: String
@@ -52,8 +62,7 @@ class LoginCommands<T>(
         } catch (e: Exception) {
             println("Authentication failed :" + e.message)
 
-            loginMetadata = Optional.empty()
-            loggedInUser = Optional.empty()
+            ShellStateConfiguration.clearLogin()
 
             throw e
         }

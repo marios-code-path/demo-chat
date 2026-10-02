@@ -4,22 +4,31 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-10-01** with an empty temporary
-`DOCKER_CONFIG`, against Docker Engine 29.7.2. It exits 0 and reports no
-drift. 29 modules ran 1820 tests, with 2 failures, 5 errors and 59 skipped.
-`chat-shell` is the only failing module, and B12 records it. This run rebuilt
-the chat-shell test image before the container tests. The deploy integration
-module wrote its 286 MiB jar inside the run, at 19:26:29, and the gate
-finished at 19:27:17.
+**The `--ci` mode was measured on 2026-10-02 at master `96c88e96`** with an
+empty temporary `DOCKER_CONFIG`, against Docker Engine 29.7.2. It exits 0 and
+reports no drift. 29 modules ran 1829 tests, with 2 failures, 0 errors and 62
+skipped. `chat-shell` is the only failing module, and B12 records it. This run
+rebuilt the chat-shell test image before the container tests. The deploy
+integration module wrote its 286 MiB jar inside the run, at 12:57, and the
+image id moved to `sha256:92c24224`.
 
 **An exit code of 0 here does not mean every module passes.** It means the
-failing-module set matches this file. Every one of the 7 shell failures reads
-`Access Denied`, which is the signature B12 records.
+failing-module set matches this file. Both shell failures read `Access Denied`,
+which is the signature B12 records.
 
-An earlier run on 2026-09-30 reported 1747 tests with 0 failures, before B12
-landed. An earlier run on 2026-09-22 at master `67762d51` reported 27 modules,
-1136 tests and 54 skipped. `--ci` resolves artifacts online, so the measured
-command is what `just check-ci` runs.
+**The gate needs an empty `DOCKER_CONFIG`, and a run without one is not a
+reading.** A stale Docker Hub login makes `build-image` fail with `'username'
+must not be null`. Measured on 2026-10-02: that run reports
+`chat-deploy-memory-integration-tests` as a new failing module, so the verifier
+exits 1 on drift that no source change caused. **The image is then not rebuilt,
+and `chat-shell` tests whatever image the machine already holds.** Read the
+image id before you trust a shell result.
+
+An earlier run on 2026-10-01 reported 29 modules, 1820 tests, 2 failures, 5
+errors and 59 skipped. An earlier run on 2026-09-30 reported 1747 tests with 0
+failures, before B12 landed. An earlier run on 2026-09-22 at master `67762d51`
+reported 27 modules, 1136 tests and 54 skipped. `--ci` resolves artifacts
+online, so the measured command is what `just check-ci` runs.
 
 **`chat-index-elastic` is gone.** It left the module list under
 `CHAT-gdtktbfh` so the Boot 4 work could land with a green CI, and
@@ -127,7 +136,7 @@ that every module passes, and that distinction stays worth keeping.
 `KNOWN_FAILING` and `KNOWN_FAILING_INSTALL` are empty and measured. Since
 2026-10-01 `KNOWN_FAILING_INTEGRATION` names `chat-shell`, under B12.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 56 tests with 22 skipped, which looks like absent coverage and is not. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-09-21 at 56 with 22 skipped, the skipped classes are `ShellUserCommandsTests` with 8, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 4, `ShellLoginCommandsTests` with 4, and `ShellContextTests` with 1. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 34 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 64 tests with 25 skipped, which looks like absent coverage and is not. The reads were 56 with 22 on 2026-09-21, and `CHAT-wbcbptiq` added the tests that moved them. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-10-02 at 64 with 25 skipped, the skipped classes are `ShellUserCommandsTests` with 9, `ShellLoginCommandsTests` with 6, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 4, and `ShellContextTests` with 1. The two classes that grew did so under `CHAT-wbcbptiq`, which added one user test and two login tests. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 39 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
 
 `ShellContextTests` is the one disabled class that is not a generic base. Enabling it fails on a missing `CompositeServiceBeans` bean, measured on 2026-09-21, which is a gap in that test's own property set rather than anything about the shell commands.
 
@@ -135,7 +144,7 @@ Read the `chat-shell` skip count with care. A `-Pintegration` run of that module
 |----|-----------|--------|--------|
 | B6 | Stale `target/` across branch switches produces phantom results | correctness of any non-clean run | Workaround only |
 | B10 | A bare `-pl` run reads a changed upstream module from `~/.m2` | correctness of a scoped run that omits a changed module | Workaround only |
-| B12 | The wired access checks refuse the uncredentialed shell, so seven `chat-shell` tests fail | the integration gate's result for `chat-shell` | Two issues hold the repair. **CI stays red until they land** |
+| B12 | The wired access checks refuse the shell, so two `chat-shell` send tests fail | the integration gate's result for `chat-shell` | One issue holds the repair. **CI stays red until it lands** |
 
 ---
 
@@ -184,15 +193,15 @@ stale build output outside it.
 
 ---
 
-### B12 — the wired access checks refuse the uncredentialed shell
+### B12 — the wired access checks refuse the shell's send
 
 **Recorded on 2026-10-01, on branch `chat-znprrzhn-enforcement` at commit
-`601ed380`.**
+`601ed380`. It read seven failures then, and it reads two now.**
 
 **Symptom.** Under `-Ptest-build,integration` and under `--ci`, `chat-shell`
-reports 7 failed tests and every failure reads `Access Denied`. The module
-passes in a default build, because its tests carry the `integration` tag and a
-default build excludes them.
+reports 2 failed tests, and both read `Access Denied`. The module passes in a
+default build, because its tests carry the `integration` tag and a default
+build excludes them.
 
 **Cause.** `CHAT-znprrzhn` wired the composite access checks into six
 controllers, on RSocket and on REST. The shell presents no credential of its
@@ -247,20 +256,36 @@ quote either as a cause.** A deployment run answers it.
 separate owner decision, and no code implements it. `CHAT-mfveaecc` holds the
 measurement.
 
-**One failure stays.** `CHAT-wbcbptiq` gives the shell an identity, and its
-failure needs an Admin identity because no other caller creates a user.
+**Re-measured on 2026-10-02 at `96c88e96`, after the image rebuild.**
+`CHAT-wbcbptiq` gave the shell an Admin login, so the `addUser` failure is
+repaired. `chat-shell` reports 64 tests, 2 failures, 0 errors and 25 skipped.
+**Three failures became two.**
+
+| Test class | Before | Now | The refusal now |
+|---|---|---|---|
+| `LongPubSubCommandsTests` | 2 | 2 | `send`, on the room the caller created |
+| `LongUserCommandsTests` | 1 | 0 | repaired by the Admin login |
+
+**The repair is the Admin identity, and it crosses the RSocket seam.**
+`LongUserCommandsTests` logs in as the shipped `Admin` account and then calls
+`addUser`. Its companion control, `an anonymous caller cannot create a user`,
+asserts that the same call still reads `Access Denied` with no credential. So
+the passing test turns on the identity, and not on a widened grant. No row of
+`userinit.yml` and no access expression changed.
+
+**One failure set stays.** The two send refusals are `CHAT-mfveaecc`, and no
+credential repairs them.
 
 **This entry does not make CI green.** Both CI jobs run plain maven, which
 never reads the `KNOWN_FAILING` lists and never reads this file. So both jobs
-stay red until the send question and `CHAT-wbcbptiq` are resolved. **The entry
-holds two items, and each one alone keeps `chat-shell` red.** The entry stops
-this verifier from reporting a failure that is already recorded, and nothing
-more.
+stay red until `CHAT-mfveaecc` is resolved. **The entry holds one item now,
+and that item alone keeps `chat-shell` red.** The entry stops this verifier
+from reporting a failure that is already recorded, and nothing more.
 
 **A count that moves passes this verifier in silence.** `build-health.sh`
 compares the failing-module set, and it does not compare the test counts. The
 module failed before and it fails now, so the run reported that reality
-matched this document. The three remaining failures are the reading, and not
+matched this document. The two remaining failures are the reading, and not
 the exit code.
 
 **This is the B11 shape.** B11 recorded that a tolerated module still held
