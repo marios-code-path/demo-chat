@@ -12,12 +12,12 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-10-02, after the composite access enforcement merge. |
-| Last merged PR | #156, merge commit `c069c978`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Register state | Updated 2026-10-02, after the register correction merge of PR #159. |
+| Last merged PR | #159, merge commit `547ae2ff`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
-| Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. The `.worktrees/mcp-credential` worktree was removed on 2026-10-01, and the local `chat-rvcrzxvw-mcp-credential` branch with it. |
-| Open PRs | None. Nothing was open on 2026-10-01. |
+| Merged feature branches | Eight local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `chat-mcp-spec` at `d29bac4a`, and `chat-urhjrwbt-indexelastic` at `d8d797b3`. **No local branch has a remote.** **The branch refs are kept.** |
+| Worktrees | The main checkout alone, because the `.worktrees/` directory is empty. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Open PRs | None. Nothing was open on 2026-10-02. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,17 +28,18 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh merged as PR #150. `CHAT-rvcrzxvw` carries the commit in the comment
-that reports the merge.
+refresh merged as PR #159. It carried the register correction for the MCP agent
+identity merge. The refresh before it merged as PR #157, after the composite
+access enforcement merge.
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 
-**Two branches are in flight, and neither is this register's work.** The
-`chat-hazcatpc-review-fix` branch at `606d251a` holds one commit that master
-lacks, and it carries no remote. The `chat-sgyaaivp-cassandra-timeout` branch at
-`a812cd0c` holds no commit that master lacks, and it carries a remote. Both
-belong to other work. Do not read the rows above as covering them.
+**One branch belongs to other work.** The `chat-hazcatpc-review-fix` branch at
+`606d251a` holds one commit that master lacks, and it carries no remote. Do not
+read the rows above as covering it. The other branch named here before,
+`chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, now holds no commit that master
+lacks, and its remote is gone.
 
 ## Landed
 
@@ -2268,9 +2269,14 @@ writes were concurrent, because it orders them.
 `docs/superpowers/specs/2026-10-01-authorization-grant-policy-design.md`. Plan:
 `docs/superpowers/plans/2026-10-01-authorization-grant-policy.md`.
 
-**This work is not merged.** The branch is `chat-zhjltbky-grant-policy`, cut
-from `09d4c9a6`, which is the merge commit of `CHAT-rfzsnbco`. The merge commit
-is unknown at this writing. The owner merges by pull request.
+**This work is merged.** PR #152 merged on 2026-10-01 as
+`87657e0c6e8c61c2b2b5e22b60717873ca8ffbd4`. The merge has two parents, so it is
+a real merge commit. The merge tree is byte-identical to the branch tip
+`19b55c7b`, because `git diff 19b55c7b 87657e0c` was empty. The branch was cut
+from `09d4c9a6`, the merge commit of `CHAT-rfzsnbco`.
+
+**This paragraph read "not merged" until 2026-10-02.** The refresh after the
+enforcement merge corrected its own section and left this one alone.
 
 ### The six owner decisions
 
@@ -3073,6 +3079,10 @@ PR #156, and master merged into it once before the merge, as `f937fca5`.
 
 **The owner merged while the integration job was red.** That is the documented
 B12 state, and the build job passed.
+
+**PR #159 corrected this section on 2026-10-02.** It replaced a false
+"not merged" claim and it separated the local `--ci` verifier mode from the
+GitHub integration job.
 
 **The `Checkout` row of this file still reads `8fa9c962`.** That lag is
 deliberate and this section does not move it. See the rule under
