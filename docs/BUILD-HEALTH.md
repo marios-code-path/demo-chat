@@ -46,9 +46,11 @@ lines below by reading the run, and not by trusting the exit code.
 ## Current state
 
 `mvn -o -B clean test` — **BUILD SUCCESS**. No module fails. The reactor holds
-37 modules and reports 1521 tests, 0
-failures, 0 errors and 35 skipped. The count moved from 1507 when
-`CHAT-werokcbb` added the agent identity, credential, binding and matrix tests.
+37 modules and reports 1523 tests, 0
+failures, 0 errors and 35 skipped. The count moved from 1521 when
+`CHAT-kcccoifk` added the RSocket credential seam tests. It moved from 1507
+when `CHAT-werokcbb` added the agent identity, credential, binding and matrix
+tests.
 It moved from 1448 when
 `CHAT-znprrzhn` added the boundary probes, the deployment route test and the
 Admin root grant test. The count moved from 1401 in the baseline
