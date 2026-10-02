@@ -252,8 +252,10 @@ failure needs an Admin identity because no other caller creates a user.
 
 **This entry does not make CI green.** Both CI jobs run plain maven, which
 never reads the `KNOWN_FAILING` lists and never reads this file. So both jobs
-stay red until the send question lands. The entry stops this verifier from
-reporting a failure that is already recorded, and nothing more.
+stay red until the send question and `CHAT-wbcbptiq` are resolved. **The entry
+holds two items, and each one alone keeps `chat-shell` red.** The entry stops
+this verifier from reporting a failure that is already recorded, and nothing
+more.
 
 **A count that moves passes this verifier in silence.** `build-health.sh`
 compares the failing-module set, and it does not compare the test counts. The

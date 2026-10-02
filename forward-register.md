@@ -17,7 +17,7 @@ in this file is authoritative on its own — each row points at the artifact tha
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Five more hold at least one commit that master lacks: `chat-dgjhljbl-unguarded-name-route` at `53887135`, `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
 | Worktrees | The main checkout, and `.worktrees/topic-by-name`, which holds `chat-dgjhljbl-unguarded-name-route`. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Open PRs | One, on 2026-10-02. It carries the measured shell reading and this refresh, on `chat-dgjhljbl-unguarded-name-route`. |
+| Open PRs | None. PR #164 merged on 2026-10-02 as `2969050f`, and it carried the measured shell reading and this refresh. **That row read "one" when this refresh was written.** |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -3391,7 +3391,8 @@ the last substantive merge before it, so the row followed the rule under
 
 `CHAT-dgjhljbl`. **This work is merged.** PR #163 merged on 2026-10-02 as
 `c3aa6546`. The merge has two parents, so it is a real merge commit. **This
-refresh is `CHAT-zuzboatu`**, and it carries the measured shell reading.
+refresh is `CHAT-zuzboatu`**, and it carried the measured shell reading. PR
+#164 merged on 2026-10-02 as `2969050f`.
 
 ### The owner reversed a decision
 
