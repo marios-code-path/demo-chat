@@ -12,8 +12,8 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-10-01, after the MCP adapter credential issuance merge. |
-| Last merged PR | #150, merge commit `8c181303`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Register state | Updated 2026-10-02, after the composite access enforcement merge. |
+| Last merged PR | #156, merge commit `c069c978`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
 | Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. The `.worktrees/mcp-credential` worktree was removed on 2026-10-01, and the local `chat-rvcrzxvw-mcp-credential` branch with it. |
