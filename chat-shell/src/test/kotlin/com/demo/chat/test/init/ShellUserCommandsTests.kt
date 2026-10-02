@@ -1,5 +1,6 @@
 package com.demo.chat.test.init
 
+import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.UserCommands
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Disabled
@@ -23,6 +24,8 @@ class LongUserCommandsTests : ShellUserCommandsTests<Long>()
 open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired lateinit var userCommands: UserCommands<T>
+
+    @Autowired lateinit var loginCommands: LoginCommands<T>
 
     @Test
     fun `should create kv`() {
@@ -60,8 +63,35 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
             .containsAnyOf("Anon", "Admin")
     }
 
+    /**
+     * **A caller with no credential cannot create a user.**
+     *
+     * `addUser` carries the `User NEW` check, and no shipped row grants that
+     * permission to the `Anon` key or to the `User` root. Only the Admin
+     * wildcard row reaches it. So this refusal is the control that the test
+     * below turns on. A control that never records the refusal would satisfy
+     * the Admin test on its own.
+     */
+    @Test
+    fun `an anonymous caller cannot create a user`() {
+        Assertions.assertThatThrownBy { userCommands.addUser("Test", "TESTCTRL", "uri") }
+            .describedAs("the refusal of User NEW for a caller that holds no Admin row")
+            .hasMessageContaining("Access Denied")
+    }
+
+    /**
+     * **The Admin identity crosses the RSocket seam and it is what allows the
+     * write.**
+     *
+     * The three steps are one chain. The login presents the shipped Admin
+     * credential, the server judges it on the `user-by-handle` call, and the
+     * `user-add` call that follows carries the metadata again. Only that
+     * identity answers `User NEW`. See `CHAT-wbcbptiq`.
+     */
     @Test
     fun `should create user, fetch user`() {
+        loginCommands.login(ShellDeploymentAccount.ADMIN_HANDLE, ShellDeploymentAccount.adminPassword)
+
         Assertions.assertThat(userCommands.addUser("Test", "TEST", "uri"))
             .isNotNull
             .isNotBlank

@@ -26,6 +26,19 @@ class ShellStateConfiguration {
         var loggedInUser: Optional<Any> = Optional.empty()
         var loginMetadata: Optional<UsernamePasswordMetadata> = Optional.empty()
         val listeners: MutableMap<String, Disposable> = ConcurrentHashMap()
+
+        /**
+         * Forgets the credential and the identity in one step.
+         *
+         * A failed login must leave neither behind. The two values are one
+         * state, because the metadata is what the server judges and the
+         * identity is what the commands read. A caller that never logged in
+         * keeps the `Anon` floor of [CommandsUtil.identity].
+         */
+        fun clearLogin() {
+            loggedInUser = Optional.empty()
+            loginMetadata = Optional.empty()
+        }
     }
 
     @Bean

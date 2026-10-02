@@ -1,6 +1,8 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.ChatApp
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.TestInstance
 import org.springframework.boot.test.context.SpringBootTest
@@ -32,6 +34,20 @@ import java.time.Duration
 //@SingletonContainers: https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/#singleton-containers
 @Tag("integration")
 open class ShellIntegrationTestBase {
+
+    /**
+     * Every test starts with no credential and no identity.
+     *
+     * **The shell login lives in a companion object, so it outlives one test
+     * class.** A login in one class would otherwise decide the outcome of a
+     * test in another class, and the suite would pass or fail by test order.
+     * A caller that never logged in keeps the `Anon` floor, which is the state
+     * this reset restores. See `CHAT-wbcbptiq`.
+     */
+    @BeforeEach
+    fun clearShellLogin() {
+        ShellStateConfiguration.clearLogin()
+    }
 
     companion object {
         val imageName = "chat-deploy-long-memory-integration-test:0.0.1"
