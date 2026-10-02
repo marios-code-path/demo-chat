@@ -8,9 +8,10 @@ What a caller may do, and what the `Anon` root key may do.
 under `CHAT-mahevldm`, and `messageById` went from deny to allow under
 `CHAT-rfzsnbco`.
 
-**One row was added on 2026-10-01 by `CHAT-eoqkbqve`.** `getRoomByName` denies
-every caller, by construction and not by a missing grant. The section under
-the matrix states why, and which issue restores the route.
+**One row was added on 2026-10-01 by `CHAT-eoqkbqve`, and the owner reversed
+it on 2026-10-02.** That route carried a literal deny on 2026-10-01. The owner
+removed the check on 2026-10-02, so the route answers every caller. The
+section under the matrix states why.
 
 **One row moved on the same day, and one grant was renamed.** The owner
 decided that every user may add a room, so `addRoom` went from deny to allow.
@@ -91,7 +92,7 @@ three `Anon` rows alone.
 | `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
 | `User` | `MessageTopic` | NEW | yes, and it reaches `addRoom` since 2026-10-01 |
 | `User` | `MessageTopic` | GET_ALL | yes |
-| `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **It reaches `getRoomByName` nowhere, because that route denies by construction.** |
+| `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **`getRoomByName` carries no check since 2026-10-02, so it reads no grant.** |
 | `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
 | `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
 
@@ -202,7 +203,7 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 | `messageById`, GET | **allow** | **allow** | deny | deny | deny |
 | `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
-| `getRoomByName`, MessageTopic GET | deny | deny | deny | deny | deny |
+| `getRoomByName`, no expression | **no check** | **no check** | **no check** | **no check** | **no check** |
 
 **`addRoom` moved from deny to allow on 2026-10-01.** The owner decided that
 every user may add a room, because a room is an unbounded resource and no
@@ -215,23 +216,36 @@ all.
 the work of an `Admin`, so no row grants `NEW` on the `User` domain to a
 regular caller.
 
-### `getRoomByName` denies every caller on purpose
+### `getRoomByName` carries no check, and the owner reversed this
 
-**The row is a refusal by construction, and not a missing grant.**
-`ByStringRequest` holds a name and no id, so no target key exists at the
-check. The expression is the literal `false`, which resolves no method and
-looks up no bean.
+**The 2026-10-01 row was a refusal by construction, and the owner reversed it
+on 2026-10-02.** The earlier expression was the literal `false`. It resolved
+no method and looked up no bean, so it refused every caller.
 
-The owner decided on 2026-10-01 that the route stays fail-closed. The
-controllers are wired since that date, so an unguarded route would expose room
-reads now, and no grant could protect it.
+**`ByStringRequest` holds a name and no id.** So no target key exists at the
+check, and no honest expression can judge the route.
 
-**So the route is unusable. `CHAT-dgjhljbl` restores it**, by resolving a
-name to a room key so that a target check becomes honest.
+**The route answers every caller that matches a room.** **The answer is
+minimal.** `MessageTopic` carries the room key and the full room name, and
+nothing else. So the route exposes no room content.
 
-Five shell call sites depend on the route: `TopicCommands.kt` lines 55, 62,
-77 and 99, and `PubSubCommands.kt` line 46. **A shell credential repairs none
-of them**, because this route refuses every identity.
+**The access condition travels with the next operation.** Every operation on a
+resolved room holds its own check. So a caller that reads a name still cannot
+send, join, or read the room without a grant.
+
+**The owner named an alternative and deferred it.** An after-fetch
+authorization would filter after the fetch, for a target whose key was unknown
+at the fetch. The owner ranks that work below the first production release.
+
+**An unknown name still answers `NotFoundException`.** A miss is not a grant
+question.
+
+Five shell call sites use the route: `TopicCommands.kt` lines 55, 62,
+77 and 99, and `PubSubCommands.kt` line 46. **The earlier deny refused all
+five.** **No credential repairs them, because none is needed.** The route
+carries no check, so the five reach the delegate. Measured on 2026-10-02:
+`RSocketBoundaryProbeDeniedTests` sends one call through a broker that denies
+everything, and the delegate answers the room.
 
 ## Three results that are easy to miss
 
@@ -275,19 +289,20 @@ of them**, because this route refuses every identity.
    `getRoom`, `JOIN` reaches `leaveRoom`, and `MEMBERS` reaches
    `roomMembers`. Each of those checks names one room, and the scan
    reads the `MessageTopic` root of that room. `joinRoom` is not one of them,
-   because it names a user key. `getRoomByName` is not one either, because
-   `CHAT-eoqkbqve` made that route a refusal. See the wider-effect table of
+   because it names a user key. `getRoomByName` is not one either, because the
+   owner removed its check on 2026-10-02. See the wider-effect table of
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
 `MessageTopic:NEW`, `MessageTopic:GET_ALL`, `Message:GET` and three named
 `MessageTopic` permissions to every caller that reaches an identity.
 
-**Four matrix operations still deny for every caller**: `send`, `addUser`,
-`getRoomByName` and `deleteRoom`. `send` and `deleteRoom` deny because a room
-is an object of another domain, and only an owner row holds its rights.
-`addUser` denies because creating a user is the work of an `Admin`.
-`getRoomByName` denies by construction. See the sections above.
+**Four matrix operations denied for every caller on 2026-10-01, and three do
+today**: `send`, `addUser` and `deleteRoom`. `send` and `deleteRoom` deny
+because a room is an object of another domain, and only an owner row holds its
+rights. `addUser` denies because creating a user is the work of an `Admin`.
+**`getRoomByName` left this list on 2026-10-02**, because the owner removed
+its check. See the sections above.
 
 **Ten checks move in total, and only one of them is a matrix row.**
 `messageById` is that row. The other nine were denied before and allow now.
@@ -339,7 +354,7 @@ listed below. **The whole set left the latent state on 2026-10-01, at commit
 | `TopicServiceAccess` | `deleteRoom` | REM | |
 | `TopicServiceAccess` | `listRooms` | GET_ALL | **listRooms** |
 | `TopicServiceAccess` | `getRoom` | GET | |
-| `TopicServiceAccess` | `getRoomByName` | deny | **getRoomByName** |
+| `TopicServiceAccess` | `getRoomByName` | no check | **getRoomByName** |
 | `TopicServiceAccess` | `joinRoom` | JOIN | |
 | `TopicServiceAccess` | `leaveRoom` | JOIN | |
 | `TopicServiceAccess` | `roomMembers` | MEMBERS | |
@@ -392,9 +407,9 @@ and `addRoom` allows. Measured: `LongShellTopicCommandsTests.should add topic
 and list at least one` passes, and it adds two rooms.
 
 **`send` denies for the shell**, because a room is an object of another domain
-and only an owner row holds its rights. Six shell failures come from
-`getRoomByName`, which denies every caller by construction. One comes from
-`addUser`. See `CHAT-wbcbptiq` and `CHAT-dgjhljbl`.
+and only an owner row holds its rights. One shell failure comes from `addUser`.
+**Six came from `getRoomByName` until 2026-10-02**, and the owner removed that
+route's check. See `CHAT-wbcbptiq` and `CHAT-dgjhljbl`.
 
 ## Two expression shapes that could not be evaluated
 
@@ -418,12 +433,15 @@ Both send expressions were repaired under `CHAT-zhjltbky`, by
 Five checks moved to `hasAccessToId`: `deleteRoom`, `getRoom`, `roomMembers`,
 `listenTopic` and `messageById`. Two moved to the property form: `joinRoom`
 and `leaveRoom`. One was replaced by the literal `false`: `getRoomByName`,
-for the reason in the section above.
+for the reason in the section above. **That literal is gone, removed by the
+owner on 2026-10-02.** So seven checks carry an expression now, and
+`getRoomByName` carries none.
 
 `SendCheckExpressionTests` reads each annotation from the compiled interface
-and evaluates it through SpEL, so a regression in any of the eight fails
-there. **Without that repair a wired check refuses every caller**, and it
-does so with `EL1004E` and no stated cause.
+and evaluates it through SpEL, so a regression in any of the seven fails
+there. It pins the absence on `getRoomByName` too. **Without that repair a
+wired check refuses every caller**, and it does so with `EL1004E` and no
+stated cause.
 
 ## After turning the checks on
 
@@ -438,8 +456,10 @@ caller denies. A room with no owner row denies to every caller.
 **`addUser` denies for every caller but `Admin`**, because creating a user is
 the work of an Admin. `Admin` holds `*` on every domain root since 2026-10-01.
 
-**`getRoomByName` denies every caller by construction.** The route is unusable
-until `CHAT-dgjhljbl` lands.
+**`getRoomByName` carries no check since 2026-10-02.** The owner removed the
+literal deny, and the route answers every caller that matches a room.
+**Read this paragraph as of 2026-10-01:** it read "denies every caller by
+construction. The route is unusable until `CHAT-dgjhljbl` lands."
 
 `listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. `addRoom`
 allows since 2026-10-01. An earlier version of this line named `addRoom` and
