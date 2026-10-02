@@ -11,11 +11,11 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-10-02, after the register correction merge of PR #159. |
-| Last merged PR | #159, merge commit `547ae2ff`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `ae227b09`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
+| Register state | Updated 2026-10-02, after the dead auth manager merge of PR #161. |
+| Last merged PR | #161, merge commit `ae227b09`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
-| Merged feature branches | Eight local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-znprrzhn-composite-enforcement` at `91af1c96`, `chat-mcp-spec` at `d29bac4a`, and `chat-urhjrwbt-indexelastic` at `d8d797b3`. **No local branch has a remote.** **The branch refs are kept.** |
+| Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
 | Worktrees | The main checkout alone, because the `.worktrees/` directory is empty. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
 | Open PRs | None. Nothing was open on 2026-10-02. |
 
@@ -28,18 +28,35 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh merged as PR #159. It carried the register correction for the MCP agent
-identity merge. The refresh before it merged as PR #157, after the composite
-access enforcement merge.
+refresh follows PR #161. The refresh before it merged as PR #160, after the
+grant policy merge and the MCP agent identity merge. The one before that merged
+as PR #159, and it carried the register correction for the MCP agent identity
+merge. The one before that merged as PR #157, after the composite access
+enforcement merge.
 
 The stale locked worktree at `.claude/worktrees/domain-serialization` was clean
 and is removed. The local and remote `nodeid-claim-lease` branches are removed.
 
-**One branch belongs to other work.** The `chat-hazcatpc-review-fix` branch at
-`606d251a` holds one commit that master lacks, and it carries no remote. Do not
-read the rows above as covering it. The other branch named here before,
-`chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, now holds no commit that master
-lacks, and its remote is gone.
+**Four branches belong to other work.** The `chat-hazcatpc-review-fix` branch at
+`606d251a` holds one commit that master lacks, and it carries no remote. The
+`chat-mcp-spec` branch at `d29bac4a`, the `chat-urhjrwbt-indexelastic` branch at
+`d8d797b3`, and the `chat-znprrzhn-composite-enforcement` branch at `91af1c96`
+each hold at least one commit that master lacks. Do not read the rows above as
+covering them. The `chat-sgyaaivp-cassandra-timeout` branch at `a812cd0c` holds
+no commit that master lacks, and its remote is gone.
+
+**One branch exists on the remote alone.** `origin` holds
+`chat-eroapfub-vector-runtime-flags` at `3245d308`, and that commit is titled
+"build: add Java 25 vector runtime flags". No local branch carries that name, and
+the commit is **not** an ancestor of `master`. It is one commit ahead of master
+and 467 behind it. This is the first remote-only branch the register records. A
+reader who lists local branches will not see it.
+
+**That branch is a stale leftover, not unlanded work.** Its subject names the
+JDK 25 vector runtime flags, and `chat-vector-embedded` and
+`shell-scripts/test-flags.sh` both exist on `master`. The section below,
+`JDK 25 vector runtime flags (2026-09-06)`, records that work as landed. So the
+work arrived by another route, and only the branch ref remains.
 
 ## Landed
 
@@ -3228,6 +3245,10 @@ Three steps of the post-merge protocol ran.
    `91af1c96`, and not on `master`.** A reader who expects master there is
    wrong. That branch is not this work.
 
+**Read step 3 as of 2026-10-02, the day it was written.** The checkout is on
+`master` at `ae227b09` now, and `chat-znprrzhn-composite-enforcement` is a
+plain local branch. The 2026-10-02 refresh measured that.
+
 One step did not run, and it needs an operator.
 
 **The worktree is not removed.** It is locked by the live session
@@ -3236,6 +3257,9 @@ is the session that wrote this section, so the lock lifts when the session
 exits. Removal then needs `git worktree remove -f -f`. The local branch cannot
 be deleted before the worktree is gone, because the worktree holds it checked
 out.
+
+**That worktree is gone now.** `git worktree list` on 2026-10-02 returns the
+main checkout alone, so the lock lifted and the removal ran.
 
 **The remote branch is deleted.** The owner removed
 `origin/chat-znprrzhn-enforcement` on 2026-10-02. `git ls-remote --heads`
@@ -3247,3 +3271,111 @@ classifier refuses `git push origin --delete`.
 checkout holds an uncommitted edit to that same file. A fast-forward of the
 main checkout would refuse or clobber it. The owner resolves that edit, and no
 branch of this work touches it.
+
+## The dead auth manager, and the live credential seam (2026-10-02)
+
+`CHAT-kcccoifk`. **This work is merged.** PR #161 merged on 2026-10-02 as
+`ae227b09`. The merge has two parents, so it is a real merge commit. The merge
+tree is byte-identical to the branch tip `99483bca`, because
+`git diff 99483bca ae227b09` was empty.
+
+Two commits carry it. `00451ff8` adds the credential seam test, and `99483bca`
+deletes the class. The branch was cut from `ac7b0843`, the merge commit of
+PR #160.
+
+### What the deletion removed
+
+`CoreReactiveAuthenticationManager` is gone from
+`chat-security/service`. **It reached no caller.** No composition declared it as
+a bean. Its only in-repo mention was a commented import on
+`RSocketServerConfiguration`, and that import named a package it never lived in.
+One commit wrote it, `9009d8ff` ("adds some test. (1/3) to MethodSecurity"), and
+no test ever covered it.
+
+**It was worse than dead, and that is why deletion beat repair.** Five measured
+differences separated it from the live path.
+
+1. An `onErrorMap` turned a wrong password into
+   `InternalAuthenticationServiceException`.
+2. It built `ChatUserDetails(user, listOf())`, which dropped the `ROLE_USER`
+   authority.
+3. It re-read the user from `PersistenceStore` after the key was already
+   resolved.
+4. `authen.credentials.toString()` turned absent credentials into the text
+   `null`.
+5. It never set `ChatUserDetails.passwd`, so the password accessor threw.
+
+### The live seam, measured
+
+**No composition declares a `ReactiveAuthenticationManager` bean.** Spring
+Security therefore builds
+`UserDetailsRepositoryReactiveAuthenticationManager` over the
+`ReactiveUserDetailsService` bean. That bean is `CoreUserDetailsService`, and it
+reads the credential from the secrets store.
+
+`RSocketCredentialSeamTests` measures that path against a running composition
+root. It boots `ChatApp` with the memory selectors, connects a real
+`RSocketRequester` over TCP, and presents a real `UsernamePasswordMetadata`. It
+mocks nothing.
+
+Two tests pin the seam, and each names the change that would break it.
+
+1. A wrong credential is refused at the setup frame.
+2. A right credential supplies the identity that owns the room it creates.
+
+The second reads the removal of that room. `CompositeAccessEnforcementTests`
+pins the control: a caller with no credential creates a room and is then refused
+that same removal. So the removal turns on the identity the credential supplies,
+and on nothing else.
+
+**The mutation proof.** Removing `.simpleAuthentication(Customizer.withDefaults())`
+fails both tests. The first then reads `onNext(<id>)`, because the wrong
+credential is ignored in silence. The second reads
+`ApplicationErrorException (0x201): Access Denied`, because no identity arrives.
+
+### The fact that cost the most
+
+**A refused RSocket setup does not fail the connect call.** `connectTcp`
+completes with a requester, and the `RejectedSetupException` lands on the first
+request that uses it. A client that awaits only its connect call reads a refused
+setup as a success. The test asserts the error on the first request for this
+reason.
+
+**The refusal text is a coincidence.** The message reads `Invalid Credentials`,
+which is also the text of the deleted class's exception. `javap` on
+`AbstractUserDetailsReactiveAuthenticationManager` shows that Spring Security
+itself supplies that string, so the match proves nothing about the deleted
+class.
+
+### One false lead, recorded so nobody repeats it
+
+`grep -rn "Invalid Credentials"` returned the deleted class and `Exception.kt`.
+That reading could suggest the class was live. The class was already gone, and
+the framework owns the string. **A shared message text is not shared code.**
+
+### The build
+
+- Default gate: 1523 tests, 0 failures, 0 errors, 35 skipped. The count moved
+  from 1521, and `CHAT-kcccoifk` added the two seam tests.
+- CI run `36982153312` at head `99483bca`: the `build` job passes, and the
+  `integration` job fails. `chat-shell` is the only failing module, with 57
+  tests and 2 failures, 5 errors and 22 skipped. That set matches B12 exactly,
+  so this work added no failure. `CHAT-dgjhljbl` holds six and `CHAT-wbcbptiq`
+  holds one.
+
+### One item carried into `CHAT-wbcbptiq`
+
+`LoginCommands.login` resolves the user through the user store, and not through
+the credential. So a login stores metadata for a user the secrets store may not
+hold, and the refusal above then arrives on the first request rather than at the
+login. `CHAT-wbcbptiq` owns that reading.
+
+### Open after this work
+
+Nothing new. The list at the end of the MCP agent identity section stands:
+`CHAT-okpgpxkj` audience validation, `CHAT-uxgdzpag` the remaining Lucene
+loads, the `client-init` scope gap, and the per-agent grant decision.
+
+**The `Checkout` row of this file reads `ae227b09`.** That is the last
+substantive merge before this refresh, so the row follows the rule under
+`Where things stand`. The refresh itself lags that row by one merge on purpose.
