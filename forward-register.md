@@ -12,8 +12,8 @@ in this file is authoritative on its own — each row points at the artifact tha
 | | |
 |---|---|
 | Checkout | `master` at `8fa9c962`, in sync with `origin`. Two untracked handoff files remain at the root: `agent-cutoff.md` and `next-agent.md`. |
-| Register state | Updated 2026-10-01, after the MCP adapter credential issuance merge. |
-| Last merged PR | #150, merge commit `8c181303`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Register state | Updated 2026-10-02, after the composite access enforcement merge. |
+| Last merged PR | #156, merge commit `c069c978`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Five local branches hold no commit that master lacks, and none has a remote: `boot4-bump` at `179c2fd8`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-mcp-spec` at `d29bac4a`. **So all five are dead work.** `chat-mcp-spec` carries one commit, and master already holds that spec. **The branch refs are kept.** |
 | Worktrees | The main checkout, plus `.worktrees/cassandra-timeout` for `chat-sgyaaivp-cassandra-timeout`. The `.worktrees/mcp-impl` worktree was removed on 2026-09-29, and the local `chat-mcp-impl` branch with it. The `.worktrees/mcp-credential` worktree was removed on 2026-10-01, and the local `chat-rvcrzxvw-mcp-credential` branch with it. |
@@ -2927,9 +2927,11 @@ Every moved check was latent when that work merged. **Read that sentence as of
 `docs/superpowers/specs/2026-10-01-composite-access-enforcement-design.md` and
 `docs/superpowers/plans/2026-10-01-composite-access-enforcement.md`.
 
-**This work is not merged.** The branch is `chat-znprrzhn-enforcement`, cut
-from `ade87988`, which is the tip of `origin/master` and the merge commit of
-PR #155. The owner merges by pull request.
+**This work is merged.** PR #156 merged on 2026-10-02 as
+`c069c978365d50da48b4d769f37e94af32fd9793`. The merge has two parents, so it is
+a real merge commit. The merge tree is byte-identical to the branch tip
+`6970a89a`, because `git diff 6970a89a c069c978` was empty. The branch was cut
+from `ade87988`, the merge commit of PR #155.
 
 ### What exists
 
@@ -3056,3 +3058,35 @@ which never reads `KNOWN_FAILING_INTEGRATION` and never reads
   holds the programmatic wrappers.
 - **No deployment turns on the checks.** They are on wherever a composite
   controller mounts, and every deployment mounts one.
+
+### Cleanup, on 2026-10-02
+
+Three steps of the post-merge protocol ran.
+
+1. Local `master` moved to `c069c978` through `git fetch origin master:master`,
+   and it now matches `origin/master`.
+2. The issue closed. `CHAT-znprrzhn` is `done`, and the comment names the state
+   of every child.
+3. The main checkout is **on `chat-znprrzhn-composite-enforcement` at
+   `91af1c96`, and not on `master`.** A reader who expects master there is
+   wrong. That branch is not this work.
+
+One step did not run, and it needs an operator.
+
+**The worktree is not removed.** It is locked by the live session
+(`lock reason: claude session znprrzhn-enforcement (pid 39065)`). That process
+is the session that wrote this section, so the lock lifts when the session
+exits. Removal then needs `git worktree remove -f -f`. The local branch cannot
+be deleted before the worktree is gone, because the worktree holds it checked
+out.
+
+**The remote branch is deleted.** The owner removed
+`origin/chat-znprrzhn-enforcement` on 2026-10-02. `git ls-remote --heads`
+returns nothing for that name. An agent could not delete it, because the
+classifier refuses `git push origin --delete`.
+
+**One trap worth carrying.** The merge changes
+`shared-deploy-configuration/src/main/config/userinit.yml`, and the main
+checkout holds an uncommitted edit to that same file. A fast-forward of the
+main checkout would refuse or clobber it. The owner resolves that edit, and no
+branch of this work touches it.
