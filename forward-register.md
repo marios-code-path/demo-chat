@@ -2916,6 +2916,143 @@ Two facts that are expensive to relearn:
    about one message. `send` stays denied, because the `Message` root is not
    the root of a room.
 
-Every moved check is latent. No production bean implements an annotated
-interface, so this change moves what the configuration means and no running
-answer.
+Every moved check was latent when that work merged. **Read that sentence as of
+2026-09-30.** The composite checks are enforced since 2026-10-01, under
+`CHAT-znprrzhn`, so the checks over one room now carry a running answer. The
+`core` interfaces stay latent. See the section below.
+
+## Composite access enforcement (2026-10-01)
+
+`CHAT-znprrzhn`. Let this section be the record. The spec and the plan are
+`docs/superpowers/specs/2026-10-01-composite-access-enforcement-design.md` and
+`docs/superpowers/plans/2026-10-01-composite-access-enforcement.md`.
+
+**This work is not merged.** The branch is `chat-znprrzhn-enforcement`, cut
+from `ade87988`, which is the tip of `origin/master` and the merge commit of
+PR #155. The owner merges by pull request.
+
+### What exists
+
+Six composite controllers declare their annotated access interface as a
+supertype. **Fourteen operations are judged, on RSocket and on REST.**
+`TopicServiceAccess` carries eight, `MessageServiceAccess` three and
+`UserServiceAccess` three. Seven of the fourteen are rows of
+`docs/ANONYMOUS-AUTHORIZATION.md`.
+
+`RSocketSecurity.anonymous` gives the shell an identity, so `addRoom` and
+`listRooms` allow there. That is why the shell creates a room and sends no
+credential.
+
+### The owner grant policy of 2026-10-01
+
+Four decisions, all taken by the owner during this work.
+
+1. **`ALL` is renamed `GET_ALL`.** The old name read as "every permission". A
+   `*` row is what carries every permission.
+2. **Every user may add a room.** A room is unbounded and no counter bounds it.
+   The `{User, MessageTopic, NEW}` row reaches every caller that holds an
+   identity.
+3. **Admin holds `*` on every domain root.** `InitialUsersService` writes one
+   row per loaded domain, so a domain a later release adds takes its row with
+   no second edit. `AdminRootGrantWiringTests` pins it.
+4. **No regular user creates a user.** That is the work of an Admin.
+
+**Rule 3 moves no matrix row.** The actor set of a query is the `Anon` key,
+the `User` root and the caller. The `Admin` key is in no other caller's actor
+set, so an Admin row reaches the Admin identity alone.
+
+### Three defects found on the way, each measured
+
+1. **A JDK dynamic proxy hides a class level `@RequestMapping`.** Method
+   security proxies a controller that carries an annotated supertype. The
+   controller implements interfaces, so the proxy is a JDK proxy, and a JDK
+   proxy carries the interfaces and not the implementation class.
+   `RequestMappingHandlerMapping` then saw no route, and **every REST route
+   answered 404**. The routing annotations sit on
+   `ChatTopicServiceRestMapping` now. `LongTopicRestTests` passes on the same
+   controller, because no method security is active in its slice. The old 404
+   was never a mapping defect.
+2. **A facade method crosses no proxy.** A default method that calls its
+   member on the same object never leaves that object. The member's
+   `@PreAuthorize` did not run, and **a denied caller reached the service**.
+   Measured under a JDK proxy and under CGLIB. The five facade methods carry
+   their own check now.
+3. **`AuthorizationDeniedException` had no renderer**, so a REST denial
+   answered 500. A 500 is not a refusal to any caller. `KeyRefusalAdvice`
+   gained an `AccessDeniedException` handler, which answers 403.
+
+Two refusal shapes are now pinned. RSocket reports
+`ApplicationErrorException` with `Access Denied`, because no handler claims
+the exception and the transport reports application error 0x201. REST answers
+403.
+
+### The build
+
+- Default gate: exit 0, 29 modules, 1507 tests, 0 failures, 0 errors,
+  35 skipped. It reports that reality matches `docs/BUILD-HEALTH.md`.
+- CI gate: exit 0, 29 modules, 1806 tests, 2 failures, 5 errors, 59 skipped.
+  `chat-shell` is the only failing module.
+
+**An exit code of 0 on the CI gate does not mean the reactor is green.** It
+means the failure set matches `docs/BUILD-HEALTH.md`.
+
+### The shell failure, and the two issues that hold it
+
+`chat-shell` reports 7 failures, and every one reads `Access Denied`. The plan
+states that the shell suite cannot be green when this issue lands. **The call
+path separates the two sets, and the message does not.**
+
+| Set | Count | Issue | First refusal |
+|---|---|---|---|
+| `getRoomByName` is fail closed | 6 | `CHAT-dgjhljbl` | the name lookup |
+| no credential | 1 | `CHAT-wbcbptiq` | `addUser` |
+
+**No credential repairs the first six.** `getRoomByName` carries an explicit
+deny expression, because a `ByStringRequest` holds a name and no target key to
+check. So `CHAT-wbcbptiq` alone cannot make the shell suite green, and its
+acceptance criterion says otherwise. See the note below.
+
+**The single credential failure needs an Admin identity**, because no regular
+user creates a user. The Admin wildcard rows of rule 3 supply that answer.
+
+**`chat-shell` is recorded in `KNOWN_FAILING_INTEGRATION`, under B12.** That
+entry makes the verifier's reading honest.
+
+**Both CI jobs stay red until those two issues land.** CI runs plain maven,
+which never reads `KNOWN_FAILING_INTEGRATION` and never reads
+`docs/BUILD-HEALTH.md`. **This is the B11 shape**, and B12 states it.
+
+### Two issues that need the owner
+
+- **`CHAT-wbcbptiq` carries an unreachable acceptance criterion.** It reads:
+  the shell tests are the acceptance gate, so they pass exactly when this work
+  is complete. Six of the seven cannot pass from a credential. Either the
+  criterion moves to `CHAT-dgjhljbl`, or the two issues close together. The
+  issue's own Scope is unaffected: no grant in `userinit.yml` changes, and no
+  access expression changes.
+- **The `send` rule needs an answer.** The owner wrote that a topic which has
+  not been joined cannot receive messages. `joinRoom` writes no grant, and the
+  only writer of a send right is the owner row at room creation. So the
+  sentence describes ownership today. A rule that a join writes a send grant
+  is a separate decision, and nothing implements it.
+
+### Two facts that cost a measurement
+
+1. **A scoped `-pl` run is not evidence in this worktree.** A run of
+   `-pl chat-core,chat-deploy-memory` resolved `chat-deploy` and
+   `shared-deploy-configuration` from `~/.m2`, and reported failures against
+   the old `ALL` row in `userinit.yml`. Only the full reactor is trustworthy.
+   That is B10, met a third time.
+2. **The `DOCKER_CONFIG` trap is real.** `spring-boot:build-image` fails with
+   `'username' must not be null` when a stale Docker Hub login sits in the
+   default config. The image is then not rebuilt, and `chat-shell` tests the
+   image the machine already holds. An empty `DOCKER_CONFIG` repairs it.
+
+### What this work did not deliver
+
+- **The `core` interfaces stay latent.** `PersistenceAccess`, `IndexAccess`,
+  `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
+  `SecretsStoreAccess` have no production implementation. `CHAT-ruapxetl`
+  holds the programmatic wrappers.
+- **No deployment turns on the checks.** They are on wherever a composite
+  controller mounts, and every deployment mounts one.

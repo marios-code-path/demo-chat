@@ -14,7 +14,7 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'REM')")
     override fun deleteRoom(req: ByIdRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'ALL')")
+    @PreAuthorize("@chatAccess.hasAccessToDomain('MessageTopic', 'GET_ALL')")
     override fun listRooms(): Flux<out MessageTopic<T>>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'GET')")

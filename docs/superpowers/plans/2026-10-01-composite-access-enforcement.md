@@ -97,6 +97,22 @@ and a defect named here alone is not.
 **Both probes were rewritten, and not Task 1 alone.** The first audit named
 Task 1, and the same defect class sat in Task 2 in full.
 
+## Plan corrections, 2026-10-01, second pass
+
+The first execution of Task 9 stopped. Tasks 6, 7 and 8 are done, and their
+commits are `de40eba7`, `30265f98` and `4d94c848`. The audit below found three
+defects, all of them in Task 9. Every one is repaired in this document.
+
+| # | Defect | Repair |
+|---|---|---|
+| 10 | Task 9 called `composite.topicService().addRoom(...)`. That type answers the composed service, and the controller is a separate bean that delegates to it. So the call crossed no check, and the test allowed `addRoom`. | Task 9 connects an `RSocketRequester` to the deployment and calls the `topic.topic-add` route, which is the same path a client uses. |
+| 11 | Task 9 read the controller with `getBean(TopicServiceController::class.java)`. The bean is a JDK dynamic proxy under method security, so it is not assignable to the class it proxies. | Task 9 reads `TopicServiceAccess`, an interface that the proxy carries. |
+| 12 | Task 9 ran `mvn -o -pl chat-core,chat-deploy-memory`. That list does not build `chat-service-controller` or `chat-webflux`, so those modules resolved from `~/.m2` at a version from before Tasks 6 and 8. | Task 9 runs `-pl chat-deploy-memory -am`, and its Step 2 states why. |
+
+**Defect 12 is the most expensive of the three.** A green run under it would
+have measured a controller with no access interface, and the deployment claim
+would have been false.
+
 One correction is not a defect. **`TestLongCompositeServiceBeans` exists**, and
 it is declared inside `LongBeans.kt` rather than in a file of its own.
 
@@ -1300,72 +1316,239 @@ Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ### Task 9: Prove the deployment seam
 
 The unit slice proves the proxy. This task proves that a real deployment
-registers the same annotated beans and refuses through the whole stack.
+registers the same annotated beans, refuses through a real route, and writes
+nothing.
 
 **Files:**
 - Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/CompositeAccessEnforcementTests.kt`
 
 **Interfaces:**
-- Consumes: `RoomOwnerGrantConfiguration` and `MethodSecurityConfiguration` from `chat-security`
+- Consumes: the wired controllers of Tasks 6 and 8, and `MethodSecurityConfiguration` from `chat-security`
 - Produces: the deployment evidence for the issue.
+
+**Three corrections to the first draft of this task.** The draft was executed on
+2026-10-01 and it stopped here. Each correction is a measured cause, and not a
+preference.
+
+1. **`composite.topicService()` bypasses the proxy.** It answers the composed
+   service. The controller is a separate bean that delegates to that service. A
+   call to the composed service crosses no check, so the draft allowed `addRoom`
+   and answered a room key. **The gate must call a route.**
+2. **A concrete-class bean lookup cannot work.** The controller bean is a JDK
+   dynamic proxy under method security, because the controller implements
+   interfaces. A JDK proxy is not assignable to the class that it proxies, so
+   `getBean(TopicServiceController::class.java)` throws
+   `BeanNotOfRequiredTypeException`. The lookup must name an interface that the
+   proxy carries. `TopicServiceAccess` is that interface.
+3. **A scoped `-pl` run resolves upstream modules from `~/.m2`.** Tasks 6 and 8
+   changed `chat-service-controller` and `chat-webflux`. A run that does not
+   build them reads a jar from before that change. **Use `-am`, or name every
+   module whose source the test needs.** This is the stale-jar trap that this
+   register records three times already.
 
 - [ ] **Step 1: Write the test**
 
 Follow `RoomOwnerGrantWiringTests` for the property list. The context needs
 `app.service.composite.auth`, `app.controller.*` and `app.users.create=true`.
 
+**The route is RSocket, and not REST.** The memory deployment runs
+`app.server.proto=rsocket`. A REST call would also need an agent token, because
+`WebFluxSecurity` mounts the agent chain. The RSocket seam establishes the
+`Anon` identity instead, so a caller with no credential connects and the route
+check decides.
+
 ```kotlin
+package com.demo.chat.test.deploy.memory
+
+import com.demo.chat.ChatApp
+import com.demo.chat.config.ChatJackson3Modules
+import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.Key
+import com.demo.chat.security.access.composite.TopicServiceAccess
+import io.rsocket.exceptions.ApplicationErrorException
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
+import org.springframework.aop.support.AopUtils
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.rsocket.context.RSocketPortInfoApplicationContextInitializer
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationContext
+import org.springframework.http.codec.json.JacksonJsonDecoder
+import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.test.context.TestPropertySource
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
+import reactor.test.StepVerifier
+import tools.jackson.databind.json.JsonMapper
+import java.time.Duration
+
+/**
+ * The enforcement seam as a deployed composition wires it, for `CHAT-znprrzhn`.
+ *
+ * **The call goes over a real RSocket route.** A call to
+ * `composite.topicService()` crosses no check, because the controller bean is a
+ * different bean and it delegates to that service. So this class connects a
+ * requester to the deployment and calls `topic.topic-add`.
+ *
+ * **The refusal alone proves nothing.** An unevaluable expression also refuses.
+ * The zero-write assertions are what separate a refusal from a broken route.
+ *
+ * The memory deployment claims no node id. See docs/NODEID-CLAIM.md.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatApp::class])
+@SpringJUnitConfig(initializers = [RSocketPortInfoApplicationContextInitializer::class])
+@TestPropertySource(
+    properties = [
+        "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
+        "spring.application.name=test-deployment-composite-access",
+        "app.server.proto=rsocket", "server.port=0", "spring.rsocket.server.port=0",
+        "app.key.type=long", "app.nodeid=1",
+        "app.service.core.key=memory", "app.service.core.pubsub=memory",
+        "app.service.core.index=lucene", "app.service.core.persistence=memory",
+        "app.service.core.secrets=memory",
+        "app.service.composite", "app.service.composite.auth",
+        "app.controller.key", "app.controller.persistence", "app.controller.index",
+        "app.controller.user", "app.controller.message", "app.controller.topic",
+        "app.controller.pubsub",
+        "app.service.security.userdetails", "app.users.create=true"
+    ]
+)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class CompositeAccessEnforcementTests {
+
     @Autowired lateinit var applicationContext: ApplicationContext
     @Autowired lateinit var stores: PersistenceServiceBeans<Long, String>
 
+    lateinit var requester: RSocketRequester
+
+    private val timeout = Duration.ofSeconds(10)
+    private val roomName = "enforcedroom"
+
+    /**
+     * **The decoder replaces the default one.** The default Jackson 3 decoder
+     * already matches `ByStringRequest`, so a decoder added at the end never
+     * runs. See `RSocketTestBase`.
+     */
+    @BeforeAll
+    internal fun `connect to the deployment`(
+        @Autowired builder: RSocketRequester.Builder,
+        @Value("\${local.rsocket.server.port}") port: Int,
+    ) {
+        val mapper = JsonMapper.builder()
+            .addModule(ChatJackson3Modules().chatJackson3Module())
+            .build()
+
+        requester = builder
+            .rsocketStrategies { sb -> sb.decoders { it.add(0, JacksonJsonDecoder(mapper)) } }
+            .tcp("localhost", port)
+    }
+
+    /**
+     * **The lookup names the annotated interface, and not the class.** The
+     * controller bean is a JDK dynamic proxy, so it is not assignable to
+     * `TopicServiceController`. The proxy carries `TopicServiceAccess`.
+     */
     @Test
     fun `the deployment registers a proxied topic controller`() {
-        val controller = applicationContext.getBean(TopicServiceController::class.java)
+        val access = applicationContext.getBean(TopicServiceAccess::class.java)
 
-        assertThat(AopUtils.isAopProxy(controller))
+        assertThat(AopUtils.isAopProxy(access))
             .describedAs("the topic controller proxy")
             .isTrue()
     }
 
+    /**
+     * **A caller with no credential reaches the `Anon` identity**, and `Anon`
+     * holds no `MessageTopic:NEW` grant. So the route refuses.
+     *
+     * **The refusal crosses the wire as `ApplicationErrorException`**, and not
+     * as `AccessDeniedException`. The server throws
+     * `AuthorizationDeniedException: Access Denied`, and no RSocket exception
+     * handler claims it, so the transport reports application error 0x201.
+     */
     @Test
-    fun `a caller holding no room grant is refused and the room is not created`() {
-        val room = composite.topicService()
-            .addRoom(ByStringRequest("enforcedroom"))
-            .contextWrite(context(someUser()))
-
-        StepVerifier.create(room)
-            .verifyError(AccessDeniedException::class.java)
+    fun `a caller holding no room grant is refused at the route and writes nothing`() {
+        StepVerifier.create(
+            requester.route("topic.topic-add")
+                .data(ByStringRequest(roomName))
+                .retrieveMono(Key::class.java)
+        ).expectErrorSatisfies { error ->
+            assertThat(error)
+                .describedAs("the wire form of the refusal")
+                .isInstanceOf(ApplicationErrorException::class.java)
+                .hasMessageContaining("Access Denied")
+        }.verify(timeout)
 
         assertThat(
-            stores.topicIndexService().findBy(ByStringRequest("enforcedroom"))
-                .collectList().block(Duration.ofSeconds(10))
+            stores.topicIndexService().findBy(ByStringRequest(roomName))
+                .collectList().block(timeout)
         ).describedAs("the index rows for the refused room").isEmpty()
+
+        assertThat(
+            stores.topicPersistence().all()
+                .filter { it.name == roomName }
+                .collectList().block(timeout)
+        ).describedAs("the stored rooms that the refused call names").isEmpty()
     }
+}
 ```
 
-Fill `someUser()` and `context(...)` from `RoomOwnerGrantWiringTests`, which
-already builds both.
+**The room name is one Lucene token.** The memory deployment indexes with
+Lucene, and the handle and topic-name fields split on a hyphen. So a name with a
+hyphen would match a query for a different name. See `CHAT-hajmhslp`.
+
+**`spring.application.name` is distinct on purpose.** Spring caches a context
+by its configuration. A distinct value gives this class its own context, and
+its own empty memory stores.
 
 - [ ] **Step 2: Run it**
 
-Run: `mvn -o -pl chat-core,chat-deploy-memory -Dtest=CompositeAccessEnforcementTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/deploy1.log 2>&1; echo "EXIT=$?"; tail -25 /tmp/deploy1.log`
+Run: `mvn -o -pl chat-deploy-memory -am -Dtest=CompositeAccessEnforcementTests -Dsurefire.failIfNoSpecifiedTests=false test > /tmp/deploy1.log 2>&1; echo "EXIT=$?"; tail -25 /tmp/deploy1.log`
 
-Expected: PASS.
+Expected: PASS, 2 tests.
 
-**A pass on the first run is a finding about the test.** This task runs after
-the wiring, so the test cannot show RED on its own. Prove the RED by removing
-the delegation clause from `TopicServiceController` by hand, running the two
-tests, reading the failure, and restoring the clause. Record the RED and the
-restore in the ledger.
+**`-am` is required.** A `-pl` list without it resolves `chat-service-controller`
+and `chat-webflux` from `~/.m2`, and those jars predate Tasks 6 and 8. The run
+would then measure a controller with no access interface, and the route would
+answer a room.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Prove the RED by mutation**
+
+**A pass on the first run is not evidence.** This task runs after the wiring, so
+the test cannot fail on its own. Create the failure by hand and read it.
+
+Remove one line from
+`chat-service-controller/src/main/kotlin/com/demo/chat/config/controller/composite/CompositeControllersConfiguration.kt`:
+the `TopicServiceAccess<T, V>,` supertype of `TopicServiceController`.
+
+Run the same command again.
+
+Expected: FAIL. The route answers a room and not a refusal, so the
+`ApplicationErrorException` assertion reads a value. The two zero-write
+assertions then read the rows that the unguarded call wrote.
+
+**The RSocket route still resolves under the mutation.** The routes come from
+method level `@MessageMapping` on `TopicServiceControllerMapping`, which is an
+interface. So the mutation removes the check and not the route. A mutation that
+also broke the route would prove nothing.
+
+Restore the line **by absolute path**, and prove the restore with
+`git diff` and `git status --porcelain`. A mutation that is not proven restored
+is not a measurement.
+
+Record the RED output and the restore in the ledger.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/CompositeAccessEnforcementTests.kt
 git commit -m "Prove the enforcement seam in a deployment (CHAT-znprrzhn)
 
-The controller bean is a proxy, and a caller with no grant is refused
-before the room is written.
+The caller reaches the route over RSocket. The route refuses, and the
+room reaches no index and no store.
 
 Co-Authored-By: Claude Code <noreply@anthropic.com>"
 ```

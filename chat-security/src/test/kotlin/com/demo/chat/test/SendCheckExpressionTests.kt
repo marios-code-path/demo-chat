@@ -50,7 +50,7 @@ class SendCheckExpressionTests {
 
     /**
      * **Both send checks name the room.** The room carries the
-     * `MessageTopic` root, and `{User, MessageTopic, ALL}` names that root.
+     * `MessageTopic` root, and `{User, MessageTopic, GET_ALL}` names that root.
      */
     @Test
     fun `both send checks allow a room owner`() {
@@ -67,7 +67,7 @@ class SendCheckExpressionTests {
     /** A caller with no row on the room is denied by both checks. */
     @Test
     fun `both send checks deny a caller with no row`() {
-        val access = access(listOf(grant(USER_ROOT, TOPIC_ROOT, "ALL")))
+        val access = access(listOf(grant(USER_ROOT, TOPIC_ROOT, "GET_ALL")))
 
         assertThat(evaluate(sendExpression(), "req", request(), access)).isFalse()
         assertThat(evaluate(sendMessageExpression(), "message", message(), access)).isFalse()

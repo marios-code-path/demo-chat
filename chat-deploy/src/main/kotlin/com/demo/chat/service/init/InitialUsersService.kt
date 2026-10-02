@@ -14,6 +14,15 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
+/**
+ * The singular ownership sentinel, as `userinit.yml` spells it.
+ *
+ * `AuthSummarizer.WILDCARD` holds the same text in `chat-security`, and this
+ * module does not depend on that one. A `*` row answers any permission that a
+ * caller asks of its target. See `CHAT-znprrzhn`.
+ */
+private const val ADMIN_WILDCARD = "*"
+
 class InitialUsersService<T>(
     private val userService: ChatUserService<T>,
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
@@ -82,6 +91,29 @@ class InitialUsersService<T>(
             } else {
                 println("Missing root key for ${permission.user} or ${permission.target}")
             }
+        }
+
+        // The Admin identity holds the wildcard on every domain root. The owner
+        // decided this rule on 2026-10-01. This loop reads the loaded domain
+        // set, so a domain that a later release adds takes its row here and
+        // needs no second edit.
+        //
+        // The value is the literal that `userinit.yml` names. The constant
+        // `AuthSummarizer.WILDCARD` holds the same text in `chat-security`,
+        // which this module does not depend on.
+        //
+        // **Admin is not in the actor set of any other caller.** A query
+        // carries the `Anon` key, the `User` root and the caller. So these rows
+        // reach the Admin identity alone, and no other caller gains a right.
+        rootKeys.domains().keys.forEach { domain ->
+            initialRoles.add(
+                StringRoleAuthorizationMetadata(
+                    grantPlaceholder,
+                    rootKeys.admin(),
+                    rootKeys.of(domain),
+                    ADMIN_WILDCARD,
+                )
+            )
         }
 
         // set permissions

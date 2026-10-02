@@ -96,7 +96,7 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
 
     /**
      * A runtime grant beside the four shipped grants of the `MESSAGE_TOPIC`
-     * root. The control is `ALL`, which a shipped row carries. A backend that
+     * root. The control is `GET_ALL`, which a shipped row carries. A backend that
      * kept one row per target would answer one of the two and not both.
      *
      * The removal runs in the second context, after the restart, because the
@@ -121,18 +121,21 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
             user = composite.userService().addUser(UserCreateRequest("restart", "restartuser", "http://u")).block(timeout)!!
             target = first.roots().of(ChatDomain.MESSAGE_TOPIC)
 
-            // A shipped row names this target. NEW is the control.
-            Assertions.assertTrue(first.allows(user, target, "ALL"), "the shipped grant must allow ALL")
-            Assertions.assertFalse(first.allows(user, target, "NEW"), "NEW must deny before the grant")
+            // A shipped row names this target. REM is the control, and no
+            // shipped row names it. **NEW served as the control until
+            // 2026-10-01**, when the owner made every user able to add a room.
+            // That row now allows before any runtime grant is written.
+            Assertions.assertTrue(first.allows(user, target, "GET_ALL"), "the shipped grant must allow GET_ALL")
+            Assertions.assertFalse(first.allows(user, target, "REM"), "REM must deny before the grant")
 
             val placeholder = Key.empty(0L, first.roots().of(ChatDomain.AUTH_METADATA).id)
             first.grants()
-                .authorize(AuthMetadata.create(placeholder, user, target, "NEW", false, Long.MAX_VALUE), true)
+                .authorize(AuthMetadata.create(placeholder, user, target, "REM", false, Long.MAX_VALUE), true)
                 .block(timeout)
 
-            Assertions.assertTrue(first.allows(user, target, "NEW"), "NEW must allow after the grant")
+            Assertions.assertTrue(first.allows(user, target, "REM"), "REM must allow after the grant")
             Assertions.assertTrue(
-                first.allows(user, target, "ALL"),
+                first.allows(user, target, "GET_ALL"),
                 "the shipped grant must survive beside the runtime grant on one target"
             )
         }
@@ -143,20 +146,20 @@ class CassandraGrantRestartTests : CassandraContainerBase() {
             // would fail both the equality and the grant checks.
             val current = second.roots().of(ChatDomain.MESSAGE_TOPIC)
             Assertions.assertEquals(target, current, "the restart must read the stored root")
-            Assertions.assertTrue(second.allows(user, current, "NEW"), "the runtime grant must apply after the restart")
-            Assertions.assertTrue(second.allows(user, current, "ALL"), "the shipped grant must apply after the restart")
+            Assertions.assertTrue(second.allows(user, current, "REM"), "the runtime grant must apply after the restart")
+            Assertions.assertTrue(second.allows(user, current, "GET_ALL"), "the shipped grant must apply after the restart")
 
             val runtime = second.grants()
                 .getAuthorizationsForPrincipal(user)
-                .filter { it.permission == "NEW" }
+                .filter { it.permission == "REM" }
                 .blockFirst(timeout)
             Assertions.assertNotNull(runtime, "the runtime grant must be readable after the restart")
 
             second.grants().authorize(runtime!!, false).block(timeout)
 
-            Assertions.assertFalse(second.allows(user, current, "NEW"), "the removed grant must deny")
+            Assertions.assertFalse(second.allows(user, current, "REM"), "the removed grant must deny")
             Assertions.assertTrue(
-                second.allows(user, current, "ALL"),
+                second.allows(user, current, "GET_ALL"),
                 "the shipped grant must survive the removal of the runtime grant"
             )
         }

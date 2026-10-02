@@ -12,9 +12,20 @@ under `CHAT-mahevldm`, and `messageById` went from deny to allow under
 every caller, by construction and not by a missing grant. The section under
 the matrix states why, and which issue restores the route.
 
+**One row moved on the same day, and one grant was renamed.** The owner
+decided that every user may add a room, so `addRoom` went from deny to allow.
+The owner also renamed the `ALL` grant to `GET_ALL`, because the old name read
+as "every permission" rather than "get every row". Both changes are stated
+under the grants table and under the matrix.
+
 `docs/IDENTITY-POLICY.md` states which identity a caller reaches. **This
 document states what that identity may then do.** They are separate questions,
 and a green identity test proves nothing here.
+
+**The rows of this matrix run in a deployment now.** Six controllers implement
+the three composite access interfaces, on RSocket and on REST. `addRoom`,
+`send` and `addUser` left the latent state on 2026-10-01. The `core`
+interfaces stay latent. See "What is wired, and what is not" below.
 
 **This matrix describes a store that keeps every grant row.** The test
 replaces the store and the index with maps.
@@ -52,8 +63,9 @@ store alone.
 **`*` means ownership, and not "all permissions".** It is singular per target,
 and it is a sentinel, so a `*` row stops the read and its expiry decides.
 `docs/superpowers/specs/2026-09-23-operation-policy-draft.md` states the three
-properties under `What \* means`. **No shipped row names `*` on a target that
-an operation below checks**, so the rank does not move this matrix. The one
+properties under `What \* means`. **No `*` row reaches an operation below,
+because the `Admin` identity is the only principal of one**, and the actor set
+of every other caller excludes it. So the rank does not move this matrix. The
 shipped `*` row names the `Admin` key as its target, and no operation here
 names that target.
 
@@ -65,8 +77,8 @@ replaces only the store and the index.
 ## The grants
 
 Every deployment loads
-`shared-deploy-configuration/src/main/config/userinit.yml`. It holds nine
-roles. **All nine are listed here, because since `CHAT-mahevldm` the five that
+`shared-deploy-configuration/src/main/config/userinit.yml`. It holds ten
+roles. **All ten are listed here, because since `CHAT-mahevldm` the six that
 name `User` reach a caller.** An earlier version of this section listed the
 three `Anon` rows alone.
 
@@ -77,7 +89,8 @@ three `Anon` rows alone.
 | `Anon` | `User` | PUT | yes |
 | `Anon` | `Message` | GET | yes, and it reaches `messageById` since `CHAT-rfzsnbco` |
 | `User` | `Message` | SEND | yes, and it reaches no room, because a room is another domain |
-| `User` | `MessageTopic` | ALL | yes |
+| `User` | `MessageTopic` | NEW | yes, and it reaches `addRoom` since 2026-10-01 |
+| `User` | `MessageTopic` | GET_ALL | yes |
 | `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **It reaches `getRoomByName` nowhere, because that route denies by construction.** |
 | `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
 | `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
@@ -85,6 +98,32 @@ three `Anon` rows alone.
 "Reaches a caller" is the principal side, which `CHAT-mahevldm` closed.
 "Reaches an operation" is the target side, which `CHAT-rfzsnbco` closed. A
 check on one object now reads the domain root of that object beside it.
+
+**`GET_ALL` carries the permission that `ALL` carried on 2026-09-30.** The
+owner renamed it on 2026-10-01, because the value reads as "get every row of a
+dataset" and not as "every permission". A `*` row is what carries every
+permission, and the section below states that rule.
+
+## The Admin wildcard on every root
+
+**The Admin identity holds `*` on every domain root.** The owner decided this
+rule on 2026-10-01. `InitialUsersService` writes one row per loaded domain, so
+a domain that a later release adds takes its row with no second edit.
+
+**`userinit.yml` cannot express the rule.** A role definition names one user
+and one target, so the file carries `{Admin, Admin, '*'}` alone. The per-root
+rows are generated at user initialization, after the identities load and after
+the roots load.
+
+**The Admin rows do not move this matrix.** The actor set of a query is the
+`Anon` key, the `User` root and the caller. The `Admin` key is in no other
+caller's actor set, so a `*` row for Admin reaches the Admin identity alone.
+
+`AdminRootGrantWiringTests` holds that measurement against a memory
+deployment. It reads the store through `PersistenceServiceBeans` and asserts
+one row per domain root, plus the shipped row that names the `Admin` key.
+The checks run since 2026-10-01, so these rows reach the Admin identity in a
+deployment.
 
 ## The room owner
 
@@ -140,8 +179,8 @@ A `TopicMembership` names its raw id as a key, because its `key` is not a
 grant.** The Boolean many target checks read the rows of every target into one
 set and asked whether it held the permission. One Boolean cannot carry a
 subset, so those checks are removed. No production class implements
-`PersistenceAccess`, so nothing ran the old contract in a deployment.
-`CHAT-znprrzhn` holds that wiring.
+`PersistenceAccess`, so nothing ran the old contract in a deployment, and
+nothing does now. See "What is wired, and what is not".
 
 **A target key is never an actor.** The actor set is the `Anon` key, the
 `User` root and the caller. Until `CHAT-ixzpkqxg` it also held the target key.
@@ -157,13 +196,24 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 
 | Operation | anonymous | authenticated | unauthenticated | unsupported | no context |
 |---|---|---|---|---|---|
-| `addRoom`, MessageTopic NEW | deny | deny | deny | deny | deny |
+| `addRoom`, MessageTopic NEW | **allow** | **allow** | deny | deny | deny |
 | `send`, room SEND | deny | deny | deny | deny | deny |
 | `whoami`, User FIND | **allow** | **allow** | deny | deny | deny |
 | `messageById`, GET | **allow** | **allow** | deny | deny | deny |
-| `listRooms`, MessageTopic ALL | **allow** | **allow** | deny | deny | deny |
+| `listRooms`, MessageTopic GET_ALL | **allow** | **allow** | deny | deny | deny |
 | `addUser`, User NEW | deny | deny | deny | deny | deny |
 | `getRoomByName`, MessageTopic GET | deny | deny | deny | deny | deny |
+
+**`addRoom` moved from deny to allow on 2026-10-01.** The owner decided that
+every user may add a room, because a room is an unbounded resource and no
+counter bounds it. The `{User, MessageTopic, NEW}` row now reaches every
+caller that holds an identity. A caller with no context, or with no
+authentication, still denies, because that caller reaches no actor set at
+all.
+
+**`addUser` still denies, and that is the same decision.** Creating a user is
+the work of an `Admin`, so no row grants `NEW` on the `User` domain to a
+regular caller.
 
 ### `getRoomByName` denies every caller on purpose
 
@@ -172,9 +222,9 @@ The operations are the `@PreAuthorize` expressions of the access interfaces in
 check. The expression is the literal `false`, which resolves no method and
 looks up no bean.
 
-The owner decided on 2026-10-01 that the route stays fail-closed. An
-unguarded route would expose room reads once `CHAT-znprrzhn` wires the
-controller, and no grant could protect it.
+The owner decided on 2026-10-01 that the route stays fail-closed. The
+controllers are wired since that date, so an unguarded route would expose room
+reads now, and no grant could protect it.
 
 **So the route is unusable. `CHAT-dgjhljbl` restores it**, by resolving a
 name to a room key so that a target check becomes honest.
@@ -230,12 +280,14 @@ of them**, because this route refuses every identity.
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
-`MessageTopic:ALL`, `Message:GET` and three named `MessageTopic` permissions
-to every caller that reaches an identity. **The six matrix write operations
-still deny for every caller.**
+`MessageTopic:NEW`, `MessageTopic:GET_ALL`, `Message:GET` and three named
+`MessageTopic` permissions to every caller that reaches an identity.
 
-`addRoom` and `addUser` deny although both sides match, because no shipped row
-grants `NEW` on either domain. `send` denies, and `deleteRoom` denies.
+**Four matrix operations still deny for every caller**: `send`, `addUser`,
+`getRoomByName` and `deleteRoom`. `send` and `deleteRoom` deny because a room
+is an object of another domain, and only an owner row holds its rights.
+`addUser` denies because creating a user is the work of an `Admin`.
+`getRoomByName` denies by construction. See the sections above.
 
 **Ten checks move in total, and only one of them is a matrix row.**
 `messageById` is that row. The other nine were denied before and allow now.
@@ -247,8 +299,12 @@ and `IndexAccess.add` reach `{Anon, User, PUT}` for a `User` entity,
 and `TopicInventoryAccess.getUsersBy` reaches `{User, MessageTopic, GET}`.
 
 **Two of the ten are conditional.** `PersistenceAccess.add` and
-`IndexAccess.add` move through the `{Anon, User, PUT}` row alone. Every one of
-the ten is latent. See the wider-effect table of the spec.
+`IndexAccess.add` move through the `{Anon, User, PUT}` row alone.
+
+**Three of the ten are enforced, and six are latent.** The three composite
+checks over one room are wired, on both transports. The six `core` checks are
+not. See "What is wired, and what is not" below, and the wider-effect table of
+the spec.
 
 ## Expiry
 
@@ -257,29 +313,88 @@ with an expiry in the past does not allow. That is the only expiry this
 application has. **No credential expires, because no deployed transport
 validates a token.** See `docs/IDENTITY-POLICY.md`.
 
-## What is not wired
+## What is wired, and what is not
 
-**No production type implements the annotated interfaces.**
-`TopicServiceAccess`, `UserServiceAccess` and `MessageServiceAccess` in
-`com.demo.chat.security.access.composite` carry the checks that name a domain
-as text. The `core` package carries more, over `PersistenceAccess`,
-`IndexAccess`, `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
-`SecretsStoreAccess`. Every one of them is
-latent. `CompositeControllersConfiguration` imports the three composite
-interfaces and implements none of them. The controllers delegate to
-`CompositeServiceBeans`, which supplies the plain services.
+**Six controllers implement the three composite access interfaces.** Measured
+on 2026-10-01 on branch `chat-znprrzhn-enforcement`, commit `601ed380`. Each
+controller delegates to `CompositeServiceBeans`, and each now declares the
+annotated interface as a supertype.
 
-The other path, the programmatic wrappers in `chat-service-composite`, needs
+| Controller | Interface | Transport |
+|---|---|---|
+| `TopicServiceController` | `TopicServiceAccess` | RSocket |
+| `MessageServiceController` | `MessageServiceAccess` | RSocket |
+| `UserServiceController` | `UserServiceAccess` | RSocket |
+| `ChatTopicServiceController` | `TopicServiceAccess` | REST |
+| `ChatMessageServiceController` | `MessageServiceAccess` | REST |
+| `ChatUserServiceController` | `UserServiceAccess` | REST |
+
+**Every method of those three interfaces is enforced.** All fourteen are
+listed below. **The whole set left the latent state on 2026-10-01, at commit
+`601ed380`.**
+
+| Interface | Operation | Permission | Matrix row |
+|---|---|---|---|
+| `TopicServiceAccess` | `addRoom` | NEW | **addRoom** |
+| `TopicServiceAccess` | `deleteRoom` | REM | |
+| `TopicServiceAccess` | `listRooms` | GET_ALL | **listRooms** |
+| `TopicServiceAccess` | `getRoom` | GET | |
+| `TopicServiceAccess` | `getRoomByName` | deny | **getRoomByName** |
+| `TopicServiceAccess` | `joinRoom` | JOIN | |
+| `TopicServiceAccess` | `leaveRoom` | JOIN | |
+| `TopicServiceAccess` | `roomMembers` | MEMBERS | |
+| `MessageServiceAccess` | `listenTopic` | SUBSCRIBE | |
+| `MessageServiceAccess` | `messageById` | GET | **messageById** |
+| `MessageServiceAccess` | `send` | SEND | **send** |
+| `UserServiceAccess` | `addUser` | NEW | **addUser** |
+| `UserServiceAccess` | `findByUsername` | FIND | |
+| `UserServiceAccess` | `findByUserId` | FIND | **whoami** |
+
+**Seven matrix rows move out of the latent state.** The matrix below states
+each one. The other seven operations are not matrix rows, and each answers as
+this document already described.
+
+**The `core` interfaces stay latent.** `PersistenceAccess`, `IndexAccess`,
+`PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
+`SecretsStoreAccess` have no production implementation. `CHAT-ruapxetl` holds
+the programmatic wrappers in `chat-service-composite`, which need
 `app.service.composite.security`. No launch script, no yml and no test sets
 that property.
 
-**So no authorization check runs in any deployed composition today.** The
-matrix above is what the configuration means, not what a running deployment
-enforces. `CHAT-znprrzhn` holds the wiring gap. `CHAT-ruapxetl` holds a second
-defect in the programmatic wrappers.
+**A refusal is a refusal on both transports.** RSocket answers
+`ApplicationErrorException` with `Access Denied`. No exception handler claims
+`AuthorizationDeniedException`, so the transport reports application error
+0x201. REST answers 403 through `KeyRefusalAdvice`. **Before that handler
+existed, a denial answered 500**, and a 500 is not a refusal to any caller.
 
-This also explains why `chat-shell` can create a room and send a message with
-no credential. The matrix denies both.
+**Three repairs were necessary to reach that.** Each was measured, and each is
+recorded on `CHAT-znprrzhn`.
+
+1. **A JDK dynamic proxy hides a class level `@RequestMapping`.** Method
+   security proxies a controller that carries an annotated supertype. The
+   controller implements interfaces, so the proxy is a JDK proxy. That proxy
+   carries the interfaces and not the implementation class, so
+   `RequestMappingHandlerMapping` saw no route and every REST route answered
+   404. The routing annotations sit on `ChatTopicServiceRestMapping` now.
+   `LongTopicRestTests` passes on the same controller, because no method
+   security is active in its slice.
+2. **A facade method crosses no proxy.** A default method that calls its
+   member on the same object never leaves that object. The member's
+   `@PreAuthorize` did not run, and a denied caller reached the service.
+   Measured under a JDK proxy and under CGLIB. The five facade methods of
+   `ChatTopicServiceRestMapping` carry their own check now.
+3. **`AuthorizationDeniedException` had no renderer.** `KeyRefusalAdvice`
+   gained an `AccessDeniedException` handler, which answers 403.
+
+**`chat-shell` reaches the anonymous identity at the RSocket seam.**
+`RSocketSecurity.anonymous` establishes it. So a shipped row reaches the shell,
+and `addRoom` allows. Measured: `LongShellTopicCommandsTests.should add topic
+and list at least one` passes, and it adds two rooms.
+
+**`send` denies for the shell**, because a room is an object of another domain
+and only an owner row holds its rights. Six shell failures come from
+`getRoomByName`, which denies every caller by construction. One comes from
+`addUser`. See `CHAT-wbcbptiq` and `CHAT-dgjhljbl`.
 
 ## Two expression shapes that could not be evaluated
 
@@ -310,12 +425,22 @@ and evaluates it through SpEL, so a regression in any of the eight fails
 there. **Without that repair a wired check refuses every caller**, and it
 does so with `EL1004E` and no stated cause.
 
-## Before turning the checks on
+## After turning the checks on
 
-Read this table first. **Enabling the checks against the shipped grants would
-deny `addRoom` and `send` to every caller**, including an authenticated one.
-The grants need a decision before the wiring does.
+**The checks run now.** This section is what a deployment refuses. Measured on
+2026-10-01 on branch `chat-znprrzhn-enforcement`, commit `601ed380`.
 
-`listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. An earlier
-version of this line named it beside `addRoom` and `send`, and that was true
-while the four `user: User` rows reached nobody.
+**`send` and `deleteRoom` deny for a caller that owns no room.** The server
+writes an owner row at room creation, and that row carries `*` on the room
+key. So the creator of a room may send to it and may delete it. Any other
+caller denies. A room with no owner row denies to every caller.
+
+**`addUser` denies for every caller but `Admin`**, because creating a user is
+the work of an Admin. `Admin` holds `*` on every domain root since 2026-10-01.
+
+**`getRoomByName` denies every caller by construction.** The route is unusable
+until `CHAT-dgjhljbl` lands.
+
+`listRooms` allows since `CHAT-mahevldm`, measured on 2026-09-24. `addRoom`
+allows since 2026-10-01. An earlier version of this line named `addRoom` and
+`send` together, and that was true while no row granted `NEW` on a topic.

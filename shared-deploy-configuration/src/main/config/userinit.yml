@@ -21,7 +21,8 @@ app:
         - { user: Anon, target: User, role: PUT }
         - { user: Anon, target: Message, role: GET }
         - { user: User, target: Message, role: SEND }
-        - { user: User, target: MessageTopic, role: ALL }
+        - { user: User, target: MessageTopic, role: NEW }
+        - { user: User, target: MessageTopic, role: GET_ALL }
         - { user: User, target: MessageTopic, role: GET }
         - { user: User, target: MessageTopic, role: JOIN }
         - { user: User, target: MessageTopic, role: MEMBERS }
