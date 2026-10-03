@@ -80,10 +80,17 @@ class PubSubCommands<T>(
     fun listen(
         topicId: String
     ) {
+        // A refusal ends the stream with an error. Without this handler the
+        // error was dropped, and a refused listen printed nothing. CHAT-lfaajjcj.
         val d = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
             .doOnNext { message ->
                 println("Message: ${message.key.from} : ${message.data}\n")
             }
+            .doOnError { error ->
+                ShellStateConfiguration.listeners.remove(topicId)
+                println("Listen on topic $topicId ended: ${error.message}\n")
+            }
+            .onErrorComplete()
             .subscribe()
 
         ShellStateConfiguration.listeners[topicId] = d

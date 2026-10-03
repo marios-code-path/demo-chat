@@ -136,7 +136,8 @@ open class TopicServiceImpl<T : Any, V, Q>(
     // The member resolves in USER before the room, so a membership never stores an unknown user. D7.
     // The Anon key cannot join, so the refusal comes before every write. The
     // join check alone allows it, because a key holds every right over
-    // itself. The SEND grant is the last step. See CHAT-mfveaecc.
+    // itself. The membership grant is the last step. See CHAT-mfveaecc and
+    // CHAT-lfaajjcj.
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
         verifier.resolve(req.uid, ChatDomain.USER)
             .flatMap { member ->
@@ -150,7 +151,7 @@ open class TopicServiceImpl<T : Any, V, Q>(
                     .flatMap { room ->
                         addMembership(req)
                             .then(pubsub.subscribe(req.uid, req.roomId))
-                            .then(memberGrant(member.key, room.key) { grant -> grant.grantSend(member.key, room.key) })
+                            .then(memberGrant(member.key, room.key) { grant -> grant.grantMembership(member.key, room.key) })
                     }
             }
 
@@ -175,7 +176,8 @@ open class TopicServiceImpl<T : Any, V, Q>(
             }
 
     // Both ids resolve before the index read and the pub/sub calls. D7.
-    // The SEND expiry is the last step. See CHAT-mfveaecc.
+    // The membership expiry is the last step. See CHAT-mfveaecc and
+    // CHAT-lfaajjcj.
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
         verifier.resolve(req.uid, ChatDomain.USER)
             .flatMap { member ->
@@ -197,13 +199,13 @@ open class TopicServiceImpl<T : Any, V, Q>(
                                         )
                                     }
                                     .then(pubsub.unSubscribe(req.uid, req.roomId))
-                                    .then(memberGrant(member.key, room.key) { grant -> grant.expireSend(member.key, room.key) })
+                                    .then(memberGrant(member.key, room.key) { grant -> grant.expireMembership(member.key, room.key) })
                             }
                     }
             }
 
     /**
-     * One write of the member `SEND` row.
+     * One write of the membership rows, `SEND` and `SUBSCRIBE`.
      *
      * **An absent port writes nothing and raises no error**, as for the owner
      * grant. **A failed write names the member and the room**, and the

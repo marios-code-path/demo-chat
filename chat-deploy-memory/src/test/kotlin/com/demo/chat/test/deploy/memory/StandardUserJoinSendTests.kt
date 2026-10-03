@@ -4,6 +4,7 @@ import com.demo.chat.ChatApp
 import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.MembershipRequest
@@ -124,6 +125,55 @@ class StandardUserJoinSendTests {
             .describedAs("a send by a user that never joined")
             .isEqualTo(Outcome.Refused)
     }
+
+    /**
+     * **Join opens the listen, and leave closes it again.** The listen route
+     * checks `SUBSCRIBE` on the room. A join grants it beside `SEND`, and a
+     * leave expires both. See `CHAT-lfaajjcj`.
+     *
+     * The joined listen proves delivery, and not only the check. It receives
+     * the message that the member sends after it subscribes.
+     */
+    @Test
+    fun `a standard user listens only while it is a member of the room`() {
+        val room = composite.topicService().addRoom(ByStringRequest("standardlistenroom")).block(timeout)!!
+        val member = standardUser("standardlistener", "standardlistenersecret")
+        val requester = connect("standardlistener", "standardlistenersecret")
+
+        assertThat(listenRefused(requester, room)).describedAs("a listen before the join").isTrue()
+
+        requester.route("topic.topic-join").data(MembershipRequest(member.id, room.id))
+            .retrieveMono(Void::class.java).block(timeout)
+
+        val heard = requester.route("message.message-listen-topic").data(ByIdRequest(room.id))
+            .retrieveFlux(Map::class.java)
+            .filter { it.toString().contains("heard while a member") }
+            .next()
+            .toFuture()
+        assertThat(send(requester, member, room, "heard while a member"))
+            .describedAs("a send after the join")
+            .isInstanceOf(Outcome.Sent::class.java)
+        assertThat(heard.get(timeout.seconds, java.util.concurrent.TimeUnit.SECONDS))
+            .describedAs("the message the listen received")
+            .isNotNull
+
+        requester.route("topic.topic-leave").data(MembershipRequest(member.id, room.id))
+            .retrieveMono(Void::class.java).block(timeout)
+
+        assertThat(listenRefused(requester, room)).describedAs("a listen after the leave").isTrue()
+    }
+
+    /** A refused listen ends with an error that reads `Access Denied`. Any other error fails the test. */
+    private fun listenRefused(requester: RSocketRequester, room: Key<Long>): Boolean =
+        requester.route("message.message-listen-topic").data(ByIdRequest(room.id))
+            .retrieveFlux(Map::class.java)
+            .take(Duration.ofSeconds(2))
+            .then(Mono.just(false))
+            .onErrorResume { error ->
+                assertThat(error.message).describedAs("the refusal message").contains("Access Denied")
+                Mono.just(true)
+            }
+            .block(timeout)!!
 
     private sealed interface Outcome {
         data class Sent(val key: Key<Long>) : Outcome

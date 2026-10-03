@@ -21,15 +21,17 @@ import org.springframework.test.context.TestPropertySource
 import java.time.Duration
 
 /**
- * The member `SEND` grant as a deployed composition wires it.
+ * The membership grant, `SEND` and `SUBSCRIBE`, as a deployed composition
+ * wires it.
  *
  * **This test measures the wiring, and not the writer.**
- * `MembershipSendGrantTests` proves the writer, and
+ * `MembershipGrantTests` proves the writer, and
  * `TopicServiceMemberGrantTests` proves the composite with the port injected.
  * This class proves that an auth-enabled composition discovers
  * `RoomMemberGrantConfiguration` and passes the port to `TopicServiceImpl`. It
  * also proves the change of one row through the Lucene auth index, which
- * removes and then writes with the same key. See `CHAT-mfveaecc`.
+ * removes and then writes with the same key. See `CHAT-mfveaecc` and
+ * `CHAT-lfaajjcj`.
  *
  * The memory deployment claims no node id. See docs/NODEID-CLAIM.md.
  */
@@ -64,30 +66,42 @@ class RoomMemberGrantWiringTests {
     private val timeout = Duration.ofSeconds(10)
 
     @Test
-    fun `a join grants SEND, a leave expires it, and a second join grants it again`() {
+    fun `a join grants SEND and SUBSCRIBE, a leave expires both, and a second join grants both again`() {
         val member = newUser("wiringmember")
         val room = composite.topicService().addRoom(ByStringRequest("wiringmemberroom")).block(timeout)!!
         val request = MembershipRequest(member.key.id, room.id)
-        assertThat(canSend(member.key, room)).describedAs("before the join").isFalse()
+        for (permission in PERMISSIONS) {
+            assertThat(can(member.key, room, permission)).describedAs("$permission before the join").isFalse()
+        }
 
         composite.topicService().joinRoom(request).block(timeout)
 
-        val joined = sendRows(member.key, room)
-        assertThat(joined).describedAs("the rows after the join").hasSize(1)
-        assertThat(joined.single().expires).describedAs("the expiry after the join").isEqualTo(0L)
-        assertThat(canSend(member.key, room)).describedAs("after the join").isTrue()
+        val joined = membershipRows(member.key, room)
+        assertThat(joined.map { it.permission }).describedAs("the rows after the join")
+            .containsExactlyInAnyOrderElementsOf(PERMISSIONS)
+        assertThat(joined.map { it.expires }).describedAs("the expiries after the join").containsOnly(0L)
+        for (permission in PERMISSIONS) {
+            assertThat(can(member.key, room, permission)).describedAs("$permission after the join").isTrue()
+        }
 
         composite.topicService().leaveRoom(request).block(timeout)
 
-        val left = sendRows(member.key, room)
-        assertThat(left.map { it.key }).describedAs("the grant key").isEqualTo(joined.map { it.key })
-        assertThat(left.single().expires).describedAs("the expiry after the leave").isGreaterThan(0L)
-        assertThat(canSend(member.key, room)).describedAs("after the leave").isFalse()
+        val left = membershipRows(member.key, room)
+        assertThat(left.map { it.key }.toSet()).describedAs("the grant keys").isEqualTo(joined.map { it.key }.toSet())
+        assertThat(left).describedAs("the expiries after the leave").allSatisfy { row ->
+            assertThat(row.expires).isGreaterThan(0L)
+        }
+        for (permission in PERMISSIONS) {
+            assertThat(can(member.key, room, permission)).describedAs("$permission after the leave").isFalse()
+        }
 
         composite.topicService().joinRoom(request).block(timeout)
 
-        assertThat(sendRows(member.key, room).map { it.expires }).describedAs("after the second join").containsExactly(0L)
-        assertThat(canSend(member.key, room)).describedAs("after the second join").isTrue()
+        assertThat(membershipRows(member.key, room).map { it.expires }).describedAs("after the second join")
+            .containsExactly(0L, 0L)
+        for (permission in PERMISSIONS) {
+            assertThat(can(member.key, room, permission)).describedAs("$permission after the second join").isTrue()
+        }
     }
 
     /**
@@ -112,19 +126,24 @@ class RoomMemberGrantWiringTests {
             .isEmpty()
     }
 
-    private fun sendRows(member: Key<Long>, room: Key<Long>): List<AuthMetadata<Long>> =
+    private fun membershipRows(member: Key<Long>, room: Key<Long>): List<AuthMetadata<Long>> =
         stores.authMetaPersistence().all().collectList().block(timeout)!!
-            .filter { it.principal == member && it.target == room && it.permission == "SEND" }
+            .filter { it.principal == member && it.target == room && it.permission in PERMISSIONS }
 
     /**
      * The summarized read that the access broker uses. It answers one row per
      * permission, so the shipped `GET` and `NEW` rows on the `MessageTopic`
-     * root are in it too. Only a `SEND` row answers the question.
+     * root are in it too. Only a row that names [permission] answers the
+     * question.
      */
-    private fun canSend(member: Key<Long>, room: Key<Long>): Boolean =
-        grants.getAuthorizationsAgainst(member, room, "SEND")
-            .any { it.permission == "SEND" }
+    private fun can(member: Key<Long>, room: Key<Long>, permission: String): Boolean =
+        grants.getAuthorizationsAgainst(member, room, permission)
+            .any { it.permission == permission }
             .block(timeout)!!
+
+    private companion object {
+        val PERMISSIONS = listOf("SEND", "SUBSCRIBE")
+    }
 
     /** The handle index tokenizes on a hyphen, so each handle is one token. */
     private fun newUser(handle: String): User<Long> {

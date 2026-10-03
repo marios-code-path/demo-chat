@@ -31,7 +31,7 @@ import java.util.function.Function
 import java.util.function.Supplier
 
 /**
- * The join and leave paths and the member `SEND` grant.
+ * The join and leave paths and the membership grant, `SEND` and `SUBSCRIBE`.
  *
  * **The grant write is the last step of each path.** No step compensates
  * another, so a failed grant leaves the membership change in place. See
@@ -40,18 +40,18 @@ import java.util.function.Supplier
 class TopicServiceMemberGrantTests {
 
     @Test
-    fun `a join grants SEND to the member on the room, after the subscribe`() {
+    fun `a join grants the membership rows to the member on the room, after the subscribe`() {
         val fixture = Fixture()
         val service = fixture.service(RecordingGrant(fixture.calls))
 
         service.joinRoom(MembershipRequest(MEMBER.id, ROOM.id)).block()
 
-        assertThat(fixture.calls).containsExactly("subscribe", "grantSend $MEMBER_TEXT $ROOM_TEXT")
+        assertThat(fixture.calls).containsExactly("subscribe", "grantMembership $MEMBER_TEXT $ROOM_TEXT")
         assertThat(fixture.members).describedAs("the stored membership").hasSize(1)
     }
 
     @Test
-    fun `a leave expires SEND for the member on the room, after the unsubscribe`() {
+    fun `a leave expires the membership rows for the member on the room, after the unsubscribe`() {
         val fixture = Fixture()
         val service = fixture.service(RecordingGrant(fixture.calls))
         service.joinRoom(MembershipRequest(MEMBER.id, ROOM.id)).block()
@@ -59,7 +59,7 @@ class TopicServiceMemberGrantTests {
 
         service.leaveRoom(MembershipRequest(MEMBER.id, ROOM.id)).block()
 
-        assertThat(fixture.calls).containsExactly("unSubscribe", "expireSend $MEMBER_TEXT $ROOM_TEXT")
+        assertThat(fixture.calls).containsExactly("unSubscribe", "expireMembership $MEMBER_TEXT $ROOM_TEXT")
         assertThat(fixture.members).describedAs("the stored membership").isEmpty()
     }
 
@@ -131,9 +131,9 @@ class TopicServiceMemberGrantTests {
         private val failure: Throwable? = null,
     ) : RoomMemberGrant<Long> {
 
-        override fun grantSend(member: Key<Long>, room: Key<Long>): Mono<Void> = record("grantSend", member, room)
+        override fun grantMembership(member: Key<Long>, room: Key<Long>): Mono<Void> = record("grantMembership", member, room)
 
-        override fun expireSend(member: Key<Long>, room: Key<Long>): Mono<Void> = record("expireSend", member, room)
+        override fun expireMembership(member: Key<Long>, room: Key<Long>): Mono<Void> = record("expireMembership", member, room)
 
         private fun record(name: String, member: Key<Long>, room: Key<Long>): Mono<Void> = Mono.defer {
             calls.add("$name ${text(member)} ${text(room)}")
