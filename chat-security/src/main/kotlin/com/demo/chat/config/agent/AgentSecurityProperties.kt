@@ -43,6 +43,9 @@ class AgentSecurityProperties {
         /** The scope that every enforced request must carry. This deployment selects `chat.mcp`. */
         lateinit var requiredScope: String
 
+        /** The authority that the required scope gives. REST and the core both require it. */
+        fun requiredAuthority(): String = authorityFor(requiredScope)
+
         fun validate() {
             if (!::clientId.isInitialized || clientId.isBlank()) {
                 throw ChatException("app.security.agent.client-id is required.")
@@ -66,5 +69,12 @@ class AgentSecurityProperties {
                 throw ChatException("app.security.jwt.jwk-path is required.")
             }
         }
+    }
+
+    companion object {
+        /** The prefix that Spring Security gives a scope authority. */
+        const val SCOPE_PREFIX = "SCOPE_"
+
+        fun authorityFor(scope: String): String = "$SCOPE_PREFIX$scope"
     }
 }

@@ -73,6 +73,10 @@ bearer metadata.
 `RSocketAuthenticationManager` will route simple credentials to the existing
 password manager and bearer credentials to the shared JWT manager.
 
+`RequiredScopeAuthenticationManager` wraps the core JWT manager. It requires
+the configured scope authority. A token without that scope gets an
+authorization refusal, as it gets 403 at REST.
+
 When bearer validation is not configured, `BearerAuthenticationNotConfiguredManager`
 will reject the bearer token with an authentication exception.
 

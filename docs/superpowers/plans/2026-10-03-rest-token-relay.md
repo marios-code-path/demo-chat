@@ -174,3 +174,11 @@ The full reactor ran again after these final repairs. `build-health.sh --ci` rep
 It reports 0 failures, 0 errors, 66 skipped tests, and no drift.
 The shell reports 77 tests and 27 skipped tests.
 That run rebuilt the shell image as `sha256:34dded7aba26cd2a5dc711e08784380bdef5f6a6e76c6679acbd73f4e9303e47`.
+
+## Repair: core scope check
+
+- [x] Add a wrong-scope refusal on `topic.topic-add` and a valid-token control.
+- [x] Measure the refusal test as failing before the repair. The token created a room.
+- [x] Wrap the core JWT manager with `RequiredScopeAuthenticationManager`.
+- [x] Share the scope authority rule through `AgentSecurityProperties.Agent.requiredAuthority`.
+- [x] Run `build-health.sh --ci`. It reports 1903 tests, 0 failures, 0 errors, 66 skipped, and no drift.

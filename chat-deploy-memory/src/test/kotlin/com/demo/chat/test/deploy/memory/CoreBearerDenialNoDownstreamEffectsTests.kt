@@ -1,6 +1,7 @@
 package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.config.controller.core.PersistenceControllersConfiguration.AuthMetaPersistenceController
 import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.service.security.AuthMetaIndex
@@ -121,7 +122,62 @@ class CoreBearerDenialNoDownstreamEffectsTests {
         }
     }
 
+    /**
+     * The control for the scope refusal. A valid agent token reaches the
+     * composite route, so a refusal there comes from the scope alone.
+     */
+    @Test
+    fun `an agent bearer with the required scope adds a room`() {
+        val requester = bearerRequester()
+        try {
+            StepVerifier.create(
+                requester.route("topic.topic-add")
+                    .metadata(
+                        BearerTokenMetadata(CoreBearerTestToken.mint(signingKeyPath, "valid")),
+                        BEARER_MIME_TYPE,
+                    )
+                    .data(ByStringRequest("scopecontrol"))
+                    .retrieveMono(Map::class.java)
+            ).expectNextCount(1).verifyComplete()
+        } finally {
+            requester.dispose()
+        }
+    }
+
+    @Test
+    fun `an agent bearer without the required scope is refused before the composite service runs`() {
+        val requester = bearerRequester()
+        try {
+            StepVerifier.create(
+                requester.route("topic.topic-add")
+                    .metadata(
+                        BearerTokenMetadata(CoreBearerTestToken.mint(signingKeyPath, "wrong-scope")),
+                        BEARER_MIME_TYPE,
+                    )
+                    .data(ByStringRequest("scoperefused"))
+                    .retrieveMono(Map::class.java)
+            ).expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(ApplicationErrorException::class.java)
+                val payload = JsonMapper.builder().build().readTree(error.message)
+                assertThat(payload.get("version").asInt()).isEqualTo(1)
+                assertThat(payload.get("kind").asString()).isEqualTo(RSocketSecurityErrorKind.AUTHORIZATION.name)
+            }.verify(timeout)
+
+            verifyNoInteractions(persistence, index, secrets, pubsub)
+        } finally {
+            requester.dispose()
+        }
+    }
+
+    private fun bearerRequester(): RSocketRequester = RSocketRequester.builder()
+        .rsocketStrategies(
+            strategies.mutate().encoders { it.add(0, BearerTokenAuthenticationEncoder()) }.build()
+        )
+        .connectTcp("localhost", port)
+        .block(timeout)!!
+
     companion object {
+        private val BEARER_MIME_TYPE = MimeTypeUtils.parseMimeType("message/x.rsocket.authentication.v0")
         private val signingKeyPath = CoreBearerTestToken.createKey()
 
         @JvmStatic
@@ -151,7 +207,7 @@ private object CoreBearerTestToken {
             .issuer("https://authserv")
             .subject("client-under-test")
             .claim("client_id", if (refusal == "wrong-client") "another-client" else "client-under-test")
-            .claim("scope", "chat.mcp")
+            .claim("scope", if (refusal == "wrong-scope") "openid" else "chat.mcp")
             .issueTime(java.util.Date(System.currentTimeMillis() - 120_000))
             .expirationTime(java.util.Date(System.currentTimeMillis() + if (refusal == "expired") -60_000 else 60_000))
             .build()

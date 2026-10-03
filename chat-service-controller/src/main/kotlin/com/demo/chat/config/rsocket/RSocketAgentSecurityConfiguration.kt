@@ -10,6 +10,7 @@ import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.authentication.ReactiveAuthenticationManager
@@ -65,14 +66,38 @@ class RSocketAgentSecurityConfiguration<T> {
             val jwtDecoder = decoder.getIfAvailable {
                 throw IllegalStateException("The configured agent bearer path has no JWT decoder.")
             }
-            JwtReactiveAuthenticationManager(jwtDecoder).apply {
-                setJwtAuthenticationConverter(
-                    AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
-                )
-            }
+            val agent = properties.requireComplete().agent
+            RequiredScopeAuthenticationManager(
+                JwtReactiveAuthenticationManager(jwtDecoder).apply {
+                    setJwtAuthenticationConverter(AgentAuthenticationConverter(identity, agent.clientId))
+                },
+                agent.requiredAuthority(),
+            )
         }
         return RSocketAuthenticationManager(simple, bearer)
     }
+}
+
+/**
+ * Requires the configured scope on an authenticated agent token.
+ *
+ * The REST chain requires the same authority through `hasAuthority`. A token
+ * with no such scope is an authorization refusal on both paths. REST answers
+ * 403, and the core answers the AUTHORIZATION envelope. See CHAT-mpjtnpqv.
+ */
+class RequiredScopeAuthenticationManager(
+    private val delegate: ReactiveAuthenticationManager,
+    private val requiredAuthority: String,
+) : ReactiveAuthenticationManager {
+
+    override fun authenticate(authentication: Authentication): Mono<Authentication> =
+        delegate.authenticate(authentication).flatMap { authenticated ->
+            if (authenticated.authorities.any { it.authority == requiredAuthority }) {
+                Mono.just(authenticated)
+            } else {
+                Mono.error(AccessDeniedException("The token does not carry the required scope."))
+            }
+        }
 }
 
 class RSocketAuthenticationManager(

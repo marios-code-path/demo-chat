@@ -3898,3 +3898,27 @@ The full reactor ran again after these final repairs. `build-health.sh --ci` rep
 It reports 0 failures, 0 errors, 66 skipped tests, and no drift.
 The shell reports 77 tests and 27 skipped tests.
 That run rebuilt the shell image as `sha256:34dded7aba26cd2a5dc711e08784380bdef5f6a6e76c6679acbd73f4e9303e47`.
+
+### The core scope check
+
+The flow and state diagrams in `docs/REST-TOKEN-RELAY.md` were read from the
+code. They showed that the core bearer path did not check the required scope.
+
+A test measured the gap first. A token from the agent client with the
+`openid` scope alone created a room on `topic.topic-add` at the core. REST
+refused the same token with 403.
+
+`RequiredScopeAuthenticationManager` now wraps the core JWT manager. A token
+without the required scope gets the AUTHORIZATION envelope. Both paths read
+the authority from `AgentSecurityProperties.Agent.requiredAuthority`.
+
+`CoreBearerDenialNoDownstreamEffectsTests` holds the refusal and a control.
+In the control, a valid agent token adds a room on the same route.
+
+`build-health.sh --ci` then reported 1903 tests in 30 modules, with 0 failures,
+0 errors, 66 skipped, and no drift. The shell reported 77 tests and 27 skipped.
+The run rebuilt the shell image as `sha256:81a39e5f`.
+
+**One gap stays open, and it is read from source alone.** A `@PreAuthorize`
+denial happens in the handler, after the interceptor chain. So it reaches REST
+without the typed envelope. The REST status for that case is not measured.

@@ -1,14 +1,15 @@
 # REST token relay
 
-These diagrams describe `CHAT-mpjtnpqv` as the code implements it at
-`e036cf67`. They were read from source. They were not drawn from the spec.
+These diagrams describe `CHAT-mpjtnpqv` as the code implements it. They were
+read from source at `e036cf67` and updated for the core scope check. They were
+not drawn from the spec.
 
 The sources are the
 [design specification](superpowers/specs/2026-10-03-rest-token-relay-design.md)
 and the [implementation plan](superpowers/plans/2026-10-03-rest-token-relay.md).
 
-Two gaps are marked **GAP** in the diagrams. Each one is read from source and
-is not measured. See [Known gaps](#known-gaps).
+One gap is marked **GAP 2** in the diagrams. It is read from source and is not
+measured. GAP 1 is closed. See [Known gaps](#known-gaps).
 
 ## Components on the main path
 
@@ -82,7 +83,7 @@ sequenceDiagram
     AU->>AU: RSocketAuthenticationManager routes the bearer token
     AU->>AU: JWT manager: ES256 signature, expiry
     AU->>AU: AgentAuthenticationConverter: client_id
-    Note over AU: GAP 1: no scope check here
+    AU->>AU: RequiredScopeAuthenticationManager: SCOPE_ + required-scope
     AU->>AN: Authentication present, so anonymous is skipped
     AN->>AZ: Composite route is permitAll
     AZ-->>MS: Request proceeds with the Agent context
@@ -109,6 +110,7 @@ decoder does not read message text.
 flowchart TD
     E1["AuthenticationException<br/>in the chain"] --> EI
     E2["AccessDeniedException<br/>from authorizePayload"] --> EI
+    E3["AccessDeniedException<br/>required scope absent"] --> EI
     EI["RSocketSecurityErrorPayloadInterceptor"]
     EI -->|"ApplicationErrorException<br/>{version:1, kind:AUTHENTICATION}"| D
     EI -->|"ApplicationErrorException<br/>{version:1, kind:AUTHORIZATION}"| D
@@ -120,7 +122,9 @@ flowchart TD
     H["AccessDeniedException<br/>from @PreAuthorize<br/>in the handler"] -->|"GAP 2: outside<br/>the interceptor chain"| RAW
 ```
 
-`authorizePayload` raises an authorization refusal only for the core routes:
+Two sources raise an authorization refusal inside the chain. The first is a
+bearer token without the required scope. The second is `authorizePayload`,
+for the core routes:
 `persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, and
 `key.rem`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
 holds `ROLE_AGENT`, so the core refuses these routes to the agent.
@@ -170,17 +174,15 @@ stateDiagram-v2
     Decode --> RefusedAuthn: bad signature or expired
     Decode --> ClientCheck: valid ES256 token
     ClientCheck --> RefusedAuthn: client_id differs
-    ClientCheck --> AgentAuthenticated: client_id matches
-    note right of ClientCheck
-        GAP 1: the core does not check
-        the required scope here
-    end note
+    ClientCheck --> ScopeCheck: client_id matches
+    ScopeCheck --> ScopeRefused: required scope absent
+    ScopeCheck --> AgentAuthenticated: required scope present
 
     Authenticated --> RouteRules
     AgentAuthenticated --> RouteRules
     Anonymous --> RouteRules
 
-    RouteRules --> RefusedAuthz: core route without SERVICE or ADMIN
+    RouteRules --> RefusedAuthz: core route, no SERVICE or ADMIN role
     RouteRules --> Handler: composite route, permitAll
     Handler --> MethodCheck: ContextIdentity reads the key
     MethodCheck --> Served: @PreAuthorize allows
@@ -188,6 +190,7 @@ stateDiagram-v2
 
     RefusedAuthn --> [*]: AUTHENTICATION envelope
     RefusedAuthz --> [*]: AUTHORIZATION envelope
+    ScopeRefused --> [*]: AUTHORIZATION envelope
     Served --> [*]
     Denied --> [*]: plain Access Denied (GAP 2)
 ```
@@ -196,7 +199,9 @@ stateDiagram-v2
 `CoreBearerWithoutJwkTests` covers the refusal with no JWK.
 `CoreBearerDenialNoDownstreamEffectsTests` covers the expired and
 wrong-client refusals. It checks that the controller, persistence, index,
-secrets, and pubsub receive no call.
+secrets, and pubsub receive no call. It also covers the wrong-scope refusal on
+the composite `topic.topic-add` route, beside a control where a valid agent
+token adds a room on that route.
 
 ## Core: startup states
 
@@ -242,23 +247,22 @@ the servers start.
 
 ## Known gaps
 
-Both gaps are read from source at `e036cf67`. Neither is measured.
+### GAP 1, closed: the core did not check the required scope
 
-### GAP 1: the core does not check the required scope
+At `e036cf67` the core bearer path checked the signature, the expiry, and
+`client_id` alone. The REST chain required the scope, and the core did not.
 
-The REST chain requires `SCOPE_<required-scope>` through
-`AgentResourceServerChain`. The core bearer path does not. It checks the
-signature, the expiry, and `client_id` alone.
+A test measured the gap before the repair. A token from the agent client with
+the `openid` scope alone created a room on `topic.topic-add`.
 
-So a token from the agent client with no `chat.mcp` scope gets 403 at REST.
-The same token sent directly to the core authenticates as the agent. The
-2026-09-30 acceptance run measured that the authorization server issues such
-a token.
-
-The issue scope requires the scope check at the core boundary.
-`CoreBearerDenialNoDownstreamEffectsTests` has no wrong-scope case.
+`RequiredScopeAuthenticationManager` now wraps the core JWT manager. A token
+without the required scope fails with `AccessDeniedException`, so the core
+answers the AUTHORIZATION envelope. REST answers 403 for the same token. Both
+paths read the authority from `AgentSecurityProperties.Agent.requiredAuthority`.
 
 ### GAP 2: a method security denial is not typed
+
+This gap is read from source. It is not measured.
 
 The typed envelope covers refusals inside the interceptor chain only. A
 `@PreAuthorize` denial happens in the handler, after the chain completes. So
