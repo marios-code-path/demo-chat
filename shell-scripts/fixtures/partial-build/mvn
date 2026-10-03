@@ -1,0 +1,5 @@
+#!/bin/bash
+# Record the process boundary without starting Maven.
+printf 'directory: %s\n' "$PWD"
+printf 'argument: %s\n' "$@"
+exit "${PARTIAL_TEST_EXIT:-0}"

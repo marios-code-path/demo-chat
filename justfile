@@ -40,6 +40,18 @@ ci-local:
 ci-integration-local:
 	mvn -B clean verify -Ptest-build,integration
 
+# Build selected modules with the manual CI script.
+build-partial $modules $mode="unit":
+	./shell-scripts/build-partial.sh --modules "$modules" --mode "$mode"
+
+# Print the partial build command without starting Maven.
+dry-run-partial $modules $mode="unit":
+	./shell-scripts/build-partial.sh --modules "$modules" --mode "$mode" --dry-run
+
+# Check partial build inputs and Maven execution without a build.
+check-partial:
+	./shell-scripts/test-build-partial.sh
+
 # Start the core service with memory storage.
 launch-memory node_id="0":
 	./shell-scripts/chat-build core --memory --run --notls --node-id {{node_id}} --init users,rootkeys
