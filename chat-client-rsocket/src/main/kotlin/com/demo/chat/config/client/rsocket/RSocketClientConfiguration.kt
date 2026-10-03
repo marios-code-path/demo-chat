@@ -3,6 +3,7 @@ package com.demo.chat.config.client.rsocket
 import com.demo.chat.client.rsocket.RSocketRequesterFactory
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.client.rsocket.RequesterFactory
+import com.demo.chat.client.rsocket.EmptyRequestMetadata
 import com.demo.chat.client.rsocket.clients.CompositeRSocketClients
 import com.demo.chat.client.rsocket.clients.CoreRSocketClients
 import com.demo.chat.client.rsocket.transport.RSocketClientTransportFactory
@@ -17,8 +18,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
 import org.springframework.messaging.rsocket.RSocketRequester
 import org.springframework.messaging.rsocket.RSocketStrategies
+import com.demo.chat.client.rsocket.RSocketAuthenticationEncoder
 import java.util.function.Supplier
 
 @Configuration
@@ -26,12 +29,23 @@ import java.util.function.Supplier
 class RSocketClientConfiguration {
 
     @Bean
+    fun agentBearerMetadataStrategiesCustomizer(): RSocketStrategiesCustomizer =
+        RSocketStrategiesCustomizer { strategies ->
+            strategies.encoders { encoders -> encoders.add(0, RSocketAuthenticationEncoder()) }
+        }
+
+    @Bean
     fun requesterFactory(
         builder: RSocketRequester.Builder,
         connection: RSocketClientTransportFactory,
         discovery: ClientDiscovery,
         @Autowired(required = false) simpleRequestMetadataProvider: Supplier<RequestMetadata>?,
-    ): RequesterFactory = RSocketRequesterFactory(discovery, builder, connection, simpleRequestMetadataProvider ?: Supplier { Any() })
+    ): RequesterFactory = RSocketRequesterFactory(
+        discovery,
+        builder,
+        connection,
+        simpleRequestMetadataProvider ?: Supplier { EmptyRequestMetadata },
+    )
 
     @Bean
     @ConditionalOnMissingBean

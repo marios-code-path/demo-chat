@@ -46,7 +46,7 @@ class PubSubCommandsRegistrar<T>(private val commands: PubSubCommands<T>) {
             .options(
                 CommandOption.with().longName("topicId").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.listen(ctx.optionValue("topicId")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.listen(ctx.optionValue("topicId")).let { "Listening to topic ${ctx.optionValue("topicId")}. Run hangup --topicId ${ctx.optionValue("topicId")} to stop." } })
 
     @Bean
     fun hangupCommand(): Command = Command.builder()
@@ -56,6 +56,6 @@ class PubSubCommandsRegistrar<T>(private val commands: PubSubCommands<T>) {
             .options(
                 CommandOption.with().longName("topicId").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.hangup(ctx.optionValue("topicId")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.hangup(ctx.optionValue("topicId")).let { "Stopped listening to topic ${ctx.optionValue("topicId")}" } })
 
 }

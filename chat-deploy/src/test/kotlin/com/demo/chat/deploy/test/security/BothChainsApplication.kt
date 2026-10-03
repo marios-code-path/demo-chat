@@ -11,6 +11,7 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.User
 import com.demo.chat.security.ChatUserDetails
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
@@ -36,7 +37,10 @@ import reactor.core.publisher.Mono
  * The class sits in its own package, so its component scan reaches these test
  * classes alone.
  */
-@SpringBootApplication(proxyBeanMethods = false)
+@SpringBootApplication(
+    proxyBeanMethods = false,
+    exclude = [RSocketSecurityAutoConfiguration::class],
+)
 @Import(ActuatorWebSecurityConfiguration::class, ApplicationChainConfiguration::class)
 class BothChainsApplication {
 
@@ -90,14 +94,14 @@ class ApplicationChainConfiguration {
 
     @Bean
     fun reactiveJwtDecoder(properties: AgentSecurityProperties): ReactiveJwtDecoder =
-        AgentJwtDecoderFactory.fromJwkFile(properties.jwt.jwkPath)
+        AgentJwtDecoderFactory.fromJwkFile(properties.requireComplete().jwt.jwkPath)
 
     @Bean
     fun agentAuthenticationConverter(
         identity: AgentIdentity,
         properties: AgentSecurityProperties,
     ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
-        AgentAuthenticationConverter(identity, properties.agent.clientId)
+        AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
 
     @Bean
     fun agentResourceServerChain(

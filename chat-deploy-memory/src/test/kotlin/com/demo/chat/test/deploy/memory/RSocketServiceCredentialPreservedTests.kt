@@ -71,7 +71,7 @@ private const val AGENT_SECRET = "credentialseamsecret"
         "app.service.core.key=memory", "app.service.core.pubsub=memory",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
         "app.service.core.secrets=memory",
-        "app.service.composite", "app.service.composite.auth",
+        "app.service.composite", "app.service.composite.auth=true",
         "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic",
         "app.controller.pubsub",
@@ -80,7 +80,7 @@ private const val AGENT_SECRET = "credentialseamsecret"
     ]
 )
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class RSocketCredentialSeamTests {
+class RSocketServiceCredentialPreservedTests {
 
     @Autowired lateinit var builder: RSocketRequester.Builder
     @Autowired lateinit var stores: PersistenceServiceBeans<Long, String>
@@ -104,9 +104,8 @@ class RSocketCredentialSeamTests {
      * that uses it. A client that only awaits its connect call reads a refused
      * setup as a success.
      *
-     * The message text belongs to
-     * `AbstractUserDetailsReactiveAuthenticationManager`, which is the manager
-     * Spring Security builds here.
+     * The typed authentication envelope belongs to the core RSocket security
+     * boundary. The client must not depend on an exception message.
      *
      * This test is one of the two that fail when `simpleAuthentication` leaves
      * the security builder.
@@ -123,7 +122,7 @@ class RSocketCredentialSeamTests {
             assertThat(error)
                 .describedAs("the refusal of a wrong credential")
                 .isInstanceOf(RejectedSetupException::class.java)
-                .hasMessageContaining("Invalid Credentials")
+                .hasMessage("Invalid Credentials")
         }.verify(timeout)
     }
 

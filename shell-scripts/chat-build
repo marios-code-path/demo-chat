@@ -320,7 +320,7 @@ CORE_SERVICE_FLAGS = [
     "-Dapp.service.core.persistence=memory",
     "-Dapp.service.core.secrets=memory",
     "-Dapp.service.composite",
-    "-Dapp.service.composite.auth",
+    "-Dapp.service.composite.auth=true",
     "-Dapp.core.controllers=persistence,index,key,pubsub,secrets,user,topic,message",
     "-Dapp.controller.persistence",
     "-Dapp.controller.index",
@@ -433,7 +433,7 @@ SERVICES: dict[str, Service] = {
             "-Dapp.oauth2.entrypoint-path=localhost:9090",
             "-Dapp.client.rsocket.core.secrets",
             "-Dapp.client.rsocket.composite.user",
-            "-Dapp.service.composite.auth",
+            "-Dapp.service.composite.auth=true",
             # The core routes require ROLE_SERVICE. The password comes from
             # CHAT_SERVICE_PASSWORD at runtime, so no command line holds it.
             # See CHAT-rdlghoqe.
@@ -480,7 +480,7 @@ SERVICES: dict[str, Service] = {
         ],
         service_flags=[
             "-Dapp.service.core.key=memory",
-            "-Dapp.service.composite.auth",
+            "-Dapp.service.composite.auth=true",
         ],
         opt_flags=[
             "-Dspring.shell.interactive.enabled=true",
@@ -1063,8 +1063,8 @@ def main() -> int:
                 return 1
 
     if args.agent_client_id:
-        if args.service != "rest":
-            print("chat-build: agent authentication flags require the rest service",
+        if args.service not in ("rest", "core"):
+            print("chat-build: agent authentication flags require the rest or core service",
                   file=sys.stderr)
             return 1
         if not args.jwk:

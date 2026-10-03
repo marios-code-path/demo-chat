@@ -2,7 +2,6 @@ package com.demo.chat.config.agent
 
 import com.demo.chat.domain.ChatException
 import org.springframework.boot.context.properties.ConfigurationProperties
-import jakarta.annotation.PostConstruct
 
 /**
  * The agent identity of this deployment. See `CHAT-pgpmsgvr`.
@@ -10,26 +9,30 @@ import jakarta.annotation.PostConstruct
  * **No value here has a default.** A default would make every deployment the
  * same agent in silence. That is the `app.nodeid` lesson.
  *
- * A field is a non-null [String] with no default, so Spring refuses to bind a
- * context that does not carry the value. The bind failure names the property.
+ * The core may omit this configuration. A REST application calls
+ * [requireComplete] before it creates its resource server.
  */
 @ConfigurationProperties("app.security")
 class AgentSecurityProperties {
 
-    lateinit var agent: Agent
-    lateinit var jwt: Jwt
+    var agent: Agent? = null
+    var jwt: Jwt? = null
 
-    @PostConstruct
-    fun validate() {
-        if (!::agent.isInitialized) {
-            throw ChatException("app.security.agent is required.")
-        }
-        agent.validate()
-        if (!::jwt.isInitialized) {
-            throw ChatException("app.security.jwt.jwk-path is required.")
-        }
-        jwt.validate()
+    fun isConfigured(): Boolean = agent != null || jwt != null
+
+    fun requireComplete(): Complete {
+        val configuredAgent = agent ?: throw ChatException(
+            "app.security.agent.client-id is required."
+        )
+        configuredAgent.validate()
+        val configuredJwt = jwt ?: throw ChatException(
+            "app.security.jwt.jwk-path is required."
+        )
+        configuredJwt.validate()
+        return Complete(configuredAgent, configuredJwt)
     }
+
+    data class Complete(val agent: Agent, val jwt: Jwt)
 
     /** The OAuth client and the chat user that name the agent. */
     class Agent {
@@ -39,6 +42,9 @@ class AgentSecurityProperties {
         lateinit var username: String
         /** The scope that every enforced request must carry. This deployment selects `chat.mcp`. */
         lateinit var requiredScope: String
+
+        /** The authority that the required scope gives. REST and the core both require it. */
+        fun requiredAuthority(): String = authorityFor(requiredScope)
 
         fun validate() {
             if (!::clientId.isInitialized || clientId.isBlank()) {
@@ -63,5 +69,12 @@ class AgentSecurityProperties {
                 throw ChatException("app.security.jwt.jwk-path is required.")
             }
         }
+    }
+
+    companion object {
+        /** The prefix that Spring Security gives a scope authority. */
+        const val SCOPE_PREFIX = "SCOPE_"
+
+        fun authorityFor(scope: String): String = "$SCOPE_PREFIX$scope"
     }
 }

@@ -17,7 +17,7 @@
 -Dapp.primary=authserv
 -Dapp.rootkeys.required=false
 -Dapp.rsocket.transport.security.type=unprotected
--Dapp.service.composite.auth
+-Dapp.service.composite.auth=true
 -Djava.security.egd=file:/dev/./urandom
 -Dlogging.level.com.demo.chat.client.rsocket=DEBUG
 -Dmanagement.endpoint.health.enabled=true

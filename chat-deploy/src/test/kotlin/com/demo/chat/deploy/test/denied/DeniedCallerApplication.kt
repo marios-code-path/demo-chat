@@ -16,6 +16,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.clearInvocations
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -33,7 +34,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 import reactor.core.publisher.Mono
 
-@SpringBootApplication(proxyBeanMethods = false)
+@SpringBootApplication(
+    proxyBeanMethods = false,
+    exclude = [RSocketSecurityAutoConfiguration::class],
+)
 @org.springframework.context.annotation.Import(DeniedCallerSecurityConfiguration::class)
 class DeniedCallerApplication
 
@@ -59,14 +63,14 @@ class DeniedCallerSecurityConfiguration {
 
     @Bean
     fun reactiveJwtDecoder(properties: AgentSecurityProperties): ReactiveJwtDecoder =
-        AgentJwtDecoderFactory.fromJwkFile(properties.jwt.jwkPath)
+        AgentJwtDecoderFactory.fromJwkFile(properties.requireComplete().jwt.jwkPath)
 
     @Bean
     fun agentAuthenticationConverter(
         identity: AgentIdentity,
         properties: AgentSecurityProperties,
     ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
-        AgentAuthenticationConverter(identity, properties.agent.clientId)
+        AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
 
     @Bean
     fun agentResourceServerChain(

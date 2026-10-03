@@ -19,6 +19,13 @@ import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.security.config.annotation.rsocket.EnableRSocketSecurity
 import org.springframework.security.config.annotation.rsocket.RSocketSecurity
+import org.springframework.security.authentication.ReactiveAuthenticationManager
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthenticationToken
+import org.springframework.security.authentication.TestingAuthenticationToken
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor
@@ -32,6 +39,7 @@ class RSocketSecurityTestConfiguration {
     @Bean
     fun rsocketSecurityAuthentication(security: RSocketSecurity)
             : PayloadSocketAcceptorInterceptor = security
+        .authenticationManager(testAuthenticationManager())
         .simpleAuthentication(Customizer.withDefaults())
         .authorizePayload { authorize ->
             authorize
@@ -44,6 +52,18 @@ class RSocketSecurityTestConfiguration {
 
         }
         .build()
+
+    private fun testAuthenticationManager(): ReactiveAuthenticationManager =
+        ReactiveAuthenticationManager { authentication: Authentication ->
+            when (authentication) {
+                is BearerTokenAuthenticationToken -> reactor.core.publisher.Mono.just(
+                    TestingAuthenticationToken("bearer", authentication.token, "ROLE_TEST")
+                )
+                is UsernamePasswordAuthenticationToken ->
+                    UserDetailsRepositoryReactiveAuthenticationManager(authentication()).authenticate(authentication)
+                else -> reactor.core.publisher.Mono.empty()
+            }
+        }
 
     @Bean
     fun authentication(): MapReactiveUserDetailsService {

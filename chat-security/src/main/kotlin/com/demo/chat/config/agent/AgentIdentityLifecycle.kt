@@ -16,7 +16,7 @@ class AgentIdentityLifecycle<T>(
     private var running = false
 
     override fun start() {
-        val username = properties.agent.username
+        val username = properties.requireComplete().agent.username
         val matches = users.findByUsername(ByStringRequest(username)).collectList().block().orEmpty()
         if (matches.size != 1) {
             throw IllegalStateException(

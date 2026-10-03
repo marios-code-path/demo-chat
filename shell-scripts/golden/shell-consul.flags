@@ -19,7 +19,7 @@
 -Dapp.primary=shell
 -Dapp.rootkeys.consume.scheme=kv
 -Dapp.rsocket.transport.security.type=unprotected
--Dapp.service.composite.auth
+-Dapp.service.composite.auth=true
 -Dapp.service.core.key=memory
 -Djava.security.egd=file:/dev/./urandom
 -Dlogging.level.io.rsocket.FrameLogger=OFF

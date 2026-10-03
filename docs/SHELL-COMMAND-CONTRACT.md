@@ -48,10 +48,10 @@ as it is, and the two rules differ on purpose.
 
 | Command | Method | Help | Options |
 |---|---|---|---|
-| `bye` | `bye` | bye | none |
+| `bye` | `bye` | bye | none. Aliases `exit` and `quit` |
 | `root-keys` | `rootKeys` | rootkeys | none |
 | `whoami` | `whoami` | whoami | none |
-| `login` | `login` | login | `--username` `String` required<br>`--password` `String` required |
+| `login` | `login` | login | `--username` `String` required<br>`--password` `String` optional. The shell prompts for it when it is absent |
 
 ### PubSubCommands
 
@@ -137,3 +137,19 @@ option that the caller leaves out is not in the context. `optionValue` in
 answers its default. `ShellParsedInputTests` parses a typed line through
 `DefaultCommandParser` and pins this. `ShellCommandDispatchTests` cannot pin
 it, because its context carries every declared option.
+
+## Confirmations, aliases and the password prompt
+
+`CHAT-dxkkzvrf` changed three behaviours. The owner found each one in a manual
+session on 2026-10-02.
+
+- **A command that changes state prints one confirmation line.** `add-topic`
+  prints `Created room <name> (id <id>)`. `join` and `leave` print the room
+  name. `listen` and `hangup` print the topic id. Before, each printed nothing,
+  so a success looked like a failure.
+- **`exit` and `quit` run `bye`.** `CommandRegistry.getCommandByName` falls back
+  to the aliases.
+- **`login` prompts for the password when `--password` is absent.** The prompt
+  reads through `InputReader.readPassword`, so the password does not echo and it
+  does not enter the command history. **A typed `--password` still enters the
+  history.**
