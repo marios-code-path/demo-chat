@@ -5,14 +5,15 @@ Known build-time deficiencies, what causes them, and what they take down with th
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 **The `--ci` mode was measured on 2026-10-02 on branch
-`chat-mfveaecc-join-grant`**, with an empty temporary `DOCKER_CONFIG`, against
-Docker Engine 29.7.2. It exits 0 and reports no drift. 29 modules ran 1848
-tests, with 0 failures, 0 errors and 63 skipped. **No module fails, and no
-module is tolerated.** `KNOWN_FAILING_INTEGRATION` is empty again, so an exit
-code of 0 means that every module passes. This run rebuilt the chat-shell test
-image, and the image id moved to `sha256:1965fa84`.
+`chat-rdlghoqe-core-routes`**, with an empty temporary `DOCKER_CONFIG`, against
+Docker Engine 29.7.2. It exits 0 and reports no drift. 29 modules ran 1859
+tests, with 0 failures, 0 errors and 64 skipped. **No module fails, and no
+module is tolerated.** `KNOWN_FAILING_INTEGRATION` is empty, so an exit code of
+0 means that every module passes. This run rebuilt the chat-shell test image,
+and the image id moved to `sha256:08c7812b`.
 
-The run before it, at `96c88e96`, reported 1829 tests with 2 failures, 0
+The run on branch `chat-mfveaecc-join-grant` read 1848 tests with 0 failures,
+0 errors and 63 skipped, at image `sha256:1965fa84`. The run before it, at `96c88e96`, reported 1829 tests with 2 failures, 0
 errors and 62 skipped. `chat-shell` was the only failing module then, and B12
 recorded it. B12 is resolved now. See the Resolved table.
 
@@ -137,7 +138,7 @@ that every module passes, and that distinction stays worth keeping.
 empty and measured. `KNOWN_FAILING_INTEGRATION` named `chat-shell` from
 2026-10-01 to 2026-10-02, under B12.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 66 tests with 26 skipped, which looks like absent coverage and is not. The reads were 64 with 25 earlier on 2026-10-02, and 56 with 22 on 2026-09-21. `CHAT-wbcbptiq` and then `CHAT-mfveaecc` added the tests that moved them. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-10-02 at 66 with 26 skipped, the skipped classes are `ShellUserCommandsTests` with 9, `ShellLoginCommandsTests` with 6, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 5, and `ShellContextTests` with 1. `CHAT-wbcbptiq` added one user test and two login tests. `CHAT-mfveaecc` added the anonymous join test to `ShellTopicCommandsTests`. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 40 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 68 tests with 27 skipped, which looks like absent coverage and is not. The reads were 66 with 26 and 64 with 25 earlier on 2026-10-02, and 56 with 22 on 2026-09-21. `CHAT-wbcbptiq`, `CHAT-mfveaecc` and `CHAT-rdlghoqe` added the tests that moved them. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-10-02 at 68 with 27 skipped, the skipped classes are `ShellUserCommandsTests` with 10, `ShellLoginCommandsTests` with 6, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 5, and `ShellContextTests` with 1. `CHAT-wbcbptiq` added one user test and two login tests. `CHAT-mfveaecc` added the anonymous join test to `ShellTopicCommandsTests`. `CHAT-rdlghoqe` added the anonymous core route test to `ShellUserCommandsTests`. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 41 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
 
 `ShellContextTests` is the one disabled class that is not a generic base. Enabling it fails on a missing `CompositeServiceBeans` bean, measured on 2026-09-21, which is a gap in that test's own property set rather than anything about the shell commands.
 

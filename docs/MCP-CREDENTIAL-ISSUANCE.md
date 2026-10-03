@@ -39,9 +39,15 @@ The authorization server issues the token. It must hold the private half of the
 key that the deployment trusts.
 
 ```sh
+export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory
 ```
+
+**The authorization server needs the `Service` password since 2026-10-02.** The
+core RSocket routes require `ROLE_SERVICE`, and a blank password fails the
+start. See `docs/BUILD.md`, under `The authorization server needs the service
+password`, and `CHAT-rdlghoqe`.
 
 `--profile memory` selects the in-memory client repository. That repository
 reads `app.oauth2.client` from `oauth2-client.yml`. The client there carries the

@@ -434,6 +434,10 @@ SERVICES: dict[str, Service] = {
             "-Dapp.client.rsocket.core.secrets",
             "-Dapp.client.rsocket.composite.user",
             "-Dapp.service.composite.auth",
+            # The core routes require ROLE_SERVICE. The password comes from
+            # CHAT_SERVICE_PASSWORD at runtime, so no command line holds it.
+            # See CHAT-rdlghoqe.
+            "-Dapp.client.rsocket.credential.username=Service",
         ],
         opt_flags=[
             RSOCKET_SERVER_AUTOCONFIG_EXCLUDE,

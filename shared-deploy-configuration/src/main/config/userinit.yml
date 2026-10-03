@@ -45,3 +45,14 @@ app:
         handle: Agent
         name: "MCP ADAPTER"
         imageUri: chatimg://agent.png
+      # The service account. It is a plain user. The core RSocket routes
+      # require ROLE_SERVICE, and app.security.service-accounts names this
+      # handle by default. The password comes from CHAT_SERVICE_PASSWORD. When
+      # that variable is unset, the value is blank, so the start generates a
+      # credential and prints it. A service that calls the core routes sends
+      # the same password. See CHAT-rdlghoqe and docs/BUILD.md.
+      Service:
+        handle: Service
+        name: "CORE SERVICE"
+        imageUri: chatimg://service.png
+        password: ${CHAT_SERVICE_PASSWORD:}

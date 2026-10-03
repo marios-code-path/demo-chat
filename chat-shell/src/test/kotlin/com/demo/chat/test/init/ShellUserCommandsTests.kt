@@ -27,13 +27,27 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired lateinit var loginCommands: LoginCommands<T>
 
+    /**
+     * **A shell command that calls a core route needs an Admin login.** The
+     * core RSocket routes require `ROLE_SERVICE` or `ROLE_ADMIN` since
+     * 2026-10-02. `kv` writes through `persist.keyvalue`. See `CHAT-rdlghoqe`.
+     */
+    @Test
+    fun `an anonymous caller cannot reach a core route`() {
+        Assertions.assertThatThrownBy { userCommands.kv("anondata") }
+            .describedAs("the refusal of a core route for a caller with no role")
+            .hasMessageContaining("Access Denied")
+    }
+
     @Test
     fun `should create kv`() {
+        loginAsAdmin()
         Assertions.assertThat(userCommands.kv("data")).isNotNull
     }
 
     @Test
     fun `should add and get`() {
+        loginAsAdmin()
         val newKey = userCommands.kv("data2")
         val getKv = userCommands.getKV(newKey!!.id)
 
@@ -57,6 +71,7 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Test
     fun `should get All Users`() {
+        loginAsAdmin()
         Assertions.assertThat(userCommands.users())
             .isNotNull
             .isNotBlank
@@ -102,6 +117,7 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Test
     fun `should get all permissions`() {
+        loginAsAdmin()
         val perms = userCommands.allPermissions()
         Assertions.assertThat(perms)
             .isNotNull
@@ -110,6 +126,7 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Test
     fun `should get user permissions`() {
+        loginAsAdmin()
         val perms = userCommands.getPermissionsForUser("_")
         Assertions.assertThat(perms)
             .isNotNull
@@ -118,9 +135,14 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Test
     fun `should find Admin user `() {
+        loginAsAdmin()
         val user = userCommands.findUser("Admin")
         Assertions.assertThat(user)
             .isNotNull
             .isNotBlank
+    }
+
+    private fun loginAsAdmin() {
+        loginCommands.login(ShellDeploymentAccount.ADMIN_HANDLE, ShellDeploymentAccount.adminPassword)
     }
 }

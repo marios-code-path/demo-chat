@@ -8,6 +8,7 @@
 -Dapp.client.rsocket.core.key
 -Dapp.client.rsocket.core.persistence
 -Dapp.client.rsocket.core.secrets
+-Dapp.client.rsocket.credential.username=Service
 -Dapp.key.type=long
 -Dapp.kv.store=none
 -Dapp.nodeid=0

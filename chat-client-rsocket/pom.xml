@@ -49,7 +49,6 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-rsocket</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

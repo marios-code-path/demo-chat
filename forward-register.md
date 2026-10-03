@@ -3694,3 +3694,64 @@ credential can send to any room, can name any sender, and can write a grant
 row. The composite checks do not reach these routes. The `client` backend uses
 them, so closing them needs a service identity decision. `CHAT-rdlghoqe` holds
 it.
+
+## The core route rule (2026-10-02)
+
+`CHAT-rdlghoqe`, with four children: `CHAT-ekndrtbd`, `CHAT-iwvnqnju`,
+`CHAT-uepzzxmd` and `CHAT-ciuuiwvp`. Branch `chat-rdlghoqe-core-routes`.
+**This work is not merged.**
+
+### The measurement that opened it
+
+A caller with no credential read the `Admin` password hash, read every grant,
+wrote a `*` grant, and sent a message in the name of `Admin`. Each call went to
+a core RSocket route, and each one completed. `RSocketServerConfiguration`
+permitted every request, and the core access interfaces have no
+implementation.
+
+### The owner decision
+
+**One rule at the seam.** `persist.**`, `index.**`, `pubsub.**`, `secrets.**`,
+`key.key` and `key.rem` require `ROLE_SERVICE` or `ROLE_ADMIN`. The composite
+routes keep their method checks. The shell commands that call a core route
+directly need an `Admin` login.
+
+### Facts that cost a measurement
+
+- **Every user held `ROLE_USER` alone, `Admin` included.** The rule needed
+  role mapping first. `CoreUserDetailsService` adds the two roles now.
+- **Root keys load after singleton creation.** The `Admin` key is read through
+  a supplier at each login. A key read inside the bean method would run before
+  the roots exist.
+- **`key.rootOf` must stay open.** The shell resolves a room creator through it
+  before `addRoom`, and an anonymous caller may add a room. That is a
+  narrowing of the `key.**` rule that the owner first chose.
+- **The injected `RSocketRequester.Builder` is one mutable object.** A
+  `setupMetadata` call in one test reached a later connection in another test.
+  Build a fresh requester per connection.
+- **`AuthenticationService.setAuthentication` stores the value as given.** A
+  test password needs the `{noop}` prefix.
+- **The `rest` facade calls composite routes alone.** Only the authorization
+  server reads core routes, so it alone sends the `Service` credential.
+
+### The build
+
+- The first `--ci` run read 6 errors, all in `LongUserCommandsTests`, and each
+  read `Access Denied`. Those shell commands call core routes with no login.
+  The six tests log in as `Admin` now, and a new control asserts that an
+  anonymous core call is refused.
+- The second `--ci` run: 1859 tests, 0 failures, 0 errors, 64 skipped, and no
+  drift. `chat-shell` reads 68 with 27 skipped. The image id moved to
+  `sha256:08c7812b`.
+
+### Not measured
+
+- **No authorization server ran against a locked core.** The launch flag, the
+  environment fallback and the startup refusal of a blank password are in
+  place. A real login through the authorization server has not run.
+
+### Operator change
+
+**Export `CHAT_SERVICE_PASSWORD` before you start a core and the authorization
+server.** The authorization server refuses to start with a blank password.
+`docs/BUILD.md` carries the steps.
