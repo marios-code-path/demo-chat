@@ -49,7 +49,21 @@ class RSocketServerConfiguration<T> {
      * `rootKeys` is no longer a parameter. `ContextIdentity` maps the
      * anonymous token to the `Anon` root key at the read.
      */
-    // TODO: lock down!
+    /**
+     * **The core routes require `ROLE_SERVICE` or `ROLE_ADMIN`.** The owner
+     * decided this on 2026-10-02, under `CHAT-rdlghoqe`. A probe measured that
+     * a caller with no credential read the Admin password hash, read every
+     * grant, wrote a `*` grant and sent a message in the name of Admin. The
+     * core access interfaces have no implementation, so no check ran there.
+     *
+     * The composite routes keep `permitAll` here. Each one carries its own
+     * method security check, and the anonymous identity is a decision there.
+     *
+     * **`key.rootOf` and `key.exists` stay open.** They read the registry and
+     * write nothing. The shell resolves a room creator through them before
+     * `addRoom`, and an anonymous caller may add a room. `key.key` and
+     * `key.rem` mint and remove keys, so they take the role.
+     */
     @Bean
     fun rsocketSecurityAuthentication(
         security: RSocketSecurity
@@ -60,9 +74,13 @@ class RSocketServerConfiguration<T> {
             authorize
                 .setup()
                 .permitAll()
+                .route("persist.**").hasAnyRole(SERVICE, ADMIN)
+                .route("index.**").hasAnyRole(SERVICE, ADMIN)
+                .route("pubsub.**").hasAnyRole(SERVICE, ADMIN)
+                .route("secrets.**").hasAnyRole(SERVICE, ADMIN)
+                .route("key.key").hasAnyRole(SERVICE, ADMIN)
+                .route("key.rem").hasAnyRole(SERVICE, ADMIN)
                 .anyExchange()
-                .permitAll()
-                .anyRequest()
                 .permitAll()
         }
         .build()
@@ -115,5 +133,10 @@ class RSocketServerConfiguration<T> {
                 VerifiedKeyArgumentResolver(messageHandler.decoders, verifiers)
             )
         }
-}
 
+    private companion object {
+        /** The role names without the prefix, as `hasAnyRole` expects. */
+        const val SERVICE = "SERVICE"
+        const val ADMIN = "ADMIN"
+    }
+}

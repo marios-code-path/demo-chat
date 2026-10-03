@@ -134,6 +134,32 @@ See `shell-scripts/README-chat-build.md` for all `chat-build` flags.
 `AuthorizationServerConfig` reads an ES256 key in JWK form from that path. The
 context does not start without it.
 
+### The authorization server needs the service password
+
+**The core RSocket routes require `ROLE_SERVICE` or `ROLE_ADMIN` since
+2026-10-02.** The authorization server reads the secrets store and the indexes
+through those routes. So it sends the credential of the `Service` account on
+every request. See `CHAT-rdlghoqe`.
+
+Export one variable before you start the core and the authorization server:
+
+    export CHAT_SERVICE_PASSWORD='<a password you choose>'
+
+- The core reads it as the `Service` password in `userinit.yml`.
+- The authorization server reads it as `app.client.rsocket.credential.password`.
+  `chat-build authserv` emits `-Dapp.client.rsocket.credential.username=Service`.
+
+**The authorization server refuses to start when the password is blank.** The
+message names `app.client.rsocket.credential.password`.
+
+**A core that starts with the variable unset generates the password.** It
+prints one `Generated password for account 'Service':` line. Set
+`CHAT_SERVICE_PASSWORD` to that value before you start the authorization
+server.
+
+A plain user cannot reach the core routes. The shell commands that call them
+directly need an `Admin` login. See `docs/ANONYMOUS-AUTHORIZATION.md`.
+
 ## The agent token on a REST launch
 
 A `rest` launch mounts the application chain. That chain requires a valid agent
@@ -174,6 +200,7 @@ than against you.
 A client obtains its token from the authorization server. It does not mint one.
 Minting needs the private signing key, which belongs to the server alone.
 
+    export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
     ./chat-build authserv --run --notls --node-id 8 --profile memory \
       --jwk "$PWD/encrypt-keys/server_keycert.jwk"
 
@@ -198,6 +225,7 @@ adapter, with the refusal matrix and the limits.
 
 ```bash
 ./shell-scripts/gen-dckeys.sh <cert-password>
+export CHAT_SERVICE_PASSWORD='<the Service password of the core>'
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk"
 ```

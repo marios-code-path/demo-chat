@@ -163,9 +163,13 @@ and `keyspace-uuid.cql` beside it for the other key type.
 ### Run on this machine
 
 ```bash
+export CHAT_SERVICE_PASSWORD='<a password you choose>'
 ./shell-scripts/chat-build core --cassandra --run --notls --node-id 7
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 --jwk /tmp/authserv.jwk
 ```
+
+Both launches read `CHAT_SERVICE_PASSWORD`. The core routes require the
+`Service` account since 2026-10-02. See `docs/BUILD.md` and `CHAT-rdlghoqe`.
 
 `just launch-memory 0` and `just launch-shell 1` are shorthands for the two
 common cases.

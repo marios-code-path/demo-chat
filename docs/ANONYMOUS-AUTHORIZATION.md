@@ -178,6 +178,45 @@ still send.
 **A failed write fails the join or the leave, and the membership change
 stays.** `RoomMemberGrantException` names the member and the room.
 
+## The core routes
+
+**The core RSocket routes require `ROLE_SERVICE` or `ROLE_ADMIN`.** The owner
+decided this on 2026-10-02, under `CHAT-rdlghoqe`. One rule in
+`RSocketServerConfiguration` holds it, at the seam.
+
+| Route | Rule |
+|---|---|
+| `persist.**`, `index.**`, `pubsub.**`, `secrets.**` | `ROLE_SERVICE` or `ROLE_ADMIN` |
+| `key.key`, `key.rem` | `ROLE_SERVICE` or `ROLE_ADMIN` |
+| `key.rootOf`, `key.exists` | every caller |
+| every composite route | every caller at the seam. Each operation carries its own method check |
+
+**Measured before the rule, on 2026-10-02.** A caller with no credential read
+the `Admin` password hash on `secrets.get`, read all 18 grant rows on
+`persist.authmetadata.all`, wrote a `{Anon, MessageTopic, *}` row on
+`persist.authmetadata.add`, and sent a message in the name of `Admin` on
+`pubsub.sendMessage`. Each call completed. The core access interfaces have no
+production implementation, so no check ran there. `CoreRouteAccessTests` pins
+the refusal of each call.
+
+**`key.rootOf` and `key.exists` stay open.** They read the registry and write
+nothing. The shell resolves a room creator through `key.rootOf` before
+`addRoom`, and an anonymous caller may add a room.
+
+**The roles.** `CoreUserDetailsService` gives every user `ROLE_USER`. It adds
+`ROLE_ADMIN` for the `Admin` key, and `ROLE_SERVICE` for each handle in
+`app.security.service-accounts`. The default handle is `Service`, which
+`userinit.yml` declares. The account is a plain user, so `ChatIdentity` stays
+closed.
+
+**Who presents which credential.**
+
+- The authorization server sends the `Service` credential on every request.
+  `docs/BUILD.md` carries the launch steps.
+- The shell sends the credential of its login. A shell command that calls a
+  core route directly needs an `Admin` login.
+- The `rest` facade calls composite routes alone, so it needs no credential.
+
 ## Self authority
 
 **A key holds every right over itself.** The owner decided this on
