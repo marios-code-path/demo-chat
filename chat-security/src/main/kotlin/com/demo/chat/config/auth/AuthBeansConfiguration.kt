@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.crypto.password.PasswordEncoder
 
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 class AuthBeansConfiguration<T, V, Q>(
     typeUtil: TypeUtil<T>,
     indexServices: IndexServiceBeans<T, V, Q>,

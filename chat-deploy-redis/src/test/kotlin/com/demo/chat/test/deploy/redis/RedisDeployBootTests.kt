@@ -2,8 +2,11 @@ package com.demo.chat.test.deploy.redis
 
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
+import org.assertj.core.api.Assertions.assertThat
+import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -69,7 +72,7 @@ import java.time.Duration
         "app.service.core.persistence=redis",
         "app.service.core.secrets=memory",
         "app.service.composite",
-        "app.service.composite.auth",
+        "app.service.composite.auth=true",
         "app.controller.persistence",
         "app.controller.index",
         "app.controller.key",
@@ -92,7 +95,8 @@ class RedisDeployBootTests {
 
     @Test
     fun contextLoads() {
-        // Reaching here means the full Redis backend wired and started.
+        assertThat(context.getBeansOfType(RSocketSecurityAutoConfiguration::class.java)).isEmpty()
+        assertThat(context.getBeansOfType(PayloadSocketAcceptorInterceptor::class.java)).hasSize(1)
     }
 
     companion object {
@@ -115,10 +119,11 @@ class RedisDeployBootTests {
         }
     }
 
-    /**
-     * Mirrors ChatApp (com.demo.chat.ChatApp) — test-only, since chat-deploy
-     * is not on this module's classpath.
-     */
-    @SpringBootApplication(proxyBeanMethods = false, scanBasePackages = ["com.demo.chat.config"])
+    /** This test application uses the production scan and security exclusion. */
+    @SpringBootApplication(
+        proxyBeanMethods = false,
+        scanBasePackages = ["com.demo.chat.config"],
+        exclude = [RSocketSecurityAutoConfiguration::class],
+    )
     class BootApp
 }

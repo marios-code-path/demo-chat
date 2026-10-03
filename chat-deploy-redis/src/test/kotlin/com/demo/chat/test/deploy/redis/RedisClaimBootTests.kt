@@ -57,7 +57,7 @@ class RedisClaimBootTests {
         "app.service.core.index=lucene",
         "app.service.core.secrets=memory",
         "app.service.composite",
-        "app.service.composite.auth",
+        "app.service.composite.auth=true",
         "app.controller.persistence",
         "app.controller.index",
         "app.controller.key",

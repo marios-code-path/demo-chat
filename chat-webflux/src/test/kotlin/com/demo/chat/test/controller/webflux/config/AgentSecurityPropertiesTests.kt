@@ -2,6 +2,7 @@ package com.demo.chat.test.controller.webflux.config
 
 import com.demo.chat.config.agent.AgentSecurityProperties
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
@@ -27,59 +28,56 @@ class AgentSecurityPropertiesTests {
     fun `the four values bind`() {
         runner.withPropertyValues(*complete).run { context ->
             val properties = context.getBean(AgentSecurityProperties::class.java)
-            assertThat(properties.agent.username).isEqualTo("agent-svc")
-            assertThat(properties.agent.requiredScope).isEqualTo("chat.mcp")
-            assertThat(properties.jwt.jwkPath).isEqualTo("/tmp/agent-test.jwk")
+            val complete = properties.requireComplete()
+            assertThat(complete.agent.username).isEqualTo("agent-svc")
+            assertThat(complete.agent.requiredScope).isEqualTo("chat.mcp")
+            assertThat(complete.jwt.jwkPath).isEqualTo("/tmp/agent-test.jwk")
         }
     }
 
     @Test
-    fun `an absent client id fails the context and names the property`() {
+    fun `the core may omit all agent values`() {
+        runner.run { context ->
+            assertThat(context.startupFailure).isNull()
+            assertThat(context.getBean(AgentSecurityProperties::class.java).isConfigured())
+                .isFalse()
+        }
+    }
+
+    @Test
+    fun `an absent client id in partial configuration names the property`() {
         val withoutClientId = complete.filterNot { it.startsWith("app.security.agent.client-id") }
         runner.withPropertyValues(*withoutClientId.toTypedArray()).run { context ->
-            assertThat(context.startupFailure).isNotNull
-            assertThat(rootMessages(context.startupFailure!!))
-                .anyMatch { it.contains("app.security.agent.client-id") }
+            assertThat(context.startupFailure).isNull()
+            assertThatThrownBy { context.getBean(AgentSecurityProperties::class.java).requireComplete() }
+                .hasMessageContaining("app.security.agent.client-id")
         }
     }
 
     @Test
-    fun `an absent username fails the context and names the property`() {
+    fun `an absent username in partial configuration names the property`() {
         val withoutUsername = complete.filterNot { it.startsWith("app.security.agent.username") }
         runner.withPropertyValues(*withoutUsername.toTypedArray()).run { context ->
-            assertThat(context.startupFailure).isNotNull
-            assertThat(rootMessages(context.startupFailure!!))
-                .anyMatch { it.contains("app.security.agent.username") }
+            assertThatThrownBy { context.getBean(AgentSecurityProperties::class.java).requireComplete() }
+                .hasMessageContaining("app.security.agent.username")
         }
     }
 
     @Test
-    fun `an absent scope fails the context and names the property`() {
+    fun `an absent scope in partial configuration names the property`() {
         val withoutScope = complete.filterNot { it.startsWith("app.security.agent.required-scope") }
         runner.withPropertyValues(*withoutScope.toTypedArray()).run { context ->
-            assertThat(context.startupFailure).isNotNull
-            assertThat(rootMessages(context.startupFailure!!))
-                .anyMatch { it.contains("app.security.agent.required-scope") }
+            assertThatThrownBy { context.getBean(AgentSecurityProperties::class.java).requireComplete() }
+                .hasMessageContaining("app.security.agent.required-scope")
         }
     }
 
     @Test
-    fun `an absent jwk path fails the context and names the property`() {
+    fun `an absent jwk path in partial configuration names the property`() {
         val withoutJwk = complete.filterNot { it.startsWith("app.security.jwt.jwk-path") }
         runner.withPropertyValues(*withoutJwk.toTypedArray()).run { context ->
-            assertThat(context.startupFailure).isNotNull
-            assertThat(rootMessages(context.startupFailure!!))
-                .anyMatch { it.contains("app.security.jwt.jwk-path") }
+            assertThatThrownBy { context.getBean(AgentSecurityProperties::class.java).requireComplete() }
+                .hasMessageContaining("app.security.jwt.jwk-path")
         }
-    }
-
-    private fun rootMessages(failure: Throwable): List<String> {
-        val messages = mutableListOf<String>()
-        var current: Throwable? = failure
-        while (current != null) {
-            messages += current.message.orEmpty()
-            current = current.cause
-        }
-        return messages
     }
 }

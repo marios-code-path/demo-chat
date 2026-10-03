@@ -15,7 +15,7 @@
 -Dapp.primary=core-service
 -Dapp.server.proto=rsocket
 -Dapp.service.composite
--Dapp.service.composite.auth
+-Dapp.service.composite.auth=true
 -Dapp.service.core.index=lucene
 -Dapp.service.core.key=memory
 -Dapp.service.core.persistence=memory

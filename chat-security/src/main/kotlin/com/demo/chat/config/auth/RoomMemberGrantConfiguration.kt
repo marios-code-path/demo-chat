@@ -19,7 +19,7 @@ import org.springframework.context.annotation.Configuration
  * that root.
  */
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 open class RoomMemberGrantConfiguration<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val rootKeys: RootKeys<T>,

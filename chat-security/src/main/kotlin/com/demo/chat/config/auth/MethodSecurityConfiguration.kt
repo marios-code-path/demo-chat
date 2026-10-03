@@ -14,7 +14,7 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 
 @Configuration
 @EnableReactiveMethodSecurity
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 class MethodSecurityConfiguration {
 
     @Bean

@@ -163,17 +163,53 @@ directly need an `Admin` login. See `docs/ANONYMOUS-AUTHORIZATION.md`.
 ## The agent token on a REST launch
 
 A `rest` launch mounts the application chain. That chain requires a valid agent
-token on every route it owns.
+token on every route it owns. A `core` launch can validate the same token at
+the RSocket boundary.
 
 Pass the four application values on the command line. The application
 properties have no defaults.
 
-    ./chat-build rest --run --notls --node-id 1 \
+    ./chat-build rest --run --notls --node-id 2 \
         --jwk /abs/path/server_keycert.jwk \
         --agent-client-id <client-id> --agent-username <handle>
 
-Both `--notls` and `--node-id` are required. The command above exits 2 without
-either one.
+Start the core with the same four values:
+
+    ./chat-build core --memory --run --notls --node-id 1 \
+        --jwk /abs/path/server_keycert.jwk \
+        --agent-client-id <client-id> --agent-username <handle>
+
+Both `--notls` and `--node-id` are required. Each launch exits 2 without
+either one. Give each process its own node id.
+
+Both launches emit `app.security.agent.client-id`,
+`app.security.agent.username`, `app.security.agent.required-scope`, and
+`app.security.jwt.jwk-path`. The core starts with bearer validation disabled
+when all four values are absent. Partial values fail startup and name the
+missing property.
+
+An RSocket server requires `app.service.composite.auth=true`.
+An absent, empty, or false value causes startup failure.
+The security chain, auth services, and grant writers use the same condition.
+The domain codec and key-verification handler remain independent of that condition.
+
+The `rootkeys` actuator endpoint requires actuator Basic credentials.
+The REST startup client already sends `actuator:actuator` through `HttpRootKeyConsumeOnStart`.
+These are the current startup defaults. This repair does not add configurable startup credentials.
+`CHAT-npqgshiu` tracks that existing limitation under the actuator-password issue, `CHAT-dmnhxnsp`.
+Anonymous requests to `rootkeys` receive HTTP 401.
+
+Run the optional two-process test from the repository root:
+
+```bash
+mvn -B -pl chat-deploy-memory-integration-test -am verify \
+  -Prest-core-e2e -Dtest=RestToCoreBearerDeploymentTests \
+  -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+The profile builds both executable jars before the test module and enables its deployment tests.
+No separate `run.rest.core.e2e` property is required.
+The default build skips these tests. CI does not run them.
 
 `--agent-scope` defaults to `chat.mcp`.
 
@@ -182,14 +218,15 @@ startup creates the account. The deployment refuses to start unless that handle
 answers exactly one user. The account is a plain user, so it holds no
 administrator reach. See `CHAT-werokcbb` and `docs/MCP-CREDENTIAL-ISSUANCE.md`.
 
-`chat-build` accepts these flags on the `rest` service alone. That service is a
-REST facade over a core service, so a core must run first. It reads its root
-keys over HTTP and holds no store.
+`chat-build` accepts these flags on the `rest` and `core` services. The REST
+service is a facade over a core service, so a core must run first. It reads its
+root keys over HTTP and holds no store.
 
 `docs/MCP-CREDENTIAL-ISSUANCE.md` states that topology, and it names the
 single-process form that the acceptance run used.
 
-A core launch does not mount that chain, so a core launch needs none of these.
+A core launch does not mount the HTTP chain. Its RSocket authentication manager
+validates bearer metadata when the four values are present.
 
 Give `--jwk` an absolute path. `spring-boot:run` sets the module directory as
 the working directory, so a relative path would resolve against that rather

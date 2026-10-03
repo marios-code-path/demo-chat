@@ -18,7 +18,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
     classes = [DeniedCallerApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 )
-class DeniedCallerEffectsTests {
+class BearerDenialNoDownstreamEffectsTests {
 
     @Value("\${local.server.port}")
     private var port: Int = 0
@@ -60,6 +60,17 @@ class DeniedCallerEffectsTests {
     fun `a send from another client answers 401 and never reaches the service`() {
         client.post().uri("/denied/send")
             .headers { it.setBearerAuth(DeployTestSigningKey.mint("another-client", "chat.mcp")) }
+            .bodyValue("hello")
+            .exchange()
+            .expectStatus().isUnauthorized
+
+        verifyNoInteractions(messaging)
+    }
+
+    @Test
+    fun `an expired token answers 401 and never reaches the service`() {
+        client.post().uri("/denied/send")
+            .headers { it.setBearerAuth(DeployTestSigningKey.mintExpired("client-under-test", "chat.mcp")) }
             .bodyValue("hello")
             .exchange()
             .expectStatus().isUnauthorized

@@ -16,7 +16,7 @@ class AgentResourceServerChain(
 ) {
 
     /** The authority that every application route requires. */
-    fun requiredAuthority(): String = authorityFor(properties.agent.requiredScope)
+    fun requiredAuthority(): String = properties.requireComplete().agent.requiredAuthority()
 
     fun build(http: ServerHttpSecurity): SecurityWebFilterChain = http
         .authorizeExchange {
@@ -34,8 +34,8 @@ class AgentResourceServerChain(
 
     companion object {
         /** The prefix that scope authorities use. */
-        const val SCOPE_PREFIX = "SCOPE_"
+        const val SCOPE_PREFIX = AgentSecurityProperties.SCOPE_PREFIX
 
-        fun authorityFor(scope: String): String = "$SCOPE_PREFIX$scope"
+        fun authorityFor(scope: String): String = AgentSecurityProperties.authorityFor(scope)
     }
 }

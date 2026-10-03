@@ -9,6 +9,8 @@ import org.springframework.web.reactive.config.WebFluxConfigurer
 import org.springframework.web.reactive.result.method.annotation.ArgumentResolverConfigurer
 import com.demo.chat.domain.UnsupportedDomainException
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.rsocket.CoreAuthenticationRefusal
+import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
 import com.demo.chat.service.core.KeyVerifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
@@ -53,6 +55,16 @@ class WebFluxKeyVerifierConfiguration(
  */
 @RestControllerAdvice
 class KeyRefusalAdvice {
+    @ExceptionHandler(CoreAuthenticationRefusal::class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    fun coreAuthenticationRefused(error: CoreAuthenticationRefusal): String =
+        error.message ?: "The core refused authentication."
+
+    @ExceptionHandler(CoreAuthorizationRefusal::class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    fun coreAuthorizationRefused(error: CoreAuthorizationRefusal): String =
+        error.message ?: "The core refused authorization."
+
     @ExceptionHandler(KeyInputException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun badRequest(error: KeyInputException): String = error.message ?: "The key id is not valid."

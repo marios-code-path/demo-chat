@@ -2,6 +2,7 @@ package com.demo.chat.config.client.rsocket
 
 import com.demo.chat.client.rsocket.RequestMetadata
 import com.demo.chat.client.rsocket.ServiceCredential
+import com.demo.chat.client.rsocket.RSocketAuthenticationEncoder
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.rsocket.messaging.RSocketStrategiesCustomizer
@@ -33,5 +34,7 @@ class ServiceCredentialConfiguration {
     /** The client must encode the credential metadata. */
     @Bean
     fun serviceCredentialStrategiesCustomizer(): RSocketStrategiesCustomizer =
-        RSocketStrategiesCustomizer { strategies -> strategies.encoder(SimpleAuthenticationEncoder()) }
+        RSocketStrategiesCustomizer { strategies ->
+            strategies.encoders { encoders -> encoders.add(0, RSocketAuthenticationEncoder()) }
+        }
 }
