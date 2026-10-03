@@ -22,14 +22,24 @@ import org.springframework.shell.core.command.Command
  */
 class ShellCommandContractTests {
 
-    private data class Opt(val name: String, val default: String?)
-    private data class Expected(val name: String, val description: String, val options: List<Opt>)
+    /**
+     * An option is required when it has no default, unless [required] says
+     * otherwise. `login --password` is the one exception: it has no default and
+     * it is optional, because the shell prompts for it. See `CHAT-dxkkzvrf`.
+     */
+    private data class Opt(val name: String, val default: String?, val required: Boolean = default == null)
+    private data class Expected(
+        val name: String,
+        val description: String,
+        val options: List<Opt>,
+        val aliases: List<String> = listOf(),
+    )
 
     private val expected = listOf(
-        Expected("bye", "bye", listOf()),
+        Expected("bye", "bye", listOf(), aliases = listOf("exit", "quit")),
         Expected("root-keys", "rootkeys", listOf()),
         Expected("whoami", "whoami", listOf()),
-        Expected("login", "login", listOf(Opt("username", null), Opt("password", null))),
+        Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false))),
         Expected("send", "Send a Message", listOf(Opt("topicName", "_"), Opt("topicId", "_"), Opt("userName", "_"), Opt("messageText", null))),
         Expected("listen", "Listen to a topic", listOf(Opt("topicId", null))),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topicId", null))),
@@ -82,6 +92,10 @@ class ShellCommandContractTests {
                 .describedAs("the help text of %s", want.name)
                 .isEqualTo(want.description)
 
+            assertThat(got.aliases)
+                .describedAs("the aliases of %s", want.name)
+                .containsExactlyElementsOf(want.aliases)
+
             assertThat(got.options.map { it.longName() })
                 .describedAs("the option names of %s", want.name)
                 .containsExactlyElementsOf(want.options.map { it.name })
@@ -95,7 +109,7 @@ class ShellCommandContractTests {
 
                 assertThat(actualOption.required())
                     .describedAs("whether --%s on %s is required", option.name, want.name)
-                    .isEqualTo(option.default == null)
+                    .isEqualTo(option.required)
             }
         }
     }

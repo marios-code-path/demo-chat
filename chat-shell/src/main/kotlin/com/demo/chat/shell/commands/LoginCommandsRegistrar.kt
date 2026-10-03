@@ -28,6 +28,7 @@ class LoginCommandsRegistrar<T>(private val commands: LoginCommands<T>) {
     @Bean
     fun byeCommand(): Command = Command.builder()
         .name("bye")
+        .aliases("exit", "quit")
         .description("bye")
         .group("Login")
         .execute(Function<CommandContext, String> { ctx -> commands.bye()?.toString() ?: "" })
@@ -53,8 +54,17 @@ class LoginCommandsRegistrar<T>(private val commands: LoginCommands<T>) {
         .group("Login")
             .options(
                 CommandOption.with().longName("username").required(true).type(String::class.java).build(),
-                CommandOption.with().longName("password").required(true).type(String::class.java).build(),
+                // The password is optional, so the shell can prompt for it. A
+                // typed --password lands in the command history. CHAT-dxkkzvrf.
+                CommandOption.with().longName("password").required(false).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.login(ctx.optionValue("username"), ctx.optionValue("password")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx ->
+            val username = ctx.optionValue("username")
+            // A closed input answers null, so an empty answer refuses the login.
+            val password = ctx.optionValue("password")
+                .ifEmpty { ctx.inputReader().readPassword("Password: ")?.let { String(it) } ?: "" }
+            if (password.isEmpty()) "Login needs a password."
+            else commands.login(username, password).let { "Logged in as $username" }
+        })
 
 }
