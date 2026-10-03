@@ -3956,3 +3956,24 @@ with code `0x403` now. `CompositeAccessEnforcementTests` and
 `build-health.sh --ci` reported 1905 tests in 30 modules, with 0 failures, 0
 errors, 67 skipped, and no drift. The shell reported 77 tests and 27 skipped.
 The run rebuilt the shell image as `sha256:5a07f4a6`.
+
+### The first drift binding
+
+**`drift check` bound no document before this work.** Measured on 2026-10-03:
+`drift status` answered `[]`, and `drift check` reported `docs_total: 0`. So
+every earlier `drift check ok` in this repository checked nothing. Read such a
+claim as empty unless `drift status` lists the document.
+
+`docs/REST-TOKEN-RELAY.md` is the first bound document. `drift.lock` at the
+repository root binds it to 16 source files on the relay path.
+
+Two limits of drift v0.7.0, measured in a scratch repository:
+
+- **A Kotlin symbol anchor fails.** `drift link doc 'File.kt#symbol'` reports
+  `cannot compute fingerprint`, and the lock does not change. Bind whole files.
+- **A file anchor reads the whole file.** Any edit to a bound file marks the
+  document STALE, even an edit the document does not describe. Review the
+  prose, then refresh with `drift link`, as `AGENTS.md` requires.
+
+A mutation proved the binding. One appended comment line in
+`CoreSecurityErrorDecoder.kt` made `drift check` report STALE and exit 1.
