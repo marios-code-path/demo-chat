@@ -2,34 +2,26 @@ package com.demo.chat.client.rsocket
 
 import com.demo.chat.security.rsocket.CoreAuthenticationRefusal
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
-import com.demo.chat.security.rsocket.RSocketSecurityErrorKind
-import io.rsocket.exceptions.ApplicationErrorException
-import tools.jackson.databind.json.JsonMapper
+import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
+import io.rsocket.RSocketErrorException
 
+/**
+ * Turns a core security refusal into a typed client error. See `CHAT-mpjtnpqv`.
+ *
+ * The decoder reads the RSocket error code. It never reads the message text.
+ * Any other error passes unchanged.
+ */
 object CoreSecurityErrorDecoder {
 
-    private val mapper = JsonMapper.builder().build()
-
     fun decode(error: Throwable): Throwable {
-        val applicationError = generateSequence(error) { it.cause }
-            .filterIsInstance<ApplicationErrorException>()
+        val coded = generateSequence(error) { it.cause }
+            .filterIsInstance<RSocketErrorException>()
             .firstOrNull()
             ?: return error
-
-        val payload = runCatching { mapper.readTree(applicationError.message ?: return error) }
-            .getOrNull()
-            ?: return error
-
-        if (payload.get("version")?.asInt() != VERSION) {
-            return error
-        }
-
-        return when (payload.get("kind")?.asString()) {
-            RSocketSecurityErrorKind.AUTHENTICATION.name -> CoreAuthenticationRefusal(error)
-            RSocketSecurityErrorKind.AUTHORIZATION.name -> CoreAuthorizationRefusal(error)
+        return when (coded.errorCode()) {
+            RSocketSecurityErrorCodes.AUTHENTICATION -> CoreAuthenticationRefusal(coded)
+            RSocketSecurityErrorCodes.AUTHORIZATION -> CoreAuthorizationRefusal(coded)
             else -> error
         }
     }
-
-    private const val VERSION = 1
 }

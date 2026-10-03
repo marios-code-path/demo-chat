@@ -7,7 +7,7 @@ import com.demo.chat.service.core.TopicPubSubService
 import com.demo.chat.service.security.AuthMetaIndex
 import com.demo.chat.service.security.AuthMetaPersistence
 import com.demo.chat.service.security.SecretsStore
-import io.rsocket.exceptions.ApplicationErrorException
+import io.rsocket.exceptions.CustomRSocketException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -32,8 +32,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.boot.rsocket.server.RSocketServerCustomizer
 import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.security.rsocket.core.PayloadSocketAcceptorInterceptor
-import com.demo.chat.security.rsocket.RSocketSecurityErrorKind
-import tools.jackson.databind.json.JsonMapper
+import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
 import reactor.test.StepVerifier
 import java.time.Duration
 import org.mockito.Mockito.clearInvocations
@@ -110,10 +109,9 @@ class CoreBearerDenialNoDownstreamEffectsTests {
                     )
                     .retrieveFlux(Map::class.java)
             ).expectErrorSatisfies { error ->
-                assertThat(error).isInstanceOf(ApplicationErrorException::class.java)
-                val payload = JsonMapper.builder().build().readTree(error.message)
-                assertThat(payload.get("version").asInt()).isEqualTo(1)
-                assertThat(payload.get("kind").asString()).isEqualTo(RSocketSecurityErrorKind.AUTHENTICATION.name)
+                assertThat(error).isInstanceOf(CustomRSocketException::class.java)
+                assertThat((error as CustomRSocketException).errorCode())
+                    .isEqualTo(RSocketSecurityErrorCodes.AUTHENTICATION)
             }.verify(timeout)
 
             verifyNoInteractions(controller, persistence, index, secrets, pubsub)
@@ -157,10 +155,9 @@ class CoreBearerDenialNoDownstreamEffectsTests {
                     .data(ByStringRequest("scoperefused"))
                     .retrieveMono(Map::class.java)
             ).expectErrorSatisfies { error ->
-                assertThat(error).isInstanceOf(ApplicationErrorException::class.java)
-                val payload = JsonMapper.builder().build().readTree(error.message)
-                assertThat(payload.get("version").asInt()).isEqualTo(1)
-                assertThat(payload.get("kind").asString()).isEqualTo(RSocketSecurityErrorKind.AUTHORIZATION.name)
+                assertThat(error).isInstanceOf(CustomRSocketException::class.java)
+                assertThat((error as CustomRSocketException).errorCode())
+                    .isEqualTo(RSocketSecurityErrorCodes.AUTHORIZATION)
             }.verify(timeout)
 
             verifyNoInteractions(persistence, index, secrets, pubsub)

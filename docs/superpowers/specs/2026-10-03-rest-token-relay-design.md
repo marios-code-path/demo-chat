@@ -161,8 +161,8 @@ the first request.
 The test will also assert that the request does not become anonymous.
 
 `BearerAuthenticationNotConfiguredManager` will produce this refusal when the
-core has no JWK configuration. `RSocketSecurityErrorPayloadInterceptor` wraps
-the authentication exception in the typed transport envelope.
+core has no JWK configuration. `RSocketSecurityErrorInterceptor` gives the
+refusal the RSocket authentication error code.
 
 The refusal will occur before `AnonymousPayloadInterceptor` runs.
 
@@ -174,18 +174,34 @@ The REST facade will map a valid caller's core authorization denial to HTTP 403.
 
 Neither refusal will become HTTP 500.
 
-`RestCoreAuthenticationErrorMappingTests` will assert both mappings through the
-REST boundary.
+`RestCoreAuthenticationErrorMappingTests` asserts the advice for both
+mappings. `RestToCoreBearerDeploymentTests` sends a core method security denial
+through the REST boundary and reads 403.
 
-The core `RSocketSecurityErrorPayloadInterceptor` will encode a versioned
-`RSocketSecurityErrorPayload` with a typed `kind` field for authentication and
-authorization refusals.
+The core sends each security refusal as a `CustomRSocketException`.
+`RSocketSecurityErrorCodes.AUTHENTICATION` is `0x401`.
+`RSocketSecurityErrorCodes.AUTHORIZATION` is `0x403`. Both codes sit in the
+application range of the RSocket protocol. The frame message keeps the human
+text, such as `Access Denied`.
 
-`CoreSecurityErrorDecoder` will decode that payload into a typed client error.
+`RSocketSecurityErrorInterceptor` sets the code. It is an RSocket responder
+interceptor, so it wraps the outermost responder. It sees refusals from the
+Spring Security payload chain and from `@PreAuthorize` in a handler. A reactive
+`@PreAuthorize` emits its denial inside the returned publisher, after the
+payload chain completes. A payload interceptor cannot see that denial.
 
-The REST mapper will select 401 or 403 from the decoded error kind.
+`CoreSecurityErrorDecoder` reads the error code into a typed client error.
+
+The REST mapper will select 401 or 403 from the decoded error type.
 
 It will not inspect exception message text.
+
+**This replaces an earlier design.** The first implementation encoded a
+versioned JSON envelope in the error message, from a payload interceptor. A
+two-process test measured that a method security denial bypassed it, and REST
+answered 500. The owner chose error codes on 2026-10-03. A refusal from a
+handler now changes type from `ApplicationErrorException` to
+`CustomRSocketException`. Its message does not change.
 
 An expired token can fail at core after the REST check. The REST response will
 still be HTTP 401.

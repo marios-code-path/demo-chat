@@ -122,7 +122,7 @@ class RSocketServiceCredentialPreservedTests {
             assertThat(error)
                 .describedAs("the refusal of a wrong credential")
                 .isInstanceOf(RejectedSetupException::class.java)
-                .hasMessageContaining("\"kind\":\"AUTHENTICATION\"")
+                .hasMessage("Invalid Credentials")
         }.verify(timeout)
     }
 

@@ -117,9 +117,42 @@ class RestToCoreBearerDeploymentTests {
         assertThat(removed.statusCode()).isEqualTo(204)
     }
 
-    private fun assertOwnerIsConfiguredAgent(roomId: String) {
+    /**
+     * A method security denial at the core must reach REST as 403.
+     *
+     * The core refuses this call in `@PreAuthorize`, inside the handler. That
+     * is after the payload interceptor chain completes. The agent holds no
+     * owner row on a room that `Anon` created.
+     */
+    @Test
+    fun `a core method security denial reaches REST as 403`() {
+        val anonymous = coreRequester(credential = null)
+        val roomId = try {
+            val created = anonymous.route("topic.topic-add")
+                .data(ByStringRequest("anonroom"))
+                .retrieveMono(Map::class.java)
+                .block(Duration.ofSeconds(10))
+            Regex("id=(\\d+)").find(created.toString())?.groupValues?.get(1)
+        } finally {
+            anonymous.dispose()
+        }
+        assertThat(roomId).describedAs("the key of the room that Anon created").isNotNull
+
+        val removed = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/id/$roomId"))
+                .header("Authorization", "Bearer ${DeployTestSigningKey.agentToken()}")
+                .DELETE()
+                .build(),
+        )
+
+        assertThat(removed.statusCode())
+            .describedAs("the REST status for a core @PreAuthorize denial. Body: ${removed.body()}")
+            .isEqualTo(403)
+    }
+
+    private fun coreRequester(credential: UsernamePasswordMetadata?): RSocketRequester {
         val mapper = JsonMapper.builder().addModule(ChatJackson3Modules().chatJackson3Module()).build()
-        val requester = RSocketRequester.builder()
+        val builder = RSocketRequester.builder()
             .rsocketStrategies(
                 RSocketStrategies.builder()
                     .encoder(SimpleAuthenticationEncoder())
@@ -127,11 +160,14 @@ class RestToCoreBearerDeploymentTests {
                     .decoder(JacksonJsonDecoder(mapper))
                     .build()
             )
-            .setupMetadata(
-                UsernamePasswordMetadata("Service", "rest-core-service-secret"),
-                MimeTypeUtils.parseMimeType("message/x.rsocket.authentication.v0"),
-            )
-            .tcp("127.0.0.1", corePort)
+        credential?.let {
+            builder.setupMetadata(it, MimeTypeUtils.parseMimeType("message/x.rsocket.authentication.v0"))
+        }
+        return builder.tcp("127.0.0.1", corePort)
+    }
+
+    private fun assertOwnerIsConfiguredAgent(roomId: String) {
+        val requester = coreRequester(UsernamePasswordMetadata("Service", "rest-core-service-secret"))
         try {
             val agent = requester.route("user.user-by-handle")
                 .data(ByStringRequest("Agent"))

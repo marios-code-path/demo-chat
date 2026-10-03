@@ -15,15 +15,13 @@ import org.springframework.security.rsocket.core.PayloadSocketAcceptorIntercepto
 class RSocketSecurityConfiguration {
 
     @Bean
-    fun rSocketSecurityErrorPayloadInterceptor() = RSocketSecurityErrorPayloadInterceptor()
+    fun rsocketSecurityErrorInterceptor() = RSocketSecurityErrorInterceptor()
 
     @Bean
     fun rsocketSecurityAuthentication(
         security: RSocketSecurity,
         authenticationManager: ReactiveAuthenticationManager,
-        errorInterceptor: RSocketSecurityErrorPayloadInterceptor,
     ): PayloadSocketAcceptorInterceptor = security
-        .addPayloadInterceptor(errorInterceptor)
         .simpleAuthentication { it.authenticationManager(authenticationManager) }
         .anonymous(Customizer.withDefaults())
         .authorizePayload { authorize ->
@@ -42,9 +40,11 @@ class RSocketSecurityConfiguration {
     @Bean
     fun rsocketSecurityServerCustomizer(
         securityInterceptor: PayloadSocketAcceptorInterceptor,
+        errorInterceptor: RSocketSecurityErrorInterceptor,
     ): RSocketServerCustomizer = RSocketServerCustomizer { server ->
         server.interceptors { interceptors ->
             interceptors.forSocketAcceptor(securityInterceptor)
+            interceptors.forResponder(errorInterceptor)
         }
     }
 

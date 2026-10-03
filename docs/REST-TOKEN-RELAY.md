@@ -1,15 +1,15 @@
 # REST token relay
 
 These diagrams describe `CHAT-mpjtnpqv` as the code implements it. They were
-read from source at `e036cf67` and updated for the core scope check. They were
-not drawn from the spec.
+read from source at `e036cf67`. They were updated for the core scope check
+and for the RSocket error codes. They were not drawn from the spec.
 
 The sources are the
 [design specification](superpowers/specs/2026-10-03-rest-token-relay-design.md)
 and the [implementation plan](superpowers/plans/2026-10-03-rest-token-relay.md).
 
-One gap is marked **GAP 2** in the diagrams. It is read from source and is not
-measured. GAP 1 is closed. See [Known gaps](#known-gaps).
+The diagrams first showed two gaps. Both are closed now, and each closure is
+measured. See [Closed gaps](#closed-gaps).
 
 ## Components on the main path
 
@@ -29,6 +29,7 @@ flowchart LR
     end
 
     subgraph CORE["Core (app.server.proto=rsocket)"]
+        EI["RSocketSecurityErrorInterceptor<br/>responder, outermost"]
         PI["PayloadSocketAcceptorInterceptor"]
         RM["RSocketAuthenticationManager"]
         MS["Method security<br/>@PreAuthorize"]
@@ -39,11 +40,12 @@ flowchart LR
     A -->|2 HTTP + Bearer| RC
     RC -->|3 AgentAuthenticationToken| CTL
     CTL -->|4 call| MR
-    MR -->|5 RSocket request<br/>+ bearer metadata| PI
+    MR -->|5 RSocket request<br/>+ bearer metadata| EI
+    EI --> PI
     PI --> RM
     PI -->|6 authenticated| MS
     MS -->|7 allowed| SVC
-    PI -. typed refusal .-> MR
+    EI -. "error code 0x401 or 0x403" .-> MR
     MR -. CoreSecurityRefusal .-> ADV
 ```
 
@@ -64,7 +66,7 @@ sequenceDiagram
     participant RC as REST chain
     participant Ctl as REST controller
     participant MR as MetadataRSocketRequester
-    participant EI as Error interceptor (100)
+    participant EI as Error interceptor (responder)
     participant AU as Authentication (200)
     participant AN as Anonymous (300)
     participant AZ as Authorization (400)
@@ -79,7 +81,7 @@ sequenceDiagram
     Ctl->>MR: TopicClient.addRoom, route prefix + "topic-add"
     Note over MR: At subscription, read the reactive context.<br/>Attach BearerTokenMetadata(jwt.tokenValue).
     MR->>EI: Request payload with bearer metadata
-    EI->>AU: chain.next
+    EI->>AU: Payload chain
     AU->>AU: RSocketAuthenticationManager routes the bearer token
     AU->>AU: JWT manager: ES256 signature, expiry
     AU->>AU: AgentAuthenticationConverter: client_id
@@ -93,38 +95,40 @@ sequenceDiagram
     Ctl-->>Ag: 201 Created
 ```
 
-The numbers in brackets are the interceptor orders. Spring Security sets
-`AUTHENTICATION` to 200, `ANONYMOUS` to 300, and `AUTHORIZATION` to 400.
-`RSocketSecurityErrorPayloadInterceptor` returns order 100. So it wraps all
-three, and it sees every refusal that they raise.
+The numbers in brackets are the payload interceptor orders. Spring Security
+sets `AUTHENTICATION` to 200, `ANONYMOUS` to 300, and `AUTHORIZATION` to 400.
+
+`RSocketSecurityErrorInterceptor` is not a payload interceptor. It is an
+RSocket responder interceptor, so it wraps the outermost responder. It sees
+every refusal of the payload chain. It also sees a `@PreAuthorize` denial,
+which a reactive handler emits after the payload chain completes.
 
 `RestToCoreBearerDeploymentTests` measures this path. It reads the stored
 owner row and compares its principal with the `Agent` key.
 
 ## The refusal path
 
-A refusal inside the interceptor chain reaches REST as a typed error. The
-decoder does not read message text.
+Every core security refusal reaches the client with an RSocket error code. The
+message keeps its human text. The decoder reads the code and never the text.
 
 ```mermaid
 flowchart TD
-    E1["AuthenticationException<br/>in the chain"] --> EI
+    E1["AuthenticationException<br/>in the payload chain"] --> EI
     E2["AccessDeniedException<br/>from authorizePayload"] --> EI
     E3["AccessDeniedException<br/>required scope absent"] --> EI
-    EI["RSocketSecurityErrorPayloadInterceptor"]
-    EI -->|"ApplicationErrorException<br/>{version:1, kind:AUTHENTICATION}"| D
-    EI -->|"ApplicationErrorException<br/>{version:1, kind:AUTHORIZATION}"| D
-    D["CoreSecurityErrorDecoder<br/>reads version and kind"]
-    D -->|AUTHENTICATION| R401["CoreAuthenticationRefusal<br/>HTTP 401"]
-    D -->|AUTHORIZATION| R403["CoreAuthorizationRefusal<br/>HTTP 403"]
-    D -->|"no envelope,<br/>other version or kind"| RAW["Original error<br/>passes unchanged"]
-
-    H["AccessDeniedException<br/>from @PreAuthorize<br/>in the handler"] -->|"GAP 2: outside<br/>the interceptor chain"| RAW
+    H["AccessDeniedException<br/>from @PreAuthorize<br/>in the handler"] --> EI
+    EI["RSocketSecurityErrorInterceptor<br/>responder interceptor"]
+    EI -->|"CustomRSocketException<br/>0x401, message kept"| D
+    EI -->|"CustomRSocketException<br/>0x403, message kept"| D
+    D["CoreSecurityErrorDecoder<br/>reads the error code"]
+    D -->|0x401| R401["CoreAuthenticationRefusal<br/>HTTP 401"]
+    D -->|0x403| R403["CoreAuthorizationRefusal<br/>HTTP 403"]
+    D -->|"any other error"| RAW["Original error<br/>passes unchanged"]
 ```
 
-Two sources raise an authorization refusal inside the chain. The first is a
-bearer token without the required scope. The second is `authorizePayload`,
-for the core routes:
+Three sources raise an authorization refusal. The first is a bearer token
+without the required scope. The second is `@PreAuthorize` in a composite
+handler. The third is `authorizePayload`, for the core routes:
 `persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, and
 `key.rem`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
 holds `ROLE_AGENT`, so the core refuses these routes to the agent.
@@ -188,11 +192,11 @@ stateDiagram-v2
     MethodCheck --> Served: @PreAuthorize allows
     MethodCheck --> Denied: @PreAuthorize denies
 
-    RefusedAuthn --> [*]: AUTHENTICATION envelope
-    RefusedAuthz --> [*]: AUTHORIZATION envelope
-    ScopeRefused --> [*]: AUTHORIZATION envelope
+    RefusedAuthn --> [*]: code 0x401
+    RefusedAuthz --> [*]: code 0x403
+    ScopeRefused --> [*]: code 0x403
     Served --> [*]
-    Denied --> [*]: plain Access Denied (GAP 2)
+    Denied --> [*]: code 0x403, Access Denied
 ```
 
 `RSocketIdentityPrecedenceTests` covers the four entry branches.
@@ -245,33 +249,35 @@ stateDiagram-v2
 The root keys load earlier, at phase `Int.MAX_VALUE - 4096`. Both run before
 the servers start.
 
-## Known gaps
+## Closed gaps
 
-### GAP 1, closed: the core did not check the required scope
+The diagrams were first read from source at `e036cf67`. They showed two gaps.
+A test measured each gap before its repair.
+
+### GAP 1: the core did not check the required scope
 
 At `e036cf67` the core bearer path checked the signature, the expiry, and
 `client_id` alone. The REST chain required the scope, and the core did not.
 
-A test measured the gap before the repair. A token from the agent client with
-the `openid` scope alone created a room on `topic.topic-add`.
+A token from the agent client with the `openid` scope alone created a room on
+`topic.topic-add`.
 
 `RequiredScopeAuthenticationManager` now wraps the core JWT manager. A token
-without the required scope fails with `AccessDeniedException`, so the core
-answers the AUTHORIZATION envelope. REST answers 403 for the same token. Both
-paths read the authority from `AgentSecurityProperties.Agent.requiredAuthority`.
+without the required scope gets code `0x403`. REST answers 403 for the same
+token. Both paths read the authority from
+`AgentSecurityProperties.Agent.requiredAuthority`.
 
-### GAP 2: a method security denial is not typed
+### GAP 2: a method security denial reached REST as 500
 
-This gap is read from source. It is not measured.
+The first implementation typed refusals with a JSON envelope, from a payload
+interceptor. A `@PreAuthorize` denial happens after the payload chain, so it
+bypassed the envelope. `RestToCoreBearerDeploymentTests` measured 500 when the
+agent removed a room that `Anon` created.
 
-The typed envelope covers refusals inside the interceptor chain only. A
-`@PreAuthorize` denial happens in the handler, after the chain completes. So
-it reaches REST as a plain `ApplicationErrorException` with `Access Denied`.
+`RSocketSecurityErrorInterceptor` now wraps the outermost responder. It gives
+every security refusal an RSocket error code. The same test reads 403.
 
-`CoreSecurityErrorDecoder` passes it through unchanged. `KeyRefusalAdvice`
-holds no handler for it. The REST status for this case is not measured.
-
-This is the main 403 case on the REST path. An example is an agent that
-deletes a room it does not own. `RestCoreAuthenticationErrorMappingTests`
-reads the advice annotations only. It does not send a request through the
-REST boundary.
+**The wire shape of a handler refusal changed.** It was
+`ApplicationErrorException` with code `0x201`. It is `CustomRSocketException`
+with code `0x403` now. The message is still `Access Denied`.
+`CompositeAccessEnforcementTests` and `CoreRouteAccessTests` pin the code.

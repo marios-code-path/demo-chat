@@ -12,7 +12,9 @@ import com.demo.chat.domain.StringRoleAuthorizationMetadata
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
 import com.demo.chat.service.security.AuthenticationService
+import io.rsocket.exceptions.CustomRSocketException
 import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
@@ -205,14 +207,15 @@ class CoreRouteAccessTests {
         return Message.create(MessageKey.of(key.id, key.root, rootKeys.admin().id, room.id), "forged", true)
     }
 
-    /** RSocket answers a refused request with a typed authorization envelope. */
+    /** RSocket answers a refused request with the authorization error code. */
     private fun assertRefused(call: Mono<*>) {
         val error = call.then(Mono.empty<Throwable>()).onErrorResume { Mono.just(it) }.block(timeout)
 
-        assertThat(error).describedAs("the refusal").isNotNull
-        assertThat(error!!.message)
-            .describedAs("the refusal envelope")
-            .contains("\"kind\":\"AUTHORIZATION\"")
+        assertThat(error).describedAs("the refusal").isInstanceOf(CustomRSocketException::class.java)
+        assertThat((error as CustomRSocketException).errorCode())
+            .describedAs("the refusal code")
+            .isEqualTo(RSocketSecurityErrorCodes.AUTHORIZATION)
+        assertThat(error.message).describedAs("the refusal text").isEqualTo("Access Denied")
     }
 
     /**

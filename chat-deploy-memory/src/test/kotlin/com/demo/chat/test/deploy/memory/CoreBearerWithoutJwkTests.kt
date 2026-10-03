@@ -1,7 +1,8 @@
 package com.demo.chat.test.deploy.memory
 
 import com.demo.chat.ChatApp
-import io.rsocket.exceptions.ApplicationErrorException
+import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
+import io.rsocket.exceptions.CustomRSocketException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -64,8 +65,9 @@ class CoreBearerWithoutJwkTests {
                 .data(1L)
                 .retrieveMono(Long::class.java)
         ).expectErrorSatisfies { error ->
-                assertThat(error).isInstanceOf(ApplicationErrorException::class.java)
-                assertThat(error.message).contains("\"kind\":\"AUTHENTICATION\"")
+                assertThat(error).isInstanceOf(CustomRSocketException::class.java)
+                assertThat((error as CustomRSocketException).errorCode())
+                    .isEqualTo(RSocketSecurityErrorCodes.AUTHENTICATION)
         }.verify(Duration.ofSeconds(10))
     }
 }

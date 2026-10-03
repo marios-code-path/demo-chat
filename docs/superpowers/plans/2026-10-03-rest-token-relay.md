@@ -182,3 +182,14 @@ That run rebuilt the shell image as `sha256:34dded7aba26cd2a5dc711e08784380bdef5
 - [x] Wrap the core JWT manager with `RequiredScopeAuthenticationManager`.
 - [x] Share the scope authority rule through `AgentSecurityProperties.Agent.requiredAuthority`.
 - [x] Run `build-health.sh --ci`. It reports 1903 tests, 0 failures, 0 errors, 66 skipped, and no drift.
+
+## Repair: RSocket error codes for every security refusal
+
+- [x] Add a two-process case where the agent removes a room that `Anon` created.
+- [x] Measure it before the repair. REST answered 500.
+- [x] Replace the JSON envelope with `CustomRSocketException` codes `0x401` and `0x403`. The owner chose this.
+- [x] Replace the payload interceptor with the responder interceptor `RSocketSecurityErrorInterceptor`.
+- [x] Make `CoreSecurityErrorDecoder` read the code. A plain error with the same text passes unchanged.
+- [x] Keep the core message in each client refusal. The shell shows `Access Denied`.
+- [x] Run the two-process test. It reads 403.
+- [x] Run `build-health.sh --ci`. It reports 1905 tests, 0 failures, 0 errors, 67 skipped, and no drift.

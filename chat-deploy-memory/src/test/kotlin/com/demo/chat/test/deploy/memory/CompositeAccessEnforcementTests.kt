@@ -7,7 +7,8 @@ import com.demo.chat.domain.ByIdRequest
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
 import com.demo.chat.security.access.composite.TopicServiceAccess
-import io.rsocket.exceptions.ApplicationErrorException
+import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
+import io.rsocket.exceptions.CustomRSocketException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -110,8 +111,11 @@ class CompositeAccessEnforcementTests {
         ).expectErrorSatisfies { error ->
             assertThat(error)
                 .describedAs("the wire form of the refusal")
-                .isInstanceOf(ApplicationErrorException::class.java)
+                .isInstanceOf(CustomRSocketException::class.java)
                 .hasMessageContaining("Access Denied")
+            assertThat((error as CustomRSocketException).errorCode())
+                .describedAs("the authorization code of a method security denial")
+                .isEqualTo(RSocketSecurityErrorCodes.AUTHORIZATION)
         }.verify(timeout)
 
         assertThat(stores.topicPersistence().get(room).block(timeout))

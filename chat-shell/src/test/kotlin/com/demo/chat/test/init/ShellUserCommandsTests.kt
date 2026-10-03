@@ -1,5 +1,6 @@
 package com.demo.chat.test.init
 
+import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
 import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.UserCommands
 import org.assertj.core.api.Assertions
@@ -36,7 +37,8 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
     fun `an anonymous caller cannot reach a core route`() {
         Assertions.assertThatThrownBy { userCommands.kv("anondata") }
             .describedAs("the refusal of a core route for a caller with no role")
-            .hasMessageContaining("The core refused authorization.")
+            .isInstanceOf(CoreAuthorizationRefusal::class.java)
+            .hasMessageContaining("Access Denied")
     }
 
     @Test

@@ -3922,3 +3922,37 @@ The run rebuilt the shell image as `sha256:81a39e5f`.
 **One gap stays open, and it is read from source alone.** A `@PreAuthorize`
 denial happens in the handler, after the interceptor chain. So it reaches REST
 without the typed envelope. The REST status for that case is not measured.
+
+### Security refusals carry RSocket error codes
+
+The diagrams showed a second gap. The first implementation typed core
+refusals with a JSON envelope inside the error message, from a payload
+interceptor. A reactive `@PreAuthorize` denial happens after the payload chain
+completes, so it bypassed the envelope.
+
+`RestToCoreBearerDeploymentTests` measured it. The agent removed a room that
+`Anon` created, and REST answered 500.
+
+**The owner chose RSocket error codes on 2026-10-03.** The core sends each
+security refusal as `CustomRSocketException`. Code `0x401` means
+authentication, and code `0x403` means authorization. The message keeps its
+human text, such as `Access Denied`.
+
+`RSocketSecurityErrorInterceptor` sets the code. It is a responder interceptor,
+so it wraps the outermost responder and sees handler denials too. The JSON
+envelope and the payload interceptor are removed. The REST decoder reads the
+code and never the text. The same two-process test now reads 403.
+
+**The wire type of a handler refusal changed.** It was
+`ApplicationErrorException` with code `0x201`. It is `CustomRSocketException`
+with code `0x403` now. `CompositeAccessEnforcementTests` and
+`CoreRouteAccessTests` pin the code. A setup refusal is unchanged. It is still
+`RejectedSetupException` with `Invalid Credentials`.
+
+**The shell shows `Access Denied` again.** The envelope had made the shell show
+`The core refused authorization.` A refusal now keeps the message of the core.
+`LongUserCommandsTests` asserts the type and the text.
+
+`build-health.sh --ci` reported 1905 tests in 30 modules, with 0 failures, 0
+errors, 67 skipped, and no drift. The shell reported 77 tests and 27 skipped.
+The run rebuilt the shell image as `sha256:5a07f4a6`.
