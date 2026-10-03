@@ -148,17 +148,22 @@ room.
 
 ## The room member
 
-**A join grants the member `SEND` on the room, and a leave expires it.** The
-owner decided this on 2026-10-02, under `CHAT-mfveaecc`. `MembershipSendGrant`
-is the only writer.
+**A join grants the member `SEND` and `SUBSCRIBE` on the room, and a leave
+expires both.** The owner decided `SEND` on 2026-10-02, under `CHAT-mfveaecc`,
+and `SUBSCRIBE` on the same day, under `CHAT-lfaajjcj`. `MembershipGrant` is the
+only writer.
 
-- A join writes one row `{member, room, SEND}` with the expiry 0, which never
-  expires.
-- A leave sets the expiry of that row to the time of the leave.
-- A second join sets the same row to 0 again. It writes no second row.
+- A join writes one row `{member, room, SEND}` and one row
+  `{member, room, SUBSCRIBE}`, each with the expiry 0, which never expires.
+- A leave sets the expiry of both rows to the time of the leave.
+- A second join sets the same rows to 0 again. It writes no further row.
 
-**The writer changes the row in place.** One member and one room keep one
-expiry. Level 3 of the rank orders rows by key id, and a uuid key carries no
+**`listen` checks `SUBSCRIBE` on the room.** Before `CHAT-lfaajjcj`, only the
+owner `*` row and the `Admin` `*` row on the `MessageTopic` root carried it. So
+a member that joined could send and could not listen.
+
+**The writer changes the rows in place.** One member, one room and one
+permission keep one expiry. Level 3 of the rank orders rows by key id, and a uuid key carries no
 order. An appended expiry row could therefore lose to an older live row.
 
 **An anonymous caller cannot join a room.** The owner decided this on
@@ -169,11 +174,12 @@ that is the `Anon` key with `AnonymousJoinException`, before any write.
 
 **The `Anon` key and the `User` root receive no row.** Both keys are in the
 actor set of every query. A row for either key would let every caller send to
-the room. The writer drops both keys, as a second guard behind the refusal.
+the room and listen to it. The writer drops both keys, as a second guard behind
+the refusal.
 
-**The owner row is not touched.** The writer reads `SEND` rows alone. Level 1
-of the rank keeps the owner `*` row above them, so an owner who leaves can
-still send.
+**The owner row is not touched.** The writer reads `SEND` and `SUBSCRIBE` rows
+alone. Level 1 of the rank keeps the owner `*` row above them, so an owner who
+leaves can still send and listen.
 
 **A failed write fails the join or the leave, and the membership change
 stays.** `RoomMemberGrantException` names the member and the room.

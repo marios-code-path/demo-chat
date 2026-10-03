@@ -10,7 +10,7 @@ import com.demo.chat.security.AuthSummarizer
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthorizationService
-import com.demo.chat.security.service.MembershipSendGrant
+import com.demo.chat.security.service.MembershipGrant
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.test.key.RootKeysFixture
@@ -27,17 +27,17 @@ import java.time.ZoneOffset
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * The member `SEND` writer.
+ * The membership writer: `SEND` and `SUBSCRIBE`.
  *
  * **This wires the real authorization stack.** `CoreAuthorizationService`,
  * `AuthSummarizer` and `AuthMetadataAccessBroker` are the production classes.
- * Only the store and the index are maps. So each `SEND` answer below is the
- * answer that a deployed check reads. See `CHAT-mfveaecc`.
+ * Only the store and the index are maps. So each answer below is the answer
+ * that a deployed check reads. See `CHAT-mfveaecc` and `CHAT-lfaajjcj`.
  *
  * The clock is fixed in the past, so a leave writes an expiry that the
  * summarizer reads as expired.
  */
-class MembershipSendGrantTests {
+class MembershipGrantTests {
 
     private val store = MapAuthStore()
     private val service = CoreAuthorizationService(
@@ -46,64 +46,84 @@ class MembershipSendGrantTests {
         TestVerifiers.holding(rootKeys(), listOf(ANON, MEMBER, OTHER, ROOM, OTHER_ROOM)),
     )
     private val broker = AuthMetadataAccessBroker(service, TestVerifiers.resolvingNothing())
-    private val writer = MembershipSendGrant(
+    private val writer = MembershipGrant(
         service, rootKeys(), LongUtil(), Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC)
     )
 
     @Test
-    fun `a join writes one SEND row that never expires`() {
-        assertThat(canSend(MEMBER, ROOM)).describedAs("before the join").isFalse()
+    fun `a join writes one SEND row and one SUBSCRIBE row that never expire`() {
+        assertThat(can(MEMBER, ROOM, "SEND")).describedAs("SEND before the join").isFalse()
+        assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).describedAs("SUBSCRIBE before the join").isFalse()
 
-        writer.grantSend(MEMBER, ROOM).block()
+        writer.grantMembership(MEMBER, ROOM).block()
 
-        val row = store.rows.values.single()
-        assertThat(row.principal).describedAs("the member").isEqualTo(MEMBER)
-        assertThat(row.target).describedAs("the room").isEqualTo(ROOM)
-        assertThat(row.permission).describedAs("the permission").isEqualTo("SEND")
-        assertThat(row.expires).describedAs("the expiry").isEqualTo(0L)
-        assertThat(canSend(MEMBER, ROOM)).describedAs("after the join").isTrue()
+        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE")
+        assertThat(store.rows.values).allSatisfy { row ->
+            assertThat(row.principal).describedAs("the member").isEqualTo(MEMBER)
+            assertThat(row.target).describedAs("the room").isEqualTo(ROOM)
+            assertThat(row.expires).describedAs("the expiry").isEqualTo(0L)
+        }
+        assertThat(can(MEMBER, ROOM, "SEND")).describedAs("SEND after the join").isTrue()
+        assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).describedAs("SUBSCRIBE after the join").isTrue()
     }
 
-    /** **The leave changes the same row.** It keeps the key and writes the expiry. */
+    /** **The leave changes the same rows.** It keeps the keys and writes the expiry. */
     @Test
-    fun `a leave sets the SEND row to expire now`() {
-        writer.grantSend(MEMBER, ROOM).block()
-        val joined = store.rows.values.single()
+    fun `a leave sets both rows to expire now`() {
+        writer.grantMembership(MEMBER, ROOM).block()
+        val joined = store.rows.keys.toSet()
 
-        writer.expireSend(MEMBER, ROOM).block()
+        writer.expireMembership(MEMBER, ROOM).block()
 
-        val left = store.rows.values.single()
-        assertThat(left.key).describedAs("the grant key").isEqualTo(joined.key)
-        assertThat(left.expires).describedAs("the expiry").isEqualTo(NOW)
-        assertThat(canSend(MEMBER, ROOM)).describedAs("after the leave").isFalse()
+        assertThat(store.rows.keys).describedAs("the grant keys").isEqualTo(joined)
+        assertThat(store.rows.values.map { it.expires }).describedAs("the expiries").containsOnly(NOW)
+        assertThat(can(MEMBER, ROOM, "SEND")).describedAs("SEND after the leave").isFalse()
+        assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).describedAs("SUBSCRIBE after the leave").isFalse()
     }
 
     /**
-     * **A join after a leave reuses the row.** One expiry per pair means the
-     * key order cannot change the answer. A uuid key carries no order.
+     * **A join after a leave reuses the rows.** One expiry per member, room and
+     * permission means the key order cannot change the answer. A uuid key
+     * carries no order.
      */
     @Test
-    fun `a join after a leave sets the same row to never expire`() {
-        writer.grantSend(MEMBER, ROOM).block()
-        writer.expireSend(MEMBER, ROOM).block()
+    fun `a join after a leave sets the same rows to never expire`() {
+        writer.grantMembership(MEMBER, ROOM).block()
+        writer.expireMembership(MEMBER, ROOM).block()
 
-        writer.grantSend(MEMBER, ROOM).block()
+        writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows.values.single().expires).isEqualTo(0L)
-        assertThat(canSend(MEMBER, ROOM)).isTrue()
+        assertThat(store.rows).hasSize(2)
+        assertThat(store.rows.values.map { it.expires }).containsOnly(0L)
+        assertThat(can(MEMBER, ROOM, "SEND")).isTrue()
+        assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).isTrue()
     }
 
     @Test
-    fun `a second join writes no second row`() {
-        writer.grantSend(MEMBER, ROOM).block()
-        writer.grantSend(MEMBER, ROOM).block()
+    fun `a second join writes no further row`() {
+        writer.grantMembership(MEMBER, ROOM).block()
+        writer.grantMembership(MEMBER, ROOM).block()
 
-        assertThat(store.rows).hasSize(1)
+        assertThat(store.rows).hasSize(2)
+    }
+
+    /** **A row that one permission lost is written again**, and the other row is kept. */
+    @Test
+    fun `a join writes a missing SUBSCRIBE row beside an existing SEND row`() {
+        val send = StringRoleAuthorizationMetadata(
+            TestKeys.key(nextKey.incrementAndGet()), MEMBER, ROOM, "SEND", false, 0L
+        )
+        store.rows[send.key] = send
+
+        writer.grantMembership(MEMBER, ROOM).block()
+
+        assertThat(store.rows.values.map { it.permission }).containsExactlyInAnyOrder("SEND", "SUBSCRIBE")
+        assertThat(store.rows).containsKey(send.key)
     }
 
     @Test
     fun `a leave with no row writes nothing`() {
-        writer.expireSend(MEMBER, ROOM).block()
+        writer.expireMembership(MEMBER, ROOM).block()
 
         assertThat(store.rows).isEmpty()
     }
@@ -111,31 +131,35 @@ class MembershipSendGrantTests {
     /** **Both keys are in the actor set of every query.** A row would reach every caller. */
     @Test
     fun `the Anon key and the User root receive no row`() {
-        writer.grantSend(ANON, ROOM).block()
-        writer.grantSend(USER_ROOT, ROOM).block()
-        writer.expireSend(ANON, ROOM).block()
+        writer.grantMembership(ANON, ROOM).block()
+        writer.grantMembership(USER_ROOT, ROOM).block()
+        writer.expireMembership(ANON, ROOM).block()
 
         assertThat(store.rows).isEmpty()
-        assertThat(canSend(OTHER, ROOM)).describedAs("a third caller").isFalse()
+        assertThat(can(OTHER, ROOM, "SEND")).describedAs("SEND for a third caller").isFalse()
+        assertThat(can(OTHER, ROOM, "SUBSCRIBE")).describedAs("SUBSCRIBE for a third caller").isFalse()
     }
 
     /** **The leave reads one member and one room.** Other rows keep their expiry. */
     @Test
     fun `a leave does not touch another member or another room`() {
-        writer.grantSend(MEMBER, ROOM).block()
-        writer.grantSend(OTHER, ROOM).block()
-        writer.grantSend(MEMBER, OTHER_ROOM).block()
+        writer.grantMembership(MEMBER, ROOM).block()
+        writer.grantMembership(OTHER, ROOM).block()
+        writer.grantMembership(MEMBER, OTHER_ROOM).block()
 
-        writer.expireSend(MEMBER, ROOM).block()
+        writer.expireMembership(MEMBER, ROOM).block()
 
-        assertThat(canSend(MEMBER, ROOM)).describedAs("the member in the room").isFalse()
-        assertThat(canSend(OTHER, ROOM)).describedAs("another member").isTrue()
-        assertThat(canSend(MEMBER, OTHER_ROOM)).describedAs("another room").isTrue()
+        for (permission in listOf("SEND", "SUBSCRIBE")) {
+            assertThat(can(MEMBER, ROOM, permission)).describedAs("$permission, the member in the room").isFalse()
+            assertThat(can(OTHER, ROOM, permission)).describedAs("$permission, another member").isTrue()
+            assertThat(can(MEMBER, OTHER_ROOM, permission)).describedAs("$permission, another room").isTrue()
+        }
     }
 
     /**
-     * **An owner who leaves can still send.** The writer reads `SEND` rows
-     * alone. Level 1 of the rank keeps the owner `*` row above them.
+     * **An owner who leaves can still send and listen.** The writer reads `SEND`
+     * and `SUBSCRIBE` rows alone. Level 1 of the rank keeps the owner `*` row
+     * above them.
      */
     @Test
     fun `a leave does not touch the owner row`() {
@@ -143,16 +167,17 @@ class MembershipSendGrantTests {
             TestKeys.key(nextKey.incrementAndGet()), MEMBER, ROOM, AuthSummarizer.WILDCARD, false, 0L
         )
         store.rows[owner.key] = owner
-        writer.grantSend(MEMBER, ROOM).block()
+        writer.grantMembership(MEMBER, ROOM).block()
 
-        writer.expireSend(MEMBER, ROOM).block()
+        writer.expireMembership(MEMBER, ROOM).block()
 
         assertThat(store.rows[owner.key]!!.expires).describedAs("the owner row").isEqualTo(0L)
-        assertThat(canSend(MEMBER, ROOM)).describedAs("the owner").isTrue()
+        assertThat(can(MEMBER, ROOM, "SEND")).describedAs("the owner sends").isTrue()
+        assertThat(can(MEMBER, ROOM, "SUBSCRIBE")).describedAs("the owner listens").isTrue()
     }
 
-    private fun canSend(member: Key<Long>, room: Key<Long>): Boolean =
-        broker.hasAccessByKey(member, room.verified(), "SEND").block() ?: false
+    private fun can(member: Key<Long>, room: Key<Long>, permission: String): Boolean =
+        broker.hasAccessByKey(member, room.verified(), permission).block() ?: false
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
         mapOf(

@@ -3657,6 +3657,9 @@ substantive merge before this refresh, so the row follows the rule under
 - `RoomMemberGrant` in `chat-core` is the port. `MembershipSendGrant` in
   `chat-security` is the only writer. `RoomMemberGrantConfiguration` registers
   it under `app.service.composite.auth`.
+  **Renamed under `CHAT-lfaajjcj`.** The writer is `MembershipGrant` now, and
+  the port methods are `grantMembership` and `expireMembership`. A join grants
+  `SUBSCRIBE` beside `SEND`. See `The member subscribe grant (2026-10-02)`.
 - `AuthorizationService.getStoredGrants` reads the stored rows of one principal
   and one target. It does not summarize, so a writer can see expired rows.
 - `TopicServiceImpl.joinRoom` refuses the `Anon` member with
@@ -3755,3 +3758,43 @@ directly need an `Admin` login.
 **Export `CHAT_SERVICE_PASSWORD` before you start a core and the authorization
 server.** The authorization server refuses to start with a blank password.
 `docs/BUILD.md` carries the steps.
+
+## The member subscribe grant (2026-10-02)
+
+`CHAT-lfaajjcj`. Branch `chat-member-subscribe-grant`. **This work is not
+merged.**
+
+### The gap
+
+`listen` calls `message-listen-topic`, which checks `SUBSCRIBE` on the room.
+Only the owner `*` row and the `Admin` `*` row on the `MessageTopic` root
+carried it. A join granted `SEND` alone. So a member that joined could send and
+could not listen. The owner found it in a manual shell run.
+
+**The refusal was silent.** `PubSubCommands.listen` called `subscribe()` with
+no error handler, so the shell dropped `Access Denied` and printed nothing.
+
+### The owner decision
+
+**A join grants `SUBSCRIBE`, and a leave expires it**, as for `SEND`.
+
+### What changed
+
+- `MembershipSendGrant` is `MembershipGrant`. It writes one `SEND` row and one
+  `SUBSCRIBE` row per member and room, and it expires both on a leave.
+- The port methods are `grantMembership` and `expireMembership`.
+- The shell `listen` prints the end of a refused stream and removes the
+  listener.
+
+### The evidence
+
+- `MembershipGrantTests` 9, `TopicServiceMemberGrantTests` 6,
+  `RoomMemberGrantWiringTests` 2, `StandardUserJoinSendTests` 3. All pass.
+- The new standard-user test listens over TCP. A listen before the join is
+  refused, a joined listen receives the message that the member sends, and a
+  listen after the leave is refused.
+- Mutation: removing `SUBSCRIBE` from the writer fails 5 writer tests, and the
+  joined listen fails with `Access Denied` at `StandardUserJoinSendTests.kt:156`.
+- `build-health.sh --ci`: 1863 tests, 0 failures, 0 errors, 64 skipped, and no
+  drift. `chat-shell` reports 68 tests, 27 skipped and 41 executed. The image id
+  moved to `sha256:1103cdad`.

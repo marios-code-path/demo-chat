@@ -3,7 +3,7 @@ package com.demo.chat.config.auth
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.domain.knownkey.RootKeys
-import com.demo.chat.security.service.MembershipSendGrant
+import com.demo.chat.security.service.MembershipGrant
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.service.security.RoomMemberGrant
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 /**
- * The member `SEND` writer as a bean.
+ * The membership writer, `SEND` and `SUBSCRIBE`, as a bean.
  *
  * The condition and the package follow `RoomOwnerGrantConfiguration`. The
  * writer needs `authorizationService`, which exists under the same condition.
@@ -28,5 +28,5 @@ open class RoomMemberGrantConfiguration<T>(
 
     @Bean
     open fun roomMemberGrant(): RoomMemberGrant<T> =
-        MembershipSendGrant(authorizationService, rootKeys, typeUtil)
+        MembershipGrant(authorizationService, rootKeys, typeUtil)
 }
