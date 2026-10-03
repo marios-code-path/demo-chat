@@ -1,5 +1,7 @@
 package com.demo.chat.test.init
 
+import com.demo.chat.config.shell.deploy.ShellStateConfiguration
+import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.TopicCommands
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
@@ -17,6 +19,9 @@ open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
     @Autowired
     private lateinit var topicCommands: TopicCommands<T>
+
+    @Autowired
+    private lateinit var loginCommands: LoginCommands<T>
 
     @Test
     @Order(1)
@@ -41,6 +46,8 @@ open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
     @Test
     @Order(2)
     fun `should join and get members for at least 1 `() {
+        // An anonymous caller cannot join a room, so this test logs in. CHAT-mfveaecc.
+        loginAsAdmin()
         topicCommands.addTopic("_", "test2")
         topicCommands.join("_", "test2")
 
@@ -97,6 +104,7 @@ open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
     @Test
     @Order(5)
     fun `should join leave and have no members in room`() {
+        loginAsAdmin()
         topicCommands.addTopic("_", "test5")
 
         topicCommands.join("_", "test5")
@@ -123,5 +131,29 @@ open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
 
         Assertions.assertThat(error.message)
             .contains("Object already exists")
+    }
+
+    /**
+     * **An anonymous caller cannot join a room.** The owner decided this on
+     * 2026-10-02. No login holds here, so the shell sends the `Anon` key as the
+     * member. See `CHAT-mfveaecc`.
+     */
+    @Test
+    @Order(7)
+    fun `an anonymous caller cannot join a room`() {
+        loginAsAdmin()
+        topicCommands.addTopic("_", "anonJoinRoom")
+        ShellStateConfiguration.clearLogin()
+
+        val error = org.junit.jupiter.api.Assertions.assertThrows(ApplicationErrorException::class.java) {
+            topicCommands.join("_", "anonJoinRoom")
+        }
+
+        Assertions.assertThat(error.message)
+            .contains("An anonymous caller cannot join a room.")
+    }
+
+    private fun loginAsAdmin() {
+        loginCommands.login(ShellDeploymentAccount.ADMIN_HANDLE, ShellDeploymentAccount.adminPassword)
     }
 }

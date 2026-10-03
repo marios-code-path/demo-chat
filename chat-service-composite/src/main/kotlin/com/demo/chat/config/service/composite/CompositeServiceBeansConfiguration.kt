@@ -15,6 +15,7 @@ import com.demo.chat.domain.serializers.EmptyMessageUtil
 import com.demo.chat.service.composite.impl.MessagingServiceImpl
 import com.demo.chat.service.composite.impl.TopicServiceImpl
 import com.demo.chat.service.composite.impl.UserServiceImpl
+import com.demo.chat.service.security.RoomMemberGrant
 import com.demo.chat.service.security.RoomOwnerGrant
 import com.demo.chat.service.vector.MessageVectorIndexer
 import org.springframework.beans.factory.ObjectProvider
@@ -33,6 +34,7 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
     private val queryConverters: RequestToQueryConverters<Q>,
     private val vectorIndexers: ObjectProvider<MessageVectorIndexer<T>>,
     private val roomOwnerGrants: ObjectProvider<RoomOwnerGrant<T>>,
+    private val roomMemberGrants: ObjectProvider<RoomMemberGrant<T>>,
     keyService: IKeyService<T>,
     private val rootKeys: RootKeys<T>,
 ) : CompositeServiceBeans<T, V> {
@@ -66,6 +68,7 @@ class CompositeServiceBeansConfiguration<T : Any, V, Q>(
         verifier = verifier,
         rootKeys = rootKeys,
         roomOwnerGrant = roomOwnerGrants.ifAvailable,
+        roomMemberGrant = roomMemberGrants.ifAvailable,
     )
 
     @Bean

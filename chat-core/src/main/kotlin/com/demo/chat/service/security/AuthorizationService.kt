@@ -26,4 +26,14 @@ interface AuthorizationService<T, out M : Any> {
      */
     fun getAuthorizationsAgainst(uidA: Key<T>, uidB: Key<T>, permission: String? = null): Flux<out M>
     fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String? = null): Flux<out M>
+
+    /**
+     * The stored rows that name [principal] and [target] exactly.
+     *
+     * **This read does not summarize.** It keeps expired rows, it does not
+     * rank, and it does not read the domain root of [target]. A writer that
+     * changes one row uses it. An access check must not use it. See
+     * `CHAT-mfveaecc`.
+     */
+    fun getStoredGrants(principal: Key<T>, target: Key<T>): Flux<out M>
 }

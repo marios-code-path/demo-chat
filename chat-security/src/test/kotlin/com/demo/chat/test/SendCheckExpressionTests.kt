@@ -181,16 +181,32 @@ class SendCheckExpressionTests {
         ).describedAs("the join expression").isTrue()
     }
 
+    /** **A caller leaves as itself with no row.** Self authority answers it. See `CHAT-mfveaecc`. */
     @Test
-    fun `the leave expression binds both properties of a membership request`() {
-        val access = access(listOf(grant(CALLER, ROOM, "JOIN")))
+    fun `the leave expression allows a caller to leave as itself`() {
+        assertThat(
+            evaluate(
+                expressionOf(TopicServiceAccess::class.java, "leaveRoom"),
+                "req", MembershipRequest(CALLER.id, ROOM.id), access(listOf())
+            )
+        ).describedAs("the leave expression").isTrue()
+    }
+
+    /**
+     * **A caller cannot remove another member.** The shipped
+     * `{User, MessageTopic, JOIN}` row reaches every caller. The earlier
+     * expression named the room, so this row allowed it. See `CHAT-mfveaecc`.
+     */
+    @Test
+    fun `the leave expression denies a caller that names another member`() {
+        val access = access(listOf(grant(USER_ROOT, TOPIC_ROOT, "JOIN")))
 
         assertThat(
             evaluate(
                 expressionOf(TopicServiceAccess::class.java, "leaveRoom"),
-                "req", MembershipRequest(CALLER.id, ROOM.id), access
+                "req", MembershipRequest(OTHER.id, ROOM.id), access
             )
-        ).describedAs("the leave expression").isTrue()
+        ).describedAs("the leave expression").isFalse()
     }
 
     /**
@@ -280,12 +296,12 @@ class SendCheckExpressionTests {
         val service = CoreAuthorizationService(
             store, index, { it }, { it }, { ANON }, { USER_ROOT },
             AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
-            TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, ROOM, MESSAGE)),
+            TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, OTHER, ROOM, MESSAGE)),
         )
         return SpringSecurityAccessBrokerService(
             AuthMetadataAccessBroker(service, TestVerifiers.resolvingNothing()),
             rootKeys(),
-            TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, ROOM, MESSAGE)),
+            TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, OTHER, ROOM, MESSAGE)),
         )
     }
 
@@ -345,5 +361,6 @@ class SendCheckExpressionTests {
         val CALLER: Key<Long> = Key.of(6L, 3L)
         val ROOM: Key<Long> = Key.of(7L, 5L)
         val MESSAGE: Key<Long> = Key.of(8L, 4L)
+        val OTHER: Key<Long> = Key.of(9L, 3L)
     }
 }

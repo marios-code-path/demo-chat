@@ -46,7 +46,18 @@ interface TopicServiceAccess<T, V> : ChatTopicService<T, V> {
     @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")
     override fun joinRoom(req: MembershipRequest<T>): Mono<Void>
 
-    @PreAuthorize("@chatAccess.hasAccessToId(#req.roomId, 'JOIN')")
+    /**
+     * **The check names the member, as the join check does.** The owner
+     * decided this on 2026-10-02, under `CHAT-mfveaecc`. A caller leaves as
+     * itself through self authority, and `Admin` reaches every user through its
+     * `*` row on the `User` root.
+     *
+     * The earlier check named the room. The shipped
+     * `{User, MessageTopic, JOIN}` row reaches every caller, so any caller could
+     * remove any member, and a leave now expires the `SEND` row of that member.
+     * **A room owner cannot remove another member through this route.**
+     */
+    @PreAuthorize("@chatAccess.hasAccessToId(#req.uid, 'JOIN')")
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void>
 
     @PreAuthorize("@chatAccess.hasAccessToId(#req.id, 'MEMBERS')")
