@@ -169,7 +169,7 @@ the RSocket boundary.
 Pass the four application values on the command line. The application
 properties have no defaults.
 
-    ./chat-build rest --run --notls --node-id 1 \
+    ./chat-build rest --run --notls --node-id 2 \
         --jwk /abs/path/server_keycert.jwk \
         --agent-client-id <client-id> --agent-username <handle>
 
@@ -178,6 +178,9 @@ Start the core with the same four values:
     ./chat-build core --memory --run --notls --node-id 1 \
         --jwk /abs/path/server_keycert.jwk \
         --agent-client-id <client-id> --agent-username <handle>
+
+Both `--notls` and `--node-id` are required. Each launch exits 2 without
+either one. Give each process its own node id.
 
 Both launches emit `app.security.agent.client-id`,
 `app.security.agent.username`, `app.security.agent.required-scope`, and
@@ -206,10 +209,7 @@ mvn -B -pl chat-deploy-memory-integration-test -am verify \
 
 The profile builds both executable jars before the test module and enables its deployment tests.
 No separate `run.rest.core.e2e` property is required.
-The default build skips these tests.
-
-Both `--notls` and `--node-id` are required. The command above exits 2 without
-either one.
+The default build skips these tests. CI does not run them.
 
 `--agent-scope` defaults to `chat.mcp`.
 
