@@ -114,6 +114,7 @@
     <dagdir:must>Go changes must pass the relevant Go package tests and usually go test ./...</dagdir:must>
     <dagdir:must>Python runtime changes must pass focused pytest coverage under PYTHONPATH=runtime and Miniforge base.</dagdir:must>
     <dagdir:must>Doc-bound changes must run the appropriate drift check before completion.</dagdir:must>
+    <dagdir:must>Partial builds may provide fast feedback, but full pull-request CI remains required for merge evidence.</dagdir:must>
     <dagdir:must>Production-bound behavior must have conformance or regression proof at the closest existing test family.</dagdir:must>
   </dagdir:Directive>
 
