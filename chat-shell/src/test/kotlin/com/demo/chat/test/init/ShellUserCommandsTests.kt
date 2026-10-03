@@ -36,7 +36,7 @@ open class ShellUserCommandsTests<T : Any> : ShellIntegrationTestBase() {
     fun `an anonymous caller cannot reach a core route`() {
         Assertions.assertThatThrownBy { userCommands.kv("anondata") }
             .describedAs("the refusal of a core route for a caller with no role")
-            .hasMessageContaining("Access Denied")
+            .hasMessageContaining("The core refused authorization.")
     }
 
     @Test

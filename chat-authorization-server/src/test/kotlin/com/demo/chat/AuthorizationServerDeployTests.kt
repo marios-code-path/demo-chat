@@ -29,7 +29,7 @@ import org.springframework.test.context.DynamicPropertySource
         "app.client.rsocket.composite.topic",
         "app.client.rsocket.core.persistence",
         "app.client.rsocket.core.index",
-        "app.service.composite.auth",
+        "app.service.composite.auth=true",
         "app.rsocket.transport.security.type=unprotected"
     ]
 )

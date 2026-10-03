@@ -24,6 +24,8 @@ internal object DeployTestSigningKey {
         registry.add("app.security.agent.required-scope") { "chat.mcp" }
     }
 
+    fun path(): String = jwkPath
+
     fun agentToken(): String = mint("client-under-test", "chat.mcp")
 
     fun mint(clientId: String, scope: String): String =

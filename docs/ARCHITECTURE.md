@@ -252,7 +252,7 @@ Launch is script-driven, one script per role — `run-core.sh`, `run-rest.sh`, `
 run-core.sh memory
   └─ build-app.sh -m chat-deploy -s memory -e rsocket -k long -i users,rootkeys
        └─ -Dapp.service.core.{key,pubsub,index,persistence,secrets}
-          -Dapp.service.composite -Dapp.service.composite.auth
+          -Dapp.service.composite -Dapp.service.composite.auth=true
           -Dapp.controller.{persistence,index,key,pubsub,secrets,user,topic,message}
 ```
 

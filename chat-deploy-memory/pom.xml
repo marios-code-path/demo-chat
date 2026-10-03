@@ -64,6 +64,20 @@
             <groupId>com.demo</groupId>
             <artifactId>chat-deploy</artifactId>
             <version>0.0.1</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-client-rsocket</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.demo</groupId>
+                    <artifactId>chat-webflux</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.demo</groupId>
+                    <artifactId>shared-deploy-configuration</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.demo</groupId>
@@ -193,6 +207,31 @@
                     <version>0.0.1</version>
                 </dependency>
             </dependencies>
+        </profile>
+        <profile>
+            <id>rest-core-e2e</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-maven-plugin</artifactId>
+                        <configuration>
+                            <skip>false</skip>
+                            <classifier>exec</classifier>
+                            <mainClass>${appMainClass}</mainClass>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>integration-repackage</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>repackage</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

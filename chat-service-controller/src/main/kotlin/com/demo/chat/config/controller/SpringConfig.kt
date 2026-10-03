@@ -6,5 +6,6 @@ import org.springframework.security.config.annotation.rsocket.EnableRSocketSecur
 
 @Configuration
 @EnableRSocketSecurity
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty("app.server.proto", havingValue = "rsocket")
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 class SpringConfig

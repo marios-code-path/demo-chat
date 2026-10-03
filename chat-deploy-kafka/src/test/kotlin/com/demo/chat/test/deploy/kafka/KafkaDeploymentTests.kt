@@ -59,7 +59,7 @@ import java.util.UUID
         "app.service.core.key=memory",
         "app.service.core.pubsub=kafka",
         "app.service.core.index=lucene", "app.service.core.persistence=memory",
-        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth",
+        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence",
         "app.controller.index", "app.controller.user", "app.controller.message",
         "app.controller.topic", "app.controller.pubsub",

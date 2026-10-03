@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
 
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 @Configuration
 class UserDetailsConfiguration {
 

@@ -65,6 +65,7 @@ CASES=(
   "core-uuid|core --memory --run --notls --uuid --node-id 0"
   "core-websocket|core --memory --websocket --run --notls --long --node-id 0"
   "core-debug|core --memory --debug --run --notls --long --node-id 0"
+  "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id 31649af5-0154-4be5-8695-fda9d18b7981 --agent-username agent-svc"
   "core-build-image|core --memory --build --notls --long --node-id 0"
   # other services
   "rest-client|rest --run --notls --long --node-id 0"
