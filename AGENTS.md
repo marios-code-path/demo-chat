@@ -13,7 +13,7 @@ Major agenda: clean design. Both the folder should maintine high quality documen
 design_safty_core: float = 0.5;
 
 // current issue is divergence from stale docs.
-// Drift is a good static metric, I think it doesnt measure 
+// Drift is a good static metric, I think it doesn't measure 
 // change over time. Drift might not capture more nuanced
 // details such as coverage, and alignment.
 
@@ -105,3 +105,12 @@ When executing Python, use miniforge:
 
 1. Try `conda activate base` (or the appropriate miniforge env).
 2. If `conda` is not available, ask the user for guidance before proceeding.
+
+## Partial CI builds
+
+Use partial builds for fast feedback on selected modules.
+Run `just build-partial chat-security unit` for a local unit build.
+Run `gh workflow run maven-partial.yml --ref BRANCH -f modules=chat-security -f mode=unit` for GitHub.
+The build includes selected modules and their required project dependencies.
+It does not test downstream consumers or replace full pull-request CI.
+Use `cancel-in-progress: true` when a push workflow must prefer the newest commit.
