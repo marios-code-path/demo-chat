@@ -120,3 +120,20 @@ is wanted, it is a separate decision with its own issue.
 4. The help text of each command.
 5. The absence of an availability gate.
 
+
+## A default applies when the option is absent
+
+**Until `CHAT-xdpcnrde`, every `_` default in the table was unreachable from a
+typed line.** The owner found it on 2026-10-02: `join` asked for `--userId`,
+and `send` asked for `--topicName`, `--topicId` and `--userName` together.
+
+`DefaultCommandParser` adds only the typed options to the parsed input, and
+`CommandContext.getOptionByLongName` reads the parsed input alone. So an
+option that the caller leaves out is not in the context. `optionValue` in
+`ShellCommandSupport.kt` failed there with
+`the command declares no option named <name>`.
+
+`optionValue` now reads the declared option from the registered command and
+answers its default. `ShellParsedInputTests` parses a typed line through
+`DefaultCommandParser` and pins this. `ShellCommandDispatchTests` cannot pin
+it, because its context carries every declared option.
