@@ -1,5 +1,7 @@
 # chat-build
 
+For partial verification builds, see [Partial builds](README-build-partial.md).
+
 A single Python CLI that composes the Maven command for any demo-chat service from
 declarative feature flags. It replaces the flag assembly spread across
 `build-app.sh` and the five `run-*.sh` scripts.

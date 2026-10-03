@@ -1,0 +1,61 @@
+name: Maven partial build
+run-name: Partial ${{ inputs.mode }} build of ${{ inputs.modules }} on ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: 'Module directories, separated by commas. Example: chat-security,chat-mcp'
+        required: true
+        type: string
+      mode:
+        description: 'Unit tests or unit and container tests'
+        required: true
+        default: unit
+        type: choice
+        options:
+          - unit
+          - integration
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check build script
+        shell: bash
+        run: ./shell-scripts/test-build-partial.sh
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: temurin
+          cache: maven
+
+      - name: Build selected modules
+        shell: bash
+        env:
+          BUILD_MODULES: ${{ inputs.modules }}
+          BUILD_MODE: ${{ inputs.mode }}
+        run: |
+          ./shell-scripts/build-partial.sh --modules "$BUILD_MODULES" --mode "$BUILD_MODE" \
+            2>&1 | tee "$RUNNER_TEMP/partial-build.log"
+
+      - name: Upload build log and test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: partial-build-results
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/partial-build.log
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
