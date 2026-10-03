@@ -1980,7 +1980,7 @@ Four findings.
    `Anon` root key. Finding 1 is a real disagreement and not a live outage.
 
 The access path is not dormant. `chat-build` passes
-`-Dapp.service.composite.auth` on every core launch.
+`-Dapp.service.composite.auth=true` on every core launch.
 
 ### The policy the owner chose on the same day
 
@@ -3798,3 +3798,103 @@ no error handler, so the shell dropped `Access Denied` and printed nothing.
 - `build-health.sh --ci`: 1863 tests, 0 failures, 0 errors, 64 skipped, and no
   drift. `chat-shell` reports 68 tests, 27 skipped and 41 executed. The image id
   moved to `sha256:1103cdad`.
+
+## REST bearer relay to core (2026-10-03)
+
+`CHAT-mpjtnpqv`. Branch `chat-mpjtnpqv-token-relay`. The design is approved.
+The work is not merged.
+
+The REST resource server validates the bearer token. The REST RSocket client
+now attaches request bearer metadata when the context contains an
+`AgentAuthenticationToken`.
+
+The shared agent types live in `chat-security` under
+`com.demo.chat.config.agent`. The core does not load `chat-webflux`.
+
+The core binds agent properties as optional. No agent values disable bearer
+validation. Partial values fail startup and name the missing property.
+REST requires the complete set when its resource server starts.
+
+`RSocketAuthenticationManager` sends simple credentials to the password
+manager. It sends bearer metadata to the JWT manager. A core without a JWK
+uses `BearerAuthenticationNotConfiguredManager`, which refuses bearer
+metadata before anonymous authentication.
+
+Core authentication and authorization refusals use a typed
+`RSocketSecurityErrorPayload`. `CoreSecurityErrorDecoder` reads its `kind`
+field. REST maps authentication refusal to 401 and authorization refusal to
+403. The mapping does not inspect exception messages.
+
+`RSocketIdentityPrecedenceTests` covers request metadata over setup metadata,
+setup fallback, and refusal without fallback.
+`BearerDenialNoDownstreamEffectsTests` covers wrong-client and expired-token
+denial with no service call.
+`RSocketServiceCredentialPreservedTests` covers the Service credential.
+`RestBearerRelayContextTests` covers the no-bearer rule without an agent token.
+
+`RestToCoreBearerDeploymentTests` starts separate core and REST JVM processes.
+It sends a valid REST token through a room create and remove flow. The test
+passed after the local RSocket config began using `CORE_HOST` and `CORE_PORT`.
+
+Issuer and audience checks remain under `CHAT-okpgpxkj`. That issue depends on
+`CHAT-mpjtnpqv` because it extends this core bearer path.
+
+### Review repairs
+
+All composite auth configurations require `app.service.composite.auth=true`.
+The RSocket server refuses startup when that property is absent, empty, or false.
+The codec and key-verification handler do not depend on the auth property.
+
+`CompositeAuthConditionTests` reproduced activation of auth services with empty and invalid values before the condition repair.
+The repaired conditions pass all three cases.
+
+`CoreBearerDenialNoDownstreamEffectsTests` sends expired and wrong-client tokens through the production RSocket server.
+Both cases assert zero calls to the controller, persistence, index, secrets, and pubsub.
+The same test context checks that production excludes Boot's security registration and holds one security interceptor.
+The isolated duplication test confirms that enabling Boot's registration adds another customizer.
+
+The two-process test uses executable jars from the same reactor and runs only when explicitly enabled.
+An independent Service connection reads the created room's owner row.
+The test compares that principal key with the configured Agent key, including the root and empty marker.
+The test passes with the shipped Agent account.
+
+The local `build-health.sh --ci` repair run reports 1894 tests, zero failures, zero errors, and 65 skipped tests.
+The shell reports 77 tests, zero failures, zero errors, and 27 skipped tests.
+The rebuilt image is `sha256:279913975476175fc1a83865d705e7c514a6853b4cd595084286998cbefe05e6`.
+This run rebuilt the image before the shell tests.
+The separate opt-in deployment test also passes.
+All 19 launch-flag cases pass.
+
+### Final review decisions
+
+The startup guard now checks the literal `app.service.composite.auth=true` value before accepting any security interceptor.
+An interceptor supplied by another configuration cannot bypass that property check.
+
+The `rootkeys` actuator endpoint requires actuator credentials again.
+The REST startup client already sends Basic credentials through `HttpRootKeyConsumeOnStart`.
+Anonymous access is unnecessary and is rejected.
+The current startup client uses the existing `actuator:actuator` defaults.
+Configurable startup credentials remain outside this repair.
+`CHAT-npqgshiu`, under `CHAT-dmnhxnsp`, now tracks that existing limitation.
+It requires a two-process test with non-default actuator credentials and does not block this bearer-relay repair.
+
+The three Redis test applications now exclude Boot's RSocket security auto-configuration, as production does.
+The `rest-core-e2e` profile now enables the two-process tests through Surefire.
+Run the opt-in test from the repository root:
+
+```bash
+mvn -B -pl chat-deploy-memory-integration-test -am verify \
+  -Prest-core-e2e -Dtest=RestToCoreBearerDeploymentTests \
+  -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+The earlier 1894-test result predates these final repairs.
+
+The final Redis and shell integration reactor reports 1472 tests, zero failures, zero errors, and 66 skipped tests.
+The shell reports 77 tests, zero failures, zero errors, and 27 skipped tests against a rebuilt image.
+That image is `sha256:0f708618b9328ee217de18fb2bc3e1f926e4adbc605a31f7e48ec1fe308236a0`.
+The separate opt-in run passes both deployment tests without an extra system property.
+The full reactor ran again after these final repairs. `build-health.sh --ci` reports 1901 tests in 30 modules.
+It reports 0 failures, 0 errors, 66 skipped tests, and no drift.
+The shell reports 77 tests and 27 skipped tests.
+That run rebuilt the shell image as `sha256:34dded7aba26cd2a5dc711e08784380bdef5f6a6e76c6679acbd73f4e9303e47`.

@@ -14,6 +14,8 @@ import org.springframework.http.codec.json.JacksonJsonDecoder
 import org.springframework.messaging.rsocket.RSocketRequester
 import tools.jackson.databind.json.JsonMapper
 import org.springframework.security.rsocket.metadata.UsernamePasswordMetadata
+import org.springframework.security.rsocket.metadata.BearerTokenAuthenticationEncoder
+import com.demo.chat.client.rsocket.RSocketAuthenticationEncoder
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
 import org.springframework.util.MimeTypeUtils
 import java.util.function.Supplier
@@ -54,7 +56,10 @@ open class RSocketTestBase(var username: String = "user", var password: String =
             .build()
 
         requester = builder
-            .rsocketStrategies { sb -> sb.decoders { it.add(0, JacksonJsonDecoder(mapper)) } }
+            .rsocketStrategies {
+                it.decoders { decoders -> decoders.add(0, JacksonJsonDecoder(mapper)) }
+                    .encoders { encoders -> encoders.add(0, RSocketAuthenticationEncoder()) }
+            }
             .tcp("localhost", port)
 
         metadataRequester = MetadataRSocketRequester(requester, requestMetadataProvider(username, password))

@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions.catchThrowable
 import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.builder.SpringApplicationBuilder
 import java.net.ConnectException
 import java.net.ServerSocket
@@ -46,7 +47,11 @@ class RedisDeadEmbeddingEndpointTests {
     }
 
     /** Mirrors the BootApp of RedisVectorRecallBootTests. */
-    @SpringBootApplication(proxyBeanMethods = false, scanBasePackages = ["com.demo.chat.config"])
+    @SpringBootApplication(
+        proxyBeanMethods = false,
+        scanBasePackages = ["com.demo.chat.config"],
+        exclude = [RSocketSecurityAutoConfiguration::class],
+    )
     class BootApp
 
     private fun closedPort(): Int =

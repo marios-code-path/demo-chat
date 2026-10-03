@@ -29,7 +29,7 @@ import org.springframework.test.web.reactive.server.WebTestClient
         "spring.rsocket.server.port=0", "app.key.type=long", "app.nodeid=1",
         "app.service.core.key=memory",
         "app.service.core.pubsub=memory", "app.service.core.index=lucene", "app.service.core.persistence=memory",
-        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth",
+        "app.service.core.secrets=memory", "app.service.composite", "app.service.composite.auth=true",
         "app.service.core.vector=simple", "app.service.core.embedding=mock",
         "app.controller.secrets", "app.controller.key", "app.controller.persistence", "app.controller.index",
         "app.controller.user", "app.controller.message", "app.controller.topic", "app.controller.pubsub",

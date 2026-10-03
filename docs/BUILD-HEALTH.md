@@ -5,14 +5,15 @@ Known build-time deficiencies, what causes them, and what they take down with th
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 **The `--ci` mode was measured on 2026-10-03 on branch
-`chat-shell-feedback`**, with an empty temporary `DOCKER_CONFIG`, against
-Docker Engine 29.7.2. It exits 0 and reports no drift. 29 modules ran 1872
-tests, with 0 failures, 0 errors and 64 skipped. **No module fails, and no
+`chat-mpjtnpqv-token-relay`**, with an empty temporary `DOCKER_CONFIG`. It
+reports no drift. 30 modules ran 1901 tests, with 0 failures, 0 errors and 66
+skipped. `chat-shell` ran 77 tests with 27 skipped. **No module fails, and no
 module is tolerated.** `KNOWN_FAILING_INTEGRATION` is empty, so an exit code of
 0 means that every module passes. This run rebuilt the chat-shell test image,
-and the image id moved to `sha256:0ac10da1`.
+and the image id moved to `sha256:34dded7a`.
 
-The run on branch `chat-member-subscribe-grant` read 1863 tests with 0
+The run on branch `chat-shell-feedback` read 1872 tests with 0 failures, 0
+errors and 64 skipped, at image `sha256:0ac10da1`. The run on branch `chat-member-subscribe-grant` read 1863 tests with 0
 failures, 0 errors and 64 skipped, at image `sha256:1103cdad`. The run on branch `chat-rdlghoqe-core-routes` read 1859 tests with 0 failures,
 0 errors and 64 skipped, at image `sha256:08c7812b`. The run on branch `chat-mfveaecc-join-grant` read 1848 tests with 0 failures,
 0 errors and 63 skipped, at image `sha256:1965fa84`. The run before it, at `96c88e96`, reported 1829 tests with 2 failures, 0

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Tag
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.security.autoconfigure.rsocket.RSocketSecurityAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.ApplicationContext
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -35,7 +36,7 @@ import org.springframework.test.context.TestPropertySource
         "app.service.core.persistence=memory",
         "app.service.core.secrets=memory",
         "app.service.composite",
-        "app.service.composite.auth",
+        "app.service.composite.auth=true",
         "app.service.core.vector=redis",
         "app.service.core.embedding=mock",
         "app.controller.message",
@@ -82,6 +83,10 @@ class RedisVectorRecallBootTests {
      * Mirrors ChatApp (com.demo.chat.ChatApp) — test-only, since chat-deploy
      * is not on this module's classpath.
      */
-    @SpringBootApplication(proxyBeanMethods = false, scanBasePackages = ["com.demo.chat.config"])
+    @SpringBootApplication(
+        proxyBeanMethods = false,
+        scanBasePackages = ["com.demo.chat.config"],
+        exclude = [RSocketSecurityAutoConfiguration::class],
+    )
     class BootApp
 }

@@ -33,7 +33,7 @@ import org.springframework.context.annotation.Configuration
  * `RoomOwnerGrantWiringTests` read zero owner rows from a deployment.
  */
 @Configuration
-@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"])
+@ConditionalOnProperty(prefix = "app.service.composite", name = ["auth"], havingValue = "true")
 open class RoomOwnerGrantConfiguration<T>(
     private val authorizationService: AuthorizationService<T, AuthMetadata<T>>,
     private val rootKeys: RootKeys<T>,

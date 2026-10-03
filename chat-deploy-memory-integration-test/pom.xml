@@ -18,6 +18,22 @@
     </properties>
     <profiles>
         <profile>
+            <id>rest-core-e2e</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <systemPropertyVariables>
+                                <run.rest.core.e2e>true</run.rest.core.e2e>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <!-- Opt-in: mvn -Ptest-build. This profile builds a container image.
                  A plain build must not need a Docker daemon. The only consumer
                  is chat-shell integration tests. Those tests need -Pintegration.
@@ -60,7 +76,7 @@ NodeId.parse fails without a value. 900 is this test deployment value. The
 image receives it at build time. It is not a shared YAML default. The memory
 backend has no claim store, so no lease check applies. -->
 -Dapp.nodeid=900
--Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth
+-Dapp.service.core.persistence=memory -Dapp.service.core.secrets=memory -Dapp.service.composite -Dapp.service.composite.auth=true
 -Dapp.controller.persistence -Dapp.controller.index
 -Dapp.controller.key -Dapp.controller.pubsub -Dapp.controller.secrets
 -Dapp.controller.user -Dapp.controller.topic -Dapp.controller.message
@@ -95,10 +111,29 @@ backend has no claim store, so no lease check applies. -->
             <groupId>com.demo</groupId>
             <artifactId>chat-deploy-memory</artifactId>
             <version>0.0.1</version>
-        </dependency>        <dependency>
+        </dependency>
+        <dependency>
             <groupId>com.demo</groupId>
             <artifactId>chat-service-controller</artifactId>
             <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-reflect</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib-jdk8</artifactId>
         </dependency>
     </dependencies>
     <build>

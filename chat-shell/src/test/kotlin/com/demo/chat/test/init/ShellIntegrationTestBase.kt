@@ -23,7 +23,7 @@ import java.time.Duration
         "app.rsocket.transport.security.type=unprotected", "app.client.rsocket.core.key",
         "app.client.rsocket.core.persistence", "app.client.rsocket.core.index", "app.client.rsocket.core.pubsub",
         "app.client.rsocket.core.secrets", "app.client.rsocket.composite.user", "app.client.rsocket.composite.message",
-        "app.client.rsocket.composite.topic", "app.service.composite.auth",
+        "app.client.rsocket.composite.topic", "app.service.composite.auth=true",
         "spring.cloud.service-registry.auto-registration.enabled=false",
         "app.service.security.userdetails",
         "spring.cloud.consul.config.enabled=false", "spring.rsocket.server.port=0", "server.port=0",

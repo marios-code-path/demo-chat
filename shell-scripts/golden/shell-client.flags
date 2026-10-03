@@ -18,7 +18,7 @@
 -Dapp.rootkeys.consume.scheme=http
 -Dapp.rootkeys.consume.source=http://127.0.0.1:6791
 -Dapp.rsocket.transport.security.type=unprotected
--Dapp.service.composite.auth
+-Dapp.service.composite.auth=true
 -Dapp.service.core.key=memory
 -Djava.security.egd=file:/dev/./urandom
 -Dlogging.level.io.rsocket.FrameLogger=OFF
