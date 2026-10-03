@@ -41,7 +41,7 @@ class TopicCommandsRegistrar<T : Any>(private val commands: TopicCommands<T>) {
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("name").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.addTopic(ctx.optionValue("userId"), ctx.optionValue("name")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.addTopic(ctx.optionValue("userId"), ctx.optionValue("name"))?.let { key -> "Created room ${ctx.optionValue("name")} (id ${key.id})" } ?: "" })
 
     @Bean
     fun topicByNameCommand(): Command = Command.builder()
@@ -63,7 +63,7 @@ class TopicCommandsRegistrar<T : Any>(private val commands: TopicCommands<T>) {
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("topicName").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.join(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.join(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "Joined ${ctx.optionValue("topicName")}" } })
 
     @Bean
     fun leaveCommand(): Command = Command.builder()
@@ -74,7 +74,7 @@ class TopicCommandsRegistrar<T : Any>(private val commands: TopicCommands<T>) {
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("topicName").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.leave(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.leave(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "Left ${ctx.optionValue("topicName")}" } })
 
     @Bean
     fun memberOfCommand(): Command = Command.builder()

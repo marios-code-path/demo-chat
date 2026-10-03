@@ -32,10 +32,11 @@ class TopicCommands<T : Any>(
         .map(::topicToString)
         .reduce { t, u -> t + u }
         .block()
+    /** Answers the key of the new room, so the command can confirm it. */
     fun addTopic(
         userId: String,
         name: String
-    ) {
+    ): Key<T>? {
         val identity = identity(userId)
 
         // The creator resolves in USER through the server registry before the
@@ -44,7 +45,7 @@ class TopicCommands<T : Any>(
         // The server writes the ownership row, and it writes it at room
         // creation. The shell writes none, because `*` is singular per target
         // and one writer is required. See CHAT-zhjltbky.
-        verifier.resolve(identity, ChatDomain.USER)
+        return verifier.resolve(identity, ChatDomain.USER)
             .flatMap { topicService.addRoom(ByStringRequest(name)) }
             .block()
     }
