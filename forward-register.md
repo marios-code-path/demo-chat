@@ -3640,3 +3640,57 @@ runs 3 with 0.
 **The `Checkout` row of this file reads `38ecb01d`.** That is the last
 substantive merge before this refresh, so the row follows the rule under
 `Where things stand`.
+
+## The member send grant (2026-10-02)
+
+`CHAT-mfveaecc`. Branch `chat-mfveaecc-join-grant`. **This work is not merged.**
+
+### Three owner decisions
+
+1. **A join grants the member `SEND` on the room, and the grant never
+   expires.** A leave sets that grant to expire at the time of the leave.
+2. **An anonymous caller cannot join a room.**
+3. **`leaveRoom` checks `JOIN` on the member, as `joinRoom` does.**
+
+### What exists
+
+- `RoomMemberGrant` in `chat-core` is the port. `MembershipSendGrant` in
+  `chat-security` is the only writer. `RoomMemberGrantConfiguration` registers
+  it under `app.service.composite.auth`.
+- `AuthorizationService.getStoredGrants` reads the stored rows of one principal
+  and one target. It does not summarize, so a writer can see expired rows.
+- `TopicServiceImpl.joinRoom` refuses the `Anon` member with
+  `AnonymousJoinException` before any write.
+
+### Facts that cost a measurement
+
+- **The anonymous join passed the access check.** A probe measured
+  `hasAccessToId(Anon, 'JOIN')` as true for an anonymous caller, because a key
+  holds every right over itself. The refusal sits in the composite for that
+  reason.
+- **The writer changes a row in place, and does not append.** Level 3 of the
+  rank orders rows by key id, and a uuid key carries no order. One expiry per
+  member and room makes the order irrelevant.
+- **The old leave check let any caller remove any member.** The shipped
+  `{User, MessageTopic, JOIN}` row reaches every caller, and the check named
+  the room. A room owner cannot remove another member through this route now.
+- **The summarized read answers one row per permission.** A test that asks
+  `getAuthorizationsAgainst(..., "SEND")` must filter on `SEND`. The shipped
+  `GET` and `NEW` rows on the `MessageTopic` root are in the answer too.
+
+### The build
+
+- `--ci`: 1848 tests, 0 failures, 0 errors, 63 skipped. `chat-shell` reads 66
+  with 26 skipped. **B12 is resolved, and `KNOWN_FAILING_INTEGRATION` is
+  empty.** The image id moved to `sha256:1965fa84`.
+
+### One finding, read from source and not measured
+
+**The core RSocket routes carry no access check.** `pubsub.sendMessage`,
+`persist.authmetadata`, `index.authmetadata` and `secrets` are mounted on every
+core launch. `RSocketServerConfiguration.kt:59` permits every request, and the
+core access interfaces have no production implementation. So a caller with no
+credential can send to any room, can name any sender, and can write a grant
+row. The composite checks do not reach these routes. The `client` backend uses
+them, so closing them needs a service identity decision. `CHAT-rdlghoqe` holds
+it.

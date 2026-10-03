@@ -11,6 +11,8 @@ import com.demo.chat.service.core.KeyVerifier
 import com.demo.chat.domain.*
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.core.*
+import com.demo.chat.service.security.RoomMemberGrant
+import com.demo.chat.service.security.RoomMemberGrantException
 import com.demo.chat.service.security.RoomOwnerGrant
 import com.demo.chat.service.security.RoomOwnerGrantException
 import com.demo.chat.service.vector.JobTopicNames
@@ -37,6 +39,7 @@ open class TopicServiceImpl<T : Any, V, Q>(
     private val verifier: KeyVerifier<T>,
     private val rootKeys: RootKeys<T>,
     private val roomOwnerGrant: RoomOwnerGrant<T>? = null,
+    private val roomMemberGrant: RoomMemberGrant<T>? = null,
 ) : ChatTopicService<T, V> {
     val logger: Logger = LoggerFactory.getLogger(this::class.simpleName)
 
@@ -131,15 +134,31 @@ open class TopicServiceImpl<T : Any, V, Q>(
             .switchIfEmpty(Mono.error(NotFoundException))
 
     // The member resolves in USER before the room, so a membership never stores an unknown user. D7.
-    override fun joinRoom(req: MembershipRequest<T>): Mono<Void> {
-        return verifier.resolve(req.uid, ChatDomain.USER)
-            .then(verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC))
-            .flatMap { topicPersistence.get(it.key) }
-            .switchIfEmpty(Mono.error(NotFoundException))
-            // defer keeps the mint out of assembly, so a refused request mints nothing.
-            .then(Mono.defer { membershipPersistence.key() })
+    // The Anon key cannot join, so the refusal comes before every write. The
+    // join check alone allows it, because a key holds every right over
+    // itself. The SEND grant is the last step. See CHAT-mfveaecc.
+    override fun joinRoom(req: MembershipRequest<T>): Mono<Void> =
+        verifier.resolve(req.uid, ChatDomain.USER)
+            .flatMap { member ->
+                if (member.key.id == rootKeys.anon().id) Mono.error(AnonymousJoinException)
+                else Mono.just(member)
+            }
+            .flatMap { member ->
+                verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC)
+                    .flatMap { topicPersistence.get(it.key) }
+                    .switchIfEmpty(Mono.error(NotFoundException))
+                    .flatMap { room ->
+                        addMembership(req)
+                            .then(pubsub.subscribe(req.uid, req.roomId))
+                            .then(memberGrant(member.key, room.key) { grant -> grant.grantSend(member.key, room.key) })
+                    }
+            }
+
+    private fun addMembership(req: MembershipRequest<T>): Mono<Void> =
+        // defer keeps the mint out of assembly, so a refused request mints nothing.
+        Mono.defer { membershipPersistence.key() }
             .map { key -> TopicMembership.create(key.id, req.uid, req.roomId) }
-            .flatMapMany { membership ->
+            .flatMap { membership ->
                 membershipPersistence
                     .add(membership)
                     .then(membershipIndex.add(membership))
@@ -154,30 +173,47 @@ open class TopicServiceImpl<T : Any, V, Q>(
                         )
                     }
             }
-            .then(pubsub.subscribe(req.uid, req.roomId))
-    }
 
     // Both ids resolve before the index read and the pub/sub calls. D7.
+    // The SEND expiry is the last step. See CHAT-mfveaecc.
     override fun leaveRoom(req: MembershipRequest<T>): Mono<Void> =
         verifier.resolve(req.uid, ChatDomain.USER)
-            .then(verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC))
-            .thenMany(Flux.defer { membershipIndex.findBy(memberWithTopicToQuery.apply(req)) })
-            .switchIfEmpty(Mono.error(NotFoundException))
-            .last()
-            .flatMap { key ->
-                membershipPersistence.rem(key)
-                    // A leave alert is a message. It takes its own MESSAGE key. C50.
-                    .then(messagePersistence.key())
-                    .flatMap { alertKey ->
-                        pubsub.sendMessage(
-                            LeaveAlert(
-                                MessageKey.of(alertKey.id, alertKey.root, req.uid, req.roomId),
-                                emptyDataCodec.get()
-                            )
-                        )
+            .flatMap { member ->
+                verifier.resolve(req.roomId, ChatDomain.MESSAGE_TOPIC)
+                    .flatMap { room ->
+                        Flux.defer { membershipIndex.findBy(memberWithTopicToQuery.apply(req)) }
+                            .switchIfEmpty(Mono.error(NotFoundException))
+                            .last()
+                            .flatMap { key ->
+                                membershipPersistence.rem(key)
+                                    // A leave alert is a message. It takes its own MESSAGE key. C50.
+                                    .then(messagePersistence.key())
+                                    .flatMap { alertKey ->
+                                        pubsub.sendMessage(
+                                            LeaveAlert(
+                                                MessageKey.of(alertKey.id, alertKey.root, req.uid, req.roomId),
+                                                emptyDataCodec.get()
+                                            )
+                                        )
+                                    }
+                                    .then(pubsub.unSubscribe(req.uid, req.roomId))
+                                    .then(memberGrant(member.key, room.key) { grant -> grant.expireSend(member.key, room.key) })
+                            }
                     }
-                    .then(pubsub.unSubscribe(req.uid, req.roomId))
             }
+
+    /**
+     * One write of the member `SEND` row.
+     *
+     * **An absent port writes nothing and raises no error**, as for the owner
+     * grant. **A failed write names the member and the room**, and the
+     * membership change stays. See `CHAT-mfveaecc`.
+     */
+    private fun memberGrant(member: Key<T>, room: Key<T>, write: (RoomMemberGrant<T>) -> Mono<Void>): Mono<Void> =
+        roomMemberGrant
+            ?.let { grant -> Mono.defer { write(grant) } }
+            ?.onErrorMap { error -> RoomMemberGrantException(member, room, error) }
+            ?: Mono.empty()
 
     override fun roomMembers(req: ByIdRequest<T>): Mono<TopicMemberships> =
         membershipIndex.findBy(memberOfIdToQuery.apply(req))

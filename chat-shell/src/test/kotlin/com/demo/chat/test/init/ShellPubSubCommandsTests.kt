@@ -1,6 +1,7 @@
 package com.demo.chat.test.init
 
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration
+import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.PubSubCommands
 import com.demo.chat.shell.commands.TopicCommands
 import io.rsocket.exceptions.ApplicationErrorException
@@ -32,6 +33,9 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
     @Autowired
     private lateinit var topicCommands: TopicCommands<T>
 
+    @Autowired
+    private lateinit var loginCommands: LoginCommands<T>
+
     @Test
     @Order(1)
     fun `send by topic name uses the looked-up room id`() {
@@ -39,6 +43,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
         // which still held its default underscore. Parsing the underscore
         // as a key threw NumberFormatException before any request left the
         // client. fp issue B8, CHAT-qonhhtuq.
+        loginAsAdmin()
         topicCommands.addTopic("_", "pubsubA")
 
         assertDoesNotThrow {
@@ -50,6 +55,7 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
     @Test
     @Order(2)
     fun `send by topic id reaches the room`() {
+        loginAsAdmin()
         val raw = topicCommands.topicByName("_", "pubsubA")
         Assertions.assertThat(raw).isNotBlank
 
@@ -59,6 +65,10 @@ open class ShellPubSubCommandsTests<T : Any> : ShellIntegrationTestBase() {
             pubSubCommands.send(topicName = "_", topicId = topicId,
                 userName = "_", messageText = "hello by id")
         }
+    }
+
+    private fun loginAsAdmin() {
+        loginCommands.login(ShellDeploymentAccount.ADMIN_HANDLE, ShellDeploymentAccount.adminPassword)
     }
 
     @Test

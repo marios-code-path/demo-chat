@@ -62,16 +62,11 @@ KNOWN_FAILING_INSTALL=""
 #
 # B2 is closed: the container-backed suites pass under -Pintegration.
 #
-# chat-shell is recorded since 2026-10-01. CHAT-znprrzhn wired the composite
-# access checks, so the shell is refused where it holds no credential and
-# where getRoomByName is fail closed. Seven tests fail, all with Access
-# Denied. CHAT-wbcbptiq and CHAT-dgjhljbl repair them.
-#
-# **This entry does not make CI green.** CI runs plain maven, which never
-# reads this list. Both CI jobs stay red until those two issues land. This
-# entry only stops the verifier from reporting a failure that is already
-# recorded. See B12 in docs/BUILD-HEALTH.md.
-KNOWN_FAILING_INTEGRATION="chat-shell"
+# B12 is closed. chat-shell left this list on 2026-10-02, under
+# CHAT-mfveaecc. The shell tests log in where an operation needs an identity,
+# and a join grants SEND. See B12 in the Resolved table of
+# docs/BUILD-HEALTH.md.
+KNOWN_FAILING_INTEGRATION=""
 
 PHASE="test"
 OFFLINE="-o"

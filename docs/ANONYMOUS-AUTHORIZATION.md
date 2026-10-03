@@ -93,7 +93,7 @@ three `Anon` rows alone.
 | `User` | `MessageTopic` | NEW | yes, and it reaches `addRoom` since 2026-10-01 |
 | `User` | `MessageTopic` | GET_ALL | yes |
 | `User` | `MessageTopic` | GET | yes, and it reaches `getRoom` since `CHAT-rfzsnbco`. **`getRoomByName` carries no check since 2026-10-02, so it reads no grant.** |
-| `User` | `MessageTopic` | JOIN | yes, and it reaches `leaveRoom` since `CHAT-rfzsnbco` |
+| `User` | `MessageTopic` | JOIN | yes. It reached `leaveRoom` from `CHAT-rfzsnbco` until 2026-10-02. `leaveRoom` now names the member, so the row reaches no operation |
 | `User` | `MessageTopic` | MEMBERS | yes, and it reaches `roomMembers` since `CHAT-rfzsnbco` |
 
 "Reaches a caller" is the principal side, which `CHAT-mahevldm` closed.
@@ -145,6 +145,38 @@ close names a `DOMAIN_ROOT`. Level 2 of the rank keeps the owner row.
 right over its own key, so an owner may delete its own room. A room with no
 owner row is deleted by an operator, who writes the missing row or removes the
 room.
+
+## The room member
+
+**A join grants the member `SEND` on the room, and a leave expires it.** The
+owner decided this on 2026-10-02, under `CHAT-mfveaecc`. `MembershipSendGrant`
+is the only writer.
+
+- A join writes one row `{member, room, SEND}` with the expiry 0, which never
+  expires.
+- A leave sets the expiry of that row to the time of the leave.
+- A second join sets the same row to 0 again. It writes no second row.
+
+**The writer changes the row in place.** One member and one room keep one
+expiry. Level 3 of the rank orders rows by key id, and a uuid key carries no
+order. An appended expiry row could therefore lose to an older live row.
+
+**An anonymous caller cannot join a room.** The owner decided this on
+2026-10-02. The `JOIN` check on `#req.uid` alone allows it, because a key holds
+every right over itself. Measured on 2026-10-02: an anonymous caller passed
+that check for the `Anon` key. So `TopicServiceImpl.joinRoom` refuses a member
+that is the `Anon` key with `AnonymousJoinException`, before any write.
+
+**The `Anon` key and the `User` root receive no row.** Both keys are in the
+actor set of every query. A row for either key would let every caller send to
+the room. The writer drops both keys, as a second guard behind the refusal.
+
+**The owner row is not touched.** The writer reads `SEND` rows alone. Level 1
+of the rank keeps the owner `*` row above them, so an owner who leaves can
+still send.
+
+**A failed write fails the join or the leave, and the membership change
+stays.** `RoomMemberGrantException` names the member and the room.
 
 ## Self authority
 
@@ -292,6 +324,11 @@ everything, and the delegate answers the room.
    because it names a user key. `getRoomByName` is not one either, because the
    owner removed its check on 2026-10-02. See the wider-effect table of
    `docs/superpowers/specs/2026-09-30-target-domain-scan-design.md`.
+
+   **Two `MessageTopic` permissions reach an operation since 2026-10-02.**
+   `leaveRoom` names the member now, as `joinRoom` does, so `JOIN` reaches
+   neither. The room check let any caller remove any member. See
+   `CHAT-mfveaecc`.
 
 So the shipped configuration allows `User:FIND`, `User:PUT`,
 `MessageTopic:NEW`, `MessageTopic:GET_ALL`, `Message:GET` and three named
@@ -452,6 +489,8 @@ stated cause.
 writes an owner row at room creation, and that row carries `*` on the room
 key. So the creator of a room may send to it and may delete it. Any other
 caller denies. A room with no owner row denies to every caller.
+**Read this paragraph as of 2026-10-01.** Since 2026-10-02 a member that
+joined a room may also send to it. See `The room member` above.
 
 **`addUser` denies for every caller but `Admin`**, because creating a user is
 the work of an Admin. `Admin` holds `*` on every domain root since 2026-10-01.

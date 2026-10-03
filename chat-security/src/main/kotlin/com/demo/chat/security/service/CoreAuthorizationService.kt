@@ -142,6 +142,15 @@ class CoreAuthorizationService<T, Q>(
             permission
         )
 
+    /**
+     * The read uses the target index, because a room holds few rows. The
+     * principal filter then runs in memory.
+     */
+    override fun getStoredGrants(principal: Key<T>, target: Key<T>): Flux<AuthMetadata<T>> =
+        authIndex.findBy(queryForTarget.apply(target))
+            .flatMap(authPersist::get)
+            .filter { row -> row.principal == principal && row.target == target }
+
     override fun getAuthorizationsAgainstMany(uidA: Key<T>, uidB: List<Key<T>>, permission: String?): Flux<AuthMetadata<T>> = summarizer
         .computeAggregates(
             Flux.concat(uidB.flatMap { targets(it) }.map { authIndex.findBy(queryForTarget.apply(it)).flatMap(authPersist::get) }),
