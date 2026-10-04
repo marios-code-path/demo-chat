@@ -17,7 +17,6 @@ import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.security.access.composite.MessageServiceAccess
 import com.demo.chat.security.access.composite.TopicServiceAccess
-import com.demo.chat.security.access.core.PubSubAccess
 import com.demo.chat.security.rank.PrincipalRank
 import com.demo.chat.security.service.CoreAuthorizationService
 import com.demo.chat.service.core.IndexService
@@ -39,7 +38,11 @@ import reactor.core.publisher.Mono
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * The two send checks, read from the annotations and evaluated as SpEL.
+ * The access checks, read from the annotations and evaluated as SpEL.
+ *
+ * **One send check remains.** `PubSubAccess.sendMessage` carried the second,
+ * and that interface was removed on 2026-10-04 with no implementation. The
+ * RSocket seam rule guards `pubsub.**` by role. See `CHAT-kdxglvtt`.
  *
  * **A method call to the broker fails when the target is a raw id.** The
  * compiled signature of the two argument form takes a `Key`, and a raw id
@@ -49,28 +52,24 @@ import java.util.concurrent.atomic.AtomicLong
 class SendCheckExpressionTests {
 
     /**
-     * **Both send checks name the room.** The room carries the
+     * **The send check names the room.** The room carries the
      * `MessageTopic` root, and `{User, MessageTopic, GET_ALL}` names that root.
      */
     @Test
-    fun `both send checks allow a room owner`() {
+    fun `the send check allows a room owner`() {
         val access = access(listOf(grant(CALLER, ROOM, "*")))
 
         assertThat(evaluate(sendExpression(), "req", request(), access))
             .describedAs("the message send expression")
             .isTrue()
-        assertThat(evaluate(sendMessageExpression(), "message", message(), access))
-            .describedAs("the pubsub send expression")
-            .isTrue()
     }
 
-    /** A caller with no row on the room is denied by both checks. */
+    /** A caller with no row on the room is denied. */
     @Test
-    fun `both send checks deny a caller with no row`() {
+    fun `the send check denies a caller with no row`() {
         val access = access(listOf(grant(USER_ROOT, TOPIC_ROOT, "GET_ALL")))
 
         assertThat(evaluate(sendExpression(), "req", request(), access)).isFalse()
-        assertThat(evaluate(sendMessageExpression(), "message", message(), access)).isFalse()
     }
 
     /**
@@ -83,19 +82,12 @@ class SendCheckExpressionTests {
         val access = access(listOf(grant(USER_ROOT, MESSAGE_ROOT, "SEND")))
 
         assertThat(evaluate(sendExpression(), "req", request(), access)).isFalse()
-        assertThat(evaluate(sendMessageExpression(), "message", message(), access)).isFalse()
     }
 
     /** The annotation text of `MessageServiceAccess.send`. */
     private fun sendExpression(): String =
         MessageServiceAccess::class.java.methods
             .first { it.name == "send" && it.parameterCount == 1 }
-            .getAnnotation(PreAuthorize::class.java).value
-
-    /** The annotation text of `PubSubAccess.sendMessage`. */
-    private fun sendMessageExpression(): String =
-        PubSubAccess::class.java.methods
-            .first { it.name == "sendMessage" && it.parameterCount == 1 }
             .getAnnotation(PreAuthorize::class.java).value
 
     /**
@@ -292,12 +284,6 @@ class SendCheckExpressionTests {
     // `MessageSendRequest` carries raw ids, and `dest` is the room id. The
     // shell builds one the same way, with `topic.key.id`.
     private fun request(): MessageSendRequest<Long, String> = MessageSendRequest("hello", CALLER.id, ROOM.id)
-
-    // `MessageKey.of` takes raw ids for all four values, and `dest` is the
-    // room id. Production builds one the same way, with `req.roomId`.
-    private fun message(): Message<Long, String> = Message.create(
-        com.demo.chat.domain.MessageKey.of(11L, 4L, CALLER.id, ROOM.id), "hello", true
-    )
 
     private fun details() = ChatUserDetails(User.create(CALLER, "u", "handle", "http://u"), listOf())
 

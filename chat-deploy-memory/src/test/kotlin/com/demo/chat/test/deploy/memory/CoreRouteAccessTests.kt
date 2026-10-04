@@ -3,17 +3,26 @@ package com.demo.chat.test.deploy.memory
 import com.demo.chat.ChatApp
 import com.demo.chat.config.ChatJackson3Modules
 import com.demo.chat.config.CompositeServiceBeans
+import com.demo.chat.config.IndexServiceBeans
+import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.config.PersistenceServiceBeans
+import com.demo.chat.config.PubSubServiceBeans
+import com.demo.chat.config.SecretsStoreBeans
 import com.demo.chat.domain.ByStringRequest
+import com.demo.chat.domain.IndexSearchRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MemberTopicRequest
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
 import com.demo.chat.domain.StringRoleAuthorizationMetadata
+import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
+import com.demo.chat.service.core.UserIndexService
 import com.demo.chat.service.security.AuthenticationService
+import com.demo.chat.service.security.KeyCredential
 import io.rsocket.exceptions.CustomRSocketException
 import io.rsocket.metadata.WellKnownMimeType
 import org.assertj.core.api.Assertions.assertThat
@@ -36,6 +45,7 @@ import org.springframework.util.MimeTypeUtils
 import reactor.core.publisher.Mono
 import tools.jackson.databind.json.JsonMapper
 import java.time.Duration
+import java.util.concurrent.CopyOnWriteArrayList
 
 /** The service account of this test. `app.security.service-accounts` names it. */
 private const val SERVICE = "Agent"
@@ -98,15 +108,150 @@ class CoreRouteAccessTests {
         .addModule(ChatJackson3Modules().chatJackson3Module())
         .build()
 
+    @Autowired lateinit var keys: KeyServiceBeans<Long>
+    @Autowired lateinit var indexes: IndexServiceBeans<Long, String, IndexSearchRequest>
+    @Autowired lateinit var pubsub: PubSubServiceBeans<Long, String>
+    @Autowired lateinit var secrets: SecretsStoreBeans<Long>
+
     private lateinit var room: Key<Long>
+    private lateinit var plain: Key<Long>
 
     @BeforeAll
     fun fixtures() {
         room = composite.topicService().addRoom(ByStringRequest("coreroutesroom")).block(timeout)!!
-        val plain = composite.userService()
+        plain = composite.userService()
             .addUser(UserCreateRequest("name-$PLAIN", PLAIN, "http://u")).block(timeout)!!
         // The service stores the value as given, so it carries the encoder id.
         authentication.setAuthentication(plain, "{noop}$PLAIN_SECRET").block(timeout)
+    }
+
+    /**
+     * The two callers that the rule refuses. Each boundary test below sends its
+     * call as both, and each one reads the store after the refusal. See
+     * `CHAT-wgdnjdio`, `CHAT-kdxglvtt` and `CHAT-zwopgvkx`.
+     */
+    private fun refusedCallers(): List<RSocketRequester> =
+        listOf(connect(null), connect(UsernamePasswordMetadata(PLAIN, PLAIN_SECRET)))
+
+    private fun service(): RSocketRequester = connect(UsernamePasswordMetadata(SERVICE, SERVICE_SECRET))
+
+    /** **Persistence.** A refused write stores nothing. The service write is the control. */
+    @Test
+    fun `the persistence boundary refuses a write and stores nothing`() {
+        val key = stores.userPersistence().key().block(timeout)!!
+        val user = User.create(key, "persisted", "coreroutespersisted", "http://u")
+
+        refusedCallers().forEach { assertRefused(it.route("persist.user.add").data(user).retrieveMono(Void::class.java)) }
+        assertThat(stores.userPersistence().get(key).block(timeout))
+            .describedAs("the user after two refused writes")
+            .isNull()
+
+        service().route("persist.user.add").data(user).retrieveMono(Void::class.java).block(timeout)
+        assertThat(stores.userPersistence().get(key).block(timeout))
+            .describedAs("the user after the service write")
+            .isNotNull()
+    }
+
+    /** **Index.** A refused add indexes nothing, and a refused query answers nothing. */
+    @Test
+    fun `the index boundary refuses an add and a query and indexes nothing`() {
+        val key = stores.userPersistence().key().block(timeout)!!
+        val user = User.create(key, "indexed", "coreroutesindexed", "http://u")
+        val byHandle = IndexSearchRequest(UserIndexService.HANDLE, "coreroutesindexed", 100)
+
+        refusedCallers().forEach {
+            assertRefused(it.route("index.user.add").data(user).retrieveMono(Void::class.java))
+            assertRefused(it.route("index.user.query").data(byHandle).retrieveFlux(Map::class.java).collectList())
+        }
+        assertThat(indexes.userIndex().findBy(byHandle).collectList().block(timeout))
+            .describedAs("the index after two refused adds")
+            .isEmpty()
+
+        service().route("index.user.add").data(user).retrieveMono(Void::class.java).block(timeout)
+        assertThat(indexes.userIndex().findBy(byHandle).map { it.id }.collectList().block(timeout))
+            .describedAs("the index after the service add")
+            .containsExactly(key.id)
+    }
+
+    /**
+     * **Pubsub.** A refused send delivers nothing to a listener on the room.
+     * The service send is the control, and it proves that the listener hears.
+     */
+    @Test
+    fun `the pubsub boundary refuses a send and delivers nothing`() {
+        val heard = CopyOnWriteArrayList<String>()
+        val listener = pubsub.pubSubService().listenTo(room.id).subscribe { heard.add(it.data) }
+        try {
+            refusedCallers().forEach {
+                assertRefused(it.route("pubsub.sendMessage").data(forgedMessage()).retrieveMono(Void::class.java))
+            }
+            val control = stores.messagePersistence().key().block(timeout)!!
+            val allowed = Message.create(MessageKey.of(control.id, control.root, rootKeys.admin().id, room.id), "allowed", true)
+            service().route("pubsub.sendMessage").data(allowed).retrieveMono(Void::class.java).block(timeout)
+
+            await(timeout) { heard.contains("allowed") }
+            assertThat(heard).describedAs("the messages the listener heard").containsExactly("allowed")
+        } finally {
+            listener.dispose()
+        }
+    }
+
+    /** **Topic inventory.** A refused subscribe adds no member. */
+    @Test
+    fun `the topic inventory boundary refuses a subscribe and adds no member`() {
+        val request = MemberTopicRequest(plain.id, room.id)
+
+        refusedCallers().forEach {
+            assertRefused(it.route("pubsub.subscribe").data(request).retrieveMono(Void::class.java))
+            assertRefused(it.route("pubsub.getUsersBy").data(room.id).retrieveFlux(Long::class.java).collectList())
+        }
+        assertThat(pubsub.pubSubService().getUsersBy(room.id).collectList().block(timeout))
+            .describedAs("the members after two refused subscribes")
+            .doesNotContain(plain.id)
+
+        service().route("pubsub.subscribe").data(request).retrieveMono(Void::class.java).block(timeout)
+        assertThat(pubsub.pubSubService().getUsersBy(room.id).collectList().block(timeout))
+            .describedAs("the members after the service subscribe")
+            .contains(plain.id)
+    }
+
+    /** **Key.** A refused removal leaves the key in the registry. */
+    @Test
+    fun `the key boundary refuses a removal and the key stays`() {
+        val victim = stores.messagePersistence().key().block(timeout)!!
+
+        refusedCallers().forEach { assertRefused(it.route("key.rem").data(victim).retrieveMono(Void::class.java)) }
+        assertThat(keys.keyService().exists(victim).block(timeout))
+            .describedAs("the key after two refused removals")
+            .isTrue()
+
+        service().route("key.rem").data(victim).retrieveMono(Void::class.java).block(timeout)
+        assertThat(keys.keyService().exists(victim).block(timeout))
+            .describedAs("the key after the service removal")
+            .isFalse()
+    }
+
+    /** **Secrets.** A refused write leaves the stored credential as it was. */
+    @Test
+    fun `the secrets boundary refuses a write and a compare and the credential stays`() {
+        val stolen = KeyCredential(plain, "{noop}stolen")
+
+        refusedCallers().forEach {
+            assertRefused(it.route("secrets.add").data(stolen).retrieveMono(Void::class.java))
+            assertRefused(it.route("secrets.compare").data(stolen).retrieveMono(Boolean::class.java))
+        }
+        assertThat(secrets.secretsStore().getStoredCredentials(plain).block(timeout))
+            .describedAs("the credential after two refused writes")
+            .isEqualTo("{noop}$PLAIN_SECRET")
+
+        assertThat(service().route("secrets.get").data(plain).retrieveMono(String::class.java).block(timeout))
+            .describedAs("the service read of the same credential")
+            .isEqualTo("{noop}$PLAIN_SECRET")
+    }
+
+    private fun await(limit: Duration, condition: () -> Boolean) {
+        val deadline = System.nanoTime() + limit.toNanos()
+        while (!condition() && System.nanoTime() < deadline) Thread.sleep(20)
     }
 
     /** **Each of the four measured calls is refused now, and no row is written.** */

@@ -32,43 +32,6 @@ class SpringSecurityAccessBrokerService<T>(
             .switchIfEmpty(Mono.just(false))
 
     /**
-     * The per element check of a `@PostFilter`. [storeDomain] is the domain of
-     * the typed store that returned [entity]. The store states it through
-     * `PersistenceAccess.storeDomain`. The entity does not state it.
-     *
-     * **This method trusts the store.** It reads no registry. It converts the
-     * key through `trustTypedStore` in [storeDomain], and it is the one
-     * permitted caller of that conversion. Do not call it for input that a
-     * caller sent. Use [hasAccessToSubmittedEntity] for that.
-     *
-     * An entity with no target denies. An entity whose type belongs to another
-     * domain denies before the broker, because this store should not hold it.
-     * See `CHAT-avduuqwp`, T4 review correction 3.
-     */
-    fun hasAccessToEntity(entity: Any?, perm: String, storeDomain: ChatDomain): Mono<Boolean> {
-        val key = EntityTargets.keyOf(entity, rootKeys) ?: return Mono.just(false)
-        if (EntityTargets.domainOf(entity) != storeDomain) return Mono.just(false)
-        return Mono.fromCallable { verifier.trustTypedStore(key, storeDomain) }
-            .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
-    }
-
-    /**
-     * The check of an entity that a caller sent, such as an index write. The
-     * key verifies against the registry in the domain of the entity type. An
-     * unknown key or a forged root denies, and the broker is not called.
-     */
-    fun hasAccessToSubmittedEntity(entity: Any?, perm: String): Mono<Boolean> {
-        val key = EntityTargets.keyOf(entity, rootKeys) ?: return Mono.just(false)
-        val domain = EntityTargets.domainOf(entity) ?: return Mono.just(false)
-        return verifier.verify(key, domain)
-            .flatMap { access.hasAccessByPrincipal(getSecurityContextPrincipal(), it, perm) }
-            .onErrorReturn(false)
-            .switchIfEmpty(Mono.just(false))
-    }
-
-    /**
      * The target verifies against the registry before the broker sees it. An
      * unknown key or a forged root denies, and the broker is not called. See
      * `CHAT-avduuqwp`, D4.

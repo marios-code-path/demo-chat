@@ -94,8 +94,6 @@ flowchart TD
     KEY["Key&lt;T&gt;<br/>id, root, empty"]
     VERIFIER["KeyVerifier&lt;T&gt;<br/>verify(key, expectedDomain)<br/>resolve(id, expectedDomain)"]
     VERIFIED["VerifiedKey&lt;T&gt;<br/>key: Key&lt;T&gt;"]
-    STORE["Typed store result"]
-    TRUST["trustTypedStore(key, domain)<br/>Checks the domain root<br/>Does not read the registry"]
 
     DOMAIN -->|mint request| SERVICE
     SERVICE -->|records identity| REGISTRY
@@ -103,8 +101,6 @@ flowchart TD
     KEY -->|inbound verification| VERIFIER
     REGISTRY -->|supplies stored root| VERIFIER
     VERIFIER -->|returns wrapper| VERIFIED
-    STORE --> TRUST
-    TRUST -->|returns wrapper| VERIFIED
 ```
 
 The key service also resolves domain root IDs from the root state.
@@ -119,11 +115,15 @@ Its guarantee depends on the construction path.
 |---|---|
 | `verify(key, expectedDomain)` | Reads the registry. Refuses an unknown ID, a forged root, or a mismatch with a supplied domain. |
 | `resolve(id, expectedDomain)` | Reads the registry. Constructs the key with its stored root. Checks a supplied domain. |
-| `trustTypedStore(key, domain)` | Checks only that the key root matches the store domain. Trusts the caller and can accept an unknown ID. |
+| `domainRoot(domain)` | Answers the domain root key that the verifier loaded at startup. Reads no registry. |
 
-Only `hasAccessToEntity` may call `trustTypedStore`.
-The plan requires source guards and independent boundary tests for this restriction.
+**A fourth path, `trustTypedStore(key, domain)`, was removed on 2026-10-04.**
+It checked only the domain root and trusted its caller. Its one caller,
+`hasAccessToEntity`, went with the core access interfaces. See `CHAT-wgdnjdio`.
+
 The `internal` constructor alone does not prove verification.
+`KeyVerifierConstructionTests` limits the constructor calls in main source to
+`KeyVerifier.kt`.
 
 ## Store rows and request values
 

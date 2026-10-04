@@ -18,7 +18,6 @@ import com.demo.chat.service.core.KeyVerifier
 
 import com.demo.chat.test.key.TestKeys
 
-import com.demo.chat.security.access.core.SecretsStoreAccess
 import com.demo.chat.controller.core.mapping.SecretsStoreMapping
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
@@ -92,7 +91,7 @@ class SecretsControllerTests : RSocketTestBase("user", "password") {
  */
 @Controller
 class TestSecretStoreController<T>(private val that: SecretsStore<T>, private val verifier: KeyVerifier<T>) :
-    SecretsStoreMapping<T>, SecretsStoreAccess<T>, SecretsStore<T> by that {
+    SecretsStoreMapping<T>, SecretsStore<T> by that {
     override fun verifier(): KeyVerifier<T> = verifier
 
     @PreAuthorize("@chatAccess.hasAccessTo(#key.key, 'READ')")
