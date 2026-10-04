@@ -7,7 +7,7 @@ import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
-import io.rsocket.exceptions.ApplicationErrorException
+import com.demo.chat.security.rsocket.CoreNotFound
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -34,7 +34,12 @@ class UnknownRoomException(val topic: String, val refused: Boolean = false) : Ru
  * **A name wins over an id.** A person types names, and a room id is a long
  * number that a name rarely equals.
  *
- * A miss arrives as `ApplicationErrorException` on both routes.
+ * **Only a miss is a miss.** The server gives `NotFoundException` and
+ * `KeyVerificationException` their own RSocket code, and the client decoder
+ * makes `CoreNotFound` from it. Any other error reaches the caller unchanged.
+ * So a store failure or a lost connection is not read as an unknown room.
+ * Before, the shell read every `ApplicationErrorException` as a miss, and that
+ * type carries every server failure.
  *
  * **An unknown id arrives as a refusal, not as a miss.** The `GET` check of
  * `getRoom` reads the root of the id before the service runs. An id that the
@@ -57,7 +62,7 @@ class ShellRooms<T : Any>(
     fun room(topic: String): MessageTopic<T> =
         topicService.getRoomByName(ByStringRequest(topic))
             .map<MessageTopic<T>> { it }
-            .onErrorResume(ApplicationErrorException::class.java) { Mono.empty() }
+            .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
             .switchIfEmpty(Mono.defer { byId(topic) })
             .switchIfEmpty(Mono.error(UnknownRoomException(topic)))
             .block()!!
@@ -74,7 +79,7 @@ class ShellRooms<T : Any>(
         }
         return topicService.getRoom(ByIdRequest(id))
             .map<MessageTopic<T>> { it }
-            .onErrorResume(ApplicationErrorException::class.java) { Mono.empty() }
+            .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
             .onErrorResume(CoreAuthorizationRefusal::class.java) { Mono.error(UnknownRoomException(topic, refused = true)) }
     }
 }

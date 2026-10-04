@@ -7,6 +7,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TypeUtil
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
+import com.demo.chat.security.rsocket.CoreNotFound
+import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.shell.commands.ShellRooms
 import com.demo.chat.shell.commands.UnknownRoomException
@@ -26,9 +28,10 @@ import reactor.core.publisher.Mono
  * One `--topic` value names a room by its name or by its id. See
  * `CHAT-scoizkpm`.
  *
- * Both lookups answer a miss as `ApplicationErrorException`, which is how the
- * RSocket client reports a server `NotFoundException` or a key that the
- * registry does not hold. A security refusal is `CoreAuthorizationRefusal`,
+ * Both lookups answer a miss as `CoreNotFound`. The client decoder makes it
+ * from the RSocket code that the server gives `NotFoundException` and
+ * `KeyVerificationException`. Any other server failure arrives as
+ * `ApplicationErrorException`, and it is not a miss. A security refusal is `CoreAuthorizationRefusal`,
  * which the client decoder makes from the RSocket code.
  */
 @Suppress("UNCHECKED_CAST")
@@ -43,7 +46,7 @@ class ShellRoomsTests {
     }
 
     private val lobby = MessageTopic.create(Key.of(1555400854075346944L, 5L), "lobby")
-    private val miss = ApplicationErrorException("Object not Found")
+    private val miss = CoreNotFound(CustomRSocketException(RSocketNotFound.CODE, "Object not Found"))
 
     @Test
     fun `a name finds its room with no id lookup`() {
@@ -75,7 +78,7 @@ class ShellRoomsTests {
     @Test
     fun `an unknown id is refused with the same message`() {
         given(topics.getRoomByName(ByStringRequest("99"))).willReturn(Mono.error(miss))
-        given(topics.getRoom(ByIdRequest(99L))).willReturn(Mono.error(ApplicationErrorException("Key 99 is not in the registry.")))
+        given(topics.getRoom(ByIdRequest(99L))).willReturn(Mono.error(CoreNotFound(CustomRSocketException(RSocketNotFound.CODE, "Key 99 is not in the registry."))))
 
         assertThatThrownBy { rooms().idOf("99") }
             .isInstanceOf(UnknownRoomException::class.java)
@@ -107,5 +110,31 @@ class ShellRoomsTests {
             .isInstanceOf(CoreAuthorizationRefusal::class.java)
             .hasMessage("Access Denied")
         verify(topics, never()).getRoom(any() ?: ByIdRequest(0L))
+    }
+
+    /**
+     * **A server failure is not a miss.** It carries the generic code `0x201`.
+     * Before, the shell read it as an unknown room and hid the failure.
+     */
+    @Test
+    fun `a failure of the name lookup reaches the caller`() {
+        given(topics.getRoomByName(ByStringRequest("lobby")))
+            .willReturn(Mono.error(ApplicationErrorException("Query timed out after PT2S")))
+
+        assertThatThrownBy { rooms().idOf("lobby") }
+            .isInstanceOf(ApplicationErrorException::class.java)
+            .hasMessage("Query timed out after PT2S")
+        verify(topics, never()).getRoom(any() ?: ByIdRequest(0L))
+    }
+
+    @Test
+    fun `a failure of the id lookup reaches the caller`() {
+        given(topics.getRoomByName(ByStringRequest("99"))).willReturn(Mono.error(miss))
+        given(topics.getRoom(ByIdRequest(99L)))
+            .willReturn(Mono.error(ApplicationErrorException("Query timed out after PT2S")))
+
+        assertThatThrownBy { rooms().idOf("99") }
+            .isInstanceOf(ApplicationErrorException::class.java)
+            .hasMessage("Query timed out after PT2S")
     }
 }

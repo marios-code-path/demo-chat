@@ -182,6 +182,15 @@ name on 2026-10-03. The value is a room name or a room id. `join`, `leave`,
    `No room has the name or the id <value>.`
 4. When the id read is refused, the command fails with
    `No room has the name or the id <value>, or you may not read that room.`
+5. Any other error reaches the caller unchanged. A store failure or a lost
+   connection is not an unknown room.
+
+**A miss is a typed error, and the shell reads no message text.** The server
+gives `NotFoundException` and `KeyVerificationException` the RSocket code
+`0x404`, and the client decoder makes `CoreNotFound` from it. Before, every
+server error arrived as `ApplicationErrorException` with code `0x201`. The
+first version of `ShellRooms` read that type as a miss, so a real failure
+showed as an unknown room. See `docs/REST-TOKEN-RELAY.md`.
 
 **An unknown id is refused, not missed.** The `GET` check of `getRoom` reads
 the root of the id before the service runs. An id that the registry does not
@@ -200,7 +209,7 @@ number that a name rarely equals.
 `hangup <id>` stop the same listener. `hangup` stops a stored id with no
 lookup, so a listener on a removed room still stops.
 
-`ShellRoomsTests` pins the four rules, and it pins that a refused name lookup
+`ShellRoomsTests` pins the five rules, and it pins that a refused name lookup
 reaches the caller unchanged. `ShellCommandContractTests` pins
 `--topic` on every room command, and it refuses the two retired names.
 

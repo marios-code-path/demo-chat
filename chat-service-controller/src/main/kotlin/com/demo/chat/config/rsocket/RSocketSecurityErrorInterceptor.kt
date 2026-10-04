@@ -1,5 +1,8 @@
 package com.demo.chat.config.rsocket
 
+import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.NotFoundException
+import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
 import io.rsocket.Payload
 import io.rsocket.RSocket
@@ -24,6 +27,12 @@ import reactor.core.publisher.Mono
  *
  * The message stays the message of the exception. The shell and other raw
  * clients still read `Access Denied`.
+ *
+ * **A miss takes its own code too.** `NotFoundException` and
+ * `KeyVerificationException` leave as [RSocketNotFound.CODE]. Before, a miss
+ * and a store failure both left as `0x201`, and only the text told them
+ * apart. REST already answers 404 for `KeyVerificationException`. See
+ * `CHAT-scoizkpm`.
  */
 class RSocketSecurityErrorInterceptor : RSocketInterceptor {
 
@@ -50,6 +59,8 @@ class RSocketSecurityErrorInterceptor : RSocketInterceptor {
                 CustomRSocketException(RSocketSecurityErrorCodes.AUTHENTICATION, error.message ?: "Authentication failed")
             is AccessDeniedException ->
                 CustomRSocketException(RSocketSecurityErrorCodes.AUTHORIZATION, error.message ?: "Access Denied")
+            is NotFoundException, is KeyVerificationException ->
+                CustomRSocketException(RSocketNotFound.CODE, error.message ?: "Object not Found")
             else -> error
         }
     }
