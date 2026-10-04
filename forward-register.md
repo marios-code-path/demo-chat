@@ -11,13 +11,13 @@ in this file is authoritative on its own — each row points at the artifact tha
 
 | | |
 |---|---|
-| Checkout | `master` at `38ecb01d`, in sync with `origin`. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Register state | Updated 2026-10-02, after the shell Admin identity merge of PR #166. |
-| Last merged PR | #166, merge commit `38ecb01d`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
+| Checkout | `master` at `d25ca495`, in sync with `origin`. The working tree holds no untracked file. The handoff file `werokcbb-next-agent.md` is gone. |
+| Register state | Updated 2026-10-04, after the owner guard merge of PR #184. |
+| Last merged PR | #184, merge commit `d25ca495`. **The table below stops at #110.** Every merge after it is recorded in a section further down this file. |
 | Merge strategy | **Merge commits only, since 2026-09-17.** Squash and rebase are both disabled at the repository. A tip with one parent is now worth questioning. |
 | Merged feature branches | Eleven local branches hold no commit that master lacks: `boot4-bump` at `179c2fd8`, `chat-chsvdqbi-springai` at `aeb579dc`, `chat-eoqkbqve-access-expressions` at `c22f9018`, `chat-kcccoifk-dead-auth-manager` at `99483bca`, `chat-qwmjrixq-jackson3modules` at `8c3acfce`, `chat-register-checkout-clause` at `38063a53`, `chat-sgyaaivp-cassandra-timeout` at `a812cd0c`, `chat-znprrzhn-enforcement` at `6970a89a`, `chat-znprrzhn-register-refresh` at `e22486b3`, `register-refresh-2026-10-02` at `730b61f1`, and `review-pr150` at `a0065fcb`. **So master already holds their work.** Four more hold at least one commit that master lacks: `chat-hazcatpc-review-fix` at `606d251a`, `chat-mcp-spec` at `d29bac4a`, `chat-urhjrwbt-indexelastic` at `d8d797b3`, and `chat-znprrzhn-composite-enforcement` at `91af1c96`. **The branch refs are kept.** |
-| Worktrees | The main checkout alone. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.worktrees` and `.claude/worktrees` directories are empty. One untracked handoff file remains at the root: `werokcbb-next-agent.md`. |
-| Open PRs | None. PR #166 merged on 2026-10-02 as `38ecb01d`. That merge carried the shell Admin identity and the new build health reading. |
+| Worktrees | The main checkout alone. The `topic-by-name` worktree went on 2026-10-02, and its branch `chat-dgjhljbl-unguarded-name-route` went with it. The `mcp-impl` worktree went on 2026-09-29, and the `mcp-credential` worktree went on 2026-10-01. The `.worktrees` and `.claude/worktrees` directories are empty. The parked branch `chat-esengqpv-single-owner` at `a5b0b4c3` is removed, local and remote, on 2026-10-04. |
+| Open PRs | None. PR #184 merged on 2026-10-04 as `d25ca495`. That merge carried the owner guard, and it closed the last open child of `CHAT-znprrzhn`. |
 
 **The `Checkout` row records the last substantive merge before this refresh.**
 A register refresh is a narrow documentation update, so it does not move the
@@ -28,8 +28,9 @@ refresh. The owner set this rule on 2026-09-29. It holds for the earlier refresh
 too: the row for #112 read the same way.
 
 **The merge commit of the current refresh is on the issue, not here.** This
-refresh follows PR #166. The refresh before it merged as PR #164, and it
-carried the measured shell reading. The one before that merged as PR #160,
+refresh is `CHAT-fayckdfc`, and it follows PR #184. The refresh before it
+merged as PR #168, after the shell Admin identity merge. The one before that
+merged as PR #164, and it carried the measured shell reading. The one before that merged as PR #160,
 after the grant policy merge and the MCP agent identity merge. The one before
 that merged as PR #159, and it carried the register correction for the MCP
 agent identity merge. The one before that merged as PR #157, after the
@@ -3116,6 +3117,8 @@ it.** `CHAT-dgjhljbl` removed the route check on 2026-10-02, so the six split.
   `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
   `SecretsStoreAccess` have no production implementation. `CHAT-ruapxetl`
   holds the programmatic wrappers.
+  **Read that line as of 2026-10-01.** PR #182 removed those interfaces on
+  2026-10-04, and the role rule seals the core routes.
 - **No deployment turns on the checks.** They are on wherever a composite
   controller mounts, and every deployment mounts one.
 
@@ -3527,12 +3530,13 @@ decided that it moves, and `CHAT-wbcbptiq` now owns `addUser` alone.**
 ### Open after this work
 
 - `CHAT-mfveaecc`, the send refusal, filed on 2026-10-02. **It holds the only
-  remaining shell failure.**
+  remaining shell failure.** **Merged since: PR #169, `6fa2ba60`, on
+  2026-10-03.**
 - The after-fetch authorization. Named by the owner, and unfiled.
 
-**The `Checkout` row of this file reads `38ecb01d`.** That is the last
-substantive merge before this refresh, so the row follows the rule under
-`Where things stand`. The refresh itself lags that row by one merge on purpose.
+**The `Checkout` row of this file read `38ecb01d` at that refresh.** That was
+the last substantive merge before it, so the row followed the rule under
+`Where things stand`. The row reads `d25ca495` now.
 
 ## The shell Admin identity (2026-10-02)
 
@@ -3646,12 +3650,13 @@ runs 3 with 0.
 
 ### Open after this work
 
-- `CHAT-mfveaecc`, the send refusal.
+- `CHAT-mfveaecc`, the send refusal. **Merged since: PR #169, `6fa2ba60`, on
+  2026-10-03.**
 - The after-fetch authorization. Named by the owner, and unfiled.
 
-**The `Checkout` row of this file reads `38ecb01d`.** That is the last
-substantive merge before this refresh, so the row follows the rule under
-`Where things stand`.
+**The `Checkout` row of this file read `38ecb01d` at that refresh.** That was
+the last substantive merge before it, so the row followed the rule under
+`Where things stand`. The row reads `d25ca495` now.
 
 ## The member send grant (2026-10-02)
 
@@ -4321,6 +4326,7 @@ the owner order. See the next section.
 
 `CHAT-uxgdzpag`. Branch `chat-uxgdzpag-index-reload`. **This work is not
 merged.** The owner ordered it before `CHAT-esengqpv` on 2026-10-04.
+**Merged since: PR #183, `5cc320e0`, on 2026-10-04.**
 
 ### Why it came first
 
@@ -4373,12 +4379,15 @@ Recreate such a store. `docs/ARCHITECTURE.md` states it.
 `chat-esengqpv-single-owner` at `a5b0b4c3`. **It did not rebase.** The
 change was applied to a fresh branch, `chat-esengqpv-owner-guard`, cut from
 `master` at `5cc320e0`, because the parked commit message says not to merge.
+The parked branch is removed, local and remote, on 2026-10-04.
 
 ## One owner per target (2026-10-04)
 
 `CHAT-esengqpv`, the last open child of `CHAT-znprrzhn`. Branch
 `chat-esengqpv-owner-guard`, cut from `master` at `5cc320e0`. **This work is
 not merged.**
+**Merged since: PR #184, `d25ca495`, on 2026-10-04.** The merge has two
+parents, and its tree is identical to the branch tip `d1b54b9d`.
 
 ### The owner decisions
 
@@ -4430,3 +4439,5 @@ the `Admin` key holds, and the restart writes are repeats by the same owner.
 ### What closes with it
 
 Every child of `CHAT-znprrzhn` is done once this merges.
+**Done on 2026-10-04.** `CHAT-esengqpv` is closed, and every child of
+`CHAT-znprrzhn` is done.
