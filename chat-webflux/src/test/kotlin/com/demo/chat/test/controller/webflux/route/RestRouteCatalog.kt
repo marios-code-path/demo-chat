@@ -109,6 +109,9 @@ object RestRouteCatalog {
         // GET /message/id/{id}
         entry("ChatMessageServiceController", "restMessageById", "VerifiedKey<T>",
             "id" to resolver("MESSAGE")),
+        // GET /message/list/{id}
+        entry("ChatMessageServiceController", "restListMessages", "VerifiedKey<T>",
+            "id" to resolver("MESSAGE_TOPIC")),
         // GET /message/topic/{id}
         entry("ChatMessageServiceController", "restListenTopic", "VerifiedKey<T>",
             "id" to resolver("MESSAGE_TOPIC")),

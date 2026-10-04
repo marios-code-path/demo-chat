@@ -498,8 +498,15 @@ each `{id}` resolves through the registry first.
 | Operation | REST route | Media type | Check |
 |---|---|---|---|
 | `listenTopic` | `GET /topic/{id}` | NDJSON, stays open | SUBSCRIBE on the room |
+| `listMessages` | `GET /list/{id}` | NDJSON, completes | SUBSCRIBE on the room |
 | `messageById` | `GET /id/{id}` | JSON | GET on the message |
 | `send` | `POST /send/{id}` | JSON | SEND on the room |
+
+**`listMessages` reads the stored messages of one room, and the response
+completes.** `listenTopic` stays open for live messages, so it cannot serve
+the history alone. A caller without `SUBSCRIBE` gets 403. An unknown room gets
+404. `CHAT-evxtlmfs` added the REST route on 2026-10-03. Before, only the
+RSocket route `message-list-topic` served it.
 
 **`chat-shell` reaches the anonymous identity at the RSocket seam.**
 `RSocketSecurity.anonymous` establishes it. So a shipped row reaches the shell,

@@ -3977,3 +3977,65 @@ Two limits of drift v0.7.0, measured in a scratch repository:
 
 A mutation proved the binding. One appended comment line in
 `CoreSecurityErrorDecoder.kt` made `drift check` report STALE and exit 1.
+
+## The REST message list, and a core miss as 404 (2026-10-03)
+
+`CHAT-evxtlmfs` and `CHAT-undefoqd`. Branch `chat-undefoqd-rest-list-messages`.
+**This work is not merged.**
+
+### A core miss answers 404
+
+`KeyRefusalAdvice.coreNotFound` maps `CoreNotFound` to 404 and keeps the core
+message. **Before the change, a core miss through the REST facade answered
+500 with no message.** Two readings measured it on 2026-10-03: the
+two-process `RestToCoreBearerDeploymentTests` with
+`GET /topic/name/no-such-room`, and `RestCoreNotFoundMappingTests` in
+`chat-webflux`. Both pin 404 now.
+
+### The REST route for listMessages
+
+`GET /message/list/{id}` answers NDJSON and completes after the last stored
+message. It checks `SUBSCRIBE` on the room, as the RSocket route does.
+
+### The message controller had never been enforced over REST
+
+**Under method security, every `/message` route answered 404.**
+`ChatMessageServiceController` kept its class level `@RequestMapping`, and a
+JDK proxy hides it. `CHAT-znprrzhn` repaired that defect for `/topic` alone.
+The facade methods of `ChatMessageServiceRestMapping` also carried no check,
+so a fix of the mapping alone would have opened them.
+
+The routing annotations now sit on `ChatMessageServiceRestMapping`. Each of
+the four facade methods carries the check of its member: `SUBSCRIBE`,
+`SUBSCRIBE`, `GET`, and `SEND`.
+
+**No earlier test could see it.** `LongMessageRestTests` runs without method
+security. The two-process facade delegates to the core, which judges the call
+there.
+
+### Mutation proof
+
+- Removing the list check: a denied caller reads 200.
+- Removing the interface mapping: every `ListMessagesRestTests` case reads
+  404.
+
+`MessageRestAccessTests` refuses a denied caller at the three other routes,
+and the service never runs. `ListMessagesRestTests` holds the list route.
+
+**The repair is its own commit.** The owner asked for the split on
+2026-10-03. The repair commit lands first, because the list route needs it.
+
+### One trap met again
+
+**A hyphenated room name collides in the Lucene name index.** The first
+two-process run named a room `rest-list-room`. It shared tokens with
+`rest-relay-room`, so the second add failed with `Object already exists`, and
+REST answered 500. The test uses `restlistroom` now. `CHAT-hajmhslp` holds
+the defect.
+
+### One stale passage, not changed
+
+`docs/ANONYMOUS-AUTHORIZATION.md` still states that an RSocket refusal
+answers `ApplicationErrorException` with code `0x201`. Since `CHAT-mpjtnpqv`,
+it is `CustomRSocketException` with code `0x403`. This work did not change
+that passage.

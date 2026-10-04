@@ -40,6 +40,18 @@ interface ChatMessageServiceRestMapping<T> : ChatMessageService<T, String> {
     fun restListenTopic(@Resolved(ChatDomain.MESSAGE_TOPIC) id: VerifiedKey<T>): Flux<out Message<T, String>> =
         listenTopic(ByIdRequest(id.key.id))
 
+    /**
+     * The stored messages of one room. The response completes after the last
+     * stored message. `/topic/{id}` stays open for live messages, so it cannot
+     * serve the history alone. See `CHAT-evxtlmfs`.
+     *
+     * The check is the `SUBSCRIBE` check of `listMessages`.
+     */
+    @GetMapping("/list/{id}", produces = [MediaType.APPLICATION_NDJSON_VALUE])
+    @PreAuthorize("@chatAccess.hasAccessToId(#id.key.id, 'SUBSCRIBE')")
+    fun restListMessages(@Resolved(ChatDomain.MESSAGE_TOPIC) id: VerifiedKey<T>): Flux<out Message<T, String>> =
+        listMessages(ByIdRequest(id.key.id))
+
     @GetMapping("/id/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("@chatAccess.hasAccessToId(#id.key.id, 'GET')")
