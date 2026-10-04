@@ -30,16 +30,20 @@ open class MessagingServiceImpl<T : Any, V, Q>(
     /** The topic resolves in MESSAGE_TOPIC before the index read and the listener. D7. */
     override fun listenTopic(req: ByIdRequest<T>): Flux<out Message<T, V>> =
         verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC).flatMapMany {
-            Flux.concat(
-                messageIndex
-                    .findBy(topicIdToQuery.apply(req))
-                    .collectList()
-                    .flatMapMany { messageKeys ->
-                        messagePersistence.byIds(messageKeys)
-                    },
-                pubsub.listenTo(req.id)
-            )
+            Flux.concat(history(req), pubsub.listenTo(req.id))
         }
+
+    /** The history half of [listenTopic], with no listener. The topic resolves first. D7. */
+    override fun listMessages(req: ByIdRequest<T>): Flux<out Message<T, V>> =
+        verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC).flatMapMany { history(req) }
+
+    private fun history(req: ByIdRequest<T>): Flux<out Message<T, V>> =
+        messageIndex
+            .findBy(topicIdToQuery.apply(req))
+            .collectList()
+            .flatMapMany { messageKeys ->
+                messagePersistence.byIds(messageKeys)
+            }
 
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
         verifier.resolve(req.id, ChatDomain.MESSAGE)

@@ -21,6 +21,12 @@ open class MessagingClient<T, V>(
                     .data(req)
                     .retrieveFlux()
 
+    override fun listMessages(req: ByIdRequest<T>): Flux<out Message<T, V>> =
+            requester
+                    .route("${prefix}message-list-topic")
+                    .data(req)
+                    .retrieveFlux()
+
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> =
             requester
                     .route("${prefix}message-by-id")

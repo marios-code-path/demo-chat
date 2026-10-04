@@ -426,9 +426,10 @@ annotated interface as a supertype.
 | `ChatMessageServiceController` | `MessageServiceAccess` | REST |
 | `ChatUserServiceController` | `UserServiceAccess` | REST |
 
-**Every method of those three interfaces is enforced.** All fourteen are
-listed below. **The whole set left the latent state on 2026-10-01, at commit
-`601ed380`.**
+**Every method of those three interfaces is enforced.** All fifteen are
+listed below. **The first fourteen left the latent state on 2026-10-01, at
+commit `601ed380`.** `listMessages` arrived on 2026-10-03 under `CHAT-rghaeqsa`,
+and it was enforced from its first commit.
 
 | Interface | Operation | Permission | Matrix row |
 |---|---|---|---|
@@ -441,6 +442,7 @@ listed below. **The whole set left the latent state on 2026-10-01, at commit
 | `TopicServiceAccess` | `leaveRoom` | JOIN | |
 | `TopicServiceAccess` | `roomMembers` | MEMBERS | |
 | `MessageServiceAccess` | `listenTopic` | SUBSCRIBE | |
+| `MessageServiceAccess` | `listMessages` | SUBSCRIBE | |
 | `MessageServiceAccess` | `messageById` | GET | **messageById** |
 | `MessageServiceAccess` | `send` | SEND | **send** |
 | `UserServiceAccess` | `addUser` | NEW | **addUser** |

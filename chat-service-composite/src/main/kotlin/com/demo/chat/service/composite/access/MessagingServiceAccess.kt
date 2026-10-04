@@ -25,6 +25,10 @@ open class MessagingServiceAccess<T, V> (
         .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "LISTEN") }
         .thenMany(that.listenTopic(req))
 
+    override fun listMessages(req: ByIdRequest<T>): Flux<out Message<T, V>> = verifier.resolve(req.id, ChatDomain.MESSAGE_TOPIC)
+        .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "LISTEN") }
+        .thenMany(that.listMessages(req))
+
     override fun messageById(req: ByIdRequest<T>): Mono<out Message<T, V>> = verifier.resolve(req.id, ChatDomain.MESSAGE)
         .flatMap { authMetadataAccessBroker.hasAccessByPrincipal(Mono.from(principalPublisher()), it, "READ") }
         .then(that.messageById(req))

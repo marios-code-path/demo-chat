@@ -164,6 +164,18 @@ class SendCheckExpressionTests {
         ).describedAs("the listen topic expression").isTrue()
     }
 
+    /** **A list takes the check of a listen.** See `CHAT-rghaeqsa`. */
+    @Test
+    fun `the list messages expression binds a raw id and reads SUBSCRIBE`() {
+        val expression = expressionOf(MessageServiceAccess::class.java, "listMessages")
+
+        assertThat(expression).isEqualTo(expressionOf(MessageServiceAccess::class.java, "listenTopic"))
+        assertThat(evaluate(expression, "req", ByIdRequest(ROOM.id), access(listOf(grant(CALLER, ROOM, "SUBSCRIBE")))))
+            .describedAs("a SUBSCRIBE row allows the list").isTrue()
+        assertThat(evaluate(expression, "req", ByIdRequest(ROOM.id), access(listOf(grant(CALLER, ROOM, "GET")))))
+            .describedAs("a GET row does not allow the list").isFalse()
+    }
+
     /**
      * **A Kotlin data class property has no same named method.** The property
      * `uid` compiles to `getUid()`, so `#req.uid` resolves and `#req.uid()`

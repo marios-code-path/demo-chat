@@ -165,6 +165,9 @@ object RSocketRouteCatalog {
         // message.message-listen-topic
         entry("MessageServiceController", "listenTopic", "ByIdRequest<T>",
             "req.id" to service("MESSAGE_TOPIC")),
+        // message.message-list-topic
+        entry("MessageServiceController", "listMessages", "ByIdRequest<T>",
+            "req.id" to service("MESSAGE_TOPIC")),
         // message.message-send
         entry("MessageServiceController", "send", "MessageSendRequest<T,V>",
             "req.dest" to service("MESSAGE_TOPIC"),
