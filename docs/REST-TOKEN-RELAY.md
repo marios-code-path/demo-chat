@@ -125,7 +125,7 @@ flowchart TD
     D["CoreSecurityErrorDecoder<br/>reads the error code"]
     D -->|0x401| R401["CoreAuthenticationRefusal<br/>HTTP 401"]
     D -->|0x403| R403["CoreAuthorizationRefusal<br/>HTTP 403"]
-    D -->|0x404| R404["CoreNotFound<br/>no REST handler"]
+    D -->|0x404| R404["CoreNotFound<br/>HTTP 404"]
     D -->|"any other error"| RAW["Original error<br/>passes unchanged"]
 ```
 
@@ -143,9 +143,12 @@ failure both left as `ApplicationErrorException` with code `0x201`, and only
 the text told them apart. The shell room lookup reads `CoreNotFound` as a
 miss, and it passes every other error to the caller.
 
-**REST has no handler for `CoreNotFound` yet.** A REST facade over a core
-answers a core miss as it answered `0x201` before. That status is not
-measured. The REST resolver answers 404 for a local `KeyVerificationException`.
+**REST answers a core miss with 404, and the core message stays.**
+`KeyRefusalAdvice.coreNotFound` holds the mapping. `CHAT-undefoqd` added it on
+2026-10-03. Before, a core miss answered 500 with no message. Two tests
+measured that status before the change: `RestCoreNotFoundMappingTests` and the
+two-process `RestToCoreBearerDeploymentTests`. Both now pin 404. The REST
+resolver also answers 404 for a local `KeyVerificationException`.
 
 ## REST client: which metadata a request carries
 

@@ -485,6 +485,29 @@ recorded on `CHAT-znprrzhn`.
 3. **`AuthorizationDeniedException` had no renderer.** `KeyRefusalAdvice`
    gained an `AccessDeniedException` handler, which answers 403.
 
+**Repairs 1 and 2 did not reach the message controller until 2026-10-03.**
+`ChatMessageServiceController` kept its class level `@RequestMapping`. Under
+method security, every `/message` route answered 404, and no facade method
+carried a check. `CHAT-evxtlmfs` measured this. The routing annotations now
+sit on `ChatMessageServiceRestMapping`, and each facade method carries the
+check of its member. `MessageRestAccessTests` holds the proof.
+
+The REST routes of `MessageServiceAccess`. Each path is under `/message`, and
+each `{id}` resolves through the registry first.
+
+| Operation | REST route | Media type | Check |
+|---|---|---|---|
+| `listenTopic` | `GET /topic/{id}` | NDJSON, stays open | SUBSCRIBE on the room |
+| `listMessages` | `GET /list/{id}` | NDJSON, completes | SUBSCRIBE on the room |
+| `messageById` | `GET /id/{id}` | JSON | GET on the message |
+| `send` | `POST /send/{id}` | JSON | SEND on the room |
+
+**`listMessages` reads the stored messages of one room, and the response
+completes.** `listenTopic` stays open for live messages, so it cannot serve
+the history alone. A caller without `SUBSCRIBE` gets 403. An unknown room gets
+404. `CHAT-evxtlmfs` added the REST route on 2026-10-03. Before, only the
+RSocket route `message-list-topic` served it.
+
 **`chat-shell` reaches the anonymous identity at the RSocket seam.**
 `RSocketSecurity.anonymous` establishes it. So a shipped row reaches the shell,
 and `addRoom` allows. Measured: `LongShellTopicCommandsTests.should add topic

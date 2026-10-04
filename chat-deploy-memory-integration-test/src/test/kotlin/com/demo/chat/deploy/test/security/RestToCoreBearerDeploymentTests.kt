@@ -150,6 +150,101 @@ class RestToCoreBearerDeploymentTests {
             .isEqualTo(403)
     }
 
+    /**
+     * A core miss must reach REST as 404, with the core message. See
+     * `CHAT-undefoqd`.
+     *
+     * The name route holds no access check, and the core answers an unknown
+     * name with `NotFoundException`. So the miss leaves the core as code
+     * `0x404`, and the client decoder makes `CoreNotFound` from it.
+     */
+    @Test
+    fun `a core miss reaches REST as 404`() {
+        val missed = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/name/no-such-room"))
+                .header("Authorization", "Bearer ${DeployTestSigningKey.agentToken()}")
+                .GET()
+                .build(),
+        )
+
+        assertThat(missed.statusCode())
+            .describedAs("the REST status for a core miss. Body: ${missed.body()}")
+            .isEqualTo(404)
+        assertThat(missed.body()).describedAs("the core message").isNotBlank
+    }
+
+    /**
+     * The REST route for `listMessages` reads the stored messages, and the
+     * response completes. See `CHAT-evxtlmfs`.
+     *
+     * The agent owns the room it creates, so it holds `SUBSCRIBE` there. A
+     * room that `Anon` created gives the agent no `SUBSCRIBE`, so that read
+     * answers 403. An unknown room answers 404.
+     *
+     * **The room name is one token.** The Lucene name index splits on a
+     * hyphen, so `rest-list-room` matched `rest-relay-room` and the second
+     * add failed as a duplicate. See `CHAT-hajmhslp`.
+     */
+    @Test
+    fun `the REST message list reads stored messages, refuses a non-subscriber, and misses an unknown room`() {
+        val token = DeployTestSigningKey.agentToken()
+        val created = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/new"))
+                .header("Authorization", "Bearer $token")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"type\":\"ByNameRequest\",\"name\":\"restlistroom\"}"))
+                .build(),
+        )
+        assertThat(created.statusCode()).isEqualTo(201)
+        val roomId = Regex("\\\"id\\\"\\s*:\\s*(\\d+)").find(created.body())?.groupValues?.get(1)
+        assertThat(roomId).describedAs("the created room key in the REST response").isNotNull
+
+        val sent = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/message/send/$roomId"))
+                .header("Authorization", "Bearer $token")
+                .header("Content-Type", "text/plain")
+                .POST(HttpRequest.BodyPublishers.ofString("stored-history-line"))
+                .build(),
+        )
+        assertThat(sent.statusCode()).describedAs("the send. Body: ${sent.body()}").isEqualTo(201)
+
+        val listed = client.sendAsync(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/message/list/$roomId"))
+                .header("Authorization", "Bearer $token")
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString(),
+        ).get(10, java.util.concurrent.TimeUnit.SECONDS)
+        assertThat(listed.statusCode()).describedAs("the list. Body: ${listed.body()}").isEqualTo(200)
+        assertThat(listed.body()).contains("stored-history-line")
+
+        val anonymous = coreRequester(credential = null)
+        val anonRoomId = try {
+            val anonRoom = anonymous.route("topic.topic-add")
+                .data(ByStringRequest("anonlistroom"))
+                .retrieveMono(Map::class.java)
+                .block(Duration.ofSeconds(10))
+            Regex("id=(\\d+)").find(anonRoom.toString())?.groupValues?.get(1)
+        } finally {
+            anonymous.dispose()
+        }
+        val refused = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/message/list/$anonRoomId"))
+                .header("Authorization", "Bearer $token")
+                .GET()
+                .build(),
+        )
+        assertThat(refused.statusCode()).describedAs("the non-subscriber list. Body: ${refused.body()}").isEqualTo(403)
+
+        val unknown = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/message/list/987654321"))
+                .header("Authorization", "Bearer $token")
+                .GET()
+                .build(),
+        )
+        assertThat(unknown.statusCode()).describedAs("the unknown room list. Body: ${unknown.body()}").isEqualTo(404)
+    }
+
     private fun coreRequester(credential: UsernamePasswordMetadata?): RSocketRequester {
         val mapper = JsonMapper.builder().addModule(ChatJackson3Modules().chatJackson3Module()).build()
         val builder = RSocketRequester.builder()
