@@ -4,12 +4,16 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-10-03 on branch
-`chat-undefoqd-rest-list-messages`**, with an empty temporary `DOCKER_CONFIG`.
-It exits 0 and reports no drift. 30 modules ran 1954 tests, with 0 failures, 0
-errors and 75 skipped. `chat-shell` ran 109 tests with 33 skipped. The image
-id moved from `sha256:44b7ed96` to `sha256:7c920574`, so this run rebuilt the
-chat-shell test image. The two added skips are the two new opt-in cases of
+**The `--ci` mode was measured on 2026-10-04 on branch
+`chat-rest-followups`**, with an empty temporary `DOCKER_CONFIG`. It exits 0
+and reports no drift. 30 modules ran 1955 tests, with 0 failures, 0 errors and
+75 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved from
+`sha256:7c920574` to `sha256:802da1eb`, so this run rebuilt the chat-shell test
+image. The added test is the in-process miss case of
+`RestCoreNotFoundMappingTests`.
+
+The run on branch `chat-undefoqd-rest-list-messages` read 1954 tests with 75
+skipped. The two skips it added are the two new opt-in cases of
 `RestToCoreBearerDeploymentTests`.
 
 The run on branch `chat-dxkkzvrf-room-topic` read 1947 tests with 73 skipped.

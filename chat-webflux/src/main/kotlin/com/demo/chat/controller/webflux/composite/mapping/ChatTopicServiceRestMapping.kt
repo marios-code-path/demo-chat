@@ -18,17 +18,27 @@ import reactor.core.publisher.Mono
  * Each path id resolves through the registry before the service runs. See `CHAT-avduuqwp`, D2.
  *
  * **The routing annotations sit here, and not on the controller alone.** Method
- * security proxies a controller that carries an annotated supertype. The proxy is
- * a JDK dynamic proxy, because the controller implements interfaces. A JDK proxy
- * carries the interfaces and not the implementation class, so a class level
- * `@RequestMapping("/topic")` is invisible to `RequestMappingHandlerMapping` and
- * every route answers 404. Measured on 2026-10-01. See `CHAT-znprrzhn`.
+ * security proxies a controller that carries an annotated supertype. A JDK
+ * dynamic proxy carries the interfaces and not the implementation class, so a
+ * class level `@RequestMapping("/topic")` is invisible to
+ * `RequestMappingHandlerMapping` and every route answers 404. See `CHAT-znprrzhn`.
+ *
+ * **Which proxy applies depends on the context.** A `@WebFluxTest` slice makes a
+ * JDK proxy, and the slice answered 404 on 2026-10-01. A real launch makes a
+ * CGLIB proxy, because Spring Boot forces class proxies, so its routes answered.
+ * `spring.aop.proxy-target-class=false` forces a JDK proxy in a real launch, and
+ * then every route answered 404. Measured on 2026-10-04. See `CHAT-pjymtozd`.
+ * The annotations sit here so that the routes hold under both proxies.
  *
  * **The five facade methods carry their own check.** A facade method calls its
  * member on the same object. That call crosses no proxy, so the member's
  * `@PreAuthorize` never runs, and a denied caller reached the service. Measured
  * on 2026-10-01, under a JDK proxy and under CGLIB. The check repeats here for
  * that reason. See `CHAT-znprrzhn`.
+ *
+ * **This was the defect that a real launch showed.** Before the checks moved
+ * here, a delete by an identity with no `REM` grant reached the service and
+ * answered 204. Measured on 2026-10-04 at `447a1312`. See `CHAT-pjymtozd`.
  */
 @RestController
 @RequestMapping("/topic")

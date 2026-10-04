@@ -3,6 +3,7 @@ package com.demo.chat.config
 import com.demo.chat.controller.webflux.resolve.ResolvedKeyArgumentResolver
 import com.demo.chat.domain.KeyInputException
 import com.demo.chat.domain.KeyVerificationException
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.domain.TypeUtil
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.web.reactive.config.WebFluxConfigurer
@@ -74,6 +75,16 @@ class KeyRefusalAdvice {
     @ExceptionHandler(CoreNotFound::class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     fun coreNotFound(error: CoreNotFound): String = error.message ?: "Object not Found"
+
+    /**
+     * An in-process miss is not found too. A single process REST launch runs
+     * the composite in the same JVM, so a miss arrives as [NotFoundException]
+     * and not as [CoreNotFound]. Before this handler, it answered 500.
+     * Measured on 2026-10-04. See `CHAT-sdvmkidi`.
+     */
+    @ExceptionHandler(NotFoundException::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun inProcessNotFound(error: NotFoundException): String = error.message ?: "Object not Found"
 
     @ExceptionHandler(KeyInputException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)

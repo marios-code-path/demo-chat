@@ -477,6 +477,9 @@ recorded on `CHAT-znprrzhn`.
    404. The routing annotations sit on `ChatTopicServiceRestMapping` now.
    `LongTopicRestTests` passes on the same controller, because no method
    security is active in its slice.
+   **That 404 was a reading of a `@WebFluxTest` slice.** A real launch makes a
+   CGLIB proxy, and its routes answered. `CHAT-pjymtozd` measured it on
+   2026-10-04. See the table below.
 2. **A facade method crosses no proxy.** A default method that calls its
    member on the same object never leaves that object. The member's
    `@PreAuthorize` did not run, and a denied caller reached the service.
@@ -503,9 +506,30 @@ its member. `MessageRestAccessTests` holds the proof.
   the repair, all three refuse with 403.
 
 So the repair closed an open access path in that launch shape. It did not
-repair a 404 there. The proxy type of the real context is not verified. A
-probable cause is that Spring Boot forces class proxies and a slice does not.
-`CHAT-pjymtozd` holds the same question for `/topic`.
+repair a 404 there.
+
+**The proxy type decides which defect appears.** `CHAT-pjymtozd` read the bean
+type from `/actuator/beans` on 2026-10-04.
+
+- A real launch makes `ChatTopicServiceController$$SpringCGLIB$$0`, because
+  Spring Boot forces class proxies. A CGLIB proxy keeps the class level mapping
+  visible.
+- `spring.aop.proxy-target-class=false` makes `jdk.proxy2.$Proxy107` in the
+  same launch, and the 404 of the slice appears there too.
+
+The `/topic` routes at `447a1312`, the `CHAT-znprrzhn` commit before the
+routing move. The identity is `Anon`, because the `Agent` account did not exist
+yet, and `Anon` owns no room.
+
+| Call | CGLIB, the default | JDK, forced |
+|---|---|---|
+| `GET /topic/list` | 200 | 404 |
+| `DELETE /topic/id/OTHER`, no `REM` grant | **204, the delete reached the service** | 404 |
+| `GET /topic/name/{unknown}` | 403, the literal `false` check | 404 |
+
+At this branch, both proxies answer the same: `GET /topic/list` 200, the
+delete 403, and an unknown name 404. So the routes and the checks hold under
+both proxies now.
 
 The measured statuses, with one agent token. `OWNED` is a room the agent
 created. `OTHER` is a registered room id on which the agent holds no grant.

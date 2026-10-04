@@ -3020,6 +3020,10 @@ set, so an Admin row reaches the Admin identity alone.
    `ChatTopicServiceRestMapping` now. `LongTopicRestTests` passes on the same
    controller, because no method security is active in its slice. The old 404
    was never a mapping defect.
+   **Read that 404 as a slice reading only.** A real launch makes a CGLIB
+   proxy, and its routes answered. The skipped facade check was the defect
+   there. `CHAT-pjymtozd` measured it on 2026-10-04. See the last section of
+   this file.
 2. **A facade method crosses no proxy.** A default method that calls its
    member on the same object never leaves that object. The member's
    `@PreAuthorize` did not run, and **a denied caller reached the service**.
@@ -4101,6 +4105,8 @@ forces class proxies and a slice does not, so the class level mapping stays
 visible. Neither half was checked. `CHAT-pjymtozd` holds the same question
 for `/topic`, where `CHAT-znprrzhn` recorded the 404 from a slice too.
 
+**Verified on 2026-10-04 under `CHAT-pjymtozd`.** See the next section.
+
 ### Three findings filed
 
 - `CHAT-sdvmkidi`. An in-process `NotFoundException` answers 500 in REST.
@@ -4117,3 +4123,59 @@ for `/topic`, where `CHAT-znprrzhn` recorded the 404 from a slice too.
 **The `conda` CLI fails on this machine.** `pydantic-core` 2.46.3 does not
 match the `pydantic` installed beside it, which requires 2.46.4. So a step
 that needs miniforge Python cannot run until the environment is repaired.
+
+**The last sentence above is wrong.** Measured on 2026-10-04: `conda activate
+base` exits 0, and the vector gate ran under miniforge Python. Only a
+subcommand that loads the conda plugins fails, such as `conda info --base`.
+
+## Three REST follow-ups (2026-10-04)
+
+`CHAT-sdvmkidi`, `CHAT-pjymtozd` and `CHAT-sztbozcm`. Branch
+`chat-rest-followups`. **This work is not merged.**
+
+### An in-process miss answers 404
+
+`KeyRefusalAdvice.inProcessNotFound` maps `NotFoundException` to 404 and keeps
+its message. A single process REST launch runs the composite in the same JVM,
+so its miss is `NotFoundException` and not `CoreNotFound`.
+
+- `RestCoreNotFoundMappingTests` read 500 before the handler and 404 after.
+- In a real launch, `PUT /topic/join/{id}` on a minted id with no stored room
+  answered 500 at `04d8424d` and 404 on this branch.
+
+### The `/topic` 404 was a slice reading too
+
+`CHAT-znprrzhn` recorded that every `/topic` route answered 404 under method
+security. A real launch at `447a1312`, the commit before the routing move,
+read the bean type from `/actuator/beans`.
+
+| Context | Proxy | `GET /topic/list` | `DELETE /topic/id/OTHER` without `REM` |
+|---|---|---|---|
+| default | `ChatTopicServiceController$$SpringCGLIB$$0` | 200 | **204** |
+| `spring.aop.proxy-target-class=false` | `jdk.proxy2.$Proxy107` | 404 | 404 |
+| this branch, default | CGLIB | 200 | 403 |
+| this branch, JDK forced | `jdk.proxy2.$Proxy108` | 200 | 403 |
+
+**Spring Boot forces class proxies in a real context, and a `@WebFluxTest`
+slice does not.** So the slice met the hidden mapping, and a real launch met
+the skipped facade check. The identity at `447a1312` was `Anon`, because the
+`Agent` account did not exist yet.
+
+**The routes and the checks now hold under both proxies.**
+
+### The launch commands start again
+
+- `shell-scripts/vector/gate-embedding-launch.sh` gained `--app.primary=REST`.
+  Without it, the gate failed at startup on the missing
+  `AgentResourceServerChain` bean. With it, the gate passes all 11 steps, with
+  3 hits and `indexComplete` true.
+- The `docs/EMBEDDING-PROVIDERS.md` command now carries the flag set of the
+  gate. Run as written, it starts, and an agent token reads `GET /topic/list`
+  with 200. Bisection shows three required additions: `app.primary`, the four
+  `app.security` values, and `app.users.create` with `userinit.yml`. The
+  `TypeUtil` failure of the earlier form is not traced.
+
+### A correction of the previous section
+
+`conda` works for activation. Only `conda info --base` and other plugin
+subcommands fail.

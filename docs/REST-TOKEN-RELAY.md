@@ -150,6 +150,12 @@ measured that status before the change: `RestCoreNotFoundMappingTests` and the
 two-process `RestToCoreBearerDeploymentTests`. Both now pin 404. The REST
 resolver also answers 404 for a local `KeyVerificationException`.
 
+**An in-process miss answers 404 too.** A single process REST launch runs the
+composite in the same JVM, so its miss is `NotFoundException` and not
+`CoreNotFound`. `KeyRefusalAdvice.inProcessNotFound` maps it. `CHAT-sdvmkidi`
+added it on 2026-10-04. Before, it answered 500.
+`RestCoreNotFoundMappingTests` pins it.
+
 ## REST client: which metadata a request carries
 
 `DeferredRequestSpec` chooses the metadata when the request is subscribed, not
