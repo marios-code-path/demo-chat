@@ -5,6 +5,7 @@ import com.demo.chat.service.core.StoreShapeCheck
 import com.demo.chat.test.key.FakeKeyServices
 
 import com.demo.chat.domain.knownkey.RootKeys
+import com.demo.chat.domain.TypeUtil
 
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.demo.chat.config.persistence.cassandra.CorePersistenceServices
@@ -44,6 +45,10 @@ class CorePersistenceServicesConditionTests {
 
         @Bean
         fun rootKeys(): RootKeys<Long> = FakeKeyServices.longRoots()
+
+        // The shape check reads the key type for the message id type. See CHAT-xcmpudyb.
+        @Bean
+        fun typeUtil(): TypeUtil<Long> = TypeUtil.LongUtil
 
         @Bean
         fun keyService(): IKeyService<Long> = TestLongKeyService()

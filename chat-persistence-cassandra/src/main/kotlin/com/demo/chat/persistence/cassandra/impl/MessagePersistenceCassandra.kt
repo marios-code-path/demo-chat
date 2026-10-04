@@ -32,6 +32,13 @@ open class MessagePersistenceCassandra<T : Any>(
 
     override fun all(): Flux<out Message<T, String>> = messageRepo.findAll().map(::message)
 
+    /**
+     * The default answers nothing, so the room history of a Cassandra
+     * deployment was always empty, with no error. See `CHAT-xcmpudyb`.
+     */
+    override fun byIds(keys: List<Key<T>>): Flux<out Message<T, String>> =
+        if (keys.isEmpty()) Flux.empty() else messageRepo.findByKeyIdIn(keys.map { it.id }).map(::message)
+
     /** The key must be in MESSAGE before the write. See `CHAT-avduuqwp`, T5. */
     override fun add(ent: Message<T, String>): Mono<Void> =
         StoreDomain.requireKey(ent.key, ChatDomain.MESSAGE, rootKeys).then(Mono.defer { write(ent) })

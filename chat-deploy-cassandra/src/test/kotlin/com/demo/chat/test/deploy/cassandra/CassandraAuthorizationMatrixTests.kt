@@ -2,12 +2,11 @@ package com.demo.chat.test.deploy.cassandra
 
 import com.demo.chat.ChatApp
 import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.config.KeyServiceBeans
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.User
 import com.demo.chat.domain.UserCreateRequest
-import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.security.ChatUserDetails
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import org.assertj.core.api.Assertions.assertThat
@@ -118,21 +117,11 @@ class CassandraAuthorizationMatrixTests : CassandraContainerBase() {
                 .addRoom(ByStringRequest("matrixroom"))
                 .block(timeout)!!
 
-            // The message key is minted, and no message is sent.
-            //
-            // **`messageService().send` fails on this backend.** The driver
-            // refuses the write with
-            // `Codec not found for requested operation: [TIMESTAMP <-> java.lang.Long]`.
-            // `chat_message_id.msg_id` and `chat_message_topic.msg_id` are
-            // TIMESTAMP, and the entities map a `T` id there. No test sends a
-            // message on a Cassandra deployment, so no build reports it. See
-            // `CHAT-xcmpudyb`.
-            //
-            // The `messageById` expression checks one message key, and the
-            // access broker reads that key alone. So a minted key measures the
-            // same expression, and the row is unaffected by the defect.
-            val keys = context.getBean(KeyServiceBeans::class.java) as KeyServiceBeans<Long>
-            val message = keys.keyService().key(ChatDomain.MESSAGE).block(timeout)!!
+            // A real message of this deployment. Before `CHAT-xcmpudyb`, the
+            // send failed on this backend, so this row used a minted key.
+            val message = composite.messageService()
+                .send(MessageSendRequest("matrix message", caller.id, room.id))
+                .block(timeout)!!
 
             // `addRoom` allows since 2026-10-01. The owner decided on that date
             // that every user may add a room, and the shipped

@@ -191,7 +191,7 @@ sequenceDiagram
 
 **The user index load keeps the identity users.** The initial users start after the loads, and they find each identity by its handle. Before `CHAT-uxgdzpag` added the load on 2026-10-04, the user index was empty after a restart. So each restart on a persistent store created a new `Admin`, with a new key and a new set of wildcard rows. **A store that already holds such duplicates fails the start now**, because the handle lookup finds more than one user. Measured on 2026-10-04 with two `Admin` users in one Redis store: the start fails with `Failed to start bean 'rootKeyStartup'`, caused by `Source emitted more than one item`. The message does not name the user. Recreate that store.
 
-**The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. This release has no migration.
+**The shape checks run first on every path.** Each Cassandra backend registers a check for the tables that it reads. The Redis key backend refuses the old `chat:keys` hash. A failed check names the missing table or column, and it tells the operator to recreate the store. The Cassandra checks also compare the type of each message id column: `bigint` for a `long` key and `timeuuid` for a `uuid` key. A long store from before `CHAT-xcmpudyb` declares `msg_id TIMESTAMP`, so it now fails the start and does not fail at the first message write. This release has no migration.
 
 A store node publishes the snapshot to Consul only after it stores the initial users, because `RootKeyUpdatedEvent` starts the publish.
 

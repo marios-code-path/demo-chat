@@ -2510,6 +2510,9 @@ Cassandra message sending still fails on timestamp mapping.
 `chat_message_id.msg_id` and `chat_message_topic.msg_id` are `TIMESTAMP`, and
 the entities map a `T` id there. So the matrix test mints a message key and
 sends no message.
+**Read that paragraph as of 2026-09-28.** `CHAT-xcmpudyb` repairs the send,
+and the matrix test sends a real message now. See the last section of this
+file.
 
 ## Self authority, and the target key (2026-09-24)
 

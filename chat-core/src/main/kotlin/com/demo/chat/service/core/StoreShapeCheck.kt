@@ -13,26 +13,42 @@ fun interface StoreShapeCheck {
 }
 
 /**
- * A shape check over tables and columns. [columns] reads the columns that the
- * store holds, for each table. Each module that owns tables supplies its
- * [required] set, so a store is checked for each backend that uses it.
+ * A shape check over tables, columns and column types. [columns] reads the
+ * type of each column that the store holds, for each table. Each module that
+ * owns tables supplies its [required] set, so a store is checked for each
+ * backend that uses it.
+ *
+ * [types] names the type that a column must have. A store from an earlier
+ * schema can hold every name with another type. It then starts, and fails at
+ * the first write. See `CHAT-xcmpudyb`.
  *
  * [store] names the store in the message, such as `Keyspace chat_long`.
  */
 class ColumnShapeCheck(
     private val store: String,
     private val required: Map<String, Set<String>>,
-    private val columns: () -> Map<String, Set<String>>,
+    private val types: Map<String, Map<String, String>> = emptyMap(),
+    private val columns: () -> Map<String, Map<String, String>>,
 ) : StoreShapeCheck {
     override fun check() {
         val have = columns()
-        val missing = required.flatMap { (table, cols) ->
-            val present = have[table]
-            if (present == null) listOf(table) else (cols - present).map { "$table.$it" }
+        val names = (required.keys + types.keys).associateWith { table ->
+            required[table].orEmpty() + types[table].orEmpty().keys
         }
-        if (missing.isNotEmpty()) throw com.demo.chat.domain.ChatException(
-            "$store does not match the required schema. Missing: ${missing.joinToString()}. " +
-                "Recreate the store from keyspace-*.cql. This release has no migration."
+        val missing = names.flatMap { (table, cols) ->
+            val present = have[table]
+            if (present == null) listOf(table) else (cols - present.keys).map { "$table.$it" }
+        }
+        val wrong = types.flatMap { (table, cols) ->
+            cols.mapNotNull { (col, type) ->
+                have[table]?.get(col)?.takeIf { it != type }?.let { "$table.$col is $it, required $type" }
+            }
+        }
+        if (missing.isNotEmpty() || wrong.isNotEmpty()) throw com.demo.chat.domain.ChatException(
+            "$store does not match the required schema." +
+                (if (missing.isEmpty()) "" else " Missing: ${missing.joinToString()}.") +
+                (if (wrong.isEmpty()) "" else " Wrong type: ${wrong.joinToString()}.") +
+                " Recreate the store from keyspace-*.cql. This release has no migration."
         )
     }
 }
