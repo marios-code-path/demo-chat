@@ -19,7 +19,8 @@ class TopicCommands<T : Any>(
     private val coreServices: CoreServices<T, String, IndexSearchRequest>,
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val typeUtil: TypeUtil<T>,
-    private val rootKeys: RootKeys<T>
+    private val rootKeys: RootKeys<T>,
+    private val rooms: ShellRooms<T>,
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     private val verifier = KeyVerifier(coreServices.keyService(), rootKeys)
@@ -56,30 +57,19 @@ class TopicCommands<T : Any>(
         .getRoomByName(ByStringRequest(name))
         .map(::topicToString)
         .block()
+    /** [topic] is a room name or a room id. See `CHAT-scoizkpm`. */
     fun join(
         userId: String,
-        topicName: String
+        topic: String
     ) = topicService
-        .getRoomByName(ByStringRequest(topicName))
-        .flatMap { topic ->
-            topicService
-                .joinRoom(
-                    MembershipRequest(
-                        identity(userId),
-                        topic.key.id
-                    )
-                )
-        }
+        .joinRoom(MembershipRequest(identity(userId), rooms.idOf(topic)))
         .block()
+    /** [topic] is a room name or a room id. */
     fun leave(
         userId: String,
-        topicName: String
+        topic: String
     ) = topicService
-        .getRoomByName(ByStringRequest(topicName))
-        .flatMap { topic ->
-            topicService
-                .leaveRoom(MembershipRequest(identity(userId), topic.key.id))
-        }
+        .leaveRoom(MembershipRequest(identity(userId), rooms.idOf(topic)))
         .block()
     fun memberOf(
         userId: String,
@@ -94,11 +84,11 @@ class TopicCommands<T : Any>(
         "${membership.member} | ${membership.memberOf}\n"
 
     fun topicMemberToString(member: TopicMember): String = "${member.uid} | ${member.handle} | ${member.imgUri}\n"
+    /** [topic] is a room name or a room id. */
     fun listMembers(
-        topicName: String
+        topic: String
     ): String? = topicService
-        .getRoomByName(ByStringRequest(topicName))
-        .flatMap { topic -> topicService.roomMembers(ByIdRequest(topic.key.id)) }
+        .roomMembers(ByIdRequest(rooms.idOf(topic)))
         .flatMapMany { s -> Flux.fromIterable(s.members) }
         .map(::topicMemberToString)
         .reduce { t, u -> t + u }

@@ -86,4 +86,31 @@ class MessagingServiceHistoryTests {
 
         Assertions.assertThat(history).isEmpty()
     }
+
+    /**
+     * **A list ends after the history.** `listenTopic` stays open for live
+     * messages, so only a timeout ends it. A list that waited for the listener
+     * would never complete, and the shell would hang. See `CHAT-rghaeqsa`.
+     */
+    @Test
+    fun `listMessages emits the history of that topic and completes`() {
+        store(1L, 100L, "apple")
+        store(2L, 100L, "banana")
+        store(3L, 200L, "cherry")
+        pubsub.open(100L).block()
+
+        val history = service
+            .listMessages(ByIdRequest(100L))
+            .collectList()
+            .block(Duration.ofSeconds(5))!!
+
+        Assertions.assertThat(history.map { it.key.id }).containsExactlyInAnyOrder(1L, 2L)
+    }
+
+    @Test
+    fun `listMessages refuses an id that the registry does not hold`() {
+        reactor.test.StepVerifier.create(service.listMessages(ByIdRequest(555L)))
+            .expectErrorMatches { it is com.demo.chat.domain.KeyVerificationException && it.message == "Key 555 is not in the registry." }
+            .verify(Duration.ofSeconds(5))
+    }
 }

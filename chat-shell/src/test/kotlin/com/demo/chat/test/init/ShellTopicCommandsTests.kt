@@ -3,6 +3,7 @@ package com.demo.chat.test.init
 import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.shell.commands.LoginCommands
 import com.demo.chat.shell.commands.TopicCommands
+import com.demo.chat.shell.commands.UnknownRoomException
 import io.rsocket.exceptions.ApplicationErrorException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.*
@@ -61,6 +62,32 @@ open class ShellTopicCommandsTests<T : Any> : ShellIntegrationTestBase() {
         Assertions
             .assertThat(rawMembers)
             .isNotBlank
+    }
+
+    /**
+     * **A room command takes a room id as well as a name.** One `--topic`
+     * value carries either. See `CHAT-scoizkpm`.
+     */
+    @Test
+    @Order(3)
+    fun `join and list members take the room id`() {
+        loginAsAdmin()
+        topicCommands.addTopic("_", "byIdRoom")
+        val topicId = topicCommands.topicByName("_", "byIdRoom")!!.substringBefore(" | ")
+
+        topicCommands.join("_", topicId)
+
+        Assertions.assertThat(topicCommands.listMembers(topicId)).isNotBlank
+        Assertions.assertThat(topicCommands.listMembers(topicId)).isEqualTo(topicCommands.listMembers("byIdRoom"))
+    }
+
+    @Test
+    @Order(4)
+    fun `a room command on an unknown room reports one message`() {
+        val error = org.junit.jupiter.api.Assertions.assertThrows(UnknownRoomException::class.java) {
+            topicCommands.listMembers("noSuchRoom")
+        }
+        Assertions.assertThat(error.message).isEqualTo("No room has the name or the id noSuchRoom.")
     }
 
    // @Test

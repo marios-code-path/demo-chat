@@ -7,7 +7,10 @@ import com.demo.chat.shell.commands.PubSubCommands
 import com.demo.chat.shell.commands.PubSubCommandsRegistrar
 import com.demo.chat.shell.commands.TopicCommands
 import com.demo.chat.shell.commands.TopicCommandsRegistrar
+import com.demo.chat.shell.commands.UserCommands
+import com.demo.chat.shell.commands.UserCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
@@ -55,19 +58,19 @@ class ShellParsedInputTests {
     fun `join with only a topic name takes the current user`() {
         val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
 
-        execute(commandsOf(TopicCommandsRegistrar(commands)), "join --topicName lobby")
+        execute(commandsOf(TopicCommandsRegistrar(commands)), "join --topic lobby")
 
         verify(commands).join("_", "lobby")
     }
 
     @Suppress("UNCHECKED_CAST")
     @Test
-    fun `send with only a topic name and a text takes every other default`() {
+    fun `send with only a topic and a text takes every other default`() {
         val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
 
-        execute(commandsOf(PubSubCommandsRegistrar(commands)), "send --topicName lobby --messageText hello")
+        execute(commandsOf(PubSubCommandsRegistrar(commands)), "send --topic lobby --messageText hello")
 
-        verify(commands).send("lobby", "_", "_", "hello")
+        verify(commands).send("lobby", "_", "hello")
     }
 
     /** **A command that changes state confirms it.** It printed nothing before `CHAT-dxkkzvrf`. */
@@ -87,18 +90,21 @@ class ShellParsedInputTests {
     fun `join and leave print the room name`() {
         val beans = commandsOf(TopicCommandsRegistrar(mock(TopicCommands::class.java) as TopicCommands<Any>))
 
-        assertThat(execute(beans, "join --topicName lobby")).isEqualTo("Joined lobby")
-        assertThat(execute(beans, "leave --topicName lobby")).isEqualTo("Left lobby")
+        assertThat(execute(beans, "join --topic lobby")).isEqualTo("Joined lobby")
+        assertThat(execute(beans, "leave --topic lobby")).isEqualTo("Left lobby")
     }
 
     @Suppress("UNCHECKED_CAST")
     @Test
-    fun `listen and hangup print the topic id`() {
-        val beans = commandsOf(PubSubCommandsRegistrar(mock(PubSubCommands::class.java) as PubSubCommands<Any>))
+    fun `listen and hangup print the resolved topic id`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        given(commands.listen("lobby")).willReturn("9")
+        given(commands.hangup("lobby")).willReturn("9")
+        val beans = commandsOf(PubSubCommandsRegistrar(commands))
 
-        assertThat(execute(beans, "listen --topicId 9"))
-            .isEqualTo("Listening to topic 9. Run hangup --topicId 9 to stop.")
-        assertThat(execute(beans, "hangup --topicId 9")).isEqualTo("Stopped listening to topic 9")
+        assertThat(execute(beans, "listen --topic lobby"))
+            .isEqualTo("Listening to topic 9. Run hangup 9 to stop.")
+        assertThat(execute(beans, "hangup --topic lobby")).isEqualTo("Stopped listening to topic 9")
     }
 
     /** **`exit` and `quit` run `bye`.** The registry falls back to the aliases. */
@@ -154,5 +160,156 @@ class ShellParsedInputTests {
 
         assertThat(printed).isEqualTo("Login needs a password.")
         verify(commands, never()).login(anyString(), anyString())
+    }
+
+    /**
+     * **Each command takes its main option as its first bare word.** The owner
+     * met `add-topic lobby` and `list-members <id>` refused on 2026-10-02. See
+     * `CHAT-lasqmeib`.
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `every topic command takes its main option by position`() {
+        val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
+        val beans = commandsOf(TopicCommandsRegistrar(commands))
+
+        execute(beans, "add-topic lobby")
+        execute(beans, "topic-by-name lobby")
+        execute(beans, "join lobby")
+        execute(beans, "leave 1555400854075346944")
+        execute(beans, "member-of 42")
+        execute(beans, "list-members 1555400854075346944")
+
+        verify(commands).addTopic("_", "lobby")
+        verify(commands).topicByName("_", "lobby")
+        verify(commands).join("_", "lobby")
+        verify(commands).leave("_", "1555400854075346944")
+        verify(commands).memberOf("42")
+        verify(commands).listMembers("1555400854075346944")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `every pubsub command takes its main option by position`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        given(commands.messages(anyString())).willReturn("")
+        val beans = commandsOf(PubSubCommandsRegistrar(commands))
+
+        execute(beans, "send --topic lobby \"hello there\"")
+        execute(beans, "listen lobby")
+        execute(beans, "hangup lobby")
+        execute(beans, "messages lobby")
+
+        verify(commands).send("lobby", "_", "hello there")
+        verify(commands).listen("lobby")
+        verify(commands).hangup("lobby")
+        verify(commands).messages("lobby")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `every user command takes its main option by position`() {
+        val commands = mock(UserCommands::class.java) as UserCommands<Any>
+        given(commands.keyOf("7")).willReturn(7L)
+        val beans = commandsOf(UserCommandsRegistrar(commands))
+
+        execute(beans, "kv apple")
+        execute(beans, "get-k-v 7")
+        execute(beans, "find-user Admin")
+        execute(beans, "get-user Admin")
+        execute(beans, "passwd changeme")
+        execute(beans, "get-permissions-for-user 42")
+
+        verify(commands).kv("apple")
+        verify(commands).getKV(7L)
+        verify(commands).findUser("Admin")
+        verify(commands).getUser("Admin")
+        verify(commands).passwd("_", "changeme")
+        verify(commands).getPermissionsForUser("42")
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `login takes the username by position and prompts for the password`() {
+        val commands = mock(LoginCommands::class.java) as LoginCommands<Any>
+        val reader = mock(InputReader::class.java)
+        given(reader.readPassword("Password: ")).willReturn("changeme".toCharArray())
+
+        execute(commandsOf(LoginCommandsRegistrar(commands)), "login Admin", reader)
+
+        verify(commands).login("Admin", "changeme")
+    }
+
+    /** **The named option still works.** Both forms reach the same call. */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `the named option and the bare word reach the same call`() {
+        val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
+        val beans = commandsOf(TopicCommandsRegistrar(commands))
+
+        execute(beans, "list-members --topic lobby")
+        execute(beans, "list-members lobby")
+
+        verify(commands, times(2)).listMembers("lobby")
+    }
+
+    /**
+     * **A missing main value is refused with one message.** It answered an
+     * empty text before, so `add-topic` with no name reached the server.
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `a missing main value is refused and names both forms`() {
+        val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
+
+        assertThatThrownBy { execute(commandsOf(TopicCommandsRegistrar(commands)), "add-topic") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("add-topic needs name. Give it as the first argument or as --name.")
+        verify(commands, never()).addTopic(anyString(), anyString())
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `send with no text is refused`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+
+        assertThatThrownBy { execute(commandsOf(PubSubCommandsRegistrar(commands)), "send --topic lobby") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("send needs messageText. Give it as the first argument or as --messageText.")
+        verify(commands, never()).send(anyString(), anyString(), anyString())
+    }
+
+    /** **A required option that is not the main option is refused too.** */
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `a missing required option is refused`() {
+        val commands = mock(UserCommands::class.java) as UserCommands<Any>
+
+        assertThatThrownBy { execute(commandsOf(UserCommandsRegistrar(commands)), "add-user --name Ann --handle ann") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("add-user needs --imageUri.")
+        verify(commands, never()).addUser(anyString(), anyString(), anyString())
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `a main value given two ways is refused`() {
+        val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
+
+        assertThatThrownBy { execute(commandsOf(TopicCommandsRegistrar(commands)), "join --topic lobby hall") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("Give topic one time, as --topic or as the first argument.")
+        verify(commands, never()).join(anyString(), anyString())
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `two bare words are refused`() {
+        val commands = mock(TopicCommands::class.java) as TopicCommands<Any>
+
+        assertThatThrownBy { execute(commandsOf(TopicCommandsRegistrar(commands)), "add-topic big room") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessage("add-topic takes one argument. Put quotes around a value that has spaces.")
+        verify(commands, never()).addTopic(anyString(), anyString())
     }
 }

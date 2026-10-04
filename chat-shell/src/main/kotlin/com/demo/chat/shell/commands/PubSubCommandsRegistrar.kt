@@ -24,38 +24,56 @@ import java.util.function.Function
  */
 @Configuration
 @Profile("shell")
-class PubSubCommandsRegistrar<T>(private val commands: PubSubCommands<T>) {
+class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) {
+    /**
+     * `send` takes the text by position, because every send carries a text.
+     * The room comes from `--topic`, or a user from `--userName`.
+     */
     @Bean
     fun sendCommand(): Command = Command.builder()
         .name("send")
         .description("Send a Message")
         .group("PubSub")
+        .arguments(positional("messageText"))
             .options(
-                CommandOption.with().longName("topicName").required(false).defaultValue("_").type(String::class.java).build(),
-                CommandOption.with().longName("topicId").required(false).defaultValue("_").type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("userName").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("messageText").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.send(ctx.optionValue("topicName"), ctx.optionValue("topicId"), ctx.optionValue("userName"), ctx.optionValue("messageText")).let { "" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.send(ctx.optionValue("topic"), ctx.optionValue("userName"), ctx.mainValue("messageText")).let { "" } })
 
     @Bean
     fun listenCommand(): Command = Command.builder()
         .name("listen")
         .description("Listen to a topic")
         .group("PubSub")
+        .arguments(positional("topic"))
             .options(
-                CommandOption.with().longName("topicId").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.listen(ctx.optionValue("topicId")).let { "Listening to topic ${ctx.optionValue("topicId")}. Run hangup --topicId ${ctx.optionValue("topicId")} to stop." } })
+        .execute(Function<CommandContext, String> { ctx -> commands.listen(ctx.mainValue("topic")).let { id -> "Listening to topic $id. Run hangup $id to stop." } })
 
     @Bean
     fun hangupCommand(): Command = Command.builder()
         .name("hangup")
         .description("Stop listening to a topic")
         .group("PubSub")
+        .arguments(positional("topic"))
             .options(
-                CommandOption.with().longName("topicId").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.hangup(ctx.optionValue("topicId")).let { "Stopped listening to topic ${ctx.optionValue("topicId")}" } })
+        .execute(Function<CommandContext, String> { ctx -> commands.hangup(ctx.mainValue("topic")).let { id -> "Stopped listening to topic $id" } })
+
+    /** The stored messages of one room. The owner named it on 2026-10-03. See `CHAT-rghaeqsa`. */
+    @Bean
+    fun messagesCommand(): Command = Command.builder()
+        .name("messages")
+        .description("List the messages of a topic")
+        .group("PubSub")
+        .arguments(positional("topic"))
+            .options(
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
+            )
+        .execute(Function<CommandContext, String> { ctx -> commands.messages(ctx.mainValue("topic")) })
 
 }

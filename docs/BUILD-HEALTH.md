@@ -5,17 +5,20 @@ Known build-time deficiencies, what causes them, and what they take down with th
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 **The `--ci` mode was measured on 2026-10-03 on branch
-`chat-mpjtnpqv-token-relay`**, with an empty temporary `DOCKER_CONFIG`. It
-exits 0 and reports no drift. 30 modules ran 1905 tests, with 0 failures, 0
-errors and 67 skipped. `chat-shell` ran 77 tests with 27 skipped. **No module
+`chat-dxkkzvrf-room-topic`**, with an empty temporary `DOCKER_CONFIG`. It
+exits 0 and reports no drift. 30 modules ran 1947 tests, with 0 failures, 0
+errors and 73 skipped. `chat-shell` ran 109 tests with 33 skipped. **No module
 fails, and no module is tolerated.** `KNOWN_FAILING_INTEGRATION` is empty, so an
 exit code of 0 means that every module passes. This run rebuilt the chat-shell
-test image, and the image id moved to `sha256:5a07f4a6`.
+test image, and the image id moved to `sha256:44b7ed96`. An earlier run on the
+same branch, before the miss code, read 1939 tests with 73 skipped at image
+`sha256:7b54c81b`.
 
 The opt-in two-process test `RestToCoreBearerDeploymentTests` counts as skipped
 in this run. CI does not run it.
 
-Earlier runs on the same branch read 1903 tests with 66 skipped at image
+The run on branch `chat-mpjtnpqv-token-relay` read 1905 tests with 67 skipped
+at image `sha256:5a07f4a6`. Earlier runs on that branch read 1903 tests with 66 skipped at image
 `sha256:81a39e5f`, after the core scope check. Before that check, they read
 1901 tests with 66 skipped at image `sha256:34dded7a`. The run on
 branch `chat-shell-feedback` read 1872 tests with 0 failures, 0
@@ -147,7 +150,7 @@ that every module passes, and that distinction stays worth keeping.
 empty and measured. `KNOWN_FAILING_INTEGRATION` named `chat-shell` from
 2026-10-01 to 2026-10-02, under B12.
 
-Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 77 tests with 27 skipped, so 50 run, which looks like absent coverage and is not. The reads were 68 with 27, 66 with 26 and 64 with 25 on 2026-10-02, and 56 with 22 on 2026-09-21. `CHAT-wbcbptiq`, `CHAT-mfveaecc` and `CHAT-rdlghoqe` added container tests. `CHAT-xdpcnrde` and `CHAT-dxkkzvrf` added the 9 `ShellParsedInputTests`, which need no container. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-10-03 at 77 with 27 skipped, the skipped classes are `ShellUserCommandsTests` with 10, `ShellLoginCommandsTests` with 6, `ShellPubSubCommandsTests` with 5, `ShellTopicCommandsTests` with 5, and `ShellContextTests` with 1. `CHAT-wbcbptiq` added one user test and two login tests. `CHAT-mfveaecc` added the anonymous join test to `ShellTopicCommandsTests`. `CHAT-rdlghoqe` added the anonymous core route test to `ShellUserCommandsTests`. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 50 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
+Read the `chat-shell` skip count with care. A `-Pintegration` run of that module reports 109 tests with 33 skipped, so 76 run, which looks like absent coverage and is not. The reads were 77 with 27 earlier on 2026-10-03, and 68 with 27, 66 with 26 and 64 with 25 on 2026-10-02, and 56 with 22 on 2026-09-21. `CHAT-wbcbptiq`, `CHAT-mfveaecc` and `CHAT-rdlghoqe` added container tests. `CHAT-xdpcnrde` and `CHAT-dxkkzvrf` added the 9 `ShellParsedInputTests`, which need no container. Each `@Disabled` sits on a generic base class, and surefire discovers those as test classes in their own right and reports them skipped. Measured on 2026-10-03 at 109 with 33 skipped, the skipped classes are `ShellUserCommandsTests` with 10, `ShellPubSubCommandsTests` with 9, `ShellTopicCommandsTests` with 7, `ShellLoginCommandsTests` with 6, and `ShellContextTests` with 1. `CHAT-scoizkpm` and `CHAT-rghaeqsa` added four pubsub tests and two topic tests, and the `ShellRoomsTests` and positional `ShellParsedInputTests` that need no container. `CHAT-wbcbptiq` added one user test and two login tests. `CHAT-mfveaecc` added the anonymous join test to `ShellTopicCommandsTests`. `CHAT-rdlghoqe` added the anonymous core route test to `ShellUserCommandsTests`. JUnit does not inherit `@Disabled`, so the concrete `Long*` subclass runs. The 76 that do run include every container-backed one, against the singleton container `ShellIntegrationTestBase` starts from the `chat-deploy-memory-integration-test` image, and the ten command surface tests that `CHAT-fxrwtvef` added, which need no container.
 
 `ShellContextTests` is the one disabled class that is not a generic base. Enabling it fails on a missing `CompositeServiceBeans` bean, measured on 2026-09-21, which is a gap in that test's own property set rather than anything about the shell commands.
 

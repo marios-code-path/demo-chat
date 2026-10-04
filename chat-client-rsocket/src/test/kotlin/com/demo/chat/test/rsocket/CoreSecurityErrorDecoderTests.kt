@@ -3,6 +3,8 @@ package com.demo.chat.test.rsocket
 import com.demo.chat.client.rsocket.CoreSecurityErrorDecoder
 import com.demo.chat.security.rsocket.CoreAuthenticationRefusal
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
+import com.demo.chat.security.rsocket.CoreNotFound
+import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.security.rsocket.RSocketSecurityErrorCodes
 import io.rsocket.exceptions.ApplicationErrorException
 import io.rsocket.exceptions.CustomRSocketException
@@ -42,6 +44,25 @@ class CoreSecurityErrorDecoderTests {
     @Test
     fun `a plain application error with the refusal text passes unchanged`() {
         val error = ApplicationErrorException("Access Denied")
+
+        assertThat(CoreSecurityErrorDecoder.decode(error)).isSameAs(error)
+    }
+
+    /** **A miss has its own code.** See `CHAT-scoizkpm`. */
+    @Test
+    fun `the not found code becomes a core miss`() {
+        val decoded = CoreSecurityErrorDecoder.decode(
+            CustomRSocketException(RSocketNotFound.CODE, "Object not Found")
+        )
+
+        assertThat(decoded).isInstanceOf(CoreNotFound::class.java)
+            .hasMessage("Object not Found")
+    }
+
+    /** **The miss text on a plain application error is a failure, not a miss.** */
+    @Test
+    fun `a plain application error with the miss text passes unchanged`() {
+        val error = ApplicationErrorException("Object not Found")
 
         assertThat(CoreSecurityErrorDecoder.decode(error)).isSameAs(error)
     }

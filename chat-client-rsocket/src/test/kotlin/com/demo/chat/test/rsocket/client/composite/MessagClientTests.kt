@@ -115,6 +115,31 @@ class MessagClientTests : RSocketTestBase() {
     }
 
 
+    /** **A list carries the history alone.** The listener never runs. See `CHAT-rghaeqsa`. */
+    @Test
+    fun `should list the stored messages of a topic and complete`() {
+        BDDMockito
+                .given(messagePersistence.byIds(TestBase.anyObject()))
+                .willReturn(Flux.fromStream(Stream.generate { randomMessage() }.limit(3)))
+
+        BDDMockito
+                .given(topicMessaging.listenTo(TestBase.anyObject()))
+                .willReturn(Flux.never())
+
+        BDDMockito
+                .given(messageIndex.findBy(TestBase.anyObject()))
+                .willReturn(Flux.fromStream(Stream.generate { randomMessage().key }.limit(3)))
+
+        val client = MessagingClient<UUID, String>(svcPrefix, requester)
+
+        StepVerifier
+                .create(client.listMessages(ByIdRequest(RSocketTestRegistry.registered(ChatDomain.MESSAGE_TOPIC).id)))
+                .expectSubscription()
+                .expectNextCount(3)
+                .expectComplete()
+                .verify(java.time.Duration.ofSeconds(5))
+    }
+
     private var counter = Random().nextInt()
 
     fun randomMessage(): Message<UUID, String> {

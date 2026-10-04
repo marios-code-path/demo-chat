@@ -43,56 +43,59 @@ as it is, and the two rules differ on purpose.
 
 ## The commands
 
+The **By position** column names the option that the first bare word fills.
+See `Positional input` below.
 
 ### LoginCommands
 
-| Command | Method | Help | Options |
-|---|---|---|---|
-| `bye` | `bye` | bye | none. Aliases `exit` and `quit` |
-| `root-keys` | `rootKeys` | rootkeys | none |
-| `whoami` | `whoami` | whoami | none |
-| `login` | `login` | login | `--username` `String` required<br>`--password` `String` optional. The shell prompts for it when it is absent |
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `bye` | `bye` | bye | none. Aliases `exit` and `quit` | none |
+| `root-keys` | `rootKeys` | rootkeys | none | none |
+| `whoami` | `whoami` | whoami | none | none |
+| `login` | `login` | login | `--username` `String` required<br>`--password` `String` optional. The shell prompts for it when it is absent | `--username` |
 
 ### PubSubCommands
 
-| Command | Method | Help | Options |
-|---|---|---|---|
-| `send` | `send` | Send a Message | `--topicName` `String` default `_`<br>`--topicId` `String` default `_`<br>`--userName` `String` default `_`<br>`--messageText` `String` required |
-| `listen` | `listen` | Listen to a topic | `--topicId` `String` required |
-| `hangup` | `hangup` | Stop listening to a topic | `--topicId` `String` required |
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `send` | `send` | Send a Message | `--topic` `String` default `_`<br>`--userName` `String` default `_`<br>`--messageText` `String` required | `--messageText` |
+| `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
+| `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
+| `messages` | `messages` | List the messages of a topic | `--topic` `String` required | `--topic` |
 
 ### TopicCommands
 
-| Command | Method | Help | Options |
-|---|---|---|---|
-| `show-topics` | `showTopics` | show topics | none |
-| `add-topic` | `addTopic` | Create a topic | `--userId` `String` default `_`<br>`--name` `String` required |
-| `topic-by-name` | `topicByName` | Topic by Name | `--userId` `String` default `_`<br>`--name` `String` required |
-| `join` | `join` | Subscribe to a topic | `--userId` `String` default `_`<br>`--topicName` `String` required |
-| `leave` | `leave` | unSubscribe to a topic | `--userId` `String` default `_`<br>`--topicName` `String` required |
-| `member-of` | `memberOf` | Show what topics user is subscribed to | `--userId` `String` default `_` |
-| `list-members` | `listMembers` | Show Subscribers on a topic | `--topicName` `String` required |
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `show-topics` | `showTopics` | show topics | none | none |
+| `add-topic` | `addTopic` | Create a topic | `--userId` `String` default `_`<br>`--name` `String` required | `--name` |
+| `topic-by-name` | `topicByName` | Topic by Name | `--userId` `String` default `_`<br>`--name` `String` required | `--name` |
+| `join` | `join` | Subscribe to a topic | `--userId` `String` default `_`<br>`--topic` `String` required | `--topic` |
+| `leave` | `leave` | unSubscribe to a topic | `--userId` `String` default `_`<br>`--topic` `String` required | `--topic` |
+| `member-of` | `memberOf` | Show what topics user is subscribed to | `--userId` `String` default `_` | `--userId` |
+| `list-members` | `listMembers` | Show Subscribers on a topic | `--topic` `String` required | `--topic` |
 
 ### UserCommands
 
-| Command | Method | Help | Options |
-|---|---|---|---|
-| `kv` | `kv` | Create a KeyValue | `--value` `String` required |
-| `get-k-v` | `getKV` | Get a KeyValue by Key ID | `--key` `T` required |
-| `all-k-v` | `allKV` | Get all KV | none |
-| `key` | `key` | Create a Key | none |
-| `add-user` | `addUser` | Add A User | `--name` `String` required<br>`--handle` `String` required<br>`--imageUri` `String` required |
-| `users` | `users` | All Users | none |
-| `find-user` | `findUser` | Find a user | `--handle` `String` required |
-| `get-user` | `getUser` | Get a user | `--handle` `String` required |
-| `passwd` | `passwd` | Change User Password | `--userId` `String` default `_`<br>`--password` `String` required |
-| `get-permissions-for-user` | `getPermissionsForUser` | Gets user Permissions | `--userId` `String` default `_` |
-| `all-permissions` | `allPermissions` | Get all Perms | none |
-| `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required |
+| Command | Method | Help | Options | By position |
+|---|---|---|---|---|
+| `kv` | `kv` | Create a KeyValue | `--value` `String` required | `--value` |
+| `get-k-v` | `getKV` | Get a KeyValue by Key ID | `--key` `T` required | `--key` |
+| `all-k-v` | `allKV` | Get all KV | none | none |
+| `key` | `key` | Create a Key | none | none |
+| `add-user` | `addUser` | Add A User | `--name` `String` required<br>`--handle` `String` required<br>`--imageUri` `String` required | none |
+| `users` | `users` | All Users | none | none |
+| `find-user` | `findUser` | Find a user | `--handle` `String` required | `--handle` |
+| `get-user` | `getUser` | Get a user | `--handle` `String` required | `--handle` |
+| `passwd` | `passwd` | Change User Password | `--userId` `String` default `_`<br>`--password` `String` required | `--password` |
+| `get-permissions-for-user` | `getPermissionsForUser` | Gets user Permissions | `--userId` `String` default `_` | `--userId` |
+| `all-permissions` | `allPermissions` | Get all Perms | none | none |
+| `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**26 commands and 32 options.** The option count matches a
-raw count of `@ShellOption` in the same sources, which is the cross check that
-the table is complete.
+**27 commands and 32 options.** `ShellCommandContractTests` pins both counts,
+every option and every positional argument. The migration table held 26
+commands. `CHAT-rghaeqsa` added `messages`.
 
 ## Availability is not used, and the dead check is gone
 
@@ -120,6 +123,10 @@ is wanted, it is a separate decision with its own issue.
 4. The help text of each command.
 5. The absence of an availability gate.
 
+**The owner changed rule 2 after the migration.** `CHAT-scoizkpm` replaced
+`--topicName` and `--topicId` with `--topic` on 2026-10-03. See `One room
+option` below. Every other name in the migration table stands.
+
 
 ## A default applies when the option is absent
 
@@ -145,7 +152,7 @@ session on 2026-10-02.
 
 - **A command that changes state prints one confirmation line.** `add-topic`
   prints `Created room <name> (id <id>)`. `join` and `leave` print the room
-  name. `listen` and `hangup` print the topic id. Before, each printed nothing,
+  name. `listen` and `hangup` print the room id. Before, each printed nothing,
   so a success looked like a failure.
 - **`exit` and `quit` run `bye`.** `CommandRegistry.getCommandByName` falls back
   to the aliases.
@@ -153,3 +160,117 @@ session on 2026-10-02.
   reads through `InputReader.readPassword`, so the password does not echo and it
   does not enter the command history. **A typed `--password` still enters the
   history.**
+
+## One room option
+
+`CHAT-scoizkpm`. The owner met mixed room options in the session of
+2026-10-02. `join`, `leave` and `list-members` took `--topicName`. `listen`
+and `hangup` took `--topicId`. `send` took both.
+
+**Every room command names the room through `--topic`.** The owner chose the
+name on 2026-10-03. The value is a room name or a room id. `join`, `leave`,
+`list-members`, `listen`, `hangup`, `messages` and `send` take it.
+
+`add-topic` and `topic-by-name` keep `--name`, because each takes a name only.
+
+`ShellRooms` reads the value. The rules are these:
+
+1. The shell reads the value as a room name first.
+2. When no room has that name, and the value is a valid id, the shell reads the
+   room by its id.
+3. When both reads miss, the command fails with
+   `No room has the name or the id <value>.`
+4. When the id read is refused, the command fails with
+   `No room has the name or the id <value>, or you may not read that room.`
+5. Any other error reaches the caller unchanged. A store failure or a lost
+   connection is not an unknown room.
+
+**A miss is a typed error, and the shell reads no message text.** The server
+gives `NotFoundException` and `KeyVerificationException` the RSocket code
+`0x404`, and the client decoder makes `CoreNotFound` from it. Before, every
+server error arrived as `ApplicationErrorException` with code `0x201`. The
+first version of `ShellRooms` read that type as a miss, so a real failure
+showed as an unknown room. See `docs/REST-TOKEN-RELAY.md`.
+
+**An unknown id is refused, not missed.** The `GET` check of `getRoom` reads
+the root of the id before the service runs. An id that the registry does not
+hold has no root, so the check answers false. The shell cannot tell that case
+from a room that the caller may not read, so rule 4 names both. Measured on
+2026-10-03 with `hangup 999999999999`.
+
+A refusal of any later operation still reads `Access Denied`. So `messages`
+and `listen` on a room that the caller may not read report the refusal of the
+read, not of the lookup.
+
+**A name wins over an id.** A person types names, and a room id is a long
+number that a name rarely equals.
+
+**`listen` stores its listener under the room id.** So `hangup lobby` and
+`hangup <id>` stop the same listener. `hangup` stops a stored id with no
+lookup, so a listener on a removed room still stops.
+
+`ShellRoomsTests` pins the five rules, and it pins that a refused name lookup
+reaches the caller unchanged. `ShellCommandContractTests` pins
+`--topic` on every room command, and it refuses the two retired names.
+
+## Positional input
+
+`CHAT-lasqmeib`. The owner met `add-topic lobby` and `list-members <id>`
+refused in the session of 2026-10-02.
+
+**A command takes its main option as its first bare word.** So
+`add-topic lobby` reads as `add-topic --name lobby`. The named option still
+works. The **By position** column of the tables names the main option.
+
+The main option follows one rule:
+
+- A command with one required option takes that option by position.
+- A command with one option and no required option takes that option by
+  position. `member-of` and `get-permissions-for-user` are these.
+- `add-user` and `add-permission` need several values. They take no value by
+  position.
+
+So `send` takes the text by position, as in `send --topic lobby "hello there"`.
+
+`DefaultCommandParser` already added each bare word as an argument. No command
+read one, so the old reader answered an empty text for the missing option.
+`add-topic lobby` then sent a room with no name.
+
+The shell refuses four inputs, each with one message:
+
+| Input | Message |
+|---|---|
+| No main value | `add-topic needs name. Give it as the first argument or as --name.` |
+| A main value two times | `Give topic one time, as --topic or as the first argument.` |
+| Two bare words | `add-topic takes one argument. Put quotes around a value that has spaces.` |
+| A missing required option | `add-user needs --imageUri.` |
+
+The shell prints each message after `Unable to run command <name>:`.
+
+**A password given by position enters the history.** `passwd` takes the
+password by position under the rule above. A typed `--password` enters the
+history in the same way.
+
+`ShellParsedInputTests` runs the positional form of each of the 17 commands
+through `DefaultCommandParser`, and it pins the four refusals.
+
+## The messages command
+
+`CHAT-rghaeqsa`. The owner tried `topics` and `messages` in the session of
+2026-10-02. No command listed the messages of a room.
+
+**`messages <topic>` lists the stored messages of one room.** It prints one
+line for each message, as `<message id> | <sender id> | <text>`. A room with no
+message prints `No messages in <room name>.`
+
+The owner named the command and chose its check on 2026-10-03.
+
+- **The read checks `SUBSCRIBE` on the room**, as `listen` does. A member, the
+  room owner and `Admin` may read. Any other caller reads `Access Denied`.
+- **`GET` was not chosen.** The shipped `GET` row on the `MessageTopic` root
+  reaches every caller, so every user could read every room.
+
+`listen` already returned the stored messages before the live ones. A caller
+could not tell where the history ended, so the shell could not use it.
+`ChatMessageService.listMessages` returns the history and then completes. The
+RSocket route is `message.message-list-topic`. No REST route serves it.

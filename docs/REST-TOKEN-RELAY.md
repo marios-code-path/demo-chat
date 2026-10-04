@@ -117,12 +117,15 @@ flowchart TD
     E2["AccessDeniedException<br/>from authorizePayload"] --> EI
     E3["AccessDeniedException<br/>required scope absent"] --> EI
     H["AccessDeniedException<br/>from @PreAuthorize<br/>in the handler"] --> EI
+    M["NotFoundException or<br/>KeyVerificationException"] --> EI
     EI["RSocketSecurityErrorInterceptor<br/>responder interceptor"]
     EI -->|"CustomRSocketException<br/>0x401, message kept"| D
     EI -->|"CustomRSocketException<br/>0x403, message kept"| D
+    EI -->|"CustomRSocketException<br/>0x404, message kept"| D
     D["CoreSecurityErrorDecoder<br/>reads the error code"]
     D -->|0x401| R401["CoreAuthenticationRefusal<br/>HTTP 401"]
     D -->|0x403| R403["CoreAuthorizationRefusal<br/>HTTP 403"]
+    D -->|0x404| R404["CoreNotFound<br/>no REST handler"]
     D -->|"any other error"| RAW["Original error<br/>passes unchanged"]
 ```
 
@@ -132,6 +135,17 @@ handler. The third is `authorizePayload`, for the core routes:
 `persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`, and
 `key.rem`. Each requires `ROLE_SERVICE` or `ROLE_ADMIN`. The agent principal
 holds `ROLE_AGENT`, so the core refuses these routes to the agent.
+
+**A miss takes code `0x404`.** `CHAT-scoizkpm` added it on 2026-10-03. The
+interceptor gives `NotFoundException` and `KeyVerificationException` that
+code, and the decoder makes `CoreNotFound`. Before, a miss and a server
+failure both left as `ApplicationErrorException` with code `0x201`, and only
+the text told them apart. The shell room lookup reads `CoreNotFound` as a
+miss, and it passes every other error to the caller.
+
+**REST has no handler for `CoreNotFound` yet.** A REST facade over a core
+answers a core miss as it answered `0x201` before. That status is not
+measured. The REST resolver answers 404 for a local `KeyVerificationException`.
 
 ## REST client: which metadata a request carries
 
