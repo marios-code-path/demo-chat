@@ -70,16 +70,59 @@ open class LuceneIndexBeans<T>(
      * load after the roots load and before readiness, so a stored grant is
      * found after a restart. The bean exists only where this in-process index
      * exists. A composition with no local auth store has nothing to load. See
-     * `CHAT-bafkgkko`. `CHAT-uxgdzpag` holds the other Lucene indexes.
+     * `CHAT-bafkgkko`.
      */
     @Bean
-    open fun luceneAuthIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad {
+    open fun luceneAuthIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.authMetaPersistence() to authMetadataIndex() }
+
+    /**
+     * **The other Lucene indexes load at start too.** Each one lives in process
+     * memory, so each was empty after a restart. A stored user, room, message,
+     * membership or key-value pair was then not found through its index.
+     *
+     * The user index matters most. `InitialUsersService` finds an identity
+     * user by its handle. With an empty user index it found none, so each
+     * restart on a persistent store created a new `Admin`, with a new key and
+     * a new set of `Admin` wildcard rows. Measured on 2026-10-04. See
+     * `CHAT-uxgdzpag`.
+     *
+     * One bean per index. Each one loads its index from its store.
+     */
+    @Bean
+    open fun luceneUserIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.userPersistence() to userIndex() }
+
+    @Bean
+    open fun luceneTopicIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.topicPersistence() to topicIndex() }
+
+    @Bean
+    open fun luceneMessageIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.messagePersistence() to messageIndex() }
+
+    @Bean
+    open fun luceneMembershipIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.membershipPersistence() to membershipIndex() }
+
+    /**
+     * A stored pair of a type with no registered fields fails this load, and so
+     * the start. That is the rule of the key-value index: an unregistered type
+     * throws rather than indexing nothing. See `CHAT-sgdtqhof`.
+     */
+    @Bean
+    open fun luceneKeyValueIndexLoad(persistence: ObjectProvider<PersistenceServiceBeans<*, *>>): StartupIndexLoad =
+        load(persistence) { it.keyValuePersistence() to KVPairIndex() }
+
+    /** A composition with no local store has nothing to load. */
+    @Suppress("UNCHECKED_CAST")
+    private fun load(
+        persistence: ObjectProvider<PersistenceServiceBeans<*, *>>,
+        pick: (PersistenceServiceBeans<*, *>) -> Pair<PersistenceStore<*, *>, IndexService<T, *, *>>,
+    ): StartupIndexLoad {
         val stores = persistence.ifAvailable ?: return StartupIndexLoad { Mono.empty() }
-        @Suppress("UNCHECKED_CAST")
-        return PersistedIndexLoad(
-            stores.authMetaPersistence() as PersistenceStore<T, AuthMetadata<T>>,
-            authMetadataIndex(),
-        )
+        val (store, index) = pick(stores)
+        return PersistedIndexLoad(store as PersistenceStore<T, Any>, index as IndexService<T, Any, *>)
     }
 
     @Bean

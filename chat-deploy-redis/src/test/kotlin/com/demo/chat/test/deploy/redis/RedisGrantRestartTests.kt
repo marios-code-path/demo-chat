@@ -2,7 +2,11 @@ package com.demo.chat.test.deploy.redis
 
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.domain.AuthMetadata
+import com.demo.chat.domain.ByIdRequest
+import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
+import com.demo.chat.domain.MembershipRequest
+import com.demo.chat.domain.MessageSendRequest
 import com.demo.chat.domain.UserCreateRequest
 import com.demo.chat.domain.knownkey.ChatDomain
 import com.demo.chat.domain.knownkey.RootKeys
@@ -27,7 +31,7 @@ import java.time.Duration
  * in process memory. So this test also proves that the start sequence
  * reloads that index from Redis before readiness.
  *
- * Node ids 13, 14 and 15 belong to this class. See docs/NODEID-CLAIM.md. The
+ * Node ids 13 to 17 belong to this class. See docs/NODEID-CLAIM.md. The
  * second context takes 14, because a Redis close does not release the claim
  * today. `LettuceConnectionFactory` stops before the claim guard releases.
  * `CHAT-ocpojbyy` holds that defect.
@@ -130,6 +134,65 @@ class RedisGrantRestartTests {
             Assertions.assertFalse(second.allows(user, current, "DEL"), "a permission with no grant must still deny")
         }
     }
+
+    /**
+     * **Every Lucene index loads from the store at start.** Each index lives in
+     * process memory, so each was empty after a restart. See `CHAT-uxgdzpag`.
+     *
+     * **The identity users keep their keys.** `InitialUsersService` finds an
+     * identity by its handle through the user index. Before this load, the
+     * second start found no `Admin`, created a new one with a new key, and
+     * wrote a new set of `Admin` wildcard rows. Measured on 2026-10-04: the
+     * two starts of the test above wrote their rows under two `Admin` keys.
+     *
+     * Each read below goes through one reloaded index: the user index, the
+     * topic name index, the message index by room, and the membership index.
+     */
+    @Test
+    fun `the stored identities, rooms, messages and memberships are found after a restart`() {
+        val admin: Key<Long>
+        val member: Key<Long>
+        val room: Key<Long>
+
+        start(16).use { first ->
+            val composite = first.composite()
+            admin = first.roots().admin()
+            member = composite.userService().addUser(UserCreateRequest("reload", "reloaduser", "http://u")).block(timeout)!!
+            room = composite.topicService().addRoom(ByStringRequest("reloadroom")).block(timeout)!!
+            composite.topicService().joinRoom(MembershipRequest(member.id, room.id)).block(timeout)
+            composite.messageService().send(MessageSendRequest("reloadline", member.id, room.id)).block(timeout)
+        }
+
+        start(17).use { second ->
+            val composite = second.composite()
+
+            Assertions.assertEquals(admin, second.roots().admin(), "the Admin identity keeps its key across a restart")
+            Assertions.assertEquals(
+                1,
+                composite.userService().findByUsername(ByStringRequest("Admin")).collectList().block(timeout)!!.size,
+                "one Admin user after two starts",
+            )
+            Assertions.assertEquals(
+                room,
+                composite.topicService().getRoomByName(ByStringRequest("reloadroom")).block(timeout)!!.key,
+                "the room by its name",
+            )
+            Assertions.assertEquals(
+                listOf("reloadline"),
+                composite.messageService().listMessages(ByIdRequest(room.id)).map { it.data }.collectList().block(timeout),
+                "the stored message of the room",
+            )
+            Assertions.assertTrue(
+                composite.topicService().roomMembers(ByIdRequest(room.id)).block(timeout)!!
+                    .members.any { it.uid == member.id.toString() },
+                "the stored member of the room",
+            )
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun ConfigurableApplicationContext.composite() =
+        getBean(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
 
     /**
      * A stored grant that cannot be read fails the start. The auth index load

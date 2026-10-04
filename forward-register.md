@@ -2661,6 +2661,8 @@ The branch is `chat-bafkgkko-root-restart`.
 - `LuceneIndexBeans.luceneAuthIndexLoad` fills the Lucene auth index from the
   auth store. A partial load fails the start. Only the auth index loads.
   `CHAT-uxgdzpag` holds the other Lucene indexes.
+  **Since 2026-10-04 all six Lucene indexes load.** See the last section of
+  this file.
 - `CassandraGrantRestartTests` and `RedisGrantRestartTests` write a runtime
   grant, close the context, open a second one against the same store, and
   check the grant through the production `AccessBroker`.
@@ -4235,3 +4237,58 @@ app.controller.persistence, app.controller.index, app.controller.key.`
 `CHAT-dvuwfpmj`. The recall routes carry no access check either.
 `/message/recall/global` searches every indexed message for any agent token.
 Read from source. The owner decides the rule.
+
+## Every Lucene index loads at start (2026-10-04)
+
+`CHAT-uxgdzpag`. Branch `chat-uxgdzpag-index-reload`. **This work is not
+merged.** The owner ordered it before `CHAT-esengqpv` on 2026-10-04.
+
+### Why it came first
+
+`CHAT-esengqpv` adds a single owner guard. Its restart test failed: the second
+start refused the `Admin` wildcard rows with `SecondOwnerException`.
+
+**Each restart on a persistent store created a new `Admin`.** Measured on
+2026-10-04 with `RedisGrantRestartTests`: the two starts wrote their rows
+under two `Admin` keys. `InitialUsersService` finds an identity by its handle
+through the user index, and only the auth index loaded from the store. So the
+user index was empty, the handle lookup found nothing, and `addUser` made a new
+user. The old `Admin` rows stayed live beside the new ones.
+
+### What changed
+
+`LuceneIndexBeans` registers a `StartupIndexLoad` for the user, topic, message,
+membership and key-value indexes, beside the auth load. `RootKeyStartup` runs
+every load before readiness, and the initial users start after it.
+
+### Measured
+
+`RedisGrantRestartTests` gained a test on node ids 16 and 17. The first start
+adds a user, a room, a membership and a message. The second start reads each
+through its reloaded index.
+
+- With the five new loads disabled: `the Admin identity keeps its key across a
+  restart ==> expected: <1556259905764130816> but was: <1556259919164936192>`.
+- With them: 3 of 3 pass. The `Admin` key holds, one `Admin` user exists, and
+  the room, the message and the member are found.
+
+### An operator consequence
+
+**A Redis store that already holds duplicate identity users fails the start
+now.** The handle lookup finds more than one user. Measured with a probe that
+was not kept: two `Admin` users in one store fail the start with
+`Failed to start bean 'rootKeyStartup'`, caused by
+`Source emitted more than one item`. The message does not name the user.
+Recreate such a store. `docs/ARCHITECTURE.md` states it.
+
+### Not measured
+
+- The Cassandra backend. Its indexes are store backed, so it likely never
+  lost them, but no restart test reads its users.
+- The key-value load against a store of a type with no registered fields. That
+  load fails the start by the rule of the key-value index.
+
+### Next
+
+`CHAT-esengqpv` rebases on this work. Its parked branch is
+`chat-esengqpv-single-owner` at `a5b0b4c3`.
