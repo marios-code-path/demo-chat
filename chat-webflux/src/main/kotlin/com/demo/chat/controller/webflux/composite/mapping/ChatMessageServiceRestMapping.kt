@@ -20,16 +20,22 @@ import reactor.core.publisher.Mono
 /**
  * Each path id resolves through the registry before the service runs. See `CHAT-avduuqwp`, D2.
  *
- * **The routing annotations sit here, and not on the controller alone.** Method
- * security proxies the controller with a JDK dynamic proxy. That proxy carries
- * the interfaces and not the class, so the class level `@RequestMapping` was
- * invisible and every `/message` route answered 404. Measured on 2026-10-03.
- * `ChatTopicServiceRestMapping` met the same defect under `CHAT-znprrzhn`.
+ * **The routing annotations sit here, and not on the controller alone.** A JDK
+ * dynamic proxy carries the interfaces and not the class. Under such a proxy, a
+ * class level `@RequestMapping` is invisible and every route answers 404. A
+ * `@WebFluxTest` slice with method security makes a JDK proxy. Measured on
+ * 2026-10-03. `ChatTopicServiceRestMapping` carries its mapping for the same
+ * reason.
  *
  * **Each facade method carries its own check.** A facade method calls its
  * member on the same object. That call crosses no proxy, so the member's
  * `@PreAuthorize` in `MessageServiceAccess` never runs. Each check here
  * repeats the check of its member. See `CHAT-evxtlmfs`.
+ *
+ * **A real launch showed the second defect, not the first.** Before these
+ * checks, a single process launch with method security answered every route.
+ * A listen without `SUBSCRIBE` answered 200, and a send without `SEND` reached
+ * the service. Measured on 2026-10-04. See `CHAT-oykeniec`.
  */
 @RestController
 @RequestMapping("/message")

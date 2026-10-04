@@ -36,8 +36,10 @@ import reactor.core.publisher.Mono
 /**
  * The REST message routes under method security. See `CHAT-evxtlmfs`.
  *
- * **Before the repair, every `/message` route answered 404 here.** The JDK
- * proxy hid the class level `@RequestMapping`. Measured on 2026-10-03.
+ * **Before the repair, every `/message` route answered 404 in this slice.**
+ * The slice makes a JDK proxy, and that proxy hid the class level
+ * `@RequestMapping`. Measured on 2026-10-03. A real launch did not answer 404.
+ * It answered every route and skipped the checks. See `CHAT-oykeniec`.
  *
  * **A 403 proves two facts.** The route is mapped, and its own check ran. A
  * facade call crosses no proxy, so the check of the member alone never runs.

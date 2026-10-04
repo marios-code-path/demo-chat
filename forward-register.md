@@ -2937,6 +2937,10 @@ removed `.worktrees/mcp-impl` worktree, and nothing owns it now. This work used
 ports 6892 and 6893 to avoid it. A reader who needs those ports should confirm
 the process is dead before killing it.
 
+**Done on 2026-10-04.** The owner approved the stop. PID 16436 ran from
+`.worktrees/mcp-impl/chat-deploy-memory` and started on 2026-09-28. It stopped
+on `kill`, its Maven parent 16403 exited with it, and 6790 and 6791 are free.
+
 ## The target domain scan (2026-09-30)
 
 `CHAT-rfzsnbco`. Spec:
@@ -3981,7 +3985,8 @@ A mutation proved the binding. One appended comment line in
 ## The REST message list, and a core miss as 404 (2026-10-03)
 
 `CHAT-evxtlmfs` and `CHAT-undefoqd`. Branch `chat-undefoqd-rest-list-messages`.
-**This work is not merged.**
+**This work is merged.** PR #178 merged on 2026-10-04 as `04d8424d`, a merge
+commit with two parents. Its tree is identical to the branch tip `c2dee33c`.
 
 ### A core miss answers 404
 
@@ -4002,6 +4007,10 @@ message. It checks `SUBSCRIBE` on the room, as the RSocket route does.
 **Under method security, every `/message` route answered 404.**
 `ChatMessageServiceController` kept its class level `@RequestMapping`, and a
 JDK proxy hides it. `CHAT-znprrzhn` repaired that defect for `/topic` alone.
+
+**Read that 404 as a slice reading only.** It was measured in a `@WebFluxTest`
+slice. A real launch on 2026-10-04 answered every route and skipped the
+checks. See `The REST message routes in a real launch (2026-10-04)` below.
 The facade methods of `ChatMessageServiceRestMapping` also carried no check,
 so a fix of the mapping alone would have opened them.
 
@@ -4039,3 +4048,72 @@ the defect.
 answers `ApplicationErrorException` with code `0x201`. Since `CHAT-mpjtnpqv`,
 it is `CustomRSocketException` with code `0x403`. This work did not change
 that passage.
+
+## The REST message routes in a real launch (2026-10-04)
+
+`CHAT-oykeniec`. Branch `chat-oykeniec-shape-c-record`.
+
+### The question
+
+`CHAT-evxtlmfs` measured a 404 on every `/message` route under method
+security. That reading came from a `@WebFluxTest` slice alone. This work ran
+the single process launch of `docs/MCP-CREDENTIAL-ISSUANCE.md` on two jars:
+`67c66bca`, before the repair, and `04d8424d`, after it.
+
+### The launch
+
+- The `chat-deploy-memory` exec jar, built with `-Pexpose-webflux,deploy`.
+- The appendix flags, with `server.proto=rest` and `composite.auth=true`.
+- **`--app.primary=REST` as well.** The appendix command does not start
+  without it since 2026-10-03. The appendix carries it now.
+- One agent token: ES256, `client_id` `shapec-client`, scope `chat.mcp`.
+  `jshell` and nimbus 10.4 minted it with a key made for the run. The
+  production decoder validated it.
+
+**The token did not come from the authorization server.** PID 16436 held
+6790 and 6791, where the client of the authorization server points.
+
+### The result
+
+| Call | `67c66bca` | `04d8424d` |
+|---|---|---|
+| `POST /message/send/OWNED` | 201 | 201 |
+| `GET /message/list/OWNED` | 404, no route | 200, completes |
+| `GET /message/topic/OWNED` | 200 | 200 |
+| `GET /message/id/{message}` | 200 | 200 |
+| `POST /message/send/OTHER` | 500, reached the service | 403 |
+| `GET /message/topic/OTHER` | 200 | 403 |
+| `GET /message/list/OTHER` | 404, no route | 403 |
+| `GET /message/list/{unknown}` | 404 | 404 |
+| any route, no token | 401 | 401 |
+
+`OWNED` is a room the agent created. `OTHER` is a registered room id on which
+the agent holds no grant.
+
+**The real launch did not answer 404 before the repair.** It answered every
+route, and the facade checks did not run. A listen without `SUBSCRIBE`
+answered 200. So PR #178 closed an open access path in this launch shape.
+
+### Not verified
+
+**The proxy type of the real context.** A probable cause is that Spring Boot
+forces class proxies and a slice does not, so the class level mapping stays
+visible. Neither half was checked. `CHAT-pjymtozd` holds the same question
+for `/topic`, where `CHAT-znprrzhn` recorded the 404 from a slice too.
+
+### Three findings filed
+
+- `CHAT-sdvmkidi`. An in-process `NotFoundException` answers 500 in REST.
+  `/persist/topic/add` mints a key and stores no room, so a join on that id
+  raised it.
+- `CHAT-pjymtozd`. The `/topic` 404 claim needs the same real launch.
+- `CHAT-sztbozcm`. Other single process launch commands do not start since
+  2026-10-03. The `docs/EMBEDDING-PROVIDERS.md` command fails on
+  `spring.application.name`, and next on a missing `TypeUtil` bean. The vector
+  gate omits `app.primary`, and it was not run.
+
+### One trap
+
+**The `conda` CLI fails on this machine.** `pydantic-core` 2.46.3 does not
+match the `pydantic` installed beside it, which requires 2.46.4. So a step
+that needs miniforge Python cannot run until the environment is repaired.
