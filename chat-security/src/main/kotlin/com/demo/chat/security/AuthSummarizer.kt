@@ -66,10 +66,12 @@ class AuthSummarizer<T>(
          *
          * 1. **Ownership.** A `*` row on a target names the owner of that
          *    target. There is no way to give `*` without giving ownership.
-         * 2. **Singular.** One `*` per target. **One writer enforces this, and
-         *    no code refuses a second row.** `ContextRoomOwnerGrant` is that
-         *    writer since `CHAT-zhjltbky`. A second writer would create a
-         *    second owner, and the rank would then answer by time alone.
+         * 2. **Singular.** One owner per target. An owner row is a live `*` row
+         *    whose principal is an entity. `CoreAuthorizationService.authorize`
+         *    refuses a second owner with `SecondOwnerException`, and a repeat by
+         *    the same owner writes nothing. A close row names a domain root, so
+         *    it is not an owner row, and the guard lets it through. The owner
+         *    decided this on 2026-10-04. See `CHAT-esengqpv`.
          * 3. **Sentinel.** Once a `*` row wins its group, nothing below it is
          *    read, and the expiry of that row decides the answer.
          *

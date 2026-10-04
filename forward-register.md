@@ -2318,6 +2318,8 @@ enforcement merge corrected its own section and left this one alone.
    the chain compensates another.
 5. **An owner may delete a room, open or closed.** The rank carries it.
 6. **Wildcard uniqueness is deferred.** `CHAT-esengqpv` holds it.
+   **Read that as of 2026-10-01.** `CHAT-esengqpv` adds the guard on
+   2026-10-04. See the last section of this file.
 
 ### The delete decision, and the rank levels
 
@@ -4368,4 +4370,63 @@ Recreate such a store. `docs/ARCHITECTURE.md` states it.
 ### Next
 
 `CHAT-esengqpv` rebases on this work. Its parked branch is
-`chat-esengqpv-single-owner` at `a5b0b4c3`.
+`chat-esengqpv-single-owner` at `a5b0b4c3`. **It did not rebase.** The
+change was applied to a fresh branch, `chat-esengqpv-owner-guard`, cut from
+`master` at `5cc320e0`, because the parked commit message says not to merge.
+
+## One owner per target (2026-10-04)
+
+`CHAT-esengqpv`, the last open child of `CHAT-znprrzhn`. Branch
+`chat-esengqpv-owner-guard`, cut from `master` at `5cc320e0`. **This work is
+not merged.**
+
+### The owner decisions
+
+1. **One owner, not one row.** An owner row is a live `*` row whose principal
+   is an entity. A second owner is refused. A close row names a domain root,
+   so it is not an owner row, and the guard lets it through. That keeps the
+   close design of `CHAT-ylfxsthp` and the rank as they are.
+2. **A repeat by the same owner writes nothing.** The write succeeds, and no
+   second row is stored.
+3. **A refusal is `SecondOwnerException`**, a `ChatException` that names the
+   target. `TopicServiceImpl` already wraps a grant failure in
+   `RoomOwnerGrantException`, so the room failure contract is unchanged.
+
+### What changed
+
+`CoreAuthorizationService.authorize` reads the stored rows of the target
+through the target index before a write. It reads live rows alone, by the
+rule of the summarizer: an expiry of 0, or an expiry in the future. A revoke
+is unchanged.
+
+**The check is not atomic with the write.** Two concurrent owner writes can
+both pass it, as two concurrent room adds can.
+
+### Why it waited for `CHAT-uxgdzpag`
+
+The first restart test with the guard failed. Each restart on a persistent
+store created a new `Admin`, and the guard refused the new `Admin` rows with
+`SecondOwnerException`. `CHAT-uxgdzpag` reloads the user index at start, so
+the `Admin` key holds, and the restart writes are repeats by the same owner.
+
+### Measured
+
+- `RoomOwnerGrantTests`: 8 tests. Five replace the old evidence test: a repeat
+  writes no row, a second owner is refused, a close is written, an expired
+  owner does not block a new owner, and a named grant is unaffected.
+  Mutation: disabling the guard fails the repeat and the second owner cases.
+- `RedisGrantRestartTests`: 3 of 3 against a real Redis, with the guard and
+  the index reload together. Two starts hold one `Admin` wildcard row on a
+  root, and no `SecondOwnerException` appears in the log.
+- `build-health.sh --ci`: exit 0, 30 modules, 1947 tests, 0 failures,
+  0 errors, 72 skipped, and no drift. The run rebuilt the shell image, and the
+  image id moved from `sha256:b66d6f29` to `sha256:5321a9f0`.
+
+### Not measured
+
+- Cassandra restarts with the guard. `--ci` runs `CassandraGrantRestartTests`,
+  but that test reads no `Admin` row count.
+
+### What closes with it
+
+Every child of `CHAT-znprrzhn` is done once this merges.

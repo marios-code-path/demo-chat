@@ -14,10 +14,12 @@ import com.demo.chat.security.service.ContextRoomOwnerGrant
 import com.demo.chat.security.service.CoreAuthorizationService
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
+import com.demo.chat.service.security.SecondOwnerException
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.test.key.TestKeys
 import com.demo.chat.test.key.TestVerifiers
 import org.assertj.core.api.Assertions.assertThat
+import reactor.test.StepVerifier
 import org.junit.jupiter.api.Test
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -101,31 +103,91 @@ class RoomOwnerGrantTests {
     }
 
     /**
-     * **A second writer would give one room two owners.** `*` is singular per
-     * target, and no code refuses a second row. This test is the evidence for
-     * the deferred uniqueness work. Replace it when that work lands.
+     * **The same owner writes no second row.** Until 2026-10-04 this call wrote
+     * a second wildcard row, and this test was the evidence of that gap. The
+     * owner decided that a repeat is a no-op. See `CHAT-esengqpv`.
      */
     @Test
-    fun `a second grant writes a second wildcard row`() {
+    fun `a second grant by the same owner writes no second row`() {
         val store = MapAuthStore()
         val grant = writer(store)
 
         grant.grantOwner(ROOM).contextWrite(context(authenticated())).block()
         grant.grantOwner(ROOM).contextWrite(context(authenticated())).block()
 
-        assertThat(store.rows.values.map { it.target }).containsExactly(ROOM, ROOM)
+        assertThat(store.rows.values.map { it.principal to it.target }).containsExactly(CALLER to ROOM)
     }
+
+    /** **A second owner is refused, and the first owner row stays.** */
+    @Test
+    fun `a second owner is refused with the target named`() {
+        val store = MapAuthStore()
+        writer(store).grantOwner(ROOM).contextWrite(context(authenticated())).block()
+
+        StepVerifier.create(service(store).authorize(row(OTHER, ROOM, AuthSummarizer.WILDCARD), true))
+            .expectErrorSatisfies { error ->
+                assertThat(error).isInstanceOf(SecondOwnerException::class.java)
+                assertThat((error as SecondOwnerException).target).isEqualTo(ROOM)
+                assertThat(error.message).contains("Target $ROOM already has an owner")
+            }
+            .verify()
+        assertThat(store.rows.values.map { it.principal }).containsExactly(CALLER)
+    }
+
+    /**
+     * **A close row is not an owner row.** It names a domain root, so the rank
+     * keeps the owner above it. The guard lets it through.
+     */
+    @Test
+    fun `a close row on an owned room is written`() {
+        val store = MapAuthStore()
+        writer(store).grantOwner(ROOM).contextWrite(context(authenticated())).block()
+
+        service(store).authorize(row(USER_ROOT, ROOM, AuthSummarizer.WILDCARD, System.currentTimeMillis()), true).block()
+
+        assertThat(store.rows.values.map { it.principal }).containsExactly(CALLER, USER_ROOT)
+    }
+
+    /** **An expired owner row is not a live owner.** A new owner may then be written. */
+    @Test
+    fun `an expired owner does not block a new owner`() {
+        val store = MapAuthStore()
+        service(store).authorize(row(CALLER, ROOM, AuthSummarizer.WILDCARD, System.currentTimeMillis() - 1000L), true).block()
+
+        service(store).authorize(row(OTHER, ROOM, AuthSummarizer.WILDCARD), true).block()
+
+        assertThat(store.rows.values.map { it.principal }).containsExactly(CALLER, OTHER)
+    }
+
+    /** **A named permission is not an owner row.** Another principal may still hold it. */
+    @Test
+    fun `a named grant beside an owner is written`() {
+        val store = MapAuthStore()
+        writer(store).grantOwner(ROOM).contextWrite(context(authenticated())).block()
+
+        service(store).authorize(row(OTHER, ROOM, "SEND"), true).block()
+
+        assertThat(store.rows.values.map { it.principal to it.permission })
+            .containsExactly(CALLER to AuthSummarizer.WILDCARD, OTHER to "SEND")
+    }
+
+    /** A grant row with an empty key, which the service replaces with a minted key. */
+    private fun row(principal: Key<Long>, target: Key<Long>, permission: String, expires: Long = 0L): AuthMetadata<Long> =
+        AuthMetadata.create(Key.empty(0L, 9L), principal, target, permission, false, expires)
 
     private fun writer(store: MapAuthStore): ContextRoomOwnerGrant<Long> =
         ContextRoomOwnerGrant(
             ContextIdentity(rootKeys()),
-            CoreAuthorizationService(
-                store, MapAuthIndex(store), { it }, { it }, { ANON }, { USER_ROOT },
-                AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
-                TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, ROOM)),
-            ),
+            service(store),
             rootKeys(),
             LongUtil(),
+        )
+
+    private fun service(store: MapAuthStore): CoreAuthorizationService<Long, Key<Long>> =
+        CoreAuthorizationService(
+            store, MapAuthIndex(store), { it }, { it }, { ANON }, { USER_ROOT },
+            AuthSummarizer({ a, b -> (a.key.id - b.key.id).toInt() }, PrincipalRank(rootKeys())),
+            TestVerifiers.holding(rootKeys(), listOf(ANON, CALLER, OTHER, ROOM, USER_ROOT)),
         )
 
     private fun rootKeys(): RootKeys<Long> = RootKeysFixture.ofLong(
@@ -200,5 +262,8 @@ class RoomOwnerGrantTests {
 
         /** A room. Its root is the `MessageTopic` root. */
         val ROOM: Key<Long> = Key.of(7L, 5L)
+
+        /** A second user, who would be a second owner. */
+        val OTHER: Key<Long> = Key.of(8L, 3L)
     }
 }
