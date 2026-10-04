@@ -304,3 +304,19 @@ every security refusal an RSocket error code. The same test reads 403.
 `ApplicationErrorException` with code `0x201`. It is `CustomRSocketException`
 with code `0x403` now. The message is still `Access Denied`.
 `CompositeAccessEnforcementTests` and `CoreRouteAccessTests` pin the code.
+
+### GAP 3: a single process REST launch served the core controllers unchecked
+
+The REST chain requires one authority, the agent scope. A REST launch that
+also ran the composite in its own JVM could mount the core REST controllers:
+`persistence`, `index`, `key`, `secrets` and `pubsub`. None carries an access
+check. Measured on 2026-10-04: an agent token wrote a message with another
+sender into a room where `POST /message/send` answered 403.
+
+The RSocket side refuses those routes at the seam, with `ROLE_SERVICE` or
+`ROLE_ADMIN`. An agent token holds neither, so that rule does not transfer.
+
+`agentResourceServerChain` now calls `CoreRestControllers.requireAbsent`. A
+REST launch with any of the five switches fails at startup, and the message
+names each switch. The facade of `chat-build rest` mounts none of them, so it
+is unchanged. See `CHAT-bnnkhgbd`.

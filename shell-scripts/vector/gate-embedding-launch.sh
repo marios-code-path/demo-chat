@@ -8,7 +8,7 @@
 #
 # The gate builds a packaged deployment, asserts that no test output is on its
 # classpath, launches it against a synthetic OpenAI endpoint, seeds messages
-# through persistence, rebuilds the index, and runs one search.
+# through the composite routes, rebuilds the index, and runs one search.
 #
 # Production client code runs against a synthetic endpoint. The gate needs no
 # secret key and no external network.
@@ -169,13 +169,10 @@ java --enable-native-access=ALL-UNNAMED -jar "$JAR" \
     --app.service.core.embedding.openai.base-url="http://127.0.0.1:$STUB_PORT" \
     --app.service.core.embedding.openai.api-key=not-a-secret \
     --app.service.core.embedding.openai.model=stub-embedding \
-    --app.controller.persistence=true \
     --app.controller.recall=true \
     --app.controller.message=true \
     --app.controller.topic=true \
     --app.controller.user=true \
-    --app.controller.key=true \
-    --app.controller.index=true \
     --app.actuator.username="$ACTUATOR_USER" \
     --app.actuator.password="$ACTUATOR_PASS" \
     --management.endpoint.vectorindex.enabled=true \
@@ -201,13 +198,13 @@ CODE=$(curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$APP_PORT/actua
 [ "$CODE" = "401" ] || fail "an actuator call without credentials answered $CODE, expected 401"
 echo "   ok, 401"
 
-echo "6. Seed three messages through persistence, with the agent token."
-# The message route resolves the sender in USER and the destination in
-# MESSAGE_TOPIC, and it refuses an unregistered id with 404. So the gate
-# creates one user and one topic first, and it sends their ids. See
-# CHAT-avduuqwp, E8.
-# RequestResponse declares @JsonTypeInfo as a property named type, so each body
-# carries the @JsonTypeName of its class. Each add route answers 201.
+echo "6. Seed three messages through the composite routes, with the agent token."
+# A REST launch refuses the core REST controllers, because no access check
+# guards them. So the gate seeds as a client does: it adds a room, and it
+# sends into that room. The agent owns the room it adds, so each send passes
+# the SEND check. The sender is the agent. See CHAT-bnnkhgbd.
+# RequestResponse declares @JsonTypeInfo as a property named type, so the room
+# body carries the @JsonTypeName of its class. Each route answers 201.
 # This function prints the id of the key in an add answer. It reads the first
 # object that holds an id, so it does not depend on the key wrapper.
 key_id() {
@@ -224,29 +221,22 @@ r = find(json.load(open(sys.argv[1])))
 if r is None: sys.exit(1)
 print(r)" "$1"
 }
-CODE=$(curl -sS -o "$WORK/user.json" -w '%{http_code}' \
-    -X PUT "http://127.0.0.1:$APP_PORT/persist/user/add" \
-    "${AUTH_HEADER[@]}" \
-    -H 'Content-Type: application/json' \
-    -d '{"type":"UserCreateRequest","name":"gate","handle":"gateuser","imgUri":"http://u"}')
-[ "$CODE" = "201" ] || fail "the user add answered $CODE, expected 201"
-SENDER=$(key_id "$WORK/user.json") || fail "the user add answer holds no key id"
 CODE=$(curl -sS -o "$WORK/topic.json" -w '%{http_code}' \
-    -X PUT "http://127.0.0.1:$APP_PORT/persist/topic/add" \
+    -X POST "http://127.0.0.1:$APP_PORT/topic/new" \
     "${AUTH_HEADER[@]}" \
     -H 'Content-Type: application/json' \
     -d '{"type":"ByNameRequest","name":"gateroom"}')
-[ "$CODE" = "201" ] || fail "the topic add answered $CODE, expected 201"
-ROOM=$(key_id "$WORK/topic.json") || fail "the topic add answer holds no key id"
+[ "$CODE" = "201" ] || fail "the room add answered $CODE, expected 201"
+ROOM=$(key_id "$WORK/topic.json") || fail "the room add answer holds no key id"
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
     CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
-        -X PUT "http://127.0.0.1:$APP_PORT/persist/message/add" \
+        -X POST "http://127.0.0.1:$APP_PORT/message/send/$ROOM" \
         "${AUTH_HEADER[@]}" \
-        -H 'Content-Type: application/json' \
-        -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}")
-    [ "$CODE" = "201" ] || fail "the seed answered $CODE for '$text', expected 201"
+        -H 'Content-Type: text/plain' \
+        -d "$text")
+    [ "$CODE" = "201" ] || fail "the send answered $CODE for '$text', expected 201"
 done
-echo "   ok, three messages persisted"
+echo "   ok, three messages sent"
 
 echo "7. Trigger a rebuild, under Basic credentials."
 # The timestamp comes first. The trigger never promises the job key, so the

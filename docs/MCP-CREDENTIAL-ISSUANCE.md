@@ -231,6 +231,10 @@ The name is one token. A hyphen splits the Lucene field, so this run avoids one.
 created `mcpissuance` to re-prove the create route on the day of this writing.
 So the two documents name two topics, and both are real.
 
+**That route is refused now.** A REST launch refuses the persistence
+controller since 2026-10-04 (`CHAT-bnnkhgbd`). Create a topic with
+`POST /topic/new` and the same body. It answered 201 on 2026-10-04.
+
 ### The control run
 
 A run that only succeeds proves nothing. Any text in the file would pass such a
@@ -396,6 +400,11 @@ with six changes.
    `AgentResourceServerChain`. Measured on 2026-10-04 under `CHAT-oykeniec`.
    `CHAT-sztbozcm` holds the other launch commands that omit it.
 
+**The measured run also mounted `persistence`, `key` and `index`.** A REST
+launch refuses them since 2026-10-04, because no access check guards them, so
+the command below omits them. See `CHAT-bnnkhgbd`. Create a topic with
+`POST /topic/new`.
+
 ```sh
 java --enable-native-access=ALL-UNNAMED \
   -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
@@ -408,9 +417,8 @@ java --enable-native-access=ALL-UNNAMED \
   --app.service.composite=true --app.service.composite.auth=true \
   --app.service.security.userdetails=true --app.users.create=true \
   --spring.config.additional-location=classpath:/config/userinit.yml \
-  --app.controller.persistence=true --app.controller.topic=true \
+  --app.controller.topic=true \
   --app.controller.user=true --app.controller.message=true \
-  --app.controller.key=true --app.controller.index=true \
   --app.security.agent.client-id=31649af5-0154-4be5-8695-fda9d18b7981 \
   --app.security.agent.username=Agent \
   --app.security.agent.required-scope=chat.mcp \

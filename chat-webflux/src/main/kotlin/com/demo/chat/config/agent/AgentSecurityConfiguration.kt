@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.env.Environment
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
@@ -33,12 +34,19 @@ class AgentSecurityConfiguration {
     ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
         AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
 
+    /**
+     * **A REST launch refuses the core REST controllers here.** Every REST
+     * launch builds this chain, because `WebFluxSecurity` requires it. See
+     * [CoreRestControllers] and `CHAT-bnnkhgbd`.
+     */
     @Bean
     fun agentResourceServerChain(
         properties: AgentSecurityProperties,
         decoder: ReactiveJwtDecoder,
         converter: Converter<Jwt, Mono<AbstractAuthenticationToken>>,
+        environment: Environment,
     ): AgentResourceServerChain {
+        CoreRestControllers.requireAbsent(environment)
         properties.requireComplete()
         return AgentResourceServerChain(properties, decoder, converter)
     }

@@ -189,13 +189,10 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --app.service.core.embedding.openai.base-url=https://api.openai.com \
     --app.service.core.embedding.openai.api-key="$OPENAI_API_KEY" \
     --app.service.core.embedding.openai.model=text-embedding-3-small \
-    --app.controller.persistence=true \
     --app.controller.recall=true \
     --app.controller.message=true \
     --app.controller.topic=true \
     --app.controller.user=true \
-    --app.controller.key=true \
-    --app.controller.index=true \
     --app.actuator.username=actuator \
     --app.actuator.password=actuator \
     --management.endpoint.vectorindex.enabled=true \
@@ -215,11 +212,17 @@ a start without it fails:
 | the four `app.security` values | `app.security.agent.client-id is required` (`CHAT-pgpmsgvr`) |
 | `app.users.create` and `userinit.yml` | `The agent username 'Agent' answered 0 users` |
 
-The five `app.controller` values after `recall` are not required for a start.
-They match the gate.
+The three `app.controller` values after `recall` are not required for a start.
+The seed needs `topic` and `message`, and the sender lookup needs `user`. They
+match the gate.
+
+**A REST launch refuses the core controllers.** `persistence`, `index`, `key`,
+`secrets` and `pubsub` carry no access check, so the start fails and names
+each one. See `CHAT-bnnkhgbd`.
 
 Then follow `docs/VECTOR-RECALL-API.md`: mint an agent token from the trusted
-JWK, seed through `PUT /persist/message/add`, trigger a rebuild through `POST
+JWK, add a room through `POST /topic/new`, send into it through
+`POST /message/send/{id}`, trigger a rebuild through `POST
 /actuator/vectorindex`, poll until `running` is false, and search. The token is
 required on every application route.
 
