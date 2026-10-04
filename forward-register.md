@@ -3652,6 +3652,7 @@ substantive merge before this refresh, so the row follows the rule under
 ## The member send grant (2026-10-02)
 
 `CHAT-mfveaecc`. Branch `chat-mfveaecc-join-grant`. **This work is not merged.**
+**Merged since: PR #169, `6fa2ba60`, on 2026-10-03.**
 
 ### Three owner decisions
 
@@ -3711,6 +3712,7 @@ it.
 `CHAT-rdlghoqe`, with four children: `CHAT-ekndrtbd`, `CHAT-iwvnqnju`,
 `CHAT-uepzzxmd` and `CHAT-ciuuiwvp`. Branch `chat-rdlghoqe-core-routes`.
 **This work is not merged.**
+**Merged since: PR #171, `2d64d671`, on 2026-10-03.**
 
 ### The measurement that opened it
 
@@ -3771,6 +3773,7 @@ server.** The authorization server refuses to start with a blank password.
 
 `CHAT-lfaajjcj`. Branch `chat-member-subscribe-grant`. **This work is not
 merged.**
+**Merged since: PR #173, `0c71c59d`, on 2026-10-03.**
 
 ### The gap
 
@@ -3811,6 +3814,7 @@ no error handler, so the shell dropped `Access Denied` and printed nothing.
 
 `CHAT-mpjtnpqv`. Branch `chat-mpjtnpqv-token-relay`. The design is approved.
 The work is not merged.
+**Merged since: PR #176, `4e75769d`, on 2026-10-03.**
 
 The REST resource server validates the bearer token. The REST RSocket client
 now attaches request bearer metadata when the context contains an
@@ -4132,6 +4136,7 @@ subcommand that loads the conda plugins fails, such as `conda info --base`.
 
 `CHAT-sdvmkidi`, `CHAT-pjymtozd` and `CHAT-sztbozcm`. Branch
 `chat-rest-followups`. **This work is not merged.**
+**Merged since: PR #180, `756d40b5`, on 2026-10-04.**
 
 ### An in-process miss answers 404
 
@@ -4183,7 +4188,8 @@ subcommands fail.
 ## The core REST controllers refused on a REST launch (2026-10-04)
 
 `CHAT-bnnkhgbd`. Branch `chat-bnnkhgbd-refuse-core-rest`. **This work is not
-merged.** The owner reported the gap and chose the fix on 2026-10-04.
+merged.**
+**Merged since: PR #181, `63df02b6`, on 2026-10-04.** The owner reported the gap and chose the fix on 2026-10-04.
 
 ### The gap
 
@@ -4235,3 +4241,70 @@ app.controller.persistence, app.controller.index, app.controller.key.`
 `CHAT-dvuwfpmj`. The recall routes carry no access check either.
 `/message/recall/global` searches every indexed message for any agent token.
 Read from source. The owner decides the rule.
+
+## The core access interfaces removed, the core routes sealed by role (2026-10-04)
+
+`CHAT-wgdnjdio`, `CHAT-kdxglvtt` and `CHAT-zwopgvkx`, the three open children
+of `CHAT-znprrzhn`. Branch `chat-core-access-seal`. **This work is not
+merged.**
+
+### The owner decision
+
+**The role rule of `CHAT-rdlghoqe` is the boundary for the core routes.** No
+per object check runs behind it. The owner chose this on 2026-10-04.
+
+A per object check could not run as written. The `Service` account holds no
+grant row, and the authorization server reads the core through it. So wiring
+the checks would refuse that server on every read, unless `Service` gained
+grants first.
+
+### What was removed
+
+No production class implemented any of these, so none of them ever ran.
+
+- The package `com.demo.chat.security.access.core`: `PersistenceAccess`,
+  `IndexAccess`, `PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess`,
+  `SecretsStoreAccess`, and ten sub-interfaces. 39 annotations in total.
+- Three members that lost their only caller: `hasAccessToEntity`,
+  `hasAccessToSubmittedEntity`, and `EntityTargets`.
+- `KeyVerifier.trustTypedStore`. Its one permitted caller was
+  `hasAccessToEntity`.
+- The tests that exercised only those: `LongByIdsFilterTests`,
+  `EntityTargetsTests`, three cases of `MethodSecurityIntegrationTests`, eight
+  of `VerificationBoundaryTests`, one of `AnonymousAuthorizationMatrixTests`,
+  the pubsub half of `SendCheckExpressionTests`, and the `trustTypedStore`
+  guard and cases of `KeyVerifierConstructionTests`.
+
+**Two members stay, and they already had no production caller.**
+`AccessBroker.permittedTargets` and the three argument
+`SpringSecurityAccessBrokerService.hasAccessTo(who, target, perm)`. This work
+did not orphan them, so it did not remove them.
+
+### What was added
+
+`CoreRouteAccessTests` holds one transport test per boundary. Each sends the
+call as a caller with no credential and as a plain user, and each reads the
+store after the refusal. A `Service` call on the same route is the control.
+
+| Boundary | Refused routes | No effect, read after |
+|---|---|---|
+| persistence | `persist.user.add` | the user store holds no user |
+| index | `index.user.add`, `index.user.query` | the user index finds no handle |
+| pubsub | `pubsub.sendMessage` | a listener on the room hears only the service message |
+| topic inventory | `pubsub.subscribe`, `pubsub.getUsersBy` | the room has no new member |
+| key | `key.rem` | the key still exists |
+| secrets | `secrets.add`, `secrets.compare` | the credential is unchanged |
+
+**Before this work, `index.**` and `key.rem` had no transport test.**
+Mutation: removing those two rules from `RSocketSecurityConfiguration` fails
+exactly the index and key tests.
+
+### Also corrected in this file
+
+Six sections still said "not merged". Each now carries its merge record:
+`CHAT-mfveaecc`, `CHAT-rdlghoqe`, `CHAT-lfaajjcj`, `CHAT-mpjtnpqv`, the REST
+follow-ups, and `CHAT-bnnkhgbd`.
+
+### Still open under `CHAT-znprrzhn`
+
+`CHAT-esengqpv`, a second wildcard row for one target. It is the next PR.

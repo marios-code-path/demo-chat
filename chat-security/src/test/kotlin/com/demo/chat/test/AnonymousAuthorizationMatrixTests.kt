@@ -268,18 +268,6 @@ class AnonymousAuthorizationMatrixTests {
         assertThat(permitted(broker, listOf(MESSAGE_KEY, ADMIN_KEY), "GET")).isEmpty()
     }
 
-    /** An entity with no target denies, whatever the grants hold. */
-    @Test
-    fun `an entity with no target denies`() {
-        val service = SpringSecurityAccessBrokerService(broker(shippedGrants()), rootKeys(), registry())
-
-        val answer = service.hasAccessToEntity("not an entity", "GET", ChatDomain.USER)
-            .contextWrite(ReactiveSecurityContextHolder.withSecurityContext(Mono.just(authenticatedContext())))
-            .block()
-
-        assertThat(answer).isFalse()
-    }
-
     /**
      * **A grant on a domain root covers an object of that domain.**
      * `messageById` checks one message key with `GET`. The domain root of a

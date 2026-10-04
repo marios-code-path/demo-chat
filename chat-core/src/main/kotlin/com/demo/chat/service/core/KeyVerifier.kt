@@ -32,17 +32,6 @@ class KeyVerifier<T>(private val keys: IKeyService<T>, private val rootKeys: Roo
         }
 
     /**
-     * **This method trusts its caller.** It does not read the registry. So it
-     * accepts an unknown id that carries the root of [domain]. Call it only for
-     * a key that a typed store of [domain] returned. The one permitted caller
-     * is `SpringSecurityAccessBrokerService.hasAccessToEntity`.
-     * `KeyVerifierConstructionTests` enforces that limit.
-     */
-    fun trustTypedStore(key: Key<T>, domain: ChatDomain): VerifiedKey<T> =
-        if (key.root == rootKeys.of(domain).id) VerifiedKey(key)
-        else throw KeyVerificationException("Key ${key.id} is not in ${domain.wireName}.")
-
-    /**
      * The key of an entity that a caller sent, verified in [domain]. See
      * `CHAT-avduuqwp`, D6 and D12.
      *
