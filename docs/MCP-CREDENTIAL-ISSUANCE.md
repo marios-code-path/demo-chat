@@ -381,7 +381,7 @@ one file. A reader who hits it should file it.
 
 The deployment ran the executable jar of `chat-deploy-memory`, built with
 `-Pexpose-webflux,deploy`. It carried the golden `core-memory-init` flag set,
-with five changes.
+with six changes.
 
 1. `app.server.proto` is `rest`, not `rsocket`.
 2. The application ports are 6892 and 6893.
@@ -390,12 +390,17 @@ with five changes.
 5. `spring.application.name` is named. **The golden set carries it, and this
    list omitted it until 2026-10-01.** A start without it fails with
    `Could not resolve placeholder 'spring.application.name'`.
+6. `app.primary` is `REST`. **This list omitted it until 2026-10-04.** Since
+   2026-10-03, `AgentSecurityConfiguration` requires it (`CHAT-mpjtnpqv`). A
+   start without it fails, because `WebFluxSecurity` requires a bean of type
+   `AgentResourceServerChain`. Measured on 2026-10-04 under `CHAT-oykeniec`.
+   `CHAT-sztbozcm` holds the other launch commands that omit it.
 
 ```sh
 java --enable-native-access=ALL-UNNAMED \
   -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
   --app.nodeid=1 --app.key.type=long --app.server.proto=rest \
-  --spring.application.name=mcp-agent-acceptance \
+  --spring.application.name=mcp-agent-acceptance --app.primary=REST \
   --server.port=6892 --management.server.port=6893 \
   --app.service.core.key=memory --app.service.core.persistence=memory \
   --app.service.core.index=lucene --app.service.core.pubsub=memory \

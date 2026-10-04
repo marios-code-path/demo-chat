@@ -486,11 +486,41 @@ recorded on `CHAT-znprrzhn`.
    gained an `AccessDeniedException` handler, which answers 403.
 
 **Repairs 1 and 2 did not reach the message controller until 2026-10-03.**
-`ChatMessageServiceController` kept its class level `@RequestMapping`. Under
-method security, every `/message` route answered 404, and no facade method
-carried a check. `CHAT-evxtlmfs` measured this. The routing annotations now
-sit on `ChatMessageServiceRestMapping`, and each facade method carries the
-check of its member. `MessageRestAccessTests` holds the proof.
+`ChatMessageServiceController` kept its class level `@RequestMapping`, and no
+facade method carried a check. The routing annotations now sit on
+`ChatMessageServiceRestMapping`, and each facade method carries the check of
+its member. `MessageRestAccessTests` holds the proof.
+
+**The two defects did not appear in the same place.**
+
+- **The 404 appeared in a `@WebFluxTest` slice alone.** The slice makes a JDK
+  proxy, which hides the class level mapping. `CHAT-evxtlmfs` measured it there
+  on 2026-10-03.
+- **A real launch skipped the checks.** `CHAT-oykeniec` ran the single process
+  launch of `docs/MCP-CREDENTIAL-ISSUANCE.md` on 2026-10-04, at `67c66bca`,
+  before the repair. Every route answered. A listen without `SUBSCRIBE`
+  answered 200. A send without `SEND` reached the service. At `04d8424d`, after
+  the repair, all three refuse with 403.
+
+So the repair closed an open access path in that launch shape. It did not
+repair a 404 there. The proxy type of the real context is not verified. A
+probable cause is that Spring Boot forces class proxies and a slice does not.
+`CHAT-pjymtozd` holds the same question for `/topic`.
+
+The measured statuses, with one agent token. `OWNED` is a room the agent
+created. `OTHER` is a registered room id on which the agent holds no grant.
+
+| Call | `67c66bca` | `04d8424d` |
+|---|---|---|
+| `POST /send/OWNED` | 201 | 201 |
+| `GET /list/OWNED` | 404, no route | 200, completes |
+| `GET /topic/OWNED` | 200 | 200 |
+| `GET /id/{message}` | 200 | 200 |
+| `POST /send/OTHER` | 500, reached the service | 403 |
+| `GET /topic/OTHER` | 200 | 403 |
+| `GET /list/OTHER` | 404, no route | 403 |
+| `GET /list/{unknown}` | 404 | 404 |
+| any route, no token | 401 | 401 |
 
 The REST routes of `MessageServiceAccess`. Each path is under `/message`, and
 each `{id}` resolves through the registry first.
