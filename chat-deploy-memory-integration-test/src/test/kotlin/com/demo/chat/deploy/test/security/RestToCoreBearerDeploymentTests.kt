@@ -150,6 +150,29 @@ class RestToCoreBearerDeploymentTests {
             .isEqualTo(403)
     }
 
+    /**
+     * A core miss must reach REST as 404, with the core message. See
+     * `CHAT-undefoqd`.
+     *
+     * The name route holds no access check, and the core answers an unknown
+     * name with `NotFoundException`. So the miss leaves the core as code
+     * `0x404`, and the client decoder makes `CoreNotFound` from it.
+     */
+    @Test
+    fun `a core miss reaches REST as 404`() {
+        val missed = request(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$restPort/topic/name/no-such-room"))
+                .header("Authorization", "Bearer ${DeployTestSigningKey.agentToken()}")
+                .GET()
+                .build(),
+        )
+
+        assertThat(missed.statusCode())
+            .describedAs("the REST status for a core miss. Body: ${missed.body()}")
+            .isEqualTo(404)
+        assertThat(missed.body()).describedAs("the core message").isNotBlank
+    }
+
     private fun coreRequester(credential: UsernamePasswordMetadata?): RSocketRequester {
         val mapper = JsonMapper.builder().addModule(ChatJackson3Modules().chatJackson3Module()).build()
         val builder = RSocketRequester.builder()

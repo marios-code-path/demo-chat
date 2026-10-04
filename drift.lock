@@ -11,6 +11,6 @@ docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/cha
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityConfiguration.kt sig:da2329ea0e269120
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketSecurityErrorInterceptor.kt sig:d59bb06ec39e4c08
 docs/REST-TOKEN-RELAY.md -> chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketServerConfiguration.kt sig:c08d16e4678c2848
-docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/WebFluxKeyVerifierConfiguration.kt sig:82fb102a469444f7
+docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/WebFluxKeyVerifierConfiguration.kt sig:bb717c3f7e409ae2
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentResourceServerChain.kt sig:81166186e24bd85c
 docs/REST-TOKEN-RELAY.md -> chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt sig:73b1dc67f5591dbe

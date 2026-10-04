@@ -11,6 +11,7 @@ import com.demo.chat.domain.UnsupportedDomainException
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.rsocket.CoreAuthenticationRefusal
 import com.demo.chat.security.rsocket.CoreAuthorizationRefusal
+import com.demo.chat.security.rsocket.CoreNotFound
 import com.demo.chat.service.core.KeyVerifier
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean
@@ -64,6 +65,15 @@ class KeyRefusalAdvice {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     fun coreAuthorizationRefused(error: CoreAuthorizationRefusal): String =
         error.message ?: "The core refused authorization."
+
+    /**
+     * A core miss is not found, and the core message stays. The client decoder
+     * makes [CoreNotFound] from code `0x404`. Before this handler, a core miss
+     * answered 500. Measured on 2026-10-03. See `CHAT-undefoqd`.
+     */
+    @ExceptionHandler(CoreNotFound::class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    fun coreNotFound(error: CoreNotFound): String = error.message ?: "Object not Found"
 
     @ExceptionHandler(KeyInputException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
