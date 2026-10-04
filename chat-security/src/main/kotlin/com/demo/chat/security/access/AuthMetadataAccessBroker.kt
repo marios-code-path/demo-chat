@@ -56,8 +56,8 @@ class AuthMetadataAccessBroker<T>(
 
     /**
      * A key reaches [isSelf] only as a [VerifiedKey]. That key came from
-     * `KeyVerifier.verify`, `KeyVerifier.resolve`, `KeyVerifier.domainRoot`, or
-     * the one trusted conversion `trustTypedStore`. See `CHAT-avduuqwp`, D5.
+     * `KeyVerifier.verify`, `KeyVerifier.resolve`, or `KeyVerifier.domainRoot`.
+     * See `CHAT-avduuqwp`, D5.
      */
     override fun hasAccessByKey(principal: Key<T>, target: VerifiedKey<T>, perm: String): Mono<Boolean> =
         if (isSelf(principal, target.key)) Mono.just(true)

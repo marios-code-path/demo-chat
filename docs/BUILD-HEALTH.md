@@ -5,11 +5,20 @@ Known build-time deficiencies, what causes them, and what they take down with th
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 **The `--ci` mode was measured on 2026-10-04 on branch
-`chat-bnnkhgbd-refuse-core-rest`**, with an empty temporary `DOCKER_CONFIG`. It
-exits 0 and reports no drift. 30 modules ran 1964 tests, with 0 failures, 0
-errors and 75 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id
-moved from `sha256:802da1eb` to `sha256:138c6a74`, so this run rebuilt the
-chat-shell test image. The nine added tests are `CoreRestControllersTests`.
+`chat-core-access-seal`**, with an empty temporary `DOCKER_CONFIG`. It exits 0
+and reports no drift. 30 modules ran 1942 tests, with 0 failures, 0 errors and
+72 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved from
+`sha256:138c6a74` to `sha256:8c4701a1`, so this run rebuilt the chat-shell test
+image.
+
+**The count fell by 22, and every one is accounted for.** The removal of the
+core access interfaces took 28 tests, and `CoreRouteAccessTests` added 6.
+Three of the 28 are `MethodSecurityIntegrationTests` cases, and each counts
+twice: once in the concrete `Long` class and once as a skip in the disabled
+base class. That is also why the skip count fell by 3.
+
+The run on branch `chat-bnnkhgbd-refuse-core-rest` read 1964 tests with 75
+skipped. Its nine added tests are `CoreRestControllersTests`.
 
 The run on branch `chat-rest-followups` read 1955 tests with 75 skipped. Its
 added test is the in-process miss case of `RestCoreNotFoundMappingTests`.

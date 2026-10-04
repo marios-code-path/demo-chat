@@ -253,6 +253,12 @@ the method security proxy, because the store reads every key first.
 A `TopicMembership` names its raw id as a key, because its `key` is not a
 `Key`. Any other entity names no target, and no target denies.
 
+**The `@PostFilter` path is gone since 2026-10-04.** `PersistenceAccess`,
+`hasAccessToEntity` and `EntityTargets` were removed with the core access
+interfaces, because no production class implemented them. See
+`CHAT-wgdnjdio`. `AccessBroker.permittedTargets` still states the contract
+above, and no production code calls it.
+
 **The contract this replaced allowed a whole list when one target had a
 grant.** The Boolean many target checks read the rows of every target into one
 set and asked whether it held the permission. One Boolean cannot carry a
@@ -403,6 +409,10 @@ checks over one room are wired, on both transports. The six `core` checks are
 not. See "What is wired, and what is not" below, and the wider-effect table of
 the spec.
 
+**The six `core` checks no longer exist.** Their interfaces were removed on
+2026-10-04. A role rule guards those routes instead. See "What is wired, and
+what is not".
+
 ## Expiry
 
 `AuthSummarizer` keeps a row when `expires` is `0L` or in the future. A grant
@@ -453,9 +463,23 @@ and it was enforced from its first commit.
 each one. The other seven operations are not matrix rows, and each answers as
 this document already described.
 
-**The `core` interfaces stay latent.** `PersistenceAccess`, `IndexAccess`,
-`PubSubAccess`, `TopicInventoryAccess`, `IKeyServiceAccess` and
-`SecretsStoreAccess` have no production implementation. `CHAT-ruapxetl` holds
+**The `core` routes are guarded by role, not per object.** The owner decided
+this on 2026-10-04.
+
+- RSocket: `persist.**`, `index.**`, `pubsub.**`, `secrets.**`, `key.key`
+  and `key.rem` require `ROLE_SERVICE` or `ROLE_ADMIN` (`CHAT-rdlghoqe`).
+  `key.rootOf` and `key.exists` stay open.
+- REST: a REST launch refuses the core controllers at startup
+  (`CHAT-bnnkhgbd`).
+- `CoreRouteAccessTests` holds one transport test per boundary: persistence,
+  index, pubsub, topic inventory, key and secrets. A caller with no
+  credential and a plain user are refused, and the store shows no effect. A
+  service call on the same route is the control.
+
+`PersistenceAccess`, `IndexAccess`, `PubSubAccess`, `TopicInventoryAccess`,
+`IKeyServiceAccess` and `SecretsStoreAccess` were removed with their 39
+annotations. No production class implemented them, so none ran. See
+`CHAT-wgdnjdio`, `CHAT-kdxglvtt` and `CHAT-zwopgvkx`. `CHAT-ruapxetl` holds
 the programmatic wrappers in `chat-service-composite`, which need
 `app.service.composite.security`. No launch script, no yml and no test sets
 that property.

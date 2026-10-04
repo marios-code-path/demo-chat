@@ -8,23 +8,16 @@ import com.demo.chat.test.key.TestRoots
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.test.key.RootKeysFixture
 import com.demo.chat.domain.knownkey.ChatDomain
-import com.demo.chat.config.KeyServiceBeans
-import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.ByStringRequest
-import com.demo.chat.domain.User
 import com.demo.chat.domain.knownkey.Anon
 import com.demo.chat.domain.Key
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.security.access.AuthMetadataAccessBroker
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.security.access.composite.UserServiceAccess
-import com.demo.chat.security.access.core.IKeyServiceAccess
-import com.demo.chat.security.access.core.PersistenceAccess
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
-import com.demo.chat.service.core.IKeyService
-import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AccessBroker
 import com.demo.chat.service.security.AuthorizationService
 import com.demo.chat.test.TestBase.TestBase.anyObject
@@ -33,7 +26,6 @@ import com.demo.chat.test.config.TestLongKeyServiceBeans
 import com.demo.chat.test.config.TestLongPersistenceBeans
 import com.demo.chat.test.key.MockKeyGeneratorResolver
 import com.demo.chat.test.config.TestLongUserDetailsConfiguration
-import com.demo.chat.test.config.WithLongCustomChatUser
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -46,13 +38,10 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
-import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.config.annotation.method.configuration.EnableReactiveMethodSecurity
 import org.springframework.stereotype.Service
-import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
 import org.springframework.security.test.context.support.WithAnonymousUser
 
@@ -63,7 +52,6 @@ import org.springframework.security.test.context.support.WithAnonymousUser
         TestLongPersistenceBeans::class,
         TestLongUserDetailsConfiguration::class,
         TestLongCompositeServiceBeans::class,
-        TestKeyService::class,
         MethodSecurityIntegrationTestConfiguration::class
     ]
 )
@@ -75,12 +63,6 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
 
     @Autowired
     private lateinit var rootKeys: RootKeys<T>
-
-    @Autowired
-    private lateinit var keyService: IKeyService<T>
-
-    @Autowired
-    private lateinit var keyServiceBeans: KeyServiceBeans<T>
 
     @MockitoBean
     private lateinit var authService: AuthorizationService<T, AuthMetadata<T>>
@@ -124,113 +106,10 @@ open class MethodSecurityIntegrationTests<T>(val keyGenerator: IKeyGenerator<T>)
             .verifyComplete()
     }
 
-    @Test
-    @WithLongCustomChatUser(userId = 1L, roles = [])
-    @DirtiesContext()
-    fun `anonymous call persistence byIds`(
-        @Autowired beans: PersistenceServiceBeans<T, String>,
-        @Autowired userPersistence: PersistenceStore<T, User<T>>
-    ) {
-        val store = beans.userPersistence()
-
-        val objectForAccess = TestKeys.key(keyGenerator.nextId())
-
-        val data = AuthMetadata.create(
-            key = TestKeys.key(keyGenerator.nextId()),
-            principal = rootKeys.anon(),
-            target = objectForAccess, perm = "GET", muted = false, exp = Long.MAX_VALUE
-        )
-
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
-            .willReturn(Flux.just(data))
-
-        BDDMockito
-            .given(store.byIds(anyObject()))
-            .willReturn(Flux.empty())
-
-        StepVerifier
-            .create(
-                userPersistence.byIds(listOf(TestKeys.key(keyGenerator.nextId())))
-            )
-            .verifyComplete()
-    }
-
-
-    @Test
-    @WithLongCustomChatUser(userId = 1L, roles = [])
-    @DirtiesContext()
-    fun `call persistence add`(
-        @Autowired beans: PersistenceServiceBeans<T, String>,
-        @Autowired userPersistence: PersistenceStore<T, User<T>>
-    ) {
-        val store = beans.userPersistence()
-
-        val principal = rootKeys.anon()
-        val objectForAccess = rootKeys.of(ChatDomain.USER)
-        val data = AuthMetadata.create(
-            key = TestKeys.key(keyGenerator.nextId()),
-            principal = principal,
-            target = objectForAccess, perm = "PUT", muted = false, exp = Long.MAX_VALUE
-        )
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
-            .willReturn(
-                Flux.just(data)
-            )
-
-        BDDMockito
-            .given(store.add(anyObject()))
-            .willReturn(Mono.empty())
-
-        StepVerifier
-            .create(
-                userPersistence.add(User.create(TestKeys.key(keyGenerator.nextId()), "test", "test", "test"))
-            )
-            .verifyComplete()
-    }
-
-    @Test
-    @WithLongCustomChatUser(userId = 1L, roles = [])
-    @DirtiesContext()
-    fun `call key service for new key, deny access`() {
-        val kindClass = ChatDomain.USER
-        val serviceImpl: IKeyService<T> = keyServiceBeans.keyService()
-
-        val nextKey = TestKeys.key(keyGenerator.nextId())
-
-        val principal = rootKeys.anon()
-        val objectForAccess = rootKeys.of(ChatDomain.USER)
-        val data = AuthMetadata.create(
-            key = TestKeys.key(keyGenerator.nextId()),
-            principal = principal,
-            target = objectForAccess, perm = "NON", muted = false, exp = Long.MAX_VALUE
-        )
-
-        BDDMockito.given(authService.getAuthorizationsAgainst(anyObject(), anyObject(), anyObject()))
-            .willReturn(
-                Flux.just(data)
-            )
-
-        BDDMockito
-            .given(serviceImpl.key(kindClass))
-            .willReturn(Mono.just(nextKey))
-
-        StepVerifier
-            .create(
-                keyService
-                    .key(kindClass)
-            )
-            .verifyError(AccessDeniedException::class.java)
-
-    }
-}
-
-@Service
-class TestKeyService<T>(that: KeyServiceBeans<T>) : IKeyServiceAccess<T>, IKeyService<T> by that.keyService()
-
-@Service
-class TestUserPersistence<T>(that: PersistenceServiceBeans<T, *>) : PersistenceAccess<T, User<T>>,
-    PersistenceStore<T, User<T>> by that.userPersistence() {
-    override fun storeDomain(): ChatDomain = ChatDomain.USER
+    // The persistence and key service tests were removed with the core access
+    // interfaces on 2026-10-04. The RSocket seam rule guards those routes by
+    // role, and CoreRouteAccessTests holds the transport proof. See
+    // CHAT-wgdnjdio and CHAT-zwopgvkx.
 }
 
 @Service

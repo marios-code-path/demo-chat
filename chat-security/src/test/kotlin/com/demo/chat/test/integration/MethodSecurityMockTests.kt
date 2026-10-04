@@ -9,8 +9,6 @@ import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.User
 import com.demo.chat.security.access.SpringSecurityAccessBrokerService
 import com.demo.chat.security.access.composite.UserServiceAccess
-import com.demo.chat.security.access.core.IKeyServiceAccess
-import com.demo.chat.security.access.core.PersistenceAccess
 import com.demo.chat.service.composite.ChatUserService
 import com.demo.chat.service.core.IKeyGenerator
 import com.demo.chat.service.core.IKeyService
