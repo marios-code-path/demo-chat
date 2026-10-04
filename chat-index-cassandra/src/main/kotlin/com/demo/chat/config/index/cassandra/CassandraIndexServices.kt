@@ -19,6 +19,7 @@ open class CassandraIndexServices<T : Any>(
     private val byMemberOfRepo: TopicMembershipByMemberOfRepository<T>,
     private val byUserRepo: ChatMessageByUserRepository<T>,
     private val byTopicRepo: ChatMessageByTopicRepository<T>,
+    private val messageByIdRepo: ChatMessageIndexByIdRepository<T>,
     private val principalRepo: AuthMetadataByPrincipalRepository<T>,
     private val targetRepo: AuthMetadataByTargetRepository<T>,
     private val authByIdRepo: AuthMetadataByIdRepository<T>,
@@ -34,7 +35,7 @@ open class CassandraIndexServices<T : Any>(
 
     override fun membershipIndex() = MembershipIndex(typeUtil::fromString, byMemberRepo, byMemberOfRepo, rootKeys)
 
-    override fun messageIndex() = MessageIndex(typeUtil::fromString, byUserRepo, byTopicRepo, rootKeys)
+    override fun messageIndex() = MessageIndex(typeUtil::fromString, byUserRepo, byTopicRepo, messageByIdRepo, rootKeys)
 
     override fun authMetadataIndex() = AuthMetadataIndex(typeUtil, targetRepo, principalRepo, authByIdRepo, rootKeys)
 

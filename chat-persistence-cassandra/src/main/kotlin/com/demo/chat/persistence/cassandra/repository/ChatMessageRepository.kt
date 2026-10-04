@@ -23,12 +23,20 @@ interface ChatMessageRepositoryCustom<T> {
 @Suppress("unused")
 class ChatMessageRepositoryCustomImpl<T>(val cassandra: ReactiveCassandraTemplate)
     : ChatMessageRepositoryCustom<T> {
+    /**
+     * `msg_time` is a clustering column, so an update must name it. The
+     * removal reads the row first to get its time. See `CHAT-xcmpudyb`.
+     */
     override fun rem(key: Key<T>): Mono<Void> =
             cassandra
-                    .update(Query.query(where("msg_id").`is`(key.id)),
-                            Update.empty().set("visible", false),
-                            ChatMessageById::class.java
-                    )
+                    .selectOne(Query.query(where("msg_id").`is`(key.id)), ChatMessageById::class.java)
+                    .flatMap { row ->
+                        cassandra.update(
+                                Query.query(where("msg_id").`is`(key.id), where("msg_time").`is`(row.key.timestamp)),
+                                Update.empty().set("visible", false),
+                                ChatMessageById::class.java
+                        )
+                    }
                     .then()
 
     override fun add(msg: ChatMessageById<T>): Mono<Void> =

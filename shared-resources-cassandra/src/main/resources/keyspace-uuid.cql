@@ -117,6 +117,15 @@ CREATE TABLE chat_uuid.chat_message_topic (
                                          PRIMARY KEY (topic_id, msg_time, msg_id))
     WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
+-- The message index rows keyed by the message id. rem() receives the message
+-- key alone, so it reads this table to name the rows to delete. See CHAT-xcmpudyb.
+CREATE TABLE chat_uuid.chat_message_index_by_id (
+    msg_id TIMEUUID,
+    user_id UUID,
+    topic_id UUID,
+    msg_time timestamp,
+    PRIMARY KEY (msg_id));
+
 
 CREATE TABLE chat_uuid.chat_room(
                                room_id UUID,
