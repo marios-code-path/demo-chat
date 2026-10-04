@@ -64,16 +64,23 @@ class PubSubCommandsRegistrar<T : Any>(private val commands: PubSubCommands<T>) 
             )
         .execute(Function<CommandContext, String> { ctx -> commands.hangup(ctx.mainValue("topic")).let { id -> "Stopped listening to topic $id" } })
 
-    /** The stored messages of one room. The owner named it on 2026-10-03. See `CHAT-rghaeqsa`. */
+    /** This command displays the newest selected messages in time order. See `CHAT-bmmtojqm`. */
     @Bean
     fun messagesCommand(): Command = Command.builder()
         .name("messages")
         .description("List the messages of a topic")
         .group("PubSub")
         .arguments(positional("topic"))
-            .options(
-                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
-            )
-        .execute(Function<CommandContext, String> { ctx -> commands.messages(ctx.mainValue("topic")) })
+        .options(
+            CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
+            CommandOption.with().longName("limit").required(false).type(Int::class.javaObjectType).build(),
+        )
+        .execute(Function<CommandContext, String> { ctx ->
+            val limit = ctx.getOptionByLongName("limit")?.let {
+                it.value()?.toIntOrNull()
+                    ?: throw IllegalArgumentException("messages needs a positive --limit.")
+            }
+            commands.messages(ctx.mainValue("topic"), limit)
+        })
 
 }

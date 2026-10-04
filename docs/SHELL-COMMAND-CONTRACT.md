@@ -62,7 +62,7 @@ See `Positional input` below.
 | `send` | `send` | Send a Message | `--topic` `String` default `_`<br>`--userName` `String` default `_`<br>`--messageText` `String` required | `--messageText` |
 | `listen` | `listen` | Listen to a topic | `--topic` `String` required | `--topic` |
 | `hangup` | `hangup` | Stop listening to a topic | `--topic` `String` required | `--topic` |
-| `messages` | `messages` | List the messages of a topic | `--topic` `String` required | `--topic` |
+| `messages` | `messages` | List the messages of a topic | `--topic` `String` required<br>`--limit` `Integer` optional | `--topic` |
 
 ### TopicCommands
 
@@ -93,7 +93,7 @@ See `Positional input` below.
 | `all-permissions` | `allPermissions` | Get all Perms | none | none |
 | `add-permission` | `addPermission` | Add a User Permission | `--userId` `String` default `_`<br>`--targetUserId` `String` required<br>`--role` `String` required<br>`--expireTime` `String` required | none |
 
-**27 commands and 32 options.** `ShellCommandContractTests` pins both counts,
+**27 commands and 33 options.** `ShellCommandContractTests` pins both counts,
 every option and every positional argument. The migration table held 26
 commands. `CHAT-rghaeqsa` added `messages`.
 
@@ -256,21 +256,35 @@ through `DefaultCommandParser`, and it pins the four refusals.
 
 ## The messages command
 
-`CHAT-rghaeqsa`. The owner tried `topics` and `messages` in the session of
-2026-10-02. No command listed the messages of a room.
+`CHAT-rghaeqsa` added this command. `CHAT-bmmtojqm` adds the readable chat log format.
 
-**`messages <topic>` lists the stored messages of one room.** It prints one
-line for each message, as `<message id> | <sender id> | <text>`. A room with no
-message prints `No messages in <room name>.`
+The owner tried `topics` and `messages` on 2026-10-02.
+No command listed room messages at that time.
+The owner named the command and chose its access check on 2026-10-03.
 
-The owner named the command and chose its check on 2026-10-03.
+`messages <topic>` displays the stored messages of one room, oldest first.
+Each message starts with `<time> | <sender handle> | <text>`.
+The time uses the stored timestamp and the shell timezone, with the format `yyyy-MM-dd'T'HH:mm`.
+The JSON and CBOR decoders retain supplied message timestamps.
+Older payloads without timestamps retain the existing current-time fallback.
+Additional text lines align under the text column.
+Each distinct sender resolves once per command.
+A missing user displays its key id.
+Other lookup failures reach the caller.
+A room with no message displays `No messages in <room name>.`
 
-- **The read checks `SUBSCRIBE` on the room**, as `listen` does. A member, the
-  room owner and `Admin` may read. Any other caller reads `Access Denied`.
-- **`GET` was not chosen.** The shipped `GET` row on the `MessageTopic` root
-  reaches every caller, so every user could read every room.
+`messages <topic> --limit N` selects the newest N messages and displays them oldest first.
+N must be a positive integer.
+An absent limit displays all messages.
 
-`listen` already returned the stored messages before the live ones. A caller
-could not tell where the history ended, so the shell could not use it.
-`ChatMessageService.listMessages` returns the history and then completes. The
-RSocket route is `message.message-list-topic`. No REST route serves it.
+The read checks `SUBSCRIBE` on the room, as `listen` does.
+A member, the room owner, and `Admin` may read.
+Any other caller reads `Access Denied`.
+The command does not use `GET`.
+The shipped `GET` row on the `MessageTopic` root reaches every caller.
+
+`listen` returns stored messages before live messages.
+It does not mark the boundary between history and live messages.
+`ChatMessageService.listMessages` returns the history and then completes.
+The RSocket route is `message.message-list-topic`.
+PR #178 added the REST route `GET /message/list/{id}`.

@@ -6,6 +6,9 @@ import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
 import com.demo.chat.service.composite.ChatUserService
+import com.demo.chat.security.rsocket.CoreNotFound
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
 import reactor.core.publisher.Mono
@@ -107,20 +110,29 @@ class PubSubCommands<T : Any>(
     }
 
     /**
-     * The stored messages of the room that [topic] names, one line each.
-     *
-     * The read checks `SUBSCRIBE` on the room, as `listen` does. A refusal
-     * reaches the caller as `Access Denied`. See `CHAT-rghaeqsa`.
+     * This command displays stored messages in time order. See `CHAT-bmmtojqm`.
+     * The service checks SUBSCRIBE and preserves its Access Denied refusal.
      */
-    fun messages(topic: String): String {
+    fun messages(topic: String, limit: Int? = null): String {
+        require(limit == null || limit > 0) { "messages needs a positive --limit." }
         val room = rooms.room(topic)
-        val lines = messageService
-            .listMessages(ByIdRequest(room.key.id))
-            .map { message -> "${message.key.id} | ${message.key.from} | ${message.data}" }
-            .collectList()
-            .block()
-            .orEmpty()
-        return if (lines.isEmpty()) "No messages in ${room.data}."
-        else lines.joinToString("\n")
+        val stored = messageService.listMessages(ByIdRequest(room.key.id))
+            .collectList().block().orEmpty()
+            .sortedBy { it.key.timestamp }
+        if (stored.isEmpty()) return "No messages in ${room.data}."
+
+        val selected = if (limit == null) stored else stored.takeLast(limit)
+        val handles = selected.map { it.key.from }.distinct().associateWith { sender ->
+            userService.findByUserId(ByIdRequest(sender))
+                .map { it.handle }
+                .onErrorResume(CoreNotFound::class.java) { Mono.empty() }
+                .block() ?: typeUtil.toString(sender)
+        }
+        val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+            .withZone(ZoneId.systemDefault())
+        return selected.joinToString("\n") { message ->
+            val prefix = "${formatter.format(message.key.timestamp)} | ${handles.getValue(message.key.from)} | "
+            prefix + message.data.lines().joinToString("\n" + " ".repeat(prefix.length))
+        }
     }
 }
