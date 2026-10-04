@@ -112,7 +112,7 @@ credentials. See `CHAT-pgpmsgvr` and `CHAT-jdsamcia`.
 
 ## Turn it on
 
-Five properties start the recall beans and the seed route. All five are
+Six properties start the recall beans and the seed routes. All six are
 required.
 
 ```properties
@@ -120,7 +120,8 @@ app.service.composite=true
 app.service.core.vector=simple
 app.service.core.embedding=mock
 app.controller.recall=true
-app.controller.persistence=true
+app.controller.topic=true
+app.controller.message=true
 ```
 
 `app.service.core.vector` takes `mock`, `simple`, `redis`, or `embedded`.
@@ -128,7 +129,12 @@ app.controller.persistence=true
 store takes the mock model alone. A production model also needs
 `app.service.core.embedding.identity`. An illegal pair fails the startup.
 
-`app.controller.persistence` opens the seed route of the first scenario.
+`app.controller.topic` and `app.controller.message` open the seed routes of the
+first scenario.
+
+**A REST launch refuses `app.controller.persistence`.** It also refuses
+`index`, `key`, `secrets` and `pubsub`. No access check guards those
+controllers, so the start fails and names each property. See `CHAT-bnnkhgbd`.
 
 Two more properties reach the operator endpoint. The deployments disable every
 actuator endpoint by default, so exposure alone answers 404.
@@ -156,49 +162,44 @@ shared text.
 
 ### Step 1. Write three messages
 
-`POST /message/send/{id}` binds `@AuthenticationPrincipal`, and that parameter
-is always null on this chain. So this scenario writes through the persistence
-route, which binds a request body alone.
+Write as a client does: add a room, then send into it. The agent owns the room
+it adds, so each send passes the `SEND` check. The sender is the agent account.
+`shell-scripts/vector/gate-embedding-launch.sh` runs these steps on each run.
 
-The route resolves the sender in `USER` and the topic in `MESSAGE_TOPIC`. It
-refuses an id that the key registry does not hold, with status 404. So create
-a user and a topic first, and send their ids. See `CHAT-avduuqwp`.
+**Until 2026-10-04, this step wrote through `/persist/user/add`,
+`/persist/topic/add` and `/persist/message/add`.** That route took any
+sender into any room, with no check. A REST launch refuses it now. See
+`CHAT-bnnkhgbd`.
 
-Each answer carries the new key, such as `{"key":{"empty":false,"id":11,"root":1}}`.
-These commands read the id at `key.id` into `SENDER` and `ROOM`.
-`UserRestTestBase` pins that path.
+The room answer carries the new key, such as
+`{"key":{"empty":false,"id":11,"root":1}}`. This command reads the id at
+`key.id` into `ROOM`.
 
 ```bash
 key_id() { jq -er '.key.id'; }
-SENDER=$(curl -sS -X PUT http://localhost:8080/persist/user/add \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"type":"UserCreateRequest","name":"cook","handle":"cook","imgUri":"http://u"}' | key_id)
-ROOM=$(curl -sS -X PUT http://localhost:8080/persist/topic/add \
+ROOM=$(curl -sS -X POST http://localhost:8080/topic/new \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"type":"ByNameRequest","name":"recipes"}' | key_id)
-echo "SENDER=$SENDER ROOM=$ROOM"
-for id in "$SENDER" "$ROOM"; do
-  if [ -z "$id" ] || [ "$id" = null ]; then
-    echo "A create answer held no key id. SENDER=$SENDER ROOM=$ROOM" >&2
-    exit 1
-  fi
-done
+echo "ROOM=$ROOM"
+if [ -z "$ROOM" ] || [ "$ROOM" = null ]; then
+  echo "The room answer held no key id." >&2
+  exit 1
+fi
 ```
 
 Run the blocks of this scenario as one script. The check stops the script when
-either value is empty or `null`. `jq -e` prints `null` and exits with 1 when an
+the value is empty or `null`. `jq -e` prints `null` and exits with 1 when an
 answer holds no id, but a command substitution does not stop a script on that
 status. A later request with such an id fails.
 
 ```bash
 for text in "apple pie recipe" "banana bread recipe" "carrot soup recipe"; do
   curl -sS \
-    -X PUT http://localhost:8080/persist/message/add \
+    -X POST "http://localhost:8080/message/send/$ROOM" \
     -H "Authorization: Bearer $TOKEN" \
-    -H 'Content-Type: application/json' \
-    -d "{\"type\":\"MessageSendRequest\",\"msg\":\"$text\",\"from\":$SENDER,\"dest\":$ROOM}"
+    -H 'Content-Type: text/plain' \
+    -d "$text"
 done
 ```
 
@@ -206,9 +207,9 @@ Each answer carries the new message key, and the status is 201.
 
 ### Step 2. Rebuild the index
 
-**A persistence write creates no vector.** The send route indexed each message
-as it arrived. This route does not. So a search now returns no hit until a
-rebuild reads the persisted messages.
+**The send route indexes each message as it arrives.** The rebuild still
+matters. Recall reports `indexComplete` from the newest trusted successful
+rebuild job, and a send creates no job.
 
 The instant comes first, because Step 3 correlates the job with it.
 
@@ -259,7 +260,14 @@ through `GET /message/id/{id}`.
 
 ### Step 5. The other two searches
 
+The sender of Step 1 is the agent account. `GET /user/handle/{name}` answers a
+list, and the user id sits at `.[0].key.key.id`. Measured on 2026-10-04. Name
+the handle that `app.security.agent.username` names.
+
 ```bash
+SENDER=$(curl -sS http://localhost:8080/user/handle/Agent \
+  -H "Authorization: Bearer $TOKEN" | jq -er '.[0].key.key.id')
+
 # One sender, across every topic.
 curl -sS -X POST http://localhost:8080/message/recall/user \
   -H "Authorization: Bearer $TOKEN" \

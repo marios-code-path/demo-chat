@@ -4179,3 +4179,59 @@ the skipped facade check. The identity at `447a1312` was `Anon`, because the
 
 `conda` works for activation. Only `conda info --base` and other plugin
 subcommands fail.
+
+## The core REST controllers refused on a REST launch (2026-10-04)
+
+`CHAT-bnnkhgbd`. Branch `chat-bnnkhgbd-refuse-core-rest`. **This work is not
+merged.** The owner reported the gap and chose the fix on 2026-10-04.
+
+### The gap
+
+A single process REST launch could mount the core REST controllers:
+`persistence`, `index`, `key`, `secrets` and `pubsub`. None carries an access
+check, and the REST chain requires the agent scope alone. Measured on
+2026-10-04 with the `Agent` token: `PUT /persist/message/add` answered 201
+with another user as sender, into a room where `POST /message/send` answered
+403. So the route forged the sender and bypassed the `SEND` check.
+
+The RSocket side refuses those routes with `ROLE_SERVICE` or `ROLE_ADMIN`
+(`CHAT-rdlghoqe`). **An agent token never holds either role.** It carries its
+scope authorities, and the agent identity carries `ROLE_AGENT`, even when the
+agent username is `Admin`. So that rule would refuse every REST caller.
+
+### The fix the owner chose: refuse at startup
+
+`CoreRestControllers.requireAbsent` runs in `agentResourceServerChain`. Every
+REST launch builds that bean, because `WebFluxSecurity` requires it. A switch
+counts as `@ConditionalOnProperty` counts it: present and not `false`, so a
+flag with no value refuses the start too.
+
+Measured in a real launch: the earlier single process flag set now fails with
+`A REST launch refuses the core REST controllers ... Remove
+app.controller.persistence, app.controller.index, app.controller.key.`
+
+### What moved with it
+
+- **The vector gate seeds as a client does.** `POST /topic/new`, then three
+  `POST /message/send/{id}`. The agent owns the room, so each send passes the
+  `SEND` check. The gate passes all 11 steps.
+- `docs/VECTOR-RECALL-API.md`: the seed uses the same routes, and the user
+  recall reads the agent id from `GET /user/handle/{name}` at
+  `.[0].key.key.id`. Two stale claims went with it. The send route does bind
+  the principal on this chain, and a send does index the message.
+- `docs/EMBEDDING-PROVIDERS.md` and the MCP appendix drop the three core
+  switches. The embedding command, run as written, starts, and `POST /topic/new`
+  answers 201.
+- `docs/REST-TOKEN-RELAY.md` records it as GAP 3. Its drift lock binds
+  `CoreRestControllers.kt` now.
+
+### Not changed
+
+- The `chat-build rest` facade mounts none of the five, so it is unchanged.
+- Core launches mount the RSocket controllers alone, under the seam rule.
+
+### Filed
+
+`CHAT-dvuwfpmj`. The recall routes carry no access check either.
+`/message/recall/global` searches every indexed message for any agent token.
+Read from source. The owner decides the rule.
