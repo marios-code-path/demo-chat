@@ -146,6 +146,7 @@ java --enable-native-access=ALL-UNNAMED -jar "$JAR" \
     --app.nodeid=1 \
     --app.key.type=long \
     --spring.application.name=gate-embedding \
+    --app.primary=REST \
     --app.server.proto=rest \
     --server.port="$APP_PORT" \
     --app.service.core.key=memory \

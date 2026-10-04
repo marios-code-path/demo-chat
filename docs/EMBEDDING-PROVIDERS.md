@@ -157,10 +157,16 @@ mvn -o -B -Pexpose-webflux,deploy -Dmaven.test.skip=true \
     -pl chat-deploy-memory -am clean package
 ```
 
+The launch below carries the flag set of `shell-scripts/vector/gate-embedding-launch.sh`,
+with a real endpoint in place of the stub. **Keep the two in step.** The gate
+runs its set on each run, and this document does not run.
+
 ```bash
 java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar \
     --app.nodeid=1 \
     --app.key.type=long \
+    --spring.application.name=embedding-openai \
+    --app.primary=REST \
     --app.server.proto=rest \
     --server.port=8080 \
     --app.service.core.key=memory \
@@ -171,6 +177,12 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --app.service.composite=true \
     --app.service.composite.auth=true \
     --app.service.security.userdetails=true \
+    --app.users.create=true \
+    --spring.config.additional-location=classpath:/config/userinit.yml \
+    --app.security.agent.client-id=<client-id> \
+    --app.security.agent.username=Agent \
+    --app.security.agent.required-scope=chat.mcp \
+    --app.security.jwt.jwk-path=/abs/path/server_keycert.jwk \
     --app.service.core.vector=simple \
     --app.service.core.embedding=openai \
     --app.service.core.embedding.identity=text-embedding-3-small-1536 \
@@ -179,11 +191,32 @@ java --enable-native-access=ALL-UNNAMED -jar chat-deploy-memory/target/chat-depl
     --app.service.core.embedding.openai.model=text-embedding-3-small \
     --app.controller.persistence=true \
     --app.controller.recall=true \
+    --app.controller.message=true \
+    --app.controller.topic=true \
+    --app.controller.user=true \
+    --app.controller.key=true \
+    --app.controller.index=true \
     --app.actuator.username=actuator \
     --app.actuator.password=actuator \
     --management.endpoint.vectorindex.enabled=true \
     --management.endpoints.web.exposure.include=vectorindex,health
 ```
+
+**The earlier form of this command did not start.** Measured on 2026-10-04
+under `CHAT-sztbozcm`. It failed on the missing `spring.application.name`.
+With that value alone added, it failed on a missing `TypeUtil` bean. That
+cause is not traced. This form starts, and an agent token reads
+`GET /topic/list` with 200. Each of the following values is required, because
+a start without it fails:
+
+| Value | Failure without it |
+|---|---|
+| `app.primary=REST` | `WebFluxSecurity` requires an `AgentResourceServerChain` bean (`CHAT-mpjtnpqv`) |
+| the four `app.security` values | `app.security.agent.client-id is required` (`CHAT-pgpmsgvr`) |
+| `app.users.create` and `userinit.yml` | `The agent username 'Agent' answered 0 users` |
+
+The five `app.controller` values after `recall` are not required for a start.
+They match the gate.
 
 Then follow `docs/VECTOR-RECALL-API.md`: mint an agent token from the trusted
 JWK, seed through `PUT /persist/message/add`, trigger a rebuild through `POST

@@ -3,6 +3,7 @@ package com.demo.chat.test.controller.webflux.config
 import com.demo.chat.config.CompositeServiceBeans
 import com.demo.chat.config.KeyRefusalAdvice
 import com.demo.chat.controller.webflux.ChatTopicServiceController
+import com.demo.chat.domain.NotFoundException
 import com.demo.chat.security.rsocket.CoreNotFound
 import com.demo.chat.security.rsocket.RSocketNotFound
 import com.demo.chat.test.anyObject
@@ -52,5 +53,21 @@ class RestCoreNotFoundMappingTests {
         client.get().uri("/topic/name/nowhere").exchange()
             .expectStatus().isNotFound
             .expectBody(String::class.java).isEqualTo("No room is named nowhere.")
+    }
+
+    /**
+     * An in-process miss answers 404 as well. See `CHAT-sdvmkidi`.
+     *
+     * A single process REST launch runs the composite in the same JVM, so a
+     * miss arrives as [NotFoundException] and not as [CoreNotFound]. Without
+     * its handler, this route answered 500. Measured on 2026-10-04.
+     */
+    @Test
+    fun `an in-process miss answers 404 with its message`() {
+        given(beans.topicService().getRoomByName(anyObject())).willReturn(Mono.error(NotFoundException))
+
+        client.get().uri("/topic/name/nowhere").exchange()
+            .expectStatus().isNotFound
+            .expectBody(String::class.java).isEqualTo("Object not Found")
     }
 }

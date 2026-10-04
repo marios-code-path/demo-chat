@@ -55,10 +55,12 @@ import reactor.core.publisher.Mono
  *
  * **This class passes, and it is the control of the routing repair.**
  * `@EnableReactiveMethodSecurity` is in production. `MethodSecurityConfiguration`
- * declares it, and `app.service.composite.auth` gates it. The proxy it builds is
- * a JDK dynamic proxy, because the controller implements interfaces. So the
- * routing annotations must sit on `ChatTopicServiceRestMapping`, and the JDK
- * proxy carries them from there.
+ * declares it, and `app.service.composite.auth` gates it. In this slice, the
+ * proxy it builds is a JDK dynamic proxy. So the routing annotations must sit on
+ * `ChatTopicServiceRestMapping`, and the JDK proxy carries them from there.
+ *
+ * **A real launch makes a CGLIB proxy, and its routes answered.** Measured on
+ * 2026-10-04. The 404 below is a reading of this slice. See `CHAT-pjymtozd`.
  *
  * Measured on 2026-10-01. Before the repair both routes answered 404, and the
  * controller bean was not assignable to `ChatTopicServiceController<Long>`.
