@@ -128,7 +128,7 @@ class ShellCommandDispatchTests {
             .filter { Command::class.java.isAssignableFrom(it.returnType) }
             .map { it.invoke(registrar) as Command }
 
-        run(commandOf(beans, "hangup"), mapOf("topicId" to "topic-3"))
+        run(commandOf(beans, "hangup"), mapOf("topic" to "topic-3"))
 
         verify(commands).hangup("topic-3")
     }
@@ -170,7 +170,7 @@ class ShellCommandDispatchTests {
                 .map { it.invoke(registrar) as Command }
         }
 
-        assertThat(beans).hasSize(26)
+        assertThat(beans).hasSize(27)
         beans.forEach { command -> run(command) }
     }
 }

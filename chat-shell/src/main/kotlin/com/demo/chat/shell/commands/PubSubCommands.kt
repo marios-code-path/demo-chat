@@ -5,7 +5,6 @@ import com.demo.chat.config.shell.deploy.ShellStateConfiguration
 import com.demo.chat.domain.*
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.service.composite.ChatMessageService
-import com.demo.chat.service.composite.ChatTopicService
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Component
@@ -13,41 +12,27 @@ import reactor.core.publisher.Mono
 
 @Profile("shell")
 @Component
-class PubSubCommands<T>(
+class PubSubCommands<T : Any>(
     private val compositeServices: CompositeServiceBeans<T, String>,
     private val typeUtil: TypeUtil<T>,
     rootKeys: RootKeys<T>,
+    private val rooms: ShellRooms<T>,
 ) : CommandsUtil<T>(typeUtil, rootKeys) {
 
     private val messageService: ChatMessageService<T, String> = compositeServices.messageService()
-    private val topicService: ChatTopicService<T, String> = compositeServices.topicService()
     private val userService: ChatUserService<T> = compositeServices.userService()
+
+    /** [topic] is a room name or a room id. See `CHAT-scoizkpm`. */
     fun send(
-        topicName: String,
-        topicId: String,
+        topic: String,
         userName: String,
         messageText: String
     ) {
         val identity: T = identity("_")
 
-        if (!topicId.equals("_")) {
+        if (!topic.equals("_")) {
             messageService
-                .send(MessageSendRequest(messageText, identity, typeUtil.assignFrom(topicId)))
-                .doOnNext { key ->
-                    println("Message Id: ${key.id}")
-                }
-                .block()
-
-            return
-        }
-
-        if (!topicName.equals("_")) {
-            topicService
-                .getRoomByName(ByStringRequest(topicName))
-                .flatMap { room ->
-                    messageService
-                        .send(MessageSendRequest(messageText, identity, room.key.id))
-                }
+                .send(MessageSendRequest(messageText, identity, rooms.idOf(topic)))
                 .doOnNext { key ->
                     println("Message Id: ${key.id}")
                 }
@@ -76,13 +61,24 @@ class PubSubCommands<T>(
 
             return
         }
+
+        throw IllegalArgumentException("send needs --topic or --userName.")
     }
+
+    /**
+     * Listens to the room that [topic] names, and answers its id.
+     *
+     * The listener is stored under the room id, so a `hangup` by name and a
+     * `hangup` by id find the same listener.
+     */
     fun listen(
-        topicId: String
-    ) {
+        topic: String
+    ): String {
+        val id = rooms.idOf(topic)
+        val topicId = typeUtil.toString(id)
         // A refusal ends the stream with an error. Without this handler the
         // error was dropped, and a refused listen printed nothing. CHAT-lfaajjcj.
-        val d = messageService.listenTopic(ByIdRequest(typeUtil.assignFrom(topicId)))
+        val d = messageService.listenTopic(ByIdRequest(id))
             .doOnNext { message ->
                 println("Message: ${message.key.from} : ${message.data}\n")
             }
@@ -94,8 +90,37 @@ class PubSubCommands<T>(
             .subscribe()
 
         ShellStateConfiguration.listeners[topicId] = d
+        return topicId
     }
-    fun hangup(topicId: String) {
+
+    /**
+     * Stops the listener of the room that [topic] names, and answers its id.
+     *
+     * A stored room id stops with no lookup, so a listener on a removed room
+     * still stops. Any other value resolves as a room name or a room id.
+     */
+    fun hangup(topic: String): String {
+        val topicId = if (ShellStateConfiguration.listeners.containsKey(topic)) topic
+        else typeUtil.toString(rooms.idOf(topic))
         ShellStateConfiguration.listeners.remove(topicId)?.dispose()
+        return topicId
+    }
+
+    /**
+     * The stored messages of the room that [topic] names, one line each.
+     *
+     * The read checks `SUBSCRIBE` on the room, as `listen` does. A refusal
+     * reaches the caller as `Access Denied`. See `CHAT-rghaeqsa`.
+     */
+    fun messages(topic: String): String {
+        val room = rooms.room(topic)
+        val lines = messageService
+            .listMessages(ByIdRequest(room.key.id))
+            .map { message -> "${message.key.id} | ${message.key.from} | ${message.data}" }
+            .collectList()
+            .block()
+            .orEmpty()
+        return if (lines.isEmpty()) "No messages in ${room.data}."
+        else lines.joinToString("\n")
     }
 }

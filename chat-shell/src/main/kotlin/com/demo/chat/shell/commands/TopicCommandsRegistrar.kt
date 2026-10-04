@@ -37,63 +37,69 @@ class TopicCommandsRegistrar<T : Any>(private val commands: TopicCommands<T>) {
         .name("add-topic")
         .description("Create a topic")
         .group("Topic")
+        .arguments(positional("name"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("name").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.addTopic(ctx.optionValue("userId"), ctx.optionValue("name"))?.let { key -> "Created room ${ctx.optionValue("name")} (id ${key.id})" } ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> val name = ctx.mainValue("name"); commands.addTopic(ctx.optionValue("userId"), name)?.let { key -> "Created room $name (id ${key.id})" } ?: "" })
 
     @Bean
     fun topicByNameCommand(): Command = Command.builder()
         .name("topic-by-name")
         .description("Topic by Name")
         .group("Topic")
+        .arguments(positional("name"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("name").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.topicByName(ctx.optionValue("userId"), ctx.optionValue("name"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.topicByName(ctx.optionValue("userId"), ctx.mainValue("name"))?.toString() ?: "" })
 
     @Bean
     fun joinCommand(): Command = Command.builder()
         .name("join")
         .description("Subscribe to a topic")
         .group("Topic")
+        .arguments(positional("topic"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
-                CommandOption.with().longName("topicName").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.join(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "Joined ${ctx.optionValue("topicName")}" } })
+        .execute(Function<CommandContext, String> { ctx -> val topic = ctx.mainValue("topic"); commands.join(ctx.optionValue("userId"), topic).let { "Joined $topic" } })
 
     @Bean
     fun leaveCommand(): Command = Command.builder()
         .name("leave")
         .description("unSubscribe to a topic")
         .group("Topic")
+        .arguments(positional("topic"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
-                CommandOption.with().longName("topicName").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.leave(ctx.optionValue("userId"), ctx.optionValue("topicName")).let { "Left ${ctx.optionValue("topicName")}" } })
+        .execute(Function<CommandContext, String> { ctx -> val topic = ctx.mainValue("topic"); commands.leave(ctx.optionValue("userId"), topic).let { "Left $topic" } })
 
     @Bean
     fun memberOfCommand(): Command = Command.builder()
         .name("member-of")
         .description("Show what topics user is subscribed to")
         .group("Topic")
+        .arguments(positional("userId"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.memberOf(ctx.optionValue("userId"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.memberOf(ctx.mainValue("userId"))?.toString() ?: "" })
 
     @Bean
     fun listMembersCommand(): Command = Command.builder()
         .name("list-members")
         .description("Show Subscribers on a topic")
         .group("Topic")
+        .arguments(positional("topic"))
             .options(
-                CommandOption.with().longName("topicName").required(true).type(String::class.java).build(),
+                CommandOption.with().longName("topic").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.listMembers(ctx.optionValue("topicName"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.listMembers(ctx.mainValue("topic"))?.toString() ?: "" })
 
 }

@@ -33,33 +33,36 @@ class ShellCommandContractTests {
         val description: String,
         val options: List<Opt>,
         val aliases: List<String> = listOf(),
+        /** The option that the first bare word fills, or null. See `CHAT-lasqmeib`. */
+        val positional: String? = null,
     )
 
     private val expected = listOf(
         Expected("bye", "bye", listOf(), aliases = listOf("exit", "quit")),
         Expected("root-keys", "rootkeys", listOf()),
         Expected("whoami", "whoami", listOf()),
-        Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false))),
-        Expected("send", "Send a Message", listOf(Opt("topicName", "_"), Opt("topicId", "_"), Opt("userName", "_"), Opt("messageText", null))),
-        Expected("listen", "Listen to a topic", listOf(Opt("topicId", null))),
-        Expected("hangup", "Stop listening to a topic", listOf(Opt("topicId", null))),
+        Expected("login", "login", listOf(Opt("username", null), Opt("password", null, required = false)), positional = "username"),
+        Expected("send", "Send a Message", listOf(Opt("topic", "_"), Opt("userName", "_"), Opt("messageText", null)), positional = "messageText"),
+        Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
+        Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
+        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("show-topics", "show topics", listOf()),
-        Expected("add-topic", "Create a topic", listOf(Opt("userId", "_"), Opt("name", null))),
-        Expected("topic-by-name", "Topic by Name", listOf(Opt("userId", "_"), Opt("name", null))),
-        Expected("join", "Subscribe to a topic", listOf(Opt("userId", "_"), Opt("topicName", null))),
-        Expected("leave", "unSubscribe to a topic", listOf(Opt("userId", "_"), Opt("topicName", null))),
-        Expected("member-of", "Show what topics user is subscribed to", listOf(Opt("userId", "_"))),
-        Expected("list-members", "Show Subscribers on a topic", listOf(Opt("topicName", null))),
-        Expected("kv", "Create a KeyValue", listOf(Opt("value", null))),
-        Expected("get-k-v", "Get a KeyValue by Key ID", listOf(Opt("key", null))),
+        Expected("add-topic", "Create a topic", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
+        Expected("topic-by-name", "Topic by Name", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
+        Expected("join", "Subscribe to a topic", listOf(Opt("userId", "_"), Opt("topic", null)), positional = "topic"),
+        Expected("leave", "unSubscribe to a topic", listOf(Opt("userId", "_"), Opt("topic", null)), positional = "topic"),
+        Expected("member-of", "Show what topics user is subscribed to", listOf(Opt("userId", "_")), positional = "userId"),
+        Expected("list-members", "Show Subscribers on a topic", listOf(Opt("topic", null)), positional = "topic"),
+        Expected("kv", "Create a KeyValue", listOf(Opt("value", null)), positional = "value"),
+        Expected("get-k-v", "Get a KeyValue by Key ID", listOf(Opt("key", null)), positional = "key"),
         Expected("all-k-v", "Get all KV", listOf()),
         Expected("key", "Create a Key", listOf()),
         Expected("add-user", "Add A User", listOf(Opt("name", null), Opt("handle", null), Opt("imageUri", null))),
         Expected("users", "All Users", listOf()),
-        Expected("find-user", "Find a user", listOf(Opt("handle", null))),
-        Expected("get-user", "Get a user", listOf(Opt("handle", null))),
-        Expected("passwd", "Change User Password", listOf(Opt("userId", "_"), Opt("password", null))),
-        Expected("get-permissions-for-user", "Gets user Permissions", listOf(Opt("userId", "_"))),
+        Expected("find-user", "Find a user", listOf(Opt("handle", null)), positional = "handle"),
+        Expected("get-user", "Get a user", listOf(Opt("handle", null)), positional = "handle"),
+        Expected("passwd", "Change User Password", listOf(Opt("userId", "_"), Opt("password", null)), positional = "password"),
+        Expected("get-permissions-for-user", "Gets user Permissions", listOf(Opt("userId", "_")), positional = "userId"),
         Expected("all-permissions", "Get all Perms", listOf()),
         Expected("add-permission", "Add a User Permission", listOf(Opt("userId", "_"), Opt("targetUserId", null), Opt("role", null), Opt("expireTime", null))),
     )
@@ -96,6 +99,10 @@ class ShellCommandContractTests {
                 .describedAs("the aliases of %s", want.name)
                 .containsExactlyElementsOf(want.aliases)
 
+            assertThat(got.arguments.map { it.description() })
+                .describedAs("the positional argument of %s", want.name)
+                .containsExactlyElementsOf(listOfNotNull(want.positional?.let { "Same as --$it" }))
+
             assertThat(got.options.map { it.longName() })
                 .describedAs("the option names of %s", want.name)
                 .containsExactlyElementsOf(want.options.map { it.name })
@@ -114,11 +121,45 @@ class ShellCommandContractTests {
         }
     }
 
+    /**
+     * **Every room command names the room through `--topic`.** The value is a
+     * room name or a room id. The owner chose the name on 2026-10-03. See
+     * `CHAT-scoizkpm`.
+     */
     @Test
-    fun `the contract holds twenty six commands and thirty two options`() {
+    fun `every room command takes the room through one option`() {
+        val byName = registered().associateBy { it.name }
+
+        listOf("join", "leave", "list-members", "listen", "hangup", "messages", "send").forEach { name ->
+            assertThat(byName.getValue(name).options.map { it.longName() })
+                .describedAs("the options of %s", name)
+                .contains("topic")
+        }
+        assertThat(registered().flatMap { it.options }.map { it.longName() })
+            .describedAs("the retired room options")
+            .doesNotContain("topicName", "topicId")
+    }
+
+    /**
+     * **A positional argument fills a declared option.** A command that
+     * declared a word for an option it does not hold would read nothing.
+     */
+    @Test
+    fun `every positional argument names a declared option`() {
+        registered().forEach { command ->
+            command.arguments.forEach { argument ->
+                assertThat(command.options.map { "Same as --${it.longName()}" })
+                    .describedAs("the options of %s", command.name)
+                    .contains(argument.description())
+            }
+        }
+    }
+
+    @Test
+    fun `the contract holds twenty seven commands and thirty two options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
-        assertThat(registered()).hasSize(26)
+        assertThat(registered()).hasSize(27)
         assertThat(registered().sumOf { it.options.size }).isEqualTo(32)
     }
 }

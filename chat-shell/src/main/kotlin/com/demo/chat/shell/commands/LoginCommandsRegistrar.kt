@@ -52,6 +52,7 @@ class LoginCommandsRegistrar<T>(private val commands: LoginCommands<T>) {
         .name("login")
         .description("login")
         .group("Login")
+        .arguments(positional("username"))
             .options(
                 CommandOption.with().longName("username").required(true).type(String::class.java).build(),
                 // The password is optional, so the shell can prompt for it. A
@@ -59,7 +60,7 @@ class LoginCommandsRegistrar<T>(private val commands: LoginCommands<T>) {
                 CommandOption.with().longName("password").required(false).type(String::class.java).build(),
             )
         .execute(Function<CommandContext, String> { ctx ->
-            val username = ctx.optionValue("username")
+            val username = ctx.mainValue("username")
             // A closed input answers null, so an empty answer refuses the login.
             val password = ctx.optionValue("password")
                 .ifEmpty { ctx.inputReader().readPassword("Password: ")?.let { String(it) } ?: "" }

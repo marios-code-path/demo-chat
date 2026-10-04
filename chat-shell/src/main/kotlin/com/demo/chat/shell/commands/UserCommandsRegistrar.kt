@@ -30,20 +30,22 @@ class UserCommandsRegistrar<T : Any>(private val commands: UserCommands<T>) {
         .name("kv")
         .description("Create a KeyValue")
         .group("User")
+        .arguments(positional("value"))
             .options(
                 CommandOption.with().longName("value").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.kv(ctx.optionValue("value"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.kv(ctx.mainValue("value"))?.toString() ?: "" })
 
     @Bean
     fun getKVCommand(): Command = Command.builder()
         .name("get-k-v")
         .description("Get a KeyValue by Key ID")
         .group("User")
+        .arguments(positional("key"))
             .options(
                 CommandOption.with().longName("key").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.getKV(commands.keyOf(ctx.optionValue("key")))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.getKV(commands.keyOf(ctx.mainValue("key")))?.toString() ?: "" })
 
     @Bean
     fun allKVCommand(): Command = Command.builder()
@@ -83,41 +85,45 @@ class UserCommandsRegistrar<T : Any>(private val commands: UserCommands<T>) {
         .name("find-user")
         .description("Find a user")
         .group("User")
+        .arguments(positional("handle"))
             .options(
                 CommandOption.with().longName("handle").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.findUser(ctx.optionValue("handle"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.findUser(ctx.mainValue("handle"))?.toString() ?: "" })
 
     @Bean
     fun getUserCommand(): Command = Command.builder()
         .name("get-user")
         .description("Get a user")
         .group("User")
+        .arguments(positional("handle"))
             .options(
                 CommandOption.with().longName("handle").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.getUser(ctx.optionValue("handle"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.getUser(ctx.mainValue("handle"))?.toString() ?: "" })
 
     @Bean
     fun passwdCommand(): Command = Command.builder()
         .name("passwd")
         .description("Change User Password")
         .group("User")
+        .arguments(positional("password"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
                 CommandOption.with().longName("password").required(true).type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.passwd(ctx.optionValue("userId"), ctx.optionValue("password"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.passwd(ctx.optionValue("userId"), ctx.mainValue("password"))?.toString() ?: "" })
 
     @Bean
     fun getPermissionsForUserCommand(): Command = Command.builder()
         .name("get-permissions-for-user")
         .description("Gets user Permissions")
         .group("User")
+        .arguments(positional("userId"))
             .options(
                 CommandOption.with().longName("userId").required(false).defaultValue("_").type(String::class.java).build(),
             )
-        .execute(Function<CommandContext, String> { ctx -> commands.getPermissionsForUser(ctx.optionValue("userId"))?.toString() ?: "" })
+        .execute(Function<CommandContext, String> { ctx -> commands.getPermissionsForUser(ctx.mainValue("userId"))?.toString() ?: "" })
 
     @Bean
     fun allPermissionsCommand(): Command = Command.builder()
