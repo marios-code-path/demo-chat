@@ -4,10 +4,12 @@ import com.demo.chat.service.core.KeyVerifier
 
 import com.demo.chat.domain.AuthMetadata
 import com.demo.chat.domain.Key
+import com.demo.chat.security.AuthSummarizer
 import com.demo.chat.security.Summarizer
 import com.demo.chat.service.core.IndexService
 import com.demo.chat.service.core.PersistenceStore
 import com.demo.chat.service.security.AuthorizationService
+import com.demo.chat.service.security.SecondOwnerException
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import java.util.function.Function
@@ -68,8 +70,54 @@ class CoreAuthorizationService<T, Q>(
      * `CHAT-avduuqwp`, T6.
      */
     override fun authorize(auth: AuthMetadata<T>, exist: Boolean): Mono<Void> =
-        (if (exist) verifyParties(auth) else Mono.empty())
-            .then(Mono.defer { write(auth, exist) })
+        if (!exist) Mono.defer { write(auth, false) }
+        else verifyParties(auth)
+            .then(ownerGuard(auth))
+            .flatMap { needed -> if (needed) write(auth, true) else Mono.empty() }
+
+    /**
+     * **One target holds one owner.** An owner row is a live `*` row whose
+     * principal is an entity. The owner decided the rule on 2026-10-04. See
+     * `CHAT-esengqpv`.
+     *
+     * - A row that is not an owner row passes. A named permission passes, and
+     *   a `*` row whose principal is a domain root passes, because that is a
+     *   close.
+     * - The same principal that already owns the target writes nothing. So a
+     *   start that writes its initial rows again adds no row.
+     * - Another entity that owns the target refuses the write with
+     *   [SecondOwnerException].
+     *
+     * Live follows the summarizer: an expiry of 0 never expires, and any other
+     * expiry must be in the future. A domain root is its own root, the rule
+     * that [targets] reads too, and `PrincipalRank` answers `DOMAIN_ROOT` for
+     * the same keys.
+     *
+     * **The check is not atomic with the write.** Two concurrent owner writes
+     * can both pass it, as two concurrent room adds can. The stores offer no
+     * conditional write on the index.
+     *
+     * The answer is `true` when the row must be written.
+     */
+    private fun ownerGuard(auth: AuthMetadata<T>): Mono<Boolean> =
+        if (!isOwnerRow(auth)) Mono.just(true)
+        else authIndex.findBy(queryForTarget.apply(auth.target))
+            .flatMap(authPersist::get)
+            .filter { row -> row.target == auth.target && isOwnerRow(row) && isLive(row) }
+            .collectList()
+            .flatMap { owners ->
+                when {
+                    owners.isEmpty() -> Mono.just(true)
+                    owners.any { it.principal == auth.principal } -> Mono.just(false)
+                    else -> Mono.error(SecondOwnerException(auth.target))
+                }
+            }
+
+    private fun isOwnerRow(row: AuthMetadata<T>): Boolean =
+        row.permission == AuthSummarizer.WILDCARD && Key.root(row.principal.root) != row.principal
+
+    private fun isLive(row: AuthMetadata<T>): Boolean =
+        row.expires == 0L || row.expires > System.currentTimeMillis()
 
     private fun verifyParties(auth: AuthMetadata<T>): Mono<Void> =
         verifier.verify(auth.principal, null)

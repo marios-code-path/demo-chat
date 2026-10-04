@@ -132,6 +132,16 @@ class RedisGrantRestartTests {
             Assertions.assertEquals(target, current, "the restart must read the stored root")
             Assertions.assertTrue(second.allows(user, current, "NEW"), "the grant must apply after the restart")
             Assertions.assertFalse(second.allows(user, current, "DEL"), "a permission with no grant must still deny")
+
+            // Each start writes the Admin wildcard on every domain root. A
+            // repeat by the same owner is a no-op, so two starts against one
+            // store hold one row. See CHAT-esengqpv.
+            @Suppress("UNCHECKED_CAST")
+            val grants = second.getBean(AuthorizationService::class.java) as AuthorizationService<Long, AuthMetadata<Long>>
+            val adminRows = grants.getStoredGrants(second.roots().admin(), current)
+                .filter { it.permission == "*" }
+                .collectList().block(timeout)!!
+            Assertions.assertEquals(1, adminRows.size, "the Admin wildcard rows on one root after two starts: $adminRows")
         }
     }
 
