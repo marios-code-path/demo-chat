@@ -12,7 +12,6 @@ app:
       additional-scopes:
         - openid
         - profile
-        - chat.mcp
       client-authentication-methods:
         - client_secret_basic
       authorization-grant-types:

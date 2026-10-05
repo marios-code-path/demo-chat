@@ -1,5 +1,7 @@
 package com.demo.chat.config.deploy.authserv
 
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties
 import com.demo.chat.auth.client.RegisteredClientFactory
 import com.nimbusds.jose.jwk.JWK
 import com.nimbusds.jose.jwk.JWKSet
@@ -34,7 +36,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc
 
 @Configuration(proxyBeanMethods = false)
 @ComponentScan("com.demo.chat.config.client.discovery", excludeFilters = [])
-@EnableConfigurationProperties(Oauth2ClientProperties::class)
+@EnableConfigurationProperties(Oauth2ClientProperties::class, AgentClientProperties::class)
 @EnableWebMvc
 class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: Resource) {
 
@@ -63,12 +65,33 @@ class AuthorizationServerConfig(@Value("\${app.oauth2.jwk.path}") val resource: 
     fun jwtDecoder(jwkSource: JWKSource<SecurityContext>): JwtDecoder =
         OAuth2AuthorizationServerConfiguration.jwtDecoder(jwkSource)
 
+    /**
+     * The memory repository holds the configured client and every agent
+     * client. Each start makes a new secret for every agent, and prints it
+     * after the repository holds the client. See `CHAT-frcrctdp`.
+     */
     @Profile("memory")
     @Bean
-    fun registeredClientRepo(clientProps: Oauth2ClientProperties): RegisteredClientRepository =
-        InMemoryRegisteredClientRepository(
-            RegisteredClientFactory(clientProps)()
+    fun registeredClientRepo(
+        clientProps: Oauth2ClientProperties,
+        agentProps: AgentClientProperties,
+        serverProps: ObjectProvider<OAuth2AuthorizationServerProperties>,
+    ): RegisteredClientRepository {
+        val agents = agentProps.requireValid()
+        AgentClients.requireNoCollision(
+            agents.map { it.clientId },
+            mapOf(
+                "app.oauth2.client" to listOf(clientProps.clientId),
+                "spring.security.oauth2.authorizationserver.client" to bootClientIds(serverProps),
+            ),
         )
+        val issued = agentProps.agentScope?.let { scope -> agents.map { AgentClients.issue(it, scope) } }.orEmpty()
+        val repository = InMemoryRegisteredClientRepository(
+            listOf(RegisteredClientFactory(clientProps)()) + issued.map { it.client }
+        )
+        issued.forEach { AgentClients.announce(it) }
+        return repository
+    }
 
     @Profile("memory")
     @Bean
