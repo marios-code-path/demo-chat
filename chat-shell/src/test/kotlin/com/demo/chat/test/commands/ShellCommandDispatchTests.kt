@@ -43,10 +43,10 @@ import java.io.StringWriter
 class ShellCommandDispatchTests {
 
     private fun context(command: Command, supplied: Map<String, String>): CommandContext {
-        // The context carries the command's own declared options, with a
-        // value only where the caller supplied one. That is what the parser
-        // hands a command at runtime.
-        val options = command.options.map { declared ->
+        // The context omits optional options with no supplied value or default.
+        // CommandContext reads supplied options from ParsedInput only.
+        // A real registry lets ShellCommandSupport read declarations when an optional value is absent.
+        val options = command.options.filter { it.required() == true || it.defaultValue() != null || supplied.containsKey(it.longName()) }.map { declared ->
             CommandOption.with()
                 .longName(requireNotNull(declared.longName()) { "a declared option has no long name" })
                 .required(declared.required() ?: false)
@@ -63,7 +63,7 @@ class ShellCommandDispatchTests {
 
         return CommandContext(
             input.build(),
-            mock(CommandRegistry::class.java),
+            CommandRegistry(setOf(command)),
             PrintWriter(StringWriter()),
             mock(InputReader::class.java),
         )

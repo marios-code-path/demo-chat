@@ -45,7 +45,7 @@ class ShellCommandContractTests {
         Expected("send", "Send a Message", listOf(Opt("topic", "_"), Opt("userName", "_"), Opt("messageText", null)), positional = "messageText"),
         Expected("listen", "Listen to a topic", listOf(Opt("topic", null)), positional = "topic"),
         Expected("hangup", "Stop listening to a topic", listOf(Opt("topic", null)), positional = "topic"),
-        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null)), positional = "topic"),
+        Expected("messages", "List the messages of a topic", listOf(Opt("topic", null), Opt("limit", null, required = false)), positional = "topic"),
         Expected("show-topics", "show topics", listOf()),
         Expected("add-topic", "Create a topic", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
         Expected("topic-by-name", "Topic by Name", listOf(Opt("userId", "_"), Opt("name", null)), positional = "name"),
@@ -156,10 +156,10 @@ class ShellCommandContractTests {
     }
 
     @Test
-    fun `the contract holds twenty seven commands and thirty two options`() {
+    fun `the contract holds twenty seven commands and thirty three options`() {
         // The counts come from the same extraction that wrote the document.
         // They fail if a command or an option is dropped during a later edit.
         assertThat(registered()).hasSize(27)
-        assertThat(registered().sumOf { it.options.size }).isEqualTo(32)
+        assertThat(registered().sumOf { it.options.size }).isEqualTo(33)
     }
 }

@@ -3,6 +3,8 @@ package com.demo.chat.convert
 import com.fasterxml.jackson.dataformat.cbor.CBORFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.util.UUID
+import java.time.Instant
+import java.math.BigDecimal
 
 /**
  * The rules that turn a JSON scalar into a domain value.
@@ -72,12 +74,21 @@ object NodeValueRules {
  */
 object KeyAssembly {
 
+    /** This function reads ISO timestamps, decimal epoch seconds, or whole numbers in the selected unit. */
+    fun timestamp(value: String?, numeric: Boolean, milliseconds: Boolean = false): Instant? {
+        if (value == null) return null
+        if (!numeric) return Instant.parse(value)
+        if (milliseconds) return Instant.ofEpochMilli(BigDecimal(value).longValueExact())
+        val seconds = BigDecimal(value)
+        return Instant.ofEpochSecond(seconds.toBigInteger().longValueExact(), seconds.remainder(BigDecimal.ONE).movePointRight(9).toLong())
+    }
+
     const val MISSING_ROOT = "A key needs a root. The payload holds none."
 
-    fun <T : Any> key(id: T, root: T, empty: Boolean, from: T?, dest: T?): com.demo.chat.domain.Key<T> =
+    fun <T : Any> key(id: T, root: T, empty: Boolean, from: T?, dest: T?, timestamp: Instant? = null): com.demo.chat.domain.Key<T> =
         when {
             empty -> com.demo.chat.domain.Key.empty(id, root)
-            from != null && dest != null -> com.demo.chat.domain.MessageKey.of(id, root, from, dest)
+            from != null && dest != null -> com.demo.chat.domain.SimpleMessageKey(id, root, from, dest, timestamp ?: Instant.now())
             else -> com.demo.chat.domain.Key.of(id, root)
         }
 }

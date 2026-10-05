@@ -53,8 +53,8 @@ class EmptyKey<T>(override val id: T, override val root: T) : NoKey<T> {
 }
 
 /**
- * The key of one message. [from] and [dest] are payload, and they do not take
- * part in equality. [timestamp] records when this object was built.
+ * The key of one message. [from] and [dest] are payload and do not affect equality.
+ * [timestamp] retains the supplied message time. Its default is the current time.
  */
 @JsonTypeName("key")
 class SimpleMessageKey<T>(

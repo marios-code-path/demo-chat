@@ -12,11 +12,13 @@ import com.demo.chat.shell.commands.UserCommandsRegistrar
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.isNull
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
+import org.mockito.Mockito.verifyNoInteractions
 import org.mockito.Mockito.verify
 import org.springframework.shell.core.InputReader
 import org.springframework.shell.core.command.Command
@@ -192,7 +194,7 @@ class ShellParsedInputTests {
     @Test
     fun `every pubsub command takes its main option by position`() {
         val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
-        given(commands.messages(anyString())).willReturn("")
+        given(commands.messages(anyString(), isNull())).willReturn("")
         val beans = commandsOf(PubSubCommandsRegistrar(commands))
 
         execute(beans, "send --topic lobby \"hello there\"")
@@ -312,4 +314,31 @@ class ShellParsedInputTests {
             .hasMessage("add-topic takes one argument. Put quotes around a value that has spaces.")
         verify(commands, never()).addTopic(anyString(), anyString())
     }
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `messages passes its optional limit through the real parser`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        val beans = commandsOf(PubSubCommandsRegistrar(commands))
+
+        execute(beans, "messages lobby --limit 2")
+        execute(beans, "messages --topic lobby --limit 3")
+
+        verify(commands).messages("lobby", 2)
+        verify(commands).messages("lobby", 3)
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    @Test
+    fun `messages refuses a malformed limit before calling the service`() {
+        val commands = mock(PubSubCommands::class.java) as PubSubCommands<Any>
+        val beans = commandsOf(PubSubCommandsRegistrar(commands))
+
+        listOf("text", "2147483648").forEach { value ->
+            assertThatThrownBy { execute(beans, "messages lobby --limit $value") }
+                .isInstanceOf(IllegalArgumentException::class.java)
+                .hasMessage("messages needs a positive --limit.")
+        }
+        verifyNoInteractions(commands)
+    }
+
 }

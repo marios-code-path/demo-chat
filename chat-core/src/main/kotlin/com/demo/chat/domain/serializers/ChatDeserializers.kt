@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonDeserializer
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.DeserializationFeature
+import java.time.Instant
 
 /**
  * TODO: make deserializers recursively descend into 'data' objects as they can also be JSON.
@@ -16,13 +19,14 @@ import com.fasterxml.jackson.databind.JsonNode
 class MessageKeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : JsonDeserializer<MessageKey<T>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): MessageKey<T> {
         val oc: ObjectCodec = jp?.codec!!
-        val node: JsonNode = oc.readTree(jp)
+        val node: JsonNode = readNode(jp, oc)
 
-        return MessageKey.of(
+        return SimpleMessageKey(
             nodeConverter.convert(node.get("id"))!!,
             requireRoot(jp, node, nodeConverter),
             nodeConverter.convert(node.get("from"))!!,
-            nodeConverter.convert(node.get("dest"))!!
+            nodeConverter.convert(node.get("dest"))!!,
+            readTimestamp(jp, ctxt, node) ?: Instant.now()
         )
     }
 }
@@ -30,7 +34,7 @@ class MessageKeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T
 class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : JsonDeserializer<Key<T>>() {
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Key<T> {
         val oc: ObjectCodec = jp?.codec!!
-        val node: JsonNode = oc.readTree(jp)
+        val node: JsonNode = readNode(jp, oc)
 
         val id = nodeConverter.convert(node.get("id"))!!
         val root = requireRoot(jp, node, nodeConverter)
@@ -39,7 +43,25 @@ class KeyDeserializer<T>(private val nodeConverter: Converter<JsonNode, T>) : Js
         val dest = if (node.has("dest")) nodeConverter.convert(node.get("dest")) else null
 
         @Suppress("UNCHECKED_CAST")
-        return KeyAssembly.key(id as Any, root as Any, empty, from, dest) as Key<T>
+        return KeyAssembly.key(id as Any, root as Any, empty, from, dest,
+            readTimestamp(jp, ctxt, node)) as Key<T>
+    }
+}
+
+/** This function retains numeric timestamp precision when it reads a tree. */
+private fun readNode(parser: JsonParser?, codec: ObjectCodec): JsonNode =
+    if (codec is ObjectMapper) codec.readerFor(JsonNode::class.java)
+        .with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS).readValue(parser)
+    else codec.readTree(parser)
+
+private fun readTimestamp(parser: JsonParser, context: DeserializationContext?, node: JsonNode): Instant? {
+    val timestamp = node.get("timestamp")?.takeUnless { it.isNull } ?: return null
+    val milliseconds = timestamp.isIntegralNumber &&
+        context?.isEnabled(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS) == false
+    return try {
+        KeyAssembly.timestamp(timestamp.asText(), timestamp.isNumber, milliseconds)
+    } catch (cause: RuntimeException) {
+        throw JsonMappingException.from(parser, "Invalid message timestamp.", cause)
     }
 }
 
@@ -58,7 +80,7 @@ class MessageDeserializer<T, E>(
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): Message<T, E> {
         val oc: ObjectCodec = jp?.codec!!
-        val node: JsonNode = oc.readTree(jp)
+        val node: JsonNode = readNode(jp, oc)
 
         val decoded = dataCodec.convert(node.get("data"))!!
         val visible = node.get("record").asBoolean()
@@ -82,7 +104,7 @@ class KeyValuePairDeserializer<T, E>(
 
     override fun deserialize(jp: JsonParser?, ctxt: DeserializationContext?): KeyValuePair<T, E> {
         val oc: ObjectCodec = jp?.codec!!
-        val node: JsonNode = oc.readTree(jp)
+        val node: JsonNode = readNode(jp, oc)
 
         val decoded = dataCodec.convert(node.get("data"))!!
 

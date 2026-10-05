@@ -8,6 +8,8 @@ import com.demo.chat.domain.Key
 import com.demo.chat.domain.KeyValuePair
 import com.demo.chat.domain.Message
 import com.demo.chat.domain.MessageKey
+import com.demo.chat.domain.SimpleMessageKey
+import java.time.Instant
 import com.demo.chat.domain.MessageTopic
 import com.demo.chat.domain.TopicMembership
 import com.demo.chat.domain.User
@@ -16,6 +18,7 @@ import tools.jackson.databind.DatabindException
 import tools.jackson.databind.DeserializationContext
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ValueDeserializer
+import tools.jackson.databind.cfg.DateTimeFeature
 import tools.jackson.databind.node.JsonNodeType
 
 /**
@@ -62,13 +65,25 @@ object Jackson3NodeToAny {
     fun <T : Any> value(node: JsonNode): T = convert(node) as T
 
     /** The key that a node holds, by the rule both generations share. */
-    fun <T : Any> key(node: JsonNode): Key<T> = KeyAssembly.key(
+    fun <T : Any> key(node: JsonNode, context: DeserializationContext? = null): Key<T> = KeyAssembly.key(
         value(node.get("id")),
         root(node),
         node.get("empty")?.asBoolean() ?: false,
         if (node.has("from")) value<T>(node.get("from")) else null,
         if (node.has("dest")) value<T>(node.get("dest")) else null,
+        Jackson3NodeToAny.timestamp(node, context),
     )
+
+    fun timestamp(node: JsonNode, context: DeserializationContext? = null): Instant? {
+        val timestamp = node.get("timestamp")?.takeUnless { it.isNull } ?: return null
+        val milliseconds = timestamp.isIntegralNumber &&
+            context?.isEnabled(DateTimeFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS) == false
+        return try {
+            KeyAssembly.timestamp(timestamp.asString(), timestamp.isNumber, milliseconds)
+        } catch (cause: RuntimeException) {
+            throw DatabindException.from(context?.parser, "Invalid message timestamp.", cause)
+        }
+    }
 
     /** This function reads the required root of a key node. See `KeyAssembly`. */
     fun <T : Any> root(node: JsonNode): T {
@@ -78,37 +93,46 @@ object Jackson3NodeToAny {
     }
 
     /** The key inside a wrapper, which is how a nested key is written. */
-    fun <T : Any> wrappedKey(node: JsonNode): Key<T> = key(node.get("key").get("key"))
+    fun <T : Any> wrappedKey(node: JsonNode, context: DeserializationContext? = null): Key<T> = key(node.get("key").get("key"), context)
 }
+
+/** This function retains decimal precision without changing the caller's reader settings. */
+private fun readTimestampTree(parser: JsonParser, context: DeserializationContext): JsonNode =
+    context.bufferForInputBuffering(parser).use { buffer ->
+        buffer.forceUseOfBigDecimal(true)
+        buffer.copyCurrentStructure(parser)
+        buffer.asParser(context).use { context.readTree(it) }
+    }
 
 class Jackson3MessageKeyDeserializer<T : Any> : ValueDeserializer<MessageKey<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageKey<T> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
-        return MessageKey.of(
+        return SimpleMessageKey(
             Jackson3NodeToAny.value(node.get("id")),
             Jackson3NodeToAny.root(node),
             Jackson3NodeToAny.value(node.get("from")),
             Jackson3NodeToAny.value(node.get("dest")),
+            Jackson3NodeToAny.timestamp(node, ctxt) ?: Instant.now(),
         )
     }
 }
 
 class Jackson3KeyDeserializer<T : Any> : ValueDeserializer<Key<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): Key<T> =
-        Jackson3NodeToAny.key(p.readValueAsTree())
+        Jackson3NodeToAny.key(readTimestampTree(p, ctxt), ctxt)
 }
 
 class Jackson3MessageDeserializer<T : Any, E : Any> : ValueDeserializer<Message<T, E>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): Message<T, E> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         val decoded: E = Jackson3NodeToAny.value(node.get("data"))
         val visible = node.get("record").asBoolean()
 
         // The key sits inside its own wrapper, and the first value of that
         // wrapper is the key itself.
-        val key = Jackson3NodeToAny.key<T>(node.get("key").values().first())
+        val key = Jackson3NodeToAny.key<T>(node.get("key").values().first(), ctxt)
 
         return when (key) {
             is MessageKey<T> -> Message.create(key, decoded, visible)
@@ -119,10 +143,10 @@ class Jackson3MessageDeserializer<T : Any, E : Any> : ValueDeserializer<Message<
 
 class Jackson3KeyValuePairDeserializer<T : Any, E : Any> : ValueDeserializer<KeyValuePair<T, E>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): KeyValuePair<T, E> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         val decoded: E = Jackson3NodeToAny.value(node.get("data"))
-        val key = Jackson3NodeToAny.key<T>(node.get("key").values().first())
+        val key = Jackson3NodeToAny.key<T>(node.get("key").values().first(), ctxt)
 
         return KeyValuePair.create(key, decoded)
     }
@@ -130,10 +154,10 @@ class Jackson3KeyValuePairDeserializer<T : Any, E : Any> : ValueDeserializer<Key
 
 class Jackson3UserDeserializer<T : Any> : ValueDeserializer<User<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): User<T> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         return User.create(
-            Jackson3NodeToAny.wrappedKey(node),
+            Jackson3NodeToAny.wrappedKey(node, ctxt),
             node.get("name").asString(),
             node.get("handle").asString(),
             node.get("imageUri").asString(),
@@ -143,7 +167,7 @@ class Jackson3UserDeserializer<T : Any> : ValueDeserializer<User<T>>() {
 
 class Jackson3MembershipDeserializer<T : Any> : ValueDeserializer<TopicMembership<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): TopicMembership<T> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         return TopicMembership.create(
             Jackson3NodeToAny.value(node.get("key")),
@@ -155,10 +179,10 @@ class Jackson3MembershipDeserializer<T : Any> : ValueDeserializer<TopicMembershi
 
 class Jackson3TopicDeserializer<T : Any> : ValueDeserializer<MessageTopic<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): MessageTopic<T> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         return MessageTopic.create(
-            Jackson3NodeToAny.wrappedKey(node),
+            Jackson3NodeToAny.wrappedKey(node, ctxt),
             node.get("data").asString(),
         )
     }
@@ -166,12 +190,12 @@ class Jackson3TopicDeserializer<T : Any> : ValueDeserializer<MessageTopic<T>>() 
 
 class Jackson3AuthMetadataDeserializer<T : Any> : ValueDeserializer<AuthMetadata<T>>() {
     override fun deserialize(p: JsonParser, ctxt: DeserializationContext): AuthMetadata<T> {
-        val node: JsonNode = p.readValueAsTree()
+        val node: JsonNode = readTimestampTree(p, ctxt)
 
         return AuthMetadata.create(
-            Jackson3NodeToAny.wrappedKey<T>(node),
-            Jackson3NodeToAny.key<T>(node.get("principal").get("key")),
-            Jackson3NodeToAny.key<T>(node.get("target").get("key")),
+            Jackson3NodeToAny.wrappedKey<T>(node, ctxt),
+            Jackson3NodeToAny.key<T>(node.get("principal").get("key"), ctxt),
+            Jackson3NodeToAny.key<T>(node.get("target").get("key"), ctxt),
             node.get("permission").asString(),
             node.get("expires").asLong(),
         )
