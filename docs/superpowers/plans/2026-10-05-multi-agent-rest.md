@@ -11,8 +11,9 @@
 | 5 | `CHAT-ososzcoo` |
 | 6 | `CHAT-pqhvddht` |
 | 7 | `CHAT-bwhhijyr` |
-| 8 | `CHAT-nhnmxydy` |
-| 9 | `CHAT-skldhsks` |
+| 8 | `CHAT-lsmirhzl` |
+| 9 | `CHAT-nhnmxydy` |
+| 10 | `CHAT-skldhsks` |
 
 Before a task, run `fp issue update --status in-progress <id>`. After its commit, run `fp comment <id> "<commit and evidence>"`, then `fp issue update --status done <id>`. Each issue depends on the one before it.
 
@@ -42,7 +43,7 @@ Before a task, run `fp issue update --status in-progress <id>`. After its commit
 - After each mutation restore, run the focused test command of that step again. Expect it to pass.
 - Stage named paths alone. Do not use `git add -A` or `git add .`.
 - Use semantic tools for symbol lookups: `mcp__treesitter-mcp__find_usages`, `mcp__idea__search_symbol` or `LSP`. Use `grep` for raw text alone, such as property keys in YAML, Markdown or shell.
-- Before a task edits a file that `drift` binds, run `drift refs <path>`. Record each bound document in the fp comment of that task. Task 8 reviews the prose and relinks.
+- Before a task edits a file that `drift` binds, run `drift refs <path>`. Record each bound document in the fp comment of that task. Task 9 reviews the prose and relinks.
 - Agent client ids in examples: `Agent` takes `5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13`, `Claude` takes `7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e`. Never use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent id. It is the `app.oauth2.client` id, and the collision check refuses it.
 
 ## Review Focus
@@ -118,7 +119,7 @@ for p in chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityP
   echo "== $p"; drift refs "$p"; done
 ```
 
-Expected: each file names `docs/REST-TOKEN-RELAY.md`. Record the list in the Step 16 fp comment. This task does not relink. Task 8 reviews the prose, then relinks.
+Expected: each file names `docs/REST-TOKEN-RELAY.md`. Record the list in the Step 16 fp comment. This task does not relink. Task 9 reviews the prose, then relinks.
 
 **Step 1: Write the failing properties tests**
 
@@ -2821,7 +2822,240 @@ EOF
 
 ---
 
-### Task 8: Documents, the vector gate, drift, and the register
+### Task 8: The automatic agent HTTP and relay gate
+
+**Files:**
+- Create: `shell-scripts/agent-http-gate.sh`
+- Modify: `.github/workflows/maven.yml` (a new `agent-http` job)
+- Modify: `shell-scripts/build-health.sh` (call the runner in `--ci` mode, before the final status)
+- Modify: `docs/BUILD.md:200-211`, `docs/BUILD-HEALTH.md` (the opt-in paragraphs)
+
+**Interfaces:**
+- Consumes: `RestAgentSelectionTests` from Task 3, with at least 2 tests. `RestToCoreBearerDeploymentTests` from Task 7, with at least 7 tests.
+- Produces: `shell-scripts/agent-http-gate.sh [--offline]`. Exit 0 when both classes pass with zero skipped tests and the relay core jar holds no `chat-webflux`. Exit 1 otherwise. Exit 2 on a usage error.
+
+**Why.** The CI jobs run `mvn -B clean test` and `mvn -B clean verify -Ptest-build,integration`. `build-health.sh --ci` takes the same profiles. None of them activates `expose-webflux` or `rest-core-e2e`. So both classes are skipped in every automatic gate, and a broken REST wiring would merge green. The profiles stay separate: one build per class.
+
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-lsmirhzl
+drift refs shell-scripts/build-health.sh; drift refs docs/BUILD.md; drift refs docs/BUILD-HEALTH.md
+```
+
+Record any bound document in the Step 8 fp comment.
+
+**Step 1: Write the runner**
+
+Create `shell-scripts/agent-http-gate.sh` and make it executable with `chmod +x`:
+
+```bash
+#!/usr/bin/env bash
+# agent-http-gate.sh — run the agent HTTP and relay tests that the reactor
+# builds cannot run. See CHAT-frcrctdp.
+#
+# The CI jobs and build-health.sh run without the expose-webflux and
+# rest-core-e2e profiles. Under those builds, RestAgentSelectionTests and
+# RestToCoreBearerDeploymentTests are skipped. This runner runs each class in
+# its own Maven build with its own profile. It fails unless each class runs
+# with zero skipped tests.
+#
+#   ./shell-scripts/agent-http-gate.sh            # resolve online, like CI
+#   ./shell-scripts/agent-http-gate.sh --offline  # use the local repository alone
+#
+# Exit 0 when both classes pass with zero skipped tests and the relay core jar
+# holds no chat-webflux. Exit 1 otherwise. Exit 2 on a usage error.
+
+set -u
+DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$DIR/.." && pwd)"
+OFFLINE=""
+
+for arg in "$@"; do
+    case "$arg" in
+        --offline) OFFLINE="-o" ;;
+        --help|-h) awk 'NR>1 && /^#/ {sub(/^# ?/,""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
+        *) echo "unknown option: $arg" >&2; exit 2 ;;
+    esac
+done
+
+status=0
+logs="$(mktemp -d "${TMPDIR:-/tmp}/agent-http-gate.XXXXXX")"
+
+# The value of one numeric attribute of the testsuite element.
+attr() {
+    echo "$1" | grep -o " $2=\"[0-9]*\"" | grep -o '[0-9][0-9]*' || echo 0
+}
+
+# require_class MODULE CLASS MIN_TESTS MAVEN_EXIT
+require_class() {
+    local report="$ROOT/$1/target/surefire-reports/TEST-$2.xml"
+    if [ "$4" -ne 0 ]; then
+        echo "FAIL  $2 — the Maven build exited $4"
+        status=1
+    fi
+    if [ ! -f "$report" ]; then
+        echo "FAIL  $2 — no surefire report at ${report#"$ROOT"/}"
+        status=1
+        return
+    fi
+    local head tests failures errors skipped
+    head="$(grep -o '<testsuite [^>]*>' "$report" | head -1)"
+    tests="$(attr "$head" tests)"
+    failures="$(attr "$head" failures)"
+    errors="$(attr "$head" errors)"
+    skipped="$(attr "$head" skipped)"
+    echo "      $2: $tests tests, $failures failures, $errors errors, $skipped skipped"
+    if [ "$tests" -lt "$3" ] || [ "$failures" -ne 0 ] || [ "$errors" -ne 0 ] || [ "$skipped" -ne 0 ]; then
+        echo "FAIL  $2 — want at least $3 tests, 0 failures, 0 errors and 0 skipped"
+        status=1
+    else
+        echo "ok    $2"
+    fi
+}
+
+echo "running: RestAgentSelectionTests under expose-webflux"
+(cd "$ROOT" && mvn $OFFLINE -B -pl chat-deploy-memory -am -Pexpose-webflux clean test \
+    -Dtest=RestAgentSelectionTests -Dsurefire.failIfNoSpecifiedTests=false) > "$logs/rest.log" 2>&1
+require_class chat-deploy-memory com.demo.chat.test.deploy.memory.RestAgentSelectionTests 2 $?
+
+# clean removes every output of the first build. The relay core is a core and
+# not a REST launch, so its jar must not hold chat-webflux.
+echo "running: RestToCoreBearerDeploymentTests under rest-core-e2e"
+(cd "$ROOT" && mvn $OFFLINE -B -pl chat-deploy-memory-integration-test -am -Prest-core-e2e clean verify \
+    -Dtest=RestToCoreBearerDeploymentTests -Dsurefire.failIfNoSpecifiedTests=false) > "$logs/relay.log" 2>&1
+require_class chat-deploy-memory-integration-test com.demo.chat.deploy.test.security.RestToCoreBearerDeploymentTests 7 $?
+
+jar="$ROOT/chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar"
+if [ ! -f "$jar" ]; then
+    echo "FAIL  relay core jar — no file at ${jar#"$ROOT"/}"
+    status=1
+elif unzip -l "$jar" | grep -q "chat-webflux"; then
+    echo "FAIL  relay core jar — it holds chat-webflux"
+    status=1
+else
+    echo "ok    relay core jar holds no chat-webflux"
+fi
+
+if [ "$status" -eq 0 ]; then
+    echo "agent http gate: ok"
+    rm -rf "$logs"
+else
+    echo "agent http gate: FAILED — logs in $logs"
+fi
+exit "$status"
+```
+
+Note: `$?` after the subshell is the Maven exit code. The `require_class` call reads it as its fourth argument, before any other command runs.
+
+**Step 2: Run the runner**
+
+```bash
+shell-scripts/agent-http-gate.sh --offline > $SCRATCH/t8-gate.log 2>&1; echo exit=$?; grep -E "^(ok|FAIL)|tests,|agent http gate" $SCRATCH/t8-gate.log
+```
+
+Expected: exit 0. `RestAgentSelectionTests` reads 2 tests and 0 skipped. `RestToCoreBearerDeploymentTests` reads 7 tests and 0 skipped. The jar line reads `ok`.
+
+**Step 3: Prove that the runner refuses a skipped class**
+
+In the runner, delete `-Pexpose-webflux` from the first Maven command. Run the Step 2 command. Expected: exit 1, and `FAIL  com.demo.chat.test.deploy.memory.RestAgentSelectionTests — want at least 2 tests, 0 failures, 0 errors and 0 skipped`. The report then reads 2 skipped. Restore the flag by hand in `/Users/darkbit1001/workspace/demo-chat/shell-scripts/agent-http-gate.sh`. Run the Step 2 command again. Expected: exit 0.
+
+**Step 4: Prove that the REST wiring mutation fails the runner**
+
+Apply the Task 3 Step 6 mutation to `AgentSecurityConfiguration.agentAuthenticationConverter`. Run the Step 2 command. Expected: exit 1, and the `RestAgentSelectionTests` line reads 1 failure. Restore `/Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt` with `git checkout --`. Run the Step 2 command again. Expected: exit 0.
+
+**Step 5: Call the runner from CI**
+
+In `.github/workflows/maven.yml`, add a third job after `integration`:
+
+```yaml
+  # The reactor jobs above cannot activate expose-webflux or rest-core-e2e,
+  # so the agent HTTP and relay test classes are skipped there. This job runs
+  # each class in its own build. It fails unless each class runs with zero
+  # skipped tests. See CHAT-frcrctdp.
+  agent-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 25
+      uses: actions/setup-java@v5
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+
+    - name: Cache Maven packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.m2/repository
+          ~/.m2/wrapper
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+          ${{ runner.os }}-
+    - name: Agent HTTP and relay gate
+      run: shell-scripts/agent-http-gate.sh
+```
+
+**Step 6: Call the runner from `build-health.sh --ci`**
+
+In `shell-scripts/build-health.sh`, insert this block after the `SKIPPED` block and before `if [ "$status" -eq 0 ]`:
+
+```bash
+if [ -n "$CI" ]; then
+    # The reactor run cannot activate expose-webflux or rest-core-e2e, so the
+    # agent HTTP and relay test classes run in their own builds. See
+    # CHAT-frcrctdp and shell-scripts/agent-http-gate.sh.
+    echo "running: shell-scripts/agent-http-gate.sh"
+    if ! "$DIR/agent-http-gate.sh"; then
+        echo "AGENT HTTP GATE — a class failed or was skipped; see above"
+        echo
+        status=1
+    fi
+fi
+```
+
+Add one sentence to the `--ci` paragraph of the header comment: `--ci also runs shell-scripts/agent-http-gate.sh, which runs the agent HTTP and relay test classes in their own builds.`
+
+Task 10 proves that a REST wiring mutation makes `build-health.sh --ci` exit 1.
+
+**Step 7: Update the two documents**
+
+In `docs/BUILD.md:200-211`, replace the paragraph that calls the two-process test optional with:
+
+`shell-scripts/agent-http-gate.sh` runs the agent HTTP test and the two-process relay test. Each class runs in its own build, with its own profile. The gate fails unless each class runs with zero skipped tests. The PR job `agent-http` and `build-health.sh --ci` both call it. Run it by hand with `--offline` for a local check.
+
+In `docs/BUILD-HEALTH.md`, at the sentence that says the opt-in two-process test counts as skipped, add: The reactor run still skips it. `shell-scripts/agent-http-gate.sh` runs it apart, and `--ci` fails when that gate fails. See `CHAT-frcrctdp`.
+
+**Step 8: Commit and close the task**
+
+```bash
+git add \
+  shell-scripts/agent-http-gate.sh \
+  shell-scripts/build-health.sh \
+  .github/workflows/maven.yml \
+  docs/BUILD.md \
+  docs/BUILD-HEALTH.md
+git status --short
+git commit -F - <<'EOF'
+Run the agent HTTP and relay tests in every automatic gate (CHAT-frcrctdp)
+
+The reactor builds of CI and build-health.sh cannot activate expose-webflux
+or rest-core-e2e, so both test classes were skipped there. agent-http-gate.sh
+runs each class in its own build and fails unless each runs with zero
+skipped tests. The new agent-http job and build-health.sh --ci call it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+EOF
+```
+
+---
+
+### Task 9: Documents, the vector gate, drift, and the register
 
 **Files:**
 - Modify: `docs/MCP-CREDENTIAL-ISSUANCE.md`, `docs/REST-TOKEN-RELAY.md`, `docs/BUILD.md`, `docs/EMBEDDING-PROVIDERS.md`, `docs/VECTOR-RECALL-API.md`, `docs/MCP-ADAPTER.md`, `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`, `shell-scripts/README-chat-build.md`
@@ -2970,7 +3204,7 @@ Plan: `docs/superpowers/plans/2026-10-05-multi-agent-rest.md`.
 
 ### Measured
 
-Fill each line from the run logs of Task 9. Do not write a number that no run
+Fill each line from the run logs of Task 10. Do not write a number that no run
 produced.
 ```
 
@@ -3001,10 +3235,10 @@ EOF
 
 ---
 
-### Task 9: Gates, evidence, and the pull request
+### Task 10: Gates, evidence, and the pull request
 
 **Files:**
-- Modify: `forward-register.md` (the `Measured` list of Task 8)
+- Modify: `forward-register.md` (the `Measured` list of Task 9)
 - Modify: `docs/BUILD-HEALTH.md` (one run line)
 
 **Step 0: Claim the task**
@@ -3032,11 +3266,24 @@ docker image inspect --format '{{.Id}}' docker.io/library/chat-deploy-long-memor
 cat $SCRATCH/image-before.txt
 ```
 
-Expected: exit 0, no drift, and an image id that differs from the one before. A test count that moved must match the tests that this plan added.
+Expected: exit 0, no drift, and an image id that differs from the one before. The log holds `agent http gate: ok`, with 2 tests for `RestAgentSelectionTests` and 7 for `RestToCoreBearerDeploymentTests`, each with 0 skipped. A test count that moved must match the tests that this plan added.
+
+**Step 2b: Prove that the REST wiring mutation fails `build-health.sh --ci`**
+
+Apply the Task 3 Step 6 mutation to `AgentSecurityConfiguration.agentAuthenticationConverter`. Run:
+
+```bash
+LOG=$SCRATCH/t10-ci-mutant.log; DOCKER_CONFIG=$(mktemp -d) shell-scripts/build-health.sh --ci > $LOG 2>&1; echo exit=$?
+grep -E "AGENT HTTP GATE|RestAgentSelectionTests:|agent http gate" $LOG
+```
+
+Expected: exit 1. The log holds `AGENT HTTP GATE — a class failed or was skipped`, and the `RestAgentSelectionTests` line reads 1 failure. The reactor part of the run still passes, because no reactor test reads the REST wiring over HTTP. That is the gap this gate closes.
+
+Restore `/Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt` with `git checkout --`. Run the Step 2 command again. Expected: exit 0. Run `git status --short`.
 
 **Step 3: Record the readings**
 
-Fill the `Measured` list of the register section with the real numbers of Steps 1 and 2, the Task 7 run, and each mutation of Tasks 2, 3, 6 and 7. Add one line to `docs/BUILD-HEALTH.md` in the style of the earlier run lines: branch, test count, skipped count, image id.
+Fill the `Measured` list of the register section with the real numbers of Steps 1, 2 and 2b, the Task 7 run, and each mutation of Tasks 1 to 8. Add one line to `docs/BUILD-HEALTH.md` in the style of the earlier run lines: branch, test count, skipped count, image id.
 
 ```bash
 git add forward-register.md docs/BUILD-HEALTH.md
@@ -3063,6 +3310,14 @@ gh pr create --title "Serve more than one agent on one REST deployment (CHAT-frc
 
 Write `$SCRATCH/pr-body.md` from the register section. End it with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. Do not merge. The owner merges.
 
+**Step 6: Read the PR checks**
+
+```bash
+gh pr checks --watch > $SCRATCH/t10-checks.log 2>&1; echo exit=$?; grep -E "agent-http|build|integration" $SCRATCH/t10-checks.log
+```
+
+Expected: the `agent-http` job passes. Open its log with `gh run view --job <id> --log | grep -E "^(ok|FAIL)|tests,|agent http gate"`. Expected: both classes run with 0 skipped. Add the run id to the fp comment of `CHAT-lsmirhzl` and of `CHAT-frcrctdp`.
+
 ---
 
 ## Spec Coverage
@@ -3083,6 +3338,7 @@ Write `$SCRATCH/pr-body.md` from the register section. End it with `🤖 Generat
 | `client-init` registers every Boot entry, reconciles agent rows, `--clientpath` collision | 6 |
 | `client.json` defect filed | 6 |
 | Two-process relay with two agents, unlisted 401 | 7 |
+| HTTP and relay classes run in every automatic gate with zero skipped tests | 8 |
 | Documents, drift relink, register | 8 |
 | `build-health.sh --ci` | 9 |
 
