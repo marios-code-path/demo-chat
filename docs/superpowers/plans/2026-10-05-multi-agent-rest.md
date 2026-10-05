@@ -1,6 +1,20 @@
 # More Than One Agent on One REST Deployment: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task, inline. `AGENTS.md` forbids subagent-driven development in this repository. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task, inline. `AGENTS.md` forbids subagent-driven development in this repository. Track progress with the fp issues below, not with checkboxes.
+
+| Task | fp issue |
+|---|---|
+| 1 | `CHAT-vnnbyrvb` |
+| 2 | `CHAT-mdpwghac` |
+| 3 | `CHAT-nrhgerbh` |
+| 4 | `CHAT-rivvxeer` |
+| 5 | `CHAT-ososzcoo` |
+| 6 | `CHAT-pqhvddht` |
+| 7 | `CHAT-bwhhijyr` |
+| 8 | `CHAT-nhnmxydy` |
+| 9 | `CHAT-skldhsks` |
+
+Before a task, run `fp issue update --status in-progress <id>`. After its commit, run `fp comment <id> "<commit and evidence>"`, then `fp issue update --status done <id>`. Each issue depends on the one before it.
 
 **Goal:** The token `client_id` selects one of several agent identities on REST and on the core, and the authorization server issues one client per agent.
 
@@ -25,6 +39,11 @@
 - Build output goes to a log file. Read the exit code and the summary lines alone. Use `$SCRATCH=/private/tmp/claude-501/-Users-darkbit1001-workspace-demo-chat/e28f0400-24b4-4585-b469-626a5d265b49/scratchpad`.
 - Run one Maven build at a time in this checkout.
 - Restore a mutation by absolute path, then prove it with `git status --short`.
+- After each mutation restore, run the focused test command of that step again. Expect it to pass.
+- Stage named paths alone. Do not use `git add -A` or `git add .`.
+- Use semantic tools for symbol lookups: `mcp__treesitter-mcp__find_usages`, `mcp__idea__search_symbol` or `LSP`. Use `grep` for raw text alone, such as property keys in YAML, Markdown or shell.
+- Before a task edits a file that `drift` binds, run `drift refs <path>`. Record each bound document in the fp comment of that task. Task 8 reviews the prose and relinks.
+- Agent client ids in examples: `Agent` takes `5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13`, `Claude` takes `7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e`. Never use `31649af5-0154-4be5-8695-fda9d18b7981` as an agent id. It is the `app.oauth2.client` id, and the collision check refuses it.
 
 ## Review Focus
 
@@ -85,7 +104,23 @@ This task changes the model and every caller in one commit, because the old type
 - Produces: `AgentAuthenticationConverter(identities: AgentIdentities)`.
 - Produces: `AgentIdentityLifecycle<T>(users: ChatUserService<T>, identities: AgentIdentities, properties: AgentSecurityProperties)`.
 
-- [ ] **Step 1: Write the failing properties tests**
+**Step 0: Claim the task and read the drift bindings**
+
+```bash
+fp issue update --status in-progress CHAT-vnnbyrvb
+for p in chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt \
+         chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentity.kt \
+         chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentityLifecycle.kt \
+         chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentAuthenticationConverter.kt \
+         chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt \
+         chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentResourceServerChain.kt \
+         chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt; do
+  echo "== $p"; drift refs "$p"; done
+```
+
+Expected: each file names `docs/REST-TOKEN-RELAY.md`. Record the list in the Step 16 fp comment. This task does not relink. Task 8 reviews the prose, then relinks.
+
+**Step 1: Write the failing properties tests**
 
 Replace the body of `AgentSecurityPropertiesTests.kt` with:
 
@@ -198,7 +233,7 @@ class AgentSecurityPropertiesTests {
 }
 ```
 
-- [ ] **Step 2: Write the failing converter tests**
+**Step 2: Write the failing converter tests**
 
 In `AgentAuthenticationConverterTests.kt`, replace the `identity` field and `converter()` with two agents, and add the selection and list cases. Keep every other existing test, and change the client id in them from `client-under-test` to `client-a`:
 
@@ -248,7 +283,7 @@ In `AgentAuthenticationConverterTests.kt`, replace the `identity` field and `con
 
 Change the import `com.demo.chat.config.agent.AgentIdentity` to `com.demo.chat.config.agent.AgentIdentities`. The `wrong client id` test keeps its `doesNotContain("another-client")` assertion.
 
-- [ ] **Step 3: Write the failing lifecycle tests**
+**Step 3: Write the failing lifecycle tests**
 
 Replace `AgentIdentityLifecycleTests.kt` with:
 
@@ -379,7 +414,7 @@ class AgentIdentityLifecycleTests {
 }
 ```
 
-- [ ] **Step 4: Confirm that the tests fail**
+**Step 4: Confirm that the tests fail**
 
 Run:
 
@@ -389,7 +424,7 @@ LOG=$SCRATCH/t1-red.log; mvn -o -B -pl chat-security,chat-webflux -am test-compi
 
 Expected: exit 1. The errors name `AgentIdentities` and the `agents` property.
 
-- [ ] **Step 5: Write `AgentIdentities.kt` and delete `AgentIdentity.kt`**
+**Step 5: Write `AgentIdentities.kt` and delete `AgentIdentity.kt`**
 
 ```kotlin
 package com.demo.chat.config.agent
@@ -422,7 +457,7 @@ class AgentIdentities {
 
 Run: `git rm chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentity.kt`
 
-- [ ] **Step 6: Rewrite `AgentSecurityProperties.kt`**
+**Step 6: Rewrite `AgentSecurityProperties.kt`**
 
 ```kotlin
 package com.demo.chat.config.agent
@@ -528,7 +563,7 @@ class AgentSecurityProperties {
 }
 ```
 
-- [ ] **Step 7: Rewrite the converter**
+**Step 7: Rewrite the converter**
 
 ```kotlin
 package com.demo.chat.config.agent
@@ -567,7 +602,7 @@ class AgentAuthenticationConverter(
 }
 ```
 
-- [ ] **Step 8: Rewrite the lifecycle**
+**Step 8: Rewrite the lifecycle**
 
 ```kotlin
 package com.demo.chat.config.agent
@@ -640,7 +675,7 @@ class AgentIdentityLifecycle<T>(
 }
 ```
 
-- [ ] **Step 9: Update the REST wiring**
+**Step 9: Update the REST wiring**
 
 In `AgentSecurityConfiguration.kt`, replace the `agentAuthenticationConverter`, `agentIdentity` and `agentIdentityLifecycle` beans:
 
@@ -667,7 +702,7 @@ In `AgentResourceServerChain.kt:19`, change the body to:
     fun requiredAuthority(): String = properties.requireComplete().requiredAuthority()
 ```
 
-- [ ] **Step 10: Update the core wiring**
+**Step 10: Update the core wiring**
 
 In `RSocketAgentSecurityConfiguration.kt`:
 
@@ -693,7 +728,7 @@ In `RSocketAgentSecurityConfiguration.kt`:
 
 - Fix the imports: `AgentIdentity` becomes `AgentIdentities`.
 
-- [ ] **Step 11: Update the test fixtures**
+**Step 11: Update the test fixtures**
 
 `DeployTestSigningKey.register` becomes:
 
@@ -756,17 +791,25 @@ In `CoreBearerDenialNoDownstreamEffectsTests.kt:58-61`, replace the three `app.s
         "app.security.agents[0].username=Agent",
 ```
 
-- [ ] **Step 12: Find any caller that this task missed**
+**Step 12: Find any caller that this task missed**
 
-Run:
+Use semantic tools for the symbols. Before Step 5 deletes `AgentIdentity.kt`, run `mcp__treesitter-mcp__find_usages` for each of these symbols, over the repository:
+
+- `AgentIdentity`
+- `AgentSecurityProperties.Agent.clientId`, `.username`, `.requiredScope`
+- `AgentSecurityProperties.agent`
+
+Every usage must be in a file that this task lists. Fix any other usage with the shapes above.
+
+The old property keys are raw text in Kotlin string literals, so a text search is correct for them:
 
 ```bash
-grep -rnE "AgentIdentity\b|AgentIdentity\(|app\.security\.agent\.|\.agent\.(clientId|username|requiredScope)" --include='*.kt' . | grep -v /target/ | grep -v .worktrees
+grep -rn "app\.security\.agent\." --include='*.kt' --include='*.yml' . | grep -v /target/ | grep -v .worktrees
 ```
 
-Expected: no line. Fix each line that appears, with the shapes above.
+Expected: no line.
 
-- [ ] **Step 13: Run the unit tests**
+**Step 13: Run the unit tests**
 
 ```bash
 LOG=$SCRATCH/t1-green.log; mvn -o -B -pl chat-security,chat-webflux,chat-service-controller,chat-deploy -am test \
@@ -776,7 +819,7 @@ LOG=$SCRATCH/t1-green.log; mvn -o -B -pl chat-security,chat-webflux,chat-service
 
 Expected: exit 0, and no `<<< FAIL` line.
 
-- [ ] **Step 14: Run the core denial test in the full reactor**
+**Step 14: Run the core denial test in the full reactor**
 
 The register warns that a scoped `-pl` run reads stale jars from `~/.m2`. This test boots `ChatApp`, so run it with `-am`:
 
@@ -787,10 +830,53 @@ LOG=$SCRATCH/t1-core.log; mvn -o -B -pl chat-deploy-memory -am test -Dtest=CoreB
 
 Expected: exit 0. The `wrong-client` case still answers `0x401`. That case is the unlisted-client case of the spec.
 
-- [ ] **Step 15: Commit**
+**Step 15: Prove the duplicate and exact handle rules with mutations**
+
+Run each mutation alone. After each restore, run the same focused command again and expect exit 0.
 
 ```bash
-git add -A chat-security chat-webflux chat-service-controller chat-deploy chat-deploy-memory
+FOCUS="mvn -o -B -pl chat-security,chat-webflux -am test -Dtest=AgentSecurityPropertiesTests,AgentIdentityLifecycleTests -Dsurefire.failIfNoSpecifiedTests=false"
+```
+
+Mutation A: in `AgentSecurityProperties.requireDistinct`, delete the client id `groupBy` statement. Run `$FOCUS > $SCRATCH/t1-mA.log 2>&1; echo exit=$?`. Expected: exit 1, and `a shared client id fails and names it` fails. The file holds uncommitted work of this task, so do not use `git checkout --`. Undo the edit by hand in `/Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt`. Run `$FOCUS` again. Expected: exit 0.
+
+Mutation B: in `AgentIdentityLifecycle.start`, delete `.filter { it.handle == agent.username }`. Run `$FOCUS > $SCRATCH/t1-mB.log 2>&1; echo exit=$?`. Expected: exit 1, and `a lookup that answers another case keeps zero users` fails. Restore the line by hand in `/Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentityLifecycle.kt`. Run `$FOCUS` again. Expected: exit 0.
+
+Mutation C: in `AgentIdentityLifecycle.start`, delete the `requireOneClientPerUser(resolved)` call. Run `$FOCUS`. Expected: exit 1, and `two clients that resolve to one user key fail the start` fails. Restore by hand, and run `$FOCUS` again. Expected: exit 0.
+
+```bash
+git diff --stat
+```
+
+Expected: the diff holds the changes of this task alone.
+
+**Step 16: Commit and close the task**
+
+```bash
+git add \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentities.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentity.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentIdentityLifecycle.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentAuthenticationConverter.kt \
+  chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt \
+  chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentResourceServerChain.kt \
+  chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityPropertiesTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentAuthenticationConverterTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentIdentityLifecycleTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentResourceServerChainTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/WebFluxAnonymousIdentityTests.kt \
+  chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/security/BothChainsApplication.kt \
+  chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/denied/DeniedCallerApplication.kt \
+  chat-deploy/src/test/kotlin/com/demo/chat/deploy/test/security/DeployTestSigningKey.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/CoreBearerDenialNoDownstreamEffectsTests.kt
+git status --short
+```
+
+Expected: `git status --short` shows no other modified tracked file. If Step 12 found another caller, add that path by name.
+
+```bash
 git commit -F - <<'EOF'
 Select the agent identity from the token client id (CHAT-frcrctdp)
 
@@ -819,7 +905,7 @@ EOF
 - Consumes: `AgentSecurityProperties` from Task 1.
 - Produces: `AgentSecurityPropertiesGuard.requireNoLegacyKeys(environment: ConfigurableEnvironment)`.
 
-- [ ] **Step 1: Write the failing reserved and case tests**
+**Step 1: Write the failing reserved and case tests**
 
 Add to `AgentSecurityPropertiesTests`:
 
@@ -843,7 +929,7 @@ Add to `AgentSecurityPropertiesTests`:
 
 Add the imports `org.junit.jupiter.params.ParameterizedTest` and `org.junit.jupiter.params.provider.ValueSource`.
 
-- [ ] **Step 2: Write the failing guard tests**
+**Step 2: Write the failing guard tests**
 
 Create `AgentSecurityPropertiesGuardTests.kt`:
 
@@ -904,7 +990,7 @@ class AgentSecurityPropertiesGuardTests {
 
 Note: `StandardEnvironment` already holds the real system environment. Run the test on a machine with no `APP_SECURITY_AGENT_*` variable set.
 
-- [ ] **Step 3: Confirm that the tests fail**
+**Step 3: Confirm that the tests fail**
 
 The case test `usernames that differ by case alone are one username` passes already, because Task 1 compares usernames without case. The reserved tests and the guard tests fail.
 
@@ -915,7 +1001,7 @@ LOG=$SCRATCH/t2-red.log; mvn -o -B -pl chat-security,chat-webflux -am test -Dtes
 
 Expected: exit 1. The guard class does not exist.
 
-- [ ] **Step 4: Add the reserved and case rules**
+**Step 4: Add the reserved and case rules**
 
 In `AgentSecurityProperties`, call `requireNoReserved()` after `requireDistinct()` in `requireComplete()`, and add:
 
@@ -945,7 +1031,7 @@ In the companion object, add:
         val RESERVED_IDENTITIES = listOf("Admin", "Anon")
 ```
 
-- [ ] **Step 5: Write the guard**
+**Step 5: Write the guard**
 
 ```kotlin
 package com.demo.chat.config.agent
@@ -980,7 +1066,7 @@ object AgentSecurityPropertiesGuard {
 }
 ```
 
-- [ ] **Step 6: Call the guard on both sides**
+**Step 6: Call the guard on both sides**
 
 In `AgentSecurityConfiguration.agentResourceServerChain`, change the parameter `environment: Environment` to `environment: ConfigurableEnvironment` (import `org.springframework.core.env.ConfigurableEnvironment`). Call `AgentSecurityPropertiesGuard.requireNoLegacyKeys(environment)` as the first line.
 
@@ -1006,7 +1092,7 @@ class AgentSecurityPropertiesValidator(properties: AgentSecurityProperties, envi
 }
 ```
 
-- [ ] **Step 7: Run the tests**
+**Step 7: Run the tests**
 
 ```bash
 LOG=$SCRATCH/t2-green.log; mvn -o -B -pl chat-security,chat-webflux -am test -Dtest='AgentSecurityProperties*' \
@@ -1015,11 +1101,13 @@ LOG=$SCRATCH/t2-green.log; mvn -o -B -pl chat-security,chat-webflux -am test -Dt
 
 Expected: exit 0.
 
-- [ ] **Step 8: Prove the reserved rule with two mutations**
+**Step 8: Prove the reserved rule with two mutations**
 
-Mutation A: in `requireNoReserved`, remove both `.lowercase(java.util.Locale.ROOT)` calls. Run the Step 7 command. Expected: the `admin`, `ANON` and `service` cases fail. Restore the file by absolute path.
+Mutation A: in `requireNoReserved`, remove both `.lowercase(java.util.Locale.ROOT)` calls. Run the Step 7 command. Expected: the `admin`, `ANON` and `service` cases fail. Restore `/Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt` by hand. Run the Step 7 command again. Expected: exit 0.
 
-Mutation B: comment out the `requireNoReserved()` call. Run the Step 7 command. Expected: every reserved case fails. Restore the file by absolute path.
+Mutation B: comment out the `requireNoReserved()` call. Run the Step 7 command. Expected: every reserved case fails. Restore the same file by hand. Run the Step 7 command again. Expected: exit 0.
+
+Mutation C: in `AgentSecurityPropertiesGuard.requireNoLegacyKeys`, replace the `throw` with `return`. Run the Step 7 command. Expected: every guard refusal case fails. Restore `/Users/darkbit1001/workspace/demo-chat/chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt` by hand. Run the Step 7 command again. Expected: exit 0.
 
 ```bash
 git status --short chat-security
@@ -1027,10 +1115,17 @@ git status --short chat-security
 
 Expected: only the files of this task, with no mutation left.
 
-- [ ] **Step 9: Commit**
+**Step 9: Commit**
 
 ```bash
-git add -A chat-security chat-webflux chat-service-controller
+git add \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityProperties.kt \
+  chat-security/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityPropertiesGuard.kt \
+  chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt \
+  chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityPropertiesTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityPropertiesGuardTests.kt
+git status --short
 git commit -F - <<'EOF'
 Refuse reserved agent handles and the old agent keys (CHAT-frcrctdp)
 
@@ -1047,131 +1142,218 @@ EOF
 ### Task 3: Measure REST selection and core selection apart
 
 **Files:**
-- Create: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityConfigurationWiringTests.kt`
+- Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/AgentTestTokens.kt`
+- Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/RestAgentSelectionTests.kt`
 - Create: `chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/CoreAgentSelectionTests.kt`
 
 **Interfaces:**
-- Consumes: the beans `agentAuthenticationConverter` and `agentIdentities` of `AgentSecurityConfiguration`.
-- Consumes: `CompositeServiceBeans<T, String>.userService()` and `.topicService()`, `PersistenceServiceBeans<Long, String>.authMetaPersistence()`.
+- Consumes: `CompositeServiceBeans<Long, String>.userService()` and `.topicService()`, `PersistenceServiceBeans<Long, String>.authMetaPersistence()`.
+- Produces: `AgentTestTokens.createKey(): String`, `AgentTestTokens.mint(path: String, clientId: String): String`.
 
-**Why two tests.** On the relay path, REST forwards the bearer token and the core selects the identity again. So a broken REST selection passes a relay owner row test. The REST test reads the production REST wiring. The core test reads the production core wiring.
+**Why two tests.** On the relay path, REST forwards the bearer token and the core selects the identity again. So a broken REST selection passes a relay owner row test.
 
-- [ ] **Step 1: Write the REST wiring test**
+- `RestAgentSelectionTests` starts one process that serves REST over the memory composition. It sends real HTTP requests with real tokens. So the JWT decoder, the filter chain and the request security context all run. The REST principal writes the owner row.
+- `CoreAgentSelectionTests` starts a core over RSocket. The core principal writes the owner row.
+
+**The REST test needs `chat-webflux`.** `chat-deploy-memory` reaches it only under the `expose-webflux` profile. Without the profile, the class is disabled and counts as skipped. Run it with the profile, apart from the other builds. Task 7 rebuilds the relay jars with `clean`, so no artifact of this profile reaches the relay test.
+
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-nrhgerbh
+```
+
+This task adds test files alone. No test file is bound by `drift`.
+
+**Step 1: Write the token helper**
 
 ```kotlin
-package com.demo.chat.test.controller.webflux.config
+package com.demo.chat.test.deploy.memory
 
+import com.nimbusds.jose.JWSAlgorithm
+import com.nimbusds.jose.JWSHeader
+import com.nimbusds.jose.crypto.ECDSASigner
+import com.nimbusds.jose.jwk.Curve
+import com.nimbusds.jose.jwk.ECKey
+import com.nimbusds.jose.jwk.JWK
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator
+import com.nimbusds.jwt.JWTClaimsSet
+import com.nimbusds.jwt.SignedJWT
+import java.nio.file.Files
+import java.nio.file.Paths
+import java.util.Date
+
+/** Signs agent tokens for the agent selection tests. See `CHAT-frcrctdp`. */
+internal object AgentTestTokens {
+
+    fun createKey(): String {
+        val key = ECKeyGenerator(Curve.P_256).keyID("agent-selection").generate()
+        val file = Files.createTempFile("agent-selection", ".jwk")
+        file.toFile().deleteOnExit()
+        Files.writeString(file, key.toJSONString())
+        return file.toString()
+    }
+
+    fun mint(path: String, clientId: String): String {
+        val key = JWK.parse(Files.readString(Paths.get(path))) as ECKey
+        val claims = JWTClaimsSet.Builder()
+            .issuer("https://authserv").subject(clientId)
+            .claim("client_id", clientId).claim("scope", "chat.mcp")
+            .issueTime(Date(System.currentTimeMillis() - 1_000))
+            .expirationTime(Date(System.currentTimeMillis() + 60_000))
+            .build()
+        val token = SignedJWT(JWSHeader.Builder(JWSAlgorithm.ES256).keyID(key.keyID).build(), claims)
+        token.sign(ECDSASigner(key))
+        return token.serialize()
+    }
+}
+```
+
+**Step 2: Write the single process REST test**
+
+```kotlin
+package com.demo.chat.test.deploy.memory
+
+import com.demo.chat.ChatApp
 import com.demo.chat.config.CompositeServiceBeans
-import com.demo.chat.config.agent.AgentSecurityConfiguration
+import com.demo.chat.config.PersistenceServiceBeans
 import com.demo.chat.domain.ByStringRequest
 import com.demo.chat.domain.Key
-import com.demo.chat.domain.User
-import com.demo.chat.security.ChatUserDetails
-import com.demo.chat.service.composite.ChatUserService
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
-import org.springframework.boot.test.context.runner.ReactiveWebApplicationContextRunner
-import org.springframework.core.convert.converter.Converter
-import org.springframework.security.authentication.AbstractAuthenticationToken
-import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.security.oauth2.jwt.Jwt
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
-import reactor.test.StepVerifier
-import java.time.Instant
+import org.junit.jupiter.api.condition.EnabledIf
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.TestPropertySource
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
 
 /**
- * The production REST wiring selects the agent of each token. See
+ * One process serves REST over the memory composition, with two agents. See
  * `CHAT-frcrctdp`.
  *
- * This test reads the converter bean that `AgentSecurityConfiguration` builds.
- * A mutation of that wiring must fail here, and the relay test cannot see it.
+ * Each request carries a real token over HTTP. The REST principal writes the
+ * owner row, so the owner row measures the REST selection.
+ *
+ * Run it with `-Pexpose-webflux`. Without that profile, `chat-webflux` is
+ * absent and this class is disabled.
  */
-class AgentSecurityConfigurationWiringTests {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = [ChatApp::class])
+@EnabledIf("com.demo.chat.test.deploy.memory.RestAgentSelectionTests#webfluxPresent")
+@TestPropertySource(
+    properties = [
+        "spring.config.additional-location=classpath:/config/logging.yml,classpath:/config/management-defaults.yml,classpath:/config/userinit.yml",
+        "spring.application.name=test-rest-agent-selection",
+        "app.primary=REST", "app.server.proto=rest",
+        "app.key.type=long", "app.nodeid=1",
+        "app.service.core.key=memory", "app.service.core.pubsub=memory",
+        "app.service.core.index=lucene", "app.service.core.persistence=memory",
+        "app.service.core.secrets=memory", "app.service.composite=true",
+        "app.service.composite.auth=true",
+        "app.service.security.userdetails=true", "app.users.create=true",
+        "app.controller.topic=true", "app.controller.user=true", "app.controller.message=true",
+        "app.init.initial-users[Claude].handle=Claude",
+        "app.init.initial-users[Claude].name=Claude",
+        "app.init.initial-users[Claude].image-uri=chatimg://agent.png",
+        "app.security.required-scope=chat.mcp",
+        "app.security.agents[0].client-id=client-agent",
+        "app.security.agents[0].username=Agent",
+        "app.security.agents[1].client-id=client-claude",
+        "app.security.agents[1].username=Claude",
+    ]
+)
+class RestAgentSelectionTests {
 
-    @Suppress("UNCHECKED_CAST")
-    private fun services(): CompositeServiceBeans<Long, String> {
-        val users = Mockito.mock(ChatUserService::class.java) as ChatUserService<Long>
-        Mockito.`when`(users.findByUsername(ByStringRequest("agent-a")))
-            .thenReturn(Flux.just(User.create(Key.of(7L, 1L), "agent-a", "agent-a", "http://a")))
-        Mockito.`when`(users.findByUsername(ByStringRequest("agent-b")))
-            .thenReturn(Flux.just(User.create(Key.of(8L, 1L), "agent-b", "agent-b", "http://b")))
-        val services = Mockito.mock(CompositeServiceBeans::class.java) as CompositeServiceBeans<Long, String>
-        Mockito.`when`(services.userService()).thenReturn(users)
-        return services
+    @LocalServerPort
+    var port: Int = 0
+
+    @Autowired lateinit var composite: CompositeServiceBeans<Long, String>
+    @Autowired lateinit var stores: PersistenceServiceBeans<Long, String>
+
+    private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build()
+    private val timeout = Duration.ofSeconds(10)
+
+    @Test
+    fun `each agent token writes an owner row that names its own agent over HTTP`() {
+        val agentRoom = addRoom("client-agent", "restagentroom")
+        val claudeRoom = addRoom("client-claude", "restclauderoom")
+
+        assertThat(ownerOf(agentRoom)).isEqualTo(keyOf("Agent"))
+        assertThat(ownerOf(claudeRoom)).isEqualTo(keyOf("Claude"))
+        assertThat(keyOf("Agent")).isNotEqualTo(keyOf("Claude"))
     }
 
-    private val runner = ReactiveWebApplicationContextRunner()
-        .withUserConfiguration(AgentSecurityConfiguration::class.java)
-        .withBean(CompositeServiceBeans::class.java, { services() })
-        .withPropertyValues(
-            "app.primary=REST",
-            "app.security.required-scope=chat.mcp",
-            "app.security.agents[0].client-id=client-a",
-            "app.security.agents[0].username=agent-a",
-            "app.security.agents[1].client-id=client-b",
-            "app.security.agents[1].username=agent-b",
-            "app.security.jwt.jwk-path=${WebFluxTestSigningKey.path()}",
+    @Test
+    fun `a token from an unlisted client answers 401`() {
+        val response = send(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$port/topic/list"))
+                .header("Authorization", "Bearer ${AgentTestTokens.mint(signingKeyPath, "client-unlisted")}")
+                .GET().build()
         )
 
-    private fun jwt(clientId: String) = Jwt(
-        "value", Instant.now(), Instant.now().plusSeconds(60), mapOf("alg" to "ES256"),
-        mapOf("client_id" to clientId, "scope" to "chat.mcp"),
-    )
-
-    @Test
-    fun `the REST converter selects the agent of each client`() {
-        runner.run { context ->
-            assertThat(context.startupFailure).isNull()
-            @Suppress("UNCHECKED_CAST")
-            val converter = context.getBean("agentAuthenticationConverter")
-                as Converter<Jwt, Mono<AbstractAuthenticationToken>>
-
-            val a = converter.convert(jwt("client-a"))!!.block()!!
-            val b = converter.convert(jwt("client-b"))!!.block()!!
-
-            assertThat((a.principal as ChatUserDetails<*>).user.key).isEqualTo(Key.of(7L, 1L))
-            assertThat((b.principal as ChatUserDetails<*>).user.key).isEqualTo(Key.of(8L, 1L))
-        }
+        assertThat(response.statusCode()).isEqualTo(401)
     }
 
-    @Test
-    fun `the REST converter refuses an unlisted client`() {
-        runner.run { context ->
-            @Suppress("UNCHECKED_CAST")
-            val converter = context.getBean("agentAuthenticationConverter")
-                as Converter<Jwt, Mono<AbstractAuthenticationToken>>
-
-            StepVerifier.create(converter.convert(jwt("client-unlisted"))!!)
-                .expectError(BadCredentialsException::class.java)
-                .verify()
-        }
+    private fun addRoom(clientId: String, name: String): Long {
+        val response = send(
+            HttpRequest.newBuilder(URI("http://127.0.0.1:$port/topic/new"))
+                .header("Authorization", "Bearer ${AgentTestTokens.mint(signingKeyPath, clientId)}")
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"type\":\"ByNameRequest\",\"name\":\"$name\"}"))
+                .build()
+        )
+        assertThat(response.statusCode()).describedAs("the room add of $clientId").isEqualTo(201)
+        return Regex("\\\"id\\\"\\s*:\\s*(\\d+)").find(response.body())!!.groupValues[1].toLong()
     }
 
-    @Test
-    fun `an old key fails the REST start`() {
-        runner.withPropertyValues("app.security.agent.client-id=client-a").run { context ->
-            assertThat(context.startupFailure).hasRootCauseMessage(
-                "app.security.agent.* is replaced by app.security.agents[n] and app.security.required-scope. See CHAT-frcrctdp."
-            )
+    private fun ownerOf(roomId: Long): Key<Long> {
+        val owners = stores.authMetaPersistence().all().collectList().block(timeout)!!
+            .filter { it.target.id == roomId && it.permission == "*" && !it.mute }
+        assertThat(owners).describedAs("the owner rows of room $roomId").hasSize(1)
+        return owners.single().principal
+    }
+
+    private fun keyOf(handle: String): Key<Long> =
+        composite.userService().findByUsername(ByStringRequest(handle))
+            .filter { it.handle == handle }.single().block(timeout)!!.key
+
+    private fun send(request: HttpRequest): HttpResponse<String> =
+        client.send(request, HttpResponse.BodyHandlers.ofString())
+
+    companion object {
+        private val signingKeyPath = AgentTestTokens.createKey()
+
+        @JvmStatic
+        fun webfluxPresent(): Boolean =
+            runCatching { Class.forName("com.demo.chat.config.WebFluxSecurity") }.isSuccess
+
+        @JvmStatic
+        @DynamicPropertySource
+        fun jwtProperties(registry: DynamicPropertyRegistry) {
+            registry.add("app.security.jwt.jwk-path") { signingKeyPath }
         }
     }
 }
 ```
 
-If the context fails to start for a bean that `AgentSecurityConfiguration` needs and the test does not supply, read the failure. Supply that bean with `withBean`, as the test supplies `CompositeServiceBeans`. Do not add `@SpringBootTest`.
+If the context fails to start, read the `Caused by` lines. Compare the property list with the appendix flag list of `docs/MCP-CREDENTIAL-ISSUANCE.md`, which a real launch measured on 2026-10-04. Add the missing property. Do not mock a bean.
 
-- [ ] **Step 2: Run the REST wiring test**
+**Step 3: Run the REST test with the profile**
 
 ```bash
-LOG=$SCRATCH/t3-rest.log; mvn -o -B -pl chat-webflux -am test -Dtest=AgentSecurityConfigurationWiringTests \
-  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|<<< FAIL" $LOG | tail -3
+LOG=$SCRATCH/t3-rest.log; mvn -o -B -pl chat-deploy-memory -am -Pexpose-webflux test -Dtest=RestAgentSelectionTests \
+  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:.*RestAgentSelection|<<< FAIL|Caused by" $LOG | tail -5
 ```
 
-Expected: exit 0, 3 tests.
+Expected: exit 0, and `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`. **Read the skipped count.** A skipped class means that the profile did not reach the test classpath.
 
-- [ ] **Step 3: Write the core selection test**
+**Step 4: Write the core selection test**
 
 ```kotlin
 package com.demo.chat.test.deploy.memory
@@ -1206,8 +1388,7 @@ import java.time.Duration
  * The core selects the agent of each bearer token. See `CHAT-frcrctdp`.
  *
  * Two agents each add a room over RSocket. The owner row of each room names
- * the key of the agent whose token added it. The second agent user comes from
- * the bracket form of `app.init.initial-users`, as `chat-build --agent` emits it.
+ * the key of the agent whose token added it.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE, classes = [ChatApp::class])
 @SpringJUnitConfig(initializers = [RSocketPortInfoApplicationContextInitializer::class])
@@ -1262,7 +1443,7 @@ class CoreAgentSelectionTests {
         try {
             StepVerifier.create(
                 requester.route("topic.topic-add")
-                    .metadata(BearerTokenMetadata(token("client-unlisted")), BEARER)
+                    .metadata(BearerTokenMetadata(AgentTestTokens.mint(signingKeyPath, "client-unlisted")), BEARER)
                     .data(ByStringRequest("unlistedroom"))
                     .retrieveMono(Map::class.java)
             ).expectErrorSatisfies { error ->
@@ -1279,7 +1460,7 @@ class CoreAgentSelectionTests {
         try {
             StepVerifier.create(
                 requester.route("topic.topic-add")
-                    .metadata(BearerTokenMetadata(token(clientId)), BEARER)
+                    .metadata(BearerTokenMetadata(AgentTestTokens.mint(signingKeyPath, clientId)), BEARER)
                     .data(ByStringRequest(name))
                     .retrieveMono(Map::class.java)
             ).expectNextCount(1).verifyComplete()
@@ -1300,8 +1481,6 @@ class CoreAgentSelectionTests {
         composite.userService().findByUsername(ByStringRequest(handle))
             .filter { it.handle == handle }.single().block(timeout)!!.key
 
-    private fun token(clientId: String) = CoreAgentTokens.mint(signingKeyPath, clientId)
-
     private fun bearerRequester(): RSocketRequester = RSocketRequester.builder()
         .rsocketStrategies(strategies.mutate().encoders { it.add(0, BearerTokenAuthenticationEncoder()) }.build())
         .connectTcp("localhost", port)
@@ -1309,7 +1488,7 @@ class CoreAgentSelectionTests {
 
     companion object {
         private val BEARER = MimeTypeUtils.parseMimeType("message/x.rsocket.authentication.v0")
-        private val signingKeyPath = CoreAgentTokens.createKey()
+        private val signingKeyPath = AgentTestTokens.createKey()
 
         @JvmStatic
         @DynamicPropertySource
@@ -1318,49 +1497,20 @@ class CoreAgentSelectionTests {
         }
     }
 }
-
-private object CoreAgentTokens {
-
-    fun createKey(): String {
-        val key = com.nimbusds.jose.jwk.gen.ECKeyGenerator(com.nimbusds.jose.jwk.Curve.P_256)
-            .keyID("core-agent-selection").generate()
-        val file = java.nio.file.Files.createTempFile("core-agent-selection", ".jwk")
-        file.toFile().deleteOnExit()
-        java.nio.file.Files.writeString(file, key.toJSONString())
-        return file.toString()
-    }
-
-    fun mint(path: String, clientId: String): String {
-        val key = com.nimbusds.jose.jwk.JWK.parse(java.nio.file.Files.readString(java.nio.file.Paths.get(path)))
-            as com.nimbusds.jose.jwk.ECKey
-        val claims = com.nimbusds.jwt.JWTClaimsSet.Builder()
-            .issuer("https://authserv").subject(clientId)
-            .claim("client_id", clientId).claim("scope", "chat.mcp")
-            .issueTime(java.util.Date(System.currentTimeMillis() - 1_000))
-            .expirationTime(java.util.Date(System.currentTimeMillis() + 60_000))
-            .build()
-        val token = com.nimbusds.jwt.SignedJWT(
-            com.nimbusds.jose.JWSHeader.Builder(com.nimbusds.jose.JWSAlgorithm.ES256).keyID(key.keyID).build(),
-            claims,
-        )
-        token.sign(com.nimbusds.jose.crypto.ECDSASigner(key))
-        return token.serialize()
-    }
-}
 ```
 
-Check two names before you run it. `CompositeServiceBeans` must declare `topicService()`, and `ChatTopicService` must declare `getRoomByName`. Read `chat-core/src/main/kotlin/com/demo/chat/config/CompositeServiceBeans.kt`. Use the name that the file declares.
+Before you run it, check two names with `mcp__treesitter-mcp__code_map` on `chat-core/src/main/kotlin/com/demo/chat/config/CompositeServiceBeans.kt`. The interface must declare `topicService()`, and `ChatTopicService` must declare `getRoomByName`. Use the names that the source declares.
 
-- [ ] **Step 4: Run the core selection test**
+**Step 5: Run the core test**
 
 ```bash
 LOG=$SCRATCH/t3-core.log; mvn -o -B -pl chat-deploy-memory -am test -Dtest=CoreAgentSelectionTests \
-  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|<<< FAIL|Caused by" $LOG | tail -5
+  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:.*CoreAgentSelection|<<< FAIL|Caused by" $LOG | tail -5
 ```
 
-Expected: exit 0, 2 tests.
+Expected: exit 0, and `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0`.
 
-- [ ] **Step 5: Mutate the REST wiring**
+**Step 6: Mutate the REST wiring**
 
 In `AgentSecurityConfiguration.agentAuthenticationConverter`, replace the body with a converter that sends every token to the first agent:
 
@@ -1381,28 +1531,31 @@ In `AgentSecurityConfiguration.agentAuthenticationConverter`, replace the body w
     }
 ```
 
-Run the Step 2 command. Expected: `the REST converter selects the agent of each client` fails. Run the Step 4 command. Expected: exit 0, because the core wiring is not touched. Restore the file by absolute path.
+Run the Step 3 command. Expected: `each agent token writes an owner row that names its own agent over HTTP` fails, because the `Claude` room names the `Agent` key. Run the Step 5 command. Expected: exit 0, because the core wiring is not touched. Restore `/Users/darkbit1001/workspace/demo-chat/chat-webflux/src/main/kotlin/com/demo/chat/config/agent/AgentSecurityConfiguration.kt` with `git checkout --`, because Tasks 1 and 2 committed it. Run the Step 3 command again. Expected: exit 0.
 
-- [ ] **Step 6: Mutate the core wiring**
+**Step 7: Mutate the core wiring**
 
-In `RSocketAgentSecurityConfiguration.rsocketAuthenticationManager`, apply the same first-agent wrapper to the converter that `setJwtAuthenticationConverter` takes, with `complete.agents.first().clientId`. Run the Step 4 command. Expected: `each agent token writes an owner row that names its own agent` fails. Run the Step 2 command. Expected: exit 0. Restore the file by absolute path.
+In `RSocketAgentSecurityConfiguration.rsocketAuthenticationManager`, apply the same first-agent wrapper to the converter that `setJwtAuthenticationConverter` takes, with `complete.agents.first().clientId`. Run the Step 5 command. Expected: `each agent token writes an owner row that names its own agent` fails. Run the Step 3 command. Expected: exit 0, because a REST launch does not load the RSocket agent configuration. Restore `/Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt` with `git checkout --`. Run the Step 5 command again. Expected: exit 0.
 
 ```bash
-git status --short chat-webflux chat-service-controller
+git status --short
 ```
 
-Expected: only the two new test files are untracked. No main file is modified.
+Expected: the three new test files are untracked. No main file is modified.
 
-- [ ] **Step 7: Commit**
+**Step 8: Commit and close the task**
 
 ```bash
-git add chat-webflux/src/test chat-deploy-memory/src/test
+git add \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/AgentTestTokens.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/RestAgentSelectionTests.kt \
+  chat-deploy-memory/src/test/kotlin/com/demo/chat/test/deploy/memory/CoreAgentSelectionTests.kt
 git commit -F - <<'EOF'
 Measure REST and core agent selection apart (CHAT-frcrctdp)
 
-The REST test reads the converter that AgentSecurityConfiguration builds.
-The core test writes one room per agent over RSocket and reads each owner
-row. A first-agent mutation of each wiring fails its own test alone.
+A single process REST launch takes two agents over HTTP, and each owner
+row names its own agent. A core takes two agents over RSocket in the same
+way. A first-agent mutation of each wiring fails its own test alone.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 EOF
@@ -1416,14 +1569,24 @@ EOF
 - Modify: `shell-scripts/chat-build` (lines near 518-520, 662-672, 987-992, 1065-1081)
 - Modify: `shell-scripts/test-flags.sh` (CASES and a new REFUSALS block)
 - Modify: `shell-scripts/golden/core-client-agent.flags`, `shell-scripts/golden/rest-client-agent.flags`
-- Create: `shell-scripts/golden/authserv-client-agent.flags`
+- Create: `shell-scripts/golden/authserv-client-agent.flags`, `shell-scripts/golden/core-agent-brackets.flags`
 - Modify: `chat-deploy/src/test/kotlin/com/demo/chat/test/deploy/init/UserInitConfigBindingTests.kt`
+- Create: `chat-deploy/src/test/kotlin/com/demo/chat/test/deploy/init/ChatBuildAgentFlagsBindingTests.kt`
 - Modify: `chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityPropertiesTests.kt`
 
 **Interfaces:**
 - Produces: `chat-build <core|rest|authserv> --agent CLIENT_ID=HANDLE [--agent ...] [--agent-scope SCOPE]`.
 
-- [ ] **Step 1: Write the failing binding tests**
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-rivvxeer
+drift refs shell-scripts/chat-build; drift refs shell-scripts/test-flags.sh
+```
+
+Record any bound document in the Step 12 fp comment.
+
+**Step 1: Write the failing binding tests**
 
 Add to `UserInitConfigBindingTests`:
 
@@ -1492,30 +1655,33 @@ Add to `AgentSecurityPropertiesTests`:
     }
 ```
 
-- [ ] **Step 2: Run the binding tests**
+**Step 2: Run the binding tests**
 
 ```bash
 LOG=$SCRATCH/t4-bind.log; mvn -o -B -pl chat-deploy,chat-webflux -am test -Dtest='UserInitConfigBindingTests,AgentSecurityPropertiesTests' \
   -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|<<< FAIL" $LOG | tail -4
 ```
 
-Expected: exit 0. These tests prove Spring behaviour that the design relies on. They are not red first, because no product code changes here. Then remove the brackets from the `Bot_1` keys in the test, run again, and expect the `Bot_1` test to fail. Restore the test by absolute path.
+Expected: exit 0. These tests prove Spring behaviour that the design relies on. They are not red first, because no product code changes here. They do not prove the emitter. Step 10 proves the emitter.
 
-- [ ] **Step 3: Write the failing golden cases**
+**Step 3: Write the failing golden cases**
 
 In `test-flags.sh`, replace the two agent cases and add one:
 
 ```bash
-  "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
+  "core-client-agent|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
 ```
 
 ```bash
-  "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
+  "rest-client-agent|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
 ```
 
 ```bash
-  "authserv-client-agent|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
+  "authserv-client-agent|authserv --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude"
+  "core-agent-brackets|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent 0f3a7c21-1b2d-4e5f-8a9b-1c2d3e4f5a6b=Bot_1 --agent 9e8d7c6b-5a4f-4e3d-8c2b-1a0f9e8d7c6b=Bot1"
 ```
+
+The `core-agent-brackets` golden is the emitted flag list for the `Bot_1` and `Bot1` pair. `test-flags.sh` holds that golden equal to what `chat-build` emits. Step 10 binds the golden, so the binding test reads the emitter output through one checked link.
 
 After the `CASES` array, add a refusal table and its loop. Put the loop after the golden loop and before the summary:
 
@@ -1550,7 +1716,7 @@ for entry in "${REFUSALS[@]}"; do
 done
 ```
 
-- [ ] **Step 4: Confirm that the cases fail**
+**Step 4: Confirm that the cases fail**
 
 ```bash
 shell-scripts/test-flags.sh > $SCRATCH/t4-red.log 2>&1; echo exit=$?; grep -E "^FAIL" $SCRATCH/t4-red.log
@@ -1558,7 +1724,7 @@ shell-scripts/test-flags.sh > $SCRATCH/t4-red.log 2>&1; echo exit=$?; grep -E "^
 
 Expected: exit 1. The three agent cases and every refusal case fail.
 
-- [ ] **Step 5: Change the arguments**
+**Step 5: Change the arguments**
 
 Replace the three agent arguments in the parser:
 
@@ -1606,7 +1772,7 @@ def parse_agents(values: list[str]) -> list[tuple[str, str]]:
 
 `SystemExit` with a string prints the string and exits 1.
 
-- [ ] **Step 6: Change the argument checks in `main()`**
+**Step 6: Change the argument checks in `main()`**
 
 Replace the `if args.agent_client_id:` block with:
 
@@ -1637,7 +1803,7 @@ Replace the `if args.agent_client_id:` block with:
                 return 1
 ```
 
-- [ ] **Step 7: Change the emission**
+**Step 7: Change the emission**
 
 In `BuildContext.__init__`, replace the two lines that read `agent_client_id` and `agent_username` with:
 
@@ -1673,27 +1839,126 @@ Replace `agent_flags`:
                         f"-Dapp.security.jwt.jwk-path={self.jwk_path}"]
 ```
 
-- [ ] **Step 8: Write the goldens and read the diff**
+**Step 8: Write the goldens and read the diff**
 
 ```bash
 shell-scripts/test-flags.sh --update > $SCRATCH/t4-update.log 2>&1; echo exit=$?; grep -E "^wrote" $SCRATCH/t4-update.log
 git diff shell-scripts/golden
 ```
 
-Expected: `wrote` for the three agent cases alone. Read the diff. The core golden must hold six `initial-users[...]` lines, four `app.security.agents[...]` lines, `required-scope` and `jwk-path`, and no `app.security.agent.` line. The rest golden must hold no `initial-users` line. The authserv golden must hold four `app.oauth2.agents[...]` lines and `app.oauth2.agent-scope=chat.mcp`. Any other change is a defect.
+Expected: `wrote` for the three changed agent cases and the new `core-agent-brackets` case alone. Read the diff. The core golden must hold six `initial-users[...]` lines, four `app.security.agents[...]` lines, `required-scope` and `jwk-path`, and no `app.security.agent.` line. The rest golden must hold no `initial-users` line. The authserv golden must hold four `app.oauth2.agents[...]` lines and `app.oauth2.agent-scope=chat.mcp`. Any other change is a defect.
 
-- [ ] **Step 9: Run the flag tests**
+**Step 9: Run the flag tests**
 
 ```bash
 shell-scripts/test-flags.sh > $SCRATCH/t4-green.log 2>&1; echo exit=$?; tail -2 $SCRATCH/t4-green.log
 ```
 
-Expected: exit 0. The count is 20 golden cases plus 9 refusal cases.
+Expected: exit 0. The count is 21 golden cases plus 9 refusal cases.
 
-- [ ] **Step 10: Commit**
+**Step 10: Bind the emitted flags**
+
+Create `ChatBuildAgentFlagsBindingTests.kt`:
+
+```kotlin
+package com.demo.chat.test.deploy.init
+
+import com.demo.chat.config.deploy.init.UserInitializationProperties
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import org.springframework.boot.context.properties.bind.Binder
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources
+import org.springframework.boot.env.YamlPropertySourceLoader
+import org.springframework.core.env.MapPropertySource
+import org.springframework.core.env.MutablePropertySources
+import org.springframework.core.io.FileSystemResource
+import java.io.File
+
+/**
+ * The agent user flags that `chat-build --agent` emits bind with the shipped
+ * file. See `CHAT-frcrctdp`.
+ *
+ * This test reads `shell-scripts/golden/core-agent-brackets.flags`.
+ * `test-flags.sh` holds that file equal to the emitter output. So a change to
+ * the emitter fails `test-flags.sh` first, and this test after the golden is
+ * written again.
+ */
+class ChatBuildAgentFlagsBindingTests {
+
+    @Test
+    fun `the emitted Bot_1 and Bot1 flags bind to two users with their own handles`() {
+        val sources = MutablePropertySources().apply {
+            addLast(MapPropertySource("launch", emittedUserFlags()))
+            YamlPropertySourceLoader().load("userinit", FileSystemResource(repo("shared-deploy-configuration/src/main/config/userinit.yml")))
+                .forEach(::addLast)
+        }
+
+        val bound = Binder(ConfigurationPropertySources.from(sources))
+            .bind("app.init", UserInitializationProperties::class.java).get()
+
+        assertThat(bound.initialUsers.getValue("Bot_1").handle).isEqualTo("Bot_1")
+        assertThat(bound.initialUsers.getValue("Bot1").handle).isEqualTo("Bot1")
+        assertThat(bound.initialUsers.keys).contains("Admin", "Anon", "Agent", "Service")
+    }
+
+    private fun emittedUserFlags(): Map<String, Any> =
+        repo("shell-scripts/golden/core-agent-brackets.flags").readLines()
+            .filter { it.startsWith("-Dapp.init.initial-users") }
+            .associate { line -> line.removePrefix("-D").substringBefore("=") to line.substringAfter("=") }
+            .also { assertThat(it).describedAs("the emitted agent user flags").hasSize(6) }
+
+    private fun repo(path: String): File =
+        File(System.getProperty("user.dir")).resolveSibling(path).also { check(it.isFile) { "No file at $it" } }
+}
+```
 
 ```bash
-git add shell-scripts chat-deploy/src/test chat-webflux/src/test
+LOG=$SCRATCH/t4-emit.log; mvn -o -B -pl chat-deploy -am test -Dtest=ChatBuildAgentFlagsBindingTests \
+  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:.*ChatBuildAgent|<<< FAIL" $LOG | tail -3
+```
+
+Expected: exit 0, 1 test, 0 skipped.
+
+**Step 11: Prove the emitter and the refusals with mutations**
+
+Save the golden first: `cp shell-scripts/golden/core-agent-brackets.flags $SCRATCH/brackets.golden`.
+
+Mutation A, the bracket form: in `agent_flags`, change the three f-strings from `initial-users[{handle}].` to `initial-users.{handle}.`. Then run:
+
+```bash
+shell-scripts/test-flags.sh core-agent-brackets; echo exit=$?
+shell-scripts/test-flags.sh --update core-agent-brackets > /dev/null
+LOG=$SCRATCH/t4-mA.log; mvn -o -B -pl chat-deploy -am test -Dtest=ChatBuildAgentFlagsBindingTests \
+  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "<<< FAIL|expected" $LOG | head -3
+```
+
+Expected: the first command exits 1, because the golden differs. The Maven run exits 1, because `Bot_1` and `Bot1` do not keep their own handles. Restore the three f-strings by hand in `/Users/darkbit1001/workspace/demo-chat/shell-scripts/chat-build`. Run `shell-scripts/test-flags.sh --update core-agent-brackets`. Then prove the restore:
+
+```bash
+diff $SCRATCH/brackets.golden shell-scripts/golden/core-agent-brackets.flags && echo golden-restored
+shell-scripts/test-flags.sh > $SCRATCH/t4-after.log 2>&1; echo exit=$?
+```
+
+Expected: `golden-restored`, then exit 0. Run the Step 10 Maven command again. Expected: exit 0.
+
+Mutation B, the duplicate client id: in `parse_agents`, delete the `if any(client_id == c ...)` statement. Run `shell-scripts/test-flags.sh refuse-duplicate-client; echo exit=$?`. Expected: exit 1. Restore the statement by hand. Run the same command again. Expected: exit 0.
+
+Mutation C, the reserved handle: in `parse_agents`, delete the `if handle.lower() in reserved` statement. Run `shell-scripts/test-flags.sh refuse-reserved; echo exit=$?`. Expected: exit 1. Restore by hand. Run it again. Expected: exit 0.
+
+**Step 12: Commit and close the task**
+
+```bash
+git add \
+  shell-scripts/chat-build \
+  shell-scripts/test-flags.sh \
+  shell-scripts/golden/core-client-agent.flags \
+  shell-scripts/golden/rest-client-agent.flags \
+  shell-scripts/golden/authserv-client-agent.flags \
+  shell-scripts/golden/core-agent-brackets.flags \
+  chat-deploy/src/test/kotlin/com/demo/chat/test/deploy/init/UserInitConfigBindingTests.kt \
+  chat-deploy/src/test/kotlin/com/demo/chat/test/deploy/init/ChatBuildAgentFlagsBindingTests.kt \
+  chat-webflux/src/test/kotlin/com/demo/chat/test/controller/webflux/config/AgentSecurityPropertiesTests.kt
+git status --short
 git commit -F - <<'EOF'
 Add the repeatable chat-build --agent flag (CHAT-frcrctdp)
 
@@ -1718,12 +1983,24 @@ EOF
 - Modify: `chat-authorization-server/src/test/resources/application.yml`
 - Modify: `chat-authorization-server/src/test/kotlin/com/demo/chat/AccessTokenClaimsTests.kt`
 - Create: `chat-authorization-server/src/test/kotlin/com/demo/chat/AgentClientsTests.kt`
+- Modify: `chat-authorization-server/src/test/kotlin/com/demo/chat/AuthorizationServerTestSigningKey.kt`
 
 **Interfaces:**
+- Produces: `AgentClients.issue(agent, scope): AgentClients.Issued`, `AgentClients.announce(issued, out)`, `AgentClients.reconcile(repository, agents, scope, out)`.
 - Produces: `AgentClientProperties.agents: List<AgentClient>`, `.agentScope: String?`, `.requireValid(): List<AgentClient>`, `AgentClientProperties.AgentClient(clientId, username)`.
 - Produces: `AgentClients.build(clientId: String, scope: String, rawSecret: String): RegisteredClient`, `AgentClients.differences(row: RegisteredClient, scope: String): List<String>`, `AgentClients.requireNoCollision(agentIds: List<String>, sources: Map<String, Collection<String>>)`, `AgentClients.generateSecret(): String`, `AgentClients.TOKEN_TIME_TO_LIVE`.
 
-- [ ] **Step 1: Write the failing unit tests**
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-ososzcoo
+drift refs chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AuthorizationServerConfig.kt
+drift refs shared-deploy-configuration/src/main/config/oauth2-client.yml
+```
+
+Record any bound document in the Step 11 fp comment.
+
+**Step 1: Write the failing unit tests**
 
 ```kotlin
 package com.demo.chat
@@ -1733,9 +2010,11 @@ import com.demo.chat.config.deploy.authserv.AgentClients
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings
@@ -1819,10 +2098,49 @@ class AgentClientsTests {
             AgentClients.requireNoCollision(listOf("client-a"), mapOf("app.oauth2.client" to listOf("client-a")))
         }.hasMessage("Agent client id 'client-a' is also registered by app.oauth2.client.")
     }
+
+    private val agent = AgentClientProperties.AgentClient().apply { clientId = "client-a"; username = "Agent" }
+
+    @Test
+    fun `a saved agent client prints its secret after the save`() {
+        val repository = Mockito.mock(RegisteredClientRepository::class.java)
+        val out = mutableListOf<String>()
+        Mockito.`when`(repository.save(Mockito.any())).then {
+            assertThat(out).describedAs("output before the save completes").isEmpty()
+            null
+        }
+
+        AgentClients.reconcile(repository, listOf(agent), "chat.mcp") { out += it }
+
+        assertThat(out).singleElement().asString()
+            .matches("Generated secret for agent client 'client-a' \\(Agent\\): \\S+")
+    }
+
+    @Test
+    fun `a matching agent row prints no secret`() {
+        val repository = Mockito.mock(RegisteredClientRepository::class.java)
+        Mockito.`when`(repository.findByClientId("client-a")).thenReturn(AgentClients.build("client-a", "chat.mcp", "kept"))
+        val out = mutableListOf<String>()
+
+        AgentClients.reconcile(repository, listOf(agent), "chat.mcp") { out += it }
+
+        assertThat(out).containsExactly("Agent client 'client-a' (Agent) is registered. Its secret is unchanged.")
+    }
+
+    @Test
+    fun `a failed save prints no secret`() {
+        val repository = Mockito.mock(RegisteredClientRepository::class.java)
+        Mockito.`when`(repository.save(Mockito.any())).thenThrow(IllegalStateException("store refused"))
+        val out = mutableListOf<String>()
+
+        assertThatThrownBy { AgentClients.reconcile(repository, listOf(agent), "chat.mcp") { out += it } }
+            .hasMessage("store refused")
+        assertThat(out).isEmpty()
+    }
 }
 ```
 
-- [ ] **Step 2: Confirm that the tests fail**
+**Step 2: Confirm that the tests fail**
 
 ```bash
 LOG=$SCRATCH/t5-red.log; mvn -o -B -pl chat-authorization-server -am test-compile > $LOG 2>&1; echo exit=$?; grep -E "ERROR.*\.kt" $LOG | head -3
@@ -1830,7 +2148,7 @@ LOG=$SCRATCH/t5-red.log; mvn -o -B -pl chat-authorization-server -am test-compil
 
 Expected: exit 1. `AgentClients` does not exist.
 
-- [ ] **Step 3: Write `AgentClientProperties.kt`**
+**Step 3: Write `AgentClientProperties.kt`**
 
 ```kotlin
 package com.demo.chat.config.deploy.authserv
@@ -1872,7 +2190,7 @@ class AgentClientProperties {
 }
 ```
 
-- [ ] **Step 4: Write `AgentClients.kt`**
+**Step 4: Write `AgentClients.kt`**
 
 ```kotlin
 package com.demo.chat.config.deploy.authserv
@@ -1948,24 +2266,39 @@ object AgentClients {
         }
     }
 
-    /** Build a new client per agent, and print each secret once. */
-    fun newClients(agents: List<AgentClientProperties.AgentClient>, scope: String): List<RegisteredClient> =
-        agents.map { agent ->
-            val secret = generateSecret()
-            println("Generated secret for agent client '${agent.clientId}' (${agent.username}): $secret")
-            build(agent.clientId, scope, secret)
-        }
+    /** One agent client and its raw secret, before the server holds it. */
+    data class Issued(val agent: AgentClientProperties.AgentClient, val client: RegisteredClient, val secret: String)
+
+    fun issue(agent: AgentClientProperties.AgentClient, scope: String): Issued {
+        val secret = generateSecret()
+        return Issued(agent, build(agent.clientId, scope, secret), secret)
+    }
+
+    /**
+     * Print the secret of a client that the server now holds. Call it only
+     * after the repository holds the client, so that a failed save prints no
+     * secret.
+     */
+    fun announce(issued: Issued, out: (String) -> Unit = ::println) =
+        out("Generated secret for agent client '${issued.agent.clientId}' (${issued.agent.username}): ${issued.secret}")
 
     /**
      * Save an absent agent client, keep a matching one, and refuse any other
      * row. A refused row fails the start. The operator deletes it, and the
      * next start registers it again.
      */
-    fun reconcile(repository: RegisteredClientRepository, agents: List<AgentClientProperties.AgentClient>, scope: String) {
+    fun reconcile(
+        repository: RegisteredClientRepository,
+        agents: List<AgentClientProperties.AgentClient>,
+        scope: String,
+        out: (String) -> Unit = ::println,
+    ) {
         agents.forEach { agent ->
             val row = repository.findByClientId(agent.clientId)
             if (row == null) {
-                repository.save(newClients(listOf(agent), scope).single())
+                val issued = issue(agent, scope)
+                repository.save(issued.client)
+                announce(issued, out)
                 return@forEach
             }
             val drift = differences(row, scope)
@@ -1975,22 +2308,22 @@ object AgentClients {
                         "${drift.joinToString()}. Delete the row, and the next start registers it again."
                 )
             }
-            println("Agent client '${agent.clientId}' (${agent.username}) is registered. Its secret is unchanged.")
+            out("Agent client '${agent.clientId}' (${agent.username}) is registered. Its secret is unchanged.")
         }
     }
 }
 ```
 
-- [ ] **Step 5: Run the unit tests**
+**Step 5: Run the unit tests**
 
 ```bash
 LOG=$SCRATCH/t5-unit.log; mvn -o -B -pl chat-authorization-server -am test -Dtest=AgentClientsTests \
   -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|<<< FAIL" $LOG | tail -3
 ```
 
-Expected: exit 0, 7 tests.
+Expected: exit 0, 10 tests.
 
-- [ ] **Step 6: Register the agent clients in the memory repository**
+**Step 6: Register the agent clients in the memory repository**
 
 In `AuthorizationServerConfig`, change the annotation to `@EnableConfigurationProperties(Oauth2ClientProperties::class, AgentClientProperties::class)`. Replace `registeredClientRepo`:
 
@@ -2015,8 +2348,12 @@ In `AuthorizationServerConfig`, change the annotation to `@EnableConfigurationPr
                 "spring.security.oauth2.authorizationserver.client" to bootClientIds(serverProps),
             ),
         )
-        val agentClients = agentProps.agentScope?.let { AgentClients.newClients(agents, it) }.orEmpty()
-        return InMemoryRegisteredClientRepository(listOf(RegisteredClientFactory(clientProps)()) + agentClients)
+        val issued = agentProps.agentScope?.let { scope -> agents.map { AgentClients.issue(it, scope) } }.orEmpty()
+        val repository = InMemoryRegisteredClientRepository(
+            listOf(RegisteredClientFactory(clientProps)()) + issued.map { it.client }
+        )
+        issued.forEach { AgentClients.announce(it) }
+        return repository
     }
 ```
 
@@ -2030,11 +2367,11 @@ fun bootClientIds(serverProps: ObjectProvider<OAuth2AuthorizationServerPropertie
 
 Imports for `AgentClients.kt`: `org.springframework.beans.factory.ObjectProvider` and `org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties`. Imports for `AuthorizationServerConfig.kt`: `org.springframework.beans.factory.ObjectProvider` and the same properties class.
 
-- [ ] **Step 7: Remove `chat.mcp` from `chat-client`**
+**Step 7: Remove `chat.mcp` from `chat-client`**
 
 In `shared-deploy-configuration/src/main/config/oauth2-client.yml` and in `chat-authorization-server/src/test/resources/application.yml`, delete the line `        - chat.mcp` under `additional-scopes`.
 
-- [ ] **Step 8: Move the token tests to agent clients**
+**Step 8: Move the token tests to agent clients**
 
 In `AccessTokenClaimsTests`:
 
@@ -2077,14 +2414,20 @@ In `AccessTokenClaimsTests`:
 - Add:
 
 ```kotlin
+    /**
+     * The agent decoder accepts each token. That is the decoder that REST and
+     * the core build from the trusted JWK. See `CHAT-frcrctdp`.
+     */
     @Test
-    fun `each agent client receives a self contained token for its own client id`(output: CapturedOutput) {
-        listOf("client-agent", "client-claude").forEach { clientId ->
-            val claims = SignedJWT.parse(accessToken(output, clientId)).jwtClaimsSet
+    fun `the agent decoder accepts each agent token for its own client id`(output: CapturedOutput) {
+        val decoder = AgentJwtDecoderFactory.fromJwkFile(AuthorizationServerTestSigningKey.path())
 
-            assertThat(claims.getStringClaim("client_id")).isEqualTo(clientId)
-            assertThat(claims.getStringListClaim("scope")).containsExactly("chat.mcp")
-            assertThat(java.time.Duration.between(claims.issueTime.toInstant(), claims.expirationTime.toInstant()))
+        listOf("client-agent", "client-claude").forEach { clientId ->
+            val jwt = decoder.decode(accessToken(output, clientId)).block()!!
+
+            assertThat(jwt.claims["client_id"]).isEqualTo(clientId)
+            assertThat(jwt.getClaimAsStringList("scope")).containsExactly("chat.mcp")
+            assertThat(java.time.Duration.between(jwt.issuedAt, jwt.expiresAt))
                 .isEqualTo(java.time.Duration.ofSeconds(300))
         }
     }
@@ -2098,9 +2441,21 @@ In `AccessTokenClaimsTests`:
     }
 ```
 
-`SignedJWT.parse(...)` proves that the token is a JWT and not an opaque reference token. A `{bcrypt}` secret that the server did not accept would answer 401, so the 200 status proves the encoding.
+`AgentJwtDecoderFactory` verifies the ES256 signature against the trusted JWK, as REST and the core do. So an opaque reference token, or a token signed by another key, fails this test. A `{bcrypt}` secret that the server did not accept would answer 401, so the 200 status proves the encoding.
 
-- [ ] **Step 9: Run the authorization server tests**
+`AuthorizationServerTestSigningKey` holds the key as a file URI. Add a filesystem path accessor beside `register`:
+
+```kotlin
+    private val jwkFile: Path = generateSigningKey()
+    private val jwkLocation = jwkFile.toUri().toString()
+
+    /** The key file path that `AgentJwtDecoderFactory` reads. */
+    fun path(): String = jwkFile.toString()
+```
+
+Delete the old `jwkLocation` line, which called `generateSigningKey()` itself. Import `com.demo.chat.config.agent.AgentJwtDecoderFactory` in `AccessTokenClaimsTests`.
+
+**Step 9: Run the authorization server tests**
 
 ```bash
 LOG=$SCRATCH/t5-green.log; mvn -o -B -pl chat-authorization-server -am test -Dtest='AgentClientsTests,AccessTokenClaimsTests,AuthorizationCodeFlowTests,AuthorizationServerDeployTests' \
@@ -2109,15 +2464,39 @@ LOG=$SCRATCH/t5-green.log; mvn -o -B -pl chat-authorization-server -am test -Dte
 
 Expected: exit 0. If `AuthorizationCodeFlowTests` requested `chat.mcp` from `chat-client`, it now fails with `invalid_scope`. Change that request to a scope that `chat-client` still holds, such as `openid`, and record the change in the commit message.
 
-- [ ] **Step 10: Commit**
+**Step 10: Prove the duplicate check and the print order with mutations**
 
 ```bash
-git add -A chat-authorization-server shared-deploy-configuration
+FOCUS="mvn -o -B -pl chat-authorization-server -am test -Dtest=AgentClientsTests -Dsurefire.failIfNoSpecifiedTests=false"
+```
+
+Mutation A: in `AgentClientProperties.requireValid`, delete the `groupBy` statement. Run `$FOCUS > $SCRATCH/t5-mA.log 2>&1; echo exit=$?`. Expected: exit 1, and `a shared agent client id fails and names it` fails. Restore by hand in `/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AgentClientProperties.kt`. Run `$FOCUS` again. Expected: exit 0.
+
+Mutation B: in `AgentClients.reconcile`, move `announce(issued, out)` above `repository.save(issued.client)`. Run `$FOCUS`. Expected: exit 1, and both `a saved agent client prints its secret after the save` and `a failed save prints no secret` fail. Restore by hand in `/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AgentClients.kt`. Run `$FOCUS` again. Expected: exit 0.
+
+**Step 11: Commit and close the task**
+
+```bash
+git add \
+  chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AgentClientProperties.kt \
+  chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AgentClients.kt \
+  chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AuthorizationServerConfig.kt \
+  chat-authorization-server/src/test/resources/application.yml \
+  chat-authorization-server/src/test/kotlin/com/demo/chat/AccessTokenClaimsTests.kt \
+  chat-authorization-server/src/test/kotlin/com/demo/chat/AgentClientsTests.kt \
+  chat-authorization-server/src/test/kotlin/com/demo/chat/AuthorizationServerTestSigningKey.kt \
+  shared-deploy-configuration/src/main/config/oauth2-client.yml
+git status --short
+```
+
+If Step 9 changed `AuthorizationCodeFlowTests.kt`, add that path by name.
+
+```bash
 git commit -F - <<'EOF'
 Issue one client per agent on the authorization server (CHAT-frcrctdp)
 
-The memory repository holds one client_credentials client per agent, with
-a generated secret that the start prints once. The client issues
+The memory repository holds one client_credentials client per agent. The
+start prints each generated secret once, after the repository holds it. The client issues
 self-contained tokens with a 300 second lifetime. chat-client loses the
 chat.mcp scope. A shared client id fails the start.
 
@@ -2137,7 +2516,16 @@ EOF
 - Consumes: `AgentClients.reconcile`, `AgentClients.requireNoCollision`, `bootClientIds`, `AgentClientProperties.requireValid()` from Task 5.
 - Produces: `ClientInitializer(repo, mapper, agentProps)` with a new runner bean `registerAgentClients(serverProps, clientProps)`.
 
-- [ ] **Step 1: Write the failing tests**
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-pqhvddht
+drift refs chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/ClientLoader.kt
+```
+
+Record any bound document in the Step 7 fp comment.
+
+**Step 1: Write the failing tests**
 
 Add to `ClientInitializerTest`:
 
@@ -2226,7 +2614,7 @@ Add to `ClientInitializerTest`:
 
 Change the existing `test runner` test to construct `ClientInitializer(repo, mapper, AgentClientProperties())`. Add the imports that these tests name: `AgentClientProperties`, `AgentClients`, `ObjectProvider`, `StaticListableBeanFactory`, `OAuth2AuthorizationServerProperties`, `AuthorizationGrantType`, `ClientAuthenticationMethod`, `ClientSettings`, `TokenSettings`, `OAuth2TokenFormat`, `Duration`, `ParameterizedTest`, `ValueSource`, and AssertJ `assertThat` and `assertThatThrownBy`.
 
-- [ ] **Step 2: Confirm that the tests fail**
+**Step 2: Confirm that the tests fail**
 
 ```bash
 LOG=$SCRATCH/t6-red.log; mvn -o -B -pl chat-authorization-server -am test-compile > $LOG 2>&1; echo exit=$?; grep -E "ERROR.*\.kt" $LOG | head -3
@@ -2234,7 +2622,7 @@ LOG=$SCRATCH/t6-red.log; mvn -o -B -pl chat-authorization-server -am test-compil
 
 Expected: exit 1. `registerAgentClients` does not exist.
 
-- [ ] **Step 3: Change `ClientInitializer`**
+**Step 3: Change `ClientInitializer`**
 
 - Add the constructor parameter `val agentProps: AgentClientProperties`, and annotate the class with `@EnableConfigurationProperties(AgentClientProperties::class)`.
 - Change `loadOauth2AuthorizationServerProperties` so that it registers every entry, not only `chat-client`. Wrap the body in `properties.client.forEach { (name, client) -> ... }`, and name the entry in each error: `"The $name registration carries no client id"`.
@@ -2282,7 +2670,7 @@ Expected: exit 1. `registerAgentClients` does not exist.
 - In `loadClient`, replace the inline resource read with `readClientPath(clientPath)`.
 - Imports: `org.springframework.boot.ApplicationArguments`, `org.springframework.beans.factory.ObjectProvider`, `org.springframework.boot.context.properties.EnableConfigurationProperties`, `org.springframework.core.Ordered`, `org.springframework.core.annotation.Order`.
 
-- [ ] **Step 4: Run the tests**
+**Step 4: Run the tests**
 
 ```bash
 LOG=$SCRATCH/t6-green.log; mvn -o -B -pl chat-authorization-server -am test -Dtest='ClientInitializerTest,AgentClientsTests' \
@@ -2291,21 +2679,26 @@ LOG=$SCRATCH/t6-green.log; mvn -o -B -pl chat-authorization-server -am test -Dte
 
 Expected: exit 0.
 
-- [ ] **Step 5: Prove the shape check with a mutation**
+**Step 5: Prove the shape check with a mutation**
 
-In `AgentClients.differences`, delete the `token format` line. Run the Step 4 command. Expected: the `token format` case fails. Restore the file by absolute path, and run `git status --short chat-authorization-server`.
+In `AgentClients.differences`, delete the `token format` line. Run the Step 4 command. Expected: the `token format` case fails. Restore `/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/AgentClients.kt` with `git checkout --`, because Task 5 committed it. Run the Step 4 command again. Expected: exit 0.
 
-- [ ] **Step 6: File the `client.json` defect**
+A second mutation: in `ClientInitializer.registerAgentClients`, delete the `"--clientpath" to clientPathIds(args)` entry. Run the Step 4 command. Expected: `an agent id that the clientpath file uses fails the start` fails. Restore by hand in `/Users/darkbit1001/workspace/demo-chat/chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/ClientLoader.kt`. Run the Step 4 command again. Expected: exit 0.
+
+**Step 6: File the `client.json` defect**
 
 ```bash
 fp issue create --title "chat-build authserv passes --clientpath to a missing client.json" --parent CHAT-aqpcacwv --priority low \
   --description "chat-build authserv passes --clientpath='classpath:client.json'. Main resources hold no client.json. Under the client-init profile, ClientInitializer.loadClient reads that path and the start fails. Found under CHAT-frcrctdp. Not repaired there."
 ```
 
-- [ ] **Step 7: Commit**
+**Step 7: Commit and close the task**
 
 ```bash
-git add -A chat-authorization-server
+git add \
+  chat-authorization-server/src/main/kotlin/com/demo/chat/config/deploy/authserv/ClientLoader.kt \
+  chat-authorization-server/src/test/kotlin/com/demo/chat/ClientInitializerTest.kt
+git status --short
 git commit -F - <<'EOF'
 Reconcile agent clients on the client-init path (CHAT-frcrctdp)
 
@@ -2328,7 +2721,15 @@ EOF
 **Interfaces:**
 - Consumes: `DeployTestSigningKey.mint(clientId: String, scope: String): String`.
 
-- [ ] **Step 1: Change the launch flags**
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-bwhhijyr
+```
+
+This task changes one test file. No test file is bound by `drift`.
+
+**Step 1: Change the launch flags**
 
 In `coreFlags`, replace the three `-Dapp.security.agent.*` lines with:
 
@@ -2347,11 +2748,11 @@ In `restFlags`, replace the three lines with the last five lines above. REST cre
 
 In `startDeployments`, replace each `"--agent-client-id", "client-under-test", "--agent-username", "Agent",` with `"--agent", "client-under-test=Agent", "--agent", "client-claude=Claude",`. Those arguments document the launch. The helper reads `--jwk` alone.
 
-- [ ] **Step 2: Generalize the owner check**
+**Step 2: Generalize the owner check**
 
 Replace `assertOwnerIsConfiguredAgent(roomId: String)` with `assertOwnerIs(roomId: String, handle: String)`. The body reads `ByStringRequest(handle)` in place of `ByStringRequest("Agent")`. Change the one caller to `assertOwnerIs(id!!, "Agent")`.
 
-- [ ] **Step 3: Add the two-agent test and the unlisted test**
+**Step 3: Add the two-agent test and the unlisted test**
 
 ```kotlin
     @Test
@@ -2386,24 +2787,27 @@ Replace `assertOwnerIsConfiguredAgent(roomId: String)` with `assertOwnerIs(roomI
 
 Room names hold no hyphen, because of the Lucene name token defect `CHAT-hajmhslp`.
 
-- [ ] **Step 4: Run the opt-in test**
+**Step 4: Run the opt-in test**
 
 ```bash
-LOG=$SCRATCH/t7.log; mvn -B -pl chat-deploy-memory-integration-test -am verify \
+LOG=$SCRATCH/t7.log; mvn -B -pl chat-deploy-memory-integration-test -am clean verify \
   -Prest-core-e2e -Dtest=RestToCoreBearerDeploymentTests \
-  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:|<<< FAIL|Caused by" $LOG | tail -5
+  -Dsurefire.failIfNoSpecifiedTests=false > $LOG 2>&1; echo exit=$?; grep -E "Tests run:.*RestToCore|<<< FAIL|Caused by" $LOG | tail -5
+unzip -l chat-deploy-memory/target/chat-deploy-memory-0.0.1-exec.jar | grep -c "chat-webflux" || true
 ```
 
-Expected: exit 0. Every test of the class passes, the two new tests included.
+Expected: exit 0, every test of the class passes with 0 skipped, and the `grep -c` count is 0.
 
-- [ ] **Step 5: Mutate the core wiring through the relay**
+**`clean` is not optional here.** Task 3 ran `chat-deploy-memory` under `expose-webflux`. The relay core jar must not hold `chat-webflux`, because the relay core is a core and not a REST launch. The count of 0 proves that the jar came from this run without that profile.
 
-Apply the Task 3 Step 6 mutation. Run the Step 4 command. Expected: `each REST agent token reaches core authorization as its own identity` fails for `Claude`. Restore by absolute path and run `git status --short`.
+**Step 5: Mutate the core wiring through the relay**
 
-- [ ] **Step 6: Commit**
+Apply the Task 3 Step 7 mutation, which changes the core wiring. Run the Step 4 command. Expected: `each REST agent token reaches core authorization as its own identity` fails for `Claude`. Restore `/Users/darkbit1001/workspace/demo-chat/chat-service-controller/src/main/kotlin/com/demo/chat/config/rsocket/RSocketAgentSecurityConfiguration.kt` with `git checkout --`. Run the Step 4 command again. Expected: exit 0. Run `git status --short`.
+
+**Step 6: Commit and close the task**
 
 ```bash
-git add chat-deploy-memory-integration-test
+git add chat-deploy-memory-integration-test/src/test/kotlin/com/demo/chat/deploy/test/security/RestToCoreBearerDeploymentTests.kt
 git commit -F - <<'EOF'
 Relay two agents from REST to the core (CHAT-frcrctdp)
 
@@ -2425,7 +2829,16 @@ EOF
 - Modify: `drift.lock`
 - Modify: `forward-register.md`
 
-- [ ] **Step 1: Update the vector gate**
+**Step 0: Claim the task and read the bindings**
+
+```bash
+fp issue update --status in-progress CHAT-nhnmxydy
+drift status
+```
+
+Record each document that `drift status` lists. This task reviews the prose of each listed document that Tasks 1 to 7 made stale, before it relinks any of them.
+
+**Step 1: Update the vector gate**
 
 In `gate-embedding-launch.sh`, replace the three `--app.security.agent.*` arguments with:
 
@@ -2437,7 +2850,7 @@ In `gate-embedding-launch.sh`, replace the three `--app.security.agent.*` argume
 
 Quote each argument as shown. `zsh` and `bash` both read `[0]` as a glob when it is not quoted.
 
-- [ ] **Step 2: Rewrite the credential procedure**
+**Step 2: Rewrite the credential procedure**
 
 In `docs/MCP-CREDENTIAL-ISSUANCE.md`:
 
@@ -2448,7 +2861,7 @@ In `docs/MCP-CREDENTIAL-ISSUANCE.md`:
 ```sh
 ./shell-scripts/chat-build authserv --run --notls --node-id 8 \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" --profile memory \
-  --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
 ```
 
@@ -2469,11 +2882,11 @@ In `docs/MCP-CREDENTIAL-ISSUANCE.md`:
 ```sh
 ./shell-scripts/chat-build core --memory --run --notls --node-id 1 --init users,rootkeys \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
-  --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
 ./shell-scripts/chat-build rest --run --notls --node-id 2 \
   --jwk "$PWD/encrypt-keys/server_keycert.jwk" \
-  --agent 31649af5-0154-4be5-8695-fda9d18b7981=Agent \
+  --agent 5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13=Agent \
   --agent 7c1e0b2a-5d0e-4c55-9d1e-2f6a8b3c4d5e=Claude
 ```
 
@@ -2482,7 +2895,7 @@ In `docs/MCP-CREDENTIAL-ISSUANCE.md`:
 - Delete `Limit 3`. Add one sentence where it stood: The `client-init` profile registers one `chat.mcp` client per `--agent` since `CHAT-frcrctdp`.
 - In the appendix flag list, replace the three `app.security.agent.*` flags with the four new properties.
 
-- [ ] **Step 3: Update the other documents**
+**Step 3: Update the other documents**
 
 - `docs/BUILD.md:174-186`: each `--agent-client-id <client-id> --agent-username <handle>` becomes `--agent <client-id>=<handle>`, and the sentence lists the emitted properties of the Task 4 table. Line 216 reads: Use `Agent` as the handle of the first agent. `userinit.yml` declares that handle. Add: `--agent` repeats once per agent. A handle holds letters, digits and underscores alone.
 - `docs/EMBEDDING-PROVIDERS.md:182-184`: the three flags become `--app.security.required-scope=chat.mcp`, `'--app.security.agents[0].client-id=<client-id>'` and `'--app.security.agents[0].username=Agent'`. Line 212 names `app.security.required-scope is required.`
@@ -2491,7 +2904,7 @@ In `docs/MCP-CREDENTIAL-ISSUANCE.md`:
 - `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`: add one paragraph at the top: These runs used the single agent keys of their date. Since `CHAT-frcrctdp`, a launch names agents with `app.security.agents[n]`. See `docs/MCP-CREDENTIAL-ISSUANCE.md`.
 - `shell-scripts/README-chat-build.md`: document `--agent CLIENT_ID=HANDLE`, the three service tables of Task 4, and the refusals.
 
-- [ ] **Step 4: Review `REST-TOKEN-RELAY.md`, then relink**
+**Step 4: Review `REST-TOKEN-RELAY.md`, then relink**
 
 ```bash
 drift check; drift refs docs/REST-TOKEN-RELAY.md
@@ -2509,7 +2922,7 @@ drift check
 
 If `drift unlink` does not exist in drift v0.7.0, run `drift --help`, and remove the anchor with the command that it lists. Expected for the last command: `ok`.
 
-- [ ] **Step 5: Check for stale references**
+**Step 5: Check for stale references**
 
 ```bash
 grep -rnE "agent-client-id|agent-username|app\.security\.agent\." docs/*.md shell-scripts/*.md shell-scripts/vector shell-scripts/chat-build | grep -v "removed\|CHAT-frcrctdp\|is replaced"
@@ -2517,7 +2930,13 @@ grep -rnE "agent-client-id|agent-username|app\.security\.agent\." docs/*.md shel
 
 Expected: no line outside `docs/superpowers/` and the register.
 
-- [ ] **Step 6: Add the register section**
+```bash
+grep -rn "31649af5" docs/*.md shell-scripts/*.md shell-scripts/vector
+```
+
+`31649af5-0154-4be5-8695-fda9d18b7981` is the `app.oauth2.client` id. Each line that this command prints must name that client, or must sit in the record of a past run in `docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md`. A line that uses it as an agent client id in a current procedure is a defect. Change that line to `5b2c9e1a-3f47-4d8e-9a61-0c7d2e8f4b13`. The collision check of Task 5 refuses `31649af5…` as an agent id.
+
+**Step 6: Add the register section**
 
 Append to `forward-register.md`:
 
@@ -2555,10 +2974,20 @@ Fill each line from the run logs of Task 9. Do not write a number that no run
 produced.
 ```
 
-- [ ] **Step 7: Commit**
+**Step 7: Commit and close the task**
 
 ```bash
-git add -A docs shell-scripts forward-register.md drift.lock
+git add \
+  docs/MCP-CREDENTIAL-ISSUANCE.md docs/REST-TOKEN-RELAY.md docs/BUILD.md \
+  docs/EMBEDDING-PROVIDERS.md docs/VECTOR-RECALL-API.md docs/MCP-ADAPTER.md \
+  docs/MCP-REAL-DEPLOYMENT-ACCEPTANCE.md shell-scripts/README-chat-build.md \
+  shell-scripts/vector/gate-embedding-launch.sh forward-register.md drift.lock
+git status --short
+```
+
+If `drift status` in Step 0 listed another document that this task changed, add that path by name.
+
+```bash
 git commit -F - <<'EOF'
 Document more than one agent per deployment (CHAT-frcrctdp)
 
@@ -2578,7 +3007,13 @@ EOF
 - Modify: `forward-register.md` (the `Measured` list of Task 8)
 - Modify: `docs/BUILD-HEALTH.md` (one run line)
 
-- [ ] **Step 1: Run the default gate**
+**Step 0: Claim the task**
+
+```bash
+fp issue update --status in-progress CHAT-skldhsks
+```
+
+**Step 1: Run the default gate**
 
 ```bash
 LOG=$SCRATCH/t9-default.log; shell-scripts/build-health.sh > $LOG 2>&1; echo exit=$?; tail -6 $LOG
@@ -2586,7 +3021,7 @@ LOG=$SCRATCH/t9-default.log; shell-scripts/build-health.sh > $LOG 2>&1; echo exi
 
 Expected: exit 0, and no drift.
 
-- [ ] **Step 2: Run the CI gate**
+**Step 2: Run the CI gate**
 
 Check `docker events --since 1h --filter event=oom` first. Another session must not run container tests at the same time.
 
@@ -2599,24 +3034,25 @@ cat $SCRATCH/image-before.txt
 
 Expected: exit 0, no drift, and an image id that differs from the one before. A test count that moved must match the tests that this plan added.
 
-- [ ] **Step 3: Record the readings**
+**Step 3: Record the readings**
 
 Fill the `Measured` list of the register section with the real numbers of Steps 1 and 2, the Task 7 run, and each mutation of Tasks 2, 3, 6 and 7. Add one line to `docs/BUILD-HEALTH.md` in the style of the earlier run lines: branch, test count, skipped count, image id.
 
 ```bash
 git add forward-register.md docs/BUILD-HEALTH.md
+git status --short
 git commit -m "Record the multi-agent gate readings (CHAT-frcrctdp)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 4: Comment on the issue**
+**Step 4: Comment on the issue**
 
 ```bash
 fp comment CHAT-frcrctdp "Implementation complete on chat-frcrctdp-multi-agent. <one line per acceptance item, with the run that measured it>. Not measured: secret rotation, and a check that the REST and core lists agree."
 ```
 
-- [ ] **Step 5: Push and open the pull request**
+**Step 5: Push and open the pull request**
 
 Ask the owner before you push. Then:
 
@@ -2652,6 +3088,6 @@ Write `$SCRATCH/pr-body.md` from the register section. End it with `🤖 Generat
 
 ## Deviation From the Spec
 
-The spec names a single-process REST owner row test in `chat-deploy-memory`. That module's test classpath holds no `chat-webflux`, because its `chat-deploy` dependency excludes it, and its `rest-core-e2e` jar holds none either. Adding `chat-webflux` there changes the core jar of the relay test. Task 3 measures the REST selection through the production `AgentSecurityConfiguration` beans instead. The owner row on a single-process REST launch is written from the same principal that this test reads.
+The spec names a REST principal assertion in the relay test. On the relay path, REST forwards the token and keeps no observable trace of its own principal. So Task 3 owns that assertion. `RestAgentSelectionTests` reads the owner row that the REST principal writes in a single-process REST launch. The relay test asserts the owner rows that the core writes. The owner and Sigma accepted this move on 2026-10-05.
 
-The spec names a REST principal assertion in the relay test. On the relay path, REST forwards the token and keeps no observable trace of its own principal. So Task 3 owns that assertion, and the relay test asserts the owner rows alone.
+The single-process REST owner row test of the spec stays. It runs under `-Pexpose-webflux`, apart from the other builds, and Task 7 rebuilds the relay jars with `clean`.
