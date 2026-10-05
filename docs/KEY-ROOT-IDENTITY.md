@@ -76,6 +76,8 @@ The memory backend does not retain roots across process restarts.
 At start, each registered `StoreShapeCheck` runs before any root source loads.
 A store with the schema of an earlier release fails the start.
 The error names the missing table or column.
+A Cassandra check also compares the type of each message id column.
+That error names the column, its type, and the required type.
 This release has no migration. The operator recreates the store.
 `docs/ARCHITECTURE.md` section 3 describes the four root sources, and the
 start sequence that loads the roots before either server starts.

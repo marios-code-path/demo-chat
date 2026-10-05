@@ -72,7 +72,8 @@ class CassandraIndexRootTests {
         val byTopic = mock(ChatMessageByTopicRepository::class.java) as ChatMessageByTopicRepository<Long>
         given(byTopic.findByKeyDest(2L)).willReturn(Flux.just(ChatMessageByTopic(ChatMessageByTopicKey(13L, 1L, 2L, Instant.EPOCH), "t", true)))
 
-        val key = MessageIndex({ it.toLong() }, byUser, byTopic, roots).findBy(mapOf(MessageIndexService.TOPIC to "2")).blockFirst()!!
+        val byId = mock(ChatMessageIndexByIdRepository::class.java) as ChatMessageIndexByIdRepository<Long>
+        val key = MessageIndex({ it.toLong() }, byUser, byTopic, byId, roots).findBy(mapOf(MessageIndexService.TOPIC to "2")).blockFirst()!!
         assertThat(key.root).isEqualTo(root(ChatDomain.MESSAGE))
         assertThat(key.dest).isEqualTo(2L)
     }

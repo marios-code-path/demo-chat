@@ -84,7 +84,7 @@ CREATE TABLE chat_long.chat_secret (
 );
 
 CREATE TABLE chat_long.chat_message_id (
-    msg_id TIMESTAMP,
+    msg_id BIGINT,
     user_id BIGINT,
     topic_id BIGINT,
     text    varchar,
@@ -94,7 +94,7 @@ CREATE TABLE chat_long.chat_message_id (
 WITH CLUSTERING ORDER BY (msg_time DESC);
 
 CREATE TABLE chat_long.chat_message_user (
-    msg_id TIMESTAMP,
+    msg_id BIGINT,
     user_id BIGINT,
     topic_id BIGINT,
     text    varchar,
@@ -104,7 +104,7 @@ CREATE TABLE chat_long.chat_message_user (
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
 
 CREATE TABLE chat_long.chat_message_topic (
-    msg_id TIMESTAMP,
+    msg_id BIGINT,
     user_id BIGINT,
     topic_id BIGINT,
     text    varchar,
@@ -112,6 +112,15 @@ CREATE TABLE chat_long.chat_message_topic (
     visible Boolean,
     PRIMARY KEY (topic_id, msg_time, msg_id))
 WITH CLUSTERING ORDER BY (msg_time DESC, msg_id DESC);
+
+-- The message index rows keyed by the message id. rem() receives the message
+-- key alone, so it reads this table to name the rows to delete. See CHAT-xcmpudyb.
+CREATE TABLE chat_long.chat_message_index_by_id (
+    msg_id BIGINT,
+    user_id BIGINT,
+    topic_id BIGINT,
+    msg_time timestamp,
+    PRIMARY KEY (msg_id));
 
 
 CREATE TABLE chat_long.chat_room(

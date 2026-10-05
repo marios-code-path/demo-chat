@@ -52,10 +52,9 @@ as on the map store**, for all five caller states. It carries one further row
 than the matrix below, a room read, and it was re-measured on 2026-09-30 for
 `CHAT-rfzsnbco`.
 
-That test mints the message key instead of sending a message, because
-`send` fails on a cassandra deployment. See `CHAT-xcmpudyb`. The
-`messageById` expression checks one message key, and no message is sent, so
-the minted key measures the same expression.
+That test sends a real message, and the `messageById` row checks its key.
+Until `CHAT-xcmpudyb`, `send` failed on a cassandra deployment, so the test
+minted a message key and sent nothing.
 
 Only the operations of that test are measured this way. The self authority,
 many target and expiry cases in this document are still measured on a map

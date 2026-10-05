@@ -12,6 +12,7 @@ import com.demo.chat.domain.MessageKey
 import com.demo.chat.index.cassandra.impl.MessageIndex
 import com.demo.chat.index.cassandra.repository.ChatMessageByTopicRepository
 import com.demo.chat.index.cassandra.repository.ChatMessageByUserRepository
+import com.demo.chat.index.cassandra.repository.ChatMessageIndexByIdRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.IndexRepositoryTestConfiguration
 import com.demo.chat.test.TestUUIDKeyGenerator
@@ -53,12 +54,16 @@ class MessageTopicQueryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
     @Autowired
     lateinit var byUserRepo: ChatMessageByUserRepository<UUID>
 
+    @Autowired
+    lateinit var byIdRepo: ChatMessageIndexByIdRepository<UUID>
+
     private val converters = MapRequestConverters()
 
     private fun index() = MessageIndex(
         Function<String, UUID> { text -> UUID.fromString(text) },
         byUserRepo,
         byTopicRepo,
+        byIdRepo,
         FakeKeyServices.uuidRoots(),
     )
 

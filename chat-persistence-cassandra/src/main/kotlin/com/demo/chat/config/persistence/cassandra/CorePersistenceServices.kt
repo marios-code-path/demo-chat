@@ -7,6 +7,7 @@ import com.demo.chat.persistence.cassandra.impl.CassandraStoreShapeCheck
 import com.demo.chat.service.core.StoreShapeCheck
 
 import com.datastax.oss.driver.api.core.CqlSession
+import com.demo.chat.domain.TypeUtil
 
 import com.demo.chat.domain.knownkey.RootKeys
 import com.demo.chat.persistence.cassandra.CassandraPersistenceServices
@@ -37,6 +38,10 @@ class CorePersistenceServices<T : Any>(
      * also when another backend provides the keys. See `CHAT-avduuqwp`, T7.
      */
     @Bean
-    fun cassandraPersistenceShapeCheck(session: CqlSession): StoreShapeCheck =
-        CassandraStoreShapeCheck.lazy(session, CassandraStoreShapeCheck.PERSISTENCE_TABLES)
+    fun cassandraPersistenceShapeCheck(session: CqlSession, typeUtil: TypeUtil<*>): StoreShapeCheck =
+        CassandraStoreShapeCheck.lazy(
+            session,
+            CassandraStoreShapeCheck.PERSISTENCE_TABLES,
+            CassandraStoreShapeCheck.persistenceTypes(typeUtil),
+        )
 }

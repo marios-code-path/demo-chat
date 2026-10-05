@@ -2510,6 +2510,9 @@ Cassandra message sending still fails on timestamp mapping.
 `chat_message_id.msg_id` and `chat_message_topic.msg_id` are `TIMESTAMP`, and
 the entities map a `T` id there. So the matrix test mints a message key and
 sends no message.
+**Read that paragraph as of 2026-09-28.** `CHAT-xcmpudyb` repairs the send,
+and the matrix test sends a real message now. See the last section of this
+file.
 
 ## Self authority, and the target key (2026-09-24)
 
@@ -4441,3 +4444,106 @@ the `Admin` key holds, and the restart writes are repeats by the same owner.
 Every child of `CHAT-znprrzhn` is done once this merges.
 **Done on 2026-10-04.** `CHAT-esengqpv` is closed, and every child of
 `CHAT-znprrzhn` is done.
+
+## A message send on Cassandra (2026-10-04)
+
+`CHAT-xcmpudyb`, the first step of `CHAT-aqpcacwv`. Branch
+`chat-xcmpudyb-message-id`. **This work is not merged.**
+
+### The defect, and four more on the same path
+
+The long keyspace declared `msg_id TIMESTAMP` in `chat_message_id`,
+`chat_message_user` and `chat_message_topic`. A `Long` id has no codec for that
+type, so the first message write failed:
+
+    Codec not found for requested operation: [TIMESTAMP <-> java.lang.Long]
+
+**The issue text was wrong about the uuid keyspace.** It declares
+`msg_id TIMEUUID`, and the uuid key generator makes time based ids. So the
+uuid write worked.
+
+**No test wrote a `Long` message id.** Every message repository and index test
+used `UUID` keys.
+
+The repair of the column type exposed four more defects. **Each one failed for
+both key types.**
+
+1. **The store removal named `msg_id` alone.** `msg_time` is a clustering
+   column, so Cassandra refused the update with
+   `Some clustering keys are missing: msg_time`. The removal reads the row
+   first, then names both columns.
+2. **The index stored the write time.** `MessageIndex.add` took
+   `Instant.now()` for `msg_time`, so the index and the store gave two times
+   for one message. It stores the message time now.
+3. **The index removal could not run.** It deleted by `msg_id` alone, and the
+   index tables partition on the sender and the room:
+   `Some partition key parts are missing: user_id`.
+4. **Room history on Cassandra was always empty.**
+   `MessagePersistenceCassandra` did not override `byIds`, and the default
+   answers `Flux.empty()`. So `listMessages` answered nothing, with no error.
+
+### Two owner decisions of 2026-10-04
+
+1. **The index removal reads a by-id table.** `chat_message_index_by_id`
+   holds the sender, the room and the time of each message. It follows the
+   `kv_pair_index_by_id` precedent. The removal reads it, then deletes each
+   row by its full primary key.
+2. **The store shape check compares column types.** A long store from before
+   this change holds every name, so it started and failed at the first message
+   write. It now fails the start with
+   `chat_message_id.msg_id is timestamp, required bigint`. The required type
+   follows the key type: `bigint` for `Long`, `timeuuid` for `UUID`. The
+   no-migration rule of 2026-09-25 stands. Recreate such a store.
+
+### A delete by entity cannot work on these tables
+
+Each key class holds a regular column beside its key columns, such as
+`topic_id` in the sender table. Spring Data puts every field of a key class in
+the `WHERE` clause, so Cassandra refuses the delete with
+`Non PRIMARY KEY columns found in where clause: topic_id`. Each removal names
+the three key columns through a repository fragment. The key classes now map
+`msg_time` as a clustering column.
+
+### The evidence
+
+- `CassandraMessageSendTests` sends a message on a `long` and a `uuid`
+  Cassandra deployment, and reads it by id and by room. Node ids 25 and 26.
+- `CassandraAuthorizationMatrixTests` sends a real message in place of a
+  minted key.
+- `MessageIndexCassandraTests` runs the index for both key types. It reads the
+  time, removes a message, and keeps the other message of the room.
+- Six mutations, each run alone. Each made the tests fail that were written
+  for it, and each file was restored by absolute path.
+- `build-health.sh --ci`: exit 0, 30 modules, 1969 tests, 0 failures,
+  0 errors, 72 skipped, and no drift. The image id moved from
+  `sha256:ce27764f` to `sha256:aa3058ff`. The default mode: 1629 tests,
+  37 skipped, and no drift.
+- **The first `--ci` run failed once in `chat-service-composite`.**
+  `MessageReindexServiceImplTests` read `Expected size: 2 but was: 1`, and the
+  list it printed held two elements. So the read ran during the write. This
+  branch does not change that module, and the second run passed. One kill
+  event fell in the first run window.
+
+### Traps found, each of which cost a cycle
+
+- **The Kotlin compiler daemon can write no class files and report no error.**
+  It did so for `chat-persistence-cassandra`, and the test context failed with
+  `NoClassDefFoundError`. `-Dkotlin.compiler.daemon=false` avoids it.
+- **Two sessions on one Docker VM kill Cassandra.** Docker events show
+  `cassandra:4.1.3` killed for memory, exit 137, while a second session ran
+  container tests. Every Cassandra call then failed with
+  `NoNodeAvailableException`. Read `docker events --filter event=oom` before
+  you trust a red container run.
+- **A wait loop on `pgrep -f` matches its own shell**, because the pattern is
+  in its command line. Write the pattern as `[m]ultiModule...`.
+
+### Filed
+
+- `CHAT-mpfuifei`. `TopicPersistenceCassandra` has no `byIds` either. No
+  composite service calls it today.
+
+### Not measured
+
+- **A packaged Cassandra deployment.** No launched jar or image sent a
+  message. Every proof starts the composition in a test JVM against a test
+  container.

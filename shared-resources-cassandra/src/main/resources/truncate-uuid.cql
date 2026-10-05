@@ -5,6 +5,7 @@ Truncate Table chat_uuid.topic_membership_by_member_of;
 Truncate Table chat_uuid.chat_message_id;
 Truncate Table chat_uuid.chat_message_user;
 Truncate Table chat_uuid.chat_message_topic;
+Truncate Table chat_uuid.chat_message_index_by_id;
 Truncate Table chat_uuid.chat_room;
 Truncate Table chat_uuid.chat_room_name;
 Truncate Table chat_uuid.chat_user;

@@ -6,6 +6,7 @@ import com.demo.chat.persistence.cassandra.domain.ChatMessageByIdKey
 import com.demo.chat.persistence.cassandra.repository.ChatMessageRepository
 import com.demo.chat.test.CassandraSchemaTest
 import com.demo.chat.test.TestUUIDKeyGenerator
+import com.demo.chat.test.key.TestKeys
 import com.demo.chat.test.repository.RepositoryTestConfiguration
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Tag
@@ -65,6 +66,19 @@ class MessageRepositoryTests : CassandraSchemaTest<UUID>(TestUUIDKeyGenerator())
         StepVerifier
             .create(composite)
             .assertNext(this::chatMessageAssertion)
+            .verifyComplete()
+    }
+
+    // The removal query named msg_id alone, and msg_time is a clustering
+    // column. So it failed on both key types. See CHAT-xcmpudyb.
+    @Test
+    fun `should hide a message after a removal by key`() {
+        val msgId = UUIDs.timeBased()
+        val stored = ChatMessageById(ChatMessageByIdKey(msgId, UUID.randomUUID(), UUID.randomUUID(), Instant.now()), MSGTEXT, true)
+
+        StepVerifier
+            .create(repo.add(stored).then(repo.rem(TestKeys.key(msgId))).then(repo.findByKeyId(msgId)))
+            .assertNext { assertFalse(it.record) }
             .verifyComplete()
     }
 

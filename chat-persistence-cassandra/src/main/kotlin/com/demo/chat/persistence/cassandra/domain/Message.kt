@@ -1,5 +1,6 @@
 package com.demo.chat.persistence.cassandra.domain
 
+import org.springframework.data.cassandra.core.cql.Ordering
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.*
 import java.time.Instant
@@ -7,6 +8,9 @@ import java.time.Instant
 /**
  * A row of the Cassandra backend. **It is not a domain object and not a
  * `Key`.** The store maps it under the root of its domain. See `CHAT-avduuqwp`.
+ *
+ * `msg_time` is a clustering column, so the key maps it as one. See
+ * `CHAT-xcmpudyb`.
  */
 @Table("chat_message_id")
 data class ChatMessageById<T>(
@@ -23,6 +27,6 @@ data class ChatMessageByIdKey<T>(
     val from: T,
     @field:Column("topic_id")
     val dest: T,
-    @field:Column("msg_time")
+    @PrimaryKeyColumn(name = "msg_time", type = PrimaryKeyType.CLUSTERED, ordinal = 1, ordering = Ordering.DESCENDING)
     val timestamp: Instant,
 )
