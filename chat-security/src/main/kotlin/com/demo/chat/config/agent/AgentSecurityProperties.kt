@@ -41,6 +41,7 @@ class AgentSecurityProperties {
         }
         agents.forEachIndexed { index, agent -> agent.validate(index) }
         requireDistinct()
+        requireNoReserved()
         val configuredJwt = jwt ?: throw ChatException("app.security.jwt.jwk-path is required.")
         configuredJwt.validate()
         return Complete(agents.toList(), scope, configuredJwt)
@@ -54,6 +55,23 @@ class AgentSecurityProperties {
             .filterValues { it.size > 1 }.values.firstOrNull()?.let {
                 throw ChatException("app.security.agents names username '${it.last().username}' twice.")
             }
+    }
+
+    /**
+     * An agent must be a plain user. See `CHAT-frcrctdp`.
+     *
+     * **The comparison ignores case.** The Lucene user index lowercases the
+     * handle, so a lookup for `admin` answers the user `Admin`.
+     */
+    private fun requireNoReserved() {
+        val reserved = (RESERVED_IDENTITIES + serviceAccounts.filter { it.isNotBlank() })
+            .map { it.lowercase(Locale.ROOT) }
+            .toSet()
+        agents.firstOrNull { it.username.lowercase(Locale.ROOT) in reserved }?.let {
+            throw ChatException(
+                "app.security.agents names reserved username '${it.username}'. An agent must be a plain user."
+            )
+        }
     }
 
     data class Complete(val agents: List<Agent>, val requiredScope: String, val jwt: Jwt) {
@@ -96,6 +114,9 @@ class AgentSecurityProperties {
 
         /** The service account that `userinit.yml` declares. */
         const val DEFAULT_SERVICE_ACCOUNT = "Service"
+
+        /** The two `ChatIdentity` names. Neither one is a plain user. */
+        val RESERVED_IDENTITIES = listOf("Admin", "Anon")
 
         fun authorityFor(scope: String): String = "$SCOPE_PREFIX$scope"
     }

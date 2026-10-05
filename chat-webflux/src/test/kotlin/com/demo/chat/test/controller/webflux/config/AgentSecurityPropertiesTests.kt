@@ -4,6 +4,8 @@ import com.demo.chat.config.agent.AgentSecurityProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.context.annotation.Configuration
@@ -103,4 +105,20 @@ class AgentSecurityPropertiesTests {
                 .hasSize(2)
         }
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["Admin", "admin", "ANON", "Anon", "service", "Service"])
+    fun `a reserved username fails and names it`(name: String) =
+        refusal(*complete, "app.security.agents[1].username=$name",
+            message = "app.security.agents names reserved username '$name'. An agent must be a plain user.")
+
+    @Test
+    fun `a configured service account is reserved`() =
+        refusal(*complete, "app.security.service-accounts=Service,Relay", "app.security.agents[1].username=relay",
+            message = "app.security.agents names reserved username 'relay'. An agent must be a plain user.")
+
+    @Test
+    fun `usernames that differ by case alone are one username`() =
+        refusal(*complete, "app.security.agents[0].username=Claude", "app.security.agents[1].username=claude",
+            message = "app.security.agents names username 'claude' twice.")
 }

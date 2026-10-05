@@ -5,6 +5,8 @@ import com.demo.chat.config.agent.AgentJwtDecoderFactory
 import com.demo.chat.config.agent.AgentIdentities
 import com.demo.chat.config.agent.AgentIdentityLifecycle
 import com.demo.chat.config.agent.AgentSecurityProperties
+import com.demo.chat.config.agent.AgentSecurityPropertiesGuard
+import org.springframework.core.env.ConfigurableEnvironment
 import com.demo.chat.service.composite.ChatUserService
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Qualifier
@@ -33,8 +35,10 @@ class RSocketAgentSecurityConfiguration<T> {
     fun agentIdentities(): AgentIdentities = AgentIdentities()
 
     @Bean
-    fun validateAgentSecurityProperties(properties: AgentSecurityProperties) =
-        AgentSecurityPropertiesValidator(properties)
+    fun validateAgentSecurityProperties(
+        properties: AgentSecurityProperties,
+        environment: ConfigurableEnvironment,
+    ) = AgentSecurityPropertiesValidator(properties, environment)
 
     /** It does nothing when the core holds no agent value. See `CHAT-frcrctdp`. */
     @Bean
@@ -120,9 +124,10 @@ class BearerAuthenticationNotConfiguredManager : ReactiveAuthenticationManager {
     )
 }
 
-class AgentSecurityPropertiesValidator(properties: AgentSecurityProperties) {
+class AgentSecurityPropertiesValidator(properties: AgentSecurityProperties, environment: ConfigurableEnvironment) {
 
     init {
+        AgentSecurityPropertiesGuard.requireNoLegacyKeys(environment)
         if (properties.isConfigured()) {
             properties.requireComplete()
         }
