@@ -4526,9 +4526,20 @@ the three key columns through a repository fragment. The key classes now map
 
 ### Traps found, each of which cost a cycle
 
-- **The Kotlin compiler daemon can write no class files and report no error.**
-  It did so for `chat-persistence-cassandra`, and the test context failed with
-  `NoClassDefFoundError`. `-Dkotlin.compiler.daemon=false` avoids it.
+- **Compiled output went missing twice, and the cause is unknown.** At 15:00
+  and 15:01, two runs failed with `NoClassDefFoundError`. The compiler ran in
+  full and printed its usual warnings, and the test class loaded. Afterward,
+  `target/classes` and `target/test-classes` of `chat-persistence-cassandra`
+  held no `.class` file, and they held copies of the `.kt` sources. Both runs
+  failed loudly. **Do not read this as a daemon defect.** A third run with
+  `-Dkotlin.compiler.daemon=false` worked, but that is one run. Four later
+  runs with a new daemon, two of them the exact failing commands, all worked.
+  The poms copy no `.kt` file. IntelliJ built nothing that day. Sigma's
+  worktree did not exist yet, and its Codex session only read files. The
+  daemon keeps three log files of 1 MB, so the log of 15:00 is gone. If it
+  happens again, keep the evidence before the next build. `CHAT-lantftth`
+  adds a procedure for that, and a gate check that fails when a module runs
+  no test.
 - **Two sessions on one Docker VM kill Cassandra.** Docker events show
   `cassandra:4.1.3` killed for memory, exit 137, while a second session ran
   container tests. Every Cassandra call then failed with
