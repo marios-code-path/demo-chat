@@ -13,6 +13,16 @@
 #   ./shell-scripts/build-health.sh --install    # include the package and install phases
 #   ./shell-scripts/build-health.sh --integration # also run the container-backed tests
 #   ./shell-scripts/build-health.sh --ci          # build the image, then run every test
+#   ./shell-scripts/build-health.sh --record      # also write the list of modules that ran tests
+#
+# Each mode also checks which modules ran tests. A module whose test classes
+# are missing runs no test and passes, so a check on failures alone cannot see
+# it. shell-scripts/build-health-tests-unit.txt names the modules that run
+# tests without the integration profile, and build-health-tests-integration.txt
+# names those that run tests with it. A listed module that runs no test is
+# drift. An unlisted module that runs tests is drift too, so the list cannot go
+# stale in silence. --record writes the list of the mode from the run, and
+# skips that comparison. See CHAT-lantftth.
 #
 # --integration runs the container-backed tests, but it stops at the test
 # phase. The chat-shell tests reach the server through the
@@ -72,9 +82,14 @@ PHASE="test"
 OFFLINE="-o"
 PROFILES=""
 CI=""
+RECORD=""
 for arg in "$@"; do
     case "$arg" in
         --online)  OFFLINE="" ;;
+        # Writes the modules that ran tests to the list of this mode. Use it
+        # after a change adds or removes the tests of a module, and review the
+        # diff of the list before you commit it.
+        --record)  RECORD="yes" ;;
         --install) PHASE="install" ;;
         --integration) PROFILES="integration" ;;
         # Takes the phase and the profiles of the workflow integration job, and
@@ -104,6 +119,12 @@ PROFILE_ARG=""
 [ -n "$PROFILES" ] && PROFILE_ARG="-P$PROFILES"
 
 expected="$KNOWN_FAILING"
+
+# The modules that ran tests before, for this mode. The integration profile
+# adds container tests, so it has its own list. --install and --ci reach later
+# phases, but surefire runs the same tests in the test phase.
+TESTS_LIST="$DIR/build-health-tests-unit.txt"
+case ",$PROFILES," in *,integration,*) TESTS_LIST="$DIR/build-health-tests-integration.txt" ;; esac
 [ "$PHASE" != "test" ] && expected="$expected $KNOWN_FAILING_INSTALL"
 case ",$PROFILES," in *,integration,*) expected="$expected $KNOWN_FAILING_INTEGRATION" ;; esac
 
@@ -171,6 +192,47 @@ if [ -n "$resolved" ]; then
     echo "  → move the entry to the Resolved section, with the PR that fixed it"
     echo
     status=1
+fi
+
+# The modules that ran at least one test, by name. Surefire prints the module
+# in its execution header, and the aggregate line of that module follows it.
+ran="$(awk '/--- surefire:.*:test .* @ / {mod = $(NF-1)}
+$2 == "Tests" && $3 == "run:" && $9 == "Skipped:" && NF == 10 {
+    gsub(/,/, ""); if ($4 > 0) print mod
+}' "$log" | sort -u)"
+
+if [ -n "$RECORD" ]; then
+    {
+        echo "# Modules that ran tests in this mode. Written by build-health.sh --record."
+        echo "# Review the diff before you commit it. See CHAT-lantftth."
+        echo "$ran"
+    } > "$TESTS_LIST"
+    echo "recorded $(echo "$ran" | grep -c .) modules that ran tests to ${TESTS_LIST#"$ROOT"/}"
+    echo
+else
+    listed="$(grep -v -e '^#' -e '^$' "$TESTS_LIST" 2>/dev/null | sort -u)"
+    # A failing or skipped module is reported above, so it is not reported twice.
+    reported="$(printf '%s\n%s\n' "$actual" "$skipped" | grep -v '^$' | sort -u)"
+    no_tests="$(comm -23 <(echo "$listed") <(echo "$ran") | grep -v '^$' | comm -23 - <(echo "$reported"))"
+    unlisted="$(comm -13 <(echo "$listed") <(echo "$ran") | grep -v '^$')"
+
+    if [ -n "$no_tests" ]; then
+        # The failure this check exists for: the build passes, and nothing was
+        # tested. Look in target/test-classes before you trust any result.
+        echo "NO TESTS — ran tests before, ran none now:"
+        echo "$no_tests" | sed 's/^/  /'
+        echo "  → check target/classes and target/test-classes for .class files"
+        echo
+        status=1
+    fi
+
+    if [ -n "$unlisted" ]; then
+        echo "UNLISTED — ran tests, not named in ${TESTS_LIST#"$ROOT"/}:"
+        echo "$unlisted" | sed 's/^/  /'
+        echo "  → rerun with --record, then review and commit the list"
+        echo
+        status=1
+    fi
 fi
 
 if [ -n "$skipped" ]; then

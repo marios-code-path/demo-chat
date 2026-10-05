@@ -4,8 +4,18 @@ Known build-time deficiencies, what causes them, and what they take down with th
 
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
-**The `--ci` mode was measured on 2026-10-04 on branch
-`chat-xcmpudyb-message-id`**, with an empty temporary `DOCKER_CONFIG`. It exits
+**The `--ci` mode was measured on 2026-10-05 on branch
+`chat-lantftth-test-count-gate`, cut from `master` at `2b1074ab`**, with an
+empty temporary `DOCKER_CONFIG`. It exits 0 and reports no drift, and it wrote
+the integration list of `CHAT-lantftth`. 30 modules ran 1984 tests, with 0
+failures, 0 errors and 72 skipped. `chat-shell` ran 117 tests with 33 skipped.
+The image id after the run is `sha256:917d2c82`. The id before the run was not
+recorded, so this reading does not prove a rebuild. The default mode on the same
+branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
+modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
+that mode, because all of their tests carry the `integration` tag.
+
+The run on branch `chat-xcmpudyb-message-id`, on 2026-10-04, read this, with an empty temporary `DOCKER_CONFIG`. It exits
 0 and reports no drift. 30 modules ran 1969 tests, with 0 failures, 0 errors
 and 72 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved
 from `sha256:ce27764f` to `sha256:aa3058ff`, so this run rebuilt the
@@ -94,11 +104,23 @@ Do not trust this file on its own — run the verifier:
 
 It runs the build, diffs the failing modules against the list below, and exits non-zero when the two disagree — reporting anything **NEW** (failing but undocumented), **RESOLVED** (documented but passing), or **SKIPPED** (never built, so unknown). When it complains, update this file; that is the maintenance loop.
 
-**The verifier compares the failing-module set, and it does not compare test
-counts.** A count that moves passes in silence. Measured on 2026-10-01: the
-default run reported 1521 tests, this file recorded 1507, and the verifier
-reported that reality matched the document. So an executor must update the count
-lines below by reading the run, and not by trusting the exit code.
+**The verifier also checks which modules ran tests.** A module whose test
+classes are missing runs no test, and Maven reports it as a success. So the
+failing-module set alone cannot see it. `shell-scripts/build-health-tests-unit.txt`
+names the modules that run tests without the integration profile.
+`shell-scripts/build-health-tests-integration.txt` names those that run tests
+with it. The verifier reports **NO TESTS** for a listed module that ran no
+test, and **UNLISTED** for a module that ran tests and is not listed. Either
+one exits non-zero. After a change that adds or removes the tests of a
+module, run the mode with `--record`, review the diff of the list, and commit
+it. See `CHAT-lantftth`.
+
+**The verifier still does not compare test counts.** A count that moves passes
+in silence, as long as each listed module runs at least one test. Measured on
+2026-10-01: the default run reported 1521 tests, this file recorded 1507, and
+the verifier reported that reality matched the document. So an executor must
+update the count lines below by reading the run, and not by trusting the exit
+code.
 
 ## Current state
 
@@ -238,6 +260,40 @@ stale build output outside it.
 3. **Measure before classifying.** A failure that names a symbol the tree
    defines is a candidate for B10, and not a diagnosis. Repeat it in a clean
    full-reactor run. A failure that survives that run is real.
+
+---
+
+### B13 — compiled output went missing, cause unknown
+
+**Symptom.** Measured on 2026-10-04, in two runs under `CHAT-xcmpudyb`. The
+test context failed with `NoClassDefFoundError`. The Kotlin compiler had run
+in full, and the test class had loaded. Afterward, `target/classes` and
+`target/test-classes` of `chat-persistence-cassandra` held no `.class` file.
+They held copies of the `.kt` sources.
+
+**What was ruled out.** The poms copy no `.kt` file. IntelliJ built nothing
+that day. No other session built in the checkout at that time. Four later
+runs, two of them the exact failing commands with a new Kotlin daemon, all
+worked. One run with `-Dkotlin.compiler.daemon=false` worked, and that one
+run does not prove the daemon caused it.
+
+**Why it matters.** Both runs failed loudly. A run without `-Dtest` could
+instead find no test class in a module, run no test, and pass. The NO TESTS
+check of the verifier exists for that case.
+
+**If it happens again, keep the evidence before the next build.** A build
+cleans `target/`, and the Kotlin daemon keeps only three log files of 1 MB.
+
+1. Run `shell-scripts/capture-build-evidence.sh <module>...` for each module
+   that lost its output. It prints the directory it wrote.
+2. Do not run Maven before step 1 completes.
+3. Attach the directory path to the fp issue that met the failure.
+
+The script keeps the file list of each output directory with times to the
+second, the Kotlin daemon logs of the last day, the daemon, Maven and IDE
+processes, the Docker kill events, and the state of the checkout.
+`docker events` can wait past its time bound on this machine. The script
+stops it after 30 seconds, and the file then says so.
 
 ---
 
