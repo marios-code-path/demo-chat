@@ -4,7 +4,12 @@ import com.demo.chat.auth.client.RegisteredClientFactory
 import com.demo.chat.config.JACKSON_2_OBJECT_MAPPER
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Qualifier
+import org.springframework.beans.factory.ObjectProvider
+import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties
 import org.springframework.context.annotation.*
 import org.springframework.core.io.ClassPathResource
@@ -15,40 +20,81 @@ import java.io.File
 
 @Profile("client-init")
 @Configuration
+@EnableConfigurationProperties(AgentClientProperties::class)
 class ClientInitializer(val repo: RegisteredClientRepository,
-                        @Qualifier(JACKSON_2_OBJECT_MAPPER) val mapper: ObjectMapper) {
+                        @Qualifier(JACKSON_2_OBJECT_MAPPER) val mapper: ObjectMapper,
+                        val agentProps: AgentClientProperties) {
 
     @Bean
     fun loadOauth2AuthorizationServerProperties(properties: OAuth2AuthorizationServerProperties): ApplicationRunner =
         ApplicationRunner { args ->
-            val clientProps = Oauth2ClientProperties().apply {
-                val client = properties.client["chat-client"]!!
-                val reg = client.registration
+            // Every entry registers, not chat-client alone. See CHAT-frcrctdp.
+            properties.client.forEach { (name, client) ->
+                val clientProps = Oauth2ClientProperties().apply {
+                    val reg = client.registration
 
-                // Boot 4 types these properties as nullable. A registration
-                // with no client id or no secret cannot build a client, so
-                // each failure names the value it missed.
-                val clientId = reg.clientId
-                    ?: error("The chat-client registration carries no client id")
+                    // Boot 4 types these properties as nullable. A registration
+                    // with no client id or no secret cannot build a client, so
+                    // each failure names the value it missed.
+                    val clientId = reg.clientId
+                        ?: error("The $name registration carries no client id")
 
-                this.clientId = clientId
-                this.id = clientId
-                this.additionalScopes = reg.scopes.toList()
-                this.authorizationGrantTypes = reg.authorizationGrantTypes.toList()
-                this.clientAuthenticationMethods = reg.clientAuthenticationMethods.toList()
-                this.redirectUriPrefix = ""
-                this.redirectUris = reg.redirectUris.toList()
-                this.requiresAuthorizationConcent = client.isRequireAuthorizationConsent
-                this.secret = reg.clientSecret
-                    ?: error("The chat-client registration carries no client secret")
+                    this.clientId = clientId
+                    this.id = clientId
+                    this.additionalScopes = reg.scopes.toList()
+                    this.authorizationGrantTypes = reg.authorizationGrantTypes.toList()
+                    this.clientAuthenticationMethods = reg.clientAuthenticationMethods.toList()
+                    this.redirectUriPrefix = ""
+                    this.redirectUris = reg.redirectUris.toList()
+                    this.requiresAuthorizationConcent = client.isRequireAuthorizationConsent
+                    this.secret = reg.clientSecret
+                        ?: error("The $name registration carries no client secret")
+                }
+                val registered = RegisteredClientFactory(clientProps)()
+
+                val oldClient = repo.findByClientId(registered.clientId)
+
+                if(oldClient == null)
+                    repo.save(registered)
             }
-            val client = RegisteredClientFactory(clientProps)()
-
-            val oldClient = repo.findByClientId(client.clientId)
-
-            if(oldClient == null)
-                repo.save(client)
         }
+
+    /**
+     * Registers one client per agent. See `CHAT-frcrctdp`.
+     *
+     * It runs before the other runners, so a collision fails the start before
+     * any other client is saved.
+     */
+    @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
+    fun registerAgentClients(
+        serverProps: ObjectProvider<OAuth2AuthorizationServerProperties>,
+        clientProps: Oauth2ClientProperties,
+    ): ApplicationRunner = ApplicationRunner { args ->
+        val agents = agentProps.requireValid()
+        if (agents.isEmpty()) return@ApplicationRunner
+        AgentClients.requireNoCollision(
+            agents.map { it.clientId },
+            mapOf(
+                "app.oauth2.client" to listOf(clientProps.clientId),
+                "spring.security.oauth2.authorizationserver.client" to bootClientIds(serverProps),
+                "--clientpath" to clientPathIds(args),
+            ),
+        )
+        AgentClients.reconcile(repo, agents, agentProps.agentScope!!)
+    }
+
+    private fun clientPathIds(args: ApplicationArguments): List<String> =
+        args.getOptionValues("clientpath")?.firstOrNull()?.let { listOf(readClientPath(it).clientId) }.orEmpty()
+
+    private fun readClientPath(clientPath: String): Oauth2ClientProperties {
+        val resource = if (clientPath.startsWith("classpath:")) {
+            ClassPathResource(clientPath.substring(10))
+        } else {
+            UrlResource(File(clientPath).toURI().toURL())
+        }
+        return mapper.readValue(resource.inputStream, Oauth2ClientProperties::class.java)
+    }
 
     @Bean
     fun loadClient(): ApplicationRunner =
@@ -61,14 +107,7 @@ class ClientInitializer(val repo: RegisteredClientRepository,
                     ?.firstOrNull()
                     ?: error("The clientpath option carries no value")
 
-                val resource = if(clientPath.startsWith("classpath:")) {
-                    ClassPathResource(clientPath.substring(10))
-                } else {
-                    UrlResource(File(clientPath).toURI().toURL())
-                }
-
-                val clientProps = mapper.readValue(resource.inputStream, Oauth2ClientProperties::class.java)
-                saveClient(clientProps)
+                saveClient(readClientPath(clientPath))
             }
         }
 
