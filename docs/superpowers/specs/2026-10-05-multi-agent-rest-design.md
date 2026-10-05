@@ -3,7 +3,8 @@
 Issue `CHAT-frcrctdp`. Parent issue `CHAT-aqpcacwv`.
 
 The owner approved the design in sections on 2026-10-05. Sigma reviewed the
-design on the same day. This document includes the four review corrections.
+design twice on the same day. This document includes the corrections of both
+reviews.
 
 ## Problem
 
@@ -101,6 +102,20 @@ too, on REST and on the core. So a launch that sets the properties directly
 is also checked. The message reads:
 `app.security.agents names reserved username '<name>'. An agent must be a plain user.`
 
+### The comparison rule ignores case
+
+The reserved check and the duplicate username check compare handles after
+`lowercase(Locale.ROOT)`. So `admin` is reserved, and `Claude` and `claude`
+are one handle.
+
+**Why.** `LuceneIndex` stores `handle` as a `TextField`, and
+`StandardAnalyzer` lowercases each token. So a lookup for `admin` finds the
+user `Admin`. A check that compares case would let `--agent x=admin` select
+the `Admin` identity.
+
+The client id duplicate check compares exactly. A client id is an OAuth
+value, and OAuth compares it exactly.
+
 ### The old keys fail the start
 
 `AgentSecurityPropertiesGuard` reads the `Environment`. It fails the start
@@ -117,10 +132,21 @@ with no agent and refuse every token.
 `ChatUserDetails`. A value is written once at startup.
 
 `AgentIdentityLifecycle` resolves every entry before the web server starts.
-It keeps phase `Int.MAX_VALUE - 3072`. A handle that answers zero users, or
-two users or more, fails the start:
+It keeps phase `Int.MAX_VALUE - 3072`.
+
+The lookup answers every user whose indexed handle matches the query. The
+lifecycle keeps only a user whose `handle` equals the configured handle
+exactly. A handle that keeps zero users, or two users or more, fails the
+start:
 
 `The agent username '<name>' for client '<id>' answered <n> users. It must answer exactly one user.`
+
+Two entries that resolve to one user key fail the start:
+
+`app.security.agents clients '<id-a>' and '<id-b>' resolve to one user key.`
+
+The case rule above makes this case rare. The key check is the last guard,
+because a store can hold two users that the index cannot separate.
 
 `AgentAuthenticationConverter` reads `client_id` and looks it up in
 `AgentIdentities`. A missing claim or an unknown client raises
@@ -161,7 +187,7 @@ either one exits 2 and names `--agent`.
 
 | Service | Emitted properties |
 |---|---|
-| `core` | `app.init.initialUsers.<H>.handle=<H>`, `.name=<H>`, `.imageUri=chatimg://agent.png`, `app.security.agents[i].client-id`, `app.security.agents[i].username`, `app.security.required-scope` |
+| `core` | `app.init.initialUsers[<H>].handle=<H>`, `.name=<H>`, `.imageUri=chatimg://agent.png`, `app.security.agents[i].client-id`, `app.security.agents[i].username`, `app.security.required-scope` |
 | `rest` | `app.security.agents[i].client-id`, `app.security.agents[i].username`, `app.security.required-scope` |
 | `authserv` | `app.oauth2.agents[i].client-id`, `app.oauth2.agents[i].username`, `app.oauth2.agent-scope` |
 
@@ -184,7 +210,13 @@ phase. A core launch without that phase fails the start and names the handle.
 | authentication | `client_secret_basic` |
 | scope | `app.oauth2.agent-scope` |
 | consent | not required |
-| secret | 32 random bytes, stored as `{bcrypt}` |
+| secret | 32 random bytes, stored with the `{bcrypt}` prefix |
+| access token format | `SELF_CONTAINED`, a signed JWT |
+| access token lifetime | 300 seconds |
+
+The factory sets the token format and the lifetime explicitly. It does not
+rely on the library defaults. REST and the core decode a JWT locally, so an
+opaque `REFERENCE` token would answer 401 on every call.
 
 The server prints each new secret once:
 
@@ -197,7 +229,8 @@ client. Each start generates a new secret for every agent.
 
 **A restart invalidates every agent secret.** Each adapter must then request a
 new token. A token issued before the restart stays valid until it expires,
-after 300 seconds, because the signing JWK comes from a stable file.
+because the signing JWK comes from a stable file. The factory sets that
+lifetime to 300 seconds.
 
 ### The client-init profile
 
@@ -210,8 +243,19 @@ The server reads each agent client from the repository.
   field that differs. The operator deletes the row, and the next start
   registers it again.
 
-The agent shape is the grant, the authentication method and the scope set in
-the table above.
+The agent shape is every row of the table above except `id`, `clientId` and
+the secret value:
+
+- the grant set is `client_credentials` alone
+- the authentication method set is `client_secret_basic` alone
+- the scope set is `app.oauth2.agent-scope` alone
+- consent is not required
+- the stored secret starts with `{bcrypt}`
+- the access token format is `SELF_CONTAINED`
+- the access token lifetime is 300 seconds
+
+A row that differs in any of these fails the start. The message names each
+field that differs.
 
 **A lost secret has no recovery path.** The operator deletes the row.
 
@@ -236,9 +280,15 @@ So an older row would keep its secret, grants and scopes with no warning.
 
 ### The shipped chat-client
 
-`oauth2-client.yml` removes `chat.mcp` from `additional-scopes`. No JDBC row
-carries that client, because `client-init` never saves it. So no stored row
-needs a change.
+`oauth2-client.yml` removes `chat.mcp` from `additional-scopes`.
+
+No shipped default JDBC registration carries `chat.mcp`. The `client-init`
+profile saves `chatClient` from `application.yml`, and its scopes are `auth`,
+`message`, `topic`, `user` and `openId`. It never saves the client of
+`oauth2-client.yml`. An operator override or a `--clientpath` file can still
+store a client with `chat.mcp`. The collision check above refuses such a row
+when its client id is also an agent client id. This work does not change any
+other stored row.
 
 ### A defect found and not repaired
 
@@ -252,23 +302,35 @@ repair it.
 
 - `AgentSecurityPropertiesTests`: a duplicate client id, a duplicate
   username, each reserved username, an empty list, a missing scope, and the
-  old key guard. Each case fails and names the value.
+  old key guard. Each case fails and names the value. Case variants are
+  separate cases: `admin`, `ANON` and `service` are refused, and `Claude`
+  with `claude` is a duplicate.
 - `AgentAuthenticationConverterTests`: two agents. Each token selects its own
   principal. A missing `client_id` and an unknown one each raise
   `BadCredentialsException`.
 - `AgentIdentityLifecycleTests` and `AgentIdentityResolutionTests`: both
-  handles resolve. A missing second handle fails the start and names it.
+  handles resolve. A missing second handle fails the start and names it. A
+  lookup that answers `Claude` for the configured handle `claude` keeps zero
+  users and fails the start. Two entries that resolve to one user key fail
+  the start.
 - A binding test reads `app.init.initialUsers` from a yml source and from
-  system properties together, and finds both users. A second binding test
-  sets `app.security.agents` in both sources, and finds the system property
-  list alone.
+  system properties together, and finds both users. The system properties
+  use the bracket form, `app.init.initialUsers[<H>]`. The test includes the
+  pair `Bot_1` and `Bot1`, and finds two users with their own handles.
+  **Why.** Spring removes `_` from a map key without brackets. So `Bot_1` and
+  `Bot1` would bind to one key, and one user would replace the other. A
+  second binding test sets `app.security.agents` in both sources, and finds
+  the system property list alone.
 - `AgentClientRegistrationTests`: two agent clients each receive a
   `client_credentials` token. The token `scope` is `chat.mcp`, and the token
-  `client_id` is that client. This proves that a `{bcrypt}` secret is
-  accepted.
+  `client_id` is that client. Each token is a JWT that the agent decoder
+  accepts, and it expires 300 seconds after it is issued. This proves that a
+  `{bcrypt}` secret is accepted.
 - `AgentClientCollisionTests`: one case per collision source.
-- `ClientInitializerTest`: save and print once, keep a matching row, and fail
-  on a row with another shape.
+- `ClientInitializerTest`: save and print once, and keep a matching row. Each
+  field of the agent shape gets its own drifted row, and each one fails the
+  start and names that field. The fields are grant, authentication method,
+  scope, consent, secret prefix, token format and token lifetime.
 - `chat-build`: `test-flags.sh` golden cases for `core`, `rest` and
   `authserv` with two `--agent` values. Further cases refuse a reserved
   handle, a duplicate, and each removed flag.
@@ -297,6 +359,11 @@ once, so the mutations target the wiring.
   token. The relay owner row test must fail.
 - Remove the duplicate client id check. Its test must fail.
 - Remove the reserved handle check. Its test must fail.
+- Compare reserved handles with case. The `admin` case must fail.
+- Remove the exact handle filter in the lifecycle. The `claude` case must
+  fail.
+- Remove the bracket form from the emitted core flags. The golden case and
+  the `Bot_1` binding case must fail.
 
 ### Gate
 
