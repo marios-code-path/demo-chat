@@ -3339,8 +3339,8 @@ Expected: the `agent-http` job passes. Open its log with `gh run view --job <id>
 | `client.json` defect filed | 6 |
 | Two-process relay with two agents, unlisted 401 | 7 |
 | HTTP and relay classes run in every automatic gate with zero skipped tests | 8 |
-| Documents, drift relink, register | 8 |
-| `build-health.sh --ci` | 9 |
+| Documents, drift relink, register | 9 |
+| `build-health.sh --ci` | 10 |
 
 ## Deviation From the Spec
 
