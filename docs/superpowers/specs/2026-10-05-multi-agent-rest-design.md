@@ -317,8 +317,8 @@ repair it.
   system properties together, and finds both users. The system properties
   use the bracket form, `app.init.initialUsers[<H>]`. The test includes the
   pair `Bot_1` and `Bot1`, and finds two users with their own handles.
-  **Why.** Spring removes `_` from a map key without brackets. So `Bot_1` and
-  `Bot1` would bind to one key, and one user would replace the other. A
+  **Why.** Without brackets, relaxed binding can select the same handle value
+  for both entries. Brackets preserve distinct handle values. A
   second binding test sets `app.security.agents` in both sources, and finds
   the system property list alone.
 - `AgentClientRegistrationTests`: two agent clients each receive a
