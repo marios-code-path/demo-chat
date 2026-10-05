@@ -121,4 +121,26 @@ class AgentSecurityPropertiesTests {
     fun `usernames that differ by case alone are one username`() =
         refusal(*complete, "app.security.agents[0].username=Claude", "app.security.agents[1].username=claude",
             message = "app.security.agents names username 'claude' twice.")
+
+    @Test
+    fun `a higher source replaces the whole agent list`() {
+        val sources = org.springframework.core.env.MutablePropertySources().apply {
+            addLast(org.springframework.core.env.MapPropertySource("launch", mapOf(
+                "app.security.agents[0].client-id" to "client-launch",
+                "app.security.agents[0].username" to "launch",
+            )))
+            addLast(org.springframework.core.env.MapPropertySource("file", mapOf(
+                "app.security.agents[0].client-id" to "client-file-a",
+                "app.security.agents[0].username" to "file-a",
+                "app.security.agents[1].client-id" to "client-file-b",
+                "app.security.agents[1].username" to "file-b",
+            )))
+        }
+
+        val bound = org.springframework.boot.context.properties.bind.Binder(
+            org.springframework.boot.context.properties.source.ConfigurationPropertySources.from(sources)
+        ).bind("app.security", AgentSecurityProperties::class.java).get()
+
+        assertThat(bound.agents.map { it.clientId }).containsExactly("client-launch")
+    }
 }
