@@ -16,7 +16,7 @@ class AgentResourceServerChain(
 ) {
 
     /** The authority that every application route requires. */
-    fun requiredAuthority(): String = properties.requireComplete().agent.requiredAuthority()
+    fun requiredAuthority(): String = properties.requireComplete().requiredAuthority()
 
     fun build(http: ServerHttpSecurity): SecurityWebFilterChain = http
         .authorizeExchange {

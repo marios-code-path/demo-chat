@@ -22,7 +22,7 @@ import java.time.Duration
  * the `Admin` key, and the agent key is not that key.
  *
  * **The handle is the match key.** `AgentIdentityLifecycle` resolves
- * `app.security.agent.username` through `ChatUserService.findByUsername`, and it
+ * each `app.security.agents[n].username` through `ChatUserService.findByUsername`, and it
  * requires exactly one answer. The deployment docs name `Agent`, which is the
  * handle this test reads.
  *

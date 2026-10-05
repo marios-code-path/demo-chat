@@ -29,10 +29,8 @@ class AgentSecurityConfiguration {
 
     @Bean
     fun agentAuthenticationConverter(
-        identity: AgentIdentity,
-        properties: AgentSecurityProperties,
-    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
-        AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
+        identities: AgentIdentities,
+    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> = AgentAuthenticationConverter(identities)
 
     /**
      * **A REST launch refuses the core REST controllers here.** Every REST
@@ -52,7 +50,7 @@ class AgentSecurityConfiguration {
     }
 
     @Bean
-    fun agentIdentity(): AgentIdentity = AgentIdentity()
+    fun agentIdentities(): AgentIdentities = AgentIdentities()
 
     @Bean
     fun restRSocketAuthenticationManager(): ReactiveAuthenticationManager =
@@ -63,7 +61,7 @@ class AgentSecurityConfiguration {
     @Bean
     fun <T> agentIdentityLifecycle(
         services: CompositeServiceBeans<T, String>,
-        identity: AgentIdentity,
+        identities: AgentIdentities,
         properties: AgentSecurityProperties,
-    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(services.userService(), identity, properties)
+    ): AgentIdentityLifecycle<T> = AgentIdentityLifecycle(services.userService(), identities, properties)
 }

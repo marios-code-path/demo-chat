@@ -1,7 +1,7 @@
 package com.demo.chat.deploy.test.security
 
 import com.demo.chat.config.agent.AgentAuthenticationConverter
-import com.demo.chat.config.agent.AgentIdentity
+import com.demo.chat.config.agent.AgentIdentities
 import com.demo.chat.config.agent.AgentJwtDecoderFactory
 import com.demo.chat.config.agent.AgentResourceServerChain
 import com.demo.chat.config.agent.AgentSecurityProperties
@@ -83,11 +83,13 @@ class BothChainsApplication {
 class ApplicationChainConfiguration {
 
     @Bean
-    fun agentIdentity(): AgentIdentity = AgentIdentity().apply {
+    fun agentIdentities(): AgentIdentities = AgentIdentities().apply {
         resolve(
-            ChatUserDetails(
-                User.create(Key.of(7L, 1L), "agent-svc", "agent-svc", "http://agent-svc"),
-                emptyList(),
+            mapOf(
+                "client-under-test" to ChatUserDetails(
+                    User.create(Key.of(7L, 1L), "agent-svc", "agent-svc", "http://agent-svc"),
+                    emptyList<String>(),
+                )
             )
         )
     }
@@ -98,10 +100,8 @@ class ApplicationChainConfiguration {
 
     @Bean
     fun agentAuthenticationConverter(
-        identity: AgentIdentity,
-        properties: AgentSecurityProperties,
-    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> =
-        AgentAuthenticationConverter(identity, properties.requireComplete().agent.clientId)
+        identities: AgentIdentities,
+    ): Converter<Jwt, Mono<AbstractAuthenticationToken>> = AgentAuthenticationConverter(identities)
 
     @Bean
     fun agentResourceServerChain(
