@@ -5,11 +5,16 @@ Known build-time deficiencies, what causes them, and what they take down with th
 **Verified against `master` `98e9cad9` on 2026-09-17** by three verifier modes — default, `--install` and `--integration` — each reporting no drift, against Docker Engine 29.7.2.
 
 **The `--ci` mode was measured on 2026-10-04 on branch
-`chat-uxgdzpag-index-reload`, after it merged `master` at `5de314b8`**, with
-an empty temporary `DOCKER_CONFIG`. It exits 0 and reports no drift. 30
-modules ran 1943 tests, with 0 failures, 0 errors and 72 skipped. `chat-shell`
-ran 109 tests with 33 skipped. The image id moved from `sha256:29f22d87` to
-`sha256:b66d6f29`, so this run rebuilt the chat-shell test image. The count is
+`chat-xcmpudyb-message-id`**, with an empty temporary `DOCKER_CONFIG`. It exits
+0 and reports no drift. 30 modules ran 1969 tests, with 0 failures, 0 errors
+and 72 skipped. `chat-shell` ran 109 tests with 33 skipped. The image id moved
+from `sha256:ce27764f` to `sha256:aa3058ff`, so this run rebuilt the
+chat-shell test image. The count is the 1947 of PR #184 and the 22 message
+tests of `CHAT-xcmpudyb`. The default mode on the same branch ran 1629 tests
+with 37 skipped, and it reports no drift.
+
+The run on branch `chat-uxgdzpag-index-reload` read 1943 tests with 72
+skipped, at image `sha256:b66d6f29`. The count is
 the 1942 of PR #182 and the one index reload case of `RedisGrantRestartTests`.
 
 The run on branch `chat-core-access-seal` read 1942 tests with 72 skipped, at
