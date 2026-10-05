@@ -1,0 +1,32 @@
+# Modules that ran tests in this mode. Written by build-health.sh --record.
+# Review the diff before you commit it. See CHAT-lantftth.
+chat-authorization-server
+chat-client-consul
+chat-client-rsocket
+chat-core
+chat-crypto
+chat-deploy
+chat-deploy-cassandra
+chat-deploy-kafka
+chat-deploy-memory
+chat-deploy-memory-integration-tests
+chat-deploy-redis
+chat-embedding-local
+chat-embedding-openai
+chat-index-cassandra
+chat-index-lucene
+chat-mcp
+chat-messaging-kafka
+chat-messaging-memory
+chat-persistence-cassandra
+chat-persistence-memory
+chat-persistence-redis
+chat-persistence-xstream
+chat-security
+chat-service-composite
+chat-service-controller
+chat-shell
+chat-vector-embedded
+chat-vector-redis
+chat-vector-simple
+chat-webflux
