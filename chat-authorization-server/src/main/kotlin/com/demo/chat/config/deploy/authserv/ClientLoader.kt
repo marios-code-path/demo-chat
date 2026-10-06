@@ -96,6 +96,17 @@ class ClientInitializer(val repo: RegisteredClientRepository,
         return mapper.readValue(resource.inputStream, Oauth2ClientProperties::class.java)
     }
 
+    /**
+     * Saves `app.oauth2.client` once, as the memory repository holds it. See
+     * `CHAT-uizwrxmf`.
+     */
+    @Bean
+    fun registerAppClient(clientProps: Oauth2ClientProperties): ApplicationRunner =
+        ApplicationRunner {
+            if (clientProps.clientId.isBlank()) error("app.oauth2.client carries no client id")
+            saveClient(clientProps)
+        }
+
     @Bean
     fun loadClient(): ApplicationRunner =
         ApplicationRunner { args ->

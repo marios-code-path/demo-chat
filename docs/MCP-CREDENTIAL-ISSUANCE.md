@@ -71,8 +71,13 @@ reads `app.oauth2.client` from `oauth2-client.yml`. The client there carries the
 
 **The `jdbc` Maven profile does not select the JDBC client repository.** That
 profile is a build profile, and it is always active for this service. The Spring
-profile alone selects the repository. Read the next limit before you use the
-`client-init` path.
+profile alone selects the repository.
+
+The `client-init` Spring profile saves clients in the selected repository. It
+saves `app.oauth2.client`, each `spring.security.oauth2.authorizationserver.client`
+entry, and one client for each `--agent`. It saves each client once. Since
+`CHAT-uizwrxmf`, `chat-build authserv` passes no `--clientpath`. The option
+stays available, and it adds one client from a JSON file.
 
 Wait until the log prints `Started ChatApp`. The token endpoint answers 404
 before that line.

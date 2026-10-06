@@ -15,6 +15,11 @@ branch ran 1644 tests with 37 skipped and reports no drift. It ran tests in 28
 modules. `chat-client-consul` and `chat-deploy-redis` report `Tests run: 0` in
 that mode, because all of their tests carry the `integration` tag.
 
+The default mode on branch `chat-uizwrxmf-client-init`, on 2026-10-06, exits
+0 and reports no drift. 30 modules ran 1706 tests, with 0 failures, 0 errors
+and 41 skipped. The count is the 1703 below and three `ClientInitializerTest`
+cases. The `--ci` mode did not run on this branch. See `CHAT-uizwrxmf`.
+
 The run on branch `chat-frcrctdp-multi-agent`, on 2026-10-05, with an empty
 temporary `DOCKER_CONFIG`, exits 0 and reports no drift. 30 modules ran 2043
 tests, with 0 failures, 0 errors and 76 skipped. The image id moved from

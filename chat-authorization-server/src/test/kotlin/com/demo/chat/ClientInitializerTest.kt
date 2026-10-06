@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import java.time.Duration
 import com.demo.chat.config.deploy.authserv.Oauth2ClientProperties
 import com.demo.chat.config.deploy.authserv.ClientInitializer
+import com.demo.chat.auth.client.RegisteredClientFactory
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import org.junit.jupiter.api.Test
@@ -57,6 +58,48 @@ class ClientInitializerTest {
         Mockito.verify(repo, Mockito.times(1)).save(clientCaptor.capture())
     }
 
+
+    private fun appClient() = Oauth2ClientProperties().apply {
+        clientId = "app-client-id"
+        id = "app-client-id"
+        secret = "{noop}secret"
+        clientAuthenticationMethods = listOf("client_secret_basic")
+        authorizationGrantTypes = listOf("client_credentials")
+        additionalScopes = listOf("openid")
+    }
+
+    @Test
+    fun `an absent app client is saved once`() {
+        Mockito.`when`(repo.findByClientId("app-client-id")).thenReturn(null)
+
+        ClientInitializer(repo, mapper, AgentClientProperties())
+            .registerAppClient(appClient()).run(DefaultApplicationArguments())
+
+        val saved = ArgumentCaptor.forClass(RegisteredClient::class.java)
+        Mockito.verify(repo, Mockito.times(1)).save(saved.capture())
+        assertThat(saved.value.clientId).isEqualTo("app-client-id")
+        assertThat(saved.value.scopes).containsExactly("openid")
+    }
+
+    @Test
+    fun `a stored app client is kept`() {
+        Mockito.`when`(repo.findByClientId("app-client-id"))
+            .thenReturn(RegisteredClientFactory(appClient())())
+
+        ClientInitializer(repo, mapper, AgentClientProperties())
+            .registerAppClient(appClient()).run(DefaultApplicationArguments())
+
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
+
+    @Test
+    fun `an app client with no client id fails the start`() {
+        assertThatThrownBy {
+            ClientInitializer(repo, mapper, AgentClientProperties())
+                .registerAppClient(Oauth2ClientProperties()).run(DefaultApplicationArguments())
+        }.hasMessage("app.oauth2.client carries no client id")
+        Mockito.verify(repo, Mockito.never()).save(Mockito.any())
+    }
 
     private fun agentProps() = AgentClientProperties().apply {
         agentScope = "chat.mcp"
