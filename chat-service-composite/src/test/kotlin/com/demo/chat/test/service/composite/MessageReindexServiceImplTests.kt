@@ -286,9 +286,17 @@ class MessageReindexServiceImplTests {
             .isFalse()
     }
 
+    /**
+     * Starts a run and waits for its durable terminal record.
+     *
+     * running=false is not enough. finishRun clears running first, then
+     * writes the terminal job record, then the durable job. So the durable
+     * job proves that both writes are done. CHAT-pnjmfhnb.
+     */
     private fun runAndAwait(service: MessageReindexService<Long>): VectorIndexStatus<Long> {
         Assertions.assertThat(service.start().block()!!.status.running).isTrue()
-        return awaitFinished(service)
+        awaitDurableOutcome()
+        return service.status()
     }
 
     /**
@@ -587,6 +595,23 @@ class MessageReindexServiceImplTests {
 
         Assertions.assertThat(recordPubSub.sent.map { it.data })
             .anyMatch { text -> text.contains("rebuild failed") }
+    }
+
+    // The run clears running before it writes the terminal record. A pause on
+    // that record holds the window open, so a helper that waited for running
+    // alone would read one record here. CHAT-pnjmfhnb.
+    @Test
+    fun `runAndAwait returns after the terminal record`() {
+        given(persistence.all()).willReturn(Flux.just(message(1L)))
+        recordPersistence.onAdd = {
+            if (recordPersistence.added.size == 1) Thread.sleep(300)
+        }
+
+        runAndAwait(service)
+
+        Assertions.assertThat(recordPubSub.sent.map { it.data })
+            .anyMatch { text -> text.contains("rebuild succeeded") }
+        Assertions.assertThat(jobStore.written.last().outcome).isEqualTo(JobOutcome.SUCCEEDED)
     }
 
     // The terminal write runs once. A recovery handler that also covered the
