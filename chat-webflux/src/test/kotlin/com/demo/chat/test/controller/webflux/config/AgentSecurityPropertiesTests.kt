@@ -143,4 +143,23 @@ class AgentSecurityPropertiesTests {
 
         assertThat(bound.agents.map { it.clientId }).containsExactly("client-launch")
     }
+
+    /**
+     * The old keys alone give the guard message, whatever bean calls first.
+     * See `CHAT-frcrctdp`.
+     */
+    @Test
+    fun `an old key alone fails requireComplete with the guard message`() {
+        runner.withPropertyValues(
+            "app.security.agent.client-id=client-a",
+            "app.security.agent.username=agent-a",
+            "app.security.jwt.jwk-path=/tmp/agent-test.jwk",
+        ).run { context ->
+            val properties = context.getBean(AgentSecurityProperties::class.java)
+            assertThat(properties.isConfigured()).isTrue()
+            assertThatThrownBy { properties.requireComplete() }.hasMessage(
+                "app.security.agent.* is replaced by app.security.agents[n] and app.security.required-scope. See CHAT-frcrctdp."
+            )
+        }
+    }
 }

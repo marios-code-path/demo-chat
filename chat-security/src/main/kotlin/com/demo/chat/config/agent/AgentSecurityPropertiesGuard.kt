@@ -16,15 +16,16 @@ object AgentSecurityPropertiesGuard {
 
     private val LEGACY = ConfigurationPropertyName.of("app.security.agent")
 
+    const val MESSAGE =
+        "app.security.agent.* is replaced by app.security.agents[n] and app.security.required-scope. " +
+            "See CHAT-frcrctdp."
+
     fun requireNoLegacyKeys(environment: ConfigurableEnvironment) {
         val present = ConfigurationPropertySources.get(environment)
             .filterIsInstance<IterableConfigurationPropertySource>()
             .any { source -> source.any { LEGACY.isAncestorOf(it) } }
         if (present) {
-            throw ChatException(
-                "app.security.agent.* is replaced by app.security.agents[n] and app.security.required-scope. " +
-                    "See CHAT-frcrctdp."
-            )
+            throw ChatException(MESSAGE)
         }
     }
 }

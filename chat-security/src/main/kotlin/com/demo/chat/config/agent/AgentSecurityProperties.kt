@@ -26,14 +26,23 @@ class AgentSecurityProperties {
     var jwt: Jwt? = null
 
     /**
+     * The single agent keys that `CHAT-frcrctdp` replaced. This property binds
+     * them only to refuse them. So [requireComplete] names the new keys,
+     * whichever bean calls it first.
+     */
+    var agent: Map<String, String>? = null
+
+    /**
      * The handles that hold `ROLE_SERVICE`. `UserDetailsConfiguration` reads the
      * same property with the same default. An agent must not name one of them.
      */
     var serviceAccounts: List<String> = listOf(DEFAULT_SERVICE_ACCOUNT)
 
-    fun isConfigured(): Boolean = requiredScope != null || agents.isNotEmpty() || jwt != null
+    fun isConfigured(): Boolean =
+        agent != null || requiredScope != null || agents.isNotEmpty() || jwt != null
 
     fun requireComplete(): Complete {
+        if (agent != null) throw ChatException(AgentSecurityPropertiesGuard.MESSAGE)
         val scope = requiredScope?.takeIf { it.isNotBlank() }
             ?: throw ChatException("app.security.required-scope is required.")
         if (agents.isEmpty()) {
