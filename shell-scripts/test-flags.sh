@@ -85,6 +85,8 @@ CASES=(
 REFUSALS=(
   "refuse-old-client-id|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id x|2|--agent CLIENT_ID=HANDLE"
   "refuse-old-username|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-username Agent|2|--agent CLIENT_ID=HANDLE"
+  "refuse-old-client-id-empty|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-client-id=|2|--agent CLIENT_ID=HANDLE"
+  "refuse-old-username-empty|rest --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent-username=|2|--agent CLIENT_ID=HANDLE"
   "refuse-reserved|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=admin|1|reserved handle 'admin'"
   "refuse-duplicate-client|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Agent --agent a=Claude|1|client id 'a' twice"
   "refuse-duplicate-handle|core --memory --run --notls --long --node-id 0 --jwk $GOLDEN_JWK --agent a=Claude --agent b=claude|1|handle 'claude' twice"

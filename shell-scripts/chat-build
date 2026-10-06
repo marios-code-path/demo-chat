@@ -1104,7 +1104,9 @@ def main() -> int:
                       file=sys.stderr)
                 return 1
 
-    if args.agent_client_id or args.agent_username:
+    # Compare with None. An empty value such as --agent-client-id= is still a
+    # use of a removed flag.
+    if args.agent_client_id is not None or args.agent_username is not None:
         print("chat-build: --agent-client-id and --agent-username are removed. "
               "Use --agent CLIENT_ID=HANDLE. See CHAT-frcrctdp.", file=sys.stderr)
         return 2
