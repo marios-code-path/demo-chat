@@ -79,6 +79,10 @@ entry, and one client for each `--agent`. It saves each client once. Since
 `CHAT-uizwrxmf`, `chat-build authserv` passes no `--clientpath`. The option
 stays available, and it adds one client from a JSON file.
 
+An agent client id must not equal the client id or the row id of another
+client. The start refuses such an id before it writes. The start also refuses
+a row id that the store holds for another client.
+
 Wait until the log prints `Started ChatApp`. The token endpoint answers 404
 before that line.
 
