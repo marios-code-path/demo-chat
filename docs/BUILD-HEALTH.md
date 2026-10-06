@@ -60,7 +60,7 @@ same branch, before the miss code, read 1939 tests with 73 skipped at image
 `sha256:7b54c81b`.
 
 The opt-in two-process test `RestToCoreBearerDeploymentTests` counts as skipped
-in this run. CI does not run it.
+in this run. CI did not run it then. The reactor run still skips it. `shell-scripts/agent-http-gate.sh` runs it apart, with `RestAgentSelectionTests`, and `--ci` fails when that gate fails. See `CHAT-frcrctdp`.
 
 The run on branch `chat-mpjtnpqv-token-relay` read 1905 tests with 67 skipped
 at image `sha256:5a07f4a6`. Earlier runs on that branch read 1903 tests with 66 skipped at image

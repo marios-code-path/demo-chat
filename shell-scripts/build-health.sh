@@ -46,6 +46,9 @@
 # So --ci measures the same phase, profiles and image path as CI. It does not
 # reproduce a CI run.
 #
+# --ci also runs shell-scripts/agent-http-gate.sh, which runs the agent HTTP and
+# relay test classes in their own builds. See CHAT-frcrctdp.
+#
 # Exit status: 0 when reality matches the document, 1 when it does not.
 
 set -uo pipefail
@@ -242,6 +245,18 @@ if [ -n "$skipped" ]; then
     echo "$skipped" | sed 's/^/  /'
     echo
     status=1
+fi
+
+if [ -n "$CI" ]; then
+    # The reactor run cannot activate expose-webflux or rest-core-e2e, so the
+    # agent HTTP and relay test classes run in their own builds. See
+    # CHAT-frcrctdp and shell-scripts/agent-http-gate.sh.
+    echo "running: shell-scripts/agent-http-gate.sh"
+    if ! "$DIR/agent-http-gate.sh"; then
+        echo "AGENT HTTP GATE — a class failed or was skipped; see above"
+        echo
+        status=1
+    fi
 fi
 
 if [ "$status" -eq 0 ]; then

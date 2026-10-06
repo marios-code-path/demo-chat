@@ -199,17 +199,20 @@ These are the current startup defaults. This repair does not add configurable st
 `CHAT-npqgshiu` tracks that existing limitation under the actuator-password issue, `CHAT-dmnhxnsp`.
 Anonymous requests to `rootkeys` receive HTTP 401.
 
-Run the optional two-process test from the repository root:
+`shell-scripts/agent-http-gate.sh` runs the agent HTTP test and the two-process relay test.
+Each class runs in its own build, with its own profile.
+`RestAgentSelectionTests` runs under `expose-webflux`.
+`RestToCoreBearerDeploymentTests` runs under `rest-core-e2e`, after a `clean`.
+The gate fails unless each class runs with zero skipped tests.
+It also fails when the relay core jar holds `chat-webflux`.
+The PR job `agent-http` and `build-health.sh --ci` both call it.
+Run it by hand with `--offline` for a local check:
 
 ```bash
-mvn -B -pl chat-deploy-memory-integration-test -am verify \
-  -Prest-core-e2e -Dtest=RestToCoreBearerDeploymentTests \
-  -Dsurefire.failIfNoSpecifiedTests=false
+shell-scripts/agent-http-gate.sh --offline
 ```
 
-The profile builds both executable jars before the test module and enables its deployment tests.
-No separate `run.rest.core.e2e` property is required.
-The default build skips these tests. CI does not run them.
+The reactor builds still skip both classes, because they activate neither profile. See `CHAT-frcrctdp`.
 
 `--agent-scope` defaults to `chat.mcp`.
 
